@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "finalDecision": {
@@ -8,18 +8,20 @@
     "finalRecommendation": "NO_GO_STRICT",
     "cutoverAllowed": false,
     "releaseEnvFileCutoverSafe": false,
-    "gateBlockers": 0,
-    "blockedCutoverItems": 6,
-    "stopReasonCount": 7,
+    "gateBlockers": 94,
+    "blockedCutoverItems": 8,
+    "stopReasonCount": 9,
     "stopReasonCoverage": "catalog-snapshot",
     "stopReasons": [
       "cutover checklist blocked: database-performance",
       "cutover checklist blocked: deployable-images",
       "cutover checklist blocked: evidence-integrity",
+      "cutover checklist blocked: production-equivalence",
       "cutover checklist blocked: release-environment",
       "cutover checklist blocked: rollback-safety",
       "cutover checklist blocked: runtime-business-acceptance",
-      "strict release gate blockers=0"
+      "cutover checklist blocked: strict-release-gate",
+      "strict release gate blockers=94"
     ],
     "source": "artifacts/ddd/release/release-final-go-no-go.json",
     "enforceCommand": "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
@@ -83,35 +85,37 @@
   },
   "releaseEnvFileCutoverSafe": false,
   "gate": {
-    "strict": false,
-    "blockers": 0,
-    "warnings": 16
+    "strict": true,
+    "blockers": 94,
+    "warnings": 8
   },
   "summary": {
-    "ownerCount": 17,
-    "readyOwnerCount": 5,
-    "blockedOwnerCount": 12,
-    "readyBatchCount": 7,
+    "ownerCount": 18,
+    "readyOwnerCount": 7,
+    "blockedOwnerCount": 11,
+    "readyBatchCount": 10,
     "blockedBatchCount": 19,
-    "templateEnvKeyCount": 75
+    "templateEnvKeyCount": 76
   },
   "owners": [
     {
       "owner": "release-infra",
       "status": "READY",
-      "pendingItems": 20,
+      "pendingItems": 24,
       "priorities": [
         "P0"
       ],
       "batchIds": [
         "p0-docker-release-infra",
         "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
+        "p0-release-env-lint-release-infra",
+        "p0-runtime-readiness-release-infra"
       ],
       "readyBatchIds": [
         "p0-docker-release-infra",
         "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
+        "p0-release-env-lint-release-infra",
+        "p0-runtime-readiness-release-infra"
       ],
       "blockedBatchIds": [],
       "blockedByBatchIds": [],
@@ -140,6 +144,8 @@
         "DDD_DEPLOYMENT_EVIDENCE",
         "DDD_DOCKER_BUILD_STRICT",
         "DDD_DOCKER_COMMAND",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
         "DDD_EXPLAIN_DATABASE",
         "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
         "DDD_MIGRATION_COMPLETED_AT",
@@ -148,6 +154,7 @@
         "DDD_MIGRATION_OPERATOR",
         "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
         "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_RELEASE_CANDIDATE",
         "FIELD_SECRET",
         "FILE_SERVICE_BASE_URL",
         "JOB_EXECUTOR_BASE_URL",
@@ -229,13 +236,16 @@
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json",
         "artifacts/ddd/config/release-config-evidence.json",
+        "artifacts/ddd/readiness/summary.json",
         "artifacts/ddd/release/release-env-lint.json"
       ],
       "exitCriteria": [
+        "All 30 owner readiness/health/metrics checks pass.",
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
         "Required lumira-server and frontend images are built, inspected, and not skipped.",
         "Rerun strict release gate and readiness summary after evidence is refreshed.",
+        "Runtime readiness is generated from an HTTPS non-local backend base URL.",
         "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
         "release-config-evidence status is PASS with no contract issues.",
         "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
@@ -527,6 +537,54 @@
       ]
     },
     {
+      "owner": "release-performance",
+      "status": "READY",
+      "pendingItems": 9,
+      "priorities": [
+        "P0"
+      ],
+      "batchIds": [
+        "p0-authenticated-performance-release-performance"
+      ],
+      "readyBatchIds": [
+        "p0-authenticated-performance-release-performance"
+      ],
+      "blockedBatchIds": [],
+      "blockedByBatchIds": [],
+      "commandSet": {
+        "list": "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      },
+      "templateEnvKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "aliasMappings": [],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "exitCriteria": [
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Rerun strict release gate and readiness summary after evidence is refreshed."
+      ],
+      "handoffChecklist": [
+        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
+        "Run the owner env-check command before collecting evidence.",
+        "Run the owner dry-run command to confirm batch scope.",
+        "Run the owner execute command in the production-equivalent release environment.",
+        "Archive or refresh every expected artifact listed for this owner.",
+        "Confirm every exit criterion before the next dependent batch starts."
+      ]
+    },
+    {
       "owner": "payment-owner",
       "status": "READY",
       "pendingItems": 4,
@@ -597,9 +655,82 @@
       ]
     },
     {
+      "owner": "release-owner",
+      "status": "READY",
+      "pendingItems": 2,
+      "priorities": [
+        "P0",
+        "P3"
+      ],
+      "batchIds": [
+        "p0-manifest-release-owner",
+        "p3-orchestrator-release-owner"
+      ],
+      "readyBatchIds": [
+        "p0-manifest-release-owner"
+      ],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-owner"
+      ],
+      "blockedByBatchIds": [
+        "p1-ai-runtime-ai",
+        "p1-business-e2e-file-owner",
+        "p1-business-e2e-job-owner",
+        "p1-business-e2e-payment-owner",
+        "p1-frontend-smoke-frontend",
+        "p1-rollback-ai-owner",
+        "p1-rollback-auth-owner",
+        "p1-rollback-file-owner",
+        "p1-rollback-iam-owner",
+        "p1-rollback-job-owner",
+        "p1-rollback-localization-owner",
+        "p1-rollback-message-owner",
+        "p1-rollback-payment-owner",
+        "p1-rollback-platform-owner",
+        "p1-rollback-plugin-owner",
+        "p2-explain-database"
+      ],
+      "commandSet": {
+        "list": "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      },
+      "templateEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_EVIDENCE_STRICT",
+        "DDD_RELEASE_MANIFEST_STRICT"
+      ],
+      "aliasMappings": [],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json",
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/readiness-summary.json",
+        "artifacts/ddd/release/release-evidence-gate.json"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Final strict release gate and readiness summary report zero blockers.",
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Rerun strict release gate and readiness summary after evidence is refreshed.",
+        "Run only after all prerequisite evidence batches are clean."
+      ],
+      "handoffChecklist": [
+        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
+        "Run the owner env-check command before collecting evidence.",
+        "Run the owner dry-run command to confirm batch scope.",
+        "Run the owner execute command in the production-equivalent release environment.",
+        "Archive or refresh every expected artifact listed for this owner.",
+        "Confirm every exit criterion before the next dependent batch starts."
+      ]
+    },
+    {
       "owner": "database",
       "status": "BLOCKED",
-      "pendingItems": 7,
+      "pendingItems": 9,
       "priorities": [
         "P2",
         "P3"
@@ -1167,60 +1298,6 @@
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
         "Rerun strict release gate and readiness summary after evidence is refreshed."
-      ],
-      "handoffChecklist": [
-        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
-        "Archive or refresh every expected artifact listed for this owner.",
-        "Confirm every exit criterion before the next dependent batch starts."
-      ]
-    },
-    {
-      "owner": "release-owner",
-      "status": "BLOCKED",
-      "pendingItems": 1,
-      "priorities": [
-        "P3"
-      ],
-      "batchIds": [
-        "p3-orchestrator-release-owner"
-      ],
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
-      ],
-      "blockedByBatchIds": [
-        "p1-ai-runtime-ai",
-        "p1-business-e2e-file-owner",
-        "p1-business-e2e-job-owner",
-        "p1-business-e2e-payment-owner",
-        "p1-frontend-smoke-frontend",
-        "p1-rollback-ai-owner",
-        "p1-rollback-auth-owner",
-        "p1-rollback-file-owner",
-        "p1-rollback-iam-owner",
-        "p1-rollback-job-owner",
-        "p1-rollback-localization-owner",
-        "p1-rollback-message-owner",
-        "p1-rollback-payment-owner",
-        "p1-rollback-platform-owner",
-        "p1-rollback-plugin-owner",
-        "p2-explain-database"
-      ],
-      "commandSet": null,
-      "templateEnvKeys": [
-        "DDD_RELEASE_EVIDENCE_STRICT"
-      ],
-      "aliasMappings": [],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/readiness-summary.json",
-        "artifacts/ddd/release/release-evidence-gate.json"
-      ],
-      "exitCriteria": [
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Rerun strict release gate and readiness summary after evidence is refreshed.",
-        "Run only after all prerequisite evidence batches are clean."
       ],
       "handoffChecklist": [
         "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",

@@ -259,7 +259,10 @@ assert(workflowText.includes("mv artifacts/ddd/release/release-preflight-output.
 assert(workflowText.includes("node scripts/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-strict-output.txt > artifacts/ddd/release/release-preflight-strict-output.redacted.tmp"), "workflow must redact strict preflight output before upload");
 assert(workflowText.includes("mv artifacts/ddd/release/release-preflight-strict-output.redacted.tmp artifacts/ddd/release/release-preflight-strict-output.txt"), "workflow must replace strict preflight output with redacted content before upload");
 assert(workflowText.includes("node scripts/ddd-release-preflight-capture-contract.mjs"), "workflow must validate release preflight capture files with the shared contract");
-assert(workflowText.includes("DDD_RELEASE_MANIFEST_CHECK_ENV=true \\\n            node scripts/ddd-release-evidence-manifest.mjs"), "workflow must refresh manifest provenance preflight before final pre-upload manifest refresh");
+assert(
+  /DDD_RELEASE_MANIFEST_CHECK_ENV=true\s*\\\s*\r?\n\s*node scripts\/ddd-release-evidence-manifest\.mjs/.test(workflowText),
+  "workflow must refresh manifest provenance preflight before final pre-upload manifest refresh",
+);
 assert(workflowText.includes("DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false"), "workflow must refresh manifest after preflight capture without hiding blockers");
 assert(workflowText.includes("DDD_RELEASE_MANIFEST_STRICT=\"${{ inputs.strict }}\""), "workflow must preserve strict/advisory manifest mode when refreshing after preflight capture");
 assert(workflowText.includes("node scripts/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-output.txt >> \"$GITHUB_STEP_SUMMARY\""), "workflow summary must append redacted saved release preflight output");

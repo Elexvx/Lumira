@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD final owner queue env initializer.
-# Generated at: 2026-06-17T08:13:17.325Z
+# Generated at: 2026-06-18T19:37:26.213Z
 # Creates a local release env file from the generated template without overwriting existing secrets.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
@@ -12,9 +12,10 @@ if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
   fi
 fi
+export LUMIRA_REPO_ROOT
 cd "${LUMIRA_REPO_ROOT}"
 
-DDD_FINAL_OWNER_QUEUE_ENV_TEMPLATE="${DDD_FINAL_OWNER_QUEUE_ENV_TEMPLATE:-artifacts/ddd/release/release-final-owner-queue-env.template.env}"
+DDD_FINAL_OWNER_QUEUE_ENV_TEMPLATE="${DDD_FINAL_OWNER_QUEUE_ENV_TEMPLATE:-artifacts\ddd\release\release-final-owner-queue-env.template.env}"
 DDD_FINAL_OWNER_QUEUE_ENV_TARGET="${DDD_FINAL_OWNER_QUEUE_ENV_TARGET:-${DDD_RELEASE_ENV_FILE:-.env.release.local}}"
 DDD_FINAL_OWNER_QUEUE_ENV_FORCE="${DDD_FINAL_OWNER_QUEUE_ENV_FORCE:-}"
 DDD_FINAL_OWNER_QUEUE_ENV_INIT_RECEIPT="${DDD_FINAL_OWNER_QUEUE_ENV_INIT_RECEIPT:-artifacts/ddd/release/release-final-owner-queue-env-init-receipt.json}"

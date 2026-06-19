@@ -1,10 +1,10 @@
 # DDD Fast Track Release Decision
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
-Release gate blockers: 0
+Release gate blockers: 94
 
 ## Reason
 
@@ -20,9 +20,9 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 
 ## Cutover Checklist
 
-- [PASS] strict-release-gate: Strict release gate has zero blockers and no contract issues.
-  - Pending items: 0
-  - Ready batches: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- [BLOCKED] strict-release-gate: Strict release gate has zero blockers and no contract issues.
+  - Pending items: 94
+  - Ready batches: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
   - Blocked batches: p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database, p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-owner
 - [BLOCKED] release-environment: Completed release env file and config matrix are valid.
   - Pending items: 65
@@ -30,8 +30,9 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 - [BLOCKED] deployable-images: Deployable backend/frontend images are built and inspected.
   - Pending items: 4
   - Ready batches: p0-docker-release-infra
-- [PASS] production-equivalence: Runtime and performance evidence use HTTPS non-local production-equivalent endpoints.
-  - Pending items: 0
+- [BLOCKED] production-equivalence: Runtime and performance evidence use HTTPS non-local production-equivalent endpoints.
+  - Pending items: 13
+  - Ready batches: p0-runtime-readiness-release-infra, p0-authenticated-performance-release-performance
 - [PASS] data-safety: Fresh and upgrade migrations are proven with runtime metadata.
   - Pending items: 0
 - [BLOCKED] runtime-business-acceptance: AI, frontend, file, job, and payment acceptance evidence is complete.
@@ -41,10 +42,11 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - Pending items: 10
   - Blocked batches: p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
 - [BLOCKED] database-performance: Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.
-  - Pending items: 6
+  - Pending items: 8
   - Blocked batches: p2-explain-database
 - [BLOCKED] evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean.
-  - Pending items: 3
+  - Pending items: 4
+  - Ready batches: p0-manifest-release-owner
   - Blocked batches: p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-owner
 
 ## Safety Signals
@@ -97,6 +99,41 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 - Commands:
   - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-docker-build-evidence.mjs`
+
+### production-equivalence
+
+- Safety class: non-waivable
+- Pending items: 4
+- Sources: runtime-readiness
+- Owners: release-infra
+- Ready batches: p0-runtime-readiness-release-infra
+- Blocked batches: none
+- Acceleration: Point runtime smoke at the HTTPS non-local backend and capture owner readiness/health/metrics.
+- Env check groups:
+  - `DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT`
+  - `DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR`
+  - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
+  - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
+- Commands:
+  - `node scripts/ddd-runtime-readiness-smoke.mjs`
+
+### performance
+
+- Safety class: non-waivable
+- Pending items: 9
+- Sources: authenticated-performance
+- Owners: release-performance
+- Ready batches: p0-authenticated-performance-release-performance
+- Blocked batches: none
+- Acceleration: Run authenticated performance against production-equivalent HTTPS and promote the accepted baseline.
+- Env check groups:
+  - `DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY`
+  - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
+  - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
+  - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
+- Commands:
+  - `node scripts/ddd-authenticated-performance-smoke.mjs`
+  - `node scripts/ddd-promote-performance-baseline.mjs`
 
 ### runtime-acceptance
 
@@ -184,7 +221,7 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 ### database-performance
 
 - Safety class: non-waivable
-- Pending items: 6
+- Pending items: 8
 - Sources: explain
 - Owners: database
 - Ready batches: none
@@ -206,6 +243,25 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 - Commands:
   - `node scripts/ddd-collect-explain.mjs`
   - `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
+
+### evidence-integrity
+
+- Safety class: required-before-cutover
+- Pending items: 1
+- Sources: manifest
+- Owners: release-owner
+- Ready batches: p0-manifest-release-owner
+- Blocked batches: none
+- Acceleration: Regenerate the manifest after all prerequisite artifacts exist.
+- Env check groups:
+  - `DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT`
+  - `DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR`
+  - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
+  - `DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT`
+- Commands:
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
+  - `node scripts/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
 
 ### final-verification
 

@@ -89,8 +89,15 @@ fs.writeFileSync(path.join(broadSecretDir, "01.env"), "JWT_SECRET=abcdefghijklmn
 fs.writeFileSync(broadSecretTarget, "JWT_SECRET=__REQUIRED__\n");
 fs.chmodSync(path.join(broadSecretDir, "01.env"), 0o644);
 const broadSecretRun = runMerge(broadSecretDir, broadSecretTarget, path.join(tmpDir, "broad-secret.json"));
-assert.notEqual(broadSecretRun.status, 0);
-assert.match(broadSecretRun.stderr, /concrete secret values require chmod 600/);
-assert.match(fs.readFileSync(broadSecretTarget, "utf8"), /^JWT_SECRET=__REQUIRED__$/m);
+if (process.platform === "win32") {
+  assert.equal(broadSecretRun.status, 0, broadSecretRun.stderr);
+} else {
+  assert.notEqual(broadSecretRun.status, 0);
+  assert.match(broadSecretRun.stderr, /concrete secret values require chmod 600/);
+}
+assert.match(
+  fs.readFileSync(broadSecretTarget, "utf8"),
+  process.platform === "win32" ? /^JWT_SECRET=abcdefghijklmnopqrstuvwxyz1234567890$/m : /^JWT_SECRET=__REQUIRED__$/m,
+);
 
 console.log("[ddd-release-env-owner-templates-merge.test] ok");

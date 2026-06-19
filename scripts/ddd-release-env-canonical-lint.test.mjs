@@ -119,7 +119,13 @@ fs.writeFileSync(broadModeFile, [
 ].join("\n"));
 fs.chmodSync(broadModeFile, 0o644);
 const broadModeRun = runLint(broadModeFile, broadModeReport);
-assert.notEqual(broadModeRun.status, 0);
-assert.match(broadModeRun.stderr, /permissions are too broad/);
+if (process.platform === "win32") {
+  assert.equal(broadModeRun.status, 0, broadModeRun.stderr);
+  const broadModeReportJson = JSON.parse(fs.readFileSync(broadModeReport, "utf8"));
+  assert.equal(broadModeReportJson.sourceSecurity.permissionCheckSkipped, true);
+} else {
+  assert.notEqual(broadModeRun.status, 0);
+  assert.match(broadModeRun.stderr, /permissions are too broad/);
+}
 
 console.log("[ddd-release-env-canonical-lint.test] ok");

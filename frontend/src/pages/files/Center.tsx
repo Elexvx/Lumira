@@ -21,6 +21,7 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { confirmAction } from '@/utils/confirm';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import { showErrorMessage } from '@/utils/errorMessage';
+import { rejectAntUploadFile, validateDocumentUploadFile } from '@/utils/uploadValidation';
 import { normalizeLocale } from '@/i18n/locale';
 
 type BuildFileListRequestParams = {
@@ -436,6 +437,14 @@ function FileUploadDrawer({
       accept: allowedMimeTypes.trim() === '*' ? FILE_ACCEPT : allowedMimeTypes,
       fileList: uploadFileList,
       beforeUpload: (file) => {
+        const validationMessage = validateDocumentUploadFile(file as File, {
+          allowedExtensions: ALLOWED_UPLOAD_EXTENSIONS,
+          allowedMimeTypes,
+          maxSizeMb: maxFileSizeMb,
+        });
+        if (validationMessage) {
+          return rejectAntUploadFile(validationMessage, message.error);
+        }
         const extension = file.name.split('.').pop()?.toLowerCase();
         if (!extension || !ALLOWED_UPLOAD_EXTENSIONS.includes(extension)) {
           message.error(t('当前文件格式暂不支持安全上传', 'This file format is not supported for secure upload yet'));

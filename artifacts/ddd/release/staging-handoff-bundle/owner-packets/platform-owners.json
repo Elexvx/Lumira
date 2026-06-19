@@ -1,0 +1,302 @@
+{
+  "generatedAt": "2026-06-19T06:05:17.222Z",
+  "owner": "platform-owners",
+  "blockers": 9,
+  "placeholders": 9,
+  "secretKeys": 0,
+  "laneCount": 1,
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+  "missingEvidenceArtifactCount": 2,
+  "blockingInputCount": 33,
+  "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-owners.md",
+  "keys": [
+    "AI_SERVICE_BASE_URL",
+    "AUTH_SERVICE_BASE_URL",
+    "FILE_SERVICE_BASE_URL",
+    "JOB_EXECUTOR_BASE_URL",
+    "LOCALIZATION_SERVICE_BASE_URL",
+    "MESSAGE_SERVICE_BASE_URL",
+    "PAYMENT_SERVICE_BASE_URL",
+    "PLUGIN_SERVICE_BASE_URL",
+    "SYSTEM_SERVICE_BASE_URL"
+  ],
+  "ownerInputReasons": [
+    "production-endpoint"
+  ],
+  "commands": [
+    "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
+    "node scripts/ddd-release-readiness-summary.mjs",
+    "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+    "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
+    "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+    "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+    "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+    "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"
+  ],
+  "evidenceGaps": [
+    {
+      "id": "p0-release-env",
+      "title": "P0 release env and config",
+      "reason": "release env file is not cutover-safe; blockers=34",
+      "nextCommand": "node scripts/ddd-release-env-init.mjs --check",
+      "artifacts": [
+        "artifacts/ddd/release/release-env-lint.json",
+        "artifacts/ddd/config/release-config-evidence.json",
+        "artifacts/ddd/release/readiness-summary.json"
+      ],
+      "envKeys": [
+        "AI_SERVICE_BASE_URL",
+        "AUTH_SERVICE_BASE_URL",
+        "BASE_URL",
+        "CORS_ALLOWED_ORIGIN_PATTERNS",
+        "DB_PASSWORD",
+        "DB_URL",
+        "DB_USERNAME",
+        "DDD_AUTH_PASSWORD",
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+        "DDD_AUTH_PERF_ENVIRONMENT",
+        "DDD_AUTH_USERNAME",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_EXPLAIN_DATABASE",
+        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+        "DDD_MIGRATION_COMPLETED_AT",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_OPERATOR",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "FIELD_SECRET",
+        "FILE_SERVICE_BASE_URL",
+        "JOB_EXECUTOR_BASE_URL",
+        "JWT_SECRET",
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "MESSAGE_SERVICE_BASE_URL",
+        "MYSQL_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PORT",
+        "PAYMENT_PUBLIC_BASE_URL",
+        "PAYMENT_SERVICE_BASE_URL",
+        "PLAYWRIGHT_BASE_URL",
+        "PLUGIN_SERVICE_BASE_URL",
+        "REDIS_HOST",
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "SYSTEM_SERVICE_BASE_URL",
+        "XXL_JOB_ACCESS_TOKEN",
+        "XXL_JOB_ADMIN_ADDRESSES",
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_AI_BASE_URL",
+        "FRONTEND_BASE_URL"
+      ]
+    },
+    {
+      "id": "p1-rollback",
+      "title": "P1 rollback safety",
+      "reason": "every bounded context needs PASS rollback drill evidence or approved unexpired deferral",
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs",
+      "artifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "envKeys": [
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_STRICT",
+        "DDD_ROLLBACK_DRILL_FILE"
+      ]
+    },
+    {
+      "id": "p2-database-performance",
+      "title": "P2 database migration and EXPLAIN",
+      "reason": "fresh production-equivalent migration and hot-path EXPLAIN evidence are required",
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs",
+      "artifacts": [
+        "artifacts/ddd/migration/migration-evidence.json",
+        "tmp/ddd-explain/*.json",
+        "artifacts/ddd/release/explain-gate-report.json"
+      ],
+      "envKeys": [
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_EXPLAIN_DATABASE",
+        "DDD_EXPLAIN_ENVIRONMENT"
+      ]
+    }
+  ],
+  "blockingInputGates": [
+    {
+      "gate": "release-env",
+      "track": "p0-release-env",
+      "owner": "release-infra",
+      "status": "BLOCKED",
+      "blocker": "release env file is not cutover-safe; blockers=34",
+      "blockingInputs": [
+        "DDD_RELEASE_ENV_FILE"
+      ],
+      "nextCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+    },
+    {
+      "gate": "rollback",
+      "track": "p1-rollback",
+      "owner": "bounded-context owners",
+      "status": "BLOCKED",
+      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+      "blockingInputs": [
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR"
+      ],
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "gate": "migration",
+      "track": "p2-database-performance",
+      "owner": "database",
+      "status": "BLOCKED",
+      "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+      "blockingInputs": [
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_MIGRATION_OPERATOR",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR",
+        "DDD_MIGRATION_COMPLETED_AT"
+      ],
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "gate": "explain",
+      "track": "p2-database-performance",
+      "owner": "database",
+      "status": "BLOCKED",
+      "blocker": "DDD_EXPLAIN_DATABASE is required",
+      "blockingInputs": [
+        "DDD_EXPLAIN_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PORT",
+        "MYSQL_USER",
+        "MYSQL_PASSWORD",
+        "DDD_EXPLAIN_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR"
+      ],
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+    }
+  ],
+  "blockingInputs": [
+    "DDD_RELEASE_ENV_FILE",
+    "DDD_ROLLBACK_DRILL_FILE",
+    "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+    "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+    "DDD_EVIDENCE_ENVIRONMENT",
+    "DDD_RELEASE_ENVIRONMENT",
+    "DDD_RELEASE_CANDIDATE",
+    "GITHUB_SHA",
+    "DDD_EVIDENCE_OPERATOR",
+    "GITHUB_ACTOR",
+    "DDD_MIGRATION_FRESH_DB_VALIDATED",
+    "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+    "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+    "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+    "DDD_MIGRATION_ENVIRONMENT",
+    "DDD_MIGRATION_OPERATOR",
+    "DDD_MIGRATION_COMPLETED_AT",
+    "DDD_EXPLAIN_DATABASE",
+    "MYSQL_HOST",
+    "MYSQL_PORT",
+    "MYSQL_USER",
+    "MYSQL_PASSWORD",
+    "DDD_EXPLAIN_ENVIRONMENT"
+  ],
+  "missingEvidenceArtifacts": [
+    {
+      "gate": "migration",
+      "track": "p2-database-performance",
+      "owner": "database",
+      "dispatchOwner": "platform-owners",
+      "artifact": "tmp/ddd-explain/*.json",
+      "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "gate": "explain",
+      "track": "p2-database-performance",
+      "owner": "database",
+      "dispatchOwner": "platform-owners",
+      "artifact": "tmp/ddd-explain/*.json",
+      "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+    }
+  ],
+  "queueLanes": [
+    {
+      "order": 4,
+      "lane": "p1-p2-data-safety",
+      "owner": "bounded-context owners",
+      "dispatchOwner": "platform-owners",
+      "status": "BLOCKED",
+      "title": "Provide rollback drill evidence or an approved rollback deferral for every affected bounded context.",
+      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json",
+        "artifacts/ddd/migration/migration-evidence.json",
+        "tmp/ddd-explain/*.json",
+        "artifacts/ddd/release/explain-gate-report.json"
+      ],
+      "missingArtifacts": [
+        "tmp/ddd-explain/*.json"
+      ],
+      "sourcePlan": "data-safety-submission-plan.json",
+      "missingEvidenceArtifactCount": 1
+    }
+  ],
+  "receiptWorkflow": {
+    "laneKeys": [
+      "platform-owners:p1-p2-data-safety"
+    ],
+    "initCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+    "editRule": "update only this owner's laneReceipts entries, then leave unrelated owner/lane pairs unchanged",
+    "checkCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+    "coverageCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>"
+  },
+  "safety": [
+    "Do not commit populated secrets.",
+    "Use the secure release env file referenced by DDD_RELEASE_ENV_FILE.",
+    "Re-run the staging checklist after owner inputs are merged."
+  ]
+}

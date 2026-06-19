@@ -1,27 +1,27 @@
 # DDD Release Sprint Board
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
-Ready batches: 7
+Ready batches: 10
 Blocked batches: 19
 Next wave priority: P0
 
 ## Next Wave
 
-- Owners: ai-owner, payment-owner, platform-events, platform-owners, release-infra
-- Batch IDs: p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra
-- Expected artifacts: artifacts/ddd/build/docker-image-evidence.json, artifacts/ddd/config/release-config-evidence.json, artifacts/ddd/release/release-env-lint.json
+- Owners: ai-owner, payment-owner, platform-events, platform-owners, release-infra, release-owner, release-performance
+- Batch IDs: p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Expected artifacts: artifacts/ddd/build/docker-image-evidence.json, artifacts/ddd/config/release-config-evidence.json, artifacts/ddd/performance/authenticated-runtime-actual.json, artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json, artifacts/ddd/performance/authenticated-runtime-baseline.json, artifacts/ddd/readiness/summary.json, artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/release-env-lint.json
 
 ## Priorities
 
 ### P0
 
-- Pending items: 69
-- Ready batches: p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra
+- Pending items: 83
+- Ready batches: p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Blocked batches: none
-- Owners: ai-owner, payment-owner, platform-events, platform-owners, release-infra
+- Owners: ai-owner, payment-owner, platform-events, platform-owners, release-infra, release-owner, release-performance
 
 ### P1
 
@@ -32,7 +32,7 @@ Next wave priority: P0
 
 ### P2
 
-- Pending items: 6
+- Pending items: 8
 - Ready batches: none
 - Blocked batches: p2-explain-database
 - Owners: database
@@ -48,8 +48,8 @@ Next wave priority: P0
 
 ### release-infra
 
-- Pending items: 20
-- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra
+- Pending items: 24
+- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra, p0-runtime-readiness-release-infra
 - Blocked batches: none
 
 ### platform-owners
@@ -70,15 +70,27 @@ Next wave priority: P0
 - Ready batches: p0-release-config-ai-owner
 - Blocked batches: p1-rollback-ai-owner
 
+### release-performance
+
+- Pending items: 9
+- Ready batches: p0-authenticated-performance-release-performance
+- Blocked batches: none
+
 ### payment-owner
 
 - Pending items: 4
 - Ready batches: p0-release-config-payment-owner
 - Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
 
+### release-owner
+
+- Pending items: 2
+- Ready batches: p0-manifest-release-owner
+- Blocked batches: p3-orchestrator-release-owner
+
 ### database
 
-- Pending items: 7
+- Pending items: 9
 - Ready batches: none
 - Blocked batches: p2-explain-database, p3-orchestrator-database
 
@@ -141,12 +153,6 @@ Next wave priority: P0
 - Pending items: 1
 - Ready batches: none
 - Blocked batches: p1-rollback-plugin-owner
-
-### release-owner
-
-- Pending items: 1
-- Ready batches: none
-- Blocked batches: p3-orchestrator-release-owner
 
 ## Batch Cards
 
@@ -220,12 +226,42 @@ Next wave priority: P0
 - Lanes: environment
 - Expected artifacts: artifacts/ddd/release/release-env-lint.json, artifacts/ddd/config/release-config-evidence.json
 
+### p0-runtime-readiness-release-infra
+
+- Status: READY
+- Scope: P0 runtime-readiness -> release-infra
+- Pending items: 4
+- Depends on: none
+- Cutover items: production-equivalence
+- Lanes: production-equivalence
+- Expected artifacts: artifacts/ddd/readiness/summary.json
+
+### p0-manifest-release-owner
+
+- Status: READY
+- Scope: P0 manifest -> release-owner
+- Pending items: 1
+- Depends on: none
+- Cutover items: evidence-integrity
+- Lanes: evidence-integrity
+- Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+
+### p0-authenticated-performance-release-performance
+
+- Status: READY
+- Scope: P0 authenticated-performance -> release-performance
+- Pending items: 9
+- Depends on: none
+- Cutover items: production-equivalence
+- Lanes: performance
+- Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json, artifacts/ddd/performance/authenticated-runtime-baseline.json, artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json
+
 ### p1-ai-runtime-ai
 
 - Status: BLOCKED
 - Scope: P1 ai-runtime -> ai
 - Pending items: 3
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: runtime-business-acceptance
 - Lanes: runtime-acceptance
 - Expected artifacts: artifacts/ddd/ai/ai-runtime-drill.json
@@ -235,7 +271,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 rollback -> ai-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: rollback-safety
 - Lanes: rollback-safety
 - Expected artifacts: artifacts/ddd/rollback/rollback-drill.json
@@ -245,7 +281,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 rollback -> auth-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: rollback-safety
 - Lanes: rollback-safety
 - Expected artifacts: artifacts/ddd/rollback/rollback-drill.json
@@ -255,7 +291,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 business-e2e -> file-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: runtime-business-acceptance
 - Lanes: business-acceptance
 - Expected artifacts: artifacts/ddd/file/file-processing-e2e.json
@@ -265,7 +301,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 rollback -> file-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: rollback-safety
 - Lanes: rollback-safety
 - Expected artifacts: artifacts/ddd/rollback/rollback-drill.json
@@ -275,7 +311,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 frontend-smoke -> frontend
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: runtime-business-acceptance
 - Lanes: frontend-acceptance
 - Expected artifacts: artifacts/ddd/frontend/frontend-smoke.json, artifacts/ddd/frontend/playwright-smoke-results.json
@@ -285,7 +321,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 rollback -> iam-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: rollback-safety
 - Lanes: rollback-safety
 - Expected artifacts: artifacts/ddd/rollback/rollback-drill.json
@@ -295,7 +331,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 business-e2e -> job-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: runtime-business-acceptance
 - Lanes: business-acceptance
 - Expected artifacts: artifacts/ddd/jobs/job-e2e-smoke.json
@@ -305,7 +341,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 rollback -> job-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: rollback-safety
 - Lanes: rollback-safety
 - Expected artifacts: artifacts/ddd/rollback/rollback-drill.json
@@ -315,7 +351,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 rollback -> localization-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: rollback-safety
 - Lanes: rollback-safety
 - Expected artifacts: artifacts/ddd/rollback/rollback-drill.json
@@ -325,7 +361,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 rollback -> message-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: rollback-safety
 - Lanes: rollback-safety
 - Expected artifacts: artifacts/ddd/rollback/rollback-drill.json
@@ -335,7 +371,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 business-e2e -> payment-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: runtime-business-acceptance
 - Lanes: business-acceptance
 - Expected artifacts: artifacts/ddd/payment/payment-webhook-e2e.json
@@ -345,7 +381,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 rollback -> payment-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: rollback-safety
 - Lanes: rollback-safety
 - Expected artifacts: artifacts/ddd/rollback/rollback-drill.json
@@ -355,7 +391,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 rollback -> platform-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: rollback-safety
 - Lanes: rollback-safety
 - Expected artifacts: artifacts/ddd/rollback/rollback-drill.json
@@ -365,7 +401,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P1 rollback -> plugin-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Cutover items: rollback-safety
 - Lanes: rollback-safety
 - Expected artifacts: artifacts/ddd/rollback/rollback-drill.json
@@ -374,8 +410,8 @@ Next wave priority: P0
 
 - Status: BLOCKED
 - Scope: P2 explain -> database
-- Pending items: 6
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
+- Pending items: 8
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
 - Cutover items: database-performance
 - Lanes: database-performance
 - Expected artifacts: tmp/ddd-explain/*.json, artifacts/ddd/release/explain-gate-report.json
@@ -385,7 +421,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P3 orchestrator -> database
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Cutover items: evidence-integrity
 - Lanes: final-verification
 - Expected artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/release-evidence-gate.json, artifacts/ddd/release/readiness-summary.json
@@ -395,7 +431,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P3 orchestrator -> frontend
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Cutover items: evidence-integrity
 - Lanes: final-verification
 - Expected artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/release-evidence-gate.json, artifacts/ddd/release/readiness-summary.json
@@ -405,7 +441,7 @@ Next wave priority: P0
 - Status: BLOCKED
 - Scope: P3 orchestrator -> release-owner
 - Pending items: 1
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Cutover items: evidence-integrity
 - Lanes: final-verification
 - Expected artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/release-evidence-gate.json, artifacts/ddd/release/readiness-summary.json

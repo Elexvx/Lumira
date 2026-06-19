@@ -358,6 +358,7 @@ function runPreflightCommand(command, commandArgs) {
   const result = spawnSync(command, commandArgs, {
     cwd: repoRoot,
     encoding: "utf8",
+    shell: process.platform === "win32" && /\.(?:cmd|bat)$/i.test(command),
     maxBuffer: 1024 * 1024,
   });
   return {
@@ -401,7 +402,7 @@ function buildPreflightChecks() {
     } else {
       const releaseEnvStat = fs.statSync(releaseEnvPath);
       const releaseEnvMode = formatFileMode(releaseEnvStat.mode);
-      if ((releaseEnvStat.mode & 0o077) !== 0) {
+      if (process.platform !== "win32" && (releaseEnvStat.mode & 0o077) !== 0) {
         checks.push(preflightCheck(
           "release-config-env-file",
           "BLOCKER",
@@ -422,7 +423,9 @@ function buildPreflightChecks() {
           checks.push(preflightCheck(
             "release-config-env-file",
             "PASS",
-            `env file present with private permissions (${releaseEnvMode}); parsedKeys=${releaseEnvValues.size}: ${releaseEnvDisplayPath}`,
+            process.platform === "win32"
+              ? `env file present; permission check skipped on Windows (mode=${releaseEnvMode}); parsedKeys=${releaseEnvValues.size}: ${releaseEnvDisplayPath}`
+              : `env file present with private permissions (${releaseEnvMode}); parsedKeys=${releaseEnvValues.size}: ${releaseEnvDisplayPath}`,
             ["DDD_RELEASE_ENV_FILE"],
           ));
         }
@@ -527,6 +530,12 @@ function buildPreflightChecks() {
       "docker-cli",
       strict ? "BLOCKER" : "WARNING",
       `Docker CLI is not available: ${dockerVersion.error || dockerVersion.stderrTail || "docker --version failed"}`,
+      ["DDD_DOCKER_COMMAND"],
+    ));
+    checks.push(preflightCheck(
+      "docker-daemon",
+      strict ? "BLOCKER" : "WARNING",
+      "Docker daemon was not checked because Docker CLI is unavailable",
       ["DDD_DOCKER_COMMAND"],
     ));
   } else {

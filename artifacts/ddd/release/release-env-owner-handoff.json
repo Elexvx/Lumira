@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "envFile": ".env.release.local",
   "ownerCount": 6,
   "canonicalFillItemCount": 48,
@@ -30,7 +30,8 @@
       "readyBatchIds": [
         "p0-docker-release-infra",
         "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
+        "p0-release-env-lint-release-infra",
+        "p0-runtime-readiness-release-infra"
       ],
       "blockedBatchIds": [],
       "firstCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
@@ -1898,7 +1899,7 @@
     },
     {
       "owner": "file-owner",
-      "queueOrder": 9,
+      "queueOrder": 11,
       "queueStatus": "WAITING",
       "canExecute": false,
       "readyBatchIds": [],

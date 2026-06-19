@@ -173,8 +173,8 @@ for (const expected of expectedOwners) {
   const expectedIndex = owners.findIndex((entry) => entry.owner === owner.owner);
   const expectedBaseName = expectedOwnerFileName(owner, expectedIndex);
   if (owner.fileName !== expectedBaseName) addFailure(`owner ${owner.owner}.fileName must match owner packet order`);
-  const expectedPacketPath = path.join("artifacts", "ddd", "release", "release-env-owner-input-packet", `${expectedBaseName}.json`);
-  const expectedPacketMarkdownPath = path.join("artifacts", "ddd", "release", "release-env-owner-input-packet", `${expectedBaseName}.md`);
+  const expectedPacketPath = path.posix.join("artifacts", "ddd", "release", "release-env-owner-input-packet", `${expectedBaseName}.json`);
+  const expectedPacketMarkdownPath = path.posix.join("artifacts", "ddd", "release", "release-env-owner-input-packet", `${expectedBaseName}.md`);
   if (owner.packetPath !== expectedPacketPath) addFailure(`owner ${owner.owner}.packetPath must stay in owner input packet directory`);
   if (owner.packetMarkdownPath !== expectedPacketMarkdownPath) addFailure(`owner ${owner.owner}.packetMarkdownPath must stay in owner input packet directory`);
   for (const field of ["totalInputs", "secretInputs", "productionEndpointInputs", "ownerProductionValueInputs"]) {
@@ -182,7 +182,7 @@ for (const expected of expectedOwners) {
   }
   if (!sameStringSet(owner.keys || [], expected.keys)) addFailure(`owner ${owner.owner}.keys must match items`);
   if (!sameStringSet(owner.reasons || [], expected.reasons)) addFailure(`owner ${owner.owner}.reasons must match items`);
-  if (!String(owner.handoffPath || "").startsWith(path.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted"))) {
+  if (!String(owner.handoffPath || "").startsWith(path.posix.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted"))) {
     addFailure(`owner ${owner.owner}.handoffPath must stay in redacted handoff directory`);
   }
 }

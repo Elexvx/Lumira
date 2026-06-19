@@ -287,7 +287,7 @@ assert.deepEqual(validateOrchestratorContract({
   const report = validRunReport();
   report.preflight.checks.push({ ...report.preflight.checks[0] });
   assert(validateOrchestratorContract(report, { strict: true })
-    .includes("duplicate orchestrator preflight check release-provenance"));
+    .includes(`duplicate orchestrator preflight check ${requiredOrchestratorPreflightCheckIds[0]}`));
 }
 
 {

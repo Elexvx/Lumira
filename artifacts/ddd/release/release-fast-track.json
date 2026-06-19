@@ -1,213 +1,213 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
-      "file": "artifacts/ddd/release/release-evidence-gate.json",
+      "file": "artifacts\\ddd\\release\\release-evidence-gate.json",
       "relativePath": "release/release-evidence-gate.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T21:34:10.599Z",
-      "generatedAt": "2026-06-16T21:34:10.597Z",
+      "modifiedAt": "2026-06-18T19:37:02.450Z",
+      "generatedAt": "2026-06-18T19:37:02.443Z",
       "status": null,
-      "blockers": 0,
-      "warnings": 16
+      "blockers": 94,
+      "warnings": 8
     },
     "manifest": {
-      "file": "artifacts/ddd/release/evidence-manifest.json",
+      "file": "artifacts\\ddd\\release\\evidence-manifest.json",
       "relativePath": "release/evidence-manifest.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T08:10:19.879Z",
-      "generatedAt": "2026-06-17T08:10:19.878Z",
-      "status": "PASS",
-      "blockers": 0,
+      "modifiedAt": "2026-06-18T19:37:24.118Z",
+      "generatedAt": "2026-06-18T19:37:24.111Z",
+      "status": "FAIL",
+      "blockers": 1,
       "warnings": null
     },
     "releaseEnvLint": {
-      "file": "artifacts/ddd/release/release-env-lint.json",
+      "file": "artifacts\\ddd\\release\\release-env-lint.json",
       "relativePath": "release/release-env-lint.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T05:46:16.011Z",
+      "modifiedAt": "2026-06-17T09:46:50.252Z",
       "generatedAt": "2026-06-17T05:46:16.010Z",
       "status": "FAIL",
       "blockers": 156,
       "warnings": 0
     },
     "releaseConfig": {
-      "file": "artifacts/ddd/config/release-config-evidence.json",
+      "file": "artifacts\\ddd\\config\\release-config-evidence.json",
       "relativePath": "config/release-config-evidence.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T06:28:34.953Z",
+      "modifiedAt": "2026-06-17T09:46:50.196Z",
       "generatedAt": "2026-06-17T06:28:34.918Z",
       "status": "FAIL",
       "blockers": 63,
       "warnings": 0
     },
     "docker": {
-      "file": "artifacts/ddd/build/docker-image-evidence.json",
+      "file": "artifacts\\ddd\\build\\docker-image-evidence.json",
       "relativePath": "build/docker-image-evidence.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T21:45:55.214Z",
+      "modifiedAt": "2026-06-17T09:46:50.195Z",
       "generatedAt": "2026-06-16T21:45:55.209Z",
       "status": "FAIL",
       "blockers": 2,
       "warnings": null
     },
     "migration": {
-      "file": "artifacts/ddd/migration/migration-evidence.json",
+      "file": "artifacts\\ddd\\migration\\migration-evidence.json",
       "relativePath": "migration/migration-evidence.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:56:46.905Z",
+      "modifiedAt": "2026-06-17T09:46:50.202Z",
       "generatedAt": "2026-06-16T20:56:46.902Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
     },
     "runtimeReadiness": {
-      "file": "artifacts/ddd/readiness/summary.json",
+      "file": "artifacts\\ddd\\readiness\\summary.json",
       "relativePath": "readiness/summary.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T06:22:07.615Z",
+      "modifiedAt": "2026-06-17T09:46:50.218Z",
       "generatedAt": "2026-06-16T06:22:07.611Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "authenticatedPerformanceActual": {
-      "file": "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-actual.json",
       "relativePath": "performance/authenticated-runtime-actual.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:51:41.453Z",
+      "modifiedAt": "2026-06-17T09:46:50.205Z",
       "generatedAt": "2026-06-16T20:51:41.443Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "authenticatedPerformanceBaseline": {
-      "file": "artifacts/ddd/performance/authenticated-runtime-baseline.json",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-baseline.json",
       "relativePath": "performance/authenticated-runtime-baseline.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T13:36:36.271Z",
+      "modifiedAt": "2026-06-17T09:46:50.206Z",
       "generatedAt": "2026-06-13T18:38:43.975Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "authenticatedPerformanceBaselinePromotion": {
-      "file": "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-baseline-promotion.json",
       "relativePath": "performance/authenticated-runtime-baseline-promotion.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T13:36:36.277Z",
+      "modifiedAt": "2026-06-17T09:46:50.205Z",
       "generatedAt": "2026-06-13T18:38:43.975Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "fileProcessing": {
-      "file": "artifacts/ddd/file/file-processing-e2e.json",
+      "file": "artifacts\\ddd\\file\\file-processing-e2e.json",
       "relativePath": "file/file-processing-e2e.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "modifiedAt": "2026-06-17T09:46:50.197Z",
       "generatedAt": null,
       "status": "PASS",
       "blockers": null,
       "warnings": null
     },
     "paymentWebhook": {
-      "file": "artifacts/ddd/payment/payment-webhook-e2e.json",
+      "file": "artifacts\\ddd\\payment\\payment-webhook-e2e.json",
       "relativePath": "payment/payment-webhook-e2e.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "modifiedAt": "2026-06-17T09:46:50.204Z",
       "generatedAt": null,
       "status": "PASS",
       "blockers": null,
       "warnings": null
     },
     "jobE2e": {
-      "file": "artifacts/ddd/jobs/job-e2e-smoke.json",
+      "file": "artifacts\\ddd\\jobs\\job-e2e-smoke.json",
       "relativePath": "jobs/job-e2e-smoke.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "modifiedAt": "2026-06-17T09:46:50.200Z",
       "generatedAt": "2026-06-13T19:15:58.531Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "frontendSmoke": {
-      "file": "artifacts/ddd/frontend/frontend-smoke.json",
+      "file": "artifacts\\ddd\\frontend\\frontend-smoke.json",
       "relativePath": "frontend/frontend-smoke.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:51:08.158Z",
+      "modifiedAt": "2026-06-17T09:46:50.198Z",
       "generatedAt": "2026-06-16T20:51:08.151Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
     },
     "aiRuntime": {
-      "file": "artifacts/ddd/ai/ai-runtime-drill.json",
+      "file": "artifacts\\ddd\\ai\\ai-runtime-drill.json",
       "relativePath": "ai/ai-runtime-drill.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:51:41.732Z",
+      "modifiedAt": "2026-06-17T09:46:50.194Z",
       "generatedAt": "2026-06-16T20:51:41.726Z",
       "status": "PASS",
       "blockers": null,
       "warnings": null
     },
     "rollback": {
-      "file": "artifacts/ddd/rollback/rollback-drill.json",
+      "file": "artifacts\\ddd\\rollback\\rollback-drill.json",
       "relativePath": "rollback/rollback-drill.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T06:24:20.376Z",
+      "modifiedAt": "2026-06-17T09:46:50.312Z",
       "generatedAt": "2026-06-16T06:24:20.373Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
     },
     "orchestrator": {
-      "file": "artifacts/ddd/release/orchestrator-report.json",
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json",
       "relativePath": "release/orchestrator-report.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T21:33:57.990Z",
+      "modifiedAt": "2026-06-17T09:46:50.220Z",
       "generatedAt": "2026-06-16T21:33:57.249Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "ownerQueueRunReport": {
-      "file": "artifacts/ddd/release/release-final-owner-queue-run-report.json",
+      "file": "artifacts\\ddd\\release\\release-final-owner-queue-run-report.json",
       "relativePath": "release/release-final-owner-queue-run-report.json",
       "present": false,
       "missing": true,
@@ -219,24 +219,24 @@
       "warnings": null
     },
     "ownerQueueEnvInitReceipt": {
-      "file": "artifacts/ddd/release/release-final-owner-queue-env-init-receipt.json",
+      "file": "artifacts\\ddd\\release\\release-final-owner-queue-env-init-receipt.json",
       "relativePath": "release/release-final-owner-queue-env-init-receipt.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T00:59:03.189Z",
+      "modifiedAt": "2026-06-17T09:46:50.284Z",
       "generatedAt": "2026-06-15T00:59:03.187Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "explainGateReport": {
-      "file": "artifacts/ddd/release/explain-gate-report.json",
+      "file": "artifacts\\ddd\\release\\explain-gate-report.json",
       "relativePath": "release/explain-gate-report.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T20:41:37.877Z",
+      "modifiedAt": "2026-06-17T09:46:50.219Z",
       "generatedAt": "2026-06-15T20:41:37.875Z",
       "status": "PASS",
       "blockers": 0,
@@ -247,9 +247,9 @@
   "noAutoWaivers": true,
   "reason": "Cutover still has required safety or evidence items blocked; fastest safe path is to parallelize evidence collection without bypassing non-waivable safety gates.",
   "gate": {
-    "strict": false,
-    "blockers": 0,
-    "warnings": 16
+    "strict": true,
+    "blockers": 94,
+    "warnings": 8
   },
   "safetySignals": {
     "releaseEnvFile": {
@@ -307,13 +307,13 @@
     }
   },
   "summary": {
-    "totalPendingItems": 95,
-    "nonWaivableItems": 87,
-    "readyBatches": 7,
+    "totalPendingItems": 111,
+    "nonWaivableItems": 102,
+    "readyBatches": 10,
     "blockedBatches": 19,
-    "lanes": 8,
+    "lanes": 11,
     "cutoverChecklistItems": 9,
-    "blockedCutoverItems": 6
+    "blockedCutoverItems": 8
   },
   "fastestSafePath": [
     "Complete DDD_RELEASE_ENV_FILE and run release-execution-commands.sh with DDD_RELEASE_CHECK_ENV_ONLY=1.",
@@ -327,8 +327,8 @@
       "id": "strict-release-gate",
       "title": "Strict release gate has zero blockers and no contract issues.",
       "required": true,
-      "status": "PASS",
-      "pendingItems": 0,
+      "status": "BLOCKED",
+      "pendingItems": 94,
       "lanes": [],
       "batchIds": [],
       "readyBatchIds": [
@@ -338,7 +338,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "blockedBatchIds": [
         "p1-ai-runtime-ai",
@@ -410,14 +413,20 @@
       "id": "production-equivalence",
       "title": "Runtime and performance evidence use HTTPS non-local production-equivalent endpoints.",
       "required": true,
-      "status": "PASS",
-      "pendingItems": 0,
+      "status": "BLOCKED",
+      "pendingItems": 13,
       "lanes": [
         "production-equivalence",
         "performance"
       ],
-      "batchIds": [],
-      "readyBatchIds": [],
+      "batchIds": [
+        "p0-runtime-readiness-release-infra",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "readyBatchIds": [
+        "p0-runtime-readiness-release-infra",
+        "p0-authenticated-performance-release-performance"
+      ],
       "blockedBatchIds": []
     },
     {
@@ -500,7 +509,7 @@
       "title": "Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.",
       "required": true,
       "status": "BLOCKED",
-      "pendingItems": 6,
+      "pendingItems": 8,
       "lanes": [
         "database-performance"
       ],
@@ -517,17 +526,20 @@
       "title": "Evidence manifest and final orchestrator strict rerun are clean.",
       "required": true,
       "status": "BLOCKED",
-      "pendingItems": 3,
+      "pendingItems": 4,
       "lanes": [
         "evidence-integrity",
         "final-verification"
       ],
       "batchIds": [
+        "p0-manifest-release-owner",
         "p3-orchestrator-database",
         "p3-orchestrator-frontend",
         "p3-orchestrator-release-owner"
       ],
-      "readyBatchIds": [],
+      "readyBatchIds": [
+        "p0-manifest-release-owner"
+      ],
       "blockedBatchIds": [
         "p3-orchestrator-database",
         "p3-orchestrator-frontend",
@@ -664,6 +676,71 @@
         "artifacts/ddd/build/docker-image-evidence.json"
       ],
       "acceleration": "Run image build/inspect in CI or a host with Docker daemon available."
+    },
+    {
+      "lane": "production-equivalence",
+      "safetyClass": "non-waivable",
+      "pendingItems": 4,
+      "sources": [
+        "runtime-readiness"
+      ],
+      "owners": [
+        "release-infra"
+      ],
+      "batchIds": [
+        "p0-runtime-readiness-release-infra"
+      ],
+      "readyBatchIds": [
+        "p0-runtime-readiness-release-infra"
+      ],
+      "blockedBatchIds": [],
+      "envCheckGroups": [
+        "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+      ],
+      "commands": [
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "acceleration": "Point runtime smoke at the HTTPS non-local backend and capture owner readiness/health/metrics."
+    },
+    {
+      "lane": "performance",
+      "safetyClass": "non-waivable",
+      "pendingItems": 9,
+      "sources": [
+        "authenticated-performance"
+      ],
+      "owners": [
+        "release-performance"
+      ],
+      "batchIds": [
+        "p0-authenticated-performance-release-performance"
+      ],
+      "readyBatchIds": [
+        "p0-authenticated-performance-release-performance"
+      ],
+      "blockedBatchIds": [],
+      "envCheckGroups": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
+      ],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "acceleration": "Run authenticated performance against production-equivalent HTTPS and promote the accepted baseline."
     },
     {
       "lane": "runtime-acceptance",
@@ -843,7 +920,7 @@
     {
       "lane": "database-performance",
       "safetyClass": "non-waivable",
-      "pendingItems": 6,
+      "pendingItems": 8,
       "sources": [
         "explain"
       ],
@@ -880,6 +957,39 @@
         "tmp/ddd-explain/*.json"
       ],
       "acceleration": "Collect fresh EXPLAIN artifacts from production-equivalent MySQL after migrations are applied."
+    },
+    {
+      "lane": "evidence-integrity",
+      "safetyClass": "required-before-cutover",
+      "pendingItems": 1,
+      "sources": [
+        "manifest"
+      ],
+      "owners": [
+        "release-owner"
+      ],
+      "batchIds": [
+        "p0-manifest-release-owner"
+      ],
+      "readyBatchIds": [
+        "p0-manifest-release-owner"
+      ],
+      "blockedBatchIds": [],
+      "envCheckGroups": [
+        "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "acceleration": "Regenerate the manifest after all prerequisite artifacts exist."
     },
     {
       "lane": "final-verification",

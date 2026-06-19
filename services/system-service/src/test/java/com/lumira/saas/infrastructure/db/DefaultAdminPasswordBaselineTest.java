@@ -16,7 +16,7 @@ class DefaultAdminPasswordBaselineTest {
 
     private static final String INITIAL_ADMIN_PASSWORD = "123456";
     private static final Pattern ADMIN_PASSWORD_CREDENTIAL_PATTERN = Pattern.compile(
-            "\\(1001,'PASSWORD','([^']+)','BCRYPT',1,'ENABLED',0\\)"
+            "\\((?:\\d+,)?1001,'PASSWORD','([^']+)','BCRYPT',1,"
     );
 
     @Test

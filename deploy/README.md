@@ -204,6 +204,27 @@ OCR 同样由 File owner 的异步处理任务执行；抽取到文本时会写�
 - API 健康检查：`https://saas.elexvx.com/api/health`
 - 版本检查：`https://saas.elexvx.com/api/version`
 - 平台更新提醒：后台 `系统监控 -> 平台更新` 会只读检查 GitHub 最新提交；默认更新源为 `https://api.github.com/repos/Elexvx/lumira/commits/main`，如需替换官方更新源，可在 `deploy/.env` 设置 `PLATFORM_UPDATE_SOURCE_URL`。
+- 平台手动更新：推荐配置 `PLATFORM_UPDATE_MANIFEST_URL` 指向官方 release manifest。后台发现新版本后，可通过宿主机侧 `lumira-updater` 手动安装。业务容器只调用本机 updater，不直接执行 Docker 或 shell。
+- 启动 updater 示例：
+
+```bash
+PLATFORM_UPDATE_AGENT_TOKEN=replace-with-strong-local-token \
+node scripts/lumira-updater.mjs
+```
+
+`deploy/.env` 中保持同一个 token：
+
+```text
+PLATFORM_UPDATE_MANIFEST_URL=https://your-release-host/lumira-release-manifest.json
+PLATFORM_UPDATE_AGENT_URL=http://127.0.0.1:9788
+PLATFORM_UPDATE_AGENT_TOKEN=replace-with-strong-local-token
+```
+
+演练 updater 流程但不改写 `.env`、不执行部署命令时：
+
+```bash
+LUMIRA_UPDATER_DRY_RUN=true node scripts/lumira-updater.mjs --dry-run
+```
 - lumira-server 健康检查：`http://127.0.0.1:8080/actuator/health`
 - 公开登录配置接口：`https://saas.elexvx.com/api/v1/public/login-capabilities`
 

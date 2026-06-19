@@ -1,213 +1,213 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
-      "file": "artifacts/ddd/release/release-evidence-gate.json",
+      "file": "artifacts\\ddd\\release\\release-evidence-gate.json",
       "relativePath": "release/release-evidence-gate.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T21:34:10.599Z",
-      "generatedAt": "2026-06-16T21:34:10.597Z",
+      "modifiedAt": "2026-06-18T19:37:02.450Z",
+      "generatedAt": "2026-06-18T19:37:02.443Z",
       "status": null,
-      "blockers": 0,
-      "warnings": 16
+      "blockers": 94,
+      "warnings": 8
     },
     "manifest": {
-      "file": "artifacts/ddd/release/evidence-manifest.json",
+      "file": "artifacts\\ddd\\release\\evidence-manifest.json",
       "relativePath": "release/evidence-manifest.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T08:10:19.879Z",
-      "generatedAt": "2026-06-17T08:10:19.878Z",
-      "status": "PASS",
-      "blockers": 0,
+      "modifiedAt": "2026-06-18T19:37:24.118Z",
+      "generatedAt": "2026-06-18T19:37:24.111Z",
+      "status": "FAIL",
+      "blockers": 1,
       "warnings": null
     },
     "releaseEnvLint": {
-      "file": "artifacts/ddd/release/release-env-lint.json",
+      "file": "artifacts\\ddd\\release\\release-env-lint.json",
       "relativePath": "release/release-env-lint.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T05:46:16.011Z",
+      "modifiedAt": "2026-06-17T09:46:50.252Z",
       "generatedAt": "2026-06-17T05:46:16.010Z",
       "status": "FAIL",
       "blockers": 156,
       "warnings": 0
     },
     "releaseConfig": {
-      "file": "artifacts/ddd/config/release-config-evidence.json",
+      "file": "artifacts\\ddd\\config\\release-config-evidence.json",
       "relativePath": "config/release-config-evidence.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T06:28:34.953Z",
+      "modifiedAt": "2026-06-17T09:46:50.196Z",
       "generatedAt": "2026-06-17T06:28:34.918Z",
       "status": "FAIL",
       "blockers": 63,
       "warnings": 0
     },
     "docker": {
-      "file": "artifacts/ddd/build/docker-image-evidence.json",
+      "file": "artifacts\\ddd\\build\\docker-image-evidence.json",
       "relativePath": "build/docker-image-evidence.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T21:45:55.214Z",
+      "modifiedAt": "2026-06-17T09:46:50.195Z",
       "generatedAt": "2026-06-16T21:45:55.209Z",
       "status": "FAIL",
       "blockers": 2,
       "warnings": null
     },
     "migration": {
-      "file": "artifacts/ddd/migration/migration-evidence.json",
+      "file": "artifacts\\ddd\\migration\\migration-evidence.json",
       "relativePath": "migration/migration-evidence.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:56:46.905Z",
+      "modifiedAt": "2026-06-17T09:46:50.202Z",
       "generatedAt": "2026-06-16T20:56:46.902Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
     },
     "runtimeReadiness": {
-      "file": "artifacts/ddd/readiness/summary.json",
+      "file": "artifacts\\ddd\\readiness\\summary.json",
       "relativePath": "readiness/summary.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T06:22:07.615Z",
+      "modifiedAt": "2026-06-17T09:46:50.218Z",
       "generatedAt": "2026-06-16T06:22:07.611Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "authenticatedPerformanceActual": {
-      "file": "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-actual.json",
       "relativePath": "performance/authenticated-runtime-actual.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:51:41.453Z",
+      "modifiedAt": "2026-06-17T09:46:50.205Z",
       "generatedAt": "2026-06-16T20:51:41.443Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "authenticatedPerformanceBaseline": {
-      "file": "artifacts/ddd/performance/authenticated-runtime-baseline.json",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-baseline.json",
       "relativePath": "performance/authenticated-runtime-baseline.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T13:36:36.271Z",
+      "modifiedAt": "2026-06-17T09:46:50.206Z",
       "generatedAt": "2026-06-13T18:38:43.975Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "authenticatedPerformanceBaselinePromotion": {
-      "file": "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-baseline-promotion.json",
       "relativePath": "performance/authenticated-runtime-baseline-promotion.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T13:36:36.277Z",
+      "modifiedAt": "2026-06-17T09:46:50.205Z",
       "generatedAt": "2026-06-13T18:38:43.975Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "fileProcessing": {
-      "file": "artifacts/ddd/file/file-processing-e2e.json",
+      "file": "artifacts\\ddd\\file\\file-processing-e2e.json",
       "relativePath": "file/file-processing-e2e.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "modifiedAt": "2026-06-17T09:46:50.197Z",
       "generatedAt": null,
       "status": "PASS",
       "blockers": null,
       "warnings": null
     },
     "paymentWebhook": {
-      "file": "artifacts/ddd/payment/payment-webhook-e2e.json",
+      "file": "artifacts\\ddd\\payment\\payment-webhook-e2e.json",
       "relativePath": "payment/payment-webhook-e2e.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "modifiedAt": "2026-06-17T09:46:50.204Z",
       "generatedAt": null,
       "status": "PASS",
       "blockers": null,
       "warnings": null
     },
     "jobE2e": {
-      "file": "artifacts/ddd/jobs/job-e2e-smoke.json",
+      "file": "artifacts\\ddd\\jobs\\job-e2e-smoke.json",
       "relativePath": "jobs/job-e2e-smoke.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "modifiedAt": "2026-06-17T09:46:50.200Z",
       "generatedAt": "2026-06-13T19:15:58.531Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "frontendSmoke": {
-      "file": "artifacts/ddd/frontend/frontend-smoke.json",
+      "file": "artifacts\\ddd\\frontend\\frontend-smoke.json",
       "relativePath": "frontend/frontend-smoke.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:51:08.158Z",
+      "modifiedAt": "2026-06-17T09:46:50.198Z",
       "generatedAt": "2026-06-16T20:51:08.151Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
     },
     "aiRuntime": {
-      "file": "artifacts/ddd/ai/ai-runtime-drill.json",
+      "file": "artifacts\\ddd\\ai\\ai-runtime-drill.json",
       "relativePath": "ai/ai-runtime-drill.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:51:41.732Z",
+      "modifiedAt": "2026-06-17T09:46:50.194Z",
       "generatedAt": "2026-06-16T20:51:41.726Z",
       "status": "PASS",
       "blockers": null,
       "warnings": null
     },
     "rollback": {
-      "file": "artifacts/ddd/rollback/rollback-drill.json",
+      "file": "artifacts\\ddd\\rollback\\rollback-drill.json",
       "relativePath": "rollback/rollback-drill.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T06:24:20.376Z",
+      "modifiedAt": "2026-06-17T09:46:50.312Z",
       "generatedAt": "2026-06-16T06:24:20.373Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
     },
     "orchestrator": {
-      "file": "artifacts/ddd/release/orchestrator-report.json",
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json",
       "relativePath": "release/orchestrator-report.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T21:33:57.990Z",
+      "modifiedAt": "2026-06-17T09:46:50.220Z",
       "generatedAt": "2026-06-16T21:33:57.249Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "ownerQueueRunReport": {
-      "file": "artifacts/ddd/release/release-final-owner-queue-run-report.json",
+      "file": "artifacts\\ddd\\release\\release-final-owner-queue-run-report.json",
       "relativePath": "release/release-final-owner-queue-run-report.json",
       "present": false,
       "missing": true,
@@ -219,24 +219,24 @@
       "warnings": null
     },
     "ownerQueueEnvInitReceipt": {
-      "file": "artifacts/ddd/release/release-final-owner-queue-env-init-receipt.json",
+      "file": "artifacts\\ddd\\release\\release-final-owner-queue-env-init-receipt.json",
       "relativePath": "release/release-final-owner-queue-env-init-receipt.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T00:59:03.189Z",
+      "modifiedAt": "2026-06-17T09:46:50.284Z",
       "generatedAt": "2026-06-15T00:59:03.187Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "explainGateReport": {
-      "file": "artifacts/ddd/release/explain-gate-report.json",
+      "file": "artifacts\\ddd\\release\\explain-gate-report.json",
       "relativePath": "release/explain-gate-report.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T20:41:37.877Z",
+      "modifiedAt": "2026-06-17T09:46:50.219Z",
       "generatedAt": "2026-06-15T20:41:37.875Z",
       "status": "PASS",
       "blockers": 0,
@@ -244,12 +244,12 @@
     }
   },
   "gate": {
-    "strict": false,
-    "blockers": 0,
-    "warnings": 16
+    "strict": true,
+    "blockers": 94,
+    "warnings": 8
   },
-  "ownerCount": 17,
-  "activeOwnerCount": 17,
+  "ownerCount": 18,
+  "activeOwnerCount": 18,
   "collapsedOnlyOwnerCount": 0,
   "activeOwners": [
     "ai",
@@ -268,10 +268,11 @@
     "platform-owners",
     "plugin-owner",
     "release-infra",
-    "release-owner"
+    "release-owner",
+    "release-performance"
   ],
   "collapsedOnlyOwners": [],
-  "totalPendingItems": 95,
+  "totalPendingItems": 111,
   "totalCollapsedItems": 2,
   "owners": {
     "ai": {
@@ -655,7 +656,7 @@
     },
     "database": {
       "owner": "database",
-      "pendingItems": 7,
+      "pendingItems": 9,
       "collapsedItems": 0,
       "envKeys": [
         "DDD_EVIDENCE_OPERATOR",
@@ -676,7 +677,7 @@
         "MYSQL_USER"
       ],
       "sources": {
-        "explain": 6,
+        "explain": 8,
         "orchestrator": 1
       },
       "collapsedSources": {},
@@ -685,8 +686,58 @@
           "source": "explain",
           "id": "ai-knowledge-index-retry.json",
           "check": "ai-knowledge-index-retry.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
-          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
+          "detail": "missing required EXPLAIN artifact",
+          "structured": false,
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "explain",
+          "id": "message-archive-total.json",
+          "check": "message-archive-total.json",
+          "reason": "missing required EXPLAIN artifact",
+          "detail": "missing required EXPLAIN artifact",
+          "structured": false,
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "explain",
+          "id": "message-unread-count.json",
+          "check": "message-unread-count.json",
+          "reason": "missing required EXPLAIN artifact",
+          "detail": "missing required EXPLAIN artifact",
           "structured": false,
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
@@ -710,8 +761,8 @@
           "source": "explain",
           "id": "message-visible-list.json",
           "check": "message-visible-list.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
-          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
+          "detail": "missing required EXPLAIN artifact",
           "structured": false,
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
@@ -735,8 +786,8 @@
           "source": "explain",
           "id": "platform-outbox-owner-relay-file.json",
           "check": "platform-outbox-owner-relay-file.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
-          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
+          "detail": "missing required EXPLAIN artifact",
           "structured": false,
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
@@ -760,8 +811,8 @@
           "source": "explain",
           "id": "platform-outbox-owner-relay-message.json",
           "check": "platform-outbox-owner-relay-message.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
-          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
+          "detail": "missing required EXPLAIN artifact",
           "structured": false,
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
@@ -785,8 +836,8 @@
           "source": "explain",
           "id": "platform-runtime-appearance.json",
           "check": "platform-runtime-appearance.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
-          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
+          "detail": "missing required EXPLAIN artifact",
           "structured": false,
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
@@ -810,8 +861,8 @@
           "source": "explain",
           "id": "plugin-bootstrap.json",
           "check": "plugin-bootstrap.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
-          "detail": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
+          "detail": "missing required EXPLAIN artifact",
           "structured": false,
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
@@ -1945,7 +1996,7 @@
     },
     "release-infra": {
       "owner": "release-infra",
-      "pendingItems": 20,
+      "pendingItems": 24,
       "collapsedItems": 1,
       "envKeys": [
         "AI_SERVICE_BASE_URL",
@@ -1966,6 +2017,8 @@
         "DDD_DEPLOYMENT_EVIDENCE",
         "DDD_DOCKER_BUILD_STRICT",
         "DDD_DOCKER_COMMAND",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
         "DDD_EXPLAIN_DATABASE",
         "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
         "DDD_MIGRATION_COMPLETED_AT",
@@ -1974,6 +2027,7 @@
         "DDD_MIGRATION_OPERATOR",
         "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
         "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_RELEASE_CANDIDATE",
         "DEPLOY_CHECK_BASE_URL",
         "FIELD_SECRET",
         "FILE_SERVICE_BASE_URL",
@@ -2020,7 +2074,8 @@
       "sources": {
         "docker": 4,
         "release-config": 14,
-        "release-env-lint": 2
+        "release-env-lint": 2,
+        "runtime-readiness": 4
       },
       "collapsedSources": {
         "orchestrator": 1
@@ -2434,6 +2489,74 @@
           ],
           "artifact": null,
           "rootCauseKey": null
+        },
+        {
+          "source": "runtime-readiness",
+          "id": "runtime-readiness-contract-1",
+          "check": "runtime-readiness-contract-1",
+          "reason": "runtime readiness productionEquivalence.strict must be true for strict release evidence",
+          "detail": "runtime readiness productionEquivalence.strict must be true for strict release evidence",
+          "structured": false,
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "runtime-readiness",
+          "id": "runtime-readiness-contract-2",
+          "check": "runtime-readiness-contract-2",
+          "reason": "runtime readiness productionEquivalence.https must be true for strict release evidence",
+          "detail": "runtime readiness productionEquivalence.https must be true for strict release evidence",
+          "structured": false,
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "runtime-readiness",
+          "id": "runtime-readiness-contract-3",
+          "check": "runtime-readiness-contract-3",
+          "reason": "runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
+          "detail": "runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
+          "structured": false,
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "runtime-readiness",
+          "id": "runtime-readiness-contract-4",
+          "check": "runtime-readiness-contract-4",
+          "reason": "runtime readiness productionEquivalence.deploymentEvidence is required",
+          "detail": "runtime readiness productionEquivalence.deploymentEvidence is required",
+          "structured": false,
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
         }
       ],
       "collapsed": [
@@ -2457,16 +2580,38 @@
     },
     "release-owner": {
       "owner": "release-owner",
-      "pendingItems": 1,
+      "pendingItems": 2,
       "collapsedItems": 0,
       "envKeys": [
-        "DDD_RELEASE_EVIDENCE_STRICT"
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_EVIDENCE_STRICT",
+        "DDD_RELEASE_MANIFEST_STRICT"
       ],
       "sources": {
+        "manifest": 1,
         "orchestrator": 1
       },
       "collapsedSources": {},
       "items": [
+        {
+          "source": "manifest",
+          "id": "manifest-missing-no-explain-json-files-in-tmp-ddd-explain",
+          "check": "manifest-missing-no-explain-json-files-in-tmp-ddd-explain",
+          "reason": "no explain JSON files in tmp\\ddd-explain",
+          "detail": "no explain JSON files in tmp\\ddd-explain",
+          "structured": false,
+          "action": "Regenerate the missing evidence artifact, then rerun `node scripts/ddd-release-evidence-manifest.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_MANIFEST_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": "no explain JSON files in tmp\\ddd-explain",
+          "rootCauseKey": null
+        },
         {
           "source": "orchestrator",
           "id": "orchestrator-run-mode",
@@ -2477,6 +2622,157 @@
           "action": "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
           "envKeys": [
             "DDD_RELEASE_EVIDENCE_STRICT"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        }
+      ],
+      "collapsed": []
+    },
+    "release-performance": {
+      "owner": "release-performance",
+      "pendingItems": 9,
+      "collapsedItems": 0,
+      "envKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "sources": {
+        "authenticated-performance": 9
+      },
+      "collapsedSources": {},
+      "items": [
+        {
+          "source": "authenticated-performance",
+          "id": "performance-actual-shape-1",
+          "check": "performance-actual-shape-1",
+          "reason": "authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+          "detail": "authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+          "structured": false,
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+          "envKeys": [],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-actual-shape-2",
+          "check": "performance-actual-shape-2",
+          "reason": "authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+          "detail": "authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+          "structured": false,
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+          "envKeys": [],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-actual-shape-3",
+          "check": "performance-actual-shape-3",
+          "reason": "authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+          "detail": "authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+          "structured": false,
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+          "envKeys": [],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-actual-shape-4",
+          "check": "performance-actual-shape-4",
+          "reason": "authenticated performance actual productionEquivalence.deploymentEvidence is required",
+          "detail": "authenticated performance actual productionEquivalence.deploymentEvidence is required",
+          "structured": false,
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+          "envKeys": [],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-baseline-metadata-5",
+          "check": "performance-baseline-metadata-5",
+          "reason": "strict release baseline requires baselineType=authenticated-runtime",
+          "detail": "strict release baseline requires baselineType=authenticated-runtime",
+          "structured": false,
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+          "envKeys": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-baseline-metadata-6",
+          "check": "performance-baseline-metadata-6",
+          "reason": "acceptedAt must be an ISO timestamp",
+          "detail": "acceptedAt must be an ISO timestamp",
+          "structured": false,
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+          "envKeys": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-baseline-metadata-7",
+          "check": "performance-baseline-metadata-7",
+          "reason": "acceptedBy is required",
+          "detail": "acceptedBy is required",
+          "structured": false,
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+          "envKeys": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-baseline-metadata-8",
+          "check": "performance-baseline-metadata-8",
+          "reason": "sourceArtifact is required",
+          "detail": "sourceArtifact is required",
+          "structured": false,
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+          "envKeys": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": null,
+          "rootCauseKey": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-baseline-metadata-9",
+          "check": "performance-baseline-metadata-9",
+          "reason": "sourceSha256 must be a SHA-256 hex digest",
+          "detail": "sourceSha256 must be a SHA-256 hex digest",
+          "structured": false,
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+          "envKeys": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE"
           ],
           "artifact": null,
           "rootCauseKey": null

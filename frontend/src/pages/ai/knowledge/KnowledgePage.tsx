@@ -18,7 +18,8 @@ import { TableActionBar } from '@/features/table/TableActionBar';
 import { request } from '@/services/common/request';
 import type { AiKnowledgeBasePayload } from '@/services/ai/types';
 import { confirmAction } from '@/utils/confirm';
-import { API_OPTS } from '@/utils/errorMessage';
+import { API_OPTS, extractErrorMessage } from '@/utils/errorMessage';
+import { DEFAULT_DOCUMENT_UPLOAD_MAX_SIZE_MB, DOCUMENT_UPLOAD_ACCEPT, validateDocumentUploadFile } from '@/utils/uploadValidation';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import type { AiKnowledgeBaseRecord, AiKnowledgeDocumentRecord, AiKnowledgeReferenceRecord, PagedResult } from '@/types/api';
 import type { FormInstance } from 'antd';
@@ -167,6 +168,14 @@ const useKnowledgePageAccess = () => {
       options.onError?.(new Error(t('请选择文件', 'Please select a file')));
       return;
     }
+    const validationMessage = validateDocumentUploadFile(options.file, {
+      maxSizeMb: DEFAULT_DOCUMENT_UPLOAD_MAX_SIZE_MB,
+    });
+    if (validationMessage) {
+      message.warning(validationMessage);
+      options.onError?.(new Error(validationMessage));
+      return;
+    }
     setUploading(true);
     try {
       const formData = new FormData();
@@ -176,11 +185,13 @@ const useKnowledgePageAccess = () => {
         headers: {},
         data: formData,
         ...requestOptions,
+        silent: true,
       });
       options.onSuccess?.({});
       documentActionRef.current?.reload?.();
       actionRef.current?.reload?.();
     } catch (error) {
+      message.warning(extractErrorMessage(error, t('知识库文件上传失败，请稍后重试', 'Knowledge base document upload failed. Please try again later.')));
       options.onError?.(error as Error);
     } finally {
       setUploading(false);
@@ -438,7 +449,7 @@ const KnowledgeDocumentDrawer = ({
       {selectedKnowledgeBase ? (
         <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
           <Upload.Dragger
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md"
+            accept={DOCUMENT_UPLOAD_ACCEPT}
             multiple
             showUploadList={false}
             customRequest={onUploadDocument}

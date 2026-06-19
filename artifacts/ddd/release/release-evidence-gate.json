@@ -1,18 +1,54 @@
 {
-  "generatedAt": "2026-06-16T21:34:10.597Z",
-  "strict": false,
-  "artifactRoot": "artifacts/ddd",
+  "generatedAt": "2026-06-18T19:37:02.443Z",
+  "strict": true,
+  "artifactRoot": "artifacts\\ddd",
   "summary": {
-    "checks": 38,
-    "blockers": 0,
-    "warnings": 16
+    "checks": 123,
+    "blockers": 94,
+    "warnings": 8
   },
   "checks": [
     {
       "name": "runtime-readiness-summary",
       "status": "present",
       "detail": "readiness/summary.json",
-      "file": "artifacts/ddd/readiness/summary.json"
+      "file": "artifacts\\ddd\\readiness\\summary.json"
+    },
+    {
+      "name": "runtime-readiness-summary",
+      "status": "blocker",
+      "detail": "runtime readiness productionEquivalence.strict must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "runtime-readiness-summary",
+      "status": "blocker",
+      "detail": "runtime readiness productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "runtime-readiness-summary",
+      "status": "blocker",
+      "detail": "runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "runtime-readiness-summary",
+      "status": "blocker",
+      "detail": "runtime readiness productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "name": "runtime-readiness-freshness",
+      "status": "blocker",
+      "detail": "checkedAt is 61.2h old; limit=24h",
+      "file": null
+    },
+    {
+      "name": "runtime-readiness-production-equivalence",
+      "status": "blocker",
+      "detail": "strict runtime readiness deploymentEvidence is required",
+      "file": null
     },
     {
       "name": "runtime-readiness-environment",
@@ -21,10 +57,52 @@
       "file": null
     },
     {
+      "name": "runtime-readiness-environment-strict",
+      "status": "blocker",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
       "name": "authenticated-performance",
       "status": "present",
       "detail": "performance/authenticated-runtime-actual.json",
-      "file": "artifacts/ddd/performance/authenticated-runtime-actual.json"
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-actual.json"
+    },
+    {
+      "name": "authenticated-performance-shape",
+      "status": "blocker",
+      "detail": "authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-shape",
+      "status": "blocker",
+      "detail": "authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-shape",
+      "status": "blocker",
+      "detail": "authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-shape",
+      "status": "blocker",
+      "detail": "authenticated performance actual productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-freshness",
+      "status": "blocker",
+      "detail": "checkedAt is 46.8h old; limit=24h",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-production-equivalence",
+      "status": "blocker",
+      "detail": "strict authenticated performance actual deploymentEvidence is required",
+      "file": null
     },
     {
       "name": "authenticated-performance-environment",
@@ -33,16 +111,106 @@
       "file": null
     },
     {
+      "name": "authenticated-performance-environment-strict",
+      "status": "blocker",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
       "name": "authenticated-performance-baseline",
       "status": "present",
       "detail": "performance/authenticated-runtime-baseline.json",
-      "file": "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-baseline.json"
+    },
+    {
+      "name": "authenticated-performance-baseline-environment",
+      "status": "blocker",
+      "detail": "strict release requires a non-local baseline baseUrl, got http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-baseline-metadata",
+      "status": "blocker",
+      "detail": "strict release baseline requires baselineType=authenticated-runtime",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-baseline-metadata",
+      "status": "blocker",
+      "detail": "acceptedAt must be an ISO timestamp",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-baseline-metadata",
+      "status": "blocker",
+      "detail": "acceptedBy is required",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-baseline-metadata",
+      "status": "blocker",
+      "detail": "sourceArtifact is required",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-baseline-metadata",
+      "status": "blocker",
+      "detail": "sourceSha256 must be a SHA-256 hex digest",
+      "file": null
+    },
+    {
+      "name": "authenticated-performance-baseline-strict",
+      "status": "blocker",
+      "detail": "strict release requires authenticated performance baseline comparison",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-baseline.json"
     },
     {
       "name": "file-processing-e2e",
       "status": "present",
       "detail": "file/file-processing-e2e.json",
-      "file": "artifacts/ddd/file/file-processing-e2e.json"
+      "file": "artifacts\\ddd\\file\\file-processing-e2e.json"
+    },
+    {
+      "name": "file-processing-freshness",
+      "status": "blocker",
+      "detail": "finishedAt is 120.7h old; limit=24h",
+      "file": null
+    },
+    {
+      "name": "file-processing-production-equivalence",
+      "status": "blocker",
+      "detail": "strict file processing E2E requires HTTPS baseUrl evidence",
+      "file": null
+    },
+    {
+      "name": "file-processing-production-equivalence",
+      "status": "blocker",
+      "detail": "strict file processing E2E deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "name": "file-processing-e2e",
+      "status": "blocker",
+      "detail": "file processing productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "file-processing-e2e",
+      "status": "blocker",
+      "detail": "file processing productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "file-processing-e2e",
+      "status": "blocker",
+      "detail": "file processing productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "name": "file-processing-e2e",
+      "status": "blocker",
+      "detail": "file processing productionEquivalence.issues must be empty for strict release evidence",
+      "file": null
     },
     {
       "name": "file-processing-environment",
@@ -51,10 +219,58 @@
       "file": null
     },
     {
+      "name": "file-processing-environment-strict",
+      "status": "blocker",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
       "name": "payment-webhook-e2e",
       "status": "present",
       "detail": "payment/payment-webhook-e2e.json",
-      "file": "artifacts/ddd/payment/payment-webhook-e2e.json"
+      "file": "artifacts\\ddd\\payment\\payment-webhook-e2e.json"
+    },
+    {
+      "name": "payment-webhook-freshness",
+      "status": "blocker",
+      "detail": "finishedAt is 120.6h old; limit=24h",
+      "file": null
+    },
+    {
+      "name": "payment-webhook-production-equivalence",
+      "status": "blocker",
+      "detail": "strict payment webhook E2E requires HTTPS baseUrl evidence",
+      "file": null
+    },
+    {
+      "name": "payment-webhook-production-equivalence",
+      "status": "blocker",
+      "detail": "strict payment webhook E2E deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "name": "payment-webhook-e2e",
+      "status": "blocker",
+      "detail": "payment webhook productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "payment-webhook-e2e",
+      "status": "blocker",
+      "detail": "payment webhook productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "payment-webhook-e2e",
+      "status": "blocker",
+      "detail": "payment webhook productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "name": "payment-webhook-e2e",
+      "status": "blocker",
+      "detail": "payment webhook productionEquivalence.issues must be empty for strict release evidence",
+      "file": null
     },
     {
       "name": "payment-webhook-environment",
@@ -63,16 +279,70 @@
       "file": null
     },
     {
+      "name": "payment-webhook-environment-strict",
+      "status": "blocker",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
       "name": "outbox-replay-dead-letter",
       "status": "present",
       "detail": "outbox/outbox-replay-dead-letter-test-evidence.json",
-      "file": "artifacts/ddd/outbox/outbox-replay-dead-letter-test-evidence.json"
+      "file": "artifacts\\ddd\\outbox\\outbox-replay-dead-letter-test-evidence.json"
+    },
+    {
+      "name": "outbox-replay-dead-letter-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 80.6h old; limit=24h",
+      "file": null
     },
     {
       "name": "job-e2e-smoke",
       "status": "present",
       "detail": "jobs/job-e2e-smoke.json",
-      "file": "artifacts/ddd/jobs/job-e2e-smoke.json"
+      "file": "artifacts\\ddd\\jobs\\job-e2e-smoke.json"
+    },
+    {
+      "name": "job-e2e-freshness",
+      "status": "blocker",
+      "detail": "checkedAt is 120.4h old; limit=24h",
+      "file": null
+    },
+    {
+      "name": "job-e2e-production-equivalence",
+      "status": "blocker",
+      "detail": "strict job E2E requires HTTPS baseUrl evidence",
+      "file": null
+    },
+    {
+      "name": "job-e2e-production-equivalence",
+      "status": "blocker",
+      "detail": "strict job E2E deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "name": "job-e2e-smoke",
+      "status": "blocker",
+      "detail": "job E2E productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "job-e2e-smoke",
+      "status": "blocker",
+      "detail": "job E2E productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "job-e2e-smoke",
+      "status": "blocker",
+      "detail": "job E2E productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "name": "job-e2e-smoke",
+      "status": "blocker",
+      "detail": "job E2E productionEquivalence.issues must be empty for strict release evidence",
+      "file": null
     },
     {
       "name": "job-e2e-environment",
@@ -81,10 +351,52 @@
       "file": null
     },
     {
+      "name": "job-e2e-environment-strict",
+      "status": "blocker",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
       "name": "ai-runtime-drill",
       "status": "present",
       "detail": "ai/ai-runtime-drill.json",
-      "file": "artifacts/ddd/ai/ai-runtime-drill.json"
+      "file": "artifacts\\ddd\\ai\\ai-runtime-drill.json"
+    },
+    {
+      "name": "ai-runtime-drill",
+      "status": "blocker",
+      "detail": "AI runtime productionEquivalence.strict must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "ai-runtime-drill",
+      "status": "blocker",
+      "detail": "AI runtime productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "ai-runtime-drill",
+      "status": "blocker",
+      "detail": "AI runtime productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "ai-runtime-drill",
+      "status": "blocker",
+      "detail": "AI runtime productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "name": "ai-runtime-freshness",
+      "status": "blocker",
+      "detail": "checkedAt is 46.8h old; limit=24h",
+      "file": null
+    },
+    {
+      "name": "ai-runtime-production-equivalence",
+      "status": "blocker",
+      "detail": "strict AI runtime drill deploymentEvidence is required",
+      "file": null
     },
     {
       "name": "ai-runtime-environment",
@@ -93,38 +405,80 @@
       "file": null
     },
     {
+      "name": "ai-runtime-environment-strict",
+      "status": "blocker",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
+      "name": "ai-runtime-drill-provider",
+      "status": "blocker",
+      "detail": "strict release requires DDD_AI_EXPECT_PROVIDER_REMOTE=true evidence",
+      "file": null
+    },
+    {
+      "name": "ai-runtime-drill-owner-gateway",
+      "status": "blocker",
+      "detail": "strict release requires DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true evidence",
+      "file": null
+    },
+    {
       "name": "physical-split-readiness",
       "status": "present",
       "detail": "split/physical-split-readiness.json",
-      "file": "artifacts/ddd/split/physical-split-readiness.json"
+      "file": "artifacts\\ddd\\split\\physical-split-readiness.json"
+    },
+    {
+      "name": "physical-split-readiness-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 46.7h old; limit=24h",
+      "file": null
     },
     {
       "name": "backend-test-evidence",
       "status": "present",
       "detail": "tests/backend-test-evidence.json",
-      "file": "artifacts/ddd/tests/backend-test-evidence.json"
+      "file": "artifacts\\ddd\\tests\\backend-test-evidence.json"
+    },
+    {
+      "name": "backend-test-evidence-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 46.7h old; limit=24h",
+      "file": null
     },
     {
       "name": "backend-build-evidence",
       "status": "present",
       "detail": "build/backend-build-evidence.json",
-      "file": "artifacts/ddd/build/backend-build-evidence.json"
+      "file": "artifacts\\ddd\\build\\backend-build-evidence.json"
+    },
+    {
+      "name": "backend-build-evidence-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 46.7h old; limit=24h",
+      "file": null
     },
     {
       "name": "docker-build-evidence",
       "status": "present",
       "detail": "build/docker-image-evidence.json",
-      "file": "artifacts/ddd/build/docker-image-evidence.json"
+      "file": "artifacts\\ddd\\build\\docker-image-evidence.json"
+    },
+    {
+      "name": "docker-build-evidence-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 45.9h old; limit=24h",
+      "file": null
     },
     {
       "name": "docker-build-evidence",
-      "status": "warning",
+      "status": "blocker",
       "detail": "lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
       "file": null
     },
     {
       "name": "docker-build-evidence",
-      "status": "warning",
+      "status": "blocker",
       "detail": "frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
       "file": null
     },
@@ -132,91 +486,181 @@
       "name": "migration-evidence",
       "status": "present",
       "detail": "migration/migration-evidence.json",
-      "file": "artifacts/ddd/migration/migration-evidence.json"
+      "file": "artifacts\\ddd\\migration\\migration-evidence.json"
+    },
+    {
+      "name": "migration-evidence-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 46.7h old; limit=24h",
+      "file": null
     },
     {
       "name": "release-env-lint",
       "status": "present",
       "detail": "release/release-env-lint.json",
-      "file": "artifacts/ddd/release/release-env-lint.json"
+      "file": "artifacts\\ddd\\release\\release-env-lint.json"
+    },
+    {
+      "name": "release-env-lint-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 37.8h old; limit=24h",
+      "file": null
     },
     {
       "name": "release-env-lint",
-      "status": "warning",
-      "detail": "status=FAIL, blockers=179",
-      "file": "artifacts/ddd/release/release-env-lint.json"
+      "status": "blocker",
+      "detail": "status=FAIL, blockers=156",
+      "file": "artifacts\\ddd\\release\\release-env-lint.json"
     },
     {
       "name": "release-env-lint-placeholders",
-      "status": "warning",
-      "detail": "unresolvedTemplateKeys=108",
-      "file": "artifacts/ddd/release/release-env-lint.json"
+      "status": "blocker",
+      "detail": "unresolvedTemplateKeys=93",
+      "file": "artifacts\\ddd\\release\\release-env-lint.json"
     },
     {
       "name": "release-env-lint-config",
-      "status": "warning",
-      "detail": "releaseConfigBlockers=71",
-      "file": "artifacts/ddd/release/release-env-lint.json"
+      "status": "blocker",
+      "detail": "releaseConfigBlockers=63",
+      "file": "artifacts\\ddd\\release\\release-env-lint.json"
     },
     {
       "name": "release-config-evidence",
       "status": "present",
       "detail": "config/release-config-evidence.json",
-      "file": "artifacts/ddd/config/release-config-evidence.json"
+      "file": "artifacts\\ddd\\config\\release-config-evidence.json"
+    },
+    {
+      "name": "release-config-evidence-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 37.1h old; limit=24h",
+      "file": null
+    },
+    {
+      "name": "release-config-evidence",
+      "status": "blocker",
+      "detail": "status=FAIL, blockers=63",
+      "file": null
     },
     {
       "name": "release-evidence-orchestrator",
       "status": "present",
       "detail": "release/orchestrator-report.json",
-      "file": "artifacts/ddd/release/orchestrator-report.json"
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json"
+    },
+    {
+      "name": "release-evidence-orchestrator-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 46.1h old; limit=24h",
+      "file": null
     },
     {
       "name": "release-evidence-orchestrator-preflight-backend-runtime-base-url",
-      "status": "warning",
+      "status": "blocker",
       "detail": "missing backend runtime base URL",
-      "file": "artifacts/ddd/release/orchestrator-report.json"
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json"
     },
     {
       "name": "release-evidence-orchestrator-preflight-ai-runtime-base-url",
-      "status": "warning",
+      "status": "blocker",
       "detail": "missing AI runtime base URL",
-      "file": "artifacts/ddd/release/orchestrator-report.json"
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json"
     },
     {
       "name": "release-evidence-orchestrator-preflight-frontend-runtime-base-url",
-      "status": "warning",
+      "status": "blocker",
       "detail": "missing deployed frontend base URL",
-      "file": "artifacts/ddd/release/orchestrator-report.json"
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json"
     },
     {
       "name": "release-evidence-orchestrator-preflight-migration-runtime-evidence",
-      "status": "warning",
+      "status": "blocker",
       "detail": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-      "file": "artifacts/ddd/release/orchestrator-report.json"
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json"
+    },
+    {
+      "name": "release-evidence-orchestrator",
+      "status": "blocker",
+      "detail": "strict release requires run mode report, got plan",
+      "file": null
     },
     {
       "name": "release-evidence-manifest",
       "status": "present",
       "detail": "release/evidence-manifest.json",
-      "file": "artifacts/ddd/release/evidence-manifest.json"
+      "file": "artifacts\\ddd\\release\\evidence-manifest.json"
+    },
+    {
+      "name": "release-evidence-manifest-provenance",
+      "status": "blocker",
+      "detail": "manifest provenance sourceEnvironment is required",
+      "file": null
+    },
+    {
+      "name": "release-evidence-manifest-provenance",
+      "status": "blocker",
+      "detail": "manifest provenance releaseCandidate is required",
+      "file": null
+    },
+    {
+      "name": "release-evidence-manifest-provenance",
+      "status": "blocker",
+      "detail": "manifest provenance evidenceOperator is required",
+      "file": null
+    },
+    {
+      "name": "release-evidence-manifest",
+      "status": "blocker",
+      "detail": "manifest blockers length mismatch: declared=1, actual=4",
+      "file": null
+    },
+    {
+      "name": "release-evidence-manifest",
+      "status": "blocker",
+      "detail": "missing EXPLAIN files in evidence manifest",
+      "file": null
     },
     {
       "name": "frontend-build-evidence",
       "status": "present",
       "detail": "frontend/frontend-build-evidence.json",
-      "file": "artifacts/ddd/frontend/frontend-build-evidence.json"
+      "file": "artifacts\\ddd\\frontend\\frontend-build-evidence.json"
+    },
+    {
+      "name": "frontend-build-evidence-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 80.8h old; limit=24h",
+      "file": null
     },
     {
       "name": "frontend-static-evidence",
       "status": "present",
       "detail": "frontend/frontend-static-evidence.json",
-      "file": "artifacts/ddd/frontend/frontend-static-evidence.json"
+      "file": "artifacts\\ddd\\frontend\\frontend-static-evidence.json"
+    },
+    {
+      "name": "frontend-static-evidence-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 80.8h old; limit=24h",
+      "file": null
     },
     {
       "name": "frontend-smoke",
       "status": "present",
       "detail": "frontend/frontend-smoke.json",
-      "file": "artifacts/ddd/frontend/frontend-smoke.json"
+      "file": "artifacts\\ddd\\frontend\\frontend-smoke.json"
+    },
+    {
+      "name": "frontend-smoke-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 46.8h old; limit=24h",
+      "file": null
+    },
+    {
+      "name": "frontend-smoke-production-equivalence",
+      "status": "blocker",
+      "detail": "strict frontend smoke deploymentEvidence is required",
+      "file": null
     },
     {
       "name": "frontend-smoke-environment",
@@ -225,20 +669,652 @@
       "file": null
     },
     {
+      "name": "frontend-smoke-environment-strict",
+      "status": "blocker",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
+      "name": "frontend-smoke-environment",
+      "status": "blocker",
+      "detail": "frontend smoke productionEquivalence.strict must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "frontend-smoke-environment",
+      "status": "blocker",
+      "detail": "frontend smoke productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "frontend-smoke-environment",
+      "status": "blocker",
+      "detail": "frontend smoke productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "name": "frontend-smoke-environment",
+      "status": "blocker",
+      "detail": "frontend smoke productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "name": "frontend-smoke-environment",
+      "status": "blocker",
+      "detail": "strict release requires DDD_FRONTEND_EXPECT_DEPLOYED=true evidence",
+      "file": null
+    },
+    {
+      "name": "frontend-smoke-environment",
+      "status": "blocker",
+      "detail": "strict release requires HTTPS frontend baseURL evidence",
+      "file": null
+    },
+    {
+      "name": "frontend-smoke-environment",
+      "status": "blocker",
+      "detail": "artifact is local-only: http://127.0.0.1:8000",
+      "file": null
+    },
+    {
+      "name": "frontend-smoke",
+      "status": "blocker",
+      "detail": "frontend smoke blockers length mismatch: declared=0, actual=7",
+      "file": null
+    },
+    {
       "name": "rollback-drill",
       "status": "present",
       "detail": "rollback/rollback-drill.json",
-      "file": "artifacts/ddd/rollback/rollback-drill.json"
+      "file": "artifacts\\ddd\\rollback\\rollback-drill.json"
+    },
+    {
+      "name": "rollback-drill-freshness",
+      "status": "blocker",
+      "detail": "generatedAt is 61.2h old; limit=24h",
+      "file": null
     },
     {
       "name": "explain-evidence",
-      "status": "present",
-      "detail": "8 EXPLAIN file(s)",
-      "file": "tmp/ddd-explain"
+      "status": "warning",
+      "detail": "no explain JSON files in tmp\\ddd-explain",
+      "file": null
+    },
+    {
+      "name": "explain-evidence-strict",
+      "status": "blocker",
+      "detail": "strict release requires production-scale EXPLAIN artifacts",
+      "file": "tmp\\ddd-explain"
     }
   ],
-  "blockers": [],
-  "blockerDetails": [],
+  "blockers": [
+    "runtime-readiness-summary: runtime readiness productionEquivalence.strict must be true for strict release evidence",
+    "runtime-readiness-summary: runtime readiness productionEquivalence.https must be true for strict release evidence",
+    "runtime-readiness-summary: runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
+    "runtime-readiness-summary: runtime readiness productionEquivalence.deploymentEvidence is required",
+    "runtime-readiness-freshness: checkedAt is 61.2h old; limit=24h",
+    "runtime-readiness-production-equivalence: strict runtime readiness deploymentEvidence is required",
+    "runtime-readiness-environment-strict: strict release requires production-equivalent non-local evidence",
+    "authenticated-performance-shape: authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+    "authenticated-performance-shape: authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+    "authenticated-performance-shape: authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+    "authenticated-performance-shape: authenticated performance actual productionEquivalence.deploymentEvidence is required",
+    "authenticated-performance-freshness: checkedAt is 46.8h old; limit=24h",
+    "authenticated-performance-production-equivalence: strict authenticated performance actual deploymentEvidence is required",
+    "authenticated-performance-environment-strict: strict release requires production-equivalent non-local evidence",
+    "authenticated-performance-baseline-environment: strict release requires a non-local baseline baseUrl, got http://127.0.0.1:8080",
+    "authenticated-performance-baseline-metadata: strict release baseline requires baselineType=authenticated-runtime",
+    "authenticated-performance-baseline-metadata: acceptedAt must be an ISO timestamp",
+    "authenticated-performance-baseline-metadata: acceptedBy is required",
+    "authenticated-performance-baseline-metadata: sourceArtifact is required",
+    "authenticated-performance-baseline-metadata: sourceSha256 must be a SHA-256 hex digest",
+    "authenticated-performance-baseline-strict: strict release requires authenticated performance baseline comparison",
+    "file-processing-freshness: finishedAt is 120.7h old; limit=24h",
+    "file-processing-production-equivalence: strict file processing E2E requires HTTPS baseUrl evidence",
+    "file-processing-production-equivalence: strict file processing E2E deploymentEvidence is required",
+    "file-processing-e2e: file processing productionEquivalence.https must be true for strict release evidence",
+    "file-processing-e2e: file processing productionEquivalence.localOnly must be false for strict release evidence",
+    "file-processing-e2e: file processing productionEquivalence.deploymentEvidence is required",
+    "file-processing-e2e: file processing productionEquivalence.issues must be empty for strict release evidence",
+    "file-processing-environment-strict: strict release requires production-equivalent non-local evidence",
+    "payment-webhook-freshness: finishedAt is 120.6h old; limit=24h",
+    "payment-webhook-production-equivalence: strict payment webhook E2E requires HTTPS baseUrl evidence",
+    "payment-webhook-production-equivalence: strict payment webhook E2E deploymentEvidence is required",
+    "payment-webhook-e2e: payment webhook productionEquivalence.https must be true for strict release evidence",
+    "payment-webhook-e2e: payment webhook productionEquivalence.localOnly must be false for strict release evidence",
+    "payment-webhook-e2e: payment webhook productionEquivalence.deploymentEvidence is required",
+    "payment-webhook-e2e: payment webhook productionEquivalence.issues must be empty for strict release evidence",
+    "payment-webhook-environment-strict: strict release requires production-equivalent non-local evidence",
+    "outbox-replay-dead-letter-freshness: generatedAt is 80.6h old; limit=24h",
+    "job-e2e-freshness: checkedAt is 120.4h old; limit=24h",
+    "job-e2e-production-equivalence: strict job E2E requires HTTPS baseUrl evidence",
+    "job-e2e-production-equivalence: strict job E2E deploymentEvidence is required",
+    "job-e2e-smoke: job E2E productionEquivalence.https must be true for strict release evidence",
+    "job-e2e-smoke: job E2E productionEquivalence.localOnly must be false for strict release evidence",
+    "job-e2e-smoke: job E2E productionEquivalence.deploymentEvidence is required",
+    "job-e2e-smoke: job E2E productionEquivalence.issues must be empty for strict release evidence",
+    "job-e2e-environment-strict: strict release requires production-equivalent non-local evidence",
+    "ai-runtime-drill: AI runtime productionEquivalence.strict must be true for strict release evidence",
+    "ai-runtime-drill: AI runtime productionEquivalence.https must be true for strict release evidence",
+    "ai-runtime-drill: AI runtime productionEquivalence.localOnly must be false for strict release evidence",
+    "ai-runtime-drill: AI runtime productionEquivalence.deploymentEvidence is required",
+    "ai-runtime-freshness: checkedAt is 46.8h old; limit=24h",
+    "ai-runtime-production-equivalence: strict AI runtime drill deploymentEvidence is required",
+    "ai-runtime-environment-strict: strict release requires production-equivalent non-local evidence",
+    "ai-runtime-drill-provider: strict release requires DDD_AI_EXPECT_PROVIDER_REMOTE=true evidence",
+    "ai-runtime-drill-owner-gateway: strict release requires DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true evidence",
+    "physical-split-readiness-freshness: generatedAt is 46.7h old; limit=24h",
+    "backend-test-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+    "backend-build-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+    "docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h",
+    "docker-build-evidence: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+    "docker-build-evidence: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+    "migration-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+    "release-env-lint-freshness: generatedAt is 37.8h old; limit=24h",
+    "release-env-lint: status=FAIL, blockers=156",
+    "release-env-lint-placeholders: unresolvedTemplateKeys=93",
+    "release-env-lint-config: releaseConfigBlockers=63",
+    "release-config-evidence-freshness: generatedAt is 37.1h old; limit=24h",
+    "release-config-evidence: status=FAIL, blockers=63",
+    "release-evidence-orchestrator-freshness: generatedAt is 46.1h old; limit=24h",
+    "release-evidence-orchestrator-preflight-backend-runtime-base-url: missing backend runtime base URL",
+    "release-evidence-orchestrator-preflight-ai-runtime-base-url: missing AI runtime base URL",
+    "release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL",
+    "release-evidence-orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+    "release-evidence-orchestrator: strict release requires run mode report, got plan",
+    "release-evidence-manifest-provenance: manifest provenance sourceEnvironment is required",
+    "release-evidence-manifest-provenance: manifest provenance releaseCandidate is required",
+    "release-evidence-manifest-provenance: manifest provenance evidenceOperator is required",
+    "release-evidence-manifest: manifest blockers length mismatch: declared=1, actual=4",
+    "release-evidence-manifest: missing EXPLAIN files in evidence manifest",
+    "frontend-build-evidence-freshness: generatedAt is 80.8h old; limit=24h",
+    "frontend-static-evidence-freshness: generatedAt is 80.8h old; limit=24h",
+    "frontend-smoke-freshness: generatedAt is 46.8h old; limit=24h",
+    "frontend-smoke-production-equivalence: strict frontend smoke deploymentEvidence is required",
+    "frontend-smoke-environment-strict: strict release requires production-equivalent non-local evidence",
+    "frontend-smoke-environment: frontend smoke productionEquivalence.strict must be true for strict release evidence",
+    "frontend-smoke-environment: frontend smoke productionEquivalence.https must be true for strict release evidence",
+    "frontend-smoke-environment: frontend smoke productionEquivalence.localOnly must be false for strict release evidence",
+    "frontend-smoke-environment: frontend smoke productionEquivalence.deploymentEvidence is required",
+    "frontend-smoke-environment: strict release requires DDD_FRONTEND_EXPECT_DEPLOYED=true evidence",
+    "frontend-smoke-environment: strict release requires HTTPS frontend baseURL evidence",
+    "frontend-smoke-environment: artifact is local-only: http://127.0.0.1:8000",
+    "frontend-smoke: frontend smoke blockers length mismatch: declared=0, actual=7",
+    "rollback-drill-freshness: generatedAt is 61.2h old; limit=24h",
+    "explain-evidence-strict: strict release requires production-scale EXPLAIN artifacts"
+  ],
+  "blockerDetails": [
+    {
+      "check": "runtime-readiness-summary",
+      "detail": "runtime readiness productionEquivalence.strict must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "runtime-readiness-summary",
+      "detail": "runtime readiness productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "runtime-readiness-summary",
+      "detail": "runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "runtime-readiness-summary",
+      "detail": "runtime readiness productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "runtime-readiness-freshness",
+      "detail": "checkedAt is 61.2h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "runtime-readiness-production-equivalence",
+      "detail": "strict runtime readiness deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "runtime-readiness-environment-strict",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-shape",
+      "detail": "authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-shape",
+      "detail": "authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-shape",
+      "detail": "authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-shape",
+      "detail": "authenticated performance actual productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-freshness",
+      "detail": "checkedAt is 46.8h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-production-equivalence",
+      "detail": "strict authenticated performance actual deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-environment-strict",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-baseline-environment",
+      "detail": "strict release requires a non-local baseline baseUrl, got http://127.0.0.1:8080",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-baseline-metadata",
+      "detail": "strict release baseline requires baselineType=authenticated-runtime",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-baseline-metadata",
+      "detail": "acceptedAt must be an ISO timestamp",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-baseline-metadata",
+      "detail": "acceptedBy is required",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-baseline-metadata",
+      "detail": "sourceArtifact is required",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-baseline-metadata",
+      "detail": "sourceSha256 must be a SHA-256 hex digest",
+      "file": null
+    },
+    {
+      "check": "authenticated-performance-baseline-strict",
+      "detail": "strict release requires authenticated performance baseline comparison",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-baseline.json"
+    },
+    {
+      "check": "file-processing-freshness",
+      "detail": "finishedAt is 120.7h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "file-processing-production-equivalence",
+      "detail": "strict file processing E2E requires HTTPS baseUrl evidence",
+      "file": null
+    },
+    {
+      "check": "file-processing-production-equivalence",
+      "detail": "strict file processing E2E deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "file-processing-e2e",
+      "detail": "file processing productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "file-processing-e2e",
+      "detail": "file processing productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "file-processing-e2e",
+      "detail": "file processing productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "file-processing-e2e",
+      "detail": "file processing productionEquivalence.issues must be empty for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "file-processing-environment-strict",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
+      "check": "payment-webhook-freshness",
+      "detail": "finishedAt is 120.6h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "payment-webhook-production-equivalence",
+      "detail": "strict payment webhook E2E requires HTTPS baseUrl evidence",
+      "file": null
+    },
+    {
+      "check": "payment-webhook-production-equivalence",
+      "detail": "strict payment webhook E2E deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "payment-webhook-e2e",
+      "detail": "payment webhook productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "payment-webhook-e2e",
+      "detail": "payment webhook productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "payment-webhook-e2e",
+      "detail": "payment webhook productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "payment-webhook-e2e",
+      "detail": "payment webhook productionEquivalence.issues must be empty for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "payment-webhook-environment-strict",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
+      "check": "outbox-replay-dead-letter-freshness",
+      "detail": "generatedAt is 80.6h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "job-e2e-freshness",
+      "detail": "checkedAt is 120.4h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "job-e2e-production-equivalence",
+      "detail": "strict job E2E requires HTTPS baseUrl evidence",
+      "file": null
+    },
+    {
+      "check": "job-e2e-production-equivalence",
+      "detail": "strict job E2E deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "job-e2e-smoke",
+      "detail": "job E2E productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "job-e2e-smoke",
+      "detail": "job E2E productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "job-e2e-smoke",
+      "detail": "job E2E productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "job-e2e-smoke",
+      "detail": "job E2E productionEquivalence.issues must be empty for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "job-e2e-environment-strict",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
+      "check": "ai-runtime-drill",
+      "detail": "AI runtime productionEquivalence.strict must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "ai-runtime-drill",
+      "detail": "AI runtime productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "ai-runtime-drill",
+      "detail": "AI runtime productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "ai-runtime-drill",
+      "detail": "AI runtime productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "ai-runtime-freshness",
+      "detail": "checkedAt is 46.8h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "ai-runtime-production-equivalence",
+      "detail": "strict AI runtime drill deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "ai-runtime-environment-strict",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
+      "check": "ai-runtime-drill-provider",
+      "detail": "strict release requires DDD_AI_EXPECT_PROVIDER_REMOTE=true evidence",
+      "file": null
+    },
+    {
+      "check": "ai-runtime-drill-owner-gateway",
+      "detail": "strict release requires DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true evidence",
+      "file": null
+    },
+    {
+      "check": "physical-split-readiness-freshness",
+      "detail": "generatedAt is 46.7h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "backend-test-evidence-freshness",
+      "detail": "generatedAt is 46.7h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "backend-build-evidence-freshness",
+      "detail": "generatedAt is 46.7h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "docker-build-evidence-freshness",
+      "detail": "generatedAt is 45.9h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "docker-build-evidence",
+      "detail": "lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+      "file": null
+    },
+    {
+      "check": "docker-build-evidence",
+      "detail": "frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+      "file": null
+    },
+    {
+      "check": "migration-evidence-freshness",
+      "detail": "generatedAt is 46.7h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "release-env-lint-freshness",
+      "detail": "generatedAt is 37.8h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "release-env-lint",
+      "detail": "status=FAIL, blockers=156",
+      "file": "artifacts\\ddd\\release\\release-env-lint.json"
+    },
+    {
+      "check": "release-env-lint-placeholders",
+      "detail": "unresolvedTemplateKeys=93",
+      "file": "artifacts\\ddd\\release\\release-env-lint.json"
+    },
+    {
+      "check": "release-env-lint-config",
+      "detail": "releaseConfigBlockers=63",
+      "file": "artifacts\\ddd\\release\\release-env-lint.json"
+    },
+    {
+      "check": "release-config-evidence-freshness",
+      "detail": "generatedAt is 37.1h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "release-config-evidence",
+      "detail": "status=FAIL, blockers=63",
+      "file": null
+    },
+    {
+      "check": "release-evidence-orchestrator-freshness",
+      "detail": "generatedAt is 46.1h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "release-evidence-orchestrator-preflight-backend-runtime-base-url",
+      "detail": "missing backend runtime base URL",
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json"
+    },
+    {
+      "check": "release-evidence-orchestrator-preflight-ai-runtime-base-url",
+      "detail": "missing AI runtime base URL",
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json"
+    },
+    {
+      "check": "release-evidence-orchestrator-preflight-frontend-runtime-base-url",
+      "detail": "missing deployed frontend base URL",
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json"
+    },
+    {
+      "check": "release-evidence-orchestrator-preflight-migration-runtime-evidence",
+      "detail": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json"
+    },
+    {
+      "check": "release-evidence-orchestrator",
+      "detail": "strict release requires run mode report, got plan",
+      "file": null
+    },
+    {
+      "check": "release-evidence-manifest-provenance",
+      "detail": "manifest provenance sourceEnvironment is required",
+      "file": null
+    },
+    {
+      "check": "release-evidence-manifest-provenance",
+      "detail": "manifest provenance releaseCandidate is required",
+      "file": null
+    },
+    {
+      "check": "release-evidence-manifest-provenance",
+      "detail": "manifest provenance evidenceOperator is required",
+      "file": null
+    },
+    {
+      "check": "release-evidence-manifest",
+      "detail": "manifest blockers length mismatch: declared=1, actual=4",
+      "file": null
+    },
+    {
+      "check": "release-evidence-manifest",
+      "detail": "missing EXPLAIN files in evidence manifest",
+      "file": null
+    },
+    {
+      "check": "frontend-build-evidence-freshness",
+      "detail": "generatedAt is 80.8h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "frontend-static-evidence-freshness",
+      "detail": "generatedAt is 80.8h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke-freshness",
+      "detail": "generatedAt is 46.8h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke-production-equivalence",
+      "detail": "strict frontend smoke deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke-environment-strict",
+      "detail": "strict release requires production-equivalent non-local evidence",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke-environment",
+      "detail": "frontend smoke productionEquivalence.strict must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke-environment",
+      "detail": "frontend smoke productionEquivalence.https must be true for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke-environment",
+      "detail": "frontend smoke productionEquivalence.localOnly must be false for strict release evidence",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke-environment",
+      "detail": "frontend smoke productionEquivalence.deploymentEvidence is required",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke-environment",
+      "detail": "strict release requires DDD_FRONTEND_EXPECT_DEPLOYED=true evidence",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke-environment",
+      "detail": "strict release requires HTTPS frontend baseURL evidence",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke-environment",
+      "detail": "artifact is local-only: http://127.0.0.1:8000",
+      "file": null
+    },
+    {
+      "check": "frontend-smoke",
+      "detail": "frontend smoke blockers length mismatch: declared=0, actual=7",
+      "file": null
+    },
+    {
+      "check": "rollback-drill-freshness",
+      "detail": "generatedAt is 61.2h old; limit=24h",
+      "file": null
+    },
+    {
+      "check": "explain-evidence-strict",
+      "detail": "strict release requires production-scale EXPLAIN artifacts",
+      "file": "tmp\\ddd-explain"
+    }
+  ],
   "warnings": [
     "runtime-readiness-environment: artifact is local-only: http://127.0.0.1:8080",
     "authenticated-performance-environment: artifact is local-only: http://127.0.0.1:8080",
@@ -246,16 +1322,8 @@
     "payment-webhook-environment: artifact is local-only: http://127.0.0.1:8080",
     "job-e2e-environment: artifact is local-only: http://127.0.0.1:8080",
     "ai-runtime-environment: artifact is local-only: http://127.0.0.1:8080",
-    "docker-build-evidence: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
-    "docker-build-evidence: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
-    "release-env-lint: status=FAIL, blockers=179",
-    "release-env-lint-placeholders: unresolvedTemplateKeys=108",
-    "release-env-lint-config: releaseConfigBlockers=71",
-    "release-evidence-orchestrator-preflight-backend-runtime-base-url: missing backend runtime base URL",
-    "release-evidence-orchestrator-preflight-ai-runtime-base-url: missing AI runtime base URL",
-    "release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL",
-    "release-evidence-orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-    "frontend-smoke-environment: artifact is local-only: http://127.0.0.1:8000"
+    "frontend-smoke-environment: artifact is local-only: http://127.0.0.1:8000",
+    "explain-evidence: no explain JSON files in tmp\\ddd-explain"
   ],
   "warningDetails": [
     {
@@ -289,53 +1357,13 @@
       "file": null
     },
     {
-      "check": "docker-build-evidence",
-      "detail": "lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
-      "file": null
-    },
-    {
-      "check": "docker-build-evidence",
-      "detail": "frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
-      "file": null
-    },
-    {
-      "check": "release-env-lint",
-      "detail": "status=FAIL, blockers=179",
-      "file": "artifacts/ddd/release/release-env-lint.json"
-    },
-    {
-      "check": "release-env-lint-placeholders",
-      "detail": "unresolvedTemplateKeys=108",
-      "file": "artifacts/ddd/release/release-env-lint.json"
-    },
-    {
-      "check": "release-env-lint-config",
-      "detail": "releaseConfigBlockers=71",
-      "file": "artifacts/ddd/release/release-env-lint.json"
-    },
-    {
-      "check": "release-evidence-orchestrator-preflight-backend-runtime-base-url",
-      "detail": "missing backend runtime base URL",
-      "file": "artifacts/ddd/release/orchestrator-report.json"
-    },
-    {
-      "check": "release-evidence-orchestrator-preflight-ai-runtime-base-url",
-      "detail": "missing AI runtime base URL",
-      "file": "artifacts/ddd/release/orchestrator-report.json"
-    },
-    {
-      "check": "release-evidence-orchestrator-preflight-frontend-runtime-base-url",
-      "detail": "missing deployed frontend base URL",
-      "file": "artifacts/ddd/release/orchestrator-report.json"
-    },
-    {
-      "check": "release-evidence-orchestrator-preflight-migration-runtime-evidence",
-      "detail": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-      "file": "artifacts/ddd/release/orchestrator-report.json"
-    },
-    {
       "check": "frontend-smoke-environment",
       "detail": "artifact is local-only: http://127.0.0.1:8000",
+      "file": null
+    },
+    {
+      "check": "explain-evidence",
+      "detail": "no explain JSON files in tmp\\ddd-explain",
       "file": null
     }
   ]

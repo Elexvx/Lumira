@@ -129,11 +129,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         return ("GET".equalsIgnoreCase(method) && (
                 "/api/v2/auth/current-user".equals(path)
                         || "/api/v1/auth/current-user".equals(path)
-                        || "/api/auth/current-user".equals(path)))
+                        || "/api/auth/current-user".equals(path)
+                        || "/api/v1/auth/passkeys".equals(path)))
                 || ("POST".equalsIgnoreCase(method) && (
                 "/api/v2/auth/session/keepalive".equals(path)
                         || "/api/v1/auth/session/keepalive".equals(path)
                         || "/api/auth/session/keepalive".equals(path)))
+                || ("POST".equalsIgnoreCase(method) && (
+                "/api/v1/auth/passkeys/registration/options".equals(path)
+                        || "/api/v1/auth/passkeys/registration/complete".equals(path)))
                 || ("PUT".equalsIgnoreCase(method) && (
                 "/api/v2/profile/password".equals(path)
                         || "/api/v1/profile/password".equals(path)))

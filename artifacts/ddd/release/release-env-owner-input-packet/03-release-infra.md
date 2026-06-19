@@ -1,8 +1,8 @@
 # DDD Release Env Owner Input Packet: release-infra
 
 Concrete values are intentionally omitted from this artifact.
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Inputs: 9
 Secret inputs: 3
 Production endpoint inputs: 4

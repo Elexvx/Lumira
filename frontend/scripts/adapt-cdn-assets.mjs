@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, copyFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
-const distRoot = new URL('../dist/', import.meta.url).pathname;
+const distRoot = fileURLToPath(new URL('../dist/', import.meta.url));
 const safeAssetName = (name) => name.replaceAll('.', '__dot__');
 
 const copyMatchingAssets = (targetType, matcher) => {

@@ -17,6 +17,7 @@ import { XMarkdown } from '@ant-design/x-markdown';
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import { confirmAction } from '@/utils/confirm';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+import { DEFAULT_DOCUMENT_UPLOAD_MAX_SIZE_MB, validateDocumentUploadFile } from '@/utils/uploadValidation';
 import { request, requestEventStream } from '@/services/common/request';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import type {
@@ -609,8 +610,6 @@ const AI_ATTACHMENT_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'p
 const AI_CHAT_ATTACHMENT_BUCKET = 'ai_chat';
 
 const getFileExtension = (fileName: string) => fileName.split('.').pop()?.toLowerCase() || '';
-
-const isAllowedAiAttachment = (file: File) => AI_ATTACHMENT_EXTENSIONS.includes(getFileExtension(file.name));
 
 const renderAttachmentCardList = (
   attachments: ComposerAttachment[],
@@ -1207,7 +1206,19 @@ export const useAssistantPageAccess = () => {
     const { isShareMode, activeSession, updateSession } = options;
     if (isShareMode || !activeSession) return;
 
-    const allowedFiles = files.filter(isAllowedAiAttachment);
+    const allowedFiles = files.filter((file) => {
+      const validationMessage = validateDocumentUploadFile(file, {
+        allowedExtensions: AI_ATTACHMENT_EXTENSIONS,
+        maxSizeMb: DEFAULT_DOCUMENT_UPLOAD_MAX_SIZE_MB,
+        allowedTypeLabelZh: `${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')} 文件`,
+        allowedTypeLabelEn: `${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join(', ')} files`,
+      });
+      if (validationMessage) {
+        message.warning(validationMessage);
+        return false;
+      }
+      return true;
+    });
 
     if (!allowedFiles.length) {
       message.error(`仅支持 ${AI_ATTACHMENT_EXTENSIONS.map((item) => item.toUpperCase()).join('、')} 文件`);
@@ -1236,6 +1247,7 @@ export const useAssistantPageAccess = () => {
           headers: {},
           data: formData,
           ...API_OPTS.NO_REDIRECT,
+          silent: true,
         });
         uploadedAttachments.push(mapFileObjectToAttachment(record));
       }

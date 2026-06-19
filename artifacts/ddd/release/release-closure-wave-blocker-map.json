@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "summary": {
-    "waveCount": 7,
-    "mappedActionCount": 40,
-    "uniqueOwnerCount": 5,
-    "candidateBlockerHintCount": 0,
-    "nonArtifactBlockerHintCount": 0,
-    "mappedItemCount": 40
+    "waveCount": 10,
+    "mappedActionCount": 54,
+    "uniqueOwnerCount": 7,
+    "candidateBlockerHintCount": 16,
+    "nonArtifactBlockerHintCount": 1,
+    "mappedItemCount": 54
   },
   "mappedItemIds": [
     "ai service",
@@ -38,10 +38,20 @@
     "job plugin url",
     "jwt secret",
     "localization service",
+    "manifest-missing-no-explain-json-files-in-tmp-ddd-explain",
     "message service",
     "owner internal token",
     "payment public url",
     "payment service",
+    "performance-actual-shape-1",
+    "performance-actual-shape-2",
+    "performance-actual-shape-3",
+    "performance-actual-shape-4",
+    "performance-baseline-metadata-5",
+    "performance-baseline-metadata-6",
+    "performance-baseline-metadata-7",
+    "performance-baseline-metadata-8",
+    "performance-baseline-metadata-9",
     "platform owner url",
     "plugin service",
     "provider api key",
@@ -49,6 +59,10 @@
     "redis host",
     "release-env-lint-placeholders",
     "release-env-lint-status",
+    "runtime-readiness-contract-1",
+    "runtime-readiness-contract-2",
+    "runtime-readiness-contract-3",
+    "runtime-readiness-contract-4",
     "system service",
     "xxl job admin",
     "xxl job token"
@@ -739,8 +753,27 @@
           "action": "Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs."
         }
       ],
-      "candidateBlockerCount": 0,
-      "candidateBlockers": [],
+      "candidateBlockerCount": 3,
+      "candidateBlockers": [
+        {
+          "category": "docker",
+          "owner": "release-infra",
+          "blocker": "docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h",
+          "action": "Start Docker daemon or run `node scripts/ddd-docker-build-evidence.mjs` in CI with Docker Buildx available."
+        },
+        {
+          "category": "docker",
+          "owner": "release-infra",
+          "blocker": "docker-build-evidence: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "action": "Start Docker daemon or run `node scripts/ddd-docker-build-evidence.mjs` in CI with Docker Buildx available."
+        },
+        {
+          "category": "docker",
+          "owner": "release-infra",
+          "blocker": "docker-build-evidence: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1",
+          "action": "Start Docker daemon or run `node scripts/ddd-docker-build-evidence.mjs` in CI with Docker Buildx available."
+        }
+      ],
       "commands": [
         "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
         "node scripts/ddd-docker-build-evidence.mjs"
@@ -753,6 +786,349 @@
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
         "Required lumira-server and frontend images are built, inspected, and not skipped."
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 8,
+      "owner": "release-infra",
+      "batchId": "p0-runtime-readiness-release-infra",
+      "priority": "P0",
+      "mappingConfidence": "candidate",
+      "mappingNote": "Mapped by closure action owner and source-derived category; strict gate remains authoritative.",
+      "actionCount": 4,
+      "sources": [
+        "runtime-readiness"
+      ],
+      "categoryHints": [
+        "production-equivalent-runtime"
+      ],
+      "itemOrders": [
+        70,
+        71,
+        72,
+        73
+      ],
+      "itemIds": [
+        "runtime-readiness-contract-1",
+        "runtime-readiness-contract-2",
+        "runtime-readiness-contract-3",
+        "runtime-readiness-contract-4"
+      ],
+      "actionReasons": [
+        {
+          "id": "runtime-readiness-contract-1",
+          "source": "runtime-readiness",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "runtime readiness productionEquivalence.strict must be true for strict release evidence",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`."
+        },
+        {
+          "id": "runtime-readiness-contract-2",
+          "source": "runtime-readiness",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "runtime readiness productionEquivalence.https must be true for strict release evidence",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`."
+        },
+        {
+          "id": "runtime-readiness-contract-3",
+          "source": "runtime-readiness",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`."
+        },
+        {
+          "id": "runtime-readiness-contract-4",
+          "source": "runtime-readiness",
+          "owner": "release-infra",
+          "priority": "P0",
+          "reason": "runtime readiness productionEquivalence.deploymentEvidence is required",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`."
+        }
+      ],
+      "candidateBlockerCount": 11,
+      "candidateBlockers": [
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "runtime-readiness-summary: runtime readiness productionEquivalence.strict must be true for strict release evidence",
+          "action": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence."
+        },
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "runtime-readiness-summary: runtime readiness productionEquivalence.https must be true for strict release evidence",
+          "action": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence."
+        },
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "runtime-readiness-summary: runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
+          "action": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence."
+        },
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "runtime-readiness-summary: runtime readiness productionEquivalence.deploymentEvidence is required",
+          "action": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence."
+        },
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "runtime-readiness-production-equivalence: strict runtime readiness deploymentEvidence is required",
+          "action": "Regenerate the runtime artifact against an HTTPS non-local production-equivalent URL."
+        },
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "runtime-readiness-environment-strict: strict release requires production-equivalent non-local evidence",
+          "action": "Regenerate the runtime artifact against an HTTPS non-local production-equivalent URL."
+        },
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "authenticated-performance-environment-strict: strict release requires production-equivalent non-local evidence",
+          "action": "Regenerate the runtime artifact against an HTTPS non-local production-equivalent URL."
+        },
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "file-processing-environment-strict: strict release requires production-equivalent non-local evidence",
+          "action": "Regenerate the runtime artifact against an HTTPS non-local production-equivalent URL."
+        },
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "payment-webhook-environment-strict: strict release requires production-equivalent non-local evidence",
+          "action": "Regenerate the runtime artifact against an HTTPS non-local production-equivalent URL."
+        },
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "job-e2e-environment-strict: strict release requires production-equivalent non-local evidence",
+          "action": "Regenerate the runtime artifact against an HTTPS non-local production-equivalent URL."
+        },
+        {
+          "category": "production-equivalent-runtime",
+          "owner": "release-infra",
+          "blocker": "release-evidence-orchestrator-preflight-backend-runtime-base-url: missing backend runtime base URL",
+          "action": "Set `LUMIRA_BASE_URL`, `DEPLOY_CHECK_BASE_URL`, or `BASE_URL` to an HTTPS non-local backend URL before running the strict release orchestrator."
+        }
+      ],
+      "commands": [
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "All 30 owner readiness/health/metrics checks pass.",
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Runtime readiness is generated from an HTTPS non-local backend base URL."
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 9,
+      "owner": "release-owner",
+      "batchId": "p0-manifest-release-owner",
+      "priority": "P0",
+      "mappingConfidence": "candidate",
+      "mappingNote": "Mapped by closure action owner and source-derived category; strict gate remains authoritative.",
+      "actionCount": 1,
+      "sources": [
+        "manifest"
+      ],
+      "categoryHints": [
+        "manifest"
+      ],
+      "itemOrders": [
+        74
+      ],
+      "itemIds": [
+        "manifest-missing-no-explain-json-files-in-tmp-ddd-explain"
+      ],
+      "actionReasons": [
+        {
+          "id": "manifest-missing-no-explain-json-files-in-tmp-ddd-explain",
+          "source": "manifest",
+          "owner": "release-owner",
+          "priority": "P0",
+          "reason": "no explain JSON files in tmp\\ddd-explain",
+          "action": "Regenerate the missing evidence artifact, then rerun `node scripts/ddd-release-evidence-manifest.mjs`."
+        }
+      ],
+      "candidateBlockerCount": 2,
+      "candidateBlockers": [
+        {
+          "category": "manifest",
+          "owner": "release-owner",
+          "blocker": "release-evidence-manifest: manifest blockers length mismatch: declared=1, actual=4",
+          "action": "Regenerate all missing evidence artifacts, then run `node scripts/ddd-release-evidence-manifest.mjs`."
+        },
+        {
+          "category": "manifest",
+          "owner": "release-owner",
+          "blocker": "release-evidence-manifest: missing EXPLAIN files in evidence manifest",
+          "action": "Regenerate all missing evidence artifacts, then run `node scripts/ddd-release-evidence-manifest.mjs`."
+        }
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "blockerHints": [
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 10,
+      "owner": "release-performance",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "priority": "P0",
+      "mappingConfidence": "candidate",
+      "mappingNote": "Mapped by closure action owner and source-derived category; strict gate remains authoritative.",
+      "actionCount": 9,
+      "sources": [
+        "authenticated-performance"
+      ],
+      "categoryHints": [
+        "authenticated-performance"
+      ],
+      "itemOrders": [
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83
+      ],
+      "itemIds": [
+        "performance-actual-shape-1",
+        "performance-actual-shape-2",
+        "performance-actual-shape-3",
+        "performance-actual-shape-4",
+        "performance-baseline-metadata-5",
+        "performance-baseline-metadata-6",
+        "performance-baseline-metadata-7",
+        "performance-baseline-metadata-8",
+        "performance-baseline-metadata-9"
+      ],
+      "actionReasons": [
+        {
+          "id": "performance-actual-shape-1",
+          "source": "authenticated-performance",
+          "owner": "release-performance",
+          "priority": "P0",
+          "reason": "authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke."
+        },
+        {
+          "id": "performance-actual-shape-2",
+          "source": "authenticated-performance",
+          "owner": "release-performance",
+          "priority": "P0",
+          "reason": "authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke."
+        },
+        {
+          "id": "performance-actual-shape-3",
+          "source": "authenticated-performance",
+          "owner": "release-performance",
+          "priority": "P0",
+          "reason": "authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke."
+        },
+        {
+          "id": "performance-actual-shape-4",
+          "source": "authenticated-performance",
+          "owner": "release-performance",
+          "priority": "P0",
+          "reason": "authenticated performance actual productionEquivalence.deploymentEvidence is required",
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke."
+        },
+        {
+          "id": "performance-baseline-metadata-5",
+          "source": "authenticated-performance",
+          "owner": "release-performance",
+          "priority": "P0",
+          "reason": "strict release baseline requires baselineType=authenticated-runtime",
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata."
+        },
+        {
+          "id": "performance-baseline-metadata-6",
+          "source": "authenticated-performance",
+          "owner": "release-performance",
+          "priority": "P0",
+          "reason": "acceptedAt must be an ISO timestamp",
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata."
+        },
+        {
+          "id": "performance-baseline-metadata-7",
+          "source": "authenticated-performance",
+          "owner": "release-performance",
+          "priority": "P0",
+          "reason": "acceptedBy is required",
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata."
+        },
+        {
+          "id": "performance-baseline-metadata-8",
+          "source": "authenticated-performance",
+          "owner": "release-performance",
+          "priority": "P0",
+          "reason": "sourceArtifact is required",
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata."
+        },
+        {
+          "id": "performance-baseline-metadata-9",
+          "source": "authenticated-performance",
+          "owner": "release-performance",
+          "priority": "P0",
+          "reason": "sourceSha256 must be a SHA-256 hex digest",
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata."
+        }
+      ],
+      "candidateBlockerCount": 0,
+      "candidateBlockers": [],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Clear this batch before running downstream runtime-heavy evidence."
       ],
       "rerunCommands": [
         "node scripts/ddd-release-evidence-gate.mjs",

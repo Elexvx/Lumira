@@ -1,21 +1,21 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "gate": {
-    "strict": false,
-    "blockers": 0,
-    "warnings": 16
+    "strict": true,
+    "blockers": 94,
+    "warnings": 8
   },
   "summary": {
-    "batchCount": 26,
-    "readyBatchCount": 7,
+    "batchCount": 29,
+    "readyBatchCount": 10,
     "blockedBatchCount": 19,
-    "pendingItems": 95,
+    "pendingItems": 111,
     "priorityCount": 4,
-    "ownerCount": 17,
-    "blockedCutoverItems": 6
+    "ownerCount": 18,
+    "blockedCutoverItems": 8
   },
   "nextWave": {
     "priority": "P0",
@@ -26,35 +26,47 @@
       "p0-release-config-platform-owners",
       "p0-docker-release-infra",
       "p0-release-config-release-infra",
-      "p0-release-env-lint-release-infra"
+      "p0-release-env-lint-release-infra",
+      "p0-runtime-readiness-release-infra",
+      "p0-manifest-release-owner",
+      "p0-authenticated-performance-release-performance"
     ],
     "owners": [
       "ai-owner",
       "payment-owner",
       "platform-events",
       "platform-owners",
-      "release-infra"
+      "release-infra",
+      "release-owner",
+      "release-performance"
     ],
-    "commandCount": 9,
+    "commandCount": 15,
     "expectedArtifacts": [
       "artifacts/ddd/build/docker-image-evidence.json",
       "artifacts/ddd/config/release-config-evidence.json",
+      "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+      "artifacts/ddd/performance/authenticated-runtime-baseline.json",
+      "artifacts/ddd/readiness/summary.json",
+      "artifacts/ddd/release/evidence-manifest.json",
       "artifacts/ddd/release/release-env-lint.json"
     ]
   },
   "priorities": [
     {
       "priority": "P0",
-      "batchCount": 7,
-      "readyBatchCount": 7,
+      "batchCount": 10,
+      "readyBatchCount": 10,
       "blockedBatchCount": 0,
-      "pendingItems": 69,
+      "pendingItems": 83,
       "owners": [
         "ai-owner",
         "payment-owner",
         "platform-events",
         "platform-owners",
-        "release-infra"
+        "release-infra",
+        "release-owner",
+        "release-performance"
       ],
       "readyBatchIds": [
         "p0-release-config-ai-owner",
@@ -63,7 +75,10 @@
         "p0-release-config-platform-owners",
         "p0-docker-release-infra",
         "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
+        "p0-release-env-lint-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "blockedBatchIds": []
     },
@@ -111,7 +126,7 @@
       "batchCount": 1,
       "readyBatchCount": 0,
       "blockedBatchCount": 1,
-      "pendingItems": 6,
+      "pendingItems": 8,
       "owners": [
         "database"
       ],
@@ -142,17 +157,18 @@
   "owners": [
     {
       "owner": "release-infra",
-      "batchCount": 3,
-      "readyBatchCount": 3,
+      "batchCount": 4,
+      "readyBatchCount": 4,
       "blockedBatchCount": 0,
-      "pendingItems": 20,
+      "pendingItems": 24,
       "priorities": [
         "P0"
       ],
       "nextReadyBatchIds": [
         "p0-docker-release-infra",
         "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
+        "p0-release-env-lint-release-infra",
+        "p0-runtime-readiness-release-infra"
       ],
       "blockedBatchIds": []
     },
@@ -202,6 +218,20 @@
       ]
     },
     {
+      "owner": "release-performance",
+      "batchCount": 1,
+      "readyBatchCount": 1,
+      "blockedBatchCount": 0,
+      "pendingItems": 9,
+      "priorities": [
+        "P0"
+      ],
+      "nextReadyBatchIds": [
+        "p0-authenticated-performance-release-performance"
+      ],
+      "blockedBatchIds": []
+    },
+    {
       "owner": "payment-owner",
       "batchCount": 3,
       "readyBatchCount": 1,
@@ -220,11 +250,28 @@
       ]
     },
     {
+      "owner": "release-owner",
+      "batchCount": 2,
+      "readyBatchCount": 1,
+      "blockedBatchCount": 1,
+      "pendingItems": 2,
+      "priorities": [
+        "P0",
+        "P3"
+      ],
+      "nextReadyBatchIds": [
+        "p0-manifest-release-owner"
+      ],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-owner"
+      ]
+    },
+    {
       "owner": "database",
       "batchCount": 2,
       "readyBatchCount": 0,
       "blockedBatchCount": 2,
-      "pendingItems": 7,
+      "pendingItems": 9,
       "priorities": [
         "P2",
         "P3"
@@ -377,20 +424,6 @@
       "nextReadyBatchIds": [],
       "blockedBatchIds": [
         "p1-rollback-plugin-owner"
-      ]
-    },
-    {
-      "owner": "release-owner",
-      "batchCount": 1,
-      "readyBatchCount": 0,
-      "blockedBatchCount": 1,
-      "pendingItems": 1,
-      "priorities": [
-        "P3"
-      ],
-      "nextReadyBatchIds": [],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
       ]
     }
   ],
@@ -777,6 +810,129 @@
       ]
     },
     {
+      "id": "p0-runtime-readiness-release-infra",
+      "priority": "P0",
+      "status": "READY",
+      "source": "runtime-readiness",
+      "owner": "release-infra",
+      "pendingItems": 4,
+      "dependsOn": [],
+      "unmetDependencies": [],
+      "lanes": [
+        "production-equivalence"
+      ],
+      "cutoverChecklistIds": [
+        "production-equivalence"
+      ],
+      "commands": [
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ],
+      "envCheckGroups": [
+        "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "exitCriteria": [
+        "Runtime readiness is generated from an HTTPS non-local backend base URL.",
+        "All 30 owner readiness/health/metrics checks pass.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ],
+      "itemIds": [
+        "runtime-readiness-contract-1",
+        "runtime-readiness-contract-2",
+        "runtime-readiness-contract-3",
+        "runtime-readiness-contract-4"
+      ]
+    },
+    {
+      "id": "p0-manifest-release-owner",
+      "priority": "P0",
+      "status": "READY",
+      "source": "manifest",
+      "owner": "release-owner",
+      "pendingItems": 1,
+      "dependsOn": [],
+      "unmetDependencies": [],
+      "lanes": [
+        "evidence-integrity"
+      ],
+      "cutoverChecklistIds": [
+        "evidence-integrity"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+      ],
+      "envCheckGroups": [
+        "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ],
+      "itemIds": [
+        "manifest-missing-no-explain-json-files-in-tmp-ddd-explain"
+      ]
+    },
+    {
+      "id": "p0-authenticated-performance-release-performance",
+      "priority": "P0",
+      "status": "READY",
+      "source": "authenticated-performance",
+      "owner": "release-performance",
+      "pendingItems": 9,
+      "dependsOn": [],
+      "unmetDependencies": [],
+      "lanes": [
+        "performance"
+      ],
+      "cutoverChecklistIds": [
+        "production-equivalence"
+      ],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "envCheckGroups": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json"
+      ],
+      "exitCriteria": [
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ],
+      "itemIds": [
+        "performance-actual-shape-1",
+        "performance-actual-shape-2",
+        "performance-actual-shape-3",
+        "performance-actual-shape-4",
+        "performance-baseline-metadata-5",
+        "performance-baseline-metadata-6",
+        "performance-baseline-metadata-7",
+        "performance-baseline-metadata-8",
+        "performance-baseline-metadata-9"
+      ]
+    },
+    {
       "id": "p1-ai-runtime-ai",
       "priority": "P1",
       "status": "BLOCKED",
@@ -790,7 +946,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -842,7 +1001,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -890,7 +1052,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -938,7 +1103,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -982,7 +1150,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1030,7 +1201,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1072,7 +1246,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1120,7 +1297,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1163,7 +1343,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1211,7 +1394,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1259,7 +1445,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1307,7 +1496,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1350,7 +1542,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1398,7 +1593,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1446,7 +1644,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
       "lanes": [
@@ -1486,7 +1687,7 @@
       "status": "BLOCKED",
       "source": "explain",
       "owner": "database",
-      "pendingItems": 6,
+      "pendingItems": 8,
       "dependsOn": [
         "p0-release-env-lint-release-infra",
         "p0-release-config-ai-owner",
@@ -1495,6 +1696,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -1562,6 +1766,8 @@
       ],
       "itemIds": [
         "ai-knowledge-index-retry.json",
+        "message-archive-total.json",
+        "message-unread-count.json",
         "message-visible-list.json",
         "platform-outbox-owner-relay-file.json",
         "platform-outbox-owner-relay-message.json",
@@ -1584,6 +1790,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -1664,6 +1873,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -1741,6 +1953,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",

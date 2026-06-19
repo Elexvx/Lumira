@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-06-17T08:13:43.158Z",
+  "generatedAt": "2026-06-18T19:37:45.949Z",
   "status": "PASS",
   "redacted": true,
   "contract": "ddd-release-owner-input-receipt-contract",
-  "receipt": "artifacts/ddd/release/release-owner-input-receipt.json",
+  "receipt": "artifacts\\ddd\\release\\release-owner-input-receipt.json",
   "issueCount": 0,
   "issues": []
 }

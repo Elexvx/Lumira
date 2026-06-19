@@ -14,9 +14,10 @@ set -euo pipefail
 DDD_RELEASE_ENV_READINESS_PACKET="\${DDD_RELEASE_ENV_READINESS_PACKET:-artifacts/ddd/release/release-env-readiness-redacted.json}"
 DDD_RELEASE_ENV_READINESS_ENFORCE="\${DDD_RELEASE_ENV_READINESS_ENFORCE:-}"
 # Exit codes: 21 means release env values are unresolved; 22 means the redacted readiness packet is invalid.
-node --input-type=module - "\${DDD_RELEASE_ENV_READINESS_PACKET}" <<'NODE'
+node --input-type=module - "\${DDD_RELEASE_ENV_READINESS_PACKET}" "\${DDD_RELEASE_ENV_READINESS_ENFORCE}" <<'NODE'
 import fs from 'node:fs';
 const packet = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+const enforceMode = process.argv[3];
 if (packet.redacted !== true || !Array.isArray(packet.items) || !Array.isArray(packet.byOwner)) {
   console.error('[ddd-release-env-readiness][invalid-packet] items must be an array; byOwner must be an array');
   process.exit(22);
@@ -43,7 +44,7 @@ if (!packet.byOwner.some((owner) => owner.owner === 'release-infra')) {
 console.log('[ddd-release-env-readiness] status=NOT_READY blockers=1 placeholders=1 missing=0 optionalEmpty=0 filledRedacted=0 secretKeys=1 owners=1');
 console.log('[ddd-release-env-readiness] exitCodes unresolved=21 invalidPacket=22');
 console.log('[ddd-release-env-readiness] handoff=artifacts/ddd/release/release-env-owner-handoff-redacted.md handoffCsv=artifacts/ddd/release/release-env-owner-handoff-redacted.csv dir=artifacts/ddd/release/release-env-owner-handoff-redacted');
-if (process.env.DDD_RELEASE_ENV_READINESS_ENFORCE === '1') {
+if (enforceMode === '1' || process.env.DDD_RELEASE_ENV_READINESS_ENFORCE === '1') {
   console.error('[ddd-release-env-readiness][no-go] unresolved release env values remain');
   process.exit(21);
 }

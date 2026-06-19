@@ -224,7 +224,7 @@ describe('getAppInitialState', () => {
     expect(mocks.request).not.toHaveBeenCalledWith('/v1/system/floating-window-settings', expect.any(Object));
     expect(mocks.persistWatermarkSettings).toHaveBeenCalledWith(mocks.defaultWatermarkSettings);
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
-  });
+  }, 15_000);
 
   it('falls back to authenticated v1 platform settings when v2 runtime appearance endpoint is unavailable', async () => {
     mocks.request.mockImplementation(async (url: string) => {

@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "safetySignals": {
@@ -60,12 +60,12 @@
   },
   "releaseEnvFileCutoverSafe": false,
   "summary": {
-    "itemCount": 95,
-    "runNowLocalCount": 0,
-    "runNowWithRealEnvCount": 69,
-    "waitingForDependenciesCount": 26,
-    "runnableWaveCount": 7,
-    "ownerCount": 17,
+    "itemCount": 111,
+    "runNowLocalCount": 3,
+    "runNowWithRealEnvCount": 80,
+    "waitingForDependenciesCount": 28,
+    "runnableWaveCount": 10,
+    "ownerCount": 18,
     "ownerInputReceiptStatus": "PENDING_OWNER_INPUT",
     "ownerInputReceiptCutoverReady": false,
     "ownerInputReceiptRequiredOwnerInputs": 34,
@@ -138,14 +138,15 @@
     ]
   },
   "byClosureKind": {
-    "RUN_NOW_WITH_REAL_ENV": 69,
-    "WAIT_FOR_DEPENDENCIES": 26
+    "RUN_NOW_LOCAL": 3,
+    "RUN_NOW_WITH_REAL_ENV": 80,
+    "WAIT_FOR_DEPENDENCIES": 28
   },
   "byOwner": {
     "ai": 3,
     "ai-owner": 13,
     "auth-owner": 1,
-    "database": 7,
+    "database": 9,
     "file-owner": 2,
     "frontend": 2,
     "iam-owner": 1,
@@ -157,8 +158,9 @@
     "platform-owner": 1,
     "platform-owners": 18,
     "plugin-owner": 1,
-    "release-infra": 20,
-    "release-owner": 1
+    "release-infra": 24,
+    "release-owner": 2,
+    "release-performance": 9
   },
   "waves": [
     {
@@ -590,6 +592,134 @@
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
         "Required lumira-server and frontend images are built, inspected, and not skipped."
+      ]
+    },
+    {
+      "wave": 8,
+      "batchId": "p0-runtime-readiness-release-infra",
+      "owner": "release-infra",
+      "priority": "P0",
+      "closureKinds": [
+        "RUN_NOW_WITH_REAL_ENV"
+      ],
+      "itemOrders": [
+        70,
+        71,
+        72,
+        73
+      ],
+      "itemIds": [
+        "runtime-readiness-contract-1",
+        "runtime-readiness-contract-2",
+        "runtime-readiness-contract-3",
+        "runtime-readiness-contract-4"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL"
+      ],
+      "commands": [
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "All 30 owner readiness/health/metrics checks pass.",
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Runtime readiness is generated from an HTTPS non-local backend base URL."
+      ]
+    },
+    {
+      "wave": 9,
+      "batchId": "p0-manifest-release-owner",
+      "owner": "release-owner",
+      "priority": "P0",
+      "closureKinds": [
+        "RUN_NOW_WITH_REAL_ENV"
+      ],
+      "itemOrders": [
+        74
+      ],
+      "itemIds": [
+        "manifest-missing-no-explain-json-files-in-tmp-ddd-explain"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_MANIFEST_STRICT"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "blockerHints": [
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "wave": 10,
+      "batchId": "p0-authenticated-performance-release-performance",
+      "owner": "release-performance",
+      "priority": "P0",
+      "closureKinds": [
+        "RUN_NOW_LOCAL",
+        "RUN_NOW_WITH_REAL_ENV"
+      ],
+      "itemOrders": [
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83
+      ],
+      "itemIds": [
+        "performance-actual-shape-1",
+        "performance-actual-shape-2",
+        "performance-actual-shape-3",
+        "performance-actual-shape-4",
+        "performance-baseline-metadata-5",
+        "performance-baseline-metadata-6",
+        "performance-baseline-metadata-7",
+        "performance-baseline-metadata-8",
+        "performance-baseline-metadata-9"
+      ],
+      "envKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Clear this batch before running downstream runtime-heavy evidence."
       ]
     }
   ],
@@ -2720,6 +2850,450 @@
     },
     {
       "order": 70,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "runtime-readiness",
+      "owner": "release-infra",
+      "id": "runtime-readiness-contract-1",
+      "reason": "runtime readiness productionEquivalence.strict must be true for strict release evidence",
+      "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+      "batchId": "p0-runtime-readiness-release-infra",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL"
+      ],
+      "commands": [
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Runtime readiness is generated from an HTTPS non-local backend base URL.",
+        "All 30 owner readiness/health/metrics checks pass.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 71,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "runtime-readiness",
+      "owner": "release-infra",
+      "id": "runtime-readiness-contract-2",
+      "reason": "runtime readiness productionEquivalence.https must be true for strict release evidence",
+      "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+      "batchId": "p0-runtime-readiness-release-infra",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL"
+      ],
+      "commands": [
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Runtime readiness is generated from an HTTPS non-local backend base URL.",
+        "All 30 owner readiness/health/metrics checks pass.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 72,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "runtime-readiness",
+      "owner": "release-infra",
+      "id": "runtime-readiness-contract-3",
+      "reason": "runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
+      "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+      "batchId": "p0-runtime-readiness-release-infra",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL"
+      ],
+      "commands": [
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Runtime readiness is generated from an HTTPS non-local backend base URL.",
+        "All 30 owner readiness/health/metrics checks pass.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 73,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "runtime-readiness",
+      "owner": "release-infra",
+      "id": "runtime-readiness-contract-4",
+      "reason": "runtime readiness productionEquivalence.deploymentEvidence is required",
+      "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+      "batchId": "p0-runtime-readiness-release-infra",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL"
+      ],
+      "commands": [
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Runtime readiness is generated from an HTTPS non-local backend base URL.",
+        "All 30 owner readiness/health/metrics checks pass.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 74,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "manifest",
+      "owner": "release-owner",
+      "id": "manifest-missing-no-explain-json-files-in-tmp-ddd-explain",
+      "reason": "no explain JSON files in tmp\\ddd-explain",
+      "action": "Regenerate the missing evidence artifact, then rerun `node scripts/ddd-release-evidence-manifest.mjs`.",
+      "batchId": "p0-manifest-release-owner",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_RELEASE_MANIFEST_STRICT"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "blockerHints": [
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 75,
+      "closureKind": "RUN_NOW_LOCAL",
+      "priority": "P0",
+      "source": "authenticated-performance",
+      "owner": "release-performance",
+      "id": "performance-actual-shape-1",
+      "reason": "authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+      "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 76,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "authenticated-performance",
+      "owner": "release-performance",
+      "id": "performance-actual-shape-2",
+      "reason": "authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+      "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 77,
+      "closureKind": "RUN_NOW_LOCAL",
+      "priority": "P0",
+      "source": "authenticated-performance",
+      "owner": "release-performance",
+      "id": "performance-actual-shape-3",
+      "reason": "authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+      "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 78,
+      "closureKind": "RUN_NOW_LOCAL",
+      "priority": "P0",
+      "source": "authenticated-performance",
+      "owner": "release-performance",
+      "id": "performance-actual-shape-4",
+      "reason": "authenticated performance actual productionEquivalence.deploymentEvidence is required",
+      "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 79,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "authenticated-performance",
+      "owner": "release-performance",
+      "id": "performance-baseline-metadata-5",
+      "reason": "strict release baseline requires baselineType=authenticated-runtime",
+      "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 80,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "authenticated-performance",
+      "owner": "release-performance",
+      "id": "performance-baseline-metadata-6",
+      "reason": "acceptedAt must be an ISO timestamp",
+      "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 81,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "authenticated-performance",
+      "owner": "release-performance",
+      "id": "performance-baseline-metadata-7",
+      "reason": "acceptedBy is required",
+      "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 82,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "authenticated-performance",
+      "owner": "release-performance",
+      "id": "performance-baseline-metadata-8",
+      "reason": "sourceArtifact is required",
+      "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 83,
+      "closureKind": "RUN_NOW_WITH_REAL_ENV",
+      "priority": "P0",
+      "source": "authenticated-performance",
+      "owner": "release-performance",
+      "id": "performance-baseline-metadata-9",
+      "reason": "sourceSha256 must be a SHA-256 hex digest",
+      "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "batchReady": true,
+      "dependencies": [],
+      "envKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "order": 84,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "ai-runtime",
@@ -2736,7 +3310,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
@@ -2757,7 +3334,7 @@
       ]
     },
     {
-      "order": 71,
+      "order": 85,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "ai-runtime",
@@ -2774,7 +3351,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_AI_EXPECT_PROVIDER_REMOTE",
@@ -2795,7 +3375,7 @@
       ]
     },
     {
-      "order": 72,
+      "order": 86,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "ai-runtime",
@@ -2812,7 +3392,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "BASE_URL",
@@ -2833,7 +3416,7 @@
       ]
     },
     {
-      "order": 73,
+      "order": 87,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "frontend-smoke",
@@ -2850,7 +3433,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_FRONTEND_EXPECT_DEPLOYED"
@@ -2870,7 +3456,7 @@
       ]
     },
     {
-      "order": 74,
+      "order": 88,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "business-e2e",
@@ -2887,7 +3473,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "BASE_URL",
@@ -2910,7 +3499,7 @@
       ]
     },
     {
-      "order": 75,
+      "order": 89,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "business-e2e",
@@ -2927,7 +3516,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "BASE_URL",
@@ -2949,7 +3541,7 @@
       ]
     },
     {
-      "order": 76,
+      "order": 90,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "business-e2e",
@@ -2966,7 +3558,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "BASE_URL",
@@ -2988,7 +3583,7 @@
       ]
     },
     {
-      "order": 77,
+      "order": 91,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -3005,7 +3600,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -3031,7 +3629,7 @@
       ]
     },
     {
-      "order": 78,
+      "order": 92,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -3048,7 +3646,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -3074,7 +3675,7 @@
       ]
     },
     {
-      "order": 79,
+      "order": 93,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -3091,7 +3692,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -3117,7 +3721,7 @@
       ]
     },
     {
-      "order": 80,
+      "order": 94,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -3134,7 +3738,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -3160,7 +3767,7 @@
       ]
     },
     {
-      "order": 81,
+      "order": 95,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -3177,7 +3784,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -3203,7 +3813,7 @@
       ]
     },
     {
-      "order": 82,
+      "order": 96,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -3220,7 +3830,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -3246,7 +3859,7 @@
       ]
     },
     {
-      "order": 83,
+      "order": 97,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -3263,7 +3876,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -3289,7 +3905,7 @@
       ]
     },
     {
-      "order": 84,
+      "order": 98,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -3306,7 +3922,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -3332,7 +3951,7 @@
       ]
     },
     {
-      "order": 85,
+      "order": 99,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -3349,7 +3968,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -3375,7 +3997,7 @@
       ]
     },
     {
-      "order": 86,
+      "order": 100,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -3392,7 +4014,10 @@
         "p0-release-config-platform-events",
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
-        "p0-docker-release-infra"
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -3418,13 +4043,13 @@
       ]
     },
     {
-      "order": 87,
+      "order": 101,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P2",
       "source": "explain",
       "owner": "database",
       "id": "ai-knowledge-index-retry.json",
-      "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+      "reason": "missing required EXPLAIN artifact",
       "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
       "batchId": "p2-explain-database",
       "batchReady": false,
@@ -3436,6 +4061,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -3481,13 +4109,145 @@
       ]
     },
     {
-      "order": 88,
+      "order": 102,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P2",
+      "source": "explain",
+      "owner": "database",
+      "id": "message-archive-total.json",
+      "reason": "missing required EXPLAIN artifact",
+      "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+      "batchId": "p2-explain-database",
+      "batchReady": false,
+      "dependencies": [
+        "p0-release-env-lint-release-infra",
+        "p0-release-config-ai-owner",
+        "p0-release-config-payment-owner",
+        "p0-release-config-platform-events",
+        "p0-release-config-platform-owners",
+        "p0-release-config-release-infra",
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
+        "p1-ai-runtime-ai",
+        "p1-frontend-smoke-frontend",
+        "p1-business-e2e-file-owner",
+        "p1-business-e2e-job-owner",
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-ai-owner",
+        "p1-rollback-auth-owner",
+        "p1-rollback-file-owner",
+        "p1-rollback-iam-owner",
+        "p1-rollback-job-owner",
+        "p1-rollback-localization-owner",
+        "p1-rollback-message-owner",
+        "p1-rollback-payment-owner",
+        "p1-rollback-platform-owner",
+        "p1-rollback-plugin-owner"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_EXPLAIN_DATABASE",
+        "DDD_EXPLAIN_DIR",
+        "DDD_EXPLAIN_ENVIRONMENT",
+        "DDD_EXPLAIN_STRICT",
+        "DDD_RELEASE_CANDIDATE",
+        "MYSQL_CLI",
+        "MYSQL_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PASSWORD",
+        "MYSQL_PORT",
+        "MYSQL_USER"
+      ],
+      "commands": [
+        "node scripts/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/explain-gate-report.json",
+        "tmp/ddd-explain/*.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
+        "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
+      ]
+    },
+    {
+      "order": 103,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P2",
+      "source": "explain",
+      "owner": "database",
+      "id": "message-unread-count.json",
+      "reason": "missing required EXPLAIN artifact",
+      "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+      "batchId": "p2-explain-database",
+      "batchReady": false,
+      "dependencies": [
+        "p0-release-env-lint-release-infra",
+        "p0-release-config-ai-owner",
+        "p0-release-config-payment-owner",
+        "p0-release-config-platform-events",
+        "p0-release-config-platform-owners",
+        "p0-release-config-release-infra",
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
+        "p1-ai-runtime-ai",
+        "p1-frontend-smoke-frontend",
+        "p1-business-e2e-file-owner",
+        "p1-business-e2e-job-owner",
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-ai-owner",
+        "p1-rollback-auth-owner",
+        "p1-rollback-file-owner",
+        "p1-rollback-iam-owner",
+        "p1-rollback-job-owner",
+        "p1-rollback-localization-owner",
+        "p1-rollback-message-owner",
+        "p1-rollback-payment-owner",
+        "p1-rollback-platform-owner",
+        "p1-rollback-plugin-owner"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_EXPLAIN_DATABASE",
+        "DDD_EXPLAIN_DIR",
+        "DDD_EXPLAIN_ENVIRONMENT",
+        "DDD_EXPLAIN_STRICT",
+        "DDD_RELEASE_CANDIDATE",
+        "MYSQL_CLI",
+        "MYSQL_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PASSWORD",
+        "MYSQL_PORT",
+        "MYSQL_USER"
+      ],
+      "commands": [
+        "node scripts/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/explain-gate-report.json",
+        "tmp/ddd-explain/*.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
+        "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
+      ]
+    },
+    {
+      "order": 104,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P2",
       "source": "explain",
       "owner": "database",
       "id": "message-visible-list.json",
-      "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+      "reason": "missing required EXPLAIN artifact",
       "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
       "batchId": "p2-explain-database",
       "batchReady": false,
@@ -3499,6 +4259,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -3544,13 +4307,13 @@
       ]
     },
     {
-      "order": 89,
+      "order": 105,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P2",
       "source": "explain",
       "owner": "database",
       "id": "platform-outbox-owner-relay-file.json",
-      "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+      "reason": "missing required EXPLAIN artifact",
       "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
       "batchId": "p2-explain-database",
       "batchReady": false,
@@ -3562,6 +4325,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -3607,13 +4373,13 @@
       ]
     },
     {
-      "order": 90,
+      "order": 106,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P2",
       "source": "explain",
       "owner": "database",
       "id": "platform-outbox-owner-relay-message.json",
-      "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+      "reason": "missing required EXPLAIN artifact",
       "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
       "batchId": "p2-explain-database",
       "batchReady": false,
@@ -3625,6 +4391,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -3670,13 +4439,13 @@
       ]
     },
     {
-      "order": 91,
+      "order": 107,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P2",
       "source": "explain",
       "owner": "database",
       "id": "platform-runtime-appearance.json",
-      "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+      "reason": "missing required EXPLAIN artifact",
       "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
       "batchId": "p2-explain-database",
       "batchReady": false,
@@ -3688,6 +4457,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -3733,13 +4505,13 @@
       ]
     },
     {
-      "order": 92,
+      "order": 108,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P2",
       "source": "explain",
       "owner": "database",
       "id": "plugin-bootstrap.json",
-      "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+      "reason": "missing required EXPLAIN artifact",
       "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
       "batchId": "p2-explain-database",
       "batchReady": false,
@@ -3751,6 +4523,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -3796,7 +4571,7 @@
       ]
     },
     {
-      "order": 93,
+      "order": 109,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P3",
       "source": "orchestrator",
@@ -3814,6 +4589,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -3854,7 +4632,7 @@
       ]
     },
     {
-      "order": 94,
+      "order": 110,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P3",
       "source": "orchestrator",
@@ -3872,6 +4650,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
@@ -3910,7 +4691,7 @@
       ]
     },
     {
-      "order": 95,
+      "order": 111,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P3",
       "source": "orchestrator",
@@ -3928,6 +4709,9 @@
         "p0-release-config-platform-owners",
         "p0-release-config-release-infra",
         "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",

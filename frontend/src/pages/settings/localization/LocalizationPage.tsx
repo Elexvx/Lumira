@@ -1,4 +1,4 @@
-import { DeleteOutlined, HistoryOutlined, PlusOutlined, SaveOutlined, SyncOutlined } from '@ant-design/icons';
+import { HistoryOutlined, PlusOutlined, SaveOutlined, SyncOutlined } from '@ant-design/icons';
 import { Button, Form, Input, List, Select, Space, Spin, Tag, Typography } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -11,7 +11,6 @@ import { buildTableRequest, DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/pro
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
 import { backendRouteMeta } from '@/routes/meta';
-import { confirmAction } from '@/utils/confirm';
 import { request } from '@/services/common/request';
 import zhCN from '@/locales/zh-CN';
 import enUS from '@/locales/en-US';
@@ -285,26 +284,6 @@ const LocalizationPage = () => {
     },
     [getDraftValue, languageColumns, refreshBundles],
   );
-  const deleteEntry = useCallback(
-    (record: import('@/types/api').LocalizationEntry) => {
-      confirmAction({
-        title: t('删除译文', 'Delete translation'),
-        content: record.messageKey,
-        okText: t('删除', 'Delete'),
-        okButtonProps: { danger: true },
-        cancelText: t('取消', 'Cancel'),
-        onOk: async () => {
-          await request<boolean>(`/v1/localization/entries/${record.id}`, {
-            method: 'DELETE',
-            ...API_OPTS.NO_REDIRECT,
-          });
-          message.success(t('已删除', 'Deleted'));
-          await refreshBundles();
-        },
-      });
-    },
-    [refreshBundles],
-  );
   const copyKey = useCallback(async (messageKey: string) => {
     await copyTextToClipboard(messageKey);
     message.success(t('已复制', 'Copied'));
@@ -516,13 +495,6 @@ const LocalizationPage = () => {
                 onClick: () => openEntryDrawer(record),
               },
               {
-                key: 'delete',
-                label: t('删除译文', 'Delete translation'),
-                danger: true,
-                permission: 'localization:delete',
-                onClick: () => deleteEntry(record),
-              },
-              {
                 key: 'copy',
                 label: t('复制标识符', 'Copy key'),
                 onClick: async () => {
@@ -537,7 +509,6 @@ const LocalizationPage = () => {
       actionPermission,
       changeDraft,
       copyKey,
-      deleteEntry,
       getDraftValue,
       hasDraft,
       languageColumns,
@@ -610,9 +581,6 @@ const LocalizationPage = () => {
   );
   const tableRequest = useMemo(() => buildTableRequest(requestEntries), [requestEntries]);
   const toolbarActions = actionPermission.buildToolbarActions([
-    {
-      value: createElement(Button, { key: 'delete', size: buttonSize, icon: createElement(DeleteOutlined, {}), disabled: !actionPermission.can('localization:delete') }, t('删除译文', 'Delete translation')),
-    },
     {
       value: createElement(Button, { key: 'sync', size: buttonSize, icon: createElement(SyncOutlined, {}), loading: syncing, disabled: !canSyncLocalization, onClick: () => void syncEntries() }, t('同步', 'Sync')),
     },

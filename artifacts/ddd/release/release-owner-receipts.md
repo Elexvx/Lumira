@@ -1,22 +1,22 @@
 # DDD Release Owner Receipts
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
 Ready for strict gate rerun owners: 0
-Content blocked owners: 16
+Content blocked owners: 17
 Artifact missing owners: 1
 Missing artifacts: 1
-Pending actions: 95
+Pending actions: 111
 
 ## release-infra
 
 - Receipt status: CONTENT_BLOCKED
-- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra
-- Present artifacts: 3
+- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra, p0-runtime-readiness-release-infra
+- Present artifacts: 4
 - Missing artifacts: 0
-- Pending actions: 20
+- Pending actions: 24
 - Pending action reasons:
   - [docker] docker-blocker-1: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1
   - [docker] docker-blocker-2: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1
@@ -70,6 +70,21 @@ Pending actions: 95
   - [release-config] owner internal token: placeholder value is not allowed
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 
+## release-performance
+
+- Receipt status: CONTENT_BLOCKED
+- Ready batches: p0-authenticated-performance-release-performance
+- Present artifacts: 3
+- Missing artifacts: 0
+- Pending actions: 9
+- Pending action reasons:
+  - [authenticated-performance] performance-actual-shape-1: authenticated performance actual productionEquivalence.strict must be true for strict release evidence
+  - [authenticated-performance] performance-actual-shape-2: authenticated performance actual productionEquivalence.https must be true for strict release evidence
+  - [authenticated-performance] performance-actual-shape-3: authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence
+  - [authenticated-performance] performance-actual-shape-4: authenticated performance actual productionEquivalence.deploymentEvidence is required
+  - [authenticated-performance] performance-baseline-metadata-5: strict release baseline requires baselineType=authenticated-runtime
+- Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
+
 ## payment-owner
 
 - Receipt status: CONTENT_BLOCKED
@@ -84,21 +99,33 @@ Pending actions: 95
   - [rollback] Payment: Payment rollback drill is DEFERRED with approved deferral evidence
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 
+## release-owner
+
+- Receipt status: CONTENT_BLOCKED
+- Ready batches: p0-manifest-release-owner
+- Present artifacts: 4
+- Missing artifacts: 0
+- Pending actions: 2
+- Pending action reasons:
+  - [manifest] manifest-missing-no-explain-json-files-in-tmp-ddd-explain: no explain JSON files in tmp\ddd-explain
+  - [orchestrator] orchestrator-run-mode: strict release requires run mode report, got plan
+- Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
+
 ## database
 
 - Receipt status: ARTIFACT_MISSING
 - Ready batches: none
 - Present artifacts: 4
 - Missing artifacts: 1
-- Pending actions: 7
+- Pending actions: 9
 - Missing artifact paths:
   - `tmp/ddd-explain/*.json`
 - Pending action reasons:
-  - [explain] ai-knowledge-index-retry.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
-  - [explain] message-visible-list.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
-  - [explain] platform-outbox-owner-relay-file.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
-  - [explain] platform-outbox-owner-relay-message.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
-  - [explain] platform-runtime-appearance.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
+  - [explain] ai-knowledge-index-retry.json: missing required EXPLAIN artifact
+  - [explain] message-archive-total.json: missing required EXPLAIN artifact
+  - [explain] message-unread-count.json: missing required EXPLAIN artifact
+  - [explain] message-visible-list.json: missing required EXPLAIN artifact
+  - [explain] platform-outbox-owner-relay-file.json: missing required EXPLAIN artifact
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 
 ## ai
@@ -214,16 +241,5 @@ Pending actions: 95
 - Pending actions: 1
 - Pending action reasons:
   - [rollback] Plugin: Plugin rollback drill is DEFERRED with approved deferral evidence
-- Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
-
-## release-owner
-
-- Receipt status: CONTENT_BLOCKED
-- Ready batches: none
-- Present artifacts: 3
-- Missing artifacts: 0
-- Pending actions: 1
-- Pending action reasons:
-  - [orchestrator] orchestrator-run-mode: strict release requires run mode report, got plan
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 

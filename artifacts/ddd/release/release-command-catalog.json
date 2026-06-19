@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "finalDecision": {
@@ -8,18 +8,20 @@
     "finalRecommendation": "NO_GO_STRICT",
     "cutoverAllowed": false,
     "releaseEnvFileCutoverSafe": false,
-    "gateBlockers": 0,
-    "blockedCutoverItems": 6,
-    "stopReasonCount": 7,
+    "gateBlockers": 94,
+    "blockedCutoverItems": 8,
+    "stopReasonCount": 9,
     "stopReasonCoverage": "catalog-snapshot",
     "stopReasons": [
       "cutover checklist blocked: database-performance",
       "cutover checklist blocked: deployable-images",
       "cutover checklist blocked: evidence-integrity",
+      "cutover checklist blocked: production-equivalence",
       "cutover checklist blocked: release-environment",
       "cutover checklist blocked: rollback-safety",
       "cutover checklist blocked: runtime-business-acceptance",
-      "strict release gate blockers=0"
+      "cutover checklist blocked: strict-release-gate",
+      "strict release gate blockers=94"
     ],
     "source": "artifacts/ddd/release/release-final-go-no-go.json",
     "enforceCommand": "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
@@ -84,10 +86,10 @@
   "releaseEnvFileCutoverSafe": false,
   "scriptPath": "artifacts/ddd/release/release-execution-commands.sh",
   "summary": {
-    "ownerCommandCount": 5,
-    "batchCommandCount": 7,
+    "ownerCommandCount": 7,
+    "batchCommandCount": 10,
     "nextPriority": "P0",
-    "readyBatchCount": 7
+    "readyBatchCount": 10
   },
   "nextPriorityCommands": {
     "list": "DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
@@ -166,11 +168,13 @@
       "readyBatchIds": [
         "p0-docker-release-infra",
         "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
+        "p0-release-env-lint-release-infra",
+        "p0-runtime-readiness-release-infra"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json",
         "artifacts/ddd/config/release-config-evidence.json",
+        "artifacts/ddd/readiness/summary.json",
         "artifacts/ddd/release/release-env-lint.json"
       ],
       "commands": {
@@ -178,6 +182,40 @@
         "envCheck": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "dryRun": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "execute": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "owner": "release-owner",
+      "priority": "P0",
+      "readyBatchIds": [
+        "p0-manifest-release-owner"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "owner": "release-performance",
+      "priority": "P0",
+      "readyBatchIds": [
+        "p0-authenticated-performance-release-performance"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
       }
     }
   ],
@@ -279,6 +317,50 @@
         "envCheck": "DDD_RELEASE_BATCH=p0-release-env-lint-release-infra DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "dryRun": "DDD_RELEASE_BATCH=p0-release-env-lint-release-infra DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "execute": "DDD_RELEASE_BATCH=p0-release-env-lint-release-infra bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "batchId": "p0-runtime-readiness-release-infra",
+      "owner": "release-infra",
+      "priority": "P0",
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_BATCH=p0-runtime-readiness-release-infra DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_BATCH=p0-runtime-readiness-release-infra DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_BATCH=p0-runtime-readiness-release-infra DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_BATCH=p0-runtime-readiness-release-infra bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "batchId": "p0-manifest-release-owner",
+      "owner": "release-owner",
+      "priority": "P0",
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_BATCH=p0-manifest-release-owner DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_BATCH=p0-manifest-release-owner DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_BATCH=p0-manifest-release-owner DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_BATCH=p0-manifest-release-owner bash artifacts/ddd/release/release-execution-commands.sh"
+      }
+    },
+    {
+      "batchId": "p0-authenticated-performance-release-performance",
+      "owner": "release-performance",
+      "priority": "P0",
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json"
+      ],
+      "commands": {
+        "list": "DDD_RELEASE_BATCH=p0-authenticated-performance-release-performance DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_BATCH=p0-authenticated-performance-release-performance DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_BATCH=p0-authenticated-performance-release-performance DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_BATCH=p0-authenticated-performance-release-performance bash artifacts/ddd/release/release-execution-commands.sh"
       }
     }
   ]

@@ -82,11 +82,16 @@ try {
   ].join("\n"));
   fs.chmodSync(broadEnv, 0o644);
   const broad = runLint(broadEnv, missingReport, lintReport);
-  if (broad.status === 0) addFailure("env file lint must fail broad env file permissions");
   report = readJson(lintReport);
-  if (report.envFileSecurity?.permissionSafe !== false) addFailure("broad permission report must mark permissionSafe=false");
-  if (report.summary?.envFilePermissionSafe !== false) addFailure("broad permission summary must mark envFilePermissionSafe=false");
-  if (!report.blockers.some((blocker) => blocker.includes("use chmod 600"))) addFailure("broad permission report must tell operator to use chmod 600");
+  if (process.platform === "win32") {
+    if (report.envFileSecurity?.permissionCheckSkipped !== true) addFailure("broad permission report must mark permissionCheckSkipped=true on Windows");
+    if (report.summary?.envFilePermissionCheckSkipped !== true) addFailure("broad permission summary must mark envFilePermissionCheckSkipped=true on Windows");
+  } else {
+    if (broad.status === 0) addFailure("env file lint must fail broad env file permissions");
+    if (report.envFileSecurity?.permissionSafe !== false) addFailure("broad permission report must mark permissionSafe=false");
+    if (report.summary?.envFilePermissionSafe !== false) addFailure("broad permission summary must mark envFilePermissionSafe=false");
+    if (!report.blockers.some((blocker) => blocker.includes("use chmod 600"))) addFailure("broad permission report must tell operator to use chmod 600");
+  }
 
   const placeholderEnv = path.join(tmpDir, "placeholder.env");
   fs.writeFileSync(placeholderEnv, [

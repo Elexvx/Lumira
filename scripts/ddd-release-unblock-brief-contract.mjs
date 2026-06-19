@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const releaseDir = process.env.DDD_RELEASE_DIR
@@ -18,6 +19,8 @@ const forbiddenPatterns = [
   /\b[A-Z][A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY)=(?!<redacted>)("[^"]*"|'[^']*'|[^\s`|]+)/,
   /\bDDD_RELEASE_ENV_FILE=(?!<release-env-file>)[^\s`|]+/,
   new RegExp(`${repoRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}${path.sep.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+  new RegExp(repoRoot.replaceAll("\\", "\\\\").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  new RegExp(repoRoot.replaceAll("\\", "/").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
   /\b(?:mysql|postgres|jdbc|redis|amqp):\/\/[^\s`|)]+/i,
   /\b(?:sk-[A-Za-z0-9_-]{12,}|eyJ[A-Za-z0-9_-]{20,})\b/,
   /__REQUIRED__/,
@@ -666,7 +669,7 @@ function validateReleaseUnblockBrief(brief, markdown = "") {
 
 export { validateReleaseUnblockBrief };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const brief = readJson(jsonPath);
   const markdown = readText(markdownPath);
   const issues = validateReleaseUnblockBrief(brief, markdown);

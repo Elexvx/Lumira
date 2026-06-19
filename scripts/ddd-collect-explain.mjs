@@ -10,6 +10,7 @@ const outputDir = process.env.DDD_EXPLAIN_DIR
   ? path.resolve(process.env.DDD_EXPLAIN_DIR)
   : path.join(repoRoot, "tmp", "ddd-explain");
 const mysqlCommand = process.env.MYSQL_CLI || "mysql";
+const mysqlNodeScript = process.env.MYSQL_CLI_NODE_SCRIPT || "";
 const mysqlDatabase = process.env.DDD_EXPLAIN_DATABASE || process.env.MYSQL_DATABASE || "";
 const mysqlHost = process.env.MYSQL_HOST || "";
 const mysqlPort = process.env.MYSQL_PORT || "";
@@ -76,7 +77,10 @@ if (strict) {
 for (const query of explainQueries) {
   let output;
   try {
-    output = execFileSync(mysqlCommand, mysqlArgs(query.sql), {
+    output = execFileSync(mysqlNodeScript ? process.execPath : mysqlCommand, [
+      ...(mysqlNodeScript ? [mysqlNodeScript] : []),
+      ...mysqlArgs(query.sql),
+    ], {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
     }).trim();

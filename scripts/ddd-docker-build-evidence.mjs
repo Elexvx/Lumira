@@ -9,6 +9,9 @@ import { collectProvenanceIssues, evidenceValueIssue, redactLocalPaths } from ".
 import { requiredDockerImages } from "./ddd-docker-evidence-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
+const args = new Set(process.argv.slice(2));
+const help = args.has("--help") || args.has("-h");
+const checkOnly = args.has("--check");
 const dockerCommand = process.env.DDD_DOCKER_COMMAND || "docker";
 const outputDir = process.env.DDD_DOCKER_BUILD_DIR
   ? path.resolve(process.env.DDD_DOCKER_BUILD_DIR)
@@ -25,6 +28,30 @@ const sourceEnvironment = process.env.DDD_DOCKER_BUILD_ENVIRONMENT || process.en
 const releaseCandidate = process.env.DDD_RELEASE_CANDIDATE || process.env.GITHUB_SHA || "";
 const evidenceOperator = process.env.DDD_EVIDENCE_OPERATOR || process.env.GITHUB_ACTOR || "";
 const existingImageBuildEvidence = process.env.DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE || "";
+
+function printHelp() {
+  console.log(`DDD Docker image evidence
+
+Usage:
+  node scripts/ddd-docker-build-evidence.mjs [options]
+
+Options:
+  --check       Print a read-only Docker evidence readiness check and exit without writing artifacts.
+  --help, -h    Show this help.
+
+Environment:
+  DDD_DOCKER_COMMAND                         Docker command, defaults to docker.
+  DDD_DOCKER_BUILD_STRICT                    Require production-equivalent provenance fields.
+  DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE   CI run URL or artifact proving existing images were built.
+  DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE    Existing lumira-server image to inspect instead of building.
+  DDD_DOCKER_EXISTING_FRONTEND_IMAGE         Existing frontend image to inspect instead of building.
+
+Examples:
+  node scripts/ddd-docker-build-evidence.mjs --check
+  DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs
+  DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<rc> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<rc> node scripts/ddd-docker-build-evidence.mjs
+`);
+}
 
 function optionalBuildArg(envKey, argName) {
   const value = process.env[envKey];
@@ -54,9 +81,15 @@ const images = requiredDockerImages.map((image) => ({
       },
 }));
 
+if (help) {
+  printHelp();
+  process.exit(0);
+}
+
 function run(command, args, options = {}) {
   const startedAt = Date.now();
-  const result = spawnSync(command, args, {
+  const useBashForShellScript = process.platform === "win32" && /\.sh$/i.test(command);
+  const result = spawnSync(useBashForShellScript ? "bash" : command, useBashForShellScript ? [windowsPathForBash(command), ...args] : args, {
     cwd: repoRoot,
     encoding: "utf8",
     maxBuffer: 1024 * 1024 * 20,
@@ -80,6 +113,13 @@ function tail(text) {
 
 function redactOutput(text) {
   return redactLocalPaths(text, { repoRoot, homeDir: os.homedir() });
+}
+
+function windowsPathForBash(file) {
+  const resolved = path.resolve(file);
+  const match = /^([A-Za-z]):\\(.*)$/.exec(resolved);
+  if (!match) return file.replaceAll("\\", "/");
+  return `/mnt/${match[1].toLowerCase()}/${match[2].replaceAll("\\", "/")}`;
 }
 
 function isTransientDockerBuildFailure(result) {
@@ -130,6 +170,8 @@ function dockerRemediation(imageReports, blockerList) {
         "node scripts/ddd-docker-build-evidence.mjs",
       ].join(" "),
     });
+  }
+  if (dockerUnavailable || hasTransientFailure) {
     nextActions.push({
       id: "docker-existing-image-inspect",
       owner: "release-infra",
@@ -246,6 +288,74 @@ function staticDockerfileEvidence(image) {
     issues,
     checks,
   };
+}
+
+function runReadOnlyCheck() {
+  const version = run(dockerCommand, ["--version"]);
+  const info = version.status === 0 ? run(dockerCommand, ["info", "--format", "{{json .ServerVersion}}"]) : null;
+  const existingImageInputs = images.map((image) => ({
+    name: image.name,
+    envKey: image.existingImageEnvKey,
+    valuePresent: image.existingImage.length > 0,
+  }));
+  const allExistingImagesPresent = existingImageInputs.every((image) => image.valuePresent);
+  const anyExistingImagesPresent = existingImageInputs.some((image) => image.valuePresent);
+  const staticDockerfiles = images.map((image) => ({
+    name: image.name,
+    dockerfile: image.dockerfile,
+    ...staticDockerfileEvidence(image),
+  }));
+  const issues = [];
+  if (version.status !== 0) {
+    issues.push(`docker CLI is not available: ${version.error || version.stderrTail || "unknown error"}`);
+  }
+  if (info && info.status !== 0) {
+    issues.push(`docker daemon is not available: ${info.stderrTail || info.error || "docker info failed"}`);
+  }
+  if (anyExistingImagesPresent && !allExistingImagesPresent) {
+    issues.push("inspect-only mode requires all existing image env vars");
+  }
+  if (anyExistingImagesPresent && evidenceValueIssue(existingImageBuildEvidence)) {
+    issues.push(`existing docker image build evidence ${evidenceValueIssue(existingImageBuildEvidence)}`);
+  }
+  for (const image of staticDockerfiles) {
+    for (const issue of image.issues || []) {
+      issues.push(`${image.name}: static Dockerfile check failed: ${issue}`);
+    }
+  }
+  const dockerAvailable = version.status === 0 && (!info || info.status === 0);
+  const recommendedMode = allExistingImagesPresent ? "existing-image-inspect" : dockerAvailable ? "build-and-inspect" : "external-runner-required";
+  const nextCommand = allExistingImagesPresent
+    ? [
+        "DDD_DOCKER_BUILD_STRICT=true",
+        "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url>",
+        "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate>",
+        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate>",
+        "node scripts/ddd-docker-build-evidence.mjs",
+      ].join(" ")
+    : dockerAvailable
+      ? "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs"
+      : "Run DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs on a Docker-enabled CI runner, or provide DDD_DOCKER_EXISTING_* image env vars for inspect-only evidence.";
+  const result = {
+    status: issues.length === 0 ? "PASS" : "BLOCKED",
+    generatedAt: new Date().toISOString(),
+    willWriteFiles: false,
+    dockerCommand,
+    dockerAvailable,
+    recommendedMode,
+    nextCommand,
+    existingImageBuildEvidencePresent: existingImageBuildEvidence.trim().length > 0,
+    existingImageInputs,
+    staticDockerfiles,
+    remediation: dockerRemediation(staticDockerfiles, issues),
+    issues,
+  };
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(issues.length === 0 ? 0 : 1);
+}
+
+if (checkOnly) {
+  runReadOnlyCheck();
 }
 
 function inspectImage(tag) {

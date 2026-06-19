@@ -1,7 +1,7 @@
 # DDD Release Performance Baseline Closure
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: READY_FOR_STRICT_GATE_RERUN
+Generated at: 2026-06-18T19:37:26.213Z
+Status: BLOCKED
 Recommendation: NO_GO_STRICT
 No auto waivers: true
 Ready to promote: false
@@ -129,7 +129,15 @@ Post-promotion release gates rerun with the accepted baseline and no authenticat
 
 ## Blockers
 
-- None
+- acceptedAt must be an ISO timestamp
+- acceptedBy is required
+- authenticated performance actual productionEquivalence.deploymentEvidence is required
+- authenticated performance actual productionEquivalence.https must be true for strict release evidence
+- authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence
+- authenticated performance actual productionEquivalence.strict must be true for strict release evidence
+- sourceArtifact is required
+- sourceSha256 must be a SHA-256 hex digest
+- strict release baseline requires baselineType=authenticated-runtime
 
 ## Required Env Keys
 

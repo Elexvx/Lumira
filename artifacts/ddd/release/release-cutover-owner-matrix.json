@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "releaseEnvFileCutoverSafe": false,
@@ -60,16 +60,16 @@
     }
   },
   "gate": {
-    "strict": false,
-    "blockers": 0,
-    "warnings": 16
+    "strict": true,
+    "blockers": 94,
+    "warnings": 8
   },
   "summary": {
-    "ownerCount": 17,
-    "blockedOwnerCount": 17,
+    "ownerCount": 18,
+    "blockedOwnerCount": 18,
     "cutoverChecklistItems": 9,
-    "blockedCutoverItems": 6,
-    "totalOwnerItems": 28
+    "blockedCutoverItems": 8,
+    "totalOwnerItems": 29
   },
   "owners": [
     {
@@ -196,6 +196,185 @@
       ]
     },
     {
+      "owner": "release-infra",
+      "blockedItems": 3,
+      "totalItems": 3,
+      "readyBatchIds": [
+        "p0-docker-release-infra",
+        "p0-release-config-release-infra",
+        "p0-release-env-lint-release-infra",
+        "p0-runtime-readiness-release-infra"
+      ],
+      "blockedBatchIds": [],
+      "batchIds": [
+        "p0-docker-release-infra",
+        "p0-release-config-release-infra",
+        "p0-release-env-lint-release-infra",
+        "p0-runtime-readiness-release-infra"
+      ],
+      "items": [
+        {
+          "checklistId": "deployable-images",
+          "title": "Deployable backend/frontend images are built and inspected.",
+          "required": true,
+          "status": "BLOCKED",
+          "pendingItems": 4,
+          "lanes": [
+            "deployable-image"
+          ],
+          "batchIds": [
+            "p0-docker-release-infra"
+          ],
+          "readyBatchIds": [
+            "p0-docker-release-infra"
+          ],
+          "blockedBatchIds": [],
+          "commands": [
+            "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
+            "node scripts/ddd-docker-build-evidence.mjs"
+          ],
+          "envCheckGroups": [
+            "DDD_DOCKER_BUILD_STRICT=DDD_DOCKER_BUILD_STRICT",
+            "DDD_DOCKER_COMMAND=DDD_DOCKER_COMMAND"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/build/docker-image-evidence.json"
+          ],
+          "exitCriteria": [
+            "Clear this batch before running downstream runtime-heavy evidence.",
+            "Docker CLI and daemon are available in the evidence runner.",
+            "Required lumira-server and frontend images are built, inspected, and not skipped."
+          ]
+        },
+        {
+          "checklistId": "production-equivalence",
+          "title": "Runtime and performance evidence use HTTPS non-local production-equivalent endpoints.",
+          "required": true,
+          "status": "BLOCKED",
+          "pendingItems": 13,
+          "lanes": [
+            "production-equivalence",
+            "performance"
+          ],
+          "batchIds": [
+            "p0-runtime-readiness-release-infra"
+          ],
+          "readyBatchIds": [
+            "p0-runtime-readiness-release-infra"
+          ],
+          "blockedBatchIds": [],
+          "commands": [
+            "node scripts/ddd-runtime-readiness-smoke.mjs"
+          ],
+          "envCheckGroups": [
+            "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
+            "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
+            "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/readiness/summary.json"
+          ],
+          "exitCriteria": [
+            "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence.",
+            "Runtime readiness is generated from an HTTPS non-local backend base URL."
+          ]
+        },
+        {
+          "checklistId": "release-environment",
+          "title": "Completed release env file and config matrix are valid.",
+          "required": true,
+          "status": "BLOCKED",
+          "pendingItems": 65,
+          "lanes": [
+            "environment"
+          ],
+          "batchIds": [
+            "p0-release-env-lint-release-infra",
+            "p0-release-config-release-infra"
+          ],
+          "readyBatchIds": [
+            "p0-release-env-lint-release-infra",
+            "p0-release-config-release-infra"
+          ],
+          "blockedBatchIds": [],
+          "commands": [
+            "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+            "node scripts/ddd-release-config-evidence.mjs"
+          ],
+          "envCheckGroups": [
+            "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL",
+            "AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL",
+            "BASE_URL=BASE_URL",
+            "CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
+            "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD",
+            "DB_URL=DB_URL|SPRING_DATASOURCE_URL",
+            "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME",
+            "DDD_AUTH_PASSWORD=DDD_AUTH_PASSWORD",
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE=DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+            "DDD_AUTH_PERF_ENVIRONMENT=DDD_AUTH_PERF_ENVIRONMENT",
+            "DDD_AUTH_USERNAME=DDD_AUTH_USERNAME",
+            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+            "DDD_DEPLOYMENT_EVIDENCE=DDD_DEPLOYMENT_EVIDENCE",
+            "DDD_EXPLAIN_DATABASE=DDD_EXPLAIN_DATABASE",
+            "DDD_FRONTEND_DEPLOYMENT_EVIDENCE=DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+            "DDD_MIGRATION_COMPLETED_AT=DDD_MIGRATION_COMPLETED_AT",
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE",
+            "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED",
+            "DDD_MIGRATION_OPERATOR=DDD_MIGRATION_OPERATOR",
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+            "FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET",
+            "FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL",
+            "JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL",
+            "JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET",
+            "LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
+            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+            "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL",
+            "MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL",
+            "MYSQL_DATABASE=MYSQL_DATABASE",
+            "MYSQL_HOST=MYSQL_HOST",
+            "MYSQL_PORT=MYSQL_PORT",
+            "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL",
+            "PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL",
+            "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL",
+            "PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL",
+            "REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST",
+            "SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY",
+            "SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL",
+            "SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL",
+            "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
+            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+            "SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL",
+            "XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN",
+            "XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/config/release-config-evidence.json",
+            "artifacts/ddd/release/release-env-lint.json"
+          ],
+          "exitCriteria": [
+            "Clear this batch before running downstream runtime-heavy evidence.",
+            "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
+            "release-config-evidence status is PASS with no contract issues.",
+            "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
+            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+          ]
+        }
+      ]
+    },
+    {
       "owner": "ai-owner",
       "blockedItems": 2,
       "totalItems": 2,
@@ -306,7 +485,7 @@
           "title": "Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 6,
+          "pendingItems": 8,
           "lanes": [
             "database-performance"
           ],
@@ -349,7 +528,7 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 3,
+          "pendingItems": 4,
           "lanes": [
             "evidence-integrity",
             "final-verification"
@@ -493,7 +672,7 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 3,
+          "pendingItems": 4,
           "lanes": [
             "evidence-integrity",
             "final-verification"
@@ -649,144 +828,99 @@
       ]
     },
     {
-      "owner": "release-infra",
+      "owner": "release-owner",
       "blockedItems": 2,
-      "totalItems": 2,
+      "totalItems": 3,
       "readyBatchIds": [
-        "p0-docker-release-infra",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
+        "p0-manifest-release-owner"
       ],
-      "blockedBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-owner"
+      ],
       "batchIds": [
-        "p0-docker-release-infra",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
+        "p0-manifest-release-owner",
+        "p3-orchestrator-release-owner"
       ],
       "items": [
         {
-          "checklistId": "deployable-images",
-          "title": "Deployable backend/frontend images are built and inspected.",
+          "checklistId": "evidence-integrity",
+          "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
           "pendingItems": 4,
           "lanes": [
-            "deployable-image"
+            "evidence-integrity",
+            "final-verification"
           ],
           "batchIds": [
-            "p0-docker-release-infra"
+            "p0-manifest-release-owner",
+            "p3-orchestrator-release-owner"
           ],
           "readyBatchIds": [
-            "p0-docker-release-infra"
+            "p0-manifest-release-owner"
           ],
-          "blockedBatchIds": [],
+          "blockedBatchIds": [
+            "p3-orchestrator-release-owner"
+          ],
           "commands": [
-            "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-            "node scripts/ddd-docker-build-evidence.mjs"
+            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict",
+            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs",
+            "node scripts/ddd-promote-performance-baseline.mjs",
+            "node scripts/ddd-release-evidence-orchestrator.mjs"
           ],
           "envCheckGroups": [
-            "DDD_DOCKER_BUILD_STRICT=DDD_DOCKER_BUILD_STRICT",
-            "DDD_DOCKER_COMMAND=DDD_DOCKER_COMMAND"
+            "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
+            "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
+            "DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT",
+            "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
           ],
           "expectedArtifacts": [
-            "artifacts/ddd/build/docker-image-evidence.json"
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/release/orchestrator-report.json",
+            "artifacts/ddd/release/readiness-summary.json",
+            "artifacts/ddd/release/release-evidence-gate.json"
           ],
           "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence.",
-            "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped."
+            "Final strict release gate and readiness summary report zero blockers.",
+            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+            "Run only after all prerequisite evidence batches are clean."
           ]
         },
         {
-          "checklistId": "release-environment",
-          "title": "Completed release env file and config matrix are valid.",
+          "checklistId": "strict-release-gate",
+          "title": "Strict release gate has zero blockers and no contract issues.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 65,
-          "lanes": [
-            "environment"
-          ],
-          "batchIds": [
-            "p0-release-env-lint-release-infra",
-            "p0-release-config-release-infra"
-          ],
-          "readyBatchIds": [
-            "p0-release-env-lint-release-infra",
-            "p0-release-config-release-infra"
-          ],
+          "pendingItems": 94,
+          "lanes": [],
+          "batchIds": [],
+          "readyBatchIds": [],
           "blockedBatchIds": [],
-          "commands": [
-            "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-            "node scripts/ddd-release-config-evidence.mjs"
+          "commands": [],
+          "envCheckGroups": [],
+          "expectedArtifacts": [],
+          "exitCriteria": []
+        },
+        {
+          "checklistId": "data-safety",
+          "title": "Fresh and upgrade migrations are proven with runtime metadata.",
+          "required": true,
+          "status": "PASS",
+          "pendingItems": 0,
+          "lanes": [
+            "data-safety"
           ],
-          "envCheckGroups": [
-            "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL",
-            "AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL",
-            "BASE_URL=BASE_URL",
-            "CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
-            "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD",
-            "DB_URL=DB_URL|SPRING_DATASOURCE_URL",
-            "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME",
-            "DDD_AUTH_PASSWORD=DDD_AUTH_PASSWORD",
-            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-            "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE=DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-            "DDD_AUTH_PERF_ENVIRONMENT=DDD_AUTH_PERF_ENVIRONMENT",
-            "DDD_AUTH_USERNAME=DDD_AUTH_USERNAME",
-            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-            "DDD_DEPLOYMENT_EVIDENCE=DDD_DEPLOYMENT_EVIDENCE",
-            "DDD_EXPLAIN_DATABASE=DDD_EXPLAIN_DATABASE",
-            "DDD_FRONTEND_DEPLOYMENT_EVIDENCE=DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-            "DDD_MIGRATION_COMPLETED_AT=DDD_MIGRATION_COMPLETED_AT",
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE",
-            "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED",
-            "DDD_MIGRATION_OPERATOR=DDD_MIGRATION_OPERATOR",
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-            "FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET",
-            "FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL",
-            "JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL",
-            "JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET",
-            "LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-            "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL",
-            "MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL",
-            "MYSQL_DATABASE=MYSQL_DATABASE",
-            "MYSQL_HOST=MYSQL_HOST",
-            "MYSQL_PORT=MYSQL_PORT",
-            "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL",
-            "PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL",
-            "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL",
-            "PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL",
-            "REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST",
-            "SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY",
-            "SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL",
-            "SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL",
-            "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
-            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-            "SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL",
-            "XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN",
-            "XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json",
-            "artifacts/ddd/release/release-env-lint.json"
-          ],
-          "exitCriteria": [
-            "Clear this batch before running downstream runtime-heavy evidence.",
-            "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-            "release-config-evidence status is PASS with no contract issues.",
-            "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-          ]
+          "batchIds": [],
+          "readyBatchIds": [],
+          "blockedBatchIds": [],
+          "commands": [],
+          "envCheckGroups": [],
+          "expectedArtifacts": [],
+          "exitCriteria": []
         }
       ]
     },
@@ -1265,101 +1399,54 @@
       ]
     },
     {
-      "owner": "release-owner",
+      "owner": "release-performance",
       "blockedItems": 1,
-      "totalItems": 4,
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
+      "totalItems": 1,
+      "readyBatchIds": [
+        "p0-authenticated-performance-release-performance"
       ],
+      "blockedBatchIds": [],
       "batchIds": [
-        "p3-orchestrator-release-owner"
+        "p0-authenticated-performance-release-performance"
       ],
       "items": [
-        {
-          "checklistId": "evidence-integrity",
-          "title": "Evidence manifest and final orchestrator strict rerun are clean.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 3,
-          "lanes": [
-            "evidence-integrity",
-            "final-verification"
-          ],
-          "batchIds": [
-            "p3-orchestrator-release-owner"
-          ],
-          "readyBatchIds": [],
-          "blockedBatchIds": [
-            "p3-orchestrator-release-owner"
-          ],
-          "commands": [
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict",
-            "node scripts/ddd-release-evidence-orchestrator.mjs"
-          ],
-          "envCheckGroups": [
-            "DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/orchestrator-report.json",
-            "artifacts/ddd/release/readiness-summary.json",
-            "artifacts/ddd/release/release-evidence-gate.json"
-          ],
-          "exitCriteria": [
-            "Final strict release gate and readiness summary report zero blockers.",
-            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-            "Run only after all prerequisite evidence batches are clean."
-          ]
-        },
-        {
-          "checklistId": "data-safety",
-          "title": "Fresh and upgrade migrations are proven with runtime metadata.",
-          "required": true,
-          "status": "PASS",
-          "pendingItems": 0,
-          "lanes": [
-            "data-safety"
-          ],
-          "batchIds": [],
-          "readyBatchIds": [],
-          "blockedBatchIds": [],
-          "commands": [],
-          "envCheckGroups": [],
-          "expectedArtifacts": [],
-          "exitCriteria": []
-        },
         {
           "checklistId": "production-equivalence",
           "title": "Runtime and performance evidence use HTTPS non-local production-equivalent endpoints.",
           "required": true,
-          "status": "PASS",
-          "pendingItems": 0,
+          "status": "BLOCKED",
+          "pendingItems": 13,
           "lanes": [
             "production-equivalence",
             "performance"
           ],
-          "batchIds": [],
-          "readyBatchIds": [],
+          "batchIds": [
+            "p0-authenticated-performance-release-performance"
+          ],
+          "readyBatchIds": [
+            "p0-authenticated-performance-release-performance"
+          ],
           "blockedBatchIds": [],
-          "commands": [],
-          "envCheckGroups": [],
-          "expectedArtifacts": [],
-          "exitCriteria": []
-        },
-        {
-          "checklistId": "strict-release-gate",
-          "title": "Strict release gate has zero blockers and no contract issues.",
-          "required": true,
-          "status": "PASS",
-          "pendingItems": 0,
-          "lanes": [],
-          "batchIds": [],
-          "readyBatchIds": [],
-          "blockedBatchIds": [],
-          "commands": [],
-          "envCheckGroups": [],
-          "expectedArtifacts": [],
-          "exitCriteria": []
+          "commands": [
+            "node scripts/ddd-authenticated-performance-smoke.mjs",
+            "node scripts/ddd-promote-performance-baseline.mjs"
+          ],
+          "envCheckGroups": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/performance/authenticated-runtime-actual.json",
+            "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+            "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+          ],
+          "exitCriteria": [
+            "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+            "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
         }
       ]
     }

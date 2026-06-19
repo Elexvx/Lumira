@@ -439,6 +439,12 @@ class DddArchitectureBoundaryTest {
     }
 
     private static Stream<Path> javaFiles(Path root) throws IOException {
+        if (Files.isDirectory(root.resolve("services")) && Files.isDirectory(root.resolve("libs"))) {
+            return Stream.concat(Files.walk(root.resolve("services")), Files.walk(root.resolve("libs")))
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> !normalized(path).contains("/target/"));
+        }
         return Files.walk(root)
                 .filter(Files::isRegularFile)
                 .filter(path -> path.toString().endsWith(".java"))

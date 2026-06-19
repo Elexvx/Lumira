@@ -5,12 +5,16 @@ import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
+const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const outputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-contract-"));
 const fakeBinDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-docker-"));
-const fakeDocker = join(fakeBinDir, "docker-ok.sh");
-const fakeDockerNoDaemon = join(fakeBinDir, "docker-no-daemon.sh");
-writeFileSync(fakeDocker, `#!/bin/sh
+const fakeDockerScript = join(fakeBinDir, "docker-ok.sh");
+const fakeDockerNoDaemonScript = join(fakeBinDir, "docker-no-daemon.sh");
+const fakeDocker = process.platform === "win32" ? join(fakeBinDir, "docker-ok.cmd") : fakeDockerScript;
+const fakeDockerNoDaemon = process.platform === "win32" ? join(fakeBinDir, "docker-no-daemon.cmd") : fakeDockerNoDaemonScript;
+writeFileSync(fakeDockerScript, `#!/bin/sh
 if [ "$1" = "--version" ]; then
   echo "Docker version test"
   exit 0
@@ -21,7 +25,7 @@ if [ "$1" = "info" ]; then
 fi
 exit 0
 `);
-writeFileSync(fakeDockerNoDaemon, `#!/bin/sh
+writeFileSync(fakeDockerNoDaemonScript, `#!/bin/sh
 if [ "$1" = "--version" ]; then
   echo "Docker version test"
   exit 0
@@ -32,11 +36,17 @@ if [ "$1" = "info" ]; then
 fi
 exit 0
 `);
+if (process.platform === "win32") {
+  writeFileSync(fakeDocker, `@echo off\r\nif "%1"=="--version" (echo Docker version test& exit /b 0)\r\nif "%1"=="info" (echo "29.4.1"& exit /b 0)\r\nexit /b 0\r\n`);
+  writeFileSync(fakeDockerNoDaemon, `@echo off\r\nif "%1"=="--version" (echo Docker version test& exit /b 0)\r\nif "%1"=="info" (echo Cannot connect to the Docker daemon 1>&2& exit /b 1)\r\nexit /b 0\r\n`);
+}
+chmodSync(fakeDockerScript, 0o755);
+chmodSync(fakeDockerNoDaemonScript, 0o755);
 chmodSync(fakeDocker, 0o755);
 chmodSync(fakeDockerNoDaemon, 0o755);
 
 const result = spawnSync("node", ["scripts/ddd-release-evidence-orchestrator.mjs", "--strict"], {
-  cwd: new URL("..", import.meta.url).pathname,
+  cwd: repoRoot,
   encoding: "utf8",
   env: {
     ...process.env,
@@ -137,7 +147,7 @@ for (const step of report.selectedSteps) {
 
 const enabledOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-baseline-enabled-"));
 const enabledResult = spawnSync("node", ["scripts/ddd-release-evidence-orchestrator.mjs", "--strict"], {
-  cwd: new URL("..", import.meta.url).pathname,
+  cwd: repoRoot,
   encoding: "utf8",
   env: {
     ...process.env,
@@ -182,7 +192,7 @@ assert.deepEqual(enabledBaseline.envKeys, [
 
 const nonHttpsOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-non-https-"));
 const nonHttpsResult = spawnSync("node", ["scripts/ddd-release-evidence-orchestrator.mjs", "--strict"], {
-  cwd: new URL("..", import.meta.url).pathname,
+  cwd: repoRoot,
   encoding: "utf8",
   env: {
     ...process.env,
@@ -221,7 +231,7 @@ assert.ok(nonHttpsReport.preflight.checks.some((check) => (
 
 const dockerBlockedOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-docker-blocked-"));
 const dockerBlockedResult = spawnSync("node", ["scripts/ddd-release-evidence-orchestrator.mjs", "--strict"], {
-  cwd: new URL("..", import.meta.url).pathname,
+  cwd: repoRoot,
   encoding: "utf8",
   env: {
     ...process.env,
@@ -258,7 +268,7 @@ const unsafeEnvFile = join(unsafeEnvFileOutputDir, ".env.release.unsafe");
 writeFileSync(unsafeEnvFile, "LUMIRA_ENV=release\n");
 chmodSync(unsafeEnvFile, 0o644);
 const unsafeEnvFileResult = spawnSync("node", ["scripts/ddd-release-evidence-orchestrator.mjs", "--strict"], {
-  cwd: new URL("..", import.meta.url).pathname,
+  cwd: repoRoot,
   encoding: "utf8",
   env: {
     ...process.env,
@@ -284,19 +294,27 @@ const unsafeEnvFileResult = spawnSync("node", ["scripts/ddd-release-evidence-orc
 
 assert.equal(unsafeEnvFileResult.status, 0, unsafeEnvFileResult.stderr || unsafeEnvFileResult.stdout);
 const unsafeEnvFileReport = JSON.parse(readFileSync(join(unsafeEnvFileOutputDir, "orchestrator-report.json"), "utf8"));
-assert.ok(unsafeEnvFileReport.preflight.checks.some((check) => (
-  check.id === "release-config-env-file"
-    && check.status === "BLOCKER"
-    && check.detail.includes("permissions are too broad (644)")
-    && check.detail.includes("chmod 600")
-)));
+if (process.platform === "win32") {
+  assert.ok(unsafeEnvFileReport.preflight.checks.some((check) => (
+    check.id === "release-config-env-file"
+      && check.status === "PASS"
+      && check.detail.includes("permission check skipped on Windows")
+  )));
+} else {
+  assert.ok(unsafeEnvFileReport.preflight.checks.some((check) => (
+    check.id === "release-config-env-file"
+      && check.status === "BLOCKER"
+      && check.detail.includes("permissions are too broad (644)")
+      && check.detail.includes("chmod 600")
+  )));
+}
 
 const templateEnvFileOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-template-env-file-"));
 const templateEnvFile = join(templateEnvFileOutputDir, "release-env-missing.template.env");
 writeFileSync(templateEnvFile, "LUMIRA_ENV=release\n");
 chmodSync(templateEnvFile, 0o600);
 const templateEnvFileResult = spawnSync("node", ["scripts/ddd-release-evidence-orchestrator.mjs", "--strict"], {
-  cwd: new URL("..", import.meta.url).pathname,
+  cwd: repoRoot,
   encoding: "utf8",
   env: {
     ...process.env,
@@ -333,7 +351,7 @@ const safeEnvFile = join(safeEnvFileOutputDir, ".env.release.safe");
 writeFileSync(safeEnvFile, "LUMIRA_ENV=release\n");
 chmodSync(safeEnvFile, 0o600);
 const safeEnvFileResult = spawnSync("node", ["scripts/ddd-release-evidence-orchestrator.mjs", "--strict"], {
-  cwd: new URL("..", import.meta.url).pathname,
+  cwd: repoRoot,
   encoding: "utf8",
   env: {
     ...process.env,
@@ -363,7 +381,9 @@ assert.equal(safeEnvFileReport.preflight.status, "PASS");
 assert.ok(safeEnvFileReport.preflight.checks.some((check) => (
   check.id === "release-config-env-file"
     && check.status === "PASS"
-    && check.detail.includes("private permissions (600)")
+    && (process.platform === "win32"
+      ? check.detail.includes("permission check skipped on Windows")
+      : check.detail.includes("private permissions (600)"))
 )));
 
 const fileDrivenEnvOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-file-driven-env-"));
@@ -387,7 +407,7 @@ writeFileSync(fileDrivenEnv, [
 ].join("\n"));
 chmodSync(fileDrivenEnv, 0o600);
 const fileDrivenEnvResult = spawnSync("node", ["scripts/ddd-release-evidence-orchestrator.mjs", "--strict"], {
-  cwd: new URL("..", import.meta.url).pathname,
+  cwd: repoRoot,
   encoding: "utf8",
   env: {
     ...process.env,
@@ -452,7 +472,7 @@ writeFileSync(placeholderEnv, [
 ].join("\n"));
 chmodSync(placeholderEnv, 0o600);
 const placeholderEnvResult = spawnSync("node", ["scripts/ddd-release-evidence-orchestrator.mjs", "--strict"], {
-  cwd: new URL("..", import.meta.url).pathname,
+  cwd: repoRoot,
   encoding: "utf8",
   env: {
     ...process.env,

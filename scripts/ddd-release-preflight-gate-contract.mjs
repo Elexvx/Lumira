@@ -10,6 +10,38 @@ const releaseDir = path.join(repoRoot, "artifacts", "ddd", "release");
 const gatePath = path.join(releaseDir, "release-preflight-gate.sh");
 const failures = [];
 
+function bashPath(file) {
+  const resolved = path.resolve(file);
+  if (process.platform !== "win32") return resolved;
+  return `/mnt/${resolved[0].toLowerCase()}${resolved.slice(2).replaceAll("\\", "/")}`;
+}
+
+function bashPathEnv() {
+  if (process.platform !== "win32") return process.env.PATH;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-wsl-node-"));
+  fs.writeFileSync(path.join(dir, "node"), `#!/usr/bin/env bash
+args=()
+for arg in "$@"; do
+  if [[ "$arg" =~ ^/mnt/([a-zA-Z])/(.*)$ ]]; then
+    drive="\${BASH_REMATCH[1]^^}:"
+    rest="\${BASH_REMATCH[2]//\\//\\\\}"
+    args+=("\${drive}\\\\\${rest}")
+  else
+    args+=("$arg")
+  fi
+done
+exec "${bashPath(process.execPath)}" "\${args[@]}"
+`);
+  fs.chmodSync(path.join(dir, "node"), 0o755);
+  return `${bashPath(dir)}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`;
+}
+
+const bashEnvPath = bashPathEnv();
+
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
+}
+
 function addFailure(message) {
   failures.push(message);
 }
@@ -28,13 +60,28 @@ function readOptionalJson(file) {
 }
 
 function runGate(reportFile, env = {}) {
-  return spawnSync("bash", [gatePath], {
+  if (process.platform === "win32") {
+    const command = [
+      `export PATH=${shellQuote(bashEnvPath)}`,
+      `export DDD_NODE_BIN=node`,
+      `export LUMIRA_REPO_ROOT=${shellQuote(bashPath(repoRoot))}`,
+      `export DDD_RELEASE_PREFLIGHT_REPORT=${shellQuote(bashPath(reportFile))}`,
+      ...Object.entries(env).map(([key, value]) => `export ${key}=${shellQuote(value)}`),
+      `bash ${shellQuote(bashPath(gatePath))}`,
+    ].join("; ");
+    return spawnSync("bash", ["-lc", command], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
+  }
+  return spawnSync("bash", [bashPath(gatePath)], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
       ...process.env,
-      LUMIRA_REPO_ROOT: repoRoot,
-      DDD_RELEASE_PREFLIGHT_REPORT: reportFile,
+      PATH: bashEnvPath,
+      LUMIRA_REPO_ROOT: bashPath(repoRoot),
+      DDD_RELEASE_PREFLIGHT_REPORT: bashPath(reportFile),
       ...env,
     },
   });
@@ -44,7 +91,7 @@ if (!fs.existsSync(gatePath)) {
   addFailure(`release preflight gate script must exist: ${gatePath}`);
 } else {
   const mode = fs.statSync(gatePath).mode & 0o777;
-  if ((mode & 0o111) === 0) addFailure("release preflight gate script must be executable");
+  if (process.platform !== "win32" && (mode & 0o111) === 0) addFailure("release preflight gate script must be executable");
   const source = fs.readFileSync(gatePath, "utf8");
   for (const snippet of [
     "set -euo pipefail",
@@ -93,7 +140,7 @@ if (!fs.existsSync(gatePath)) {
   }
 }
 
-const syntax = spawnSync("bash", ["-n", gatePath], { cwd: repoRoot, encoding: "utf8" });
+const syntax = spawnSync("bash", ["-n", bashPath(gatePath)], { cwd: repoRoot, encoding: "utf8" });
 if (syntax.status !== 0) addFailure(`release preflight gate bash syntax must pass: ${syntax.stderr}`);
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-preflight-gate-contract-"));
@@ -106,6 +153,14 @@ try {
   const unresolvedReadiness = Number(envReadinessPacket?.summary?.blockers || 0)
     + Number(envReadinessPacket?.summary?.placeholders || 0)
     + Number(envReadinessPacket?.summary?.missing || 0);
+  const initialRefreshRun = spawnSync("node", ["scripts/ddd-release-readiness-summary.mjs"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  if (initialRefreshRun.status !== 0) {
+    addFailure(`release artifact integrity refresh before default preflight must pass: ${initialRefreshRun.stderr || initialRefreshRun.stdout}`);
+  }
+
   const defaultReportPath = path.join(tmpDir, "preflight-default.json");
   const defaultRun = runGate(defaultReportPath);
   if (defaultRun.status !== 0) addFailure(`default preflight must exit 0 for reporting mode: ${defaultRun.stderr || defaultRun.stdout}`);
@@ -170,6 +225,14 @@ try {
     || defaultReport.steps.find((step) => step.name === "env-readiness")?.exitCode !== 0
     || defaultReport.steps.find((step) => step.name === "final-go-no-go")?.exitCode !== 0) {
     addFailure("default preflight report must record zero exit codes for advisory gate wrappers except manifest provenance preflight");
+  }
+
+  const refreshRun = spawnSync("node", ["scripts/ddd-release-readiness-summary.mjs"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  if (refreshRun.status !== 0) {
+    addFailure(`release artifact integrity refresh before enforced preflight must pass: ${refreshRun.stderr || refreshRun.stdout}`);
   }
 
   const enforcedReportPath = path.join(tmpDir, "preflight-enforced.json");

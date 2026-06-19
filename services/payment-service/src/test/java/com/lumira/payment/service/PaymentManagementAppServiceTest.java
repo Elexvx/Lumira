@@ -64,7 +64,7 @@ class PaymentManagementAppServiceTest {
         PaymentProviderSettingsDTO stored = stripeSettings("real-webhook-secret");
         doReturn(row).when(jdbcTemplate).queryForObject(
                 anyString(),
-                any(BeanPropertyRowMapper.class),
+                anyPaymentProviderRowMapper(),
                 eq(1001L),
                 eq("stripe")
         );
@@ -96,5 +96,9 @@ class PaymentManagementAppServiceTest {
         settings.setWebhookSecret(webhookSecret);
         settings.setSandboxEnabled(true);
         return settings;
+    }
+
+    private BeanPropertyRowMapper<PaymentProviderConfigRow> anyPaymentProviderRowMapper() {
+        return any();
     }
 }

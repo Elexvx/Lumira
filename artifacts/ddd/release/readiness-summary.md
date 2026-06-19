@@ -1,18 +1,20 @@
 # DDD Release Readiness Summary
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
-Release gate mode: advisory
-Release gate blockers: 0
-Release gate warnings: 16
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
+Release gate mode: strict
+Release gate blockers: 94
+Release gate warnings: 8
 
 ## Missing Manifest Artifacts
 
-- Manifest status: PASS
-- Manifest optional artifacts: 10
+- Manifest status: FAIL
+- Manifest optional artifacts: 11
 - Optional owner queue run report: not present
 - Owner queue env init receipt: PRESENT; permissionSafe=true; mode=600; unresolvedTemplateKeys=110
-- None
+- no explain JSON files in tmp\ddd-explain
+- actionPlan: owner=release-owner pendingItems=1 envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_RELEASE_MANIFEST_STRICT
+- manifestAction: manifest-missing-no-explain-json-files-in-tmp-ddd-explain; owner=release-owner; reason=no explain JSON files in tmp\ddd-explain; envKeys=DDD_RELEASE_MANIFEST_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; artifact=no explain JSON files in tmp\ddd-explain; action=Regenerate the missing evidence artifact, then rerun `node scripts/ddd-release-evidence-manifest.mjs`.
 
 ## Owner Action Rollup
 
@@ -37,13 +39,15 @@ Release gate warnings: 16
   - ownerAction: source=rollback; id=AI; reason=AI rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
 - owner=auth-owner pendingItems=1 collapsedItems=0 sources=rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT
   - ownerAction: source=rollback; id=Auth; reason=Auth rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
-- owner=database pendingItems=7 collapsedItems=0 sources=explain=6,orchestrator=1 collapsedSources=none envKeys=DDD_EVIDENCE_OPERATOR,DDD_EXPLAIN_DATABASE,DDD_EXPLAIN_DIR,DDD_EXPLAIN_ENVIRONMENT,DDD_EXPLAIN_STRICT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,DDD_RELEASE_CANDIDATE,MYSQL_CLI,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PASSWORD,MYSQL_PORT,MYSQL_USER
-  - ownerAction: source=explain; id=ai-knowledge-index-retry.json; reason=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-  - ownerAction: source=explain; id=message-visible-list.json; reason=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-  - ownerAction: source=explain; id=platform-outbox-owner-relay-file.json; reason=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-  - ownerAction: source=explain; id=platform-outbox-owner-relay-message.json; reason=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-  - ownerAction: source=explain; id=platform-runtime-appearance.json; reason=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-  - ownerAction: source=explain; id=plugin-bootstrap.json; reason=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+- owner=database pendingItems=9 collapsedItems=0 sources=explain=8,orchestrator=1 collapsedSources=none envKeys=DDD_EVIDENCE_OPERATOR,DDD_EXPLAIN_DATABASE,DDD_EXPLAIN_DIR,DDD_EXPLAIN_ENVIRONMENT,DDD_EXPLAIN_STRICT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,DDD_RELEASE_CANDIDATE,MYSQL_CLI,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PASSWORD,MYSQL_PORT,MYSQL_USER
+  - ownerAction: source=explain; id=ai-knowledge-index-retry.json; reason=missing required EXPLAIN artifact; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+  - ownerAction: source=explain; id=message-archive-total.json; reason=missing required EXPLAIN artifact; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+  - ownerAction: source=explain; id=message-unread-count.json; reason=missing required EXPLAIN artifact; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+  - ownerAction: source=explain; id=message-visible-list.json; reason=missing required EXPLAIN artifact; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+  - ownerAction: source=explain; id=platform-outbox-owner-relay-file.json; reason=missing required EXPLAIN artifact; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+  - ownerAction: source=explain; id=platform-outbox-owner-relay-message.json; reason=missing required EXPLAIN artifact; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+  - ownerAction: source=explain; id=platform-runtime-appearance.json; reason=missing required EXPLAIN artifact; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+  - ownerAction: source=explain; id=plugin-bootstrap.json; reason=missing required EXPLAIN artifact; envKeys=DDD_EXPLAIN_DIR,DDD_EXPLAIN_STRICT,DDD_EXPLAIN_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR,MYSQL_CLI,MYSQL_HOST,MYSQL_PORT,MYSQL_USER,MYSQL_PASSWORD,MYSQL_DATABASE,DDD_EXPLAIN_DATABASE; action=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
   - ownerAction: source=orchestrator; id=orchestrator-preflight-migration-runtime-evidence; reason=missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE; envKeys=DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_UPGRADE_DB_VALIDATED,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_EVIDENCE; action=Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.
 - owner=file-owner pendingItems=2 collapsedItems=0 sources=business-e2e=1,rollback=1 collapsedSources=none envKeys=BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT,DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL,LUMIRA_JOB_INTERNAL_TOKEN,LUMIRA_UPLOAD_STORAGE_ROOT
   - ownerAction: source=business-e2e; id=file-processing-production-equivalence; reason=strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,LUMIRA_UPLOAD_STORAGE_ROOT,LUMIRA_JOB_INTERNAL_TOKEN; action=Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node scripts/ddd-file-processing-e2e-smoke.mjs`.
@@ -106,7 +110,7 @@ Release gate warnings: 16
   - ownerAction: source=release-config; id=system service; reason=must use HTTPS for production-equivalent evidence; envKeys=SYSTEM_SERVICE_BASE_URL,LUMIRA_SYSTEM_SERVICE_BASE_URL; action=Set SYSTEM_SERVICE_BASE_URL or LUMIRA_SYSTEM_SERVICE_BASE_URL for system service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
 - owner=plugin-owner pendingItems=1 collapsedItems=0 sources=rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT
   - ownerAction: source=rollback; id=Plugin; reason=Plugin rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
-- owner=release-infra pendingItems=20 collapsedItems=1 sources=docker=4,release-config=14,release-env-lint=2 collapsedSources=orchestrator=1 envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,BASE_URL,CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME,DDD_AUTH_PASSWORD,DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE,DDD_AUTH_PERF_ENVIRONMENT,DDD_AUTH_USERNAME,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_DEPLOYMENT_EVIDENCE,DDD_DOCKER_BUILD_STRICT,DDD_DOCKER_COMMAND,DDD_EXPLAIN_DATABASE,DDD_FRONTEND_DEPLOYMENT_EVIDENCE,DDD_MIGRATION_COMPLETED_AT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_OPERATOR,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,DEPLOY_CHECK_BASE_URL,FIELD_SECRET,FILE_SERVICE_BASE_URL,FRONTEND_BASE_URL,JOB_EXECUTOR_BASE_URL,JWT_SECRET,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_BASE_URL,MESSAGE_SERVICE_BASE_URL,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PASSWORD,MYSQL_PORT,MYSQL_USER,PAYMENT_PUBLIC_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLAYWRIGHT_BASE_URL,PLUGIN_SERVICE_BASE_URL,REDIS_HOST,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,SAAS_SECURITY_FIELD_SECRET,SAAS_SECURITY_JWT_SECRET,SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS,SPRING_DATASOURCE_PASSWORD,SPRING_DATASOURCE_URL,SPRING_DATASOURCE_USERNAME,SPRING_DATA_REDIS_HOST,SYSTEM_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES
+- owner=release-infra pendingItems=24 collapsedItems=1 sources=docker=4,release-config=14,release-env-lint=2,runtime-readiness=4 collapsedSources=orchestrator=1 envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,BASE_URL,CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME,DDD_AUTH_PASSWORD,DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE,DDD_AUTH_PERF_ENVIRONMENT,DDD_AUTH_USERNAME,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_DEPLOYMENT_EVIDENCE,DDD_DOCKER_BUILD_STRICT,DDD_DOCKER_COMMAND,DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_EXPLAIN_DATABASE,DDD_FRONTEND_DEPLOYMENT_EVIDENCE,DDD_MIGRATION_COMPLETED_AT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_OPERATOR,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,DDD_RELEASE_CANDIDATE,DEPLOY_CHECK_BASE_URL,FIELD_SECRET,FILE_SERVICE_BASE_URL,FRONTEND_BASE_URL,JOB_EXECUTOR_BASE_URL,JWT_SECRET,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_BASE_URL,MESSAGE_SERVICE_BASE_URL,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PASSWORD,MYSQL_PORT,MYSQL_USER,PAYMENT_PUBLIC_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLAYWRIGHT_BASE_URL,PLUGIN_SERVICE_BASE_URL,REDIS_HOST,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,SAAS_SECURITY_FIELD_SECRET,SAAS_SECURITY_JWT_SECRET,SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS,SPRING_DATASOURCE_PASSWORD,SPRING_DATASOURCE_URL,SPRING_DATASOURCE_USERNAME,SPRING_DATA_REDIS_HOST,SYSTEM_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES
   - ownerAction: source=docker; id=docker-blocker-1; reason=lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
   - ownerAction: source=docker; id=docker-blocker-2; reason=frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
   - ownerAction: source=docker; id=docker-image-frontend-failed; reason=docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
@@ -127,11 +131,114 @@ Release gate warnings: 16
   - ownerAction: source=release-config; id=redis host; reason=placeholder value is not allowed; envKeys=REDIS_HOST,SPRING_DATA_REDIS_HOST; action=Set REDIS_HOST or SPRING_DATA_REDIS_HOST for redis host in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
   - ownerAction: source=release-env-lint; id=release-env-lint-placeholders; reason=unresolvedTemplateKeys=93; envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,BASE_URL,CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME,DDD_AUTH_PASSWORD,DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE,DDD_AUTH_PERF_ENVIRONMENT,DDD_AUTH_USERNAME,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_DEPLOYMENT_EVIDENCE,DDD_EXPLAIN_DATABASE,DDD_FRONTEND_DEPLOYMENT_EVIDENCE,DDD_MIGRATION_COMPLETED_AT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_OPERATOR,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,FIELD_SECRET,FILE_SERVICE_BASE_URL,JOB_EXECUTOR_BASE_URL,JWT_SECRET,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_BASE_URL,MESSAGE_SERVICE_BASE_URL,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PORT,PAYMENT_PUBLIC_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLAYWRIGHT_BASE_URL,PLUGIN_SERVICE_BASE_URL,REDIS_HOST,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES; action=Replace every placeholder-like value (`<placeholder>`, `replace-with-*`, TODO/TBD, example domains) in `DDD_RELEASE_ENV_FILE` before running release evidence.
   - ownerAction: source=release-env-lint; id=release-env-lint-status; reason=status=FAIL primaryBlockers=55; envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,BASE_URL,CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME,DDD_AUTH_PASSWORD,DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE,DDD_AUTH_PERF_ENVIRONMENT,DDD_AUTH_USERNAME,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_DEPLOYMENT_EVIDENCE,DDD_EXPLAIN_DATABASE,DDD_FRONTEND_DEPLOYMENT_EVIDENCE,DDD_MIGRATION_COMPLETED_AT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_OPERATOR,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,FIELD_SECRET,FILE_SERVICE_BASE_URL,JOB_EXECUTOR_BASE_URL,JWT_SECRET,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_BASE_URL,MESSAGE_SERVICE_BASE_URL,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PORT,PAYMENT_PUBLIC_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLAYWRIGHT_BASE_URL,PLUGIN_SERVICE_BASE_URL,REDIS_HOST,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES; action=Replace placeholders and invalid values in `DDD_RELEASE_ENV_FILE`, then rerun `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`.
+  - ownerAction: source=runtime-readiness; id=runtime-readiness-contract-1; reason=runtime readiness productionEquivalence.strict must be true for strict release evidence; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
+  - ownerAction: source=runtime-readiness; id=runtime-readiness-contract-2; reason=runtime readiness productionEquivalence.https must be true for strict release evidence; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
+  - ownerAction: source=runtime-readiness; id=runtime-readiness-contract-3; reason=runtime readiness productionEquivalence.localOnly must be false for strict release evidence; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
+  - ownerAction: source=runtime-readiness; id=runtime-readiness-contract-4; reason=runtime readiness productionEquivalence.deploymentEvidence is required; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
   - ownerActionCollapsed: source=orchestrator; id=orchestrator-preflight-backend-runtime-base-url; coveredBy=release-config:backend base url; reason=missing backend runtime base URL; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL
-- owner=release-owner pendingItems=1 collapsedItems=0 sources=orchestrator=1 collapsedSources=none envKeys=DDD_RELEASE_EVIDENCE_STRICT
+- owner=release-owner pendingItems=2 collapsedItems=0 sources=manifest=1,orchestrator=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_RELEASE_EVIDENCE_STRICT,DDD_RELEASE_MANIFEST_STRICT
+  - ownerAction: source=manifest; id=manifest-missing-no-explain-json-files-in-tmp-ddd-explain; reason=no explain JSON files in tmp\ddd-explain; envKeys=DDD_RELEASE_MANIFEST_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Regenerate the missing evidence artifact, then rerun `node scripts/ddd-release-evidence-manifest.mjs`.
   - ownerAction: source=orchestrator; id=orchestrator-run-mode; reason=strict release requires run mode report, got plan; envKeys=DDD_RELEASE_EVIDENCE_STRICT; action=Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.
+- owner=release-performance pendingItems=9 collapsedItems=0 sources=authenticated-performance=9 collapsedSources=none envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE
+  - ownerAction: source=authenticated-performance; id=performance-actual-shape-1; reason=authenticated performance actual productionEquivalence.strict must be true for strict release evidence; action=Fix authenticated performance actual artifact shape and rerun the smoke.
+  - ownerAction: source=authenticated-performance; id=performance-actual-shape-2; reason=authenticated performance actual productionEquivalence.https must be true for strict release evidence; action=Fix authenticated performance actual artifact shape and rerun the smoke.
+  - ownerAction: source=authenticated-performance; id=performance-actual-shape-3; reason=authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence; action=Fix authenticated performance actual artifact shape and rerun the smoke.
+  - ownerAction: source=authenticated-performance; id=performance-actual-shape-4; reason=authenticated performance actual productionEquivalence.deploymentEvidence is required; action=Fix authenticated performance actual artifact shape and rerun the smoke.
+  - ownerAction: source=authenticated-performance; id=performance-baseline-metadata-5; reason=strict release baseline requires baselineType=authenticated-runtime; envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE; action=Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+  - ownerAction: source=authenticated-performance; id=performance-baseline-metadata-6; reason=acceptedAt must be an ISO timestamp; envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE; action=Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+  - ownerAction: source=authenticated-performance; id=performance-baseline-metadata-7; reason=acceptedBy is required; envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE; action=Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+  - ownerAction: source=authenticated-performance; id=performance-baseline-metadata-8; reason=sourceArtifact is required; envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE; action=Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+  - ownerAction: source=authenticated-performance; id=performance-baseline-metadata-9; reason=sourceSha256 must be a SHA-256 hex digest; envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE; action=Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
 
 ## Actions By Category
+
+### ai-runtime
+- Owner: ai
+  Action: Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node scripts/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime.
+
+### business-e2e-freshness
+- Owner: file-owner
+  Action: Regenerate File processing E2E evidence within the release freshness window against the production-equivalent environment.
+- Owner: payment-owner
+  Action: Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.
+- Owner: job-owner
+  Action: Regenerate Job E2E evidence within the release freshness window against the production-equivalent environment.
+
+### configuration
+- Owner: release-infra
+  Action: Replace all release env placeholders in `DDD_RELEASE_ENV_FILE`, run `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`, then regenerate config evidence with `node scripts/ddd-release-config-evidence.mjs`.
+- Owner: release-infra
+  Action: Generate production-equivalent config evidence with `DDD_RELEASE_ENV_FILE=.env.release DDD_RELEASE_CONFIG_STRICT=true node scripts/ddd-release-config-evidence.mjs`.
+
+### docker
+- Owner: release-infra
+  Action: Start Docker daemon or run `node scripts/ddd-docker-build-evidence.mjs` in CI with Docker Buildx available.
+
+### explain-plan
+- Owner: database
+  Action: Collect production-equivalent MySQL `EXPLAIN FORMAT=JSON` artifacts for all required hot paths and ensure no full scans or missing hotspot indexes remain.
+
+### frontend-smoke
+- Owner: frontend
+  Action: Set deployed HTTPS `PLAYWRIGHT_BASE_URL` and `DDD_FRONTEND_EXPECT_DEPLOYED=true`, then rerun the strict release orchestrator/frontend smoke.
+- Owner: frontend
+  Action: Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node scripts/ddd-frontend-smoke-evidence.mjs`.
+
+### manifest
+- Owner: release-owner
+  Action: Regenerate all missing evidence artifacts, then run `node scripts/ddd-release-evidence-manifest.mjs`.
+
+### manifest-provenance
+- Owner: release-owner
+  Action: Regenerate the manifest with `DDD_RELEASE_MANIFEST_STRICT=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR` after regenerating provenance-bearing artifacts.
+
+### migration
+- Owner: database
+  Action: Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.
+
+### orchestrator
+- Owner: release-owner
+  Action: Run `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict` with real provenance and keep the generated `artifacts/ddd/release/orchestrator-report.json` with the release evidence bundle.
+
+### other
+- Owner: release-owner
+  Action: Inspect the strict release gate blocker and attach an owner-specific remediation.
+
+### outbox-state-machine
+- Owner: platform-events
+  Action: Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.
+
+### performance-baseline
+- Owner: release-performance
+  Action: Run authenticated performance smoke against production-equivalent URL, then promote the accepted actual with `scripts/ddd-promote-performance-baseline.mjs`.
+
+### performance-freshness
+- Owner: release-performance
+  Action: Regenerate authenticated performance evidence within the release freshness window, then rerun baseline comparison and promotion.
+
+### production-equivalent-runtime
+- Owner: release-infra
+  Action: Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.
+- Owner: release-infra
+  Action: Regenerate the runtime artifact against an HTTPS non-local production-equivalent URL.
+- Owner: release-performance
+  Action: Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion.
+- Owner: file-owner
+  Action: Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend URL with real File storage and job token evidence.
+- Owner: payment-owner
+  Action: Regenerate Payment webhook E2E smoke against an HTTPS non-local production-equivalent webhook URL with provider sandbox or deployment evidence.
+- Owner: job-owner
+  Action: Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token.
+- Owner: release-infra
+  Action: Set `LUMIRA_BASE_URL`, `DEPLOY_CHECK_BASE_URL`, or `BASE_URL` to an HTTPS non-local backend URL before running the strict release orchestrator.
+
+### rollback-drill
+- Owner: release-owner
+  Action: Run `node scripts/ddd-init-rollback-drill.mjs`, fill real PASS/DEFERRED evidence for every context, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
+
+### runtime-freshness
+- Owner: release-infra
+  Action: Regenerate runtime readiness within the release freshness window against the production-equivalent HTTPS backend, then rerun the strict release gate.
 
 ## Runtime Readiness Diagnostics
 
@@ -140,6 +247,10 @@ Release gate warnings: 16
 - productionEquivalence: strict=false https=false localOnly=true deploymentEvidence=missing
 - checks: 30/30
 - failures: 0
+- contractIssue: runtime readiness productionEquivalence.strict must be true for strict release evidence
+- contractIssue: runtime readiness productionEquivalence.https must be true for strict release evidence
+- contractIssue: runtime readiness productionEquivalence.localOnly must be false for strict release evidence
+- contractIssue: runtime readiness productionEquivalence.deploymentEvidence is required
 - iam: ready=true
 - auth: ready=true
 - platform: ready=true
@@ -150,7 +261,11 @@ Release gate warnings: 16
 - payment: ready=true
 - ai: ready=true
 - job: ready=true
-- actionPlan: owner=release-infra pendingItems=0
+- actionPlan: owner=release-infra pendingItems=4
+- runtimeAction: runtime-readiness-contract-1; owner=release-infra; reason=runtime readiness productionEquivalence.strict must be true for strict release evidence; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
+- runtimeAction: runtime-readiness-contract-2; owner=release-infra; reason=runtime readiness productionEquivalence.https must be true for strict release evidence; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
+- runtimeAction: runtime-readiness-contract-3; owner=release-infra; reason=runtime readiness productionEquivalence.localOnly must be false for strict release evidence; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
+- runtimeAction: runtime-readiness-contract-4; owner=release-infra; reason=runtime readiness productionEquivalence.deploymentEvidence is required; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
 
 ## Release Env Lint
 
@@ -166,7 +281,7 @@ Release gate warnings: 16
 
 ## Release Config Blockers
 
-- status: FAIL inputKind=release-env-file envFile=.env.release.local envFileExists=true
+- status: FAIL inputKind=release-env-file envFile=/Users/johntao/Documents/GitHub/Lumira/.env.release.local envFileExists=true
 - blockerSummary: blockers=63 primaryBlockers=0 fromPlaceholders=63 afterPlaceholders=0
 - coverage: required=46 runtimePresent=46 envFile=46 template=46 workflow=46
 - missingRuntimeRequiredChecks: 0
@@ -273,15 +388,33 @@ Release gate warnings: 16
 - actualP95: 29
 - actualUpload: status=200 elapsedMs=45.49
 - actualEndpointCount: 9
+- actualShapeIssue: authenticated performance actual productionEquivalence.strict must be true for strict release evidence
+- actualShapeIssue: authenticated performance actual productionEquivalence.https must be true for strict release evidence
+- actualShapeIssue: authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence
+- actualShapeIssue: authenticated performance actual productionEquivalence.deploymentEvidence is required
 - baselineBaseUrl: http://127.0.0.1:8080
 - baselineLocalOnly: true
 - baselineP95: 88
 - baselineUploadElapsedMs: 85.88
 - baselineEndpointCount: 9
+- baselineMetadataIssue: strict release baseline requires baselineType=authenticated-runtime
+- baselineMetadataIssue: acceptedAt must be an ISO timestamp
+- baselineMetadataIssue: acceptedBy is required
+- baselineMetadataIssue: sourceArtifact is required
+- baselineMetadataIssue: sourceSha256 must be a SHA-256 hex digest
 - baselinePromotion: status=missing sourceFile=missing outputFile=missing
 - baselinePromotionSource: sourceArtifact=missing sourceSha256=missing
 - baselinePromotionEnv: acceptedBy=missing sourceEnvironment=local-evidence-audit releaseCandidate=local-ddd-release-audit
-- actionPlan: owner=release-performance pendingItems=0
+- actionPlan: owner=release-performance pendingItems=9
+- performanceAction: performance-actual-shape-1; owner=release-performance; reason=authenticated performance actual productionEquivalence.strict must be true for strict release evidence; action=Fix authenticated performance actual artifact shape and rerun the smoke.
+- performanceAction: performance-actual-shape-2; owner=release-performance; reason=authenticated performance actual productionEquivalence.https must be true for strict release evidence; action=Fix authenticated performance actual artifact shape and rerun the smoke.
+- performanceAction: performance-actual-shape-3; owner=release-performance; reason=authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence; action=Fix authenticated performance actual artifact shape and rerun the smoke.
+- performanceAction: performance-actual-shape-4; owner=release-performance; reason=authenticated performance actual productionEquivalence.deploymentEvidence is required; action=Fix authenticated performance actual artifact shape and rerun the smoke.
+- performanceAction: performance-baseline-metadata-5; owner=release-performance; reason=strict release baseline requires baselineType=authenticated-runtime; envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE; action=Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+- performanceAction: performance-baseline-metadata-6; owner=release-performance; reason=acceptedAt must be an ISO timestamp; envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE; action=Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+- performanceAction: performance-baseline-metadata-7; owner=release-performance; reason=acceptedBy is required; envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE; action=Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+- performanceAction: performance-baseline-metadata-8; owner=release-performance; reason=sourceArtifact is required; envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE; action=Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+- performanceAction: performance-baseline-metadata-9; owner=release-performance; reason=sourceSha256 must be a SHA-256 hex digest; envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_RELEASE_CANDIDATE; action=Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
 
 ## Business Runtime E2E Diagnostics
 
@@ -295,6 +428,10 @@ Release gate warnings: 16
 - fileArtifact: SECURITY_SCAN_RESULT=true
 - fileArtifact: TEXT_CONTENT=true
 - fileArtifact: AI_PARSE_READY=true
+- fileIssue: file processing productionEquivalence.https must be true for strict release evidence
+- fileIssue: file processing productionEquivalence.localOnly must be false for strict release evidence
+- fileIssue: file processing productionEquivalence.deploymentEvidence is required
+- fileIssue: file processing productionEquivalence.issues must be empty for strict release evidence
 - paymentWebhook: status=PASS localOnly=true orderStatus=PAID providerConfigured=true
 - paymentWebhookProductionEquivalence: strict=true https=false localOnly=true deploymentEvidence=missing
 - paymentWebhookProductionEquivalenceIssue: strict payment webhook E2E requires HTTPS baseUrl evidence
@@ -303,6 +440,10 @@ Release gate warnings: 16
 - paymentWebhook.duplicate: processed=true signatureValid=true elapsedMs=7.05
 - paymentWebhook.nonceReplay: processed=false signatureValid=false elapsedMs=10.08
 - paymentWebhook.badSignature: processed=false signatureValid=false elapsedMs=13.19
+- paymentIssue: payment webhook productionEquivalence.https must be true for strict release evidence
+- paymentIssue: payment webhook productionEquivalence.localOnly must be false for strict release evidence
+- paymentIssue: payment webhook productionEquivalence.deploymentEvidence is required
+- paymentIssue: payment webhook productionEquivalence.issues must be empty for strict release evidence
 - jobE2e: localOnly=true unauthorizedStatus=401 failed=0 endpointCount=9
 - jobE2eProductionEquivalence: strict=true https=false localOnly=true deploymentEvidence=missing
 - jobE2eProductionEquivalenceIssue: strict job E2E requires HTTPS baseUrl evidence
@@ -317,6 +458,10 @@ Release gate warnings: 16
 - jobEndpoint: payment-outbox-relay present=true status=200 dataType=number expected=number
 - jobEndpoint: plugin-outbox-relay present=true status=200 dataType=number expected=number
 - jobOutboxOwnershipDelta: 0
+- jobIssue: job E2E productionEquivalence.https must be true for strict release evidence
+- jobIssue: job E2E productionEquivalence.localOnly must be false for strict release evidence
+- jobIssue: job E2E productionEquivalence.deploymentEvidence is required
+- jobIssue: job E2E productionEquivalence.issues must be empty for strict release evidence
 - actionPlan: owner=file-owner pendingItems=1 envKeys=BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL,LUMIRA_JOB_INTERNAL_TOKEN,LUMIRA_UPLOAD_STORAGE_ROOT
 - businessAction: file-processing-production-equivalence; owner=file-owner; reason=strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,LUMIRA_UPLOAD_STORAGE_ROOT,LUMIRA_JOB_INTERNAL_TOKEN; action=Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node scripts/ddd-file-processing-e2e-smoke.mjs`.
 - actionPlan: owner=job-owner pendingItems=1 envKeys=BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL,LUMIRA_JOB_INTERNAL_TOKEN
@@ -391,31 +536,27 @@ Release gate warnings: 16
 ## EXPLAIN Evidence Diagnostics
 
 - gateReport: present=true status=PASS blockers=0 generatedAt=2026-06-15T20:41:37.875Z
-- dir: tmp/ddd-explain
-- files: 8
-- missingRequiredFiles: 0
-- legacyPlanImports: 6
-- legacyExplainFile: ai-knowledge-index-retry.json
-- legacyExplainFile: message-visible-list.json
-- legacyExplainFile: platform-outbox-owner-relay-file.json
-- legacyExplainFile: platform-outbox-owner-relay-message.json
-- legacyExplainFile: platform-runtime-appearance.json
-- legacyExplainFile: plugin-bootstrap.json
-- actionPlan: owner=database pendingFiles=6
-- explainAction: ai-knowledge-index-retry.json; reasons=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-- explainAction: message-visible-list.json; reasons=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-- explainAction: platform-outbox-owner-relay-file.json; reasons=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-- explainAction: platform-outbox-owner-relay-message.json; reasons=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-- explainAction: platform-runtime-appearance.json; reasons=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-- explainAction: plugin-bootstrap.json; reasons=legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
-- explainFile: ai-knowledge-index-retry.json queryName=ai-knowledge-index-retry sourceEnvironment=local-codex-audit releaseCandidate=worktree legacy=true issues=0
-- explainFile: message-archive-total.json queryName=message-archive-total sourceEnvironment=production-like releaseCandidate=worktree legacy=false issues=0
-- explainFile: message-unread-count.json queryName=message-unread-count sourceEnvironment=production-like releaseCandidate=worktree legacy=false issues=0
-- explainFile: message-visible-list.json queryName=message-visible-list sourceEnvironment=local-codex-audit releaseCandidate=worktree legacy=true issues=0
-- explainFile: platform-outbox-owner-relay-file.json queryName=platform-outbox-owner-relay-file sourceEnvironment=local-codex-audit releaseCandidate=worktree legacy=true issues=0
-- explainFile: platform-outbox-owner-relay-message.json queryName=platform-outbox-owner-relay-message sourceEnvironment=local-codex-audit releaseCandidate=worktree legacy=true issues=0
-- explainFile: platform-runtime-appearance.json queryName=platform-runtime-appearance sourceEnvironment=local-codex-audit releaseCandidate=worktree legacy=true issues=0
-- explainFile: plugin-bootstrap.json queryName=plugin-bootstrap sourceEnvironment=local-codex-audit releaseCandidate=worktree legacy=true issues=0
+- dir: tmp\ddd-explain
+- files: 0
+- missingRequiredFiles: 8
+- missingExplainFile: platform-runtime-appearance.json
+- missingExplainFile: plugin-bootstrap.json
+- missingExplainFile: message-visible-list.json
+- missingExplainFile: message-unread-count.json
+- missingExplainFile: message-archive-total.json
+- missingExplainFile: ai-knowledge-index-retry.json
+- missingExplainFile: platform-outbox-owner-relay-message.json
+- missingExplainFile: platform-outbox-owner-relay-file.json
+- legacyPlanImports: 0
+- actionPlan: owner=database pendingFiles=8
+- explainAction: ai-knowledge-index-retry.json; reasons=missing required EXPLAIN artifact; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+- explainAction: message-archive-total.json; reasons=missing required EXPLAIN artifact; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+- explainAction: message-unread-count.json; reasons=missing required EXPLAIN artifact; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+- explainAction: message-visible-list.json; reasons=missing required EXPLAIN artifact; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+- explainAction: platform-outbox-owner-relay-file.json; reasons=missing required EXPLAIN artifact; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+- explainAction: platform-outbox-owner-relay-message.json; reasons=missing required EXPLAIN artifact; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+- explainAction: platform-runtime-appearance.json; reasons=missing required EXPLAIN artifact; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+- explainAction: plugin-bootstrap.json; reasons=missing required EXPLAIN artifact; command=Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
 
 ## AI Runtime Diagnostics
 
@@ -511,4 +652,97 @@ Release gate warnings: 16
 
 ## Raw Blockers
 
-- None
+- [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.strict must be true for strict release evidence
+- [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.https must be true for strict release evidence
+- [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.localOnly must be false for strict release evidence
+- [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.deploymentEvidence is required
+- [runtime-freshness] runtime-readiness-freshness: checkedAt is 61.2h old; limit=24h
+- [production-equivalent-runtime] runtime-readiness-production-equivalence: strict runtime readiness deploymentEvidence is required
+- [production-equivalent-runtime] runtime-readiness-environment-strict: strict release requires production-equivalent non-local evidence
+- [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.strict must be true for strict release evidence
+- [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.https must be true for strict release evidence
+- [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence
+- [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.deploymentEvidence is required
+- [performance-freshness] authenticated-performance-freshness: checkedAt is 46.8h old; limit=24h
+- [production-equivalent-runtime] authenticated-performance-production-equivalence: strict authenticated performance actual deploymentEvidence is required
+- [production-equivalent-runtime] authenticated-performance-environment-strict: strict release requires production-equivalent non-local evidence
+- [performance-baseline] authenticated-performance-baseline-environment: strict release requires a non-local baseline baseUrl, got http://127.0.0.1:8080
+- [performance-baseline] authenticated-performance-baseline-metadata: strict release baseline requires baselineType=authenticated-runtime
+- [performance-baseline] authenticated-performance-baseline-metadata: acceptedAt must be an ISO timestamp
+- [performance-baseline] authenticated-performance-baseline-metadata: acceptedBy is required
+- [performance-baseline] authenticated-performance-baseline-metadata: sourceArtifact is required
+- [performance-baseline] authenticated-performance-baseline-metadata: sourceSha256 must be a SHA-256 hex digest
+- [performance-baseline] authenticated-performance-baseline-strict: strict release requires authenticated performance baseline comparison
+- [business-e2e-freshness] file-processing-freshness: finishedAt is 120.7h old; limit=24h
+- [production-equivalent-runtime] file-processing-production-equivalence: strict file processing E2E requires HTTPS baseUrl evidence
+- [production-equivalent-runtime] file-processing-production-equivalence: strict file processing E2E deploymentEvidence is required
+- [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.https must be true for strict release evidence
+- [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.localOnly must be false for strict release evidence
+- [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.deploymentEvidence is required
+- [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.issues must be empty for strict release evidence
+- [production-equivalent-runtime] file-processing-environment-strict: strict release requires production-equivalent non-local evidence
+- [business-e2e-freshness] payment-webhook-freshness: finishedAt is 120.6h old; limit=24h
+- [production-equivalent-runtime] payment-webhook-production-equivalence: strict payment webhook E2E requires HTTPS baseUrl evidence
+- [production-equivalent-runtime] payment-webhook-production-equivalence: strict payment webhook E2E deploymentEvidence is required
+- [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.https must be true for strict release evidence
+- [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.localOnly must be false for strict release evidence
+- [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.deploymentEvidence is required
+- [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.issues must be empty for strict release evidence
+- [production-equivalent-runtime] payment-webhook-environment-strict: strict release requires production-equivalent non-local evidence
+- [outbox-state-machine] outbox-replay-dead-letter-freshness: generatedAt is 80.6h old; limit=24h
+- [business-e2e-freshness] job-e2e-freshness: checkedAt is 120.4h old; limit=24h
+- [production-equivalent-runtime] job-e2e-production-equivalence: strict job E2E requires HTTPS baseUrl evidence
+- [production-equivalent-runtime] job-e2e-production-equivalence: strict job E2E deploymentEvidence is required
+- [production-equivalent-runtime] job-e2e-smoke: job E2E productionEquivalence.https must be true for strict release evidence
+- [production-equivalent-runtime] job-e2e-smoke: job E2E productionEquivalence.localOnly must be false for strict release evidence
+- [production-equivalent-runtime] job-e2e-smoke: job E2E productionEquivalence.deploymentEvidence is required
+- [production-equivalent-runtime] job-e2e-smoke: job E2E productionEquivalence.issues must be empty for strict release evidence
+- [production-equivalent-runtime] job-e2e-environment-strict: strict release requires production-equivalent non-local evidence
+- [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.strict must be true for strict release evidence
+- [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.https must be true for strict release evidence
+- [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.localOnly must be false for strict release evidence
+- [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.deploymentEvidence is required
+- [ai-runtime] ai-runtime-freshness: checkedAt is 46.8h old; limit=24h
+- [ai-runtime] ai-runtime-production-equivalence: strict AI runtime drill deploymentEvidence is required
+- [ai-runtime] ai-runtime-environment-strict: strict release requires production-equivalent non-local evidence
+- [ai-runtime] ai-runtime-drill-provider: strict release requires DDD_AI_EXPECT_PROVIDER_REMOTE=true evidence
+- [ai-runtime] ai-runtime-drill-owner-gateway: strict release requires DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true evidence
+- [other] physical-split-readiness-freshness: generatedAt is 46.7h old; limit=24h
+- [other] backend-test-evidence-freshness: generatedAt is 46.7h old; limit=24h
+- [other] backend-build-evidence-freshness: generatedAt is 46.7h old; limit=24h
+- [docker] docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h
+- [docker] docker-build-evidence: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1
+- [docker] docker-build-evidence: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1
+- [migration] migration-evidence-freshness: generatedAt is 46.7h old; limit=24h
+- [configuration] release-env-lint-freshness: generatedAt is 37.8h old; limit=24h
+- [configuration] release-env-lint: status=FAIL, blockers=156
+- [configuration] release-env-lint-placeholders: unresolvedTemplateKeys=93
+- [configuration] release-env-lint-config: releaseConfigBlockers=63
+- [configuration] release-config-evidence-freshness: generatedAt is 37.1h old; limit=24h
+- [configuration] release-config-evidence: status=FAIL, blockers=63
+- [orchestrator] release-evidence-orchestrator-freshness: generatedAt is 46.1h old; limit=24h
+- [production-equivalent-runtime] release-evidence-orchestrator-preflight-backend-runtime-base-url: missing backend runtime base URL
+- [ai-runtime] release-evidence-orchestrator-preflight-ai-runtime-base-url: missing AI runtime base URL
+- [frontend-smoke] release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
+- [migration] release-evidence-orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
+- [orchestrator] release-evidence-orchestrator: strict release requires run mode report, got plan
+- [manifest-provenance] release-evidence-manifest-provenance: manifest provenance sourceEnvironment is required
+- [manifest-provenance] release-evidence-manifest-provenance: manifest provenance releaseCandidate is required
+- [manifest-provenance] release-evidence-manifest-provenance: manifest provenance evidenceOperator is required
+- [manifest] release-evidence-manifest: manifest blockers length mismatch: declared=1, actual=4
+- [manifest] release-evidence-manifest: missing EXPLAIN files in evidence manifest
+- [other] frontend-build-evidence-freshness: generatedAt is 80.8h old; limit=24h
+- [other] frontend-static-evidence-freshness: generatedAt is 80.8h old; limit=24h
+- [frontend-smoke] frontend-smoke-freshness: generatedAt is 46.8h old; limit=24h
+- [frontend-smoke] frontend-smoke-production-equivalence: strict frontend smoke deploymentEvidence is required
+- [frontend-smoke] frontend-smoke-environment-strict: strict release requires production-equivalent non-local evidence
+- [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.strict must be true for strict release evidence
+- [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.https must be true for strict release evidence
+- [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.localOnly must be false for strict release evidence
+- [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.deploymentEvidence is required
+- [frontend-smoke] frontend-smoke-environment: strict release requires DDD_FRONTEND_EXPECT_DEPLOYED=true evidence
+- [frontend-smoke] frontend-smoke-environment: strict release requires HTTPS frontend baseURL evidence
+- [frontend-smoke] frontend-smoke-environment: artifact is local-only: http://127.0.0.1:8000
+- [frontend-smoke] frontend-smoke: frontend smoke blockers length mismatch: declared=0, actual=7
+- [rollback-drill] rollback-drill-freshness: generatedAt is 61.2h old; limit=24h
+- [explain-plan] explain-evidence-strict: strict release requires production-scale EXPLAIN artifacts

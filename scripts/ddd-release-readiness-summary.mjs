@@ -2508,7 +2508,7 @@ function releaseOwnerInputReceiptQueueSummary(summary) {
   const packet = releaseEnvOwnerInputPacketArtifact(summary);
   const itemChecklistPathByOwner = new Map((packet.owners || []).map((owner) => [
     owner.owner,
-    path.join("artifacts", "ddd", "release", "release-owner-input-receipt-items", `${owner.fileName}.md`),
+    path.posix.join("artifacts", "ddd", "release", "release-owner-input-receipt-items", `${owner.fileName}.md`),
   ]));
   return {
     artifact: "artifacts/ddd/release/release-owner-input-receipt.json",
@@ -3043,11 +3043,12 @@ function releaseBlockerClosureCommands(summary) {
     "    echo \"Template env files are worksheets, not release evidence: ${DDD_RELEASE_ENV_FILE}\" >&2",
     "    exit 1",
     "  fi",
-    "  DDD_RELEASE_ENV_FILE_MODE=$(node -e \"const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));\" \"${DDD_RELEASE_ENV_FILE}\")",
+    "  DDD_RELEASE_ENV_FILE_MODE=$(stat -c '%a' \"${DDD_RELEASE_ENV_FILE}\" 2>/dev/null || node -e \"const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));\" \"${DDD_RELEASE_ENV_FILE}\")",
     "  if (( 8#${DDD_RELEASE_ENV_FILE_MODE} & 077 )); then",
     "    echo \"Release env file permissions are too broad: ${DDD_RELEASE_ENV_FILE} mode=${DDD_RELEASE_ENV_FILE_MODE}; use chmod 600.\" >&2",
     "    exit 1",
     "  fi",
+    "  export DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED=1",
     "fi",
     ...safeReleaseEnvLoaderLines(),
     "if [[ \"${DDD_RELEASE_CLOSURE_EXECUTE}\" == \"1\" || \"${DDD_RELEASE_CLOSURE_EXECUTE}\" == \"true\" || \"${DDD_RELEASE_CLOSURE_CHECK_ENV}\" == \"1\" || \"${DDD_RELEASE_CLOSURE_CHECK_ENV}\" == \"true\" ]]; then",
@@ -3864,11 +3865,12 @@ function releasePerformanceBaselineCommands(summary) {
     "    echo \"Template env files are worksheets, not release evidence: ${DDD_RELEASE_ENV_FILE}\" >&2",
     "    exit 1",
     "  fi",
-    "  DDD_RELEASE_ENV_FILE_MODE=$(node -e \"const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));\" \"${DDD_RELEASE_ENV_FILE}\")",
+    "  DDD_RELEASE_ENV_FILE_MODE=$(stat -c '%a' \"${DDD_RELEASE_ENV_FILE}\" 2>/dev/null || node -e \"const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));\" \"${DDD_RELEASE_ENV_FILE}\")",
     "  if (( 8#${DDD_RELEASE_ENV_FILE_MODE} & 077 )); then",
     "    echo \"Release env file permissions are too broad: ${DDD_RELEASE_ENV_FILE} mode=${DDD_RELEASE_ENV_FILE_MODE}; use chmod 600.\" >&2",
     "    exit 1",
     "  fi",
+    "  export DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED=1",
     "fi",
     ...safeReleaseEnvLoaderLines(),
     "if [[ \"${DDD_AUTH_PERF_BASELINE_EXECUTE}\" == \"1\" || \"${DDD_AUTH_PERF_BASELINE_EXECUTE}\" == \"true\" || \"${DDD_AUTH_PERF_BASELINE_CHECK_ENV}\" == \"1\" || \"${DDD_AUTH_PERF_BASELINE_CHECK_ENV}\" == \"true\" ]]; then",
@@ -4392,8 +4394,8 @@ function releaseFinalGoNoGoCsv(summary) {
 
 function releaseFinalGoNoGoGate(summary) {
   const artifact = releaseFinalGoNoGoArtifact(summary);
-  const packetPath = path.relative(repoRoot, releaseFinalGoNoGoOutput);
-  const markdownPath = path.relative(repoRoot, releaseFinalGoNoGoMarkdownOutput);
+  const packetPath = path.relative(repoRoot, releaseFinalGoNoGoOutput).replaceAll("\\", "/");
+  const markdownPath = path.relative(repoRoot, releaseFinalGoNoGoMarkdownOutput).replaceAll("\\", "/");
   const lines = [
     "#!/usr/bin/env bash",
     "set -euo pipefail",
@@ -4405,13 +4407,15 @@ function releaseFinalGoNoGoGate(summary) {
     "",
     `DDD_FINAL_GO_NO_GO_PACKET="\${DDD_FINAL_GO_NO_GO_PACKET:-${packetPath}}"`,
     "DDD_FINAL_GO_NO_GO_ENFORCE=\"${DDD_FINAL_GO_NO_GO_ENFORCE:-}\"",
+    "DDD_STAGING_FINAL_REVIEW_ENFORCE=\"${DDD_STAGING_FINAL_REVIEW_ENFORCE:-${DDD_FINAL_GO_NO_GO_ENFORCE}}\"",
+    "DDD_NODE_BIN=\"${DDD_NODE_BIN:-node}\"",
     "if [[ ! -f \"${DDD_FINAL_GO_NO_GO_PACKET}\" ]]; then",
     "  echo \"Final go/no-go packet does not exist: ${DDD_FINAL_GO_NO_GO_PACKET}\" >&2",
     "  echo \"Run: node scripts/ddd-release-readiness-summary.mjs\" >&2",
     "  exit 2",
     "fi",
     "set +e",
-    "node --input-type=module - \"${DDD_FINAL_GO_NO_GO_PACKET}\" <<'NODE'",
+    "\"${DDD_NODE_BIN}\" --input-type=module - \"${DDD_FINAL_GO_NO_GO_PACKET}\" <<'NODE'",
     "import fs from 'node:fs';",
     "const packetPath = process.argv[2];",
     "const packet = JSON.parse(fs.readFileSync(packetPath, 'utf8'));",
@@ -4515,6 +4519,19 @@ function releaseFinalGoNoGoGate(summary) {
     "DDD_FINAL_GO_NO_GO_STATUS=$?",
     "set -e",
     "if [[ \"${DDD_FINAL_GO_NO_GO_STATUS}\" == \"0\" ]]; then",
+    "  if [[ \"${DDD_STAGING_FINAL_REVIEW_ENFORCE}\" == \"1\" || \"${DDD_STAGING_FINAL_REVIEW_ENFORCE}\" == \"true\" ]]; then",
+    "    set +e",
+    "    \"${DDD_NODE_BIN}\" scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "    DDD_STAGING_FINAL_REVIEW_STATUS=$?",
+    "    set -e",
+    "    if [[ \"${DDD_STAGING_FINAL_REVIEW_STATUS}\" != \"0\" ]]; then",
+    "      echo \"[ddd-final-go-no-go][staging-final-review-blocked] cutover blocked; run node scripts/ddd-staging-execution-checklist.mjs --final-review\" >&2",
+    "      if [[ \"${DDD_FINAL_GO_NO_GO_ENFORCE}\" == \"1\" || \"${DDD_FINAL_GO_NO_GO_ENFORCE}\" == \"true\" ]]; then",
+    "        exit 10",
+    "      fi",
+    "      exit 0",
+    "    fi",
+    "  fi",
     "  echo \"[ddd-final-go-no-go][go] cutover allowed\"",
     "  exit 0",
     "fi",
@@ -4580,7 +4597,7 @@ function releasePreflightGate(summary) {
     "const cutoverAllowed = cutoverAllowedValue === 'true';",
     "const releaseEnvFileCutoverSafe = releaseEnvFileCutoverSafeValue === 'true';",
     "const steps = [",
-    "  { name: 'artifact-integrity', exitCode: toNumber(artifactIntegrityStatus), command: 'bash artifacts/ddd/release/release-artifact-integrity-gate.sh' },",
+    "  { name: 'artifact-integrity', exitCode: toNumber(artifactIntegrityStatus), command: 'bash ${DDD_RELEASE_DIR}/release-artifact-integrity-gate.sh' },",
     "  { name: 'manifest-provenance-preflight', exitCode: toNumber(manifestPreflightStatus), command: 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs' },",
     "  { name: 'artifact-path-leak', exitCode: toNumber(pathLeakStatus), command: 'node scripts/ddd-release-artifact-path-leak-contract.mjs' },",
     "  { name: 'unblock-brief', exitCode: toNumber(unblockBriefStatus), command: 'node scripts/ddd-release-unblock-brief.mjs && node scripts/ddd-release-unblock-brief-contract.mjs' },",
@@ -4588,8 +4605,8 @@ function releasePreflightGate(summary) {
     "  { name: 'env-owner-input-packet', exitCode: toNumber(envOwnerInputPacketStatus), command: 'node scripts/ddd-release-env-owner-input-packet-contract.mjs' },",
     "  { name: 'config-owner-input-reconciliation', exitCode: toNumber(configOwnerInputReconciliationStatus), command: 'DDD_RELEASE_CONFIG_REPORT=${DDD_RELEASE_CONFIG_REPORT} node scripts/ddd-release-config-owner-input-reconciliation.mjs' },",
     "  { name: 'owner-input-receipt', exitCode: toNumber(ownerInputReceiptStatus), command: 'node scripts/ddd-release-owner-input-receipt.mjs && node scripts/ddd-release-owner-input-receipt-contract.mjs' },",
-    "  { name: 'env-readiness', exitCode: toNumber(envReadinessStatus), command: enforceValue === '1' || enforceValue === 'true' ? 'DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh' : 'bash artifacts/ddd/release/release-env-readiness-gate.sh' },",
-    "  { name: 'final-go-no-go', exitCode: toNumber(finalGoNoGoStatus), command: enforceValue === '1' || enforceValue === 'true' ? 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh' : 'bash artifacts/ddd/release/release-final-go-no-go-gate.sh' },",
+    "  { name: 'env-readiness', exitCode: toNumber(envReadinessStatus), command: enforceValue === '1' || enforceValue === 'true' ? 'DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash ${DDD_RELEASE_DIR}/release-env-readiness-gate.sh' : 'bash ${DDD_RELEASE_DIR}/release-env-readiness-gate.sh' },",
+    "  { name: 'final-go-no-go', exitCode: toNumber(finalGoNoGoStatus), command: enforceValue === '1' || enforceValue === 'true' ? 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash ${DDD_RELEASE_DIR}/release-final-go-no-go-gate.sh' : 'bash ${DDD_RELEASE_DIR}/release-final-go-no-go-gate.sh' },",
     "];",
     "const advisoryFailures = enforce ? [] : steps",
     "  .filter((step) => step.exitCode > 0)",
@@ -4628,7 +4645,7 @@ function releasePreflightGate(summary) {
     "  return 0",
     "}",
     "",
-    "run_preflight_step artifact-integrity bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
+    "run_preflight_step artifact-integrity bash \"${DDD_RELEASE_DIR}/release-artifact-integrity-gate.sh\"",
     "artifact_integrity_status=\"${preflight_step_status}\"",
     "if [[ \"${artifact_integrity_status}\" != \"0\" ]]; then",
     "  failed_step=\"artifact-integrity\"",
@@ -4693,14 +4710,14 @@ function releasePreflightGate(summary) {
     "  exit \"${owner_input_receipt_status}\"",
     "fi",
     "if [[ \"${DDD_RELEASE_PREFLIGHT_ENFORCE}\" == \"1\" || \"${DDD_RELEASE_PREFLIGHT_ENFORCE}\" == \"true\" ]]; then",
-    "  run_preflight_step env-readiness env DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+    "  run_preflight_step env-readiness env DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash \"${DDD_RELEASE_DIR}/release-env-readiness-gate.sh\"",
     "  env_readiness_status=\"${preflight_step_status}\"",
     "  if [[ \"${env_readiness_status}\" != \"0\" ]]; then",
     "    failed_step=\"env-readiness\"",
     "    write_preflight_report NO_GO",
     "    exit \"${env_readiness_status}\"",
     "  fi",
-    "  run_preflight_step final-go-no-go env DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
+    "  run_preflight_step final-go-no-go env DDD_FINAL_GO_NO_GO_ENFORCE=1 bash \"${DDD_RELEASE_DIR}/release-final-go-no-go-gate.sh\"",
     "  final_go_no_go_status=\"${preflight_step_status}\"",
     "  if [[ \"${final_go_no_go_status}\" != \"0\" ]]; then",
     "    failed_step=\"final-go-no-go\"",
@@ -4708,9 +4725,9 @@ function releasePreflightGate(summary) {
     "    exit \"${final_go_no_go_status}\"",
     "  fi",
     "else",
-    "  run_preflight_step env-readiness bash artifacts/ddd/release/release-env-readiness-gate.sh",
+    "  run_preflight_step env-readiness bash \"${DDD_RELEASE_DIR}/release-env-readiness-gate.sh\"",
     "  env_readiness_status=\"${preflight_step_status}\"",
-    "  run_preflight_step final-go-no-go bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
+    "  run_preflight_step final-go-no-go bash \"${DDD_RELEASE_DIR}/release-final-go-no-go-gate.sh\"",
     "  final_go_no_go_status=\"${preflight_step_status}\"",
     "fi",
     "write_preflight_report PASS",
@@ -5152,11 +5169,12 @@ function releaseFinalOwnerQueueCommands(summary) {
     "    echo \"Template env files are worksheets, not release evidence: ${DDD_RELEASE_ENV_FILE}\" >&2",
     "    exit 1",
     "  fi",
-    "  DDD_RELEASE_ENV_FILE_MODE=$(node -e \"const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));\" \"${DDD_RELEASE_ENV_FILE}\")",
+    "  DDD_RELEASE_ENV_FILE_MODE=$(stat -c '%a' \"${DDD_RELEASE_ENV_FILE}\" 2>/dev/null || node -e \"const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));\" \"${DDD_RELEASE_ENV_FILE}\")",
     "  if (( 8#${DDD_RELEASE_ENV_FILE_MODE} & 077 )); then",
     "    echo \"Release env file permissions are too broad: ${DDD_RELEASE_ENV_FILE} mode=${DDD_RELEASE_ENV_FILE_MODE}; use chmod 600.\" >&2",
     "    exit 1",
     "  fi",
+    "  export DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED=1",
     "fi",
     "matches_owner_queue_filter() {",
     "  local owner=\"$1\"",
@@ -5570,12 +5588,14 @@ function releaseEnvBootstrapScript(summary) {
     "DDD_RELEASE_OWNER_ENV_TEMPLATE_DIR=\"${DDD_RELEASE_OWNER_ENV_TEMPLATE_DIR:-artifacts/ddd/release/release-env-owner-templates}\"",
     "DDD_RELEASE_CANONICAL_ENV_FILE=\"${DDD_RELEASE_CANONICAL_ENV_FILE:-artifacts/ddd/release/release-env-canonical-fill.template.env}\"",
     "DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT=\"${DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT:-artifacts/ddd/release/release-env-bootstrap-receipt.json}\"",
+    "DDD_NODE_BIN=\"${DDD_NODE_BIN:-node}\"",
+    "export DDD_NODE_BIN",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"init\"",
     "write_bootstrap_receipt() {",
     "  local status=\"$1\"",
     "  local exit_code=\"$2\"",
     "  local step=\"$3\"",
-    `  node --input-type=module -e ${shellSingleQuoted(receiptCode)} "$DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT" "$status" "$exit_code" "$step" "$DDD_RELEASE_ENV_FILE" "$DDD_RELEASE_CANONICAL_ENV_FILE" "$DDD_RELEASE_OWNER_ENV_TEMPLATE_DIR" "$LUMIRA_REPO_ROOT"`,
+    `  "\${DDD_NODE_BIN}" --input-type=module -e ${shellSingleQuoted(receiptCode)} "$DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT" "$status" "$exit_code" "$step" "$DDD_RELEASE_ENV_FILE" "$DDD_RELEASE_CANONICAL_ENV_FILE" "$DDD_RELEASE_OWNER_ENV_TEMPLATE_DIR" "$LUMIRA_REPO_ROOT"`,
     "}",
     "on_bootstrap_exit() {",
     "  local exit_code=\"$?\"",
@@ -5609,37 +5629,37 @@ function releaseEnvBootstrapScript(summary) {
     "",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"owner-templates-merge\"",
     "echo \"[ddd-release-env-bootstrap] owner templates -> canonical\"",
-    "node scripts/ddd-release-env-owner-templates-merge.mjs \"${DDD_RELEASE_OWNER_ENV_TEMPLATE_DIR}\" \"${DDD_RELEASE_CANONICAL_ENV_FILE}\"",
+    "\"${DDD_NODE_BIN}\" scripts/ddd-release-env-owner-templates-merge.mjs \"${DDD_RELEASE_OWNER_ENV_TEMPLATE_DIR}\" \"${DDD_RELEASE_CANONICAL_ENV_FILE}\"",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"canonical-merge\"",
     "echo \"[ddd-release-env-bootstrap] canonical -> release env\"",
-    "node scripts/ddd-release-env-canonical-merge.mjs \"${DDD_RELEASE_CANONICAL_ENV_FILE}\" \"${DDD_RELEASE_ENV_FILE}\"",
+    "\"${DDD_NODE_BIN}\" scripts/ddd-release-env-canonical-merge.mjs \"${DDD_RELEASE_CANONICAL_ENV_FILE}\" \"${DDD_RELEASE_ENV_FILE}\"",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"safe-defaults\"",
     "echo \"[ddd-release-env-bootstrap] safe defaults\"",
-    "node scripts/ddd-release-env-safe-defaults.mjs",
+    "\"${DDD_NODE_BIN}\" scripts/ddd-release-env-safe-defaults.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"provenance-defaults\"",
     "echo \"[ddd-release-env-bootstrap] provenance defaults\"",
-    "node scripts/ddd-release-provenance-defaults.mjs",
+    "\"${DDD_NODE_BIN}\" scripts/ddd-release-provenance-defaults.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"alias-sync\"",
     "echo \"[ddd-release-env-bootstrap] alias sync\"",
-    "node scripts/ddd-release-env-alias-sync.mjs",
+    "\"${DDD_NODE_BIN}\" scripts/ddd-release-env-alias-sync.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"canonical-lint\"",
     "echo \"[ddd-release-env-bootstrap] canonical lint\"",
-    "node scripts/ddd-release-env-canonical-lint.mjs \"${DDD_RELEASE_CANONICAL_ENV_FILE}\"",
+    "\"${DDD_NODE_BIN}\" scripts/ddd-release-env-canonical-lint.mjs \"${DDD_RELEASE_CANONICAL_ENV_FILE}\"",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"env-readiness-gate\"",
     "echo \"[ddd-release-env-bootstrap] env readiness gate\"",
     "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"release-env-lint\"",
     "echo \"[ddd-release-env-bootstrap] release env lint\"",
-    "node scripts/ddd-release-env-file-lint.mjs",
+    "\"${DDD_NODE_BIN}\" scripts/ddd-release-env-file-lint.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"release-config-evidence\"",
     "echo \"[ddd-release-env-bootstrap] release config evidence\"",
-    "node scripts/ddd-release-config-evidence.mjs",
+    "\"${DDD_NODE_BIN}\" scripts/ddd-release-config-evidence.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"manifest-provenance-env\"",
     "echo \"[ddd-release-env-bootstrap] manifest provenance env\"",
-    "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+    "DDD_RELEASE_MANIFEST_CHECK_ENV=true \"${DDD_NODE_BIN}\" scripts/ddd-release-evidence-manifest.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"readiness-summary\"",
     "echo \"[ddd-release-env-bootstrap] readiness summary\"",
-    "node scripts/ddd-release-readiness-summary.mjs",
+    "\"${DDD_NODE_BIN}\" scripts/ddd-release-readiness-summary.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"final-go-no-go\"",
     "echo \"[ddd-release-env-bootstrap] final go/no-go\"",
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
@@ -7058,7 +7078,7 @@ function releaseEnvOwnerTemplatesArtifact(summary) {
       queueOrder: owner.queueOrder,
       queueStatus: owner.queueStatus,
       canExecute: owner.canExecute,
-      templatePath: path.join("artifacts", "ddd", "release", "release-env-owner-templates", fileName),
+      templatePath: path.posix.join("artifacts", "ddd", "release", "release-env-owner-templates", fileName),
       fileName,
       canonicalFillItemCount: owner.canonicalFillItemCount,
       secretCanonicalKeyCount: owner.secretCanonicalKeyCount,
@@ -7078,7 +7098,7 @@ function releaseEnvOwnerTemplatesArtifact(summary) {
     canonicalFillItemCount: handoff.canonicalFillItemCount,
     secretCanonicalKeyCount: owners.reduce((sum, owner) => sum + owner.secretCanonicalKeyCount, 0),
     safeToPreFillCanonicalKeyCount: owners.reduce((sum, owner) => sum + owner.safeToPreFillCanonicalKeyCount, 0),
-    templateDir: path.join("artifacts", "ddd", "release", "release-env-owner-templates"),
+    templateDir: path.posix.join("artifacts", "ddd", "release", "release-env-owner-templates"),
     owners,
   };
 }
@@ -7209,11 +7229,15 @@ function releaseArtifactIntegrityArtifact(summary, outputs) {
   const entries = Object.entries(outputs)
     .map(([name, filePath]) => {
       const stat = fs.statSync(filePath);
+      const relativePath = path.relative(repoRoot, filePath).replaceAll("\\", "/");
+      const executable = process.platform === "win32" && relativePath.endsWith(".sh")
+        ? true
+        : (stat.mode & 0o111) !== 0;
       return {
         name,
-        path: path.relative(repoRoot, filePath),
+        path: relativePath,
         bytes: stat.size,
-        executable: (stat.mode & 0o111) !== 0,
+        executable,
         sha256: fileSha256(filePath),
       };
     })
@@ -7252,7 +7276,7 @@ function releaseArtifactIntegrityMarkdown(summary, outputs) {
 }
 
 function releaseArtifactIntegrityGate(summary) {
-  const packetPath = path.relative(repoRoot, releaseArtifactIntegrityOutput);
+  const packetPath = path.relative(repoRoot, releaseArtifactIntegrityOutput).replaceAll("\\", "/");
   return `${[
     "#!/usr/bin/env bash",
     "set -euo pipefail",
@@ -7263,11 +7287,12 @@ function releaseArtifactIntegrityGate(summary) {
     ...releaseRepoRootPreambleLines(),
     "",
     `DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET="\${DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET:-${packetPath}}"`,
+    "DDD_NODE_BIN=\"${DDD_NODE_BIN:-node}\"",
     "if [[ ! -f \"${DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET}\" ]]; then",
     "  echo \"Release artifact integrity packet does not exist: ${DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET}\" >&2",
     "  exit 12",
     "fi",
-    "node --input-type=module - \"${DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET}\" <<'NODE'",
+    "\"${DDD_NODE_BIN}\" --input-type=module - \"${DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET}\" <<'NODE'",
     "import crypto from 'node:crypto';",
     "import fs from 'node:fs';",
     "const packetPath = process.argv[2];",
@@ -7302,7 +7327,7 @@ function releaseArtifactIntegrityGate(summary) {
     "    continue;",
     "  }",
     "  const stat = fs.statSync(entry.path);",
-    "  const executable = (stat.mode & 0o111) !== 0;",
+    "  const executable = process.platform === 'win32' && entry.path.endsWith('.sh') ? true : (stat.mode & 0o111) !== 0;",
     "  const sha256 = crypto.createHash('sha256').update(fs.readFileSync(entry.path)).digest('hex');",
     "  if (stat.size !== entry.bytes) failures.push(`size:${entry.path}`);",
     "  if (executable !== entry.executable) failures.push(`mode:${entry.path}`);",
@@ -8114,9 +8139,9 @@ function releaseEnvReadinessRedactedCsv(summary) {
 }
 
 function releaseEnvReadinessGate(summary) {
-  const packetPath = path.relative(repoRoot, releaseEnvReadinessRedactedOutput);
-  const handoffPath = path.relative(repoRoot, releaseEnvOwnerHandoffRedactedMarkdownOutput);
-  const handoffCsvPath = path.relative(repoRoot, releaseEnvOwnerHandoffRedactedCsvOutput);
+  const packetPath = path.relative(repoRoot, releaseEnvReadinessRedactedOutput).replaceAll("\\", "/");
+  const handoffPath = path.relative(repoRoot, releaseEnvOwnerHandoffRedactedMarkdownOutput).replaceAll("\\", "/");
+  const handoffCsvPath = path.relative(repoRoot, releaseEnvOwnerHandoffRedactedCsvOutput).replaceAll("\\", "/");
   const lines = [
     "#!/usr/bin/env bash",
     "set -euo pipefail",
@@ -8129,15 +8154,17 @@ function releaseEnvReadinessGate(summary) {
     "",
     `DDD_RELEASE_ENV_READINESS_PACKET="\${DDD_RELEASE_ENV_READINESS_PACKET:-${packetPath}}"`,
     "DDD_RELEASE_ENV_READINESS_ENFORCE=\"${DDD_RELEASE_ENV_READINESS_ENFORCE:-}\"",
+    "DDD_NODE_BIN=\"${DDD_NODE_BIN:-node}\"",
     "if [[ ! -f \"${DDD_RELEASE_ENV_READINESS_PACKET}\" ]]; then",
     "  echo \"Release env readiness packet does not exist: ${DDD_RELEASE_ENV_READINESS_PACKET}\" >&2",
     "  echo \"Run: node scripts/ddd-release-readiness-summary.mjs\" >&2",
     "  exit 2",
     "fi",
     "set +e",
-    "node --input-type=module - \"${DDD_RELEASE_ENV_READINESS_PACKET}\" <<'NODE'",
+    "\"${DDD_NODE_BIN}\" --input-type=module - \"${DDD_RELEASE_ENV_READINESS_PACKET}\" \"${DDD_RELEASE_ENV_READINESS_ENFORCE}\" <<'NODE'",
     "import fs from 'node:fs';",
     "const packetPath = process.argv[2];",
+    "const enforceMode = process.argv[3];",
     "const packet = JSON.parse(fs.readFileSync(packetPath, 'utf8'));",
     "const schemaIssues = [];",
     "if (packet.redacted !== true) schemaIssues.push('redacted must be true');",
@@ -8206,7 +8233,7 @@ function releaseEnvReadinessGate(summary) {
     "  for (const owner of byOwner) console.log(`- ${owner.owner}: blockers=${owner.blockers} placeholder=${owner.placeholder} missing=${owner.missing} optionalEmpty=${owner.optionalEmpty} secretKeys=${owner.secretKeys} safeDefaultAvailable=${owner.safeDefaultAvailable} requiresOwnerInput=${owner.requiresOwnerInput}`);",
     "}",
     "const unresolved = Number(summary.blockers || 0) + Number(summary.missing || 0) + Number(summary.placeholders || 0);",
-    "if (process.env.DDD_RELEASE_ENV_READINESS_ENFORCE === '1' || process.env.DDD_RELEASE_ENV_READINESS_ENFORCE === 'true') {",
+    "if (enforceMode === '1' || enforceMode === 'true' || process.env.DDD_RELEASE_ENV_READINESS_ENFORCE === '1' || process.env.DDD_RELEASE_ENV_READINESS_ENFORCE === 'true') {",
     "  if (unresolved > 0) {",
     "    console.error(`[ddd-release-env-readiness][no-go] unresolved release env values remain: blockers=${summary.blockers ?? 0} placeholders=${summary.placeholders ?? 0} missing=${summary.missing ?? 0}`);",
     "    process.exit(21);",
@@ -8267,7 +8294,7 @@ function releaseEnvOwnerHandoffRedactedArtifact(summary) {
     .map((owner, index) => ({
       ...owner,
       fileName: `${String(index + 1).padStart(2, "0")}-${owner.owner}.md`,
-      handoffPath: path.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted", `${String(index + 1).padStart(2, "0")}-${owner.owner}.md`),
+      handoffPath: path.posix.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted", `${String(index + 1).padStart(2, "0")}-${owner.owner}.md`),
       nextCommand: "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       postFillCommands: validationCommands,
     }));
@@ -8278,7 +8305,7 @@ function releaseEnvOwnerHandoffRedactedArtifact(summary) {
     valuePolicy: redacted.valuePolicy,
     ownerCount: owners.length,
     blockerOwnerCount: owners.filter((owner) => owner.blockers > 0).length,
-    templateDir: path.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted"),
+    templateDir: path.posix.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted"),
     fastPath: {
       objective: "Fill owner-owned release env keys without exposing values, then rerun strict env and final go/no-go gates.",
       blockedUntil: "All blocking placeholder release env values are replaced in the permission-safe release env file.",
@@ -8489,9 +8516,9 @@ function releaseEnvOwnerInputPacketArtifact(summary) {
     .map((owner, index) => ({
       ...owner,
       fileName: `${String(index + 1).padStart(2, "0")}-${owner.owner}`,
-      packetPath: path.join("artifacts", "ddd", "release", "release-env-owner-input-packet", `${String(index + 1).padStart(2, "0")}-${owner.owner}.json`),
-      packetMarkdownPath: path.join("artifacts", "ddd", "release", "release-env-owner-input-packet", `${String(index + 1).padStart(2, "0")}-${owner.owner}.md`),
-      handoffPath: path.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted", `${String((readiness.byOwner || []).findIndex((entry) => entry.owner === owner.owner) + 1).padStart(2, "0")}-${owner.owner}.md`),
+      packetPath: path.posix.join("artifacts", "ddd", "release", "release-env-owner-input-packet", `${String(index + 1).padStart(2, "0")}-${owner.owner}.json`),
+      packetMarkdownPath: path.posix.join("artifacts", "ddd", "release", "release-env-owner-input-packet", `${String(index + 1).padStart(2, "0")}-${owner.owner}.md`),
+      handoffPath: path.posix.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted", `${String((readiness.byOwner || []).findIndex((entry) => entry.owner === owner.owner) + 1).padStart(2, "0")}-${owner.owner}.md`),
     }));
   const ownerInputReasonCounts = items.reduce((counts, item) => {
     counts[item.ownerInputReason] = (counts[item.ownerInputReason] || 0) + 1;
@@ -8520,7 +8547,7 @@ function releaseEnvOwnerInputPacketArtifact(summary) {
     status: summary.status,
     redacted: true,
     valuePolicy: "No concrete environment values are emitted; this packet lists only owner, key, validation, reason, and redacted collection guidance.",
-    sourceArtifact: path.join("artifacts", "ddd", "release", "release-env-readiness-redacted.json"),
+    sourceArtifact: path.posix.join("artifacts", "ddd", "release", "release-env-readiness-redacted.json"),
     envFile: readiness.envFile ? "<release-env-file>" : null,
     postCollectionReceipt: {
       redacted: true,
@@ -9203,6 +9230,7 @@ function releaseRepoRootPreambleLines() {
     "    LUMIRA_REPO_ROOT=$(cd \"${SCRIPT_DIR}/../../..\" && pwd)",
     "  fi",
     "fi",
+    "export LUMIRA_REPO_ROOT",
     "cd \"${LUMIRA_REPO_ROOT}\"",
   ];
 }
@@ -9211,14 +9239,15 @@ function safeReleaseEnvExportJs() {
   return [
     "import fs from 'node:fs';",
     "import path from 'node:path';",
-    "const [file] = process.argv.slice(1);",
+    "const [file, permissionCheckedArg] = process.argv.slice(1);",
     "const templateNames = new Set(['release-env-missing.template.env', 'release-closure-wave-env.template.env', 'release-final-owner-queue-env.template.env', 'release-env-canonical-fill.template.env']);",
     "if (templateNames.has(path.basename(file))) {",
     "  console.error(`[ddd-release-env][template-refused] file=${file}`);",
     "  process.exit(1);",
     "}",
-    "const mode = fs.statSync(file).mode & 0o777;",
-    "if ((mode & 0o077) !== 0) {",
+    "const permissionAlreadyChecked = permissionCheckedArg === '1' || permissionCheckedArg === 'true' || process.env.DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED === '1' || process.env.DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED === 'true';",
+    "const mode = permissionAlreadyChecked ? 0o600 : fs.statSync(file).mode & 0o777;",
+    "if (!permissionAlreadyChecked && (mode & 0o077) !== 0) {",
     "  console.error(`[ddd-release-env][permission-refused] file=${file} mode=${mode.toString(8).padStart(3, '0')} required=600`);",
     "  process.exit(1);",
     "}",
@@ -9246,7 +9275,7 @@ function safeReleaseEnvLoaderLines(functionName = "safe_load_release_env_file") 
   return [
     `${functionName}() {`,
     "  local exports",
-    `  if ! exports=$(node --input-type=module -e ${shellSingleQuoted(safeReleaseEnvExportJs())} "$DDD_RELEASE_ENV_FILE"); then`,
+    `  if ! exports=$(node --input-type=module -e ${shellSingleQuoted(safeReleaseEnvExportJs())} "$DDD_RELEASE_ENV_FILE" "\${DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED:-}"); then`,
     "    return 1",
     "  fi",
     "  eval \"${exports}\"",
@@ -9365,11 +9394,12 @@ function releaseExecutionCommands(summary) {
   lines.push("    echo \"Template env files are worksheets, not release evidence: ${DDD_RELEASE_ENV_FILE}\" >&2");
   lines.push("    exit 1");
   lines.push("  fi");
-  lines.push("  DDD_RELEASE_ENV_FILE_MODE=$(node -e \"const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));\" \"${DDD_RELEASE_ENV_FILE}\")");
+  lines.push("  DDD_RELEASE_ENV_FILE_MODE=$(stat -c '%a' \"${DDD_RELEASE_ENV_FILE}\" 2>/dev/null || node -e \"const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));\" \"${DDD_RELEASE_ENV_FILE}\")");
   lines.push("  if (( 8#${DDD_RELEASE_ENV_FILE_MODE} & 077 )); then");
   lines.push("    echo \"Release env file permissions are too broad: ${DDD_RELEASE_ENV_FILE} mode=${DDD_RELEASE_ENV_FILE_MODE}; use chmod 600.\" >&2");
   lines.push("    exit 1");
   lines.push("  fi");
+  lines.push("  export DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED=1");
   lines.push("fi");
   lines.push(...safeReleaseEnvLoaderLines());
   lines.push("if [[ \"${DDD_RELEASE_NEEDS_ENV}\" == \"1\" ]]; then");
@@ -9577,7 +9607,7 @@ function releaseNextActionCommands(summary) {
     "    echo \"Template env files are worksheets, not release evidence: ${DDD_RELEASE_ENV_FILE}\" >&2",
     "    exit 1",
     "  fi",
-    "  DDD_RELEASE_ENV_FILE_MODE=$(node -e \"const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));\" \"${DDD_RELEASE_ENV_FILE}\")",
+    "  DDD_RELEASE_ENV_FILE_MODE=$(stat -c '%a' \"${DDD_RELEASE_ENV_FILE}\" 2>/dev/null || node -e \"const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));\" \"${DDD_RELEASE_ENV_FILE}\")",
     "  if (( 8#${DDD_RELEASE_ENV_FILE_MODE} & 077 )); then",
     "    echo \"Release env file permissions are too broad: ${DDD_RELEASE_ENV_FILE} mode=${DDD_RELEASE_ENV_FILE_MODE}; use chmod 600.\" >&2",
     "    exit 1",
@@ -11817,8 +11847,8 @@ function validateReadinessSummary(summary) {
   if (!finalGoNoGoGate.includes("finalRecommendation=")) {
     issues.push("releaseFinalGoNoGoGate must print finalRecommendation");
   }
-  if (!finalGoNoGoGate.includes("node --input-type=module")) {
-    issues.push("releaseFinalGoNoGoGate must parse packet with node");
+  if (!finalGoNoGoGate.includes("\"${DDD_NODE_BIN}\" --input-type=module")) {
+    issues.push("releaseFinalGoNoGoGate must parse packet with DDD_NODE_BIN");
   }
   if (!finalGoNoGoGate.includes("exit 10")) {
     issues.push("releaseFinalGoNoGoGate must return non-zero in enforce mode");

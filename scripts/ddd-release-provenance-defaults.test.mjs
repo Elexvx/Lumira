@@ -95,7 +95,11 @@ const permissionResult = runDefaults(permissionRoot, permissionEnv, {
   DDD_RELEASE_CANDIDATE_DEFAULT: "2026.06.17-rc4",
   DDD_EVIDENCE_OPERATOR_DEFAULT: "release-owner",
 });
-assert.notEqual(permissionResult.status, 0);
-assert.match(permissionResult.stderr, /env file permissions are too broad/);
+if (process.platform === "win32") {
+  assert.equal(permissionResult.status, 0, permissionResult.stderr);
+} else {
+  assert.notEqual(permissionResult.status, 0);
+  assert.match(permissionResult.stderr, /env file permissions are too broad/);
+}
 
 console.log("[ddd-release-provenance-defaults.test] ok");

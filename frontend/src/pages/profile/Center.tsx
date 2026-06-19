@@ -657,6 +657,7 @@ type ProfileCenterBindingSectionProps = {
   loginMethods: LoginMethodItem[];
   passkeys: PasskeyCredentialRecord[];
   passkeyBinding: boolean;
+  passkeyEnabled: boolean;
   loginMethodsLoading: boolean;
   providers: SecondFactorProviderStatus[];
   providersLoading: boolean;
@@ -674,6 +675,7 @@ const ProfileCenterBindingSection = ({
   loginMethods,
   passkeys,
   passkeyBinding,
+  passkeyEnabled,
   loginMethodsLoading,
   providers,
   providersLoading,
@@ -837,9 +839,11 @@ const ProfileCenterBindingSection = ({
         loading={loginMethodsLoading}
         className="saas-profile-page__card"
         extra={
-          <Button icon={<KeyOutlined />} loading={passkeyBinding} disabled={passkeyBinding} onClick={onBindPasskey}>
+          <Tooltip title={passkeyEnabled ? undefined : t('当前未开启通行密钥登录', 'Passkey sign-in is not enabled')}>
+            <Button icon={<KeyOutlined />} loading={passkeyBinding} disabled={passkeyBinding || !passkeyEnabled} onClick={onBindPasskey}>
             {t('新增通行密钥', 'Add passkey')}
-          </Button>
+            </Button>
+          </Tooltip>
         }
       >
         {renderLoginMethodList(loginMethods)}
@@ -914,6 +918,7 @@ const ProfileCenterPage = () => {
                 loginMethods={interactionAccess.passkeyAccess.loginMethods}
                 passkeys={passkeys}
                 passkeyBinding={interactionAccess.passkeyAccess.passkeyBinding}
+                passkeyEnabled={interactionAccess.passkeyAccess.passkeyEnabled}
                 loginMethodsLoading={loginMethodsLoading}
                 providers={providers}
                 providersLoading={providersLoading}

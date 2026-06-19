@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { history, useAccess, useLocation } from '@umijs/max';
-import { Alert, Button, Card, Col, Descriptions, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
+import { getLocale, history, useAccess, useLocation } from '@umijs/max';
+import { Alert, Button, Card, Col, Descriptions, Modal, Result, Row, Space, Spin, Statistic, Steps, Tag, Tabs, Tooltip, Typography, theme } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
-import { ApiOutlined, CheckCircleOutlined, CloudSyncOutlined, ExclamationCircleOutlined, GithubOutlined, ReloadOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
+import { ApiOutlined, CheckCircleOutlined, CloudDownloadOutlined, CloudSyncOutlined, ExclamationCircleOutlined, GithubOutlined, ReloadOutlined, RollbackOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { tokenManager } from '@/auth/token';
 import { AUTHORIZATION_HEADER } from '@/constants/http';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -12,6 +12,7 @@ import type {
   MessageWebSocketRuntime,
   MessageWebSocketTenantRuntime,
   PlatformUpdateStatus,
+  PlatformUpdateTask,
   RedisMonitorClient,
   RedisMonitorCommandStat,
   RedisMonitorKeyspace,
@@ -27,7 +28,6 @@ import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
@@ -80,6 +80,13 @@ const formatNumber = (value?: number | null) => {
     return '-';
   }
   return value.toLocaleString('zh-CN');
+};
+
+const formatLoadAverage = (value?: number | null) => {
+  if (value === undefined || value === null || Number.isNaN(value)) {
+    return t('当前系统不支持', 'Not supported by this system');
+  }
+  return value.toFixed(2);
 };
 
 const shortCommit = (value?: string | null) => {
@@ -205,6 +212,14 @@ const usePlatformUpdateMonitor = () => {
         ...API_OPTS.NO_REDIRECT,
       }),
   });
+  const tasksQuery = useQuery({
+    queryKey: ['platform-update-tasks'],
+    queryFn: async () =>
+      request<PlatformUpdateTask[]>('/v1/system/update/tasks', {
+        method: 'GET',
+        ...API_OPTS.NO_REDIRECT,
+      }),
+  });
 
   const updateStatus = query.data;
   const statusKey = resolveStatusKey(updateStatus);
@@ -252,8 +267,78 @@ const usePlatformUpdateMonitor = () => {
     }
   };
 
+  const refreshAll = async () => {
+    await Promise.all([query.refetch(), tasksQuery.refetch()]);
+  };
+
+  const handleInstall = async () => {
+    Modal.confirm({
+      title: t('确认手动安装平台更新？', 'Install platform update?'),
+      content: t('系统将通过宿主机 lumira-updater 执行备份、拉取镜像、重启和健康检查。请确认当前处于维护窗口。', 'Lumira will ask the host updater to back up, pull images, restart, and run health checks. Confirm you are in a maintenance window.'),
+      okText: t('开始更新', 'Start update'),
+      cancelText: t('取消', 'Cancel'),
+      onOk: async () => {
+        try {
+          await request<PlatformUpdateTask>('/v1/system/update/install', {
+            method: 'POST',
+            ...API_OPTS.NO_REDIRECT,
+          });
+          message.success(t('更新任务已提交', 'Update task submitted'));
+          await refreshAll();
+        } catch (error) {
+          showErrorMessage(error, t('提交更新任务失败', 'Failed to submit update task'));
+        }
+      },
+    });
+  };
+
+  const handleRollback = async () => {
+    Modal.confirm({
+      title: t('确认回滚平台版本？', 'Rollback platform version?'),
+      content: t('系统将使用 updater 最近一次保存的 deploy/.env 备份回滚镜像配置，并重新部署。', 'The updater will restore the latest saved deploy/.env backup and redeploy.'),
+      okText: t('开始回滚', 'Start rollback'),
+      cancelText: t('取消', 'Cancel'),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          await request<PlatformUpdateTask>('/v1/system/update/rollback', {
+            method: 'POST',
+            ...API_OPTS.NO_REDIRECT,
+          });
+          message.success(t('回滚任务已提交', 'Rollback task submitted'));
+          await refreshAll();
+        } catch (error) {
+          showErrorMessage(error, t('提交回滚任务失败', 'Failed to submit rollback task'));
+        }
+      },
+    });
+  };
+
+  const taskColumns = useMemo<ProColumns<PlatformUpdateTask>[]>(
+    () => [
+      { title: t('类型', 'Type'), dataIndex: 'taskType', width: 'var(--saas-spacing-120)', render: (_: unknown, record) => record.taskType || '-' },
+      {
+        title: t('状态', 'Status'),
+        dataIndex: 'status',
+        width: 'var(--saas-spacing-120)',
+        render: (_: unknown, record) => {
+          const status = record.status || '-';
+          const color = status === 'SUCCEEDED' || status === 'ROLLED_BACK' ? 'green' : status === 'FAILED' ? 'red' : 'blue';
+          return <Tag color={color}>{status}</Tag>;
+        },
+      },
+      { title: t('目标版本', 'Target version'), dataIndex: 'targetVersion', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => record.targetVersion || '-' },
+      { title: t('目标提交', 'Target commit'), dataIndex: 'targetCommit', width: 'var(--saas-spacing-160)', render: (_: unknown, record) => shortCommit(record.targetCommit) },
+      { title: t('操作人', 'Operator'), dataIndex: 'createdByName', width: 'var(--saas-spacing-140)', render: (_: unknown, record) => record.createdByName || '-' },
+      { title: t('更新时间', 'Updated at'), dataIndex: 'updatedAt', width: 'var(--saas-spacing-180)', render: (_: unknown, record) => formatDateTime(record.updatedAt) },
+      { title: t('说明', 'Message'), dataIndex: 'logSummary', ellipsis: true, render: (_: unknown, record) => record.errorMessage || record.logSummary || '-' },
+    ],
+    [],
+  );
+
   return {
     query,
+    tasksQuery,
     updateStatus,
     statusKey,
     currentStatusMeta,
@@ -261,6 +346,9 @@ const usePlatformUpdateMonitor = () => {
     detailDescription,
     checkSteps,
     handleCheck,
+    handleInstall,
+    handleRollback,
+    taskColumns,
     formatDateTime,
     shortCommit,
   };
@@ -321,6 +409,30 @@ const buildSwaggerHtml = (apiSpec: unknown, schemeContainerVerticalPadding: numb
 </html>`;
 };
 
+const readApiDocsError = async (response: Response) => {
+  const fallback = t('接口文档加载失败：{status}', 'API docs failed to load: {status}').replace('{status}', String(response.status));
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await response.text().catch(() => '');
+    return text.trim() || fallback;
+  }
+
+  const body = await response.json().catch(() => null);
+  if (body && typeof body === 'object') {
+    const errorLike = body as { userMessage?: unknown; message?: unknown; error?: unknown };
+    if (typeof errorLike.userMessage === 'string' && errorLike.userMessage.trim()) {
+      return errorLike.userMessage;
+    }
+    if (typeof errorLike.message === 'string' && errorLike.message.trim()) {
+      return errorLike.message;
+    }
+    if (typeof errorLike.error === 'string' && errorLike.error.trim()) {
+      return errorLike.error;
+    }
+  }
+  return fallback;
+};
+
 const ApiDocsContent = () => {
   const { token } = theme.useToken();
   const { isMobile } = useResponsive();
@@ -349,7 +461,7 @@ const ApiDocsContent = () => {
     })
       .then(async (response) => {
         if (!response.ok) {
-          throw new Error(t('接口文档加载失败：{status}', 'API docs failed to load: {status}').replace('{status}', String(response.status)));
+          throw new Error(await readApiDocsError(response));
         }
         return response.json();
       })
@@ -666,6 +778,7 @@ const useRedisMonitor = () => {
 const PlatformUpdateContent = () => {
   const {
     query,
+    tasksQuery,
     updateStatus,
     statusKey,
     currentStatusMeta,
@@ -673,6 +786,9 @@ const PlatformUpdateContent = () => {
     detailDescription,
     checkSteps,
     handleCheck,
+    handleInstall,
+    handleRollback,
+    taskColumns,
     formatDateTime,
     shortCommit,
   } = usePlatformUpdateMonitor();
@@ -680,6 +796,11 @@ const PlatformUpdateContent = () => {
   const rowGutter = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
   const compactSectionGap = resolveResponsiveValue(APP_SPACING.compactSectionGap, isMobile);
+  const activeTask = updateStatus?.activeTask;
+  const isTaskRunning = activeTask?.status === 'PENDING' || activeTask?.status === 'RUNNING';
+  const updaterAvailable = updateStatus?.updaterAvailable === true;
+  const canInstall = statusKey === 'UPDATE_AVAILABLE' && Boolean(updateStatus?.latest?.serverImage) && updaterAvailable && !isTaskRunning;
+  const canRollback = updaterAvailable && !isTaskRunning;
 
   return (
     <div className="saas-update-center saas-monitoring-tab-pane">
@@ -712,6 +833,16 @@ const PlatformUpdateContent = () => {
                   {t('检查', 'Check')}
                 </Button>
               </Tooltip>
+              <Tooltip title={canInstall ? t('通过宿主机 updater 手动安装更新', 'Install through the host updater') : t('需要 manifest 镜像且没有运行中的任务', 'Requires manifest images and no running task')}>
+                <Button icon={<CloudDownloadOutlined />} disabled={!canInstall} loading={isTaskRunning} onClick={handleInstall}>
+                  {t('手动更新', 'Install')}
+                </Button>
+              </Tooltip>
+              <Tooltip title={t('使用最近一次 updater 环境备份回滚', 'Rollback with the latest updater env backup')}>
+                <Button danger icon={<RollbackOutlined />} disabled={!canRollback} onClick={handleRollback}>
+                  {t('回滚', 'Rollback')}
+                </Button>
+              </Tooltip>
               {latestUrl ? (
               <Tooltip title={t('打开更新源提交', 'Open source commit')}>
                   <Button icon={<GithubOutlined />} href={latestUrl} target="_blank" rel="noreferrer" />
@@ -731,6 +862,30 @@ const PlatformUpdateContent = () => {
       ) : null}
       {statusKey === 'CHECK_FAILED' ? (
       <Alert type="error" showIcon message={t('更新源检查失败', 'Update source check failed')} description={updateStatus?.errorMessage || t('请检查更新源地址和服务器网络。', 'Please check the source URL and server network.')} />
+      ) : null}
+      {updateStatus && updateStatus.sourceReachable === false && statusKey === 'UP_TO_DATE' ? (
+        <Alert
+          type="info"
+          showIcon
+          message={t('已使用本地版本信息', 'Using local version information')}
+          description={updateStatus.errorMessage || t('远程更新源暂不可用，当前已回退到本地 Git 提交作为版本基准。', 'The remote update source is unavailable, so the local Git commit is used as the version baseline.')}
+        />
+      ) : null}
+      {updateStatus && !updaterAvailable ? (
+        <Alert
+          type="warning"
+          showIcon
+          message={t('平台更新代理未连接', 'Platform updater is not connected')}
+          description={t('检查版本仍可使用；手动更新和回滚需要先启动并配置 lumira-updater。', 'Version checks still work; install and rollback require lumira-updater to be running and configured.')}
+        />
+      ) : null}
+      {activeTask ? (
+        <Alert
+          type={activeTask.status === 'FAILED' ? 'error' : activeTask.status === 'SUCCEEDED' || activeTask.status === 'ROLLED_BACK' ? 'success' : 'info'}
+          showIcon
+          message={`${activeTask.taskType || 'UPDATE'} ${activeTask.status || ''}`}
+          description={activeTask.errorMessage || activeTask.logSummary || t('更新代理正在处理任务，请稍后刷新状态。', 'The updater agent is processing the task. Refresh status later.')}
+        />
       ) : null}
       <Space direction="vertical" size={sectionGap} style={{ width: '100%' }} className="saas-monitoring-tab-pane">
         <Row gutter={rowGutter}>
@@ -785,12 +940,43 @@ const PlatformUpdateContent = () => {
             <Descriptions.Item label={t('最新说明', 'Latest note')} span={2}>
               {updateStatus?.latest?.title || '-'}
             </Descriptions.Item>
+            <Descriptions.Item label={t('后端镜像', 'Server image')} span={2}>
+              <Typography.Text copyable ellipsis style={{ maxWidth: '100%' }}>
+                {updateStatus?.latest?.serverImage || '-'}
+              </Typography.Text>
+            </Descriptions.Item>
+            <Descriptions.Item label={t('前端镜像', 'Frontend image')} span={2}>
+              <Typography.Text copyable ellipsis style={{ maxWidth: '100%' }}>
+                {updateStatus?.latest?.frontendImage || '-'}
+              </Typography.Text>
+            </Descriptions.Item>
+            <Descriptions.Item label={t('迁移', 'Migration')}>
+              <Tag color={updateStatus?.latest?.migrationRequired ? 'orange' : 'green'}>{updateStatus?.latest?.migrationRequired ? t('需要', 'Required') : t('不需要', 'Not required')}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label={t('可回滚', 'Rollback')}>
+              <Tag color={updateStatus?.latest?.rollbackSupported === false ? 'red' : 'green'}>{updateStatus?.latest?.rollbackSupported === false ? t('否', 'No') : t('是', 'Yes')}</Tag>
+            </Descriptions.Item>
             <Descriptions.Item label={t('地址', 'Address')} span={2}>
               <Typography.Text copyable ellipsis style={{ maxWidth: '100%' }}>
                 {updateStatus?.sourceUrl || '-'}
               </Typography.Text>
             </Descriptions.Item>
           </Descriptions>
+        </Card>
+        <Card title={t('更新任务历史', 'Update task history')} loading={tasksQuery.isLoading && !tasksQuery.data}>
+          <ManagementTable<PlatformUpdateTask>
+            rowKey="id"
+            size="small"
+            pagination={false}
+            search={false}
+            isMobile={isMobile}
+            onRefresh={() => {
+              void tasksQuery.refetch();
+              void query.refetch();
+            }}
+            dataSource={tasksQuery.data || []}
+            columns={taskColumns}
+          />
         </Card>
         <Card title={t('安全边界', 'Safety boundary')}>
           <Space direction="vertical" size={sectionGap}>
@@ -956,7 +1142,7 @@ const ServiceMonitorContent = () => {
                 <Statistic title={t('当前空闲率', 'Idle rate')} value={service?.cpu?.idlePercent ?? 0} precision={2} suffix="%" valueStyle={valueStyle} />
               </Col>
               <Col xs={24} sm={12} xxl={6}>
-                <Statistic title={t('平均负载', 'Load average')} value={service?.cpu?.loadAverage ?? '-'} valueStyle={valueStyle} />
+                <Statistic title={t('平均负载', 'Load average')} value={formatLoadAverage(service?.cpu?.loadAverage)} valueStyle={valueStyle} />
               </Col>
             </Row>
           </Card>

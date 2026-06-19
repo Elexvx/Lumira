@@ -1,0 +1,176 @@
+{
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T06:05:17.222Z",
+  "willWriteFiles": false,
+  "target": "tmp/ddd-dispatch-check-env-init.env",
+  "targetExists": false,
+  "forceEnabled": false,
+  "envInitCheck": {
+    "status": "PASS",
+    "bashCommand": "bash",
+    "bashKind": "wsl",
+    "initializer": "artifacts/ddd/release/release-final-owner-queue-env-init.sh",
+    "initializerExists": true,
+    "target": "tmp/ddd-dispatch-check-env-init.env",
+    "targetExists": false,
+    "forceEnabled": false,
+    "receipt": "tmp/ddd-dispatch-check-env-init-receipt.json",
+    "willWriteFiles": false,
+    "nextCommand": "node scripts/ddd-release-env-init.mjs",
+    "issues": []
+  },
+  "releaseEnvGate": {
+    "status": "BLOCKED",
+    "blocker": "release env file is not cutover-safe; blockers=34",
+    "blockingInputs": [
+      "DDD_RELEASE_ENV_FILE"
+    ],
+    "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+  },
+  "ownerCount": 5,
+  "ownerSteps": [
+    {
+      "owner": "platform-events",
+      "blockers": 9,
+      "placeholders": 9,
+      "secretKeys": 3,
+      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/01-platform-events.md",
+      "keys": [
+        "SAAS_EVENT_REDIS_STREAM_KEY",
+        "SAAS_JOB_BACKEND_BASE_URL",
+        "SAAS_JOB_FILE_SERVICE_BASE_URL",
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
+        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
+        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
+        "SAAS_EVENT_OUTBOX_DISPATCHER",
+        "XXL_JOB_ADMIN_ADDRESSES",
+        "XXL_JOB_ACCESS_TOKEN"
+      ],
+      "reasons": [
+        "production-endpoint",
+        "secret-manager"
+      ],
+      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-events"
+    },
+    {
+      "owner": "platform-owners",
+      "blockers": 9,
+      "placeholders": 9,
+      "secretKeys": 0,
+      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-owners.md",
+      "keys": [
+        "AI_SERVICE_BASE_URL",
+        "AUTH_SERVICE_BASE_URL",
+        "FILE_SERVICE_BASE_URL",
+        "JOB_EXECUTOR_BASE_URL",
+        "LOCALIZATION_SERVICE_BASE_URL",
+        "MESSAGE_SERVICE_BASE_URL",
+        "PAYMENT_SERVICE_BASE_URL",
+        "PLUGIN_SERVICE_BASE_URL",
+        "SYSTEM_SERVICE_BASE_URL"
+      ],
+      "reasons": [
+        "production-endpoint"
+      ],
+      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-owners"
+    },
+    {
+      "owner": "release-infra",
+      "blockers": 9,
+      "placeholders": 9,
+      "secretKeys": 4,
+      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/03-release-infra.md",
+      "keys": [
+        "LUMIRA_BASE_URL",
+        "CORS_ALLOWED_ORIGIN_PATTERNS",
+        "DB_PASSWORD",
+        "DB_URL",
+        "DB_USERNAME",
+        "FIELD_SECRET",
+        "PLAYWRIGHT_BASE_URL",
+        "JWT_SECRET",
+        "REDIS_HOST",
+        "REDIS_PASSWORD",
+        "REDIS_PORT",
+        "TRUST_FORWARDED_HEADERS"
+      ],
+      "reasons": [
+        "owner-production-value",
+        "production-endpoint",
+        "secret-manager"
+      ],
+      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
+    },
+    {
+      "owner": "ai-owner",
+      "blockers": 6,
+      "placeholders": 6,
+      "secretKeys": 2,
+      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/04-ai-owner.md",
+      "keys": [
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
+        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
+      ],
+      "reasons": [
+        "production-endpoint",
+        "secret-manager"
+      ],
+      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=ai-owner"
+    },
+    {
+      "owner": "payment-owner",
+      "blockers": 1,
+      "placeholders": 1,
+      "secretKeys": 1,
+      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-owner.md",
+      "keys": [
+        "PAYMENT_PUBLIC_BASE_URL",
+        "DDD_PAYMENT_WEBHOOK_SECRET"
+      ],
+      "reasons": [
+        "production-endpoint"
+      ],
+      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=payment-owner"
+    }
+  ],
+  "commands": {
+    "preflight": [
+      "node scripts/ddd-release-env-init.mjs --check",
+      "node scripts/ddd-staging-execution-checklist.mjs --owner-packets",
+      "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
+    ],
+    "initialize": [
+      "node scripts/ddd-release-env-init.mjs"
+    ],
+    "validate": [
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
+      "node scripts/ddd-release-readiness-summary.mjs",
+      "node scripts/ddd-staging-execution-checklist.mjs --rollup",
+      "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+    ]
+  },
+  "expectedArtifacts": [
+    "artifacts/ddd/release/release-env-lint.json",
+    "artifacts/ddd/config/release-config-evidence.json",
+    "artifacts/ddd/release/readiness-summary.json"
+  ],
+  "safety": [
+    "Do not commit populated release env files.",
+    "Keep the target owner-only where the filesystem supports chmod 600.",
+    "Use owner packets for redacted key collection; merge values only in a secure secret store or local release runner.",
+    "Rerun final review after lint, config evidence, and readiness summary are regenerated."
+  ],
+  "nextCommand": "node scripts/ddd-release-env-init.mjs --check"
+}

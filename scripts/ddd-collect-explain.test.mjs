@@ -125,7 +125,7 @@ const strictSuccessfulCollection = spawnSync("node", ["scripts/ddd-collect-expla
     DDD_EVIDENCE_OPERATOR: "release-bot",
     DDD_EXPLAIN_DATABASE: "lumira",
     MYSQL_HOST: "mysql.staging.internal",
-    MYSQL_CLI: fakeMysqlPath,
+    MYSQL_CLI_NODE_SCRIPT: fakeMysqlPath,
   },
 });
 assert.equal(strictSuccessfulCollection.status, 0, strictSuccessfulCollection.stderr);

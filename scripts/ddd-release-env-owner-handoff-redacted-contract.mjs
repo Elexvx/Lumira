@@ -116,7 +116,7 @@ if (!Array.isArray(handoff.owners)) addFailure("owners must be an array");
 if (handoff.ownerCount !== owners.length) addFailure("ownerCount must match owners length");
 if (handoff.ownerCount !== readiness.summary?.ownerCount) addFailure("ownerCount must match readiness ownerCount");
 if (handoff.blockerOwnerCount !== owners.filter((owner) => owner.blockers > 0).length) addFailure("blockerOwnerCount must match owners with blockers");
-if (handoff.templateDir !== path.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted")) addFailure("templateDir must use the expected release handoff directory");
+if (handoff.templateDir !== path.posix.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted")) addFailure("templateDir must use the expected release handoff directory");
 if (!sameStringSet(handoff.validationCommands || [], requiredValidationCommands)) addFailure("validationCommands must include the required release env validation commands");
 if (!fs.existsSync(handoffDir) || !fs.statSync(handoffDir).isDirectory()) addFailure("handoff directory must exist");
 if (!sameStringSet(owners.map((owner) => owner.owner), [...readinessOwnerMap.keys()])) addFailure("handoff owners must match readiness owners");
@@ -130,7 +130,7 @@ for (const [index, owner] of owners.entries()) {
   const expectedItems = readinessOwnerMap.get(owner.owner) || [];
   const expected = ownerStats(expectedItems);
   const expectedFileName = safeOwnerFileName(owner.owner, index + 1);
-  const expectedPath = path.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted", expectedFileName);
+  const expectedPath = path.posix.join("artifacts", "ddd", "release", "release-env-owner-handoff-redacted", expectedFileName);
   if (owner.fileName !== expectedFileName) addFailure(`${label}.fileName must match queue order and owner`);
   if (owner.handoffPath !== expectedPath) addFailure(`${label}.handoffPath must stay inside release handoff directory`);
   if (owner.fileName.includes("/") || owner.fileName.includes("..")) addFailure(`${label}.fileName must not contain path traversal`);

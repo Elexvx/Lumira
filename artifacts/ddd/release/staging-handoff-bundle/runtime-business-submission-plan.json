@@ -1,0 +1,236 @@
+{
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T06:05:17.222Z",
+  "willWriteFiles": false,
+  "gate": "runtime-business",
+  "owner": "release-infra",
+  "backendBaseUrl": null,
+  "frontendBaseUrl": null,
+  "deploymentSubmission": {
+    "owner": "release-infra",
+    "status": "BLOCKED",
+    "requiredInputs": [
+      "LUMIRA_BASE_URL",
+      "PLAYWRIGHT_BASE_URL",
+      "DDD_DEPLOYMENT_EVIDENCE",
+      "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+      "DDD_FRONTEND_EXPECT_DEPLOYED=true"
+    ],
+    "commands": [
+      "node scripts/ddd-staging-runtime-check.mjs",
+      "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
+    ],
+    "artifacts": [
+      "artifacts/ddd/readiness/summary.json"
+    ],
+    "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs",
+    "blocker": "LUMIRA_BASE_URL is required"
+  },
+  "ownerSubmissions": [
+    {
+      "owner": "ai",
+      "phase": "ai-runtime-evidence",
+      "status": "BLOCKED",
+      "goal": "Prove AI provider and owner gateway are remote in staging, not localhost or test doubles.",
+      "requiredInputs": [
+        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
+        "DDD_AI_EXPECT_PROVIDER_REMOTE=true",
+        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true"
+      ],
+      "commands": [
+        "node scripts/ddd-ai-runtime-drill.mjs"
+      ],
+      "artifacts": [
+        "artifacts/ddd/ai/ai-runtime-drill.json"
+      ],
+      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "dependsOn": [
+        "runtime-deployment-evidence"
+      ],
+      "blocker": "missing AI runtime deployment evidence or remote expectation flags"
+    },
+    {
+      "owner": "release-performance",
+      "phase": "auth-performance-evidence",
+      "status": "BLOCKED",
+      "goal": "Capture authenticated runtime performance from the staging deployment under strict thresholds.",
+      "requiredInputs": [
+        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE"
+      ],
+      "commands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs"
+      ],
+      "artifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json"
+      ],
+      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "dependsOn": [
+        "runtime-deployment-evidence"
+      ],
+      "blocker": "missing authenticated performance staging evidence"
+    },
+    {
+      "owner": "frontend",
+      "phase": "frontend-runtime-smoke",
+      "status": "BLOCKED",
+      "goal": "Run deployed frontend smoke checks against the HTTPS Playwright base URL and write smoke evidence.",
+      "requiredInputs": [
+        "PLAYWRIGHT_BASE_URL",
+        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_EXPECT_DEPLOYED=true"
+      ],
+      "commands": [
+        "node scripts/ddd-frontend-playwright-smoke.mjs && node scripts/ddd-frontend-smoke-evidence.mjs"
+      ],
+      "artifacts": [
+        "artifacts/ddd/frontend/frontend-smoke.json"
+      ],
+      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "dependsOn": [
+        "runtime-deployment-evidence"
+      ],
+      "blocker": "missing frontend staging smoke evidence"
+    },
+    {
+      "owner": "file-owner",
+      "phase": "business-file-smoke",
+      "status": "BLOCKED",
+      "goal": "Exercise production-equivalent file processing through staging and capture E2E evidence.",
+      "requiredInputs": [
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
+      ],
+      "commands": [
+        "node scripts/ddd-file-processing-e2e-smoke.mjs"
+      ],
+      "artifacts": [
+        "artifacts/ddd/file/file-processing-e2e.json"
+      ],
+      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "dependsOn": [
+        "runtime-deployment-evidence"
+      ],
+      "blocker": "missing file processing E2E staging evidence"
+    },
+    {
+      "owner": "job-owner",
+      "phase": "business-job-smoke",
+      "status": "BLOCKED",
+      "goal": "Exercise staging async job execution and capture E2E evidence.",
+      "requiredInputs": [
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
+      ],
+      "commands": [
+        "node scripts/ddd-job-e2e-smoke.mjs"
+      ],
+      "artifacts": [
+        "artifacts/ddd/jobs/job-e2e-smoke.json"
+      ],
+      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "dependsOn": [
+        "runtime-deployment-evidence"
+      ],
+      "blocker": "missing job E2E staging evidence"
+    },
+    {
+      "owner": "payment-owner",
+      "phase": "business-payment-smoke",
+      "status": "BLOCKED",
+      "goal": "Exercise staging payment webhook handling with approved non-production credentials and capture evidence.",
+      "requiredInputs": [
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
+      ],
+      "commands": [
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+      ],
+      "artifacts": [
+        "artifacts/ddd/payment/payment-webhook-e2e.json"
+      ],
+      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "dependsOn": [
+        "runtime-deployment-evidence"
+      ],
+      "blocker": "missing payment webhook E2E staging evidence"
+    }
+  ],
+  "parallelAfterDeployment": [
+    "ai-runtime-evidence",
+    "auth-performance-evidence",
+    "frontend-runtime-smoke",
+    "business-file-smoke",
+    "business-job-smoke",
+    "business-payment-smoke"
+  ],
+  "validationCommands": [
+    "node scripts/ddd-staging-runtime-check.mjs",
+    "node scripts/ddd-release-readiness-summary.mjs",
+    "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+  ],
+  "expectedArtifacts": [
+    "artifacts/ddd/readiness/summary.json",
+    "artifacts/ddd/performance/authenticated-runtime-actual.json",
+    "artifacts/ddd/ai/ai-runtime-drill.json",
+    "artifacts/ddd/frontend/frontend-smoke.json",
+    "artifacts/ddd/file/file-processing-e2e.json",
+    "artifacts/ddd/jobs/job-e2e-smoke.json",
+    "artifacts/ddd/payment/payment-webhook-e2e.json"
+  ],
+  "laneReceiptFragment": {
+    "owner": "release-infra",
+    "lane": "p1-runtime-business",
+    "status": "BLOCKED",
+    "providedArtifacts": [
+      "artifacts/ddd/readiness/summary.json",
+      "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "artifacts/ddd/ai/ai-runtime-drill.json",
+      "artifacts/ddd/frontend/frontend-smoke.json",
+      "artifacts/ddd/file/file-processing-e2e.json",
+      "artifacts/ddd/jobs/job-e2e-smoke.json",
+      "artifacts/ddd/payment/payment-webhook-e2e.json"
+    ],
+    "missingArtifacts": [
+      "artifacts/ddd/readiness/summary.json",
+      "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "artifacts/ddd/ai/ai-runtime-drill.json",
+      "artifacts/ddd/frontend/frontend-smoke.json",
+      "artifacts/ddd/file/file-processing-e2e.json",
+      "artifacts/ddd/jobs/job-e2e-smoke.json",
+      "artifacts/ddd/payment/payment-webhook-e2e.json"
+    ],
+    "completedAt": "<ISO-8601 timestamp after validation commands pass>",
+    "completedBy": "<owner or workflow actor>",
+    "acceptanceCommands": [
+      "node scripts/ddd-staging-runtime-check.mjs",
+      "node scripts/ddd-release-readiness-summary.mjs",
+      "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+    ]
+  },
+  "passCriteria": [
+    "Deployment evidence phase passes with HTTPS backend and frontend URLs.",
+    "AI, authenticated performance, frontend, file, job, and payment owners refresh their smoke artifacts after deployment evidence lands.",
+    "Runtime staging check and evidence acceptance pass after all owner artifacts are present.",
+    "Final review no longer reports the runtime-business gate as blocked."
+  ],
+  "acceptance": {
+    "owner": "release-infra",
+    "commands": [
+      "node scripts/ddd-staging-runtime-check.mjs",
+      "node scripts/ddd-release-readiness-summary.mjs",
+      "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+    ],
+    "artifacts": [
+      "artifacts/ddd/readiness/summary.json",
+      "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "artifacts/ddd/ai/ai-runtime-drill.json",
+      "artifacts/ddd/frontend/frontend-smoke.json",
+      "artifacts/ddd/file/file-processing-e2e.json",
+      "artifacts/ddd/jobs/job-e2e-smoke.json",
+      "artifacts/ddd/payment/payment-webhook-e2e.json"
+    ],
+    "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "blocker": "runtime/business evidence is not fully accepted"
+  },
+  "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
+}

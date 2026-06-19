@@ -1,7 +1,7 @@
 # DDD Release Env Owner Handoff
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Env file: .env.release.local
 Owners: 6
 Canonical fill items: 48
@@ -33,7 +33,7 @@ Unresolved aliases covered: 73
 - Secret canonical keys: 4
 - Safe-to-prefill canonical keys: 1
 - Unresolved aliases covered: 20
-- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra
+- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra, p0-runtime-readiness-release-infra
 - Blocked batches: none
 - Fill canonical keys:
   - `LUMIRA_BASE_URL` (runtime.backend base url; class=url; secret=false; aliases=LUMIRA_BASE_URL|DEPLOY_CHECK_BASE_URL)

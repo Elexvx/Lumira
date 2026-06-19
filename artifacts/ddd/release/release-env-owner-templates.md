@@ -1,7 +1,7 @@
 # DDD Release Env Owner Templates
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Env file: .env.release.local
 Template dir: artifacts/ddd/release/release-env-owner-templates
 Owners: 6
@@ -119,7 +119,7 @@ Each owner template is intentionally scoped to one owner so release values can b
 
 ## file-owner
 
-- Template: `artifacts/ddd/release/release-env-owner-templates/09-file-owner.env`
+- Template: `artifacts/ddd/release/release-env-owner-templates/11-file-owner.env`
 - Queue: WAITING; canExecute=false
 - Canonical fill items: 3
 - Secret canonical keys: 0

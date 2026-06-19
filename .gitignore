@@ -35,6 +35,8 @@ backend/.env.*
 *.seed
 *.tar.gz
 output/
+tmp/
+storage/
 services/*/storage/
 
 # Java

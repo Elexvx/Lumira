@@ -43,6 +43,10 @@ function hasDuplicates(values = []) {
   return new Set(values).size !== values.length;
 }
 
+function portablePath(value) {
+  return String(value || "").replaceAll("\\", "/");
+}
+
 const templates = readJson(templatesPath);
 const templatesMarkdown = readText(templatesMarkdownPath);
 const handoff = readJson(handoffPath);
@@ -64,7 +68,7 @@ if (templates.ownerCount !== handoff.ownerCount) addFailure("ownerCount must mat
 if (templates.canonicalFillItemCount !== handoff.canonicalFillItemCount) addFailure("canonicalFillItemCount must match owner handoff");
 if (templates.canonicalFillItemCount !== canonicalFill.canonicalFillItemCount) addFailure("canonicalFillItemCount must match canonical fill");
 if (templates.envFile !== handoff.envFile || templates.envFile !== canonicalFill.envFile) addFailure("envFile must match handoff and canonical fill");
-if (templates.templateDir !== path.join("artifacts", "ddd", "release", "release-env-owner-templates")) addFailure("templateDir must use the expected release owner template directory");
+if (portablePath(templates.templateDir) !== "artifacts/ddd/release/release-env-owner-templates") addFailure("templateDir must use the expected release owner template directory");
 if (!fs.existsSync(templatesDir) || !fs.statSync(templatesDir).isDirectory()) addFailure("template directory must exist");
 if (!sameStringSet(owners.map((owner) => owner.owner), handoffOwners.map((owner) => owner.owner))) addFailure("template owners must match owner handoff owners");
 if (hasDuplicates(owners.map((owner) => owner.owner))) addFailure("owner names must be unique");
@@ -84,9 +88,9 @@ for (const owner of owners) {
     continue;
   }
   const expectedFileName = safeOwnerFileName(owner.owner, owner.queueOrder);
-  const expectedPath = path.join("artifacts", "ddd", "release", "release-env-owner-templates", expectedFileName);
+  const expectedPath = `artifacts/ddd/release/release-env-owner-templates/${expectedFileName}`;
   if (owner.fileName !== expectedFileName) addFailure(`${label}.fileName must match queue order and owner`);
-  if (owner.templatePath !== expectedPath) addFailure(`${label}.templatePath must stay inside owner template directory`);
+  if (portablePath(owner.templatePath) !== expectedPath) addFailure(`${label}.templatePath must stay inside owner template directory`);
   if (owner.fileName.includes("/") || owner.fileName.includes("..")) addFailure(`${label}.fileName must not contain path traversal`);
   if (owner.templatePath.includes("..") || path.isAbsolute(owner.templatePath)) addFailure(`${label}.templatePath must be relative and traversal-free`);
   for (const field of ["queueOrder", "queueStatus", "canExecute", "canonicalFillItemCount", "secretCanonicalKeyCount", "safeToPreFillCanonicalKeyCount"]) {
@@ -145,7 +149,7 @@ const actualFileNames = fs.existsSync(templatesDir)
 if (!sameStringSet(actualFileNames, expectedFileNames)) addFailure("owner template directory files must match owner fileName values");
 if (!templatesMarkdown.includes("Each owner template is intentionally scoped to one owner")) addFailure("templates markdown must explain owner scoping");
 for (const owner of owners) {
-  if (!templatesMarkdown.includes(`\`${owner.templatePath}\``)) addFailure(`templates markdown must include ${owner.owner} template path`);
+  if (!templatesMarkdown.replaceAll("\\", "/").includes(`\`${portablePath(owner.templatePath)}\``)) addFailure(`templates markdown must include ${owner.owner} template path`);
   for (const command of owner.postFillCommands || []) {
     if (!templatesMarkdown.includes(`\`${command}\``)) addFailure(`templates markdown must include ${owner.owner} post-fill command ${command}`);
   }

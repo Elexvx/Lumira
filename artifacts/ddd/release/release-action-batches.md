@@ -1,11 +1,11 @@
 # DDD Release Action Batches
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
-Release gate mode: advisory
-Release gate blockers: 0
-Batch count: 26
-Total pending items: 95
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
+Release gate mode: strict
+Release gate blockers: 94
+Batch count: 29
+Total pending items: 111
 
 ## Execution Notes
 
@@ -340,10 +340,94 @@ Total pending items: 95
 - docker-image-frontend-failed: docker build failed after 3 attempt(s) with transient registry/network error status 1
 - docker-image-lumira-server-failed: docker build failed after 3 attempt(s) with transient registry/network error status 1
 
-### 8. P1 ai-runtime -> ai
+### 8. P0 runtime-readiness -> release-infra
+
+- Batch id: p0-runtime-readiness-release-infra
+- Depends on: none
+- Can run immediately: true
+- Pending items: 4
+- Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, LUMIRA_BASE_URL
+- Env check groups:
+  - `DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT`
+  - `DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR`
+  - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
+  - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
+- Commands:
+  - `node scripts/ddd-runtime-readiness-smoke.mjs`
+- Expected artifacts:
+  - `artifacts/ddd/readiness/summary.json`
+- Exit criteria:
+  - Runtime readiness is generated from an HTTPS non-local backend base URL.
+  - All 30 owner readiness/health/metrics checks pass.
+  - Clear this batch before running downstream runtime-heavy evidence.
+
+- runtime-readiness-contract-1: runtime readiness productionEquivalence.strict must be true for strict release evidence
+- runtime-readiness-contract-2: runtime readiness productionEquivalence.https must be true for strict release evidence
+- runtime-readiness-contract-3: runtime readiness productionEquivalence.localOnly must be false for strict release evidence
+- runtime-readiness-contract-4: runtime readiness productionEquivalence.deploymentEvidence is required
+
+### 9. P0 manifest -> release-owner
+
+- Batch id: p0-manifest-release-owner
+- Depends on: none
+- Can run immediately: true
+- Pending items: 1
+- Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_RELEASE_MANIFEST_STRICT
+- Env check groups:
+  - `DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT`
+  - `DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR`
+  - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
+  - `DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT`
+- Commands:
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
+  - `node scripts/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
+- Expected artifacts:
+  - `artifacts/ddd/release/evidence-manifest.json`
+- Exit criteria:
+  - All required release evidence artifacts are present and checksummed.
+  - Clear this batch before running downstream runtime-heavy evidence.
+
+- manifest-missing-no-explain-json-files-in-tmp-ddd-explain: no explain JSON files in tmp\ddd-explain
+
+### 10. P0 authenticated-performance -> release-performance
+
+- Batch id: p0-authenticated-performance-release-performance
+- Depends on: none
+- Can run immediately: true
+- Pending items: 9
+- Env keys: DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_RELEASE_CANDIDATE
+- Env check groups:
+  - `DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY`
+  - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
+  - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
+  - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
+- Commands:
+  - `node scripts/ddd-authenticated-performance-smoke.mjs`
+  - `node scripts/ddd-promote-performance-baseline.mjs`
+- Expected artifacts:
+  - `artifacts/ddd/performance/authenticated-runtime-actual.json`
+  - `artifacts/ddd/performance/authenticated-runtime-baseline.json`
+  - `artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json`
+- Exit criteria:
+  - Authenticated performance actual is generated from a production-equivalent HTTPS backend.
+  - Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.
+  - Clear this batch before running downstream runtime-heavy evidence.
+
+- performance-actual-shape-1: authenticated performance actual productionEquivalence.strict must be true for strict release evidence
+- performance-actual-shape-2: authenticated performance actual productionEquivalence.https must be true for strict release evidence
+- performance-actual-shape-3: authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence
+- performance-actual-shape-4: authenticated performance actual productionEquivalence.deploymentEvidence is required
+- performance-baseline-metadata-5: strict release baseline requires baselineType=authenticated-runtime
+- performance-baseline-metadata-6: acceptedAt must be an ISO timestamp
+- performance-baseline-metadata-7: acceptedBy is required
+- performance-baseline-metadata-8: sourceArtifact is required
+- performance-baseline-metadata-9: sourceSha256 must be a SHA-256 hex digest
+
+### 11. P1 ai-runtime -> ai
 
 - Batch id: p1-ai-runtime-ai
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 3
 - Env keys: 12 keys
@@ -374,10 +458,10 @@ Total pending items: 95
 - ai-provider-runtime: provider status=CONFIGURED remoteConfigured=false
 - ai-runtime-base-url: missing production-equivalent AI base URL
 
-### 9. P1 frontend-smoke -> frontend
+### 12. P1 frontend-smoke -> frontend
 
 - Batch id: p1-frontend-smoke-frontend
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_FRONTEND_EXPECT_DEPLOYED
@@ -395,10 +479,10 @@ Total pending items: 95
 
 - frontend-deployed-expectation: strict release requires deployed frontend smoke expectation
 
-### 10. P1 business-e2e -> file-owner
+### 13. P1 business-e2e -> file-owner
 
 - Batch id: p1-business-e2e-file-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN, LUMIRA_UPLOAD_STORAGE_ROOT
@@ -418,10 +502,10 @@ Total pending items: 95
 
 - file-processing-production-equivalence: strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080
 
-### 11. P1 business-e2e -> job-owner
+### 14. P1 business-e2e -> job-owner
 
 - Batch id: p1-business-e2e-job-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN
@@ -440,10 +524,10 @@ Total pending items: 95
 
 - job-e2e-production-equivalence: strict job E2E requires HTTPS baseUrl evidence; strict job E2E requires non-local baseUrl, got http://127.0.0.1:8080
 
-### 12. P1 business-e2e -> payment-owner
+### 15. P1 business-e2e -> payment-owner
 
 - Batch id: p1-business-e2e-payment-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
@@ -462,10 +546,10 @@ Total pending items: 95
 
 - payment-webhook-production-equivalence: strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080
 
-### 13. P1 rollback -> ai-owner
+### 16. P1 rollback -> ai-owner
 
 - Batch id: p1-rollback-ai-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -489,10 +573,10 @@ Total pending items: 95
 
 - AI: AI rollback drill is DEFERRED with approved deferral evidence
 
-### 14. P1 rollback -> auth-owner
+### 17. P1 rollback -> auth-owner
 
 - Batch id: p1-rollback-auth-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -516,10 +600,10 @@ Total pending items: 95
 
 - Auth: Auth rollback drill is DEFERRED with approved deferral evidence
 
-### 15. P1 rollback -> file-owner
+### 18. P1 rollback -> file-owner
 
 - Batch id: p1-rollback-file-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -543,10 +627,10 @@ Total pending items: 95
 
 - File: File rollback drill is DEFERRED with approved deferral evidence
 
-### 16. P1 rollback -> iam-owner
+### 19. P1 rollback -> iam-owner
 
 - Batch id: p1-rollback-iam-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -570,10 +654,10 @@ Total pending items: 95
 
 - IAM: IAM rollback drill is DEFERRED with approved deferral evidence
 
-### 17. P1 rollback -> job-owner
+### 20. P1 rollback -> job-owner
 
 - Batch id: p1-rollback-job-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -597,10 +681,10 @@ Total pending items: 95
 
 - Job: Job rollback drill is DEFERRED with approved deferral evidence
 
-### 18. P1 rollback -> localization-owner
+### 21. P1 rollback -> localization-owner
 
 - Batch id: p1-rollback-localization-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -624,10 +708,10 @@ Total pending items: 95
 
 - Localization: Localization rollback drill is DEFERRED with approved deferral evidence
 
-### 19. P1 rollback -> message-owner
+### 22. P1 rollback -> message-owner
 
 - Batch id: p1-rollback-message-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -651,10 +735,10 @@ Total pending items: 95
 
 - Message: Message rollback drill is DEFERRED with approved deferral evidence
 
-### 20. P1 rollback -> payment-owner
+### 23. P1 rollback -> payment-owner
 
 - Batch id: p1-rollback-payment-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -678,10 +762,10 @@ Total pending items: 95
 
 - Payment: Payment rollback drill is DEFERRED with approved deferral evidence
 
-### 21. P1 rollback -> platform-owner
+### 24. P1 rollback -> platform-owner
 
 - Batch id: p1-rollback-platform-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -705,10 +789,10 @@ Total pending items: 95
 
 - Platform: Platform rollback drill is DEFERRED with approved deferral evidence
 
-### 22. P1 rollback -> plugin-owner
+### 25. P1 rollback -> plugin-owner
 
 - Batch id: p1-rollback-plugin-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -732,12 +816,12 @@ Total pending items: 95
 
 - Plugin: Plugin rollback drill is DEFERRED with approved deferral evidence
 
-### 23. P2 explain -> database
+### 26. P2 explain -> database
 
 - Batch id: p2-explain-database
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
 - Can run immediately: false
-- Pending items: 6
+- Pending items: 8
 - Env keys: 12 keys
   - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
   - DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE, MYSQL_CLI, MYSQL_DATABASE
@@ -765,17 +849,19 @@ Total pending items: 95
   - Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.
   - Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues.
 
-- ai-knowledge-index-retry.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
-- message-visible-list.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
-- platform-outbox-owner-relay-file.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
-- platform-outbox-owner-relay-message.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
-- platform-runtime-appearance.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
-- plugin-bootstrap.json: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
+- ai-knowledge-index-retry.json: missing required EXPLAIN artifact
+- message-archive-total.json: missing required EXPLAIN artifact
+- message-unread-count.json: missing required EXPLAIN artifact
+- message-visible-list.json: missing required EXPLAIN artifact
+- platform-outbox-owner-relay-file.json: missing required EXPLAIN artifact
+- platform-outbox-owner-relay-message.json: missing required EXPLAIN artifact
+- platform-runtime-appearance.json: missing required EXPLAIN artifact
+- plugin-bootstrap.json: missing required EXPLAIN artifact
 
-### 24. P3 orchestrator -> database
+### 27. P3 orchestrator -> database
 
 - Batch id: p3-orchestrator-database
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED
@@ -798,10 +884,10 @@ Total pending items: 95
 
 - orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
 
-### 25. P3 orchestrator -> frontend
+### 28. P3 orchestrator -> frontend
 
 - Batch id: p3-orchestrator-frontend
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Can run immediately: false
 - Pending items: 1
 - Env keys: FRONTEND_BASE_URL, PLAYWRIGHT_BASE_URL
@@ -821,10 +907,10 @@ Total pending items: 95
 
 - orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
 
-### 26. P3 orchestrator -> release-owner
+### 29. P3 orchestrator -> release-owner
 
 - Batch id: p3-orchestrator-release-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_RELEASE_EVIDENCE_STRICT

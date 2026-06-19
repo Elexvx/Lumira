@@ -614,6 +614,7 @@ export const useProfileCenterPageAccess = () => {
   const summaryEmailBindAvailable = Boolean(summary?.emailBindAvailable ?? summary?.emailBindVerificationRequired);
   const emailLoginAvailable = Boolean(loginCapabilities?.emailLoginAvailable);
   const smsLoginAvailable = Boolean(loginCapabilities?.smsLoginAvailable);
+  const passkeyLoginAvailable = Boolean(loginCapabilities?.passkeyLoginAvailable);
   const mobileBindAvailable = summaryMobileBindAvailable || smsLoginAvailable;
   const emailBindAvailable = summaryEmailBindAvailable || emailLoginAvailable;
   const mobileBindingVisible = mobileBindAvailable;
@@ -680,6 +681,10 @@ export const useProfileCenterPageAccess = () => {
       message.warning(formatMessage({ id: 'page.profile.passkey.unsupported', defaultMessage: '当前浏览器不支持通行密钥' }));
       return;
     }
+    if (!passkeyLoginAvailable) {
+      message.warning(formatMessage({ id: 'page.profile.passkey.disabled', defaultMessage: '当前未开启通行密钥登录' }));
+      return;
+    }
     if (passkeyBinding) {
       return;
     }
@@ -713,7 +718,7 @@ export const useProfileCenterPageAccess = () => {
     } finally {
       setPasskeyBinding(false);
     }
-  }, [passkeyBinding, passkeyQuery]);
+  }, [passkeyBinding, passkeyLoginAvailable, passkeyQuery]);
   const handleRenamePasskey = useCallback(
     async (id: number, currentLabel?: string) => {
       const label = window.prompt(formatMessage({ id: 'page.profile.passkey.renamePrompt', defaultMessage: '请输入通行密钥名称' }), currentLabel || '通行密钥');
@@ -778,6 +783,7 @@ export const useProfileCenterPageAccess = () => {
       passkeyAccess: {
         loginMethods: loginMethodItems,
         passkeyBinding,
+        passkeyEnabled: passkeyLoginAvailable,
         onBindPasskey: handleBindPasskey,
         onRenamePasskey: handleRenamePasskey,
         onDeletePasskey: handleDeletePasskey,

@@ -374,6 +374,9 @@ const ProfileFieldManagementPage = () => {
         ),
     },
   ];
+  const visibleColumns = customFieldCount > 0
+    ? columns
+    : columns.filter((column) => column.key !== "actions");
 
   return (
     <ManagementPage
@@ -433,7 +436,7 @@ const ProfileFieldManagementPage = () => {
             ) : items.length ? (
               <Table
                 rowKey="fieldKey"
-                columns={columns}
+                columns={visibleColumns}
                 dataSource={[...items].sort(
                   (left, right) =>
                     (left.sortNo ?? 1000) - (right.sortNo ?? 1000),

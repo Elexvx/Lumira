@@ -33,7 +33,7 @@ const smokeSpecFile = process.env.DDD_FRONTEND_SMOKE_SPEC
 function portablePath(filePath) {
   const absolutePath = path.resolve(filePath);
   return absolutePath === repoRoot || absolutePath.startsWith(`${repoRoot}${path.sep}`)
-    ? path.relative(repoRoot, absolutePath) || "."
+    ? (path.relative(repoRoot, absolutePath) || ".").replaceAll("\\", "/")
     : filePath;
 }
 

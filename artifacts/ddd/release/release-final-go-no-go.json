@@ -1,29 +1,29 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
   "noAutoWaivers": true,
   "gate": {
-    "strict": false,
-    "blockers": 0,
-    "warnings": 16
+    "strict": true,
+    "blockers": 94,
+    "warnings": 8
   },
   "summary": {
     "cutoverChecklistItems": 9,
-    "blockedCutoverItems": 6,
-    "runnableClosureWaves": 7,
-    "receiptReadyWaves": 7,
+    "blockedCutoverItems": 8,
+    "runnableClosureWaves": 10,
+    "receiptReadyWaves": 9,
     "receiptMissingArtifactWaves": 0,
-    "receiptContentBlockedWaves": 0,
-    "mappedClosureActions": 40,
-    "candidateBlockerHints": 0,
-    "performanceBaselineStatus": "READY_FOR_STRICT_GATE_RERUN",
+    "receiptContentBlockedWaves": 1,
+    "mappedClosureActions": 54,
+    "candidateBlockerHints": 16,
+    "performanceBaselineStatus": "BLOCKED",
     "ownerInputReceiptStatus": "PENDING_OWNER_INPUT",
     "ownerInputReceiptCutoverReady": false,
     "ownerInputReceiptMissingCriteria": 3,
-    "stopReasons": 9
+    "stopReasons": 13
   },
   "ciSummary": {
     "enforceCommand": "DDD_RELEASE_PREFLIGHT_ENFORCE=1 bash artifacts/ddd/release/release-preflight-gate.sh",
@@ -35,7 +35,7 @@
       "releaseEnvUnresolved": 21,
       "releaseEnvInvalidPacket": 22
     },
-    "stopReasonCount": 9,
+    "stopReasonCount": 13,
     "stopOwners": [
       "ai",
       "ai-owner",
@@ -62,7 +62,9 @@
       "artifacts/ddd/performance/authenticated-runtime-baseline.json",
       "artifacts/ddd/release/evidence-manifest.json"
     ],
-    "blockedContentHints": [],
+    "blockedContentHints": [
+      "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain"
+    ],
     "configOwnerInputReconciliation": {
       "artifact": "artifacts/ddd/release/release-config-owner-input-reconciliation.json",
       "status": "PASS",
@@ -317,12 +319,12 @@
     "firstOwnerAction": {
       "order": 1,
       "owner": "release-infra",
-      "strictGateBlockerCount": 0,
-      "nextAction": "Replace every placeholder-like value (`<placeholder>`, `replace-with-*`, TODO/TBD, example domains) in `DDD_RELEASE_ENV_FILE` before running release evidence.",
-      "reason": "release-env-lint:release-env-lint-placeholders unresolvedTemplateKeys=93",
+      "strictGateBlockerCount": 21,
+      "nextAction": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.",
+      "reason": "strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence",
       "command": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-      "displayNextAction": "Replace every placeholder-like value (`<placeholder>`, `replace-with-*`, TODO/TBD, example domains) in `DDD_RELEASE_ENV_FILE` before running release evidence.",
-      "displayReason": "release-env-lint:release-env-lint-placeholders unresolvedTemplateKeys=93",
+      "displayNextAction": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.",
+      "displayReason": "strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence",
       "displayCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
       "envKeys": [
         "AI_SERVICE_BASE_URL",
@@ -449,15 +451,19 @@
   },
   "releaseEnvFileCutoverSafe": false,
   "currentStopReasons": [
-    "authenticated performance baseline not ready: READY_FOR_STRICT_GATE_RERUN",
+    "authenticated performance baseline not ready: BLOCKED",
+    "closure wave 9 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain",
+    "closure wave CONTENT_BLOCKED: wave 9 release-owner/p0-manifest-release-owner",
     "cutover checklist blocked: database-performance",
     "cutover checklist blocked: deployable-images",
     "cutover checklist blocked: evidence-integrity",
+    "cutover checklist blocked: production-equivalence",
     "cutover checklist blocked: release-environment",
     "cutover checklist blocked: rollback-safety",
     "cutover checklist blocked: runtime-business-acceptance",
+    "cutover checklist blocked: strict-release-gate",
     "owner input receipt pending: releaseEnvReadinessStatus,releaseEnvReadinessBlockers,releaseEnvReadinessPlaceholders",
-    "strict release gate blockers=0"
+    "strict release gate blockers=94"
   ],
   "decisionRules": [
     "GO only when strict release gate has zero blockers.",
@@ -476,6 +482,44 @@
     "Run P3 strict orchestrator and regenerate manifest/readiness summary only after P0/P1/P2 blockers are gone."
   ],
   "blockedCutoverItems": [
+    {
+      "id": "strict-release-gate",
+      "title": "Strict release gate has zero blockers and no contract issues.",
+      "pendingItems": 94,
+      "readyBatchIds": [
+        "p0-release-env-lint-release-infra",
+        "p0-release-config-ai-owner",
+        "p0-release-config-payment-owner",
+        "p0-release-config-platform-events",
+        "p0-release-config-platform-owners",
+        "p0-release-config-release-infra",
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "blockedBatchIds": [
+        "p1-ai-runtime-ai",
+        "p1-frontend-smoke-frontend",
+        "p1-business-e2e-file-owner",
+        "p1-business-e2e-job-owner",
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-ai-owner",
+        "p1-rollback-auth-owner",
+        "p1-rollback-file-owner",
+        "p1-rollback-iam-owner",
+        "p1-rollback-job-owner",
+        "p1-rollback-localization-owner",
+        "p1-rollback-message-owner",
+        "p1-rollback-payment-owner",
+        "p1-rollback-platform-owner",
+        "p1-rollback-plugin-owner",
+        "p2-explain-database",
+        "p3-orchestrator-database",
+        "p3-orchestrator-frontend",
+        "p3-orchestrator-release-owner"
+      ]
+    },
     {
       "id": "release-environment",
       "title": "Completed release env file and config matrix are valid.",
@@ -496,6 +540,16 @@
       "pendingItems": 4,
       "readyBatchIds": [
         "p0-docker-release-infra"
+      ],
+      "blockedBatchIds": []
+    },
+    {
+      "id": "production-equivalence",
+      "title": "Runtime and performance evidence use HTTPS non-local production-equivalent endpoints.",
+      "pendingItems": 13,
+      "readyBatchIds": [
+        "p0-runtime-readiness-release-infra",
+        "p0-authenticated-performance-release-performance"
       ],
       "blockedBatchIds": []
     },
@@ -533,7 +587,7 @@
     {
       "id": "database-performance",
       "title": "Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.",
-      "pendingItems": 6,
+      "pendingItems": 8,
       "readyBatchIds": [],
       "blockedBatchIds": [
         "p2-explain-database"
@@ -542,8 +596,10 @@
     {
       "id": "evidence-integrity",
       "title": "Evidence manifest and final orchestrator strict rerun are clean.",
-      "pendingItems": 3,
-      "readyBatchIds": [],
+      "pendingItems": 4,
+      "readyBatchIds": [
+        "p0-manifest-release-owner"
+      ],
       "blockedBatchIds": [
         "p3-orchestrator-database",
         "p3-orchestrator-frontend",
@@ -672,12 +728,78 @@
         "node scripts/ddd-release-evidence-gate.mjs",
         "node scripts/ddd-release-readiness-summary.mjs"
       ]
+    },
+    {
+      "wave": 8,
+      "owner": "release-infra",
+      "batchId": "p0-runtime-readiness-release-infra",
+      "priority": "P0",
+      "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
+      "missingArtifactCount": 0,
+      "missingArtifacts": [],
+      "blockerHints": [],
+      "commands": [
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 9,
+      "owner": "release-owner",
+      "batchId": "p0-manifest-release-owner",
+      "priority": "P0",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "missingArtifactCount": 0,
+      "missingArtifacts": [],
+      "blockerHints": [
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "wave": 10,
+      "owner": "release-performance",
+      "batchId": "p0-authenticated-performance-release-performance",
+      "priority": "P0",
+      "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
+      "missingArtifactCount": 0,
+      "missingArtifacts": [],
+      "blockerHints": [],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "rerunCommands": [
+        "node scripts/ddd-release-evidence-gate.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
     }
   ],
   "performanceBaseline": {
-    "status": "READY_FOR_STRICT_GATE_RERUN",
+    "status": "BLOCKED",
     "readyToPromote": false,
-    "blockers": [],
+    "blockers": [
+      "acceptedAt must be an ISO timestamp",
+      "acceptedBy is required",
+      "authenticated performance actual productionEquivalence.deploymentEvidence is required",
+      "authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+      "authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+      "authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+      "sourceArtifact is required",
+      "sourceSha256 must be a SHA-256 hex digest",
+      "strict release baseline requires baselineType=authenticated-runtime"
+    ],
     "requiredEnvKeys": [
       "BASE_URL",
       "DDD_AUTH_PASSWORD",
@@ -719,26 +841,37 @@
     "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
+    "node scripts/ddd-authenticated-performance-smoke.mjs",
+    "node scripts/ddd-promote-performance-baseline.mjs",
+    "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
+    "node scripts/ddd-release-evidence-orchestrator.mjs",
+    "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
     "node scripts/ddd-release-config-evidence.mjs",
-    "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs",
+    "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
     "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
-    "node scripts/ddd-promote-performance-baseline.mjs",
     "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
     "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs",
     "node scripts/ddd-release-evidence-gate.mjs",
@@ -746,6 +879,7 @@
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
     "node scripts/ddd-docker-build-evidence.mjs",
+    "node scripts/ddd-runtime-readiness-smoke.mjs",
     "node scripts/ddd-ai-runtime-drill.mjs",
     "node scripts/ddd-frontend-playwright-smoke.mjs",
     "node scripts/ddd-frontend-smoke-evidence.mjs",
@@ -757,7 +891,6 @@
     "node scripts/ddd-rollback-drill-evidence.mjs",
     "node scripts/ddd-collect-explain.mjs",
     "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
-    "node scripts/ddd-release-evidence-orchestrator.mjs",
     "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
   ],
   "evidenceArtifacts": [

@@ -1,7 +1,7 @@
 # DDD Release Env Owner Input Packet
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Env file: <release-env-file>
 Value policy: No concrete environment values are emitted; this packet lists only owner, key, validation, reason, and redacted collection guidance.
 Required owner inputs: 34

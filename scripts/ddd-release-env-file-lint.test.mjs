@@ -92,7 +92,9 @@ assert.equal(report.inputKind, "generated-missing-template");
 assert.equal(report.generatedMissingTemplate, true);
 assert.equal(report.envFile, generatedTemplateEnv);
 assert.equal(report.envFileSecurity.checked, true);
-assert.equal(report.envFileSecurity.modeOctal, "644");
+if (process.platform !== "win32") {
+  assert.equal(report.envFileSecurity.modeOctal, "644");
+}
 assert.equal(report.envFileSecurity.permissionSafe, null);
 assert.equal(report.envFileSecurity.permissionCheckSkipped, true);
 assert.equal(report.envFileSecurity.generatedMissingTemplate, true);
@@ -150,18 +152,24 @@ fs.writeFileSync(broadModeEnv, [
 ].join("\n"));
 fs.chmodSync(broadModeEnv, 0o644);
 const broadMode = runLint(broadModeEnv);
-assert.notEqual(broadMode.status, 0);
+if (process.platform === "win32") {
+  assert.notEqual(broadMode.status, 0);
+} else {
+  assert.notEqual(broadMode.status, 0);
+}
 report = JSON.parse(fs.readFileSync(lintReport, "utf8"));
 assert.equal(report.status, "FAIL");
 assert.equal(report.envFileSecurity.checked, true);
-assert.equal(report.envFileSecurity.modeOctal, "644");
-assert.equal(report.envFileSecurity.permissionSafe, false);
-assert.equal(report.envFileSecurity.permissionCheckSkipped, false);
+if (process.platform !== "win32") {
+  assert.equal(report.envFileSecurity.modeOctal, "644");
+}
+assert.equal(report.envFileSecurity.permissionSafe, process.platform === "win32");
+assert.equal(report.envFileSecurity.permissionCheckSkipped, process.platform === "win32");
 assert.equal(report.summary.envFileSecurityChecked, true);
-assert.equal(report.summary.envFilePermissionSafe, false);
-assert.equal(report.summary.envFilePermissionCheckSkipped, false);
-assert(report.blockers.some((blocker) => blocker.includes("env file permissions are too broad")));
-assert(report.blockers.some((blocker) => blocker.includes("use chmod 600")));
+assert.equal(report.summary.envFilePermissionSafe, process.platform === "win32");
+assert.equal(report.summary.envFilePermissionCheckSkipped, process.platform === "win32");
+assert.equal(report.blockers.some((blocker) => blocker.includes("env file permissions are too broad")), process.platform !== "win32");
+assert.equal(report.blockers.some((blocker) => blocker.includes("use chmod 600")), process.platform !== "win32");
 
 const unsafeSyntaxEnv = path.join(tmpDir, "unsafe-syntax.env");
 fs.writeFileSync(unsafeSyntaxEnv, [
@@ -238,13 +246,17 @@ assert.equal(report.sourceEnvironment, "lint-test");
 assert.equal(report.releaseCandidate, "lint-test-sha");
 assert.equal(report.evidenceOperator, "lint-test-runner");
 assert.equal(report.envFileSecurity.checked, true);
-assert.equal(report.envFileSecurity.modeOctal, "600");
+if (process.platform !== "win32") {
+  assert.equal(report.envFileSecurity.modeOctal, "600");
+}
 assert.equal(report.envFileSecurity.permissionSafe, true);
-assert.equal(report.envFileSecurity.permissionCheckSkipped, false);
+assert.equal(report.envFileSecurity.permissionCheckSkipped, process.platform === "win32");
 assert.equal(report.envFileSecurity.requiredMode, "600");
 assert.equal(report.summary.envFileSecurityChecked, true);
 assert.equal(report.summary.envFilePermissionSafe, true);
-assert.equal(report.summary.envFileModeOctal, "600");
+if (process.platform !== "win32") {
+  assert.equal(report.summary.envFileModeOctal, "600");
+}
 assert.equal(report.summary.unresolvedTemplateKeys, 0);
 assert.equal(report.summary.releaseConfigBlockers, 0);
 assert.equal(report.summary.releaseConfigBlockersFromPlaceholders, 0);

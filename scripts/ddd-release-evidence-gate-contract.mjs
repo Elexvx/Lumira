@@ -61,6 +61,16 @@ if (testRun.status !== 0) {
   addFailure(`release evidence gate behavior test must pass: ${testRun.stderr || testRun.stdout}`);
 }
 
+spawnSync("node", ["scripts/ddd-release-evidence-gate.mjs"], {
+  cwd: repoRoot,
+  encoding: "utf8",
+  env: {
+    ...process.env,
+    DDD_RELEASE_EVIDENCE_STRICT: "true",
+    DDD_RELEASE_EVIDENCE_REPORT: reportPath,
+  },
+});
+
 if (!fs.existsSync(reportPath)) {
   addFailure(`release evidence gate report must exist: ${reportPath}`);
 } else {

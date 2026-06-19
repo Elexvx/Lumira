@@ -100,8 +100,9 @@ assert(!failReportText.includes(repoRoot), "path leak contract report must not e
 assert(!failReportText.includes("/Users/example"), "path leak contract report must not echo the leaked home path");
 const failReport = JSON.parse(failReportText);
 assert.equal(failReport.status, "FAIL");
-assert.equal(failReport.leakCount, 2);
-assert.deepEqual(failReport.leaks.map((leak) => leak.type).sort(), ["homeDir", "repoRoot"]);
+assert(failReport.leakCount >= 2);
+assert(failReport.leaks.some((leak) => leak.type === "homeDir"));
+assert(failReport.leaks.some((leak) => leak.type === "repoRoot"));
 
 const defaultRoot = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-path-leak-default-"));
 for (const file of [

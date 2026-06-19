@@ -138,12 +138,12 @@ public class PluginManagementController {
 
     @PostMapping("/{pluginCode}/enable")
     @RepeatSubmit
-    public ApiResponse<Boolean> enable(@PathVariable("pluginCode") String pluginCode) {
+    public ApiResponse<Boolean> enable(@PathVariable("pluginCode") String pluginCode, @RequestBody(required = false) PluginDTO.EnableRequest request) {
         require("plugin:management:enable");
-        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
-        request.setTenantId(currentTenantId());
-        request.setPluginCode(pluginCode);
-        pluginManagementAppService.enable(request, currentUser());
+        PluginDTO.EnableRequest enableRequest = request == null ? new PluginDTO.EnableRequest() : request;
+        enableRequest.setTenantId(currentTenantId());
+        enableRequest.setPluginCode(pluginCode);
+        pluginManagementAppService.enable(enableRequest, currentUser());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 

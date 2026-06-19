@@ -877,12 +877,14 @@ body,
   }
 
   .saas-profile-page__summary-card .ant-card-body {
+    height: 100%;
     padding: 0;
     border-radius: inherit;
   }
 
   .saas-profile-page__summary-content {
     display: grid;
+    height: 100%;
     min-height: var(--saas-spacing-112);
     grid-template-columns: minmax(0, 1fr) minmax(var(--saas-spacing-240), var(--saas-spacing-340));
     align-items: stretch;
@@ -907,6 +909,7 @@ body,
   }
 
   .saas-profile-page__account-panel {
+    height: 100%;
     width: 100%;
     padding: var(--saas-spacing-28);
     color: var(--ant-color-white);
@@ -924,7 +927,13 @@ body,
     height: 100%;
     min-height: var(--saas-spacing-112);
     border-radius: inherit;
-    background: var(--ant-color-primary);
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--ant-color-primary) 84%, #4f9dff) 0%,
+        color-mix(in srgb, var(--ant-color-primary) 78%, #2dd4bf) 100%
+      ),
+      var(--ant-color-primary);
   }
 
   .saas-profile-page__completion-panel {
@@ -967,7 +976,7 @@ body,
 
   .saas-profile-page__tenant-mark {
     margin: 0;
-    color: var(--ant-color-primary);
+    color: color-mix(in srgb, var(--ant-color-primary) 88%, var(--ant-color-text));
     font-style: italic;
     white-space: nowrap;
   }
@@ -1061,6 +1070,10 @@ body,
 
   .saas-profile-page__account-panel .ant-typography {
     color: var(--ant-color-white);
+  }
+
+  .saas-profile-page__account-panel .ant-typography-secondary {
+    color: color-mix(in srgb, var(--ant-color-white) 72%, transparent);
   }
 
   .saas-profile-page__account-avatar {

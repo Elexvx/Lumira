@@ -152,8 +152,8 @@ try {
   });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   const artifact = JSON.parse(fs.readFileSync(repoOutputFile, "utf8"));
-  assert.equal(artifact.inputFile, path.relative(repoRoot, repoInputFile));
-  assert.equal(artifact.diagnostics.playwrightReport.file, path.relative(repoRoot, repoInputFile));
+  assert.equal(artifact.inputFile, path.relative(repoRoot, repoInputFile).replaceAll("\\", "/"));
+  assert.equal(artifact.diagnostics.playwrightReport.file, path.relative(repoRoot, repoInputFile).replaceAll("\\", "/"));
   assert.equal(artifact.diagnostics.staticSpecCoverage.file, "frontend/tests/e2e/app.spec.ts");
   assert(!JSON.stringify(artifact).includes(repoRoot));
 } finally {

@@ -5,12 +5,13 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   requiredOrchestratorPreflightCheckIds,
   requiredOrchestratorStepIds,
 } from "./ddd-release-orchestrator-contract.mjs";
 
-const repoRoot = new URL("..", import.meta.url).pathname;
+const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const outputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-sync-"));
 const result = spawnSync("node", ["scripts/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,

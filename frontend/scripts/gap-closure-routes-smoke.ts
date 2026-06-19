@@ -3,23 +3,6 @@ import { backendRouteMeta, realPageRouteMetaMap, realPageRoutePaths } from '../s
 import { resolveRouteAccessStatus } from '../src/auth/loginRedirect';
 import type { CurrentUser } from '../src/types/api';
 
-const DEFAULT_SETTING_ROUTE_ORDER = [
-  '/settings/menus',
-  '/settings/dicts',
-  '/settings/profile-fields',
-  '/settings/personalization',
-  '/settings/security',
-  '/settings/verification',
-  '/settings/notifications',
-  '/settings/ai-employees',
-  '/settings/plugins',
-  '/settings/files/all',
-  '/settings/localization',
-  '/settings/monitoring',
-  '/settings/api-docs',
-  '/settings/audit',
-];
-
 const expectedRoutes = [
   ['/settings/menus', 'nav.system.menus'],
   ['/settings/localization', 'nav.localization.root'],

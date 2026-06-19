@@ -1,7 +1,7 @@
 context,owner_module,owned_table_patterns,compatible_writer_modules,notes
 AUTH,auth-service,sys_user_passkey_credential|sys_user_wechat_binding|sys_verification_binding|sys_verification_challenge,system-service,Authentication-owned credentials and challenges are still bootstrapped by the aggregate system migration.
 IAM,system-service,iam_user*|sys_user|sys_role|sys_role_permission|sys_menu|sys_permission|sys_user_role|sys_user_tenant*|sys_department|sys_user_department|sys_role_data_scope|sys_tenant,,Identity and permission master data.
-PLATFORM,system-service,sys_config|sys_dict_*|audit_*|ddd_read_model_version|sys_export_task|sys_sensitive_word,,Platform configuration, audit, read-model versioning, and governance data.
+PLATFORM,system-service,sys_config|sys_dict_*|audit_*|ddd_read_model_version|sys_export_task|sys_sensitive_word|platform_update_task,,Platform configuration, audit, read-model versioning, update orchestration, and governance data.
 MESSAGE,message-service,msg_*|platform_event_outbox,system-service,Message tables are owned by message-service; system-service keeps aggregate runtime compatibility migrations.
 FILE,file-service,file_object|file_storage_space|file_processing_task|file_processing_artifact|platform_event_outbox,system-service,File tables are owned by file-service; system-service keeps aggregate runtime compatibility migrations.
 PLUGIN,plugin-service,sys_plugin_*|plugin_event_outbox,system-service,Plugin lifecycle data is owned by plugin-service; system-service keeps catalog and aggregate compatibility.

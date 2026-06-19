@@ -1,6 +1,6 @@
 # DDD Release Owner Input Receipt
 
-Generated at: 2026-06-17T08:00:49.110Z
+Generated at: 2026-06-18T19:29:09.638Z
 Status: PENDING_OWNER_INPUT
 Cutover ready: false
 Required owner inputs: 34
@@ -9,7 +9,7 @@ Missing criteria: 3
 
 ## Criteria
 
-- releaseEnvReadinessStatus: expected=PASS; actual=ADVISORY; met=false
+- releaseEnvReadinessStatus: expected=PASS; actual=NOT_READY; met=false
 - releaseEnvReadinessBlockers: expected=0; actual=34; met=false
 - releaseEnvReadinessPlaceholders: expected=0; actual=34; met=false
 - releaseEnvReadinessMissing: expected=0; actual=0; met=true

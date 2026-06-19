@@ -1,213 +1,213 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
-      "file": "artifacts/ddd/release/release-evidence-gate.json",
+      "file": "artifacts\\ddd\\release\\release-evidence-gate.json",
       "relativePath": "release/release-evidence-gate.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T21:34:10.599Z",
-      "generatedAt": "2026-06-16T21:34:10.597Z",
+      "modifiedAt": "2026-06-18T19:37:02.450Z",
+      "generatedAt": "2026-06-18T19:37:02.443Z",
       "status": null,
-      "blockers": 0,
-      "warnings": 16
+      "blockers": 94,
+      "warnings": 8
     },
     "manifest": {
-      "file": "artifacts/ddd/release/evidence-manifest.json",
+      "file": "artifacts\\ddd\\release\\evidence-manifest.json",
       "relativePath": "release/evidence-manifest.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T08:10:19.879Z",
-      "generatedAt": "2026-06-17T08:10:19.878Z",
-      "status": "PASS",
-      "blockers": 0,
+      "modifiedAt": "2026-06-18T19:37:24.118Z",
+      "generatedAt": "2026-06-18T19:37:24.111Z",
+      "status": "FAIL",
+      "blockers": 1,
       "warnings": null
     },
     "releaseEnvLint": {
-      "file": "artifacts/ddd/release/release-env-lint.json",
+      "file": "artifacts\\ddd\\release\\release-env-lint.json",
       "relativePath": "release/release-env-lint.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T05:46:16.011Z",
+      "modifiedAt": "2026-06-17T09:46:50.252Z",
       "generatedAt": "2026-06-17T05:46:16.010Z",
       "status": "FAIL",
       "blockers": 156,
       "warnings": 0
     },
     "releaseConfig": {
-      "file": "artifacts/ddd/config/release-config-evidence.json",
+      "file": "artifacts\\ddd\\config\\release-config-evidence.json",
       "relativePath": "config/release-config-evidence.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T06:28:34.953Z",
+      "modifiedAt": "2026-06-17T09:46:50.196Z",
       "generatedAt": "2026-06-17T06:28:34.918Z",
       "status": "FAIL",
       "blockers": 63,
       "warnings": 0
     },
     "docker": {
-      "file": "artifacts/ddd/build/docker-image-evidence.json",
+      "file": "artifacts\\ddd\\build\\docker-image-evidence.json",
       "relativePath": "build/docker-image-evidence.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T21:45:55.214Z",
+      "modifiedAt": "2026-06-17T09:46:50.195Z",
       "generatedAt": "2026-06-16T21:45:55.209Z",
       "status": "FAIL",
       "blockers": 2,
       "warnings": null
     },
     "migration": {
-      "file": "artifacts/ddd/migration/migration-evidence.json",
+      "file": "artifacts\\ddd\\migration\\migration-evidence.json",
       "relativePath": "migration/migration-evidence.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:56:46.905Z",
+      "modifiedAt": "2026-06-17T09:46:50.202Z",
       "generatedAt": "2026-06-16T20:56:46.902Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
     },
     "runtimeReadiness": {
-      "file": "artifacts/ddd/readiness/summary.json",
+      "file": "artifacts\\ddd\\readiness\\summary.json",
       "relativePath": "readiness/summary.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T06:22:07.615Z",
+      "modifiedAt": "2026-06-17T09:46:50.218Z",
       "generatedAt": "2026-06-16T06:22:07.611Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "authenticatedPerformanceActual": {
-      "file": "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-actual.json",
       "relativePath": "performance/authenticated-runtime-actual.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:51:41.453Z",
+      "modifiedAt": "2026-06-17T09:46:50.205Z",
       "generatedAt": "2026-06-16T20:51:41.443Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "authenticatedPerformanceBaseline": {
-      "file": "artifacts/ddd/performance/authenticated-runtime-baseline.json",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-baseline.json",
       "relativePath": "performance/authenticated-runtime-baseline.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T13:36:36.271Z",
+      "modifiedAt": "2026-06-17T09:46:50.206Z",
       "generatedAt": "2026-06-13T18:38:43.975Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "authenticatedPerformanceBaselinePromotion": {
-      "file": "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+      "file": "artifacts\\ddd\\performance\\authenticated-runtime-baseline-promotion.json",
       "relativePath": "performance/authenticated-runtime-baseline-promotion.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T13:36:36.277Z",
+      "modifiedAt": "2026-06-17T09:46:50.205Z",
       "generatedAt": "2026-06-13T18:38:43.975Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "fileProcessing": {
-      "file": "artifacts/ddd/file/file-processing-e2e.json",
+      "file": "artifacts\\ddd\\file\\file-processing-e2e.json",
       "relativePath": "file/file-processing-e2e.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "modifiedAt": "2026-06-17T09:46:50.197Z",
       "generatedAt": null,
       "status": "PASS",
       "blockers": null,
       "warnings": null
     },
     "paymentWebhook": {
-      "file": "artifacts/ddd/payment/payment-webhook-e2e.json",
+      "file": "artifacts\\ddd\\payment\\payment-webhook-e2e.json",
       "relativePath": "payment/payment-webhook-e2e.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "modifiedAt": "2026-06-17T09:46:50.204Z",
       "generatedAt": null,
       "status": "PASS",
       "blockers": null,
       "warnings": null
     },
     "jobE2e": {
-      "file": "artifacts/ddd/jobs/job-e2e-smoke.json",
+      "file": "artifacts\\ddd\\jobs\\job-e2e-smoke.json",
       "relativePath": "jobs/job-e2e-smoke.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T10:57:47.645Z",
+      "modifiedAt": "2026-06-17T09:46:50.200Z",
       "generatedAt": "2026-06-13T19:15:58.531Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "frontendSmoke": {
-      "file": "artifacts/ddd/frontend/frontend-smoke.json",
+      "file": "artifacts\\ddd\\frontend\\frontend-smoke.json",
       "relativePath": "frontend/frontend-smoke.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:51:08.158Z",
+      "modifiedAt": "2026-06-17T09:46:50.198Z",
       "generatedAt": "2026-06-16T20:51:08.151Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
     },
     "aiRuntime": {
-      "file": "artifacts/ddd/ai/ai-runtime-drill.json",
+      "file": "artifacts\\ddd\\ai\\ai-runtime-drill.json",
       "relativePath": "ai/ai-runtime-drill.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T20:51:41.732Z",
+      "modifiedAt": "2026-06-17T09:46:50.194Z",
       "generatedAt": "2026-06-16T20:51:41.726Z",
       "status": "PASS",
       "blockers": null,
       "warnings": null
     },
     "rollback": {
-      "file": "artifacts/ddd/rollback/rollback-drill.json",
+      "file": "artifacts\\ddd\\rollback\\rollback-drill.json",
       "relativePath": "rollback/rollback-drill.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T06:24:20.376Z",
+      "modifiedAt": "2026-06-17T09:46:50.312Z",
       "generatedAt": "2026-06-16T06:24:20.373Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
     },
     "orchestrator": {
-      "file": "artifacts/ddd/release/orchestrator-report.json",
+      "file": "artifacts\\ddd\\release\\orchestrator-report.json",
       "relativePath": "release/orchestrator-report.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-16T21:33:57.990Z",
+      "modifiedAt": "2026-06-17T09:46:50.220Z",
       "generatedAt": "2026-06-16T21:33:57.249Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "ownerQueueRunReport": {
-      "file": "artifacts/ddd/release/release-final-owner-queue-run-report.json",
+      "file": "artifacts\\ddd\\release\\release-final-owner-queue-run-report.json",
       "relativePath": "release/release-final-owner-queue-run-report.json",
       "present": false,
       "missing": true,
@@ -219,24 +219,24 @@
       "warnings": null
     },
     "ownerQueueEnvInitReceipt": {
-      "file": "artifacts/ddd/release/release-final-owner-queue-env-init-receipt.json",
+      "file": "artifacts\\ddd\\release\\release-final-owner-queue-env-init-receipt.json",
       "relativePath": "release/release-final-owner-queue-env-init-receipt.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T00:59:03.189Z",
+      "modifiedAt": "2026-06-17T09:46:50.284Z",
       "generatedAt": "2026-06-15T00:59:03.187Z",
       "status": null,
       "blockers": null,
       "warnings": null
     },
     "explainGateReport": {
-      "file": "artifacts/ddd/release/explain-gate-report.json",
+      "file": "artifacts\\ddd\\release\\explain-gate-report.json",
       "relativePath": "release/explain-gate-report.json",
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-15T20:41:37.877Z",
+      "modifiedAt": "2026-06-17T09:46:50.219Z",
       "generatedAt": "2026-06-15T20:41:37.875Z",
       "status": "PASS",
       "blockers": 0,
@@ -244,26 +244,26 @@
     }
   },
   "gate": {
-    "strict": false,
-    "blockers": 0,
-    "warnings": 16
+    "strict": true,
+    "blockers": 94,
+    "warnings": 8
   },
-  "ownerCount": 16,
-  "runNowOwnerCount": 5,
+  "ownerCount": 18,
+  "runNowOwnerCount": 7,
   "waitingOwnerCount": 11,
   "uniqueUnresolvedTemplateKeyCount": 59,
-  "unresolvedOwnerAssignmentCount": 135,
-  "filledOwnerAssignmentCount": 24,
-  "placeholderOwnerAssignmentCount": 111,
+  "unresolvedOwnerAssignmentCount": 143,
+  "filledOwnerAssignmentCount": 29,
+  "placeholderOwnerAssignmentCount": 114,
   "missingOwnerAssignmentCount": 0,
   "owners": [
     {
       "owner": "release-infra",
       "fillOrder": 1,
       "priority": "RUN_NOW",
-      "readyGroupCount": 3,
+      "readyGroupCount": 4,
       "blockedGroupCount": 0,
-      "unresolvedTemplateKeyCount": 55,
+      "unresolvedTemplateKeyCount": 57,
       "unresolvedTemplateKeys": [
         "AI_SERVICE_BASE_URL",
         "AUTH_SERVICE_BASE_URL",
@@ -281,6 +281,7 @@
         "DDD_AUTH_USERNAME",
         "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
         "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_EVIDENCE_OPERATOR",
         "DDD_EXPLAIN_DATABASE",
         "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
         "DDD_MIGRATION_COMPLETED_AT",
@@ -289,6 +290,7 @@
         "DDD_MIGRATION_OPERATOR",
         "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
         "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_RELEASE_CANDIDATE",
         "FIELD_SECRET",
         "FILE_SERVICE_BASE_URL",
         "JOB_EXECUTOR_BASE_URL",
@@ -321,10 +323,13 @@
         "XXL_JOB_ACCESS_TOKEN",
         "XXL_JOB_ADMIN_ADDRESSES"
       ],
-      "filledTemplateKeyCount": 0,
+      "filledTemplateKeyCount": 2,
       "placeholderTemplateKeyCount": 55,
       "missingTemplateKeyCount": 0,
-      "filledTemplateKeys": [],
+      "filledTemplateKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE"
+      ],
       "placeholderTemplateKeys": [
         "AI_SERVICE_BASE_URL",
         "AUTH_SERVICE_BASE_URL",
@@ -449,6 +454,10 @@
           "status": "placeholder"
         },
         {
+          "envKey": "DDD_EVIDENCE_OPERATOR",
+          "status": "filled"
+        },
+        {
           "envKey": "DDD_EXPLAIN_DATABASE",
           "status": "placeholder"
         },
@@ -479,6 +488,10 @@
         {
           "envKey": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
           "status": "placeholder"
+        },
+        {
+          "envKey": "DDD_RELEASE_CANDIDATE",
+          "status": "filled"
         },
         {
           "envKey": "FIELD_SECRET",
@@ -608,19 +621,23 @@
       "readyBatchIds": [
         "p0-docker-release-infra",
         "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
+        "p0-release-env-lint-release-infra",
+        "p0-runtime-readiness-release-infra"
       ],
       "blockedBatchIds": [],
       "commands": [
         "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
         "node scripts/ddd-release-config-evidence.mjs",
         "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs"
+        "node scripts/ddd-docker-build-evidence.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
       ],
       "exitCriteria": [
+        "All 30 owner readiness/health/metrics checks pass.",
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
         "Required lumira-server and frontend images are built, inspected, and not skipped.",
+        "Runtime readiness is generated from an HTTPS non-local backend base URL.",
         "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
         "release-config-evidence status is PASS with no contract issues.",
         "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
@@ -968,8 +985,116 @@
       ]
     },
     {
-      "owner": "database",
+      "owner": "release-performance",
       "fillOrder": 6,
+      "priority": "RUN_NOW",
+      "readyGroupCount": 1,
+      "blockedGroupCount": 0,
+      "unresolvedTemplateKeyCount": 4,
+      "unresolvedTemplateKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "filledTemplateKeyCount": 1,
+      "placeholderTemplateKeyCount": 3,
+      "missingTemplateKeyCount": 0,
+      "filledTemplateKeys": [
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "placeholderTemplateKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT"
+      ],
+      "missingTemplateKeys": [],
+      "fillStatusByKey": [
+        {
+          "envKey": "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+          "status": "placeholder"
+        },
+        {
+          "envKey": "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+          "status": "placeholder"
+        },
+        {
+          "envKey": "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+          "status": "placeholder"
+        },
+        {
+          "envKey": "DDD_RELEASE_CANDIDATE",
+          "status": "filled"
+        }
+      ],
+      "readyBatchIds": [
+        "p0-authenticated-performance-release-performance"
+      ],
+      "blockedBatchIds": [],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "exitCriteria": [
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "owner": "release-owner",
+      "fillOrder": 7,
+      "priority": "RUN_NOW",
+      "readyGroupCount": 1,
+      "blockedGroupCount": 1,
+      "unresolvedTemplateKeyCount": 2,
+      "unresolvedTemplateKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "filledTemplateKeyCount": 2,
+      "placeholderTemplateKeyCount": 0,
+      "missingTemplateKeyCount": 0,
+      "filledTemplateKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "placeholderTemplateKeys": [],
+      "missingTemplateKeys": [],
+      "fillStatusByKey": [
+        {
+          "envKey": "DDD_EVIDENCE_OPERATOR",
+          "status": "filled"
+        },
+        {
+          "envKey": "DDD_RELEASE_CANDIDATE",
+          "status": "filled"
+        }
+      ],
+      "readyBatchIds": [
+        "p0-manifest-release-owner"
+      ],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-owner"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs",
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Final strict release gate and readiness summary report zero blockers.",
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Run only after all prerequisite evidence batches are clean."
+      ]
+    },
+    {
+      "owner": "database",
+      "fillOrder": 8,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,
@@ -1079,7 +1204,7 @@
     },
     {
       "owner": "ai",
-      "fillOrder": 7,
+      "fillOrder": 9,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1164,7 +1289,7 @@
     },
     {
       "owner": "file-owner",
-      "fillOrder": 8,
+      "fillOrder": 10,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,
@@ -1242,7 +1367,7 @@
     },
     {
       "owner": "job-owner",
-      "fillOrder": 9,
+      "fillOrder": 11,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,
@@ -1314,7 +1439,7 @@
     },
     {
       "owner": "auth-owner",
-      "fillOrder": 10,
+      "fillOrder": 12,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1357,7 +1482,7 @@
     },
     {
       "owner": "iam-owner",
-      "fillOrder": 11,
+      "fillOrder": 13,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1400,7 +1525,7 @@
     },
     {
       "owner": "localization-owner",
-      "fillOrder": 12,
+      "fillOrder": 14,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1443,7 +1568,7 @@
     },
     {
       "owner": "message-owner",
-      "fillOrder": 13,
+      "fillOrder": 15,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1486,7 +1611,7 @@
     },
     {
       "owner": "platform-owner",
-      "fillOrder": 14,
+      "fillOrder": 16,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1529,7 +1654,7 @@
     },
     {
       "owner": "plugin-owner",
-      "fillOrder": 15,
+      "fillOrder": 17,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1572,7 +1697,7 @@
     },
     {
       "owner": "frontend",
-      "fillOrder": 16,
+      "fillOrder": 18,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,

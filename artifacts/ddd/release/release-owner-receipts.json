@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "summary": {
-    "ownerCount": 17,
-    "readyOwnerCount": 5,
+    "ownerCount": 18,
+    "readyOwnerCount": 7,
     "readyForStrictGateRerunOwnerCount": 0,
-    "contentBlockedOwnerCount": 16,
+    "contentBlockedOwnerCount": 17,
     "artifactMissingOwnerCount": 1,
     "waitingOnDependenciesOwnerCount": 0,
-    "expectedArtifactCount": 34,
-    "presentArtifactCount": 33,
+    "expectedArtifactCount": 39,
+    "presentArtifactCount": 38,
     "missingArtifactCount": 1,
-    "pendingActionCount": 95
+    "pendingActionCount": 111
   },
   "owners": [
     {
@@ -23,13 +23,14 @@
       "readyBatchIds": [
         "p0-docker-release-infra",
         "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
+        "p0-release-env-lint-release-infra",
+        "p0-runtime-readiness-release-infra"
       ],
       "blockedBatchIds": [],
-      "expectedArtifactCount": 3,
-      "presentArtifactCount": 3,
+      "expectedArtifactCount": 4,
+      "presentArtifactCount": 4,
       "missingArtifactCount": 0,
-      "pendingActionCount": 20,
+      "pendingActionCount": 24,
       "collapsedActionCount": 1,
       "pendingActions": [
         {
@@ -360,19 +361,74 @@
             "XXL_JOB_ADMIN_ADDRESSES"
           ],
           "artifact": null
+        },
+        {
+          "source": "runtime-readiness",
+          "id": "runtime-readiness-contract-1",
+          "reason": "runtime readiness productionEquivalence.strict must be true for strict release evidence",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "runtime-readiness",
+          "id": "runtime-readiness-contract-2",
+          "reason": "runtime readiness productionEquivalence.https must be true for strict release evidence",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "runtime-readiness",
+          "id": "runtime-readiness-contract-3",
+          "reason": "runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "runtime-readiness",
+          "id": "runtime-readiness-contract-4",
+          "reason": "runtime readiness productionEquivalence.deploymentEvidence is required",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null
         }
       ],
       "presentArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json",
         "artifacts/ddd/config/release-config-evidence.json",
+        "artifacts/ddd/readiness/summary.json",
         "artifacts/ddd/release/release-env-lint.json"
       ],
       "missingArtifacts": [],
       "exitCriteria": [
+        "All 30 owner readiness/health/metrics checks pass.",
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
         "Required lumira-server and frontend images are built, inspected, and not skipped.",
         "Rerun strict release gate and readiness summary after evidence is refreshed.",
+        "Runtime readiness is generated from an HTTPS non-local backend base URL.",
         "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
         "release-config-evidence status is PASS with no contract issues.",
         "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
@@ -1008,6 +1064,132 @@
       "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
     },
     {
+      "owner": "release-performance",
+      "status": "READY",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [
+        "p0-authenticated-performance-release-performance"
+      ],
+      "blockedBatchIds": [],
+      "expectedArtifactCount": 3,
+      "presentArtifactCount": 3,
+      "missingArtifactCount": 0,
+      "pendingActionCount": 9,
+      "collapsedActionCount": 0,
+      "pendingActions": [
+        {
+          "source": "authenticated-performance",
+          "id": "performance-actual-shape-1",
+          "reason": "authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+          "envKeys": [],
+          "artifact": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-actual-shape-2",
+          "reason": "authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+          "envKeys": [],
+          "artifact": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-actual-shape-3",
+          "reason": "authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+          "envKeys": [],
+          "artifact": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-actual-shape-4",
+          "reason": "authenticated performance actual productionEquivalence.deploymentEvidence is required",
+          "action": "Fix authenticated performance actual artifact shape and rerun the smoke.",
+          "envKeys": [],
+          "artifact": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-baseline-metadata-5",
+          "reason": "strict release baseline requires baselineType=authenticated-runtime",
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+          "envKeys": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-baseline-metadata-6",
+          "reason": "acceptedAt must be an ISO timestamp",
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+          "envKeys": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-baseline-metadata-7",
+          "reason": "acceptedBy is required",
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+          "envKeys": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-baseline-metadata-8",
+          "reason": "sourceArtifact is required",
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+          "envKeys": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "authenticated-performance",
+          "id": "performance-baseline-metadata-9",
+          "reason": "sourceSha256 must be a SHA-256 hex digest",
+          "action": "Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.",
+          "envKeys": [
+            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": null
+        }
+      ],
+      "presentArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "missingArtifacts": [],
+      "exitCriteria": [
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Rerun strict release gate and readiness summary after evidence is refreshed."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
+    },
+    {
       "owner": "payment-owner",
       "status": "READY",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -1094,6 +1276,63 @@
       "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
     },
     {
+      "owner": "release-owner",
+      "status": "READY",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [
+        "p0-manifest-release-owner"
+      ],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-owner"
+      ],
+      "expectedArtifactCount": 4,
+      "presentArtifactCount": 4,
+      "missingArtifactCount": 0,
+      "pendingActionCount": 2,
+      "collapsedActionCount": 0,
+      "pendingActions": [
+        {
+          "source": "manifest",
+          "id": "manifest-missing-no-explain-json-files-in-tmp-ddd-explain",
+          "reason": "no explain JSON files in tmp\\ddd-explain",
+          "action": "Regenerate the missing evidence artifact, then rerun `node scripts/ddd-release-evidence-manifest.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_MANIFEST_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": "no explain JSON files in tmp\\ddd-explain"
+        },
+        {
+          "source": "orchestrator",
+          "id": "orchestrator-run-mode",
+          "reason": "strict release requires run mode report, got plan",
+          "action": "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_EVIDENCE_STRICT"
+          ],
+          "artifact": null
+        }
+      ],
+      "presentArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json",
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/readiness-summary.json",
+        "artifacts/ddd/release/release-evidence-gate.json"
+      ],
+      "missingArtifacts": [],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Final strict release gate and readiness summary report zero blockers.",
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Rerun strict release gate and readiness summary after evidence is refreshed.",
+        "Run only after all prerequisite evidence batches are clean."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
+    },
+    {
       "owner": "database",
       "status": "BLOCKED",
       "receiptStatus": "ARTIFACT_MISSING",
@@ -1105,13 +1344,55 @@
       "expectedArtifactCount": 5,
       "presentArtifactCount": 4,
       "missingArtifactCount": 1,
-      "pendingActionCount": 7,
+      "pendingActionCount": 9,
       "collapsedActionCount": 0,
       "pendingActions": [
         {
           "source": "explain",
           "id": "ai-knowledge-index-retry.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "explain",
+          "id": "message-archive-total.json",
+          "reason": "missing required EXPLAIN artifact",
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "explain",
+          "id": "message-unread-count.json",
+          "reason": "missing required EXPLAIN artifact",
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
             "DDD_EXPLAIN_DIR",
@@ -1132,7 +1413,7 @@
         {
           "source": "explain",
           "id": "message-visible-list.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
             "DDD_EXPLAIN_DIR",
@@ -1153,7 +1434,7 @@
         {
           "source": "explain",
           "id": "platform-outbox-owner-relay-file.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
             "DDD_EXPLAIN_DIR",
@@ -1174,7 +1455,7 @@
         {
           "source": "explain",
           "id": "platform-outbox-owner-relay-message.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
             "DDD_EXPLAIN_DIR",
@@ -1195,7 +1476,7 @@
         {
           "source": "explain",
           "id": "platform-runtime-appearance.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
             "DDD_EXPLAIN_DIR",
@@ -1216,7 +1497,7 @@
         {
           "source": "explain",
           "id": "plugin-bootstrap.json",
-          "reason": "legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN",
+          "reason": "missing required EXPLAIN artifact",
           "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
           "envKeys": [
             "DDD_EXPLAIN_DIR",
@@ -1757,45 +2038,6 @@
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
         "Rerun strict release gate and readiness summary after evidence is refreshed."
-      ],
-      "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
-    },
-    {
-      "owner": "release-owner",
-      "status": "BLOCKED",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
-      ],
-      "expectedArtifactCount": 3,
-      "presentArtifactCount": 3,
-      "missingArtifactCount": 0,
-      "pendingActionCount": 1,
-      "collapsedActionCount": 0,
-      "pendingActions": [
-        {
-          "source": "orchestrator",
-          "id": "orchestrator-run-mode",
-          "reason": "strict release requires run mode report, got plan",
-          "action": "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
-          "envKeys": [
-            "DDD_RELEASE_EVIDENCE_STRICT"
-          ],
-          "artifact": null
-        }
-      ],
-      "presentArtifacts": [
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/readiness-summary.json",
-        "artifacts/ddd/release/release-evidence-gate.json"
-      ],
-      "missingArtifacts": [],
-      "exitCriteria": [
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Rerun strict release gate and readiness summary after evidence is refreshed.",
-        "Run only after all prerequisite evidence batches are clean."
       ],
       "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
     }

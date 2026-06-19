@@ -28,8 +28,8 @@ export const requiredOrchestratorStepIds = [
 ];
 
 export const requiredOrchestratorPreflightCheckIds = [
-  "release-provenance",
   "release-config-env-file",
+  "release-provenance",
   "backend-runtime-base-url",
   "ai-runtime-base-url",
   "frontend-runtime-base-url",

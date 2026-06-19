@@ -1,0 +1,366 @@
+{
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T06:05:17.222Z",
+  "willWriteFiles": false,
+  "finalRecommendation": "NO_GO_STRICT",
+  "cutoverAllowed": false,
+  "queue": [
+    {
+      "order": 1,
+      "lane": "p0-release-env",
+      "owner": "release-infra",
+      "status": "BLOCKED",
+      "title": "Fill and validate the secure release env file",
+      "blocker": null,
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+      "followUpCommands": [
+        "node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+        "node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+      ],
+      "artifacts": [
+        "artifacts/ddd/release/staging-handoff-bundle/release-env-next-owner.template.env",
+        "artifacts/ddd/release/staging-handoff-bundle/release-env-merge-plan.md"
+      ],
+      "blockingInputs": [
+        "DDD_RELEASE_ENV_FILE"
+      ],
+      "sourcePlan": "release-env-plan.json",
+      "dispatchOwner": "release-infra",
+      "missingEvidenceArtifacts": [],
+      "missingEvidenceArtifactCount": 0,
+      "artifactPlanCommands": []
+    },
+    {
+      "order": 2,
+      "lane": "p0-docker-images",
+      "owner": "release-infra",
+      "status": "BLOCKED",
+      "title": "Produce Docker build or existing-image inspect evidence",
+      "blocker": null,
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
+      "followUpCommands": [
+        "node scripts/ddd-docker-build-evidence.mjs --check",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
+        "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      ],
+      "artifacts": [
+        "artifacts/ddd/release/staging-handoff-bundle/docker-image-submission-plan.md",
+        "artifacts/ddd/build/docker-image-evidence.json"
+      ],
+      "blockingInputs": [
+        "DDD_DOCKER_BUILD_STRICT",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
+        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
+        "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE"
+      ],
+      "sourcePlan": "docker-image-submission-plan.json",
+      "dispatchOwner": "release-infra",
+      "missingEvidenceArtifacts": [],
+      "missingEvidenceArtifactCount": 0,
+      "artifactPlanCommands": []
+    },
+    {
+      "order": 3,
+      "lane": "p1-runtime-business",
+      "owner": "release-infra",
+      "status": "BLOCKED",
+      "title": "Publish HTTPS backend/frontend staging URLs and attach deployment evidence for strict runtime checks.",
+      "blocker": "LUMIRA_BASE_URL is required",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
+      "followUpCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+        "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      ],
+      "artifacts": [
+        "artifacts/ddd/release/staging-handoff-bundle/runtime-business-submission-plan.md",
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "blockingInputs": [
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL",
+        "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_EXPECT_DEPLOYED=true"
+      ],
+      "sourcePlan": "runtime-business-submission-plan.json",
+      "dispatchOwner": "release-infra",
+      "missingEvidenceArtifacts": [],
+      "missingEvidenceArtifactCount": 0,
+      "artifactPlanCommands": []
+    },
+    {
+      "order": 4,
+      "lane": "p1-p2-data-safety",
+      "owner": "bounded-context owners",
+      "status": "BLOCKED",
+      "title": "Provide rollback drill evidence or an approved rollback deferral for every affected bounded context.",
+      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+      "followUpCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+        "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      ],
+      "artifacts": [
+        "artifacts/ddd/release/staging-handoff-bundle/data-safety-submission-plan.md",
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockingInputs": [
+        "DDD_ROLLBACK_DRILL_FILE or DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT or DDD_EVIDENCE_ENVIRONMENT or DDD_RELEASE_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE or GITHUB_SHA",
+        "DDD_EVIDENCE_OPERATOR or GITHUB_ACTOR"
+      ],
+      "sourcePlan": "data-safety-submission-plan.json",
+      "dispatchOwner": "platform-owners",
+      "missingEvidenceArtifacts": [
+        {
+          "artifact": "tmp/ddd-explain/*.json",
+          "gates": [],
+          "acceptanceCommands": [],
+          "evidenceCommands": []
+        }
+      ],
+      "missingEvidenceArtifactCount": 1,
+      "artifactPlanCommands": [
+        "node scripts/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown",
+        "node scripts/ddd-staging-data-safety-check.mjs",
+        "node scripts/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+        "node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report",
+        "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
+      ]
+    },
+    {
+      "order": 5,
+      "lane": "final-review",
+      "owner": "release-infra",
+      "status": "BLOCKED",
+      "title": "Regenerate readiness and enforce final cutover gates",
+      "blocker": "NO_GO_STRICT; blocked=6/6",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      "followUpCommands": [
+        "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+        "node scripts/ddd-staging-execution-checklist.mjs --rollup-enforce",
+        "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+      ],
+      "artifacts": [
+        "artifacts/ddd/release/staging-handoff-bundle/final-review.json",
+        "artifacts/ddd/release/release-final-go-no-go.json"
+      ],
+      "blockingInputs": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_ENVIRONMENT",
+        "GITHUB_ACTOR",
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA",
+        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
+        "DDD_AI_EXPECT_PROVIDER_REMOTE",
+        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
+        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+        "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"
+      ],
+      "sourcePlan": "final-review.json",
+      "dispatchOwner": "release-infra",
+      "missingEvidenceArtifacts": [],
+      "missingEvidenceArtifactCount": 0,
+      "artifactPlanCommands": []
+    }
+  ],
+  "actionableCount": 5,
+  "immediateActions": [
+    {
+      "order": 1,
+      "lane": "p0-release-env",
+      "owner": "release-infra",
+      "status": "BLOCKED",
+      "title": "Fill and validate the secure release env file",
+      "blocker": null,
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+      "followUpCommands": [
+        "node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+        "node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+      ],
+      "artifacts": [
+        "artifacts/ddd/release/staging-handoff-bundle/release-env-next-owner.template.env",
+        "artifacts/ddd/release/staging-handoff-bundle/release-env-merge-plan.md"
+      ],
+      "blockingInputs": [
+        "DDD_RELEASE_ENV_FILE"
+      ],
+      "sourcePlan": "release-env-plan.json",
+      "dispatchOwner": "release-infra",
+      "missingEvidenceArtifacts": [],
+      "missingEvidenceArtifactCount": 0,
+      "artifactPlanCommands": []
+    },
+    {
+      "order": 2,
+      "lane": "p0-docker-images",
+      "owner": "release-infra",
+      "status": "BLOCKED",
+      "title": "Produce Docker build or existing-image inspect evidence",
+      "blocker": null,
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
+      "followUpCommands": [
+        "node scripts/ddd-docker-build-evidence.mjs --check",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
+        "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      ],
+      "artifacts": [
+        "artifacts/ddd/release/staging-handoff-bundle/docker-image-submission-plan.md",
+        "artifacts/ddd/build/docker-image-evidence.json"
+      ],
+      "blockingInputs": [
+        "DDD_DOCKER_BUILD_STRICT",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
+        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
+        "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE"
+      ],
+      "sourcePlan": "docker-image-submission-plan.json",
+      "dispatchOwner": "release-infra",
+      "missingEvidenceArtifacts": [],
+      "missingEvidenceArtifactCount": 0,
+      "artifactPlanCommands": []
+    },
+    {
+      "order": 3,
+      "lane": "p1-runtime-business",
+      "owner": "release-infra",
+      "status": "BLOCKED",
+      "title": "Publish HTTPS backend/frontend staging URLs and attach deployment evidence for strict runtime checks.",
+      "blocker": "LUMIRA_BASE_URL is required",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
+      "followUpCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+        "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      ],
+      "artifacts": [
+        "artifacts/ddd/release/staging-handoff-bundle/runtime-business-submission-plan.md",
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "blockingInputs": [
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL",
+        "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_EXPECT_DEPLOYED=true"
+      ],
+      "sourcePlan": "runtime-business-submission-plan.json",
+      "dispatchOwner": "release-infra",
+      "missingEvidenceArtifacts": [],
+      "missingEvidenceArtifactCount": 0,
+      "artifactPlanCommands": []
+    },
+    {
+      "order": 4,
+      "lane": "p1-p2-data-safety",
+      "owner": "bounded-context owners",
+      "status": "BLOCKED",
+      "title": "Provide rollback drill evidence or an approved rollback deferral for every affected bounded context.",
+      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+      "followUpCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+        "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      ],
+      "artifacts": [
+        "artifacts/ddd/release/staging-handoff-bundle/data-safety-submission-plan.md",
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockingInputs": [
+        "DDD_ROLLBACK_DRILL_FILE or DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT or DDD_EVIDENCE_ENVIRONMENT or DDD_RELEASE_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE or GITHUB_SHA",
+        "DDD_EVIDENCE_OPERATOR or GITHUB_ACTOR"
+      ],
+      "sourcePlan": "data-safety-submission-plan.json",
+      "dispatchOwner": "platform-owners",
+      "missingEvidenceArtifacts": [
+        {
+          "artifact": "tmp/ddd-explain/*.json",
+          "gates": [],
+          "acceptanceCommands": [],
+          "evidenceCommands": []
+        }
+      ],
+      "missingEvidenceArtifactCount": 1,
+      "artifactPlanCommands": [
+        "node scripts/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown",
+        "node scripts/ddd-staging-data-safety-check.mjs",
+        "node scripts/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+        "node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report",
+        "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
+      ]
+    }
+  ],
+  "parallelNow": [
+    "p0-release-env",
+    "p0-docker-images",
+    "p1-runtime-business",
+    "p1-p2-data-safety"
+  ],
+  "nextAction": {
+    "order": 1,
+    "lane": "p0-release-env",
+    "owner": "release-infra",
+    "status": "BLOCKED",
+    "title": "Fill and validate the secure release env file",
+    "blocker": null,
+    "command": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+    "followUpCommands": [
+      "node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+      "node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+    ],
+    "artifacts": [
+      "artifacts/ddd/release/staging-handoff-bundle/release-env-next-owner.template.env",
+      "artifacts/ddd/release/staging-handoff-bundle/release-env-merge-plan.md"
+    ],
+    "blockingInputs": [
+      "DDD_RELEASE_ENV_FILE"
+    ],
+    "sourcePlan": "release-env-plan.json",
+    "dispatchOwner": "release-infra",
+    "missingEvidenceArtifacts": [],
+    "missingEvidenceArtifactCount": 0,
+    "artifactPlanCommands": []
+  },
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+  "verificationCommands": [
+    "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "node scripts/ddd-staging-execution-checklist.mjs --rollup-enforce",
+    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+  ],
+  "safety": [
+    "Treat this as the operator queue; use each source plan for full owner details.",
+    "Do not paste populated secrets into queue artifacts or Markdown summaries.",
+    "Run final review only after all lane source plans report accepted evidence."
+  ]
+}

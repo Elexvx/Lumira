@@ -1,9 +1,9 @@
 # DDD Owner Action Rollup
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
-Release gate mode: advisory
-Release gate blockers: 0
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
+Release gate mode: strict
+Release gate blockers: 94
 
 ## ai
 
@@ -112,9 +112,9 @@ Release gate blockers: 0
 
 ## database
 
-- Pending items: 7
+- Pending items: 9
 - Collapsed duplicates: 0
-- Sources: explain=6, orchestrator=1
+- Sources: explain=8, orchestrator=1
 - Env keys: 16 keys
   - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
   - DDD_EXPLAIN_STRICT, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
@@ -122,42 +122,56 @@ Release gate blockers: 0
   - MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER
 
 - [explain] ai-knowledge-index-retry.json
-  - Reason: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
+  - Reason: missing required EXPLAIN artifact
+  - Env keys: 12 keys
+    - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
+    - DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE, MYSQL_CLI, MYSQL_DATABASE
+    - MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER
+  - Action: Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+- [explain] message-archive-total.json
+  - Reason: missing required EXPLAIN artifact
+  - Env keys: 12 keys
+    - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
+    - DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE, MYSQL_CLI, MYSQL_DATABASE
+    - MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER
+  - Action: Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
+- [explain] message-unread-count.json
+  - Reason: missing required EXPLAIN artifact
   - Env keys: 12 keys
     - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
     - DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE, MYSQL_CLI, MYSQL_DATABASE
     - MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER
   - Action: Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
 - [explain] message-visible-list.json
-  - Reason: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
+  - Reason: missing required EXPLAIN artifact
   - Env keys: 12 keys
     - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
     - DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE, MYSQL_CLI, MYSQL_DATABASE
     - MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER
   - Action: Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
 - [explain] platform-outbox-owner-relay-file.json
-  - Reason: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
+  - Reason: missing required EXPLAIN artifact
   - Env keys: 12 keys
     - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
     - DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE, MYSQL_CLI, MYSQL_DATABASE
     - MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER
   - Action: Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
 - [explain] platform-outbox-owner-relay-message.json
-  - Reason: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
+  - Reason: missing required EXPLAIN artifact
   - Env keys: 12 keys
     - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
     - DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE, MYSQL_CLI, MYSQL_DATABASE
     - MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER
   - Action: Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
 - [explain] platform-runtime-appearance.json
-  - Reason: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
+  - Reason: missing required EXPLAIN artifact
   - Env keys: 12 keys
     - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
     - DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE, MYSQL_CLI, MYSQL_DATABASE
     - MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT, MYSQL_USER
   - Action: Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.
 - [explain] plugin-bootstrap.json
-  - Reason: legacyPlanImport=true; strict release requires fresh production-equivalent EXPLAIN
+  - Reason: missing required EXPLAIN artifact
   - Env keys: 12 keys
     - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
     - DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE, MYSQL_CLI, MYSQL_DATABASE
@@ -480,27 +494,28 @@ Release gate blockers: 0
 
 ## release-infra
 
-- Pending items: 20
+- Pending items: 24
 - Collapsed duplicates: 1
-- Sources: docker=4, release-config=14, release-env-lint=2
-- Env keys: 68 keys
+- Sources: docker=4, release-config=14, release-env-lint=2, runtime-readiness=4
+- Env keys: 71 keys
   - AI_SERVICE_BASE_URL, AUTH_SERVICE_BASE_URL, BASE_URL, CORS_ALLOWED_ORIGIN_PATTERNS
   - DB_PASSWORD, DB_URL, DB_USERNAME, DDD_AUTH_PASSWORD
   - DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE
   - DDD_AUTH_PERF_ENVIRONMENT, DDD_AUTH_USERNAME, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DDD_DEPLOYMENT_EVIDENCE
-  - DDD_DOCKER_BUILD_STRICT, DDD_DOCKER_COMMAND, DDD_EXPLAIN_DATABASE, DDD_FRONTEND_DEPLOYMENT_EVIDENCE
-  - DDD_MIGRATION_COMPLETED_AT, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_OPERATOR
-  - DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DEPLOY_CHECK_BASE_URL, FIELD_SECRET
-  - FILE_SERVICE_BASE_URL, FRONTEND_BASE_URL, JOB_EXECUTOR_BASE_URL, JWT_SECRET
-  - LOCALIZATION_SERVICE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN
-  - LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL, LUMIRA_BASE_URL
-  - MESSAGE_SERVICE_BASE_URL, MYSQL_DATABASE, MYSQL_HOST, MYSQL_PASSWORD
-  - MYSQL_PORT, MYSQL_USER, PAYMENT_PUBLIC_BASE_URL, PAYMENT_SERVICE_BASE_URL
-  - PLAYWRIGHT_BASE_URL, PLUGIN_SERVICE_BASE_URL, REDIS_HOST, SAAS_EVENT_REDIS_STREAM_KEY
-  - SAAS_JOB_BACKEND_BASE_URL, SAAS_JOB_FILE_SERVICE_BASE_URL, SAAS_JOB_INTERNAL_TOKEN, SAAS_JOB_MESSAGE_SERVICE_BASE_URL
-  - SAAS_JOB_PAYMENT_SERVICE_BASE_URL, SAAS_JOB_PLUGIN_SERVICE_BASE_URL, SAAS_SECURITY_FIELD_SECRET, SAAS_SECURITY_JWT_SECRET
-  - SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS, SPRING_DATASOURCE_PASSWORD, SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME
-  - SPRING_DATA_REDIS_HOST, SYSTEM_SERVICE_BASE_URL, XXL_JOB_ACCESS_TOKEN, XXL_JOB_ADMIN_ADDRESSES
+  - DDD_DOCKER_BUILD_STRICT, DDD_DOCKER_COMMAND, DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR
+  - DDD_EXPLAIN_DATABASE, DDD_FRONTEND_DEPLOYMENT_EVIDENCE, DDD_MIGRATION_COMPLETED_AT, DDD_MIGRATION_FRESH_DB_EVIDENCE
+  - DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_OPERATOR, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED
+  - DDD_RELEASE_CANDIDATE, DEPLOY_CHECK_BASE_URL, FIELD_SECRET, FILE_SERVICE_BASE_URL
+  - FRONTEND_BASE_URL, JOB_EXECUTOR_BASE_URL, JWT_SECRET, LOCALIZATION_SERVICE_BASE_URL
+  - LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN, LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL
+  - LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL, LUMIRA_BASE_URL, MESSAGE_SERVICE_BASE_URL
+  - MYSQL_DATABASE, MYSQL_HOST, MYSQL_PASSWORD, MYSQL_PORT
+  - MYSQL_USER, PAYMENT_PUBLIC_BASE_URL, PAYMENT_SERVICE_BASE_URL, PLAYWRIGHT_BASE_URL
+  - PLUGIN_SERVICE_BASE_URL, REDIS_HOST, SAAS_EVENT_REDIS_STREAM_KEY, SAAS_JOB_BACKEND_BASE_URL
+  - SAAS_JOB_FILE_SERVICE_BASE_URL, SAAS_JOB_INTERNAL_TOKEN, SAAS_JOB_MESSAGE_SERVICE_BASE_URL, SAAS_JOB_PAYMENT_SERVICE_BASE_URL
+  - SAAS_JOB_PLUGIN_SERVICE_BASE_URL, SAAS_SECURITY_FIELD_SECRET, SAAS_SECURITY_JWT_SECRET, SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS
+  - SPRING_DATASOURCE_PASSWORD, SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATA_REDIS_HOST
+  - SYSTEM_SERVICE_BASE_URL, XXL_JOB_ACCESS_TOKEN, XXL_JOB_ADMIN_ADDRESSES
 
 - [docker] docker-blocker-1
   - Reason: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1
@@ -610,6 +625,22 @@ Release gate blockers: 0
     - SAAS_JOB_INTERNAL_TOKEN, SAAS_JOB_MESSAGE_SERVICE_BASE_URL, SAAS_JOB_PAYMENT_SERVICE_BASE_URL, SAAS_JOB_PLUGIN_SERVICE_BASE_URL
     - SYSTEM_SERVICE_BASE_URL, XXL_JOB_ACCESS_TOKEN, XXL_JOB_ADMIN_ADDRESSES
   - Action: Replace placeholders and invalid values in `DDD_RELEASE_ENV_FILE`, then rerun `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`.
+- [runtime-readiness] runtime-readiness-contract-1
+  - Reason: runtime readiness productionEquivalence.strict must be true for strict release evidence
+  - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, LUMIRA_BASE_URL
+  - Action: Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
+- [runtime-readiness] runtime-readiness-contract-2
+  - Reason: runtime readiness productionEquivalence.https must be true for strict release evidence
+  - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, LUMIRA_BASE_URL
+  - Action: Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
+- [runtime-readiness] runtime-readiness-contract-3
+  - Reason: runtime readiness productionEquivalence.localOnly must be false for strict release evidence
+  - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, LUMIRA_BASE_URL
+  - Action: Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
+- [runtime-readiness] runtime-readiness-contract-4
+  - Reason: runtime readiness productionEquivalence.deploymentEvidence is required
+  - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, LUMIRA_BASE_URL
+  - Action: Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
 - [collapsed:orchestrator] orchestrator-preflight-backend-runtime-base-url
   - Covered by: release-config:backend base url
   - Reason: missing backend runtime base URL
@@ -617,13 +648,61 @@ Release gate blockers: 0
 
 ## release-owner
 
-- Pending items: 1
+- Pending items: 2
 - Collapsed duplicates: 0
-- Sources: orchestrator=1
-- Env keys: DDD_RELEASE_EVIDENCE_STRICT
+- Sources: manifest=1, orchestrator=1
+- Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_RELEASE_EVIDENCE_STRICT, DDD_RELEASE_MANIFEST_STRICT
 
+- [manifest] manifest-missing-no-explain-json-files-in-tmp-ddd-explain
+  - Reason: no explain JSON files in tmp\ddd-explain
+  - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_RELEASE_MANIFEST_STRICT
+  - Action: Regenerate the missing evidence artifact, then rerun `node scripts/ddd-release-evidence-manifest.mjs`.
 - [orchestrator] orchestrator-run-mode
   - Reason: strict release requires run mode report, got plan
   - Env keys: DDD_RELEASE_EVIDENCE_STRICT
   - Action: Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.
+
+## release-performance
+
+- Pending items: 9
+- Collapsed duplicates: 0
+- Sources: authenticated-performance=9
+- Env keys: DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_RELEASE_CANDIDATE
+
+- [authenticated-performance] performance-actual-shape-1
+  - Reason: authenticated performance actual productionEquivalence.strict must be true for strict release evidence
+  - Env keys: none
+  - Action: Fix authenticated performance actual artifact shape and rerun the smoke.
+- [authenticated-performance] performance-actual-shape-2
+  - Reason: authenticated performance actual productionEquivalence.https must be true for strict release evidence
+  - Env keys: none
+  - Action: Fix authenticated performance actual artifact shape and rerun the smoke.
+- [authenticated-performance] performance-actual-shape-3
+  - Reason: authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence
+  - Env keys: none
+  - Action: Fix authenticated performance actual artifact shape and rerun the smoke.
+- [authenticated-performance] performance-actual-shape-4
+  - Reason: authenticated performance actual productionEquivalence.deploymentEvidence is required
+  - Env keys: none
+  - Action: Fix authenticated performance actual artifact shape and rerun the smoke.
+- [authenticated-performance] performance-baseline-metadata-5
+  - Reason: strict release baseline requires baselineType=authenticated-runtime
+  - Env keys: DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_RELEASE_CANDIDATE
+  - Action: Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+- [authenticated-performance] performance-baseline-metadata-6
+  - Reason: acceptedAt must be an ISO timestamp
+  - Env keys: DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_RELEASE_CANDIDATE
+  - Action: Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+- [authenticated-performance] performance-baseline-metadata-7
+  - Reason: acceptedBy is required
+  - Env keys: DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_RELEASE_CANDIDATE
+  - Action: Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+- [authenticated-performance] performance-baseline-metadata-8
+  - Reason: sourceArtifact is required
+  - Env keys: DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_RELEASE_CANDIDATE
+  - Action: Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
+- [authenticated-performance] performance-baseline-metadata-9
+  - Reason: sourceSha256 must be a SHA-256 hex digest
+  - Env keys: DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_RELEASE_CANDIDATE
+  - Action: Regenerate authenticated performance baseline with accepted-by, source environment, source artifact, and release candidate metadata.
 

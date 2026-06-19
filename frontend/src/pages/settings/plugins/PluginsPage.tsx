@@ -474,9 +474,9 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
         async () =>
           runVersionMutation(
             () =>
-              request<boolean>('/v1/plugins/enable', {
+              request<boolean>(`/v1/plugins/${pluginCode}/enable`, {
                 method: 'POST',
-                data: { tenantId: 1001, pluginCode, version: versionToUse },
+                data: { version: versionToUse },
                 ...API_OPTS.NO_REDIRECT,
               }),
             panel.setMutationLoading,

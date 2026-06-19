@@ -8,6 +8,27 @@ import path from "node:path";
 import { requiredDockerImages } from "./ddd-docker-evidence-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
+function pathForBash(file) {
+  const resolved = path.resolve(file);
+  const match = /^([A-Za-z]):\\(.*)$/.exec(resolved);
+  if (!match) return file.replaceAll("\\", "/");
+  return `/mnt/${match[1].toLowerCase()}/${match[2].replaceAll("\\", "/")}`;
+}
+
+const helpOutputDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-docker-evidence-help-"));
+const helpResult = spawnSync("node", ["scripts/ddd-docker-build-evidence.mjs", "--help"], {
+  cwd: repoRoot,
+  encoding: "utf8",
+  env: {
+    ...process.env,
+    DDD_DOCKER_BUILD_DIR: helpOutputDir,
+  },
+});
+assert.equal(helpResult.status, 0, helpResult.stderr || helpResult.stdout);
+assert.match(helpResult.stdout, /DDD Docker image evidence/);
+assert.match(helpResult.stdout, /--check/);
+assert.equal(fs.existsSync(path.join(helpOutputDir, "docker-image-evidence.json")), false, "docker evidence help should not write an artifact");
+
 const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-docker-evidence-"));
 const result = spawnSync("node", ["scripts/ddd-docker-build-evidence.mjs"], {
   cwd: repoRoot,
@@ -49,13 +70,39 @@ for (const image of artifact.images) {
 }
 assert.equal(JSON.stringify(artifact).includes(os.homedir()), false, "docker evidence artifact must not leak the local home path");
 
+const unavailableCheckDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-docker-evidence-unavailable-check-"));
+const unavailableCheckResult = spawnSync("node", ["scripts/ddd-docker-build-evidence.mjs", "--check"], {
+  cwd: repoRoot,
+  encoding: "utf8",
+  env: {
+    ...process.env,
+    DDD_DOCKER_BUILD_DIR: unavailableCheckDir,
+    DDD_DOCKER_COMMAND: "definitely-not-a-docker-binary",
+    DDD_RELEASE_EVIDENCE_STRICT: "true",
+    DDD_EVIDENCE_ENVIRONMENT: "docker-contract-test",
+    DDD_RELEASE_CANDIDATE: "docker-contract-sha",
+    DDD_EVIDENCE_OPERATOR: "docker-contract-runner",
+  },
+});
+assert.notEqual(unavailableCheckResult.status, 0);
+const unavailableCheck = JSON.parse(unavailableCheckResult.stdout);
+assert.equal(unavailableCheck.status, "BLOCKED");
+assert.equal(unavailableCheck.willWriteFiles, false);
+assert.equal(unavailableCheck.recommendedMode, "external-runner-required");
+assert.equal(unavailableCheck.remediation.dockerUnavailable, true);
+assert(unavailableCheck.remediation.nextActions.some((action) => action.id === "docker-daemon-ready"));
+const unavailableExistingInspect = unavailableCheck.remediation.nextActions.find((action) => action.id === "docker-existing-image-inspect");
+assert(unavailableExistingInspect);
+assert.match(unavailableExistingInspect.exampleCommand, /DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url>/);
+assert.equal(fs.existsSync(path.join(unavailableCheckDir, "docker-image-evidence.json")), false, "docker evidence --check should not write an artifact when Docker is unavailable");
+
 const retryOutputDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-docker-evidence-retry-"));
 const fakeDocker = path.join(retryOutputDir, "docker-fake.sh");
 const fakeState = path.join(retryOutputDir, "build-count");
 fs.writeFileSync(fakeState, "0");
 fs.writeFileSync(fakeDocker, `#!/usr/bin/env bash
 set -euo pipefail
-state=${JSON.stringify(fakeState)}
+state=${JSON.stringify(pathForBash(fakeState))}
 if [[ "$1" == "--version" ]]; then
   echo "Docker version fake"
   exit 0
@@ -156,6 +203,34 @@ echo "unexpected fake docker args: $*" >&2
 exit 2
 `);
 fs.chmodSync(fakeExistingDocker, 0o755);
+
+const existingImageCheckDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-docker-evidence-existing-check-"));
+const existingImageCheckResult = spawnSync("node", ["scripts/ddd-docker-build-evidence.mjs", "--check"], {
+  cwd: repoRoot,
+  encoding: "utf8",
+  env: {
+    ...process.env,
+    DDD_DOCKER_BUILD_DIR: existingImageCheckDir,
+    DDD_DOCKER_COMMAND: fakeExistingDocker,
+    DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE: "registry.local/lumira-server:rc1",
+    DDD_DOCKER_EXISTING_FRONTEND_IMAGE: "registry.local/frontend:rc1",
+    DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE: "gh-run-12345-artifacts/docker-build-provenance.json",
+    DDD_RELEASE_EVIDENCE_STRICT: "true",
+    DDD_EVIDENCE_ENVIRONMENT: "docker-contract-test",
+    DDD_RELEASE_CANDIDATE: "docker-contract-sha",
+    DDD_EVIDENCE_OPERATOR: "docker-contract-runner",
+  },
+});
+assert.equal(existingImageCheckResult.status, 0, existingImageCheckResult.stderr || existingImageCheckResult.stdout);
+const existingImageCheck = JSON.parse(existingImageCheckResult.stdout);
+assert.equal(existingImageCheck.status, "PASS");
+assert.equal(existingImageCheck.willWriteFiles, false);
+assert.equal(existingImageCheck.recommendedMode, "existing-image-inspect");
+assert.equal(existingImageCheck.dockerAvailable, true);
+assert.equal(existingImageCheck.existingImageInputs.length, requiredDockerImages.length);
+assert(existingImageCheck.existingImageInputs.every((image) => image.valuePresent === true));
+assert.match(existingImageCheck.nextCommand, /DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>\/lumira-server:<release-candidate>/);
+assert.equal(fs.existsSync(path.join(existingImageCheckDir, "docker-image-evidence.json")), false, "docker evidence --check should not write an artifact");
 
 const existingImageResult = spawnSync("node", ["scripts/ddd-docker-build-evidence.mjs"], {
   cwd: repoRoot,

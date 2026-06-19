@@ -134,9 +134,11 @@ function parseEnvFile(file) {
   fileSecurity.mode = mode;
   fileSecurity.modeOctal = mode.toString(8).padStart(3, "0");
   fileSecurity.generatedMissingTemplate = isGeneratedMissingTemplate;
-  fileSecurity.permissionCheckSkipped = isGeneratedMissingTemplate;
-  fileSecurity.permissionSafe = isGeneratedMissingTemplate ? null : (mode & 0o077) === 0;
-  if (!isGeneratedMissingTemplate && (mode & 0o077) !== 0) {
+  fileSecurity.permissionCheckSkipped = isGeneratedMissingTemplate || process.platform === "win32";
+  fileSecurity.permissionSafe = isGeneratedMissingTemplate
+    ? null
+    : (fileSecurity.permissionCheckSkipped || (mode & 0o077) === 0);
+  if (!fileSecurity.permissionCheckSkipped && (mode & 0o077) !== 0) {
     issues.push(`env file permissions are too broad: ${portablePath(file)} mode=${mode.toString(8).padStart(3, "0")}; use chmod 600`);
   }
   const lines = fs.readFileSync(file, "utf8").split(/\r?\n/);

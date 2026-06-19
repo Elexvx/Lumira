@@ -147,10 +147,14 @@ try {
   fs.writeFileSync(broadFile, "JWT_SECRET=abcdefghijklmnopqrstuvwxyz1234567890\n");
   fs.chmodSync(broadFile, 0o644);
   const broadRun = runLint(broadFile, broadReport);
-  if (broadRun.status === 0) addFailure("canonical lint must fail broad permissions with concrete secret values");
   const broad = readJson(broadReport);
-  if (broad.sourceSecurity?.permissionSafe !== false) addFailure("canonical lint broad report must mark permissionSafe=false");
-  if (!broad.blockers.some((blocker) => blocker.includes("permissions are too broad"))) addFailure("canonical lint broad report must include permission blocker");
+  if (process.platform === "win32") {
+    if (broad.sourceSecurity?.permissionCheckSkipped !== true) addFailure("canonical lint broad report must mark permissionCheckSkipped=true on Windows");
+  } else {
+    if (broadRun.status === 0) addFailure("canonical lint must fail broad permissions with concrete secret values");
+    if (broad.sourceSecurity?.permissionSafe !== false) addFailure("canonical lint broad report must mark permissionSafe=false");
+    if (!broad.blockers.some((blocker) => blocker.includes("permissions are too broad"))) addFailure("canonical lint broad report must include permission blocker");
+  }
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

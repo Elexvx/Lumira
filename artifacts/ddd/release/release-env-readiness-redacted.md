@@ -1,7 +1,7 @@
 # DDD Release Env Readiness Redacted
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Env file: .env.release.local
 Value policy: No concrete environment values are emitted; only key names, ownership, validation metadata, and redacted fill status.
 Canonical keys: 48

@@ -219,7 +219,16 @@ export const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined, avail
 
     return {
       ...item,
-      children: pluginItems,
+      children: [
+        {
+          path: item.path,
+          name: item.name,
+          icon: item.icon,
+          access: item.access,
+          sortNo: Number.MIN_SAFE_INTEGER,
+        },
+        ...pluginItems,
+      ],
     };
   });
 };

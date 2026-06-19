@@ -1,0 +1,71 @@
+{
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T06:05:17.222Z",
+  "willWriteFiles": false,
+  "redacted": false,
+  "receiptFile": null,
+  "workflowInput": {
+    "workflow": ".github/workflows/ddd-release-evidence.yml",
+    "fileInput": "lane_completion_receipt_file",
+    "base64Input": "lane_completion_receipt_base64",
+    "decodedPath": "artifacts/ddd/release/lane-completion-receipt.submitted.json",
+    "base64TakesPrecedence": true
+  },
+  "contract": {
+    "status": "MISSING",
+    "receiptStatus": null,
+    "laneCount": 0,
+    "issueCount": 1
+  },
+  "coverage": {
+    "status": "BLOCKED",
+    "coveredLaneCount": 0,
+    "expectedLaneCount": 5,
+    "missingLanes": [
+      {
+        "key": "platform-owners:p1-p2-data-safety",
+        "owner": "platform-owners",
+        "lane": "p1-p2-data-safety"
+      },
+      {
+        "key": "release-infra:p0-release-env",
+        "owner": "release-infra",
+        "lane": "p0-release-env"
+      },
+      {
+        "key": "release-infra:p0-docker-images",
+        "owner": "release-infra",
+        "lane": "p0-docker-images"
+      },
+      {
+        "key": "release-infra:p1-runtime-business",
+        "owner": "release-infra",
+        "lane": "p1-runtime-business"
+      },
+      {
+        "key": "release-infra:final-review",
+        "owner": "release-infra",
+        "lane": "final-review"
+      }
+    ]
+  },
+  "base64": {
+    "status": "SKIPPED",
+    "ready": false,
+    "command": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+    "printsValue": true
+  },
+  "dispatch": {
+    "ready": false,
+    "preferredInput": "lane_completion_receipt_base64",
+    "fallbackInput": "lane_completion_receipt_file",
+    "decodedPath": "artifacts/ddd/release/lane-completion-receipt.submitted.json",
+    "commandTemplate": "gh workflow run ddd-release-evidence.yml -f mode=run -f lane_completion_receipt_base64=<base64-value>"
+  },
+  "issues": [
+    "lane completion receipt file not provided",
+    "DDD_LANE_COMPLETION_RECEIPT_FILE or --lane-completion-receipt-file is required",
+    "missing lanes=platform-owners:p1-p2-data-safety, release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-runtime-business, release-infra:final-review"
+  ],
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"
+}

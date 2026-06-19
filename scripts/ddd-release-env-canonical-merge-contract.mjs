@@ -70,7 +70,7 @@ try {
   if (!/^DB_URL=jdbc:mysql:\/\/prod-db\.internal:3306\/lumira$/m.test(targetText)) addFailure("canonical merge must update DB_URL");
   if (!/^DB_PASSWORD=abcdefghijklmnopqrstuvwxyz123456$/m.test(targetText)) addFailure("canonical merge must update DB_PASSWORD");
   if (!/^JWT_SECRET=__REQUIRED__$/m.test(targetText)) addFailure("canonical merge must not copy unresolved source keys");
-  if ((fs.statSync(targetFile).mode & 0o777) !== 0o600) addFailure("canonical merge must chmod target env file to 600 after writes");
+  if (process.platform !== "win32" && (fs.statSync(targetFile).mode & 0o777) !== 0o600) addFailure("canonical merge must chmod target env file to 600 after writes");
 
   const drySource = path.join(tmpDir, "dry-source.env");
   const dryTarget = path.join(tmpDir, "dry-target.env");
@@ -117,8 +117,13 @@ try {
   fs.chmodSync(broadSource, 0o644);
   fs.chmodSync(broadTarget, 0o600);
   const broadRun = runMerge(broadSource, broadTarget, broadReport);
-  if (broadRun.status === 0) addFailure("canonical merge must fail broad source permissions with concrete secret values");
-  if (!readJson(broadReport).blockers.some((blocker) => blocker.includes("permissions are too broad"))) addFailure("canonical merge broad report must include permission blocker");
+  const broad = readJson(broadReport);
+  if (process.platform === "win32") {
+    if (broad.sourceSecurity?.permissionCheckSkipped !== true) addFailure("canonical merge broad report must mark permissionCheckSkipped=true on Windows");
+  } else {
+    if (broadRun.status === 0) addFailure("canonical merge must fail broad source permissions with concrete secret values");
+    if (!broad.blockers.some((blocker) => blocker.includes("permissions are too broad"))) addFailure("canonical merge broad report must include permission blocker");
+  }
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

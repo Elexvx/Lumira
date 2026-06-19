@@ -228,7 +228,8 @@ if (!fs.existsSync(envFile)) {
 
 const mode = fs.statSync(envFile).mode & 0o777;
 const modeOctal = mode.toString(8).padStart(3, "0");
-const permissionSafe = (mode & 0o077) === 0;
+const permissionCheckSkipped = process.platform === "win32";
+const permissionSafe = permissionCheckSkipped || (mode & 0o077) === 0;
 const parsed = parseEnvFile(envFile);
 const requirements = canonicalRequirements();
 const validationIssues = safeDefaults.flatMap((defaultValue) => (
@@ -248,6 +249,7 @@ if (blockers.length > 0) {
       checked: true,
       modeOctal,
       permissionSafe,
+      permissionCheckSkipped,
       requiredMode: "600",
     },
   });

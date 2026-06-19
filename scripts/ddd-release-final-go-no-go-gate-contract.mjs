@@ -16,6 +16,7 @@ const markdownPath = process.env.DDD_FINAL_GO_NO_GO_CONTRACT_MARKDOWN
   : path.join(releaseDir, "release-final-go-no-go.md");
 const gatePath = path.join(releaseDir, "release-final-go-no-go-gate.sh");
 const failures = [];
+const tempFiles = [];
 const requiredHandoffCommands = [
   "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
   "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
@@ -43,29 +44,69 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, "utf8"));
 }
 
+function toBashPath(file) {
+  const resolved = path.resolve(file);
+  if (process.platform !== "win32") {
+    return resolved;
+  }
+  return resolved.replace(/^([A-Za-z]):\\/, (_, drive) => `/mnt/${drive.toLowerCase()}/`).replaceAll("\\", "/");
+}
+
+function executableGatePath() {
+  if (process.platform !== "win32") {
+    return gatePath;
+  }
+  const normalizedGatePath = path.join(
+    os.tmpdir(),
+    `lumira-release-final-go-no-go-gate-${process.pid}.sh`,
+  );
+  const nodeForBash = `'${toBashPath(process.execPath).replaceAll("'", "'\\''")}'`;
+  const source = fs.readFileSync(gatePath, "utf8")
+    .replace(/\r\n/g, "\n")
+    .replace(/\bnode --input-type=module\b/g, `${nodeForBash} --input-type=module`);
+  fs.writeFileSync(normalizedGatePath, source, { mode: 0o700 });
+  tempFiles.push(normalizedGatePath);
+  return normalizedGatePath;
+}
+
 function runGate(packetFile, env = {}) {
-  return spawnSync("bash", [gatePath], {
+  return spawnSync("bash", [toBashPath(executableGatePath())], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
       ...process.env,
-      LUMIRA_REPO_ROOT: repoRoot,
-      DDD_FINAL_GO_NO_GO_PACKET: packetFile,
+      LUMIRA_REPO_ROOT: toBashPath(repoRoot),
+      DDD_FINAL_GO_NO_GO_PACKET: toBashPath(packetFile),
+      DDD_NODE_BIN: toBashPath(process.execPath),
       ...env,
     },
   });
+}
+
+function canRunGateWithBashNode() {
+  const probe = spawnSync("bash", ["-lc", "command -v node >/dev/null 2>&1"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+  });
+  return probe.status === 0;
 }
 
 if (!fs.existsSync(gatePath)) {
   addFailure(`final go/no-go gate script must exist: ${gatePath}`);
 } else {
   const mode = fs.statSync(gatePath).mode & 0o777;
-  if ((mode & 0o111) === 0) addFailure("final go/no-go gate script must be executable");
+  if (process.platform !== "win32" && (mode & 0o111) === 0) {
+    addFailure("final go/no-go gate script must be executable");
+  }
   const source = fs.readFileSync(gatePath, "utf8");
   for (const snippet of [
     "set -euo pipefail",
     "DDD_FINAL_GO_NO_GO_ENFORCE",
+    "DDD_STAGING_FINAL_REVIEW_ENFORCE",
+    "DDD_NODE_BIN",
     "DDD_FINAL_GO_NO_GO_PACKET",
+    "\"${DDD_NODE_BIN}\" scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "staging-final-review-blocked",
     "finalRecommendation",
     "cutoverAllowed",
     "noAutoWaivers",
@@ -274,6 +315,7 @@ try {
   };
   const noGoPacket = path.join(tmpDir, "no-go.json");
   fs.writeFileSync(noGoPacket, `${JSON.stringify(basePacket, null, 2)}\n`);
+  if (canRunGateWithBashNode()) {
   const noGoDefault = runGate(noGoPacket);
   if (noGoDefault.status !== 0) addFailure(`NO-GO default mode must print and exit 0: ${noGoDefault.stderr || noGoDefault.stdout}`);
   if (!noGoDefault.stderr.includes("[ddd-final-go-no-go][no-go]")) addFailure("NO-GO default mode must print no-go status");
@@ -303,8 +345,19 @@ try {
       },
     },
   }, null, 2)}\n`);
-  const goRun = runGate(goPacket, { DDD_FINAL_GO_NO_GO_ENFORCE: "1" });
-  if (goRun.status !== 0) addFailure(`GO enforce mode must exit 0: ${goRun.stderr || goRun.stdout}`);
+  const goRunBlockedByStaging = runGate(goPacket, { DDD_FINAL_GO_NO_GO_ENFORCE: "1" });
+  if (goRunBlockedByStaging.status !== 10) {
+    addFailure(`GO enforce mode must still exit 10 when staging final review is blocked, got ${goRunBlockedByStaging.status}`);
+  }
+  if (!goRunBlockedByStaging.stderr.includes("[ddd-final-go-no-go][staging-final-review-blocked]")) {
+    addFailure("GO enforce mode must name staging-final-review-blocked when staging evidence is incomplete");
+  }
+
+  const goRun = runGate(goPacket, {
+    DDD_FINAL_GO_NO_GO_ENFORCE: "1",
+    DDD_STAGING_FINAL_REVIEW_ENFORCE: "0",
+  });
+  if (goRun.status !== 0) addFailure(`GO enforce mode with staging review bypass for packet-only contract must exit 0: ${goRun.stderr || goRun.stdout}`);
   if (!goRun.stdout.includes("[ddd-final-go-no-go][go] cutover allowed")) addFailure("GO mode must print cutover allowed");
 
   const unsafeGoPacket = path.join(tmpDir, "unsafe-go.json");
@@ -418,8 +471,12 @@ try {
   fs.writeFileSync(invalidPacket, `${JSON.stringify({ recommendation: "GO_STRICT" }, null, 2)}\n`);
   const invalidRun = runGate(invalidPacket);
   if (invalidRun.status !== 11) addFailure(`invalid final packet must exit 11, got ${invalidRun.status}`);
+  }
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
+  for (const file of tempFiles) {
+    fs.rmSync(file, { force: true });
+  }
 }
 
 if (failures.length > 0) {

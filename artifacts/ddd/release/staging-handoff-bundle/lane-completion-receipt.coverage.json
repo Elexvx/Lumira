@@ -1,0 +1,53 @@
+{
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T06:05:17.222Z",
+  "willWriteFiles": false,
+  "receiptFile": null,
+  "receiptStatus": null,
+  "contractStatus": "BLOCKED",
+  "contractSummary": {
+    "passLaneCount": 0,
+    "blockedLaneCount": 0,
+    "duplicateLaneKeys": [],
+    "passLaneKeysMissingAudit": []
+  },
+  "coverage": {
+    "status": "BLOCKED",
+    "expectedLaneCount": 5,
+    "coveredLaneCount": 0,
+    "providedLaneCount": 0,
+    "missingLanes": [
+      {
+        "key": "platform-owners:p1-p2-data-safety",
+        "owner": "platform-owners",
+        "lane": "p1-p2-data-safety"
+      },
+      {
+        "key": "release-infra:p0-release-env",
+        "owner": "release-infra",
+        "lane": "p0-release-env"
+      },
+      {
+        "key": "release-infra:p0-docker-images",
+        "owner": "release-infra",
+        "lane": "p0-docker-images"
+      },
+      {
+        "key": "release-infra:p1-runtime-business",
+        "owner": "release-infra",
+        "lane": "p1-runtime-business"
+      },
+      {
+        "key": "release-infra:final-review",
+        "owner": "release-infra",
+        "lane": "final-review"
+      }
+    ],
+    "unexpectedLanes": []
+  },
+  "issueCount": 2,
+  "issues": [
+    "DDD_LANE_COMPLETION_RECEIPT_FILE or --lane-completion-receipt-file is required",
+    "missing lanes=platform-owners:p1-p2-data-safety, release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-runtime-business, release-infra:final-review"
+  ]
+}

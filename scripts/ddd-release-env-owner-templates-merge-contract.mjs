@@ -171,8 +171,13 @@ try {
   fs.chmodSync(path.join(broadDir, "01.env"), 0o644);
   fs.chmodSync(broadTarget, 0o600);
   const broadRun = runMerge(broadDir, broadTarget, broadReport);
-  if (broadRun.status === 0) addFailure("owner templates merge must fail broad owner template permissions with concrete secret values");
-  if (!readJson(broadReport).blockers.some((blocker) => blocker.includes("concrete secret values require chmod 600"))) addFailure("owner templates merge broad report must include permission blocker");
+  const broad = readJson(broadReport);
+  if (process.platform === "win32") {
+    if (!broad.ownerFiles?.some((file) => file.permissionCheckSkipped === true)) addFailure("owner templates merge broad report must mark permissionCheckSkipped=true on Windows");
+  } else {
+    if (broadRun.status === 0) addFailure("owner templates merge must fail broad owner template permissions with concrete secret values");
+    if (!broad.blockers.some((blocker) => blocker.includes("concrete secret values require chmod 600"))) addFailure("owner templates merge broad report must include permission blocker");
+  }
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 }

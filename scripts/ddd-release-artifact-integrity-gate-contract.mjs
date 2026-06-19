@@ -12,18 +12,65 @@ const gatePath = path.join(releaseDir, "release-artifact-integrity-gate.sh");
 const packetPath = path.join(releaseDir, "release-artifact-integrity.json");
 const failures = [];
 
+function bashPath(file) {
+  const resolved = path.resolve(file);
+  if (process.platform !== "win32") return resolved;
+  return `/mnt/${resolved[0].toLowerCase()}${resolved.slice(2).replaceAll("\\", "/")}`;
+}
+
+function bashPathEnv() {
+  if (process.platform !== "win32") return process.env.PATH;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-wsl-node-"));
+  fs.writeFileSync(path.join(dir, "node"), `#!/usr/bin/env bash
+args=()
+for arg in "$@"; do
+  if [[ "$arg" =~ ^/mnt/([a-zA-Z])/(.*)$ ]]; then
+    drive="\${BASH_REMATCH[1]^^}:"
+    rest="\${BASH_REMATCH[2]//\\//\\\\}"
+    args+=("\${drive}\\\\\${rest}")
+  else
+    args+=("$arg")
+  fi
+done
+exec "${bashPath(process.execPath)}" "\${args[@]}"
+`);
+  fs.chmodSync(path.join(dir, "node"), 0o755);
+  return `${bashPath(dir)}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`;
+}
+
+const bashEnvPath = bashPathEnv();
+
+function shellQuote(value) {
+  return `'${String(value).replaceAll("'", "'\\''")}'`;
+}
+
 function addFailure(message) {
   failures.push(message);
 }
 
 function runGate(packetFile) {
-  return spawnSync("bash", [gatePath], {
+  if (process.platform === "win32") {
+    const command = [
+      `export PATH=${shellQuote(bashEnvPath)}`,
+      `export LUMIRA_REPO_ROOT=${shellQuote(bashPath(repoRoot))}`,
+      `export DDD_NODE_BIN=node`,
+      `export DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET=${shellQuote(bashPath(packetFile))}`,
+      shellQuote(bashPath(gatePath)),
+    ].join("; ");
+    return spawnSync("bash", ["-lc", command], {
+      cwd: repoRoot,
+      encoding: "utf8",
+    });
+  }
+  return spawnSync("bash", [bashPath(gatePath)], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
       ...process.env,
-      LUMIRA_REPO_ROOT: repoRoot,
-      DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET: packetFile,
+      PATH: bashEnvPath,
+      LUMIRA_REPO_ROOT: bashPath(repoRoot),
+      DDD_NODE_BIN: bashPath(process.execPath),
+      DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET: bashPath(packetFile),
     },
   });
 }
@@ -36,7 +83,7 @@ if (!fs.existsSync(gatePath)) {
   addFailure(`release artifact integrity gate script must exist: ${gatePath}`);
 } else {
   const mode = fs.statSync(gatePath).mode & 0o777;
-  if ((mode & 0o111) === 0) addFailure("release artifact integrity gate script must be executable");
+  if (process.platform !== "win32" && (mode & 0o111) === 0) addFailure("release artifact integrity gate script must be executable");
   const source = fs.readFileSync(gatePath, "utf8");
   for (const snippet of [
     "set -euo pipefail",
@@ -60,7 +107,7 @@ if (!fs.existsSync(gatePath)) {
   }
 }
 
-const syntax = spawnSync("bash", ["-n", gatePath], { cwd: repoRoot, encoding: "utf8" });
+const syntax = spawnSync("bash", ["-n", bashPath(gatePath)], { cwd: repoRoot, encoding: "utf8" });
 if (syntax.status !== 0) addFailure(`release artifact integrity gate bash syntax must pass: ${syntax.stderr}`);
 
 if (!fs.existsSync(packetPath)) {

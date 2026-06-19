@@ -63,21 +63,7 @@ class RoleDetailIntegrationTest {
     void roleDetailShouldReturnSuccessForAdmin() throws Exception {
         String baseUrl = "http://localhost:" + port;
         disableCaptcha();
-        String encryptedPassword = encryptPassword(baseUrl, "123456");
-
-        HttpHeaders loginHeaders = new HttpHeaders();
-        loginHeaders.setContentType(MediaType.APPLICATION_JSON);
-        ResponseEntity<String> loginResponse = restTemplate.postForEntity(
-                baseUrl + "/api/v1/auth/login",
-                new HttpEntity<>("{\"username\":\"admin\",\"password\":\"" + encryptedPassword + "\"}", loginHeaders),
-                String.class
-        );
-        Assertions.assertEquals(200, loginResponse.getStatusCode().value(), loginResponse.getBody());
-
-        JsonNode loginBody = objectMapper.readTree(loginResponse.getBody());
-        Assertions.assertEquals("0", loginBody.path("code").asText(), loginResponse.getBody());
-
-        String accessToken = loginBody.path("data").path("accessToken").asText();
+        String accessToken = loginAsAdmin(baseUrl);
         HttpHeaders detailHeaders = new HttpHeaders();
         detailHeaders.setBearerAuth(accessToken);
         ResponseEntity<String> roleResponse = restTemplate.exchange(
@@ -87,9 +73,6 @@ class RoleDetailIntegrationTest {
                 String.class
         );
 
-        if (!roleResponse.getStatusCode().is2xxSuccessful()) {
-            System.out.println("Role detail failed response body: " + roleResponse.getBody());
-        }
         Assertions.assertTrue(roleResponse.getStatusCode().is2xxSuccessful(), roleResponse.getBody());
 
         JsonNode roleBody = objectMapper.readTree(roleResponse.getBody());
@@ -101,21 +84,7 @@ class RoleDetailIntegrationTest {
     void permissionTreeShouldReturnStructuredNodesForAdmin() throws Exception {
         String baseUrl = "http://localhost:" + port;
         disableCaptcha();
-        String encryptedPassword = encryptPassword(baseUrl, "123456");
-
-        HttpHeaders loginHeaders = new HttpHeaders();
-        loginHeaders.setContentType(MediaType.APPLICATION_JSON);
-        ResponseEntity<String> loginResponse = restTemplate.postForEntity(
-                baseUrl + "/api/v1/auth/login",
-                new HttpEntity<>("{\"username\":\"admin\",\"password\":\"" + encryptedPassword + "\"}", loginHeaders),
-                String.class
-        );
-        Assertions.assertEquals(200, loginResponse.getStatusCode().value(), loginResponse.getBody());
-
-        JsonNode loginBody = objectMapper.readTree(loginResponse.getBody());
-        Assertions.assertEquals("0", loginBody.path("code").asText(), loginResponse.getBody());
-
-        String accessToken = loginBody.path("data").path("accessToken").asText();
+        String accessToken = loginAsAdmin(baseUrl);
         HttpHeaders detailHeaders = new HttpHeaders();
         detailHeaders.setBearerAuth(accessToken);
         ResponseEntity<String> treeResponse = restTemplate.exchange(
@@ -125,9 +94,6 @@ class RoleDetailIntegrationTest {
                 String.class
         );
 
-        if (!treeResponse.getStatusCode().is2xxSuccessful()) {
-            System.out.println("Permission tree failed response body: " + treeResponse.getBody());
-        }
         Assertions.assertTrue(treeResponse.getStatusCode().is2xxSuccessful(), treeResponse.getBody());
 
         JsonNode treeBody = objectMapper.readTree(treeResponse.getBody());
@@ -148,9 +114,6 @@ class RoleDetailIntegrationTest {
                 new HttpEntity<>(detailHeaders),
                 String.class
         );
-        if (!menusResponse.getStatusCode().is2xxSuccessful()) {
-            System.out.println("Menus failed response body: " + menusResponse.getBody());
-        }
         Assertions.assertTrue(menusResponse.getStatusCode().is2xxSuccessful(), menusResponse.getBody());
 
         JsonNode menusBody = objectMapper.readTree(menusResponse.getBody());
@@ -251,6 +214,22 @@ class RoleDetailIntegrationTest {
                           and deleted = 0
                         """
         );
+    }
+
+    private String loginAsAdmin(String baseUrl) throws Exception {
+        String encryptedPassword = encryptPassword(baseUrl, "123456");
+        HttpHeaders loginHeaders = new HttpHeaders();
+        loginHeaders.setContentType(MediaType.APPLICATION_JSON);
+        ResponseEntity<String> loginResponse = restTemplate.postForEntity(
+                baseUrl + "/api/v1/auth/login",
+                new HttpEntity<>("{\"username\":\"admin\",\"password\":\"" + encryptedPassword + "\"}", loginHeaders),
+                String.class
+        );
+        Assertions.assertEquals(200, loginResponse.getStatusCode().value(), loginResponse.getBody());
+
+        JsonNode loginBody = objectMapper.readTree(loginResponse.getBody());
+        Assertions.assertEquals("0", loginBody.path("code").asText(), loginResponse.getBody());
+        return loginBody.path("data").path("accessToken").asText();
     }
 
     private String encryptPassword(String baseUrl, String password) throws Exception {

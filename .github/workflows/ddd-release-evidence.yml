@@ -64,6 +64,16 @@ on:
         required: false
         default: ""
         type: string
+      lane_completion_receipt_file:
+        description: "Optional redacted owner lane completion receipt JSON path in the workspace"
+        required: false
+        default: ""
+        type: string
+      lane_completion_receipt_base64:
+        description: "Optional base64-encoded redacted owner lane completion receipt JSON; takes precedence over file path"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -76,6 +86,8 @@ jobs:
     environment: ${{ inputs.github_environment }}
     env:
       DDD_RELEASE_ENV_FILE: ${{ github.workspace }}/.release-evidence.env
+      DDD_LANE_COMPLETION_RECEIPT_FILE: ${{ inputs.lane_completion_receipt_file }}
+      DDD_LANE_COMPLETION_RECEIPT_BASE64: ${{ inputs.lane_completion_receipt_base64 }}
       DDD_EVIDENCE_ENVIRONMENT: ${{ inputs.evidence_environment }}
       DDD_RELEASE_CANDIDATE: ${{ github.sha }}
       DDD_EVIDENCE_OPERATOR: ${{ github.actor }}
@@ -156,6 +168,44 @@ jobs:
         with:
           version: 10.33.0
 
+      - name: Validate release evidence dispatch inputs
+        if: inputs.mode == 'run'
+        shell: bash
+        env:
+          DDD_WORKFLOW_INPUT_MODE: ${{ inputs.mode }}
+          DDD_WORKFLOW_INPUT_STRICT: ${{ inputs.strict }}
+          DDD_WORKFLOW_INPUT_GITHUB_ENVIRONMENT: ${{ inputs.github_environment }}
+          DDD_WORKFLOW_INPUT_EVIDENCE_ENVIRONMENT: ${{ inputs.evidence_environment }}
+          DDD_WORKFLOW_INPUT_BACKEND_BASE_URL: ${{ inputs.backend_base_url }}
+          DDD_WORKFLOW_INPUT_FRONTEND_BASE_URL: ${{ inputs.frontend_base_url }}
+          DDD_WORKFLOW_INPUT_MAX_ARTIFACT_AGE_HOURS: ${{ inputs.max_artifact_age_hours }}
+          DDD_WORKFLOW_INPUT_EXPECT_AI_REMOTE: ${{ inputs.expect_ai_remote }}
+          DDD_WORKFLOW_INPUT_EXPECT_FRONTEND_DEPLOYED: ${{ inputs.expect_frontend_deployed }}
+          DDD_WORKFLOW_INPUT_PROMOTE_AUTHENTICATED_BASELINE: ${{ inputs.promote_authenticated_baseline }}
+          DDD_WORKFLOW_INPUT_LANE_COMPLETION_RECEIPT_FILE: ${{ inputs.lane_completion_receipt_file }}
+          DDD_WORKFLOW_INPUT_LANE_COMPLETION_RECEIPT_BASE64: ${{ inputs.lane_completion_receipt_base64 }}
+        run: |
+          set -euo pipefail
+          dispatch_inputs_file="${RUNNER_TEMP}/ddd-release-evidence-dispatch-inputs.json"
+          node --input-type=module <<'NODE' > "$dispatch_inputs_file"
+          const payload = {
+            mode: process.env.DDD_WORKFLOW_INPUT_MODE,
+            strict: process.env.DDD_WORKFLOW_INPUT_STRICT,
+            github_environment: process.env.DDD_WORKFLOW_INPUT_GITHUB_ENVIRONMENT,
+            evidence_environment: process.env.DDD_WORKFLOW_INPUT_EVIDENCE_ENVIRONMENT,
+            backend_base_url: process.env.DDD_WORKFLOW_INPUT_BACKEND_BASE_URL,
+            frontend_base_url: process.env.DDD_WORKFLOW_INPUT_FRONTEND_BASE_URL,
+            max_artifact_age_hours: process.env.DDD_WORKFLOW_INPUT_MAX_ARTIFACT_AGE_HOURS,
+            expect_ai_remote: process.env.DDD_WORKFLOW_INPUT_EXPECT_AI_REMOTE,
+            expect_frontend_deployed: process.env.DDD_WORKFLOW_INPUT_EXPECT_FRONTEND_DEPLOYED,
+            promote_authenticated_baseline: process.env.DDD_WORKFLOW_INPUT_PROMOTE_AUTHENTICATED_BASELINE,
+            lane_completion_receipt_file: process.env.DDD_WORKFLOW_INPUT_LANE_COMPLETION_RECEIPT_FILE || "",
+            lane_completion_receipt_base64: process.env.DDD_WORKFLOW_INPUT_LANE_COMPLETION_RECEIPT_BASE64 || "",
+          };
+          process.stdout.write(`${JSON.stringify({ payload }, null, 2)}\n`);
+          NODE
+          node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file="$dispatch_inputs_file"
+
       - name: Prepare release evidence environment file
         shell: bash
         run: |
@@ -184,6 +234,25 @@ jobs:
             printf '%s=%s\n' "$key" "$value" >> "$DDD_RELEASE_ENV_FILE"
           done
           chmod 600 "$DDD_RELEASE_ENV_FILE"
+
+      - name: Prepare lane completion receipt input
+        if: inputs.lane_completion_receipt_base64 != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          receipt_file="artifacts/ddd/release/lane-completion-receipt.submitted.json"
+          mkdir -p "$(dirname "$receipt_file")"
+          printf '%s' "$DDD_LANE_COMPLETION_RECEIPT_BASE64" | base64 --decode > "$receipt_file"
+          chmod 600 "$receipt_file"
+          echo "DDD_LANE_COMPLETION_RECEIPT_FILE=$receipt_file" >> "$GITHUB_ENV"
+
+      - name: Validate lane completion receipt
+        if: inputs.lane_completion_receipt_file != '' || inputs.lane_completion_receipt_base64 != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract
+          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage
 
       - name: Preflight release configuration evidence
         if: inputs.mode == 'run' && inputs.strict == true
@@ -425,6 +494,15 @@ jobs:
           set -euo pipefail
           node scripts/ddd-release-preflight-capture-contract.mjs
 
+      - name: Generate staging handoff bundle
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle
+          node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify
+          node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json
+
       - name: Refresh release manifest after preflight capture
         if: always()
         shell: bash
@@ -505,6 +583,54 @@ jobs:
           node scripts/ddd-release-execution-run-report-summary.mjs
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
           node scripts/ddd-release-next-action-run-report-summary.mjs
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> "$GITHUB_STEP_SUMMARY" || true
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          {
+            printf '## DDD Release Evidence Dispatch Command\n\n```sh\n'
+            node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command
+            printf '\n```\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ddd-staging-execution-checklist.mjs --final-review-markdown >> "$GITHUB_STEP_SUMMARY"
 
       - name: Enforce release evidence result
         if: always()

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD final go/no-go gate.
-# Generated at: 2026-06-17T08:13:17.325Z
+# Generated at: 2026-06-18T19:37:26.213Z
 # Default mode prints the decision. Set DDD_FINAL_GO_NO_GO_ENFORCE=1 to fail on NO-GO.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
@@ -12,17 +12,20 @@ if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
   fi
 fi
+export LUMIRA_REPO_ROOT
 cd "${LUMIRA_REPO_ROOT}"
 
 DDD_FINAL_GO_NO_GO_PACKET="${DDD_FINAL_GO_NO_GO_PACKET:-artifacts/ddd/release/release-final-go-no-go.json}"
 DDD_FINAL_GO_NO_GO_ENFORCE="${DDD_FINAL_GO_NO_GO_ENFORCE:-}"
+DDD_STAGING_FINAL_REVIEW_ENFORCE="${DDD_STAGING_FINAL_REVIEW_ENFORCE:-${DDD_FINAL_GO_NO_GO_ENFORCE}}"
+DDD_NODE_BIN="${DDD_NODE_BIN:-node}"
 if [[ ! -f "${DDD_FINAL_GO_NO_GO_PACKET}" ]]; then
   echo "Final go/no-go packet does not exist: ${DDD_FINAL_GO_NO_GO_PACKET}" >&2
   echo "Run: node scripts/ddd-release-readiness-summary.mjs" >&2
   exit 2
 fi
 set +e
-node --input-type=module - "${DDD_FINAL_GO_NO_GO_PACKET}" <<'NODE'
+"${DDD_NODE_BIN}" --input-type=module - "${DDD_FINAL_GO_NO_GO_PACKET}" <<'NODE'
 import fs from 'node:fs';
 const packetPath = process.argv[2];
 const packet = JSON.parse(fs.readFileSync(packetPath, 'utf8'));
@@ -126,6 +129,19 @@ NODE
 DDD_FINAL_GO_NO_GO_STATUS=$?
 set -e
 if [[ "${DDD_FINAL_GO_NO_GO_STATUS}" == "0" ]]; then
+  if [[ "${DDD_STAGING_FINAL_REVIEW_ENFORCE}" == "1" || "${DDD_STAGING_FINAL_REVIEW_ENFORCE}" == "true" ]]; then
+    set +e
+    "${DDD_NODE_BIN}" scripts/ddd-staging-execution-checklist.mjs --final-review-enforce
+    DDD_STAGING_FINAL_REVIEW_STATUS=$?
+    set -e
+    if [[ "${DDD_STAGING_FINAL_REVIEW_STATUS}" != "0" ]]; then
+      echo "[ddd-final-go-no-go][staging-final-review-blocked] cutover blocked; run node scripts/ddd-staging-execution-checklist.mjs --final-review" >&2
+      if [[ "${DDD_FINAL_GO_NO_GO_ENFORCE}" == "1" || "${DDD_FINAL_GO_NO_GO_ENFORCE}" == "true" ]]; then
+        exit 10
+      fi
+      exit 0
+    fi
+  fi
   echo "[ddd-final-go-no-go][go] cutover allowed"
   exit 0
 fi
@@ -138,4 +154,4 @@ if [[ "${DDD_FINAL_GO_NO_GO_STATUS}" == "10" ]]; then
 fi
 exit "${DDD_FINAL_GO_NO_GO_STATUS}"
 
-# Generated packet is currently NO-GO with 9 stop reasons.
+# Generated packet is currently NO-GO with 13 stop reasons.

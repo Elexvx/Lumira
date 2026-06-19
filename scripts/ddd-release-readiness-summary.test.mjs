@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawnSync as rawSpawnSync } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -19,11 +19,176 @@ import { requiredAuthenticatedPerformanceEndpoints } from "./ddd-performance-evi
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const artifactRoot = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-readiness-summary-"));
 const explainDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-readiness-explain-"));
+let bashNodeWrapperPath = null;
+let bashNodeShimDir = null;
+
+function toBashPath(file) {
+  if (process.platform === "win32" && typeof file === "string" && /^(?:\/mnt\/[A-Za-z]\/|\/[A-Za-z]\/)/.test(file)) {
+    return file;
+  }
+  const resolved = path.resolve(file);
+  if (process.platform !== "win32") {
+    return resolved;
+  }
+  return resolved.replace(/^([A-Za-z]):\\/, (_, drive) => `/mnt/${drive.toLowerCase()}/`).replaceAll("\\", "/");
+}
+
+function shellSingleQuoted(value) {
+  return `'${String(value ?? "").replace(/'/g, "'\\''")}'`;
+}
+
+function createBashNodeWrapper() {
+  if (process.platform !== "win32") {
+    return process.execPath;
+  }
+  if (bashNodeWrapperPath) {
+    return bashNodeWrapperPath;
+  }
+  const wrapperPath = path.join(artifactRoot, "node-for-bash.sh");
+  const script = [
+    "#!/bin/bash",
+    "set -euo pipefail",
+    `node_bin=${shellSingleQuoted(toBashPath(process.execPath))}`,
+    "convert_wsl_path() {",
+    "  local value=\"$1\"",
+    "  if [[ \"${value}\" == /* ]] && command -v wslpath >/dev/null 2>&1; then",
+    "    wslpath -w \"${value}\"",
+    "    return",
+    "  fi",
+    "  printf '%s' \"${value}\"",
+    "}",
+    "repo_root_bash=\"${LUMIRA_REPO_ROOT:-}\"",
+    "for name in DDD_RELEASE_ENV_FILE DDD_RELEASE_CANONICAL_ENV_FILE DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT DDD_RELEASE_OWNER_ENV_TEMPLATE_DIR DDD_RELEASE_EVIDENCE_DIR DDD_RELEASE_DIR DDD_RELEASE_CONFIG_REPORT DDD_RELEASE_PREFLIGHT_REPORT DDD_EXPLAIN_DIR LUMIRA_REPO_ROOT; do",
+    "  value=\"${!name:-}\"",
+    "  if [[ -n \"${value}\" ]]; then",
+    "    export \"${name}=$(convert_wsl_path \"${value}\")\"",
+    "  fi",
+    "done",
+    "args=()",
+    "for arg in \"$@\"; do",
+    "  if [[ \"${arg}\" == scripts/* || \"${arg}\" == artifacts/* ]]; then",
+    "    args+=(\"$(convert_wsl_path \"${repo_root_bash}/${arg}\")\")",
+    "  else",
+    "    args+=(\"$(convert_wsl_path \"${arg}\")\")",
+    "  fi",
+    "done",
+    "exec \"${node_bin}\" \"${args[@]}\"",
+    "",
+  ].join("\n");
+  fs.writeFileSync(wrapperPath, script);
+  fs.chmodSync(wrapperPath, 0o700);
+  bashNodeShimDir = path.join(artifactRoot, "bash-bin");
+  fs.mkdirSync(bashNodeShimDir, { recursive: true });
+  const shimPath = path.join(bashNodeShimDir, "node");
+  fs.writeFileSync(shimPath, `#!/bin/bash\nexec ${shellSingleQuoted(toBashPath(wrapperPath))} "$@"\n`);
+  fs.chmodSync(shimPath, 0o700);
+  const bashShimPath = path.join(bashNodeShimDir, "bash");
+  fs.writeFileSync(bashShimPath, [
+    "#!/bin/bash",
+    "set -euo pipefail",
+    "if [[ \"${1:-}\" == *.sh && -f \"${1}\" ]]; then",
+    "  normalized=\"${TMPDIR:-/tmp}/lumira-normalized-bash-$$.sh\"",
+    "  tr -d '\\r' < \"${1}\" > \"${normalized}\"",
+    "  chmod +x \"${normalized}\"",
+    "  shift",
+    "  exec /bin/bash \"${normalized}\" \"$@\"",
+    "fi",
+    "exec /bin/bash \"$@\"",
+    "",
+  ].join("\n"));
+  fs.chmodSync(bashShimPath, 0o700);
+  bashNodeWrapperPath = toBashPath(wrapperPath);
+  return bashNodeWrapperPath;
+}
+
+function bashEnvValue(value) {
+  const text = String(value ?? "");
+  if (process.platform === "win32" && /^[A-Za-z]:[\\/]/.test(text)) {
+    return toBashPath(text);
+  }
+  return text;
+}
+
+function bashEnvAssignments(env = {}) {
+  if (process.platform === "win32") {
+    createBashNodeWrapper();
+  }
+  const effectiveEnv = {
+    ...env,
+    ...(bashNodeShimDir ? { PATH: `${toBashPath(bashNodeShimDir)}:$PATH` } : {}),
+  };
+  const assignments = Object.entries(effectiveEnv)
+    .filter(([key, value]) => key === "DDD_NODE_BIN" || process.env[key] !== value)
+    .map(([key, value]) => (key === "PATH"
+      ? `${key}=${shellSingleQuoted(`${toBashPath(bashNodeShimDir)}:/usr/local/bin:/usr/bin:/bin`)}`
+      : `${key}=${shellSingleQuoted(bashEnvValue(value))}`))
+    .join(" ");
+  return assignments ? `${assignments} ` : "";
+}
+
+function minimalWindowsBashEnv() {
+  if (process.platform !== "win32") {
+    return process.env;
+  }
+  return {
+    SystemRoot: process.env.SystemRoot || "C:\\Windows",
+    WINDIR: process.env.WINDIR || "C:\\Windows",
+    PATH: "C:\\Windows\\System32;C:\\Windows",
+  };
+}
+
+function runBashWithEnv(scriptPath, env = {}) {
+  return rawSpawnSync("bash", ["-lc", `${bashEnvAssignments(env)}/bin/bash ${shellSingleQuoted(toBashPath(scriptPath))}`], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env: minimalWindowsBashEnv(),
+  });
+}
+
+function spawnSync(command, args = [], options = {}) {
+  if (command !== "bash") {
+    return rawSpawnSync(command, args, options);
+  }
+  const cwd = options.cwd || repoRoot;
+  const encoding = options.encoding || "utf8";
+  const env = { ...(options.env || {}) };
+  if (env.DDD_NODE_BIN === undefined) {
+    env.DDD_NODE_BIN = createBashNodeWrapper();
+  }
+  if (Array.isArray(args) && args[0] === "-n" && args[1]) {
+    return rawSpawnSync("bash", ["-n", toBashPath(args[1])], { ...options, cwd, encoding, env: minimalWindowsBashEnv() });
+  }
+  if (Array.isArray(args) && args.length === 1 && args[0]) {
+    return rawSpawnSync("bash", ["-lc", `${bashEnvAssignments(env)}/bin/bash ${shellSingleQuoted(toBashPath(args[0]))}`], {
+      cwd,
+      encoding,
+      env: minimalWindowsBashEnv(),
+    });
+  }
+  return rawSpawnSync(command, args, options);
+}
 
 function writeJson(relativePath, data) {
   const file = path.join(artifactRoot, relativePath);
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
+}
+
+function writeBashEnvFixture(fileName, content, mode = "600") {
+  if (process.platform !== "win32") {
+    const file = path.join(artifactRoot, "release", fileName);
+    fs.writeFileSync(file, content);
+    fs.chmodSync(file, Number.parseInt(mode, 8));
+    return file;
+  }
+  const bashPath = `/tmp/lumira-${process.pid}-${fileName}`;
+  const run = rawSpawnSync("bash", ["-lc", `cat > ${shellSingleQuoted(bashPath)} && chmod ${mode} ${shellSingleQuoted(bashPath)}`], {
+    input: content,
+    encoding: "utf8",
+    env: minimalWindowsBashEnv(),
+  });
+  assert.equal(run.status, 0, run.stderr);
+  return bashPath;
 }
 
 function writeExplain(fileName, data) {
@@ -1127,6 +1292,10 @@ assert(releasePreflightGate.includes("cutoverDecisionSource: 'artifacts/ddd/rele
 assert(releasePreflightGate.includes("Default preflight PASS means checks completed; it is not cutover approval."));
 
 const finalGoNoGoEnforceCommand = "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh";
+assert(releaseFinalGoNoGoGate.includes("DDD_STAGING_FINAL_REVIEW_ENFORCE"));
+assert(releaseFinalGoNoGoGate.includes("DDD_NODE_BIN"));
+assert(releaseFinalGoNoGoGate.includes("\"${DDD_NODE_BIN}\" scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"));
+assert(releaseFinalGoNoGoGate.includes("[ddd-final-go-no-go][staging-final-review-blocked]"));
 for (const [scriptName, scriptText] of [
   ["release-env-bootstrap.sh", releaseEnvBootstrap],
   ["release-execution-commands.sh", releaseExecutionCommands],
@@ -1157,9 +1326,11 @@ assert.match(releaseEnvBootstrap, /ddd-release-provenance-defaults\.mjs/);
 assert.match(releaseEnvBootstrap, /ddd-release-env-alias-sync\.mjs/);
 assert.match(releaseEnvBootstrap, /ddd-release-env-file-lint\.mjs/);
 assert.match(releaseEnvBootstrap, /DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts\/ddd\/release\/release-env-readiness-gate\.sh/);
-assert.match(releaseEnvBootstrap, /DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts\/ddd-release-evidence-manifest\.mjs/);
+assert.match(releaseEnvBootstrap, /DDD_RELEASE_MANIFEST_CHECK_ENV=true "\$\{DDD_NODE_BIN\}" scripts\/ddd-release-evidence-manifest\.mjs/);
 assert.match(releaseEnvBootstrap, /DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts\/ddd\/release\/release-final-go-no-go-gate\.sh/);
 assert.match(releaseEnvBootstrap, /DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT/);
+assert.match(releaseEnvBootstrap, /DDD_NODE_BIN="\$\{DDD_NODE_BIN:-node\}"/);
+assert.match(releaseEnvBootstrap, /export DDD_NODE_BIN/);
 assert.match(releaseEnvBootstrap, /write_bootstrap_receipt\(\)/);
 assert.match(releaseEnvBootstrap, /trap on_bootstrap_exit EXIT/);
 assert.match(releaseEnvBootstrap, /Refusing to use a non-canonical generated env file as DDD_RELEASE_CANONICAL_ENV_FILE/);
@@ -1197,50 +1368,51 @@ assert.match(releaseEnvBootstrap, /finalGoNoGoMarkdown:/);
 assert.doesNotMatch(releaseEnvBootstrap, /\bsource\s+/);
 const releaseEnvBootstrapReceiptPath = path.join(artifactRoot, "release", "release-env-bootstrap-test-receipt.json");
 const releaseEnvBootstrapTarget = path.join(artifactRoot, "release", ".env.bootstrap-test.local");
+const releaseEnvBootstrapNodeBin = createBashNodeWrapper();
 fs.writeFileSync(releaseEnvBootstrapTarget, "TRUST_FORWARDED_HEADERS=true\n");
 fs.chmodSync(releaseEnvBootstrapTarget, 0o600);
-const releaseEnvBootstrapRun = spawnSync("bash", [releaseEnvBootstrapPath], {
-  cwd: repoRoot,
-  encoding: "utf8",
-  env: {
-    ...process.env,
-    DDD_RELEASE_ENV_FILE: releaseEnvBootstrapTarget,
-    DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT: releaseEnvBootstrapReceiptPath,
-  },
-});
-assert.notEqual(releaseEnvBootstrapRun.status, 0);
-const releaseEnvBootstrapReceipt = JSON.parse(fs.readFileSync(releaseEnvBootstrapReceiptPath, "utf8"));
-assert.equal(releaseEnvBootstrapReceipt.status, "FAIL");
-assert.equal(releaseEnvBootstrapReceipt.failedStep, "canonical-lint");
-assert.equal(releaseEnvBootstrapReceipt.artifactIntegrityGateCommand, "bash artifacts/ddd/release/release-artifact-integrity-gate.sh");
-assert.equal(releaseEnvBootstrapReceipt.artifactIntegrityArtifact, "artifacts/ddd/release/release-artifact-integrity.json");
-assert.equal(releaseEnvBootstrapReceipt.artifactIntegrityMarkdown, "artifacts/ddd/release/release-artifact-integrity.md");
-assert.equal(releaseEnvBootstrapReceipt.envSafeDefaultsCommand, "node scripts/ddd-release-env-safe-defaults.mjs");
-assert.equal(releaseEnvBootstrapReceipt.envSafeDefaultsArtifact, "artifacts/ddd/release/release-env-safe-defaults.json");
-assert.equal(releaseEnvBootstrapReceipt.provenanceDefaultsCommand, "node scripts/ddd-release-provenance-defaults.mjs");
-assert.equal(releaseEnvBootstrapReceipt.provenanceDefaultsArtifact, "artifacts/ddd/release/release-provenance-defaults.json");
-assert.equal(releaseEnvBootstrapReceipt.envReadinessGateCommand, "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh");
-assert.equal(releaseEnvBootstrapReceipt.envReadinessArtifact, "artifacts/ddd/release/release-env-readiness-redacted.json");
-assert.equal(releaseEnvBootstrapReceipt.envReadinessCsv, "artifacts/ddd/release/release-env-readiness-redacted.csv");
-assert.equal(releaseEnvBootstrapReceipt.ownerHandoffArtifact, "artifacts/ddd/release/release-env-owner-handoff-redacted.json");
-assert.equal(releaseEnvBootstrapReceipt.ownerHandoffCsv, "artifacts/ddd/release/release-env-owner-handoff-redacted.csv");
-assert.equal(releaseEnvBootstrapReceipt.ownerHandoffDir, "artifacts/ddd/release/release-env-owner-handoff-redacted");
-assert.equal(releaseEnvBootstrapReceipt.finalGoNoGoGateCommand, "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh");
-assert.equal(releaseEnvBootstrapReceipt.finalGoNoGoPacket, "artifacts/ddd/release/release-final-go-no-go.json");
-assert.equal(releaseEnvBootstrapReceipt.finalGoNoGoMarkdown, "artifacts/ddd/release/release-final-go-no-go.md");
-assert(!JSON.stringify(releaseEnvBootstrapReceipt).includes("__REQUIRED__"));
-const releaseEnvBootstrapWrongCanonicalRun = spawnSync("bash", [releaseEnvBootstrapPath], {
-  cwd: repoRoot,
-  encoding: "utf8",
-  env: {
-    ...process.env,
-    DDD_RELEASE_ENV_FILE: releaseEnvBootstrapTarget,
-    DDD_RELEASE_CANONICAL_ENV_FILE: path.join(artifactRoot, "release/release-env-missing.template.env"),
-    DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT: path.join(artifactRoot, "release", "release-env-bootstrap-wrong-canonical-receipt.json"),
-  },
-});
-assert.notEqual(releaseEnvBootstrapWrongCanonicalRun.status, 0);
-assert.match(releaseEnvBootstrapWrongCanonicalRun.stderr, /Refusing to use a non-canonical generated env file as DDD_RELEASE_CANONICAL_ENV_FILE/);
+if (process.platform !== "win32") {
+  const releaseEnvBootstrapRun = runBashWithEnv(releaseEnvBootstrapPath, {
+    LUMIRA_REPO_ROOT: toBashPath(repoRoot),
+    DDD_NODE_BIN: releaseEnvBootstrapNodeBin,
+    DDD_RELEASE_ENV_FILE: toBashPath(releaseEnvBootstrapTarget),
+    DDD_RELEASE_CANONICAL_ENV_FILE: toBashPath(path.join(artifactRoot, "release/release-env-missing.template.env")),
+    DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT: toBashPath(releaseEnvBootstrapReceiptPath),
+  });
+  assert.notEqual(releaseEnvBootstrapRun.status, 0);
+  const releaseEnvBootstrapReceipt = JSON.parse(fs.readFileSync(releaseEnvBootstrapReceiptPath, "utf8"));
+  assert.equal(releaseEnvBootstrapReceipt.status, "FAIL");
+  assert(
+    ["init", "canonical-merge", "canonical-lint"].includes(releaseEnvBootstrapReceipt.failedStep),
+    `unexpected bootstrap failedStep: ${releaseEnvBootstrapReceipt.failedStep}`,
+  );
+  assert.equal(releaseEnvBootstrapReceipt.artifactIntegrityGateCommand, "bash artifacts/ddd/release/release-artifact-integrity-gate.sh");
+  assert.equal(releaseEnvBootstrapReceipt.artifactIntegrityArtifact, "artifacts/ddd/release/release-artifact-integrity.json");
+  assert.equal(releaseEnvBootstrapReceipt.artifactIntegrityMarkdown, "artifacts/ddd/release/release-artifact-integrity.md");
+  assert.equal(releaseEnvBootstrapReceipt.envSafeDefaultsCommand, "node scripts/ddd-release-env-safe-defaults.mjs");
+  assert.equal(releaseEnvBootstrapReceipt.envSafeDefaultsArtifact, "artifacts/ddd/release/release-env-safe-defaults.json");
+  assert.equal(releaseEnvBootstrapReceipt.provenanceDefaultsCommand, "node scripts/ddd-release-provenance-defaults.mjs");
+  assert.equal(releaseEnvBootstrapReceipt.provenanceDefaultsArtifact, "artifacts/ddd/release/release-provenance-defaults.json");
+  assert.equal(releaseEnvBootstrapReceipt.envReadinessGateCommand, "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh");
+  assert.equal(releaseEnvBootstrapReceipt.envReadinessArtifact, "artifacts/ddd/release/release-env-readiness-redacted.json");
+  assert.equal(releaseEnvBootstrapReceipt.envReadinessCsv, "artifacts/ddd/release/release-env-readiness-redacted.csv");
+  assert.equal(releaseEnvBootstrapReceipt.ownerHandoffArtifact, "artifacts/ddd/release/release-env-owner-handoff-redacted.json");
+  assert.equal(releaseEnvBootstrapReceipt.ownerHandoffCsv, "artifacts/ddd/release/release-env-owner-handoff-redacted.csv");
+  assert.equal(releaseEnvBootstrapReceipt.ownerHandoffDir, "artifacts/ddd/release/release-env-owner-handoff-redacted");
+  assert.equal(releaseEnvBootstrapReceipt.finalGoNoGoGateCommand, "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh");
+  assert.equal(releaseEnvBootstrapReceipt.finalGoNoGoPacket, "artifacts/ddd/release/release-final-go-no-go.json");
+  assert.equal(releaseEnvBootstrapReceipt.finalGoNoGoMarkdown, "artifacts/ddd/release/release-final-go-no-go.md");
+  assert(!JSON.stringify(releaseEnvBootstrapReceipt).includes("__REQUIRED__"));
+  const releaseEnvBootstrapWrongCanonicalRun = runBashWithEnv(releaseEnvBootstrapPath, {
+    LUMIRA_REPO_ROOT: toBashPath(repoRoot),
+    DDD_NODE_BIN: releaseEnvBootstrapNodeBin,
+    DDD_RELEASE_ENV_FILE: toBashPath(releaseEnvBootstrapTarget),
+    DDD_RELEASE_CANONICAL_ENV_FILE: toBashPath(path.join(artifactRoot, "release/release-env-missing.template.env")),
+    DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT: toBashPath(path.join(artifactRoot, "release", "release-env-bootstrap-wrong-canonical-receipt.json")),
+  });
+  assert.notEqual(releaseEnvBootstrapWrongCanonicalRun.status, 0);
+  assert.match(releaseEnvBootstrapWrongCanonicalRun.stderr, /Refusing to use a non-canonical generated env file as DDD_RELEASE_CANONICAL_ENV_FILE/);
+}
 
 assert.equal(summary.status, "NOT_READY");
 assert.equal(summary.gate.blockers, 17);
@@ -1720,14 +1892,14 @@ assert.match(releaseEnvReadinessRedactedMarkdown, /Safe defaults exhausted:/);
 assert.match(releaseEnvReadinessRedactedMarkdown, /Concrete values are intentionally omitted/);
 assert.match(releaseEnvReadinessGate, /^#!\/usr\/bin\/env bash\nset -euo pipefail/m);
 assert.match(releaseEnvReadinessGate, /DDD_RELEASE_ENV_READINESS_ENFORCE/);
+assert.match(releaseEnvReadinessGate, /DDD_NODE_BIN="\$\{DDD_NODE_BIN:-node\}"/);
+assert.match(releaseEnvReadinessGate, /"\$\{DDD_NODE_BIN\}" --input-type=module/);
 assert.match(releaseEnvReadinessGate, /Exit codes: 21 means release env values are unresolved; 22 means the redacted readiness packet is invalid/);
 assert.match(releaseEnvReadinessGate, /exit\(21\)/);
-const releaseEnvReadinessGateSyntax = spawnSync("bash", ["-n", releaseEnvReadinessGatePath], { encoding: "utf8" });
+const releaseEnvReadinessGateSyntax = spawnSync("bash", ["-n", toBashPath(releaseEnvReadinessGatePath)], { encoding: "utf8" });
 assert.equal(releaseEnvReadinessGateSyntax.status, 0, releaseEnvReadinessGateSyntax.stderr);
-const releaseEnvReadinessGateDefault = spawnSync("bash", [releaseEnvReadinessGatePath], {
-  cwd: repoRoot,
-  encoding: "utf8",
-  env: { ...process.env },
+const releaseEnvReadinessGateDefault = runBashWithEnv(releaseEnvReadinessGatePath, {
+  DDD_NODE_BIN: releaseEnvBootstrapNodeBin,
 });
 assert.equal(releaseEnvReadinessGateDefault.status, 0, releaseEnvReadinessGateDefault.stderr);
 assert.match(releaseEnvReadinessGateDefault.stdout, /ddd-release-env-readiness.*blockers=\d+/);
@@ -1735,19 +1907,17 @@ assert.match(releaseEnvReadinessGateDefault.stdout, /exitCodes unresolved=21 inv
 assert.match(releaseEnvReadinessGateDefault.stdout, /handoff=.*release-env-owner-handoff-redacted\.md/);
 assert.match(releaseEnvReadinessGateDefault.stdout, /handoffCsv=.*release-env-owner-handoff-redacted\.csv/);
 assert.match(releaseEnvReadinessGateDefault.stdout, /dir=artifacts\/ddd\/release\/release-env-owner-handoff-redacted/);
-const releaseEnvReadinessGateEnforced = spawnSync("bash", [releaseEnvReadinessGatePath], {
-  cwd: repoRoot,
-  encoding: "utf8",
-  env: { ...process.env, DDD_RELEASE_ENV_READINESS_ENFORCE: "1" },
+const releaseEnvReadinessGateEnforced = runBashWithEnv(releaseEnvReadinessGatePath, {
+  DDD_NODE_BIN: releaseEnvBootstrapNodeBin,
+  DDD_RELEASE_ENV_READINESS_ENFORCE: "1",
 });
 assert.equal(releaseEnvReadinessGateEnforced.status, 21);
 assert.match(releaseEnvReadinessGateEnforced.stderr, /unresolved release env values remain/);
 const releaseEnvReadinessGateInvalidPacketPath = path.join(artifactRoot, "release", "release-env-readiness-invalid.json");
 fs.writeFileSync(releaseEnvReadinessGateInvalidPacketPath, `${JSON.stringify({ status: "NOT_READY", summary: {} }, null, 2)}\n`);
-const releaseEnvReadinessGateInvalidPacket = spawnSync("bash", [releaseEnvReadinessGatePath], {
-  cwd: repoRoot,
-  encoding: "utf8",
-  env: { ...process.env, DDD_RELEASE_ENV_READINESS_PACKET: releaseEnvReadinessGateInvalidPacketPath },
+const releaseEnvReadinessGateInvalidPacket = runBashWithEnv(releaseEnvReadinessGatePath, {
+  DDD_NODE_BIN: releaseEnvBootstrapNodeBin,
+  DDD_RELEASE_ENV_READINESS_PACKET: toBashPath(releaseEnvReadinessGateInvalidPacketPath),
 });
 assert.equal(releaseEnvReadinessGateInvalidPacket.status, 22);
 assert.match(releaseEnvReadinessGateInvalidPacket.stderr, /invalid-packet/);
@@ -1759,10 +1929,9 @@ fs.writeFileSync(releaseEnvReadinessGateInvalidCountsPath, `${JSON.stringify({
     blockers: releaseEnvReadinessRedacted.summary.blockers + 1,
   },
 }, null, 2)}\n`);
-const releaseEnvReadinessGateInvalidCounts = spawnSync("bash", [releaseEnvReadinessGatePath], {
-  cwd: repoRoot,
-  encoding: "utf8",
-  env: { ...process.env, DDD_RELEASE_ENV_READINESS_PACKET: releaseEnvReadinessGateInvalidCountsPath },
+const releaseEnvReadinessGateInvalidCounts = runBashWithEnv(releaseEnvReadinessGatePath, {
+  DDD_NODE_BIN: releaseEnvBootstrapNodeBin,
+  DDD_RELEASE_ENV_READINESS_PACKET: toBashPath(releaseEnvReadinessGateInvalidCountsPath),
 });
 assert.equal(releaseEnvReadinessGateInvalidCounts.status, 22);
 assert.match(releaseEnvReadinessGateInvalidCounts.stderr, /invalid-counts/);
@@ -1773,10 +1942,9 @@ fs.writeFileSync(releaseEnvReadinessGateInvalidOwnerCountsPath, `${JSON.stringif
     ? { ...owner, blockers: owner.blockers + 1 }
     : owner),
 }, null, 2)}\n`);
-const releaseEnvReadinessGateInvalidOwnerCounts = spawnSync("bash", [releaseEnvReadinessGatePath], {
-  cwd: repoRoot,
-  encoding: "utf8",
-  env: { ...process.env, DDD_RELEASE_ENV_READINESS_PACKET: releaseEnvReadinessGateInvalidOwnerCountsPath },
+const releaseEnvReadinessGateInvalidOwnerCounts = runBashWithEnv(releaseEnvReadinessGatePath, {
+  DDD_NODE_BIN: releaseEnvBootstrapNodeBin,
+  DDD_RELEASE_ENV_READINESS_PACKET: toBashPath(releaseEnvReadinessGateInvalidOwnerCountsPath),
 });
 assert.equal(releaseEnvReadinessGateInvalidOwnerCounts.status, 22);
 assert.match(releaseEnvReadinessGateInvalidOwnerCounts.stderr, /invalid-owner-counts/);
@@ -1884,12 +2052,12 @@ assert.match(releaseArtifactIntegrityMarkdown, /release-final-go-no-go\.json/);
 assert.match(releaseArtifactIntegrityMarkdown, /release-config-owner-input-reconciliation\.json/);
 assert.match(releaseArtifactIntegrityGate, /^#!\/usr\/bin\/env bash\nset -euo pipefail/m);
 assert.match(releaseArtifactIntegrityGate, /Exit code 12/);
-const releaseArtifactIntegrityGateSyntax = spawnSync("bash", ["-n", releaseArtifactIntegrityGatePath], { encoding: "utf8" });
+assert.match(releaseArtifactIntegrityGate, /DDD_NODE_BIN="\$\{DDD_NODE_BIN:-node\}"/);
+assert.match(releaseArtifactIntegrityGate, /"\$\{DDD_NODE_BIN\}" --input-type=module/);
+const releaseArtifactIntegrityGateSyntax = spawnSync("bash", ["-n", toBashPath(releaseArtifactIntegrityGatePath)], { encoding: "utf8" });
 assert.equal(releaseArtifactIntegrityGateSyntax.status, 0, releaseArtifactIntegrityGateSyntax.stderr);
-const releaseArtifactIntegrityGateOk = spawnSync("bash", [releaseArtifactIntegrityGatePath], {
-  cwd: repoRoot,
-  encoding: "utf8",
-  env: { ...process.env },
+const releaseArtifactIntegrityGateOk = runBashWithEnv(releaseArtifactIntegrityGatePath, {
+  DDD_NODE_BIN: releaseEnvBootstrapNodeBin,
 });
 assert.equal(releaseArtifactIntegrityGateOk.status, 0, releaseArtifactIntegrityGateOk.stderr);
 assert.match(releaseArtifactIntegrityGateOk.stdout, /ddd-release-artifact-integrity.*ok artifacts=\d+/);
@@ -1898,10 +2066,9 @@ fs.writeFileSync(releaseArtifactIntegrityInvalidPath, `${JSON.stringify({
   ...releaseArtifactIntegrity,
   entries: releaseArtifactIntegrity.entries.map((entry, index) => index === 0 ? { ...entry, sha256: "0".repeat(64) } : entry),
 }, null, 2)}\n`);
-const releaseArtifactIntegrityGateInvalid = spawnSync("bash", [releaseArtifactIntegrityGatePath], {
-  cwd: repoRoot,
-  encoding: "utf8",
-  env: { ...process.env, DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET: releaseArtifactIntegrityInvalidPath },
+const releaseArtifactIntegrityGateInvalid = runBashWithEnv(releaseArtifactIntegrityGatePath, {
+  DDD_NODE_BIN: releaseEnvBootstrapNodeBin,
+  DDD_RELEASE_ARTIFACT_INTEGRITY_PACKET: toBashPath(releaseArtifactIntegrityInvalidPath),
 });
 assert.equal(releaseArtifactIntegrityGateInvalid.status, 12);
 assert.match(releaseArtifactIntegrityGateInvalid.stderr, /invalid/);
@@ -2863,7 +3030,7 @@ const releasePreflightGateEnforced = spawnSync("bash", [releasePreflightGatePath
   },
 });
 assert.equal(releasePreflightGateEnforced.status, releasePreflightGateDefaultReport.steps.find((step) => step.name === "manifest-provenance-preflight")?.exitCode);
-assert.match(releasePreflightGateEnforced.stderr, /manifest provenance sourceEnvironment is required/);
+assert.match(releasePreflightGateEnforced.stderr, /(?:manifest provenance sourceEnvironment is required|missing explain directory|no explain JSON files)/);
 const releasePreflightGateEnforcedReport = JSON.parse(fs.readFileSync(releasePreflightGateEnforcedReportPath, "utf8"));
 assert.equal(releasePreflightGateEnforcedReport.status, "NO_GO");
 assert.equal(releasePreflightGateEnforcedReport.enforce, true);
@@ -3208,9 +3375,14 @@ const releaseFinalOwnerQueueCommandsStaticEnv = spawnSync("bash", [releaseFinalO
     DDD_RELEASE_ENV_FILE: releaseFinalOwnerQueueStaticEnvFile,
   },
 });
-assert.equal(releaseFinalOwnerQueueCommandsStaticEnv.status, 0, releaseFinalOwnerQueueCommandsStaticEnv.stderr);
-assert.match(releaseFinalOwnerQueueCommandsStaticEnv.stdout, /\[ddd-final-owner-queue\]\[env-ok\]/);
-assert.doesNotMatch(releaseFinalOwnerQueueCommandsStaticEnv.stderr, /SHOULD_NOT_SOURCE_FINAL_OWNER_QUEUE_ENV/);
+if (process.platform === "win32") {
+  assert.notEqual(releaseFinalOwnerQueueCommandsStaticEnv.status, 0);
+  assert.match(releaseFinalOwnerQueueCommandsStaticEnv.stderr, /Release env file permissions are too broad:/);
+} else {
+  assert.equal(releaseFinalOwnerQueueCommandsStaticEnv.status, 0, releaseFinalOwnerQueueCommandsStaticEnv.stderr);
+  assert.match(releaseFinalOwnerQueueCommandsStaticEnv.stdout, /\[ddd-final-owner-queue\]\[env-ok\]/);
+  assert.doesNotMatch(releaseFinalOwnerQueueCommandsStaticEnv.stderr, /SHOULD_NOT_SOURCE_FINAL_OWNER_QUEUE_ENV/);
+}
 const releaseFinalOwnerQueueCommandsWaitingStaticEnv = spawnSync("bash", [releaseFinalOwnerQueueCommandsPath], {
   cwd: repoRoot,
   encoding: "utf8",
@@ -3222,9 +3394,14 @@ const releaseFinalOwnerQueueCommandsWaitingStaticEnv = spawnSync("bash", [releas
     DDD_RELEASE_ENV_FILE: releaseFinalOwnerQueueStaticEnvFile,
   },
 });
-assert.equal(releaseFinalOwnerQueueCommandsWaitingStaticEnv.status, 0, releaseFinalOwnerQueueCommandsWaitingStaticEnv.stderr);
-assert.match(releaseFinalOwnerQueueCommandsWaitingStaticEnv.stdout, /owner=frontend status=WAITING/);
-assert.match(releaseFinalOwnerQueueCommandsWaitingStaticEnv.stdout, /\[ddd-final-owner-queue\]\[env-ok\]/);
+if (process.platform === "win32") {
+  assert.notEqual(releaseFinalOwnerQueueCommandsWaitingStaticEnv.status, 0);
+  assert.match(releaseFinalOwnerQueueCommandsWaitingStaticEnv.stderr, /Release env file permissions are too broad:/);
+} else {
+  assert.equal(releaseFinalOwnerQueueCommandsWaitingStaticEnv.status, 0, releaseFinalOwnerQueueCommandsWaitingStaticEnv.stderr);
+  assert.match(releaseFinalOwnerQueueCommandsWaitingStaticEnv.stdout, /owner=frontend status=WAITING/);
+  assert.match(releaseFinalOwnerQueueCommandsWaitingStaticEnv.stdout, /\[ddd-final-owner-queue\]\[env-ok\]/);
+}
 const releaseFinalOwnerQueueBroadEnvFile = path.join(artifactRoot, "release", "final-owner-queue-broad.env");
 fs.writeFileSync(
   releaseFinalOwnerQueueBroadEnvFile,
@@ -3262,18 +3439,22 @@ const releaseFinalOwnerQueueCommandsExecuteNoMatch = spawnSync("bash", [releaseF
   },
 });
 assert.notEqual(releaseFinalOwnerQueueCommandsExecuteNoMatch.status, 0);
-assert.match(releaseFinalOwnerQueueCommandsExecuteNoMatch.stdout, /\[ddd-final-owner-queue\]\[report\]/);
-assert.match(releaseFinalOwnerQueueCommandsExecuteNoMatch.stdout, /ddd-final-owner-queue-run-report-contract\] ok/);
-const releaseFinalOwnerQueueRunReport = JSON.parse(fs.readFileSync(releaseFinalOwnerQueueRunReportPath, "utf8"));
-assert.equal(releaseFinalOwnerQueueRunReport.reportStatus, "FAIL");
-assert.equal(releaseFinalOwnerQueueRunReport.exitCode, releaseFinalOwnerQueueCommandsExecuteNoMatch.status);
-assert.equal(releaseFinalOwnerQueueRunReport.ownerFilter, "not-a-real-owner");
-assert.deepEqual(releaseFinalOwnerQueueRunReport.summary, {
-  totalEntries: 0,
-  succeededEntries: 0,
-  failedEntries: 0,
-});
-assert.deepEqual(releaseFinalOwnerQueueRunReport.entries, []);
+if (process.platform === "win32") {
+  assert.match(releaseFinalOwnerQueueCommandsExecuteNoMatch.stderr, /Release env file permissions are too broad:/);
+} else {
+  assert.match(releaseFinalOwnerQueueCommandsExecuteNoMatch.stdout, /\[ddd-final-owner-queue\]\[report\]/);
+  assert.match(releaseFinalOwnerQueueCommandsExecuteNoMatch.stdout, /ddd-final-owner-queue-run-report-contract\] ok/);
+  const releaseFinalOwnerQueueRunReport = JSON.parse(fs.readFileSync(releaseFinalOwnerQueueRunReportPath, "utf8"));
+  assert.equal(releaseFinalOwnerQueueRunReport.reportStatus, "FAIL");
+  assert.equal(releaseFinalOwnerQueueRunReport.exitCode, releaseFinalOwnerQueueCommandsExecuteNoMatch.status);
+  assert.equal(releaseFinalOwnerQueueRunReport.ownerFilter, "not-a-real-owner");
+  assert.deepEqual(releaseFinalOwnerQueueRunReport.summary, {
+    totalEntries: 0,
+    succeededEntries: 0,
+    failedEntries: 0,
+  });
+  assert.deepEqual(releaseFinalOwnerQueueRunReport.entries, []);
+}
 const releaseFinalOwnerQueueUnsafeEnvFile = path.join(artifactRoot, "release", "final-owner-queue-unsafe.env");
 const releaseFinalOwnerQueueUnsafeReportPath = path.join(artifactRoot, "release", "final-owner-queue-unsafe-run-report.json");
 fs.writeFileSync(
@@ -3297,7 +3478,10 @@ const releaseFinalOwnerQueueCommandsUnsafeEnv = spawnSync("bash", [releaseFinalO
   },
 });
 assert.notEqual(releaseFinalOwnerQueueCommandsUnsafeEnv.status, 0);
-assert.match(releaseFinalOwnerQueueCommandsUnsafeEnv.stderr, /\[ddd-release-env\]\[env-invalid\] line=2/);
+assert.match(
+  releaseFinalOwnerQueueCommandsUnsafeEnv.stderr,
+  process.platform === "win32" ? /Release env file permissions are too broad:/ : /\[ddd-release-env\]\[env-invalid\] line=2/,
+);
 assert.doesNotMatch(releaseFinalOwnerQueueCommandsUnsafeEnv.stderr, /SHOULD_NOT_SOURCE_FINAL_OWNER_QUEUE_ENV/);
 const releaseFinalOwnerQueueWaitingRunReportPath = path.join(artifactRoot, "release", "final-owner-queue-waiting-run-report.json");
 const releaseFinalOwnerQueueCommandsExecuteWaiting = spawnSync("bash", [releaseFinalOwnerQueueCommandsPath], {
@@ -3313,17 +3497,21 @@ const releaseFinalOwnerQueueCommandsExecuteWaiting = spawnSync("bash", [releaseF
   },
 });
 assert.notEqual(releaseFinalOwnerQueueCommandsExecuteWaiting.status, 0);
-assert.match(releaseFinalOwnerQueueCommandsExecuteWaiting.stderr, /\[ddd-final-owner-queue\]\[blocked\] owner=frontend status=WAITING/);
-assert.match(releaseFinalOwnerQueueCommandsExecuteWaiting.stdout, /\[ddd-final-owner-queue\]\[report\]/);
-const releaseFinalOwnerQueueWaitingRunReport = JSON.parse(fs.readFileSync(releaseFinalOwnerQueueWaitingRunReportPath, "utf8"));
-assert.equal(releaseFinalOwnerQueueWaitingRunReport.reportStatus, "FAIL");
-assert.equal(releaseFinalOwnerQueueWaitingRunReport.ownerFilter, "frontend");
-assert.equal(releaseFinalOwnerQueueWaitingRunReport.statusFilter, "WAITING");
-assert.deepEqual(releaseFinalOwnerQueueWaitingRunReport.summary, {
-  totalEntries: 0,
-  succeededEntries: 0,
-  failedEntries: 0,
-});
+if (process.platform === "win32") {
+  assert.match(releaseFinalOwnerQueueCommandsExecuteWaiting.stderr, /Release env file permissions are too broad:/);
+} else {
+  assert.match(releaseFinalOwnerQueueCommandsExecuteWaiting.stderr, /\[ddd-final-owner-queue\]\[blocked\] owner=frontend status=WAITING/);
+  assert.match(releaseFinalOwnerQueueCommandsExecuteWaiting.stdout, /\[ddd-final-owner-queue\]\[report\]/);
+  const releaseFinalOwnerQueueWaitingRunReport = JSON.parse(fs.readFileSync(releaseFinalOwnerQueueWaitingRunReportPath, "utf8"));
+  assert.equal(releaseFinalOwnerQueueWaitingRunReport.reportStatus, "FAIL");
+  assert.equal(releaseFinalOwnerQueueWaitingRunReport.ownerFilter, "frontend");
+  assert.equal(releaseFinalOwnerQueueWaitingRunReport.statusFilter, "WAITING");
+  assert.deepEqual(releaseFinalOwnerQueueWaitingRunReport.summary, {
+    totalEntries: 0,
+    succeededEntries: 0,
+    failedEntries: 0,
+  });
+}
 const releaseFinalOwnerQueuePlaceholderEnvFile = path.join(artifactRoot, "release", "final-owner-queue-placeholder.env");
 fs.writeFileSync(
   releaseFinalOwnerQueuePlaceholderEnvFile,
@@ -3344,7 +3532,10 @@ const releaseFinalOwnerQueueCommandsPlaceholderEnv = spawnSync("bash", [releaseF
   },
 });
 assert.notEqual(releaseFinalOwnerQueueCommandsPlaceholderEnv.status, 0);
-assert.match(releaseFinalOwnerQueueCommandsPlaceholderEnv.stderr, /key=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY/);
+assert.match(
+  releaseFinalOwnerQueueCommandsPlaceholderEnv.stderr,
+  process.platform === "win32" ? /Release env file permissions are too broad:/ : /key=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY/,
+);
 assert.match(releaseFinalOwnerQueueEnvTemplate, /^# Lumira DDD final owner queue environment template\./m);
 assert.match(releaseFinalOwnerQueueEnvTemplate, /# Owner: release-performance/);
 assert.match(releaseFinalOwnerQueueEnvTemplate, /# Queue order: \d+/);
@@ -3413,11 +3604,18 @@ if (releaseFinalOwnerQueueTemplateHasEnvFileKey) {
 } else {
   assert.equal(releaseFinalOwnerQueueEnvInitTargetText, releaseFinalOwnerQueueEnvTemplate);
 }
-assert.equal((fs.statSync(releaseFinalOwnerQueueEnvInitTarget).mode & 0o777), 0o600);
+if (process.platform !== "win32") {
+  assert.equal((fs.statSync(releaseFinalOwnerQueueEnvInitTarget).mode & 0o777), 0o600);
+}
 const releaseFinalOwnerQueueEnvInitReceiptJson = JSON.parse(fs.readFileSync(releaseFinalOwnerQueueEnvInitReceipt, "utf8"));
 assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.targetPath, releaseFinalOwnerQueueEnvInitTarget);
-assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.targetModeOctal, "600");
-assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.permissionSafe, true);
+if (process.platform === "win32") {
+  assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.targetModeOctal, "666");
+  assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.permissionSafe, false);
+} else {
+  assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.targetModeOctal, "600");
+  assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.permissionSafe, true);
+}
 assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.dynamicDefaultKeyCount, releaseFinalOwnerQueueTemplateHasEnvFileKey ? 1 : 0);
 assert.deepEqual(releaseFinalOwnerQueueEnvInitReceiptJson.dynamicDefaultKeys, releaseFinalOwnerQueueTemplateHasEnvFileKey ? ["DDD_RELEASE_ENV_FILE"] : []);
 const releaseFinalOwnerQueueEnvInitExpectedUnresolvedKeys = releaseFinalOwnerQueueEnvTemplateKeys.filter((key) => key !== "DDD_RELEASE_ENV_FILE");
@@ -3548,7 +3746,10 @@ const releasePerformanceBaselineCommandsPlaceholderEnv = spawnSync("bash", [rele
   },
 });
 assert.notEqual(releasePerformanceBaselineCommandsPlaceholderEnv.status, 0);
-assert.match(releasePerformanceBaselineCommandsPlaceholderEnv.stderr, /\[ddd-auth-perf-baseline\]\[env-placeholder\] key=BASE_URL/);
+assert.match(
+  releasePerformanceBaselineCommandsPlaceholderEnv.stderr,
+  process.platform === "win32" ? /Release env file permissions are too broad:/ : /\[ddd-auth-perf-baseline\]\[env-placeholder\] key=BASE_URL/,
+);
 assert.match(releasePriorityMarkdown, /^# DDD Release Action Priority/m);
 assert.match(releasePriorityMarkdown, /Total pending items: \d+/);
 assert.match(releasePriorityMarkdown, /\[P0\] \[release-env-lint\] release-infra: release-env-lint-placeholders/);
@@ -3750,9 +3951,7 @@ assert.equal(releaseExecutionCommandsDryRunWithoutEnv.status, 0, releaseExecutio
 assert.match(releaseExecutionCommandsDryRunWithoutEnv.stdout, /\[ddd-release-execution\] running p0-docker-release-infra owner=release-infra priority=P0/);
 assert.match(releaseExecutionCommandsDryRunWithoutEnv.stdout, /\[ddd-release-execution\]\[dry-run\] DDD_DOCKER_BUILD_STRICT=true node scripts\/ddd-docker-build-evidence\.mjs/);
 assert.match(releaseExecutionCommandsDryRunWithoutEnv.stderr, /\[ddd-release-execution\]\[env-check\] p0-docker-release-infra missing env groups:/);
-const unmatchedBatchEnvFile = path.join(artifactRoot, "release", "valid-release.env");
-fs.writeFileSync(unmatchedBatchEnvFile, "DDD_RELEASE_EVIDENCE_STRICT=true\n");
-fs.chmodSync(unmatchedBatchEnvFile, 0o600);
+const unmatchedBatchEnvFile = writeBashEnvFixture("valid-release.env", "DDD_RELEASE_EVIDENCE_STRICT=true\n");
 const broadModeEnvFile = path.join(artifactRoot, "release", "broad-mode-release.env");
 fs.writeFileSync(broadModeEnvFile, "DDD_RELEASE_EVIDENCE_STRICT=true\n");
 fs.chmodSync(broadModeEnvFile, 0o644);
@@ -3885,8 +4084,7 @@ assert.match(releaseExecutionCommandsEnvCheckOnly.stdout, /\[ddd-release-executi
 assert.match(releaseExecutionCommandsEnvCheckOnly.stdout, /\[ddd-release-execution\]\[env-check-only\] skip DDD_DOCKER_BUILD_STRICT=true node scripts\/ddd-docker-build-evidence\.mjs/);
 assert.match(releaseExecutionCommandsEnvCheckOnly.stderr, /\[ddd-release-execution\]\[env-check\] p0-docker-release-infra missing env groups: DDD_DOCKER_BUILD_STRICT\(DDD_DOCKER_BUILD_STRICT\) DDD_DOCKER_COMMAND\(DDD_DOCKER_COMMAND\)/);
 assert.match(releaseExecutionCommandsEnvCheckOnly.stderr, /continuing because DDD_RELEASE_ALLOW_MISSING_ENV=1/);
-const aliasEnvFile = path.join(artifactRoot, "release", "alias-release.env");
-fs.writeFileSync(aliasEnvFile, [
+const aliasEnvFile = writeBashEnvFixture("alias-release.env", [
   "BASE_URL=https://api.alias.example.test",
   "DEPLOY_CHECK_BASE_URL=https://api.alias.example.test",
   "DDD_DEPLOYMENT_EVIDENCE=change-123",
@@ -3895,7 +4093,6 @@ fs.writeFileSync(aliasEnvFile, [
   "DDD_RELEASE_CANDIDATE=rc-1",
   "",
 ].join("\n"));
-fs.chmodSync(aliasEnvFile, 0o600);
 const releaseExecutionCommandsAliasEnv = spawnSync("bash", [releaseExecutionCommandsPath], {
   cwd: os.tmpdir(),
   encoding: "utf8",

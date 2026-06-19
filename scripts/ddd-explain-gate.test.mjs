@@ -79,7 +79,7 @@ function runGateWithDir(explainDir, env = {}) {
     fs.writeFileSync(path.join(explainDir, "message-visible-list.json"), "{bad json");
     const { result, report } = runGateWithDir(explainDir, { DDD_EXPLAIN_STRICT: "true" });
     assert.notEqual(result.status, 0);
-    assert.equal(report.explainDir, path.relative(repoRoot, explainDir));
+    assert.equal(report.explainDir, path.relative(repoRoot, explainDir).replaceAll("\\", "/"));
     assert(report.issues.some((issue) => issue.detail.includes("tmp/lumira-explain-gate-")));
     assert(!report.issues.some((issue) => issue.detail.includes(repoRoot)));
   } finally {

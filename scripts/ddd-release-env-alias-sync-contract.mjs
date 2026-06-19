@@ -69,7 +69,8 @@ try {
   const updatedText = fs.readFileSync(envFile, "utf8");
   if (!/^SPRING_DATASOURCE_PASSWORD=prod-password-value$/m.test(updatedText)) addFailure("alias sync must write synced alias value");
   const modeOctal = (fs.statSync(envFile).mode & 0o777).toString(8).padStart(3, "0");
-  if (modeOctal !== "600") addFailure("alias sync must preserve chmod 600 after writes");
+  if (process.platform !== "win32" && modeOctal !== "600") addFailure("alias sync must preserve chmod 600 after writes");
+  if (process.platform === "win32" && report.envFileSecurity?.permissionCheckSkipped !== true) addFailure("alias sync must mark permission check skipped on Windows");
 
   const dryRunFile = path.join(tempDir, ".env.dry-run.local");
   const dryRunReport = path.join(tempDir, "alias-sync-dry-run.json");
@@ -98,8 +99,13 @@ try {
   fs.writeFileSync(broadFile, "DB_PASSWORD=prod-password-value\n");
   fs.chmodSync(broadFile, 0o644);
   const broadRun = runAliasSync([broadFile], { DDD_RELEASE_ENV_ALIAS_SYNC_REPORT: broadReport });
-  if (broadRun.status === 0) addFailure("alias sync must fail when env file permissions are broad");
-  if (readJson(broadReport).envFileSecurity?.permissionSafe !== false) addFailure("alias sync broad permission report must mark permissionSafe=false");
+  const broad = readJson(broadReport);
+  if (process.platform === "win32") {
+    if (broad.envFileSecurity?.permissionCheckSkipped !== true) addFailure("alias sync broad permission report must mark permissionCheckSkipped=true on Windows");
+  } else {
+    if (broadRun.status === 0) addFailure("alias sync must fail when env file permissions are broad");
+    if (broad.envFileSecurity?.permissionSafe !== false) addFailure("alias sync broad permission report must mark permissionSafe=false");
+  }
 } finally {
   fs.rmSync(tempDir, { recursive: true, force: true });
 }

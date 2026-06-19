@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "envFile": ".env.release.local",
   "ownerCount": 6,
   "canonicalFillItemCount": 48,
@@ -221,11 +221,11 @@
     },
     {
       "owner": "file-owner",
-      "queueOrder": 9,
+      "queueOrder": 11,
       "queueStatus": "WAITING",
       "canExecute": false,
-      "templatePath": "artifacts/ddd/release/release-env-owner-templates/09-file-owner.env",
-      "fileName": "09-file-owner.env",
+      "templatePath": "artifacts/ddd/release/release-env-owner-templates/11-file-owner.env",
+      "fileName": "11-file-owner.env",
       "canonicalFillItemCount": 3,
       "secretCanonicalKeyCount": 0,
       "safeToPreFillCanonicalKeyCount": 3,

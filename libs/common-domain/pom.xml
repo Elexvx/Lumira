@@ -11,11 +11,4 @@
     <artifactId>common-domain</artifactId>
     <name>common-domain</name>
 
-    <dependencies>
-        <dependency>
-            <groupId>com.lumira</groupId>
-            <artifactId>common-core</artifactId>
-            <version>0.1.0</version>
-        </dependency>
-    </dependencies>
 </project>

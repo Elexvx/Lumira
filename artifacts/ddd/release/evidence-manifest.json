@@ -1,26 +1,26 @@
 {
-  "generatedAt": "2026-06-17T08:13:59.317Z",
-  "sourceEnvironment": "production-equivalent",
-  "releaseCandidate": "38e6b38ff8b03db8de2e0ef9d84ac445fed50526",
-  "evidenceOperator": "johntao",
-  "artifactRoot": "artifacts/ddd",
-  "status": "PASS",
+  "generatedAt": "2026-06-18T19:37:47.238Z",
+  "sourceEnvironment": null,
+  "releaseCandidate": null,
+  "evidenceOperator": null,
+  "artifactRoot": "artifacts\\ddd",
+  "status": "FAIL",
   "summary": {
     "requiredArtifacts": 19,
-    "presentArtifacts": 29,
-    "optionalArtifacts": 10,
+    "presentArtifacts": 30,
+    "optionalArtifacts": 11,
     "invalidJsonArtifacts": 0,
-    "explainFiles": 8,
+    "explainFiles": 0,
     "provenanceIssueArtifacts": 0,
-    "blockers": 0
+    "blockers": 1
   },
   "artifacts": [
     {
       "relativePath": "build/backend-build-evidence.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 17226,
-      "sha256": "3c55123a0ad044a6df38e87f7c4e7cab46a0b5ef82d7338051f91ddc13cf77fb",
+      "bytes": 17404,
+      "sha256": "4edefb8c0862adb6d511a7e7522abbe6429f2cf59bd00e7ff4f9600e783b1c21",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-16T20:52:44.619Z"
@@ -33,8 +33,8 @@
       "relativePath": "build/docker-image-evidence.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 18642,
-      "sha256": "3215d5469337638529cb11b845c35e1b187d2844e900fa243d6c0be1a0dcfa48",
+      "bytes": 18962,
+      "sha256": "0de6488f5fa0edc0faa3b2d1c66c11c00cb99688bdeb9461f7f17f7d42f19eca",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-16T21:45:55.209Z"
@@ -47,8 +47,8 @@
       "relativePath": "tests/backend-test-evidence.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 62688,
-      "sha256": "9ae8a45e5c35360d8a93f46edbd23bf4e247f167c46f9ed0ba0ff0e5328939a2",
+      "bytes": 64363,
+      "sha256": "857feb1cad65a21ef7237f53bae87de15563922fb2aa270f9ce85369e6c83bdd",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-16T20:52:50.894Z"
@@ -61,8 +61,8 @@
       "relativePath": "frontend/frontend-build-evidence.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 11225,
-      "sha256": "9f54f3c7ddce21aac2018abfca01a474b02aef67396e02d3e0b7c2caf6747d43",
+      "bytes": 11358,
+      "sha256": "3ebf89bf1146943d707f626af5a52f111f53b042c864db0f2ee0f350c35a6bc1",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-15T10:50:23.034Z"
@@ -75,8 +75,8 @@
       "relativePath": "frontend/frontend-static-evidence.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 3594,
-      "sha256": "7d0b1693589ffba88854d650d1402f30f03212b37454e90a4da9f55c3f32eae4",
+      "bytes": 3646,
+      "sha256": "1e4b15b89e306792f3738e652bfc6d776508f5a0cf81c580a8c1a5374bf9a6e8",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-15T10:49:45.548Z"
@@ -89,8 +89,8 @@
       "relativePath": "frontend/frontend-smoke.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 8166,
-      "sha256": "26f58aa7643d23e735348cee5881e85593c37955243acf0764c0ae522e7e5f69",
+      "bytes": 8481,
+      "sha256": "cbd570b743bae432a13adfa5de3d5b0579adfc9e01693f4883a440df2b7d40ca",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-16T20:51:08.151Z"
@@ -103,8 +103,8 @@
       "relativePath": "migration/migration-evidence.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 42736,
-      "sha256": "852d60ea2a0cc3cb3da0f0ff8e685125ca45e3c2a19e09cdcda4974884288b3c",
+      "bytes": 43896,
+      "sha256": "bc7c9c3439123525b7c59166429241f43aed862a5a4ed42fefc53c1f0cb5797b",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-16T20:56:46.902Z"
@@ -117,8 +117,8 @@
       "relativePath": "release/release-env-lint.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 99162,
-      "sha256": "f4853bfcffec76158f193ed6d9516606588bfa5d66a8fb88a4ca97d98cfde31d",
+      "bytes": 101628,
+      "sha256": "640b643e4ba9825aa7a17e4ce1596b023e7aeb0312bb1749ba5e73fb2b9a0cbc",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-17T05:46:16.010Z"
@@ -131,8 +131,8 @@
       "relativePath": "config/release-config-evidence.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 90500,
-      "sha256": "ae4a30f0faff20fa1fdc42744901cdbdb91789b1c553c2f83c4c02874ab373a7",
+      "bytes": 93376,
+      "sha256": "6c1d4d19d88e6309258d99c095d87b07bb102c40b6f12322e4b7bb2dbc4d7454",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-17T06:28:34.918Z"
@@ -145,8 +145,8 @@
       "relativePath": "readiness/summary.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 4955,
-      "sha256": "45a3f391f6f0a02c20fd2d476bf362368c253bbc056204ca148c5a9298a7d3e2",
+      "bytes": 5152,
+      "sha256": "36e4ef693d4c58daa6a6231809f8ce9c1b89f36e74e89dfb406f5ec39729565b",
       "timestamp": {
         "field": "checkedAt",
         "value": "2026-06-16T06:22:07.611Z"
@@ -159,8 +159,8 @@
       "relativePath": "performance/authenticated-runtime-actual.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 6064,
-      "sha256": "3ed4130a8798776ec11094ecd1c37a3198564d9355cc3d289296dd2655fd948e",
+      "bytes": 6314,
+      "sha256": "3b435bb1a44394f4c3e9bbbcfa502f82fc2363fc297e0ef3acac0be93ec26dcb",
       "timestamp": {
         "field": "checkedAt",
         "value": "2026-06-16T20:51:41.443Z"
@@ -173,8 +173,8 @@
       "relativePath": "performance/authenticated-runtime-baseline.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 3685,
-      "sha256": "ed54c4a70de92f71c218f0b82af4d2a953375d58d804f3bf469c142d9d924dcc",
+      "bytes": 3849,
+      "sha256": "50686291d5ff088c2eab1e7f6fb9b2a396b249e9f220509c996a79eec85d02ae",
       "timestamp": {
         "field": "checkedAt",
         "value": "2026-06-13T18:38:43.975Z"
@@ -187,8 +187,8 @@
       "relativePath": "file/file-processing-e2e.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 3843,
-      "sha256": "363d1e75749c3a51ac7010e78bcc12312b2a6dfd01f9432c158222aaf25887cb",
+      "bytes": 3964,
+      "sha256": "9af33d48cabc613be22520383fbd730608e73d91530d723258fad8fc69cab68c",
       "timestamp": {
         "field": "finishedAt",
         "value": "2026-06-13T18:53:08.598Z"
@@ -201,8 +201,8 @@
       "relativePath": "payment/payment-webhook-e2e.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 3787,
-      "sha256": "0670c68db7cf47514f8d67dba997ff1fb8bf51054c190c1ac33f588ddab1290a",
+      "bytes": 3910,
+      "sha256": "f00a3d7a408f8ad7bd072ecde0a0dfc4109bea6fa73fe84667a9fcc10dd86092",
       "timestamp": {
         "field": "finishedAt",
         "value": "2026-06-13T19:03:19.658Z"
@@ -215,8 +215,8 @@
       "relativePath": "outbox/outbox-replay-dead-letter-test-evidence.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 9336,
-      "sha256": "313990a271080379c532415fc333f9eb088b192ef8c4f71f1e4b660a936fb4a0",
+      "bytes": 9440,
+      "sha256": "bfc427710deee01a990bd69a6884203cf2921e984ab3ef37f8cfd1d8d9746b67",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-15T10:58:12.236Z"
@@ -229,8 +229,8 @@
       "relativePath": "jobs/job-e2e-smoke.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 3044,
-      "sha256": "b9ad503c28cda955cae83b70ffc6f7967ca08bce7cb0ec539d6169481cbfcb10",
+      "bytes": 3157,
+      "sha256": "775f232d24fa86ca39f63025b6910ea06643bd47efdf8ccd03f7fc63d83457a7",
       "timestamp": {
         "field": "checkedAt",
         "value": "2026-06-13T19:15:58.531Z"
@@ -243,8 +243,8 @@
       "relativePath": "ai/ai-runtime-drill.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 13847,
-      "sha256": "2a9e34ed353be40d8b8d8152ef0a56a955924991d848f363536333938dfce6ac",
+      "bytes": 14225,
+      "sha256": "43defe707944457422188b07cba3c583d03c84ec350142a1713481a3108dbd58",
       "timestamp": {
         "field": "checkedAt",
         "value": "2026-06-16T20:51:41.726Z"
@@ -257,8 +257,8 @@
       "relativePath": "split/physical-split-readiness.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 34112,
-      "sha256": "3618dbca2b837388797399f07f9a1509b4467fe827c583e12991e6f39b7a8e63",
+      "bytes": 35015,
+      "sha256": "35b429265b31b411189a2989f82401f23ef4f741f417e37eeda308c8242bf7bb",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-16T20:53:12.034Z"
@@ -271,8 +271,8 @@
       "relativePath": "rollback/rollback-drill.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 12014,
-      "sha256": "e5a77434b769607c7ae712a2085dd534d09c561fb4fb68820789369ac7bfb73b",
+      "bytes": 12330,
+      "sha256": "902b103aa2fc3685c1304588282df384aadf35cf97799ea536cc71d326fbfe0f",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-16T06:24:20.373Z"
@@ -286,10 +286,10 @@
       "present": true,
       "status": "PRESENT",
       "bytes": 287,
-      "sha256": "672300a0ead2000c17601335b63fe78783b2accc5ed75c3fd4c885439ad3ec33",
+      "sha256": "3d80e0868efc27c752961606ddb23feee623412e379ffe2b87ff140762fc3bbb",
       "timestamp": {
         "field": "generatedAt",
-        "value": "2026-06-17T08:12:18.666Z"
+        "value": "2026-06-18T19:34:15.234Z"
       },
       "provenanceIssues": [],
       "contractIssues": [],
@@ -299,8 +299,8 @@
       "relativePath": "release/explain-gate-report.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 191,
-      "sha256": "6b42742017e9ab673c6b9548fa7cea0721cdb52387eea18c251ead09d8a587b5",
+      "bytes": 200,
+      "sha256": "8b98dcd517a7aa4e14497b037a6b94ccdb456d0776209b505addfbf68e42481b",
       "timestamp": {
         "field": "generatedAt",
         "value": "2026-06-15T20:41:37.875Z"
@@ -313,11 +313,11 @@
       "relativePath": "release/release-unblock-brief.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 62132,
-      "sha256": "691c20947d0bae6a8c1e467a5dc158acaf66ad63ce290e59d466b59d57e54b9b",
+      "bytes": 98461,
+      "sha256": "e4a5e8ebdea5b9b706943bebe5201a8920b66e9cfb528a1992e990f46eb7bf74",
       "timestamp": {
         "field": "generatedAt",
-        "value": "2026-06-17T08:13:42.805Z"
+        "value": "2026-06-18T19:37:44.437Z"
       },
       "provenanceIssues": [],
       "contractIssues": [],
@@ -327,11 +327,11 @@
       "relativePath": "release/release-artifact-path-leak-contract.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 9217,
-      "sha256": "ead30cb9b689296cf9f3c76787a0b8db87e23c8de1953ed3983abe78ac4b4781",
+      "bytes": 9252,
+      "sha256": "78c1749aacbe42dc9e9a8e4c0eb4e745101c3632337dfab1fbfacec5c75f85ee",
       "timestamp": {
         "field": "generatedAt",
-        "value": "2026-06-17T08:09:47.213Z"
+        "value": "2026-06-18T18:44:38.492Z"
       },
       "provenanceIssues": [],
       "contractIssues": [],
@@ -342,10 +342,24 @@
       "present": true,
       "status": "PRESENT",
       "bytes": 910,
-      "sha256": "e19345bda5521e65d5d13f2b604a7bb25bd8bb19498a6ee505cb91513478017e",
+      "sha256": "d4c28afb137cdb66f62bd09b5c200373bef592909d933a10da0975dbd748056c",
       "timestamp": {
         "field": "generatedAt",
-        "value": "2026-06-17T08:13:42.913Z"
+        "value": "2026-06-18T19:37:44.932Z"
+      },
+      "provenanceIssues": [],
+      "contractIssues": [],
+      "parseError": null
+    },
+    {
+      "relativePath": "release/evidence-manifest-preflight.json",
+      "present": true,
+      "status": "PRESENT",
+      "bytes": 1651,
+      "sha256": "1785f878fef544af6b55c18394015800740d77fe961e3ad7407d930750690de9",
+      "timestamp": {
+        "field": "generatedAt",
+        "value": "2026-06-17T07:22:18.481Z"
       },
       "provenanceIssues": [],
       "contractIssues": [],
@@ -355,11 +369,11 @@
       "relativePath": "release/release-config-owner-input-reconciliation.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 9254,
-      "sha256": "f4baa776de091ce7584cbf92839e18c3650c94bf581742775b0da43d73c369fa",
+      "bytes": 9260,
+      "sha256": "0a37c135c03b8018d05d9fd7b1f55f7e7728cc7db34e4e2d97357f5cdb2ecd6f",
       "timestamp": {
         "field": "generatedAt",
-        "value": "2026-06-17T06:39:49.849Z"
+        "value": "2026-06-18T19:37:45.445Z"
       },
       "provenanceIssues": [],
       "contractIssues": [],
@@ -369,11 +383,11 @@
       "relativePath": "release/release-owner-input-receipt.json",
       "present": true,
       "status": "PRESENT",
-      "bytes": 38889,
-      "sha256": "2e62d23bd67e9be6c2e641ac1cba2a2aa3c8543b368696aa540412ec1d361189",
+      "bytes": 38891,
+      "sha256": "28242057dfa356f7b5f6ae3d0575d16f3942368da6ce849d36cc434c5dc42ab5",
       "timestamp": {
         "field": "generatedAt",
-        "value": "2026-06-17T08:00:49.110Z"
+        "value": "2026-06-18T19:29:09.638Z"
       },
       "provenanceIssues": [],
       "contractIssues": [],
@@ -387,7 +401,7 @@
       "sha256": "0f5494f7531962596e711808378ef30e3b89b259946d046b171185892ee86b07",
       "timestamp": {
         "field": "mtime",
-        "value": "2026-06-17T08:13:43.097Z"
+        "value": "2026-06-18T19:37:45.705Z"
       },
       "provenanceIssues": [],
       "contractIssues": [],
@@ -401,7 +415,7 @@
       "sha256": "ffb17dc4d49f744fcc229734e2c3e46309de9b253f9ded59a848c67c9e1e417b",
       "timestamp": {
         "field": "mtime",
-        "value": "2026-06-17T08:13:43.099Z"
+        "value": "2026-06-18T19:37:45.708Z"
       },
       "provenanceIssues": [],
       "contractIssues": [],
@@ -412,10 +426,10 @@
       "present": true,
       "status": "PRESENT",
       "bytes": 17686,
-      "sha256": "4c2f6ea0f84d9ea349588f9c8d365f153083d1092a8b069ee942abd869bf03d9",
+      "sha256": "d4bad386936e23b8201ef912c89c9513d773f6fdca4993e364fed2687e98d5e2",
       "timestamp": {
         "field": "mtime",
-        "value": "2026-06-17T08:13:43.100Z"
+        "value": "2026-06-18T19:37:45.712Z"
       },
       "provenanceIssues": [],
       "contractIssues": [],
@@ -423,58 +437,11 @@
     }
   ],
   "explain": {
-    "directory": "tmp/ddd-explain",
+    "directory": "tmp\\ddd-explain",
     "present": true,
-    "files": [
-      {
-        "relativePath": "tmp/ddd-explain/ai-knowledge-index-retry.json",
-        "bytes": 1878,
-        "sha256": "745038d1c2a9d3e21b022c56aede9524a5ec4c26758641a5aa15f904f1214f80",
-        "mtime": "2026-06-14T05:57:11.115Z"
-      },
-      {
-        "relativePath": "tmp/ddd-explain/message-archive-total.json",
-        "bytes": 1493,
-        "sha256": "f97e6c8c86328ca1d9b175e2f69c6cd8542ef930c180c364bc203a3bdfe8bbb4",
-        "mtime": "2026-06-15T14:14:41.241Z"
-      },
-      {
-        "relativePath": "tmp/ddd-explain/message-unread-count.json",
-        "bytes": 2411,
-        "sha256": "2ec4003dd39fb8ba99a7b97fa2bb44fbe97ae2eaaa42c0e1a0ce906add36b37b",
-        "mtime": "2026-06-15T14:14:37.936Z"
-      },
-      {
-        "relativePath": "tmp/ddd-explain/message-visible-list.json",
-        "bytes": 1811,
-        "sha256": "d22dcf9e809e9d612e8ae2798cc7b81d23844909e8da550603e8f604e182a27b",
-        "mtime": "2026-06-14T05:57:11.115Z"
-      },
-      {
-        "relativePath": "tmp/ddd-explain/platform-outbox-owner-relay-file.json",
-        "bytes": 1849,
-        "sha256": "3b3e32ce5a0096e8640c3dc93c3b3e612285c7b8f2f59b9bbc12224a1bc455ec",
-        "mtime": "2026-06-14T05:57:11.117Z"
-      },
-      {
-        "relativePath": "tmp/ddd-explain/platform-outbox-owner-relay-message.json",
-        "bytes": 1852,
-        "sha256": "e4cc153490ab8ff05ad10489d88f7d3608ee1da837645c141352d264fbdcece8",
-        "mtime": "2026-06-14T05:57:11.116Z"
-      },
-      {
-        "relativePath": "tmp/ddd-explain/platform-runtime-appearance.json",
-        "bytes": 1432,
-        "sha256": "715f5589bf2ce301910b122040037d324537a65f5f40a6035e36b37f1b4e4313",
-        "mtime": "2026-06-14T05:57:11.113Z"
-      },
-      {
-        "relativePath": "tmp/ddd-explain/plugin-bootstrap.json",
-        "bytes": 3984,
-        "sha256": "d90613b40652779a4c15c6074397c40425aeb4358afb70589096cb3a4b9d02b1",
-        "mtime": "2026-06-14T05:57:11.114Z"
-      }
-    ]
+    "files": []
   },
-  "blockers": []
+  "blockers": [
+    "no explain JSON files in tmp\\ddd-explain"
+  ]
 }

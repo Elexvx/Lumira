@@ -82,7 +82,11 @@ const permissionRoot = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-safe-defaul
 const permissionEnv = path.join(permissionRoot, ".env.release.local");
 write(permissionEnv, "LUMIRA_FILE_OCR_MODE=__REQUIRED__\n", 0o644);
 const permissionResult = runSafeDefaults(permissionRoot, permissionEnv);
-assert.notEqual(permissionResult.status, 0);
-assert.match(permissionResult.stderr, /env file permissions are too broad/);
+if (process.platform === "win32") {
+  assert.equal(permissionResult.status, 0, permissionResult.stderr);
+} else {
+  assert.notEqual(permissionResult.status, 0);
+  assert.match(permissionResult.stderr, /env file permissions are too broad/);
+}
 
 console.log("[ddd-release-env-safe-defaults.test] ok");

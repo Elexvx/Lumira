@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-17T08:13:42.965Z",
+  "generatedAt": "2026-06-18T19:37:45.188Z",
   "status": "PASS",
   "redacted": true,
   "contract": "ddd-release-env-owner-input-packet-contract",
@@ -8,7 +8,7 @@
   "ownerCount": 5,
   "issueCount": 0,
   "issues": [],
-  "ownerPacketDir": "artifacts/ddd/release/release-env-owner-input-packet",
+  "ownerPacketDir": "artifacts\\ddd\\release\\release-env-owner-input-packet",
   "expectedOwnerFiles": [
     "01-platform-events.json",
     "01-platform-events.md",

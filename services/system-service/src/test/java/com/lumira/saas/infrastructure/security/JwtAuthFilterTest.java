@@ -16,6 +16,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -134,6 +136,29 @@ class JwtAuthFilterTest {
         session.setDescendantDeptIds(java.util.List.of(10L));
         session.setDataScopes(java.util.List.of());
         TokenClaims claims = buildClaims(session, "token-6");
+        fixture.jwtTokenService.setTokenClaims(claims);
+        fixture.authSessionStore.put(session);
+
+        executeFilter(fixture, "access-token");
+
+        assertEquals(HttpServletResponse.SC_OK, fixture.response.getStatus());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "GET,/api/v1/auth/passkeys",
+            "POST,/api/v1/auth/passkeys/registration/options",
+            "POST,/api/v1/auth/passkeys/registration/complete"
+    })
+    void shouldAllowPasskeySelfBindingWhenInitialPasswordChangeRequired(String method, String path) throws Exception {
+        Fixture fixture = buildFixture(true);
+        fixture.request.setMethod(method);
+        fixture.request.setRequestURI(path);
+        AuthSession session = buildSession("session-passkey", 1001L, 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
+        session.setPermissionsVersion("v0:data-scope-cache-v4");
+        session.setPermissions(java.util.List.of("session:read"));
+        session.setRoleIds(java.util.List.of(3L));
+        TokenClaims claims = buildClaims(session, "token-passkey");
         fixture.jwtTokenService.setTokenClaims(claims);
         fixture.authSessionStore.put(session);
 

@@ -94,11 +94,13 @@ function parseEnvFile(file) {
 
 function fileSecurity(file) {
   const mode = fs.statSync(file).mode & 0o777;
+  const permissionCheckSkipped = process.platform === "win32";
   return {
     checked: true,
     mode,
     modeOctal: mode.toString(8).padStart(3, "0"),
-    permissionSafe: (mode & 0o077) === 0,
+    permissionSafe: permissionCheckSkipped || (mode & 0o077) === 0,
+    permissionCheckSkipped,
     requiredMode: "600",
   };
 }

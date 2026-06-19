@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "redacted": true,
   "valuePolicy": "No concrete environment values are emitted; only key names, ownership, validation metadata, and redacted fill status.",
   "envFile": ".env.release.local",

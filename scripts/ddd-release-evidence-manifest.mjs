@@ -231,8 +231,8 @@ function validatePathLeakReport(data, artifactRoot) {
     const expectedOwnerPacketFiles = fs.readdirSync(ownerPacketDir)
       .filter((file) => file.endsWith(".json") || file.endsWith(".md"))
       .sort()
-      .map((file) => path.join("release", "release-env-owner-input-packet", file));
-    const scannedFiles = new Set((data.releaseEnvDisplayScanned || []).map((entry) => String(entry?.file || "")));
+      .map((file) => `release/release-env-owner-input-packet/${file}`);
+    const scannedFiles = new Set((data.releaseEnvDisplayScanned || []).map((entry) => String(entry?.file || "").replaceAll("\\", "/")));
     for (const expectedFile of expectedOwnerPacketFiles) {
       if (![...scannedFiles].some((file) => file.endsWith(expectedFile))) {
         issues.push(`path leak report missing owner input packet scan: ${expectedFile}`);

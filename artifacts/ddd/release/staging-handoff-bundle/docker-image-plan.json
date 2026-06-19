@@ -1,0 +1,115 @@
+{
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T06:05:17.222Z",
+  "willWriteFiles": false,
+  "recommendedMode": "external-runner-required",
+  "blocker": "docker CLI is not available: spawnSync docker ENOENT",
+  "dockerAvailable": false,
+  "staticDockerfiles": [
+    {
+      "name": "lumira-server",
+      "dockerfile": "deploy/docker/service.Dockerfile",
+      "status": "PASS",
+      "exists": true,
+      "dockerfileSha256": "b028411f0ed5fb4bdb8a45a40d1764b118d25069179b14150dd6b6dc38494fe4",
+      "issues": [],
+      "checks": {
+        "exposesExpectedPort": true,
+        "definesEntrypointOrCmd": true,
+        "nonRootUser": true,
+        "createsApplicationUser": true,
+        "serviceModuleBuildArgs": true,
+        "optionalOtelJavaagentDownload": true,
+        "otelJavaagentRuntimeGuard": true,
+        "frontendProductionBuild": true
+      }
+    },
+    {
+      "name": "frontend",
+      "dockerfile": "deploy/docker/frontend.Dockerfile",
+      "status": "PASS",
+      "exists": true,
+      "dockerfileSha256": "43dc2013cd3f3595bbbba2b76c74e873fdd7bec13826e30fbc4a3a2fd01f1f78",
+      "issues": [],
+      "checks": {
+        "exposesExpectedPort": true,
+        "definesEntrypointOrCmd": true,
+        "nonRootUser": true,
+        "createsApplicationUser": true,
+        "serviceModuleBuildArgs": true,
+        "optionalOtelJavaagentDownload": true,
+        "otelJavaagentRuntimeGuard": true,
+        "frontendProductionBuild": true
+      }
+    }
+  ],
+  "existingImageInputs": [
+    {
+      "name": "lumira-server",
+      "envKey": "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
+      "valuePresent": false
+    },
+    {
+      "name": "frontend",
+      "envKey": "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
+      "valuePresent": false
+    }
+  ],
+  "requiredInputs": [
+    "DDD_DOCKER_BUILD_STRICT",
+    "DDD_RELEASE_CANDIDATE",
+    "DDD_EVIDENCE_OPERATOR",
+    "DDD_EVIDENCE_ENVIRONMENT",
+    "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
+    "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
+    "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE"
+  ],
+  "paths": [
+    {
+      "id": "docker-runner-build",
+      "owner": "release-infra",
+      "when": "Docker CLI and daemon are available in the evidence runner.",
+      "command": "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
+      "artifacts": [
+        "artifacts/ddd/build/docker-image-evidence.json"
+      ]
+    },
+    {
+      "id": "existing-image-inspect",
+      "owner": "release-infra",
+      "when": "CI already built and pushed release-candidate images.",
+      "command": "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs",
+      "artifacts": [
+        "artifacts/ddd/build/docker-image-evidence.json"
+      ]
+    }
+  ],
+  "validationCommands": [
+    "node scripts/ddd-docker-build-evidence.mjs --check",
+    "node scripts/ddd-release-readiness-summary.mjs",
+    "node scripts/ddd-staging-execution-checklist.mjs --rollup",
+    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+  ],
+  "remediationActions": [
+    {
+      "id": "docker-daemon-ready",
+      "owner": "release-infra",
+      "action": "Start Docker Desktop or run this evidence script on a CI runner with Docker Buildx available.",
+      "envKeys": [
+        "DDD_DOCKER_COMMAND"
+      ]
+    },
+    {
+      "id": "docker-existing-image-inspect",
+      "owner": "release-infra",
+      "action": "If CI already built and pushed the release candidate images, pull them and rerun Docker evidence in explicit inspect-only mode.",
+      "envKeys": [
+        "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
+        "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
+        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"
+      ],
+      "exampleCommand": "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs"
+    }
+  ],
+  "nextCommand": "Run DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs on a Docker-enabled CI runner, or provide DDD_DOCKER_EXISTING_* image env vars for inspect-only evidence."
+}

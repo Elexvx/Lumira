@@ -81,7 +81,7 @@ public class PasskeyAuthService {
         Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
         PasskeySettingsDTO settings = enabledSettings(tenantId);
         if (!Boolean.TRUE.equals(settings.selfBindingEnabled())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "当前不允许自助绑定通行密钥");
+            throw new BizException(ErrorCode.BIZ_ERROR, "当前不允许自助绑定通行密钥", "当前不允许自助绑定通行密钥");
         }
         String challenge = randomBase64Url(32);
         String userHandle = randomBase64Url(32);
@@ -205,7 +205,7 @@ public class PasskeyAuthService {
     private PasskeySettingsDTO enabledSettings(Long tenantId) {
         PasskeySettingsDTO settings = systemInternalApi.passkeySettings(tenantId);
         if (settings == null || !Boolean.TRUE.equals(settings.enabled())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "当前未开启通行密钥登录");
+            throw new BizException(ErrorCode.BIZ_ERROR, "当前未开启通行密钥登录", "当前未开启通行密钥登录");
         }
         if (!StringUtils.hasText(settings.rpId()) || settings.allowedOrigins() == null || settings.allowedOrigins().isEmpty()) {
             throw new BizException(ErrorCode.BIZ_ERROR, "通行密钥 RP ID 或 Origin 未配置");

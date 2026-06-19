@@ -1,0 +1,118 @@
+{
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T06:05:17.222Z",
+  "willWriteFiles": false,
+  "finalRecommendation": "NO_GO_STRICT",
+  "cutoverAllowed": false,
+  "ownerCount": 5,
+  "blockedCount": 6,
+  "items": [
+    {
+      "id": "release-env",
+      "track": "p0-release-env",
+      "owner": "release-infra",
+      "status": "BLOCKED",
+      "nextCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+      "issue": "release env file is not cutover-safe; blockers=34",
+      "blockingInputs": [
+        "DDD_RELEASE_ENV_FILE"
+      ]
+    },
+    {
+      "id": "docker-images",
+      "track": "p0-images",
+      "owner": "release-infra",
+      "status": "BLOCKED",
+      "nextCommand": "node scripts/ddd-docker-build-evidence.mjs --check",
+      "issue": "docker CLI is not available: spawnSync docker ENOENT",
+      "blockingInputs": [
+        "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
+        "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
+        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"
+      ],
+      "recommendedMode": "external-runner-required"
+    },
+    {
+      "id": "runtime-business",
+      "track": "p1-runtime-business",
+      "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+      "status": "BLOCKED",
+      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs",
+      "issue": "LUMIRA_BASE_URL is required",
+      "blockingInputs": [
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL",
+        "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
+        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_AI_EXPECT_PROVIDER_REMOTE",
+        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
+      ]
+    },
+    {
+      "id": "rollback",
+      "track": "p1-rollback",
+      "owner": "bounded-context owners",
+      "status": "BLOCKED",
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs",
+      "issue": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+      "blockingInputs": [
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR"
+      ]
+    },
+    {
+      "id": "migration",
+      "track": "p2-database-performance",
+      "owner": "database",
+      "status": "BLOCKED",
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs",
+      "issue": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+      "blockingInputs": [
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_MIGRATION_OPERATOR",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR",
+        "DDD_MIGRATION_COMPLETED_AT"
+      ]
+    },
+    {
+      "id": "explain",
+      "track": "p2-database-performance",
+      "owner": "database",
+      "status": "BLOCKED",
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs",
+      "issue": "DDD_EXPLAIN_DATABASE is required",
+      "blockingInputs": [
+        "DDD_EXPLAIN_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PORT",
+        "MYSQL_USER",
+        "MYSQL_PASSWORD",
+        "DDD_EXPLAIN_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR"
+      ]
+    }
+  ],
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --commands"
+}

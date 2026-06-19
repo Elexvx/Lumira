@@ -1,0 +1,1159 @@
+{
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T06:05:17.222Z",
+  "willWriteFiles": false,
+  "finalRecommendation": "NO_GO_STRICT",
+  "cutoverAllowed": false,
+  "artifactCount": 15,
+  "presentArtifactCount": 14,
+  "missingArtifactCount": 1,
+  "missingArtifacts": [
+    {
+      "artifact": "tmp/ddd-explain/*.json",
+      "present": false,
+      "matches": [],
+      "matchCount": 0,
+      "gateCount": 2,
+      "gates": [
+        {
+          "gate": "explain",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        },
+        {
+          "gate": "migration",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        }
+      ],
+      "owners": [
+        "database"
+      ],
+      "dispatchOwners": [
+        "platform-owners"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+        "node scripts/ddd-collect-explain.mjs"
+      ]
+    }
+  ],
+  "presentArtifacts": [
+    {
+      "artifact": "artifacts/ddd/ai/ai-runtime-drill.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/ai/ai-runtime-drill.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/build/docker-image-evidence.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/build/docker-image-evidence.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "docker-images",
+          "track": "p0-images",
+          "owner": "release-infra",
+          "dispatchOwner": "release-infra",
+          "accepted": false,
+          "blocker": "docker CLI is not available: spawnSync docker ENOENT",
+          "acceptanceCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
+        }
+      ],
+      "owners": [
+        "release-infra"
+      ],
+      "dispatchOwners": [
+        "release-infra"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-docker-build-evidence.mjs --check"
+      ],
+      "evidenceCommands": [
+        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/config/release-config-evidence.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "release-env",
+          "track": "p0-release-env",
+          "owner": "release-infra",
+          "dispatchOwner": "release-infra",
+          "accepted": false,
+          "blocker": "release env file is not cutover-safe; blockers=34",
+          "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra"
+      ],
+      "dispatchOwners": [
+        "release-infra"
+      ],
+      "acceptanceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/file/file-processing-e2e.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/file/file-processing-e2e.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/frontend/frontend-smoke.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/frontend/frontend-smoke.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/jobs/job-e2e-smoke.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/jobs/job-e2e-smoke.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/migration/migration-evidence.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/migration/migration-evidence.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 2,
+      "gates": [
+        {
+          "gate": "explain",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        },
+        {
+          "gate": "migration",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        }
+      ],
+      "owners": [
+        "database"
+      ],
+      "dispatchOwners": [
+        "platform-owners"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+        "node scripts/ddd-collect-explain.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/payment/payment-webhook-e2e.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/payment/payment-webhook-e2e.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/readiness/summary.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/release/explain-gate-report.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/release/explain-gate-report.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 2,
+      "gates": [
+        {
+          "gate": "explain",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        },
+        {
+          "gate": "migration",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        }
+      ],
+      "owners": [
+        "database"
+      ],
+      "dispatchOwners": [
+        "platform-owners"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+        "node scripts/ddd-collect-explain.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/release/readiness-summary.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/release/readiness-summary.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "release-env",
+          "track": "p0-release-env",
+          "owner": "release-infra",
+          "dispatchOwner": "release-infra",
+          "accepted": false,
+          "blocker": "release env file is not cutover-safe; blockers=34",
+          "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra"
+      ],
+      "dispatchOwners": [
+        "release-infra"
+      ],
+      "acceptanceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/release/release-env-lint.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/release/release-env-lint.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "release-env",
+          "track": "p0-release-env",
+          "owner": "release-infra",
+          "dispatchOwner": "release-infra",
+          "accepted": false,
+          "blocker": "release env file is not cutover-safe; blockers=34",
+          "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra"
+      ],
+      "dispatchOwners": [
+        "release-infra"
+      ],
+      "acceptanceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/rollback/rollback-drill.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "rollback",
+          "track": "p1-rollback",
+          "owner": "bounded-context owners",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        }
+      ],
+      "owners": [
+        "bounded-context owners"
+      ],
+      "dispatchOwners": [
+        "platform-owners"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ]
+    }
+  ],
+  "artifacts": [
+    {
+      "artifact": "tmp/ddd-explain/*.json",
+      "present": false,
+      "matches": [],
+      "matchCount": 0,
+      "gateCount": 2,
+      "gates": [
+        {
+          "gate": "explain",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        },
+        {
+          "gate": "migration",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        }
+      ],
+      "owners": [
+        "database"
+      ],
+      "dispatchOwners": [
+        "platform-owners"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+        "node scripts/ddd-collect-explain.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/ai/ai-runtime-drill.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/ai/ai-runtime-drill.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/build/docker-image-evidence.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/build/docker-image-evidence.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "docker-images",
+          "track": "p0-images",
+          "owner": "release-infra",
+          "dispatchOwner": "release-infra",
+          "accepted": false,
+          "blocker": "docker CLI is not available: spawnSync docker ENOENT",
+          "acceptanceCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
+        }
+      ],
+      "owners": [
+        "release-infra"
+      ],
+      "dispatchOwners": [
+        "release-infra"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-docker-build-evidence.mjs --check"
+      ],
+      "evidenceCommands": [
+        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/config/release-config-evidence.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/config/release-config-evidence.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "release-env",
+          "track": "p0-release-env",
+          "owner": "release-infra",
+          "dispatchOwner": "release-infra",
+          "accepted": false,
+          "blocker": "release env file is not cutover-safe; blockers=34",
+          "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra"
+      ],
+      "dispatchOwners": [
+        "release-infra"
+      ],
+      "acceptanceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/file/file-processing-e2e.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/file/file-processing-e2e.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/frontend/frontend-smoke.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/frontend/frontend-smoke.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/jobs/job-e2e-smoke.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/jobs/job-e2e-smoke.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/migration/migration-evidence.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/migration/migration-evidence.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 2,
+      "gates": [
+        {
+          "gate": "explain",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        },
+        {
+          "gate": "migration",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        }
+      ],
+      "owners": [
+        "database"
+      ],
+      "dispatchOwners": [
+        "platform-owners"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+        "node scripts/ddd-collect-explain.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/payment/payment-webhook-e2e.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/payment/payment-webhook-e2e.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/readiness/summary.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/readiness/summary.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "runtime-business",
+          "track": "p1-runtime-business",
+          "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
+          "dispatchOwner": "ai-owner",
+          "accepted": false,
+          "blocker": "LUMIRA_BASE_URL is required",
+          "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra, frontend, ai, file-owner, job-owner, payment-owner"
+      ],
+      "dispatchOwners": [
+        "ai-owner"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-ai-runtime-drill.mjs",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
+        "node scripts/ddd-frontend-playwright-smoke.mjs",
+        "node scripts/ddd-frontend-smoke-evidence.mjs",
+        "node scripts/ddd-job-e2e-smoke.mjs",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-runtime-readiness-smoke.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/release/explain-gate-report.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/release/explain-gate-report.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 2,
+      "gates": [
+        {
+          "gate": "explain",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        },
+        {
+          "gate": "migration",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        }
+      ],
+      "owners": [
+        "database"
+      ],
+      "dispatchOwners": [
+        "platform-owners"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+        "node scripts/ddd-collect-explain.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/release/readiness-summary.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/release/readiness-summary.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "release-env",
+          "track": "p0-release-env",
+          "owner": "release-infra",
+          "dispatchOwner": "release-infra",
+          "accepted": false,
+          "blocker": "release env file is not cutover-safe; blockers=34",
+          "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra"
+      ],
+      "dispatchOwners": [
+        "release-infra"
+      ],
+      "acceptanceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/release/release-env-lint.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/release/release-env-lint.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "release-env",
+          "track": "p0-release-env",
+          "owner": "release-infra",
+          "dispatchOwner": "release-infra",
+          "accepted": false,
+          "blocker": "release env file is not cutover-safe; blockers=34",
+          "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+        }
+      ],
+      "owners": [
+        "release-infra"
+      ],
+      "dispatchOwners": [
+        "release-infra"
+      ],
+      "acceptanceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs"
+      ]
+    },
+    {
+      "artifact": "artifacts/ddd/rollback/rollback-drill.json",
+      "present": true,
+      "matches": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "matchCount": 1,
+      "gateCount": 1,
+      "gates": [
+        {
+          "gate": "rollback",
+          "track": "p1-rollback",
+          "owner": "bounded-context owners",
+          "dispatchOwner": "platform-owners",
+          "accepted": false,
+          "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        }
+      ],
+      "owners": [
+        "bounded-context owners"
+      ],
+      "dispatchOwners": [
+        "platform-owners"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ]
+    }
+  ],
+  "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+}

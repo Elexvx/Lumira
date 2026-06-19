@@ -1,14 +1,14 @@
 # DDD Release Next Action Queue
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
 Cutover allowed: false
-Stop reasons: 7
+Stop reasons: 9
 releaseEnvFileCutoverSafe: false
-Run now: 5
-Waiting: 12
+Run now: 7
+Waiting: 11
 Owner input receipt status: PENDING_OWNER_INPUT
 Owner input receipt cutover ready: false
 Owner input receipt required inputs: 34
@@ -19,9 +19,9 @@ Owner input receipt pending owners: 5
 - finalRecommendation: NO_GO_STRICT
 - cutoverAllowed: false
 - releaseEnvFileCutoverSafe: false
-- gateBlockers: 0
-- blockedCutoverItems: 6
-- stopReasonCount: 7
+- gateBlockers: 94
+- blockedCutoverItems: 8
+- stopReasonCount: 9
 - stopReasonCoverage: catalog-snapshot
 - cutoverAuthority: final-go-no-go-gate
 - requiresFinalGate: true
@@ -33,10 +33,12 @@ Owner input receipt pending owners: 5
 - cutover checklist blocked: database-performance
 - cutover checklist blocked: deployable-images
 - cutover checklist blocked: evidence-integrity
+- cutover checklist blocked: production-equivalence
 - cutover checklist blocked: release-environment
 - cutover checklist blocked: rollback-safety
 - cutover checklist blocked: runtime-business-acceptance
-- strict release gate blockers=0
+- cutover checklist blocked: strict-release-gate
+- strict release gate blockers=94
 
 ## Owner Input Receipt
 
@@ -60,11 +62,11 @@ Owner input receipt pending owners: 5
 
 - Queue status: RUN_NOW
 - Receipt status: CONTENT_BLOCKED
-- Strict gate blockers: 0
-- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra
+- Strict gate blockers: 21
+- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra, p0-runtime-readiness-release-infra
 - Blocked batches: none
-- Next action: Replace every placeholder-like value (`<placeholder>`, `replace-with-*`, TODO/TBD, example domains) in `DDD_RELEASE_ENV_FILE` before running release evidence.
-- Reason: release-env-lint:release-env-lint-placeholders unresolvedTemplateKeys=93
+- Next action: Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.
+- Reason: strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence
 - Executable commands:
   - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
   - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
@@ -72,7 +74,76 @@ Owner input receipt pending owners: 5
   - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 - Env keys: AI_SERVICE_BASE_URL, AUTH_SERVICE_BASE_URL, BASE_URL, CORS_ALLOWED_ORIGIN_PATTERNS, DB_PASSWORD, DB_URL, DB_USERNAME, DDD_AUTH_PASSWORD, DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE, DDD_AUTH_PERF_ENVIRONMENT, DDD_AUTH_USERNAME, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DDD_DEPLOYMENT_EVIDENCE, DDD_EXPLAIN_DATABASE, DDD_FRONTEND_DEPLOYMENT_EVIDENCE, DDD_MIGRATION_COMPLETED_AT, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_OPERATOR, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED, FIELD_SECRET, FILE_SERVICE_BASE_URL, JOB_EXECUTOR_BASE_URL, JWT_SECRET, LOCALIZATION_SERVICE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN, LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL, LUMIRA_BASE_URL, MESSAGE_SERVICE_BASE_URL, MYSQL_DATABASE, MYSQL_HOST, MYSQL_PORT, PAYMENT_PUBLIC_BASE_URL, PAYMENT_SERVICE_BASE_URL, PLAYWRIGHT_BASE_URL, PLUGIN_SERVICE_BASE_URL, REDIS_HOST, SAAS_EVENT_REDIS_STREAM_KEY, SAAS_JOB_BACKEND_BASE_URL, SAAS_JOB_FILE_SERVICE_BASE_URL, SAAS_JOB_INTERNAL_TOKEN, SAAS_JOB_MESSAGE_SERVICE_BASE_URL, SAAS_JOB_PAYMENT_SERVICE_BASE_URL, SAAS_JOB_PLUGIN_SERVICE_BASE_URL, SYSTEM_SERVICE_BASE_URL, XXL_JOB_ACCESS_TOKEN, XXL_JOB_ADMIN_ADDRESSES
 
-## 2. platform-owners
+## 2. release-performance
+
+- Queue status: RUN_NOW
+- Receipt status: CONTENT_BLOCKED
+- Strict gate blockers: 13
+- Ready batches: p0-authenticated-performance-release-performance
+- Blocked batches: none
+- Next action: Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion.
+- Reason: strictGate=authenticated-performance-shape authenticated performance actual productionEquivalence.strict must be true for strict release evidence
+- Executable commands:
+  - `node scripts/ddd-authenticated-performance-smoke.mjs`
+  - `node scripts/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
+
+## 3. release-owner
+
+- Queue status: RUN_NOW
+- Receipt status: CONTENT_BLOCKED
+- Strict gate blockers: 13
+- Ready batches: p0-manifest-release-owner
+- Blocked batches: p3-orchestrator-release-owner
+- Next action: Inspect the strict release gate blocker and attach an owner-specific remediation.
+- Reason: strictGate=physical-split-readiness-freshness generatedAt is 46.7h old; limit=24h
+- Executable commands:
+  - `node scripts/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
+- Env keys: DDD_RELEASE_EVIDENCE_STRICT
+
+## 4. payment-owner
+
+- Queue status: RUN_NOW
+- Receipt status: CONTENT_BLOCKED
+- Strict gate blockers: 7
+- Ready batches: p0-release-config-payment-owner
+- Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
+- Next action: Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.
+- Reason: strictGate=payment-webhook-freshness finishedAt is 120.6h old; limit=24h
+- Executable commands:
+  - `node scripts/ddd-release-config-evidence.mjs`
+  - `DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
+- Env keys: PAYMENT_PUBLIC_BASE_URL
+
+## 5. platform-events
+
+- Queue status: RUN_NOW
+- Receipt status: CONTENT_BLOCKED
+- Strict gate blockers: 1
+- Ready batches: p0-release-config-platform-events
+- Blocked batches: none
+- Next action: Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.
+- Reason: strictGate=outbox-replay-dead-letter-freshness generatedAt is 80.6h old; limit=24h
+- Executable commands:
+  - `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs`
+  - `node scripts/ddd-release-config-evidence.mjs`
+  - `DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
+- Env keys: LUMIRA_EVENT_REDIS_STREAM_KEY, SAAS_EVENT_REDIS_STREAM_KEY
+
+## 6. platform-owners
 
 - Queue status: RUN_NOW
 - Receipt status: CONTENT_BLOCKED
@@ -89,24 +160,7 @@ Owner input receipt pending owners: 5
   - `DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 - Env keys: AI_SERVICE_BASE_URL, LUMIRA_AI_BASE_URL, LUMIRA_AI_SERVICE_BASE_URL
 
-## 3. platform-events
-
-- Queue status: RUN_NOW
-- Receipt status: CONTENT_BLOCKED
-- Strict gate blockers: 0
-- Ready batches: p0-release-config-platform-events
-- Blocked batches: none
-- Next action: Set SAAS_EVENT_REDIS_STREAM_KEY or LUMIRA_EVENT_REDIS_STREAM_KEY for event stream key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-- Reason: release-config:event stream key placeholder value is not allowed
-- Executable commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
-  - `DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
-- Env keys: LUMIRA_EVENT_REDIS_STREAM_KEY, SAAS_EVENT_REDIS_STREAM_KEY
-
-## 4. ai-owner
+## 7. ai-owner
 
 - Queue status: RUN_NOW
 - Receipt status: CONTENT_BLOCKED
@@ -123,87 +177,74 @@ Owner input receipt pending owners: 5
   - `DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 - Env keys: LUMIRA_AI_OWNER_FILE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL
 
-## 5. payment-owner
-
-- Queue status: RUN_NOW
-- Receipt status: CONTENT_BLOCKED
-- Strict gate blockers: 0
-- Ready batches: p0-release-config-payment-owner
-- Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
-- Next action: Set PAYMENT_PUBLIC_BASE_URL for payment public url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-- Reason: release-config:payment public url placeholder value is not allowed
-- Executable commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
-  - `DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
-- Env keys: PAYMENT_PUBLIC_BASE_URL
-
-## 6. database
-
-- Queue status: WAIT_FOR_DEPENDENCIES
-- Receipt status: ARTIFACT_MISSING
-- Strict gate blockers: 0
-- Ready batches: none
-- Blocked batches: p2-explain-database, p3-orchestrator-database
-- Next action: Produce missing artifact: tmp/ddd-explain/*.json
-- Reason: missingArtifact=tmp/ddd-explain/*.json
-- Executable commands:
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-- Env keys: DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED
-
-## 7. ai
+## 8. frontend
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
-- Strict gate blockers: 0
-- Ready batches: none
-- Blocked batches: p1-ai-runtime-ai
-- Next action: Configure and verify remote AI owner gateways for IAM/File/Platform integrations.
-- Reason: ai-runtime:ai-owner-gateway ownerGateway status=CONFIGURED configuredOwners=0
-- Env keys: DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE, LUMIRA_AI_OWNER_FILE_BASE_URL, LUMIRA_AI_OWNER_IAM_BASE_URL, LUMIRA_AI_OWNER_PLATFORM_BASE_URL
-
-## 8. file-owner
-
-- Queue status: WAIT_FOR_DEPENDENCIES
-- Receipt status: CONTENT_BLOCKED
-- Strict gate blockers: 0
-- Ready batches: none
-- Blocked batches: p1-business-e2e-file-owner, p1-rollback-file-owner
-- Next action: Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node scripts/ddd-file-processing-e2e-smoke.mjs`.
-- Reason: business-e2e:file-processing-production-equivalence strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080
-- Executable commands:
-  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
-- Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN, LUMIRA_UPLOAD_STORAGE_ROOT
-
-## 9. frontend
-
-- Queue status: WAIT_FOR_DEPENDENCIES
-- Receipt status: CONTENT_BLOCKED
-- Strict gate blockers: 0
+- Strict gate blockers: 12
 - Ready batches: none
 - Blocked batches: p1-frontend-smoke-frontend, p3-orchestrator-frontend
-- Next action: Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.
-- Reason: orchestrator:orchestrator-preflight-frontend-runtime-base-url missing deployed frontend base URL
+- Next action: Set deployed HTTPS `PLAYWRIGHT_BASE_URL` and `DDD_FRONTEND_EXPECT_DEPLOYED=true`, then rerun the strict release orchestrator/frontend smoke.
+- Reason: strictGate=release-evidence-orchestrator-preflight-frontend-runtime-base-url missing deployed frontend base URL
 - Executable commands:
   - `node scripts/ddd-release-evidence-orchestrator.mjs`
 - Env keys: FRONTEND_BASE_URL, PLAYWRIGHT_BASE_URL
 
-## 10. job-owner
+## 9. ai
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
-- Strict gate blockers: 0
+- Strict gate blockers: 10
+- Ready batches: none
+- Blocked batches: p1-ai-runtime-ai
+- Next action: Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node scripts/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime.
+- Reason: strictGate=ai-runtime-drill AI runtime productionEquivalence.strict must be true for strict release evidence
+- Executable commands:
+  - `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node scripts/ddd-ai-runtime-drill.mjs`
+- Env keys: DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE, LUMIRA_AI_OWNER_FILE_BASE_URL, LUMIRA_AI_OWNER_IAM_BASE_URL, LUMIRA_AI_OWNER_PLATFORM_BASE_URL
+
+## 10. file-owner
+
+- Queue status: WAIT_FOR_DEPENDENCIES
+- Receipt status: CONTENT_BLOCKED
+- Strict gate blockers: 7
+- Ready batches: none
+- Blocked batches: p1-business-e2e-file-owner, p1-rollback-file-owner
+- Next action: Regenerate File processing E2E evidence within the release freshness window against the production-equivalent environment.
+- Reason: strictGate=file-processing-freshness finishedAt is 120.7h old; limit=24h
+- Executable commands:
+  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
+- Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN, LUMIRA_UPLOAD_STORAGE_ROOT
+
+## 11. job-owner
+
+- Queue status: WAIT_FOR_DEPENDENCIES
+- Receipt status: CONTENT_BLOCKED
+- Strict gate blockers: 7
 - Ready batches: none
 - Blocked batches: p1-business-e2e-job-owner, p1-rollback-job-owner
-- Next action: Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token using `node scripts/ddd-job-e2e-smoke.mjs`.
-- Reason: business-e2e:job-e2e-production-equivalence strict job E2E requires HTTPS baseUrl evidence; strict job E2E requires non-local baseUrl, got http://127.0.0.1:8080
+- Next action: Regenerate Job E2E evidence within the release freshness window against the production-equivalent environment.
+- Reason: strictGate=job-e2e-freshness checkedAt is 120.4h old; limit=24h
 - Executable commands:
   - `node scripts/ddd-job-e2e-smoke.mjs`
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN
 
-## 11. auth-owner
+## 12. database
+
+- Queue status: WAIT_FOR_DEPENDENCIES
+- Receipt status: ARTIFACT_MISSING
+- Strict gate blockers: 3
+- Ready batches: none
+- Blocked batches: p2-explain-database, p3-orchestrator-database
+- Next action: Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.
+- Reason: strictGate=migration-evidence-freshness generatedAt is 46.7h old; limit=24h
+- Executable commands:
+  - `DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs`
+  - `node scripts/ddd-migration-evidence.mjs`
+  - `node scripts/ddd-release-evidence-orchestrator.mjs`
+- Env keys: DDD_EVIDENCE_OPERATOR, DDD_MIGRATION_COMPLETED_AT, DDD_MIGRATION_ENVIRONMENT, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_HANDOFF_FILE, DDD_MIGRATION_OPERATOR, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_RELEASE_CANDIDATE
+
+## 13. auth-owner
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
@@ -217,7 +258,7 @@ Owner input receipt pending owners: 5
   - `node scripts/ddd-rollback-drill-evidence.mjs`
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
 
-## 12. iam-owner
+## 14. iam-owner
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
@@ -231,7 +272,7 @@ Owner input receipt pending owners: 5
   - `node scripts/ddd-rollback-drill-evidence.mjs`
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
 
-## 13. localization-owner
+## 15. localization-owner
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
@@ -245,7 +286,7 @@ Owner input receipt pending owners: 5
   - `node scripts/ddd-rollback-drill-evidence.mjs`
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
 
-## 14. message-owner
+## 16. message-owner
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
@@ -259,7 +300,7 @@ Owner input receipt pending owners: 5
   - `node scripts/ddd-rollback-drill-evidence.mjs`
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
 
-## 15. platform-owner
+## 17. platform-owner
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
@@ -273,7 +314,7 @@ Owner input receipt pending owners: 5
   - `node scripts/ddd-rollback-drill-evidence.mjs`
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
 
-## 16. plugin-owner
+## 18. plugin-owner
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
@@ -286,17 +327,4 @@ Owner input receipt pending owners: 5
   - `node scripts/ddd-rollback-deferral-template.mjs`
   - `node scripts/ddd-rollback-drill-evidence.mjs`
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
-
-## 17. release-owner
-
-- Queue status: WAIT_FOR_DEPENDENCIES
-- Receipt status: CONTENT_BLOCKED
-- Strict gate blockers: 0
-- Ready batches: none
-- Blocked batches: p3-orchestrator-release-owner
-- Next action: Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.
-- Reason: orchestrator:orchestrator-run-mode strict release requires run mode report, got plan
-- Executable commands:
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-- Env keys: DDD_RELEASE_EVIDENCE_STRICT
 

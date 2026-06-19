@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Lumira DDD release execution commands.
-# Generated at: 2026-06-17T08:13:17.325Z
-# Status: ADVISORY
-# Release gate blockers: 0
+# Generated at: 2026-06-18T19:37:26.213Z
+# Status: NOT_READY
+# Release gate blockers: 94
 # This file contains command hints only. Provide a real DDD_RELEASE_ENV_FILE before running evidence commands.
 # Do not use release-env-missing.template.env as release evidence.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -15,6 +15,7 @@ if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
   fi
 fi
+export LUMIRA_REPO_ROOT
 cd "${LUMIRA_REPO_ROOT}"
 
 if [[ "${DDD_RELEASE_LIST_BATCHES:-}" == "1" || "${DDD_RELEASE_LIST_BATCHES:-}" == "true" ]]; then
@@ -46,6 +47,18 @@ if [[ "${DDD_RELEASE_LIST_BATCHES:-}" == "1" || "${DDD_RELEASE_LIST_BATCHES:-}" 
   fi
   if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-docker-release-infra' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'release-infra' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
     echo 'p0-docker-release-infra P0 docker->release-infra owner=release-infra priority=P0'
+    DDD_RELEASE_LIST_MATCHED=1
+  fi
+  if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-runtime-readiness-release-infra' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'release-infra' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
+    echo 'p0-runtime-readiness-release-infra P0 runtime-readiness->release-infra owner=release-infra priority=P0'
+    DDD_RELEASE_LIST_MATCHED=1
+  fi
+  if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-manifest-release-owner' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'release-owner' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
+    echo 'p0-manifest-release-owner P0 manifest->release-owner owner=release-owner priority=P0'
+    DDD_RELEASE_LIST_MATCHED=1
+  fi
+  if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-authenticated-performance-release-performance' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'release-performance' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
+    echo 'p0-authenticated-performance-release-performance P0 authenticated-performance->release-performance owner=release-performance priority=P0'
     DDD_RELEASE_LIST_MATCHED=1
   fi
   if [[ "${DDD_RELEASE_LIST_MATCHED}" != "1" ]]; then
@@ -85,15 +98,16 @@ if [[ "${DDD_RELEASE_NEEDS_ENV}" == "1" ]]; then
     echo "Template env files are worksheets, not release evidence: ${DDD_RELEASE_ENV_FILE}" >&2
     exit 1
   fi
-  DDD_RELEASE_ENV_FILE_MODE=$(node -e "const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));" "${DDD_RELEASE_ENV_FILE}")
+  DDD_RELEASE_ENV_FILE_MODE=$(stat -c '%a' "${DDD_RELEASE_ENV_FILE}" 2>/dev/null || node -e "const fs=require('node:fs'); const mode=fs.statSync(process.argv[1]).mode & 0o777; console.log(mode.toString(8).padStart(3, '0'));" "${DDD_RELEASE_ENV_FILE}")
   if (( 8#${DDD_RELEASE_ENV_FILE_MODE} & 077 )); then
     echo "Release env file permissions are too broad: ${DDD_RELEASE_ENV_FILE} mode=${DDD_RELEASE_ENV_FILE_MODE}; use chmod 600." >&2
     exit 1
   fi
+  export DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED=1
 fi
 safe_load_release_env_file() {
   local exports
-  if ! exports=$(node --input-type=module -e 'import fs from '\''node:fs'\''; import path from '\''node:path'\''; const [file] = process.argv.slice(1); const templateNames = new Set(['\''release-env-missing.template.env'\'', '\''release-closure-wave-env.template.env'\'', '\''release-final-owner-queue-env.template.env'\'', '\''release-env-canonical-fill.template.env'\'']); if (templateNames.has(path.basename(file))) {   console.error(`[ddd-release-env][template-refused] file=${file}`);   process.exit(1); } const mode = fs.statSync(file).mode & 0o777; if ((mode & 0o077) !== 0) {   console.error(`[ddd-release-env][permission-refused] file=${file} mode=${mode.toString(8).padStart(3, '\''0'\'')} required=600`);   process.exit(1); } const text = fs.readFileSync(file, '\''utf8'\''); const quote = (value) => `'\''${String(value).replace(/'\''/g, `'\''\\'\'''\''`)}'\''`; let lineNumber = 0; for (const line of text.split(/\r?\n/)) {   lineNumber += 1;   const trimmed = line.trim();   if (!trimmed || trimmed.startsWith('\''#'\'')) continue;   const match = trimmed.match(/^(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/);   if (!match) {     console.error(`[ddd-release-env][env-invalid] line=${lineNumber}`);     process.exit(1);   }   let value = match[2].trim();   const quoted = value.match(/^(['\''\"])(.*)\1$/s);   if (quoted) value = quoted[2];   console.log(`export ${match[1]}=${quote(value)}`); }' "$DDD_RELEASE_ENV_FILE"); then
+  if ! exports=$(node --input-type=module -e 'import fs from '\''node:fs'\''; import path from '\''node:path'\''; const [file, permissionCheckedArg] = process.argv.slice(1); const templateNames = new Set(['\''release-env-missing.template.env'\'', '\''release-closure-wave-env.template.env'\'', '\''release-final-owner-queue-env.template.env'\'', '\''release-env-canonical-fill.template.env'\'']); if (templateNames.has(path.basename(file))) {   console.error(`[ddd-release-env][template-refused] file=${file}`);   process.exit(1); } const permissionAlreadyChecked = permissionCheckedArg === '\''1'\'' || permissionCheckedArg === '\''true'\'' || process.env.DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED === '\''1'\'' || process.env.DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED === '\''true'\''; const mode = permissionAlreadyChecked ? 0o600 : fs.statSync(file).mode & 0o777; if (!permissionAlreadyChecked && (mode & 0o077) !== 0) {   console.error(`[ddd-release-env][permission-refused] file=${file} mode=${mode.toString(8).padStart(3, '\''0'\'')} required=600`);   process.exit(1); } const text = fs.readFileSync(file, '\''utf8'\''); const quote = (value) => `'\''${String(value).replace(/'\''/g, `'\''\\'\'''\''`)}'\''`; let lineNumber = 0; for (const line of text.split(/\r?\n/)) {   lineNumber += 1;   const trimmed = line.trim();   if (!trimmed || trimmed.startsWith('\''#'\'')) continue;   const match = trimmed.match(/^(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/);   if (!match) {     console.error(`[ddd-release-env][env-invalid] line=${lineNumber}`);     process.exit(1);   }   let value = match[2].trim();   const quoted = value.match(/^(['\''\"])(.*)\1$/s);   if (quoted) value = quoted[2];   console.log(`export ${match[1]}=${quote(value)}`); }' "$DDD_RELEASE_ENV_FILE" "${DDD_RELEASE_ENV_FILE_PERMISSION_CHECKED:-}"); then
     return 1
   fi
   eval "${exports}"
@@ -314,6 +328,53 @@ if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "$
 # - Clear this batch before running downstream runtime-heavy evidence.
 run_command 'p0-docker-release-infra' 'release-infra' 'P0' 'DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
 run_command 'p0-docker-release-infra' 'release-infra' 'P0' 'node scripts/ddd-docker-build-evidence.mjs'
+fi
+
+run_batch 'p0-runtime-readiness-release-infra' 'release-infra' 'P0'
+if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "${DDD_RELEASE_BATCH}" == 'p0-runtime-readiness-release-infra' ) && ( -z "${DDD_RELEASE_OWNER}" || "${DDD_RELEASE_OWNER}" == 'release-infra' ) && ( -z "${DDD_RELEASE_PRIORITY}" || "${DDD_RELEASE_PRIORITY}" == 'P0' ) ]]; then
+# -----
+# p0-runtime-readiness-release-infra: P0 runtime-readiness -> release-infra
+# Pending items: 4
+# Expected artifacts: artifacts/ddd/readiness/summary.json
+# Env keys: DDD_EVIDENCE_ENVIRONMENT; DDD_EVIDENCE_OPERATOR; DDD_RELEASE_CANDIDATE; LUMIRA_BASE_URL
+  print_missing_env_groups 'p0-runtime-readiness-release-infra' 'DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE' 'LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL'
+# Exit criteria:
+# - Runtime readiness is generated from an HTTPS non-local backend base URL.
+# - All 30 owner readiness/health/metrics checks pass.
+# - Clear this batch before running downstream runtime-heavy evidence.
+run_command 'p0-runtime-readiness-release-infra' 'release-infra' 'P0' 'node scripts/ddd-runtime-readiness-smoke.mjs'
+fi
+
+run_batch 'p0-manifest-release-owner' 'release-owner' 'P0'
+if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "${DDD_RELEASE_BATCH}" == 'p0-manifest-release-owner' ) && ( -z "${DDD_RELEASE_OWNER}" || "${DDD_RELEASE_OWNER}" == 'release-owner' ) && ( -z "${DDD_RELEASE_PRIORITY}" || "${DDD_RELEASE_PRIORITY}" == 'P0' ) ]]; then
+# -----
+# p0-manifest-release-owner: P0 manifest -> release-owner
+# Pending items: 1
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+# Env keys: DDD_EVIDENCE_ENVIRONMENT; DDD_EVIDENCE_OPERATOR; DDD_RELEASE_CANDIDATE; DDD_RELEASE_MANIFEST_STRICT
+  print_missing_env_groups 'p0-manifest-release-owner' 'DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT'
+# Exit criteria:
+# - All required release evidence artifacts are present and checksummed.
+# - Clear this batch before running downstream runtime-heavy evidence.
+run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
+run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'node scripts/ddd-promote-performance-baseline.mjs'
+run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
+fi
+
+run_batch 'p0-authenticated-performance-release-performance' 'release-performance' 'P0'
+if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "${DDD_RELEASE_BATCH}" == 'p0-authenticated-performance-release-performance' ) && ( -z "${DDD_RELEASE_OWNER}" || "${DDD_RELEASE_OWNER}" == 'release-performance' ) && ( -z "${DDD_RELEASE_PRIORITY}" || "${DDD_RELEASE_PRIORITY}" == 'P0' ) ]]; then
+# -----
+# p0-authenticated-performance-release-performance: P0 authenticated-performance -> release-performance
+# Pending items: 9
+# Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json; artifacts/ddd/performance/authenticated-runtime-baseline.json; artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json
+# Env keys: DDD_AUTH_PERF_BASELINE_ACCEPTED_BY; DDD_AUTH_PERF_BASELINE_ENVIRONMENT; DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT; DDD_RELEASE_CANDIDATE
+  print_missing_env_groups 'p0-authenticated-performance-release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE'
+# Exit criteria:
+# - Authenticated performance actual is generated from a production-equivalent HTTPS backend.
+# - Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.
+# - Clear this batch before running downstream runtime-heavy evidence.
+run_command 'p0-authenticated-performance-release-performance' 'release-performance' 'P0' 'node scripts/ddd-authenticated-performance-smoke.mjs'
+run_command 'p0-authenticated-performance-release-performance' 'release-performance' 'P0' 'node scripts/ddd-promote-performance-baseline.mjs'
 fi
 
 if [[ -n "${DDD_RELEASE_BATCH}" && "${DDD_RELEASE_BATCH_MATCHED}" != "1" ]]; then

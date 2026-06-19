@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-17T08:00:49.110Z",
+  "generatedAt": "2026-06-18T19:29:09.638Z",
   "status": "PENDING_OWNER_INPUT",
   "redacted": true,
   "contract": "ddd-release-owner-input-receipt",
@@ -20,7 +20,7 @@
     "cutoverReady": false
   },
   "observed": {
-    "releaseEnvReadinessStatus": "ADVISORY",
+    "releaseEnvReadinessStatus": "NOT_READY",
     "releaseEnvReadinessBlockers": 34,
     "releaseEnvReadinessPlaceholders": 34,
     "releaseEnvReadinessMissing": 0,
@@ -30,7 +30,7 @@
   "criteria": {
     "releaseEnvReadinessStatus": {
       "expected": "PASS",
-      "actual": "ADVISORY",
+      "actual": "NOT_READY",
       "met": false
     },
     "releaseEnvReadinessBlockers": {

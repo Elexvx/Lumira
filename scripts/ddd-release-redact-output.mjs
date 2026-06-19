@@ -12,7 +12,9 @@ export function redactReleaseOutput(text = "") {
     .replace(/\b([A-Z][A-Z0-9_]*(?:TOKEN|SECRET|PASSWORD|API_KEY))=("[^"]*"|'[^']*'|[^\s`|]+)/g, "$1=<redacted>")
     .replace(/\bDDD_RELEASE_ENV_FILE=(?!<release-env-file>)[^\s`|]+/g, "DDD_RELEASE_ENV_FILE=<release-env-file>")
     .replace(/(?:<repo>|\/[^\s`|]+)?\/?\.env\.release[^\s`|]*/g, "<release-env-file>")
-    .replace(repoRootPattern, "<repo>/");
+    .replace(repoRootPattern, "<repo>/")
+    .replaceAll("\\", "/")
+    .replaceAll("<repo>/<release-env-file>", "<release-env-file>");
 }
 
 function main() {

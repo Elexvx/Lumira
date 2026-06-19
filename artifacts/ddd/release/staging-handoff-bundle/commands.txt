@@ -1,0 +1,119 @@
+node scripts/ddd-production-readiness-preflight.mjs --quick --no-report --list
+node scripts/ddd-production-readiness-preflight.mjs --quick --no-report
+node scripts/ddd-staging-execution-checklist.mjs --dispatch-check
+node scripts/ddd-staging-execution-checklist.mjs --rollup
+node scripts/ddd-staging-execution-checklist.mjs --rollup-markdown
+node scripts/ddd-staging-execution-checklist.mjs --rollup-enforce
+node scripts/ddd-staging-execution-checklist.mjs --evidence-gaps
+node scripts/ddd-staging-execution-checklist.mjs --evidence-runbook
+node scripts/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown
+node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance
+node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance-markdown
+node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report
+node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown
+node scripts/ddd-staging-execution-checklist.mjs --explain-artifact-plan
+node scripts/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --closure-plan
+node scripts/ddd-staging-execution-checklist.mjs --closure-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --next-action-queue
+node scripts/ddd-staging-execution-checklist.mjs --next-action-queue-markdown
+node scripts/ddd-staging-execution-checklist.mjs --owner-lane-matrix
+node scripts/ddd-staging-execution-checklist.mjs --owner-lane-matrix-markdown
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board
+node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown
+node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv
+node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-fragments
+node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown
+node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-draft
+node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown
+node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake
+node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --next-action-env-template
+node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>
+node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file>
+node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>
+node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --next-action-verification-plan
+node scripts/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --release-env-plan
+node scripts/ddd-staging-execution-checklist.mjs --release-env-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix
+node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown
+node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template
+node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan
+node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan
+node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan
+node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan
+node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --runtime-business-plan
+node scripts/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --runtime-smoke-plan
+node scripts/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan
+node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --data-safety-plan
+node scripts/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --data-safety-owner-plan
+node scripts/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan
+node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan
+node scripts/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs
+node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown
+node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template
+node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan
+node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs
+node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command
+node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>
+node scripts/ddd-staging-execution-checklist.mjs --execution-status
+node scripts/ddd-staging-execution-checklist.mjs --execution-status-markdown
+node scripts/ddd-staging-execution-checklist.mjs --handoff-summary-markdown
+node scripts/ddd-staging-execution-checklist.mjs --final-review
+node scripts/ddd-staging-execution-checklist.mjs --final-review-markdown
+node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce
+node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout
+node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown
+node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status
+node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown
+node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit
+node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown
+node scripts/ddd-staging-execution-checklist.mjs --operator-progress
+node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown
+node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>
+node scripts/ddd-staging-execution-checklist.mjs --release-owner-daily-brief
+node scripts/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown
+node scripts/ddd-staging-execution-checklist.mjs --evidence-env-template
+node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle
+node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify
+node scripts/ddd-release-env-init.mjs --check
+node scripts/ddd-release-env-init.mjs
+node scripts/ddd-docker-build-evidence.mjs --check
+node scripts/ddd-staging-runtime-check.mjs
+node scripts/ddd-staging-data-safety-check.mjs
+node scripts/ddd-staging-execution-checklist.mjs --list-owners
+node scripts/ddd-staging-execution-checklist.mjs --owner-packets
+DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs
+DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs
+DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh

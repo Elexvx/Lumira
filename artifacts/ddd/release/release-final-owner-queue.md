@@ -1,15 +1,15 @@
 # DDD Final Owner Queue
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Recommendation: NO_GO_STRICT
 Cutover allowed: false
 No auto waivers: true
 Owners: 18
-Actionable owners: 5
-Waiting owners: 13
-Unique missing artifacts: 15
-Unique content blockers: 0
+Actionable owners: 7
+Waiting owners: 11
+Unique missing artifacts: 20
+Unique content blockers: 1
 Owner input receipt status: PENDING_OWNER_INPUT
 Owner input receipt cutover ready: false
 Owner input receipt required inputs: 34
@@ -27,14 +27,15 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Queue order: 1
 - First command: `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - Release env file required: true
-- Env keys: 68
-- Missing artifacts: 3
+- Env keys: 71
+- Missing artifacts: 4
 - Commands:
   - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
   - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
   - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-docker-build-evidence.mjs`
+  - `node scripts/ddd-runtime-readiness-smoke.mjs`
   - `node scripts/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
@@ -72,15 +73,15 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Execution order hint: 1
 - Queue status: ACTIONABLE
 - Can execute: true
-- Cutover items: deployable-images, release-environment
-- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra
+- Cutover items: deployable-images, production-equivalence, release-environment, strict-release-gate
+- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra, p0-runtime-readiness-release-infra
 - Blocked batches: none
-- Closure waves: 1, 6, 7
-- Commands: 7
-- Env keys: 68
-- Missing artifacts: 3
+- Closure waves: 1, 6, 7, 8
+- Commands: 8
+- Env keys: 71
+- Missing artifacts: 4
 - Content blockers: 0
-- Stop reasons: 2
+- Stop reasons: 4
 - First command: `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - Env key names:
   - `AI_SERVICE_BASE_URL`
@@ -101,6 +102,8 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
   - `DDD_DEPLOYMENT_EVIDENCE`
   - `DDD_DOCKER_BUILD_STRICT`
   - `DDD_DOCKER_COMMAND`
+  - `DDD_EVIDENCE_ENVIRONMENT`
+  - `DDD_EVIDENCE_OPERATOR`
   - `DDD_EXPLAIN_DATABASE`
   - `DDD_FRONTEND_DEPLOYMENT_EVIDENCE`
   - `DDD_MIGRATION_COMPLETED_AT`
@@ -109,6 +112,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
   - `DDD_MIGRATION_OPERATOR`
   - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
   - `DDD_MIGRATION_UPGRADE_DB_VALIDATED`
+  - `DDD_RELEASE_CANDIDATE`
   - `DEPLOY_CHECK_BASE_URL`
   - `FIELD_SECRET`
   - `FILE_SERVICE_BASE_URL`
@@ -154,6 +158,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Missing artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/config/release-config-evidence.json`
+  - `artifacts/ddd/readiness/summary.json`
   - `artifacts/ddd/release/release-env-lint.json`
 - Rerun commands:
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
@@ -168,7 +173,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Execution order hint: 2
 - Queue status: ACTIONABLE
 - Can execute: true
-- Cutover items: release-environment, rollback-safety
+- Cutover items: release-environment, rollback-safety, strict-release-gate
 - Ready batches: p0-release-config-ai-owner
 - Blocked batches: p1-rollback-ai-owner
 - Closure waves: 2
@@ -176,7 +181,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 21
 - Missing artifacts: 2
 - Content blockers: 0
-- Stop reasons: 2
+- Stop reasons: 3
 - First command: `node scripts/ddd-release-config-evidence.mjs`
 - Env key names:
   - `DDD_EVIDENCE_ENVIRONMENT`
@@ -216,7 +221,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Execution order hint: 3
 - Queue status: ACTIONABLE
 - Can execute: true
-- Cutover items: release-environment, rollback-safety, runtime-business-acceptance
+- Cutover items: release-environment, rollback-safety, runtime-business-acceptance, strict-release-gate
 - Ready batches: p0-release-config-payment-owner
 - Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
 - Closure waves: 3
@@ -224,7 +229,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 13
 - Missing artifacts: 3
 - Content blockers: 0
-- Stop reasons: 3
+- Stop reasons: 4
 - First command: `node scripts/ddd-release-config-evidence.mjs`
 - Env key names:
   - `BASE_URL`
@@ -257,7 +262,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Execution order hint: 4
 - Queue status: ACTIONABLE
 - Can execute: true
-- Cutover items: release-environment
+- Cutover items: release-environment, strict-release-gate
 - Ready batches: p0-release-config-platform-events
 - Blocked batches: none
 - Closure waves: 4
@@ -265,7 +270,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 20
 - Missing artifacts: 1
 - Content blockers: 0
-- Stop reasons: 1
+- Stop reasons: 2
 - First command: `node scripts/ddd-release-config-evidence.mjs`
 - Env key names:
   - `DDD_JOB_INTERNAL_TOKEN`
@@ -303,7 +308,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Execution order hint: 5
 - Queue status: ACTIONABLE
 - Can execute: true
-- Cutover items: release-environment
+- Cutover items: release-environment, strict-release-gate
 - Ready batches: p0-release-config-platform-owners
 - Blocked batches: none
 - Closure waves: 5
@@ -311,7 +316,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 19
 - Missing artifacts: 1
 - Content blockers: 0
-- Stop reasons: 1
+- Stop reasons: 2
 - First command: `node scripts/ddd-release-config-evidence.mjs`
 - Env key names:
   - `AI_SERVICE_BASE_URL`
@@ -342,13 +347,89 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
   - `node scripts/ddd-release-evidence-gate.mjs`
   - `node scripts/ddd-release-readiness-summary.mjs`
 
-## ai
+## release-owner
 
 - Queue order: 6
+- Execution order hint: 9
+- Queue status: ACTIONABLE
+- Can execute: true
+- Cutover items: evidence-integrity, strict-release-gate
+- Ready batches: p0-manifest-release-owner
+- Blocked batches: p3-orchestrator-release-owner
+- Closure waves: 9
+- Commands: 7
+- Env keys: 5
+- Missing artifacts: 4
+- Content blockers: 1
+- Stop reasons: 4
+- First command: `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
+- Env key names:
+  - `DDD_EVIDENCE_ENVIRONMENT`
+  - `DDD_EVIDENCE_OPERATOR`
+  - `DDD_RELEASE_CANDIDATE`
+  - `DDD_RELEASE_EVIDENCE_STRICT`
+  - `DDD_RELEASE_MANIFEST_STRICT`
+- Missing artifacts:
+  - `artifacts/ddd/release/evidence-manifest.json`
+  - `artifacts/ddd/release/orchestrator-report.json`
+  - `artifacts/ddd/release/readiness-summary.json`
+  - `artifacts/ddd/release/release-evidence-gate.json`
+- Content blockers:
+  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\ddd-explain
+- Rerun commands:
+  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
+  - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`
+  - `bash artifacts/ddd/release/release-preflight-gate.sh`
+  - `node scripts/ddd-release-evidence-gate.mjs`
+  - `node scripts/ddd-release-readiness-summary.mjs`
+
+## release-performance
+
+- Queue order: 7
+- Execution order hint: 10
+- Queue status: ACTIONABLE
+- Can execute: true
+- Cutover items: production-equivalence, strict-release-gate
+- Ready batches: p0-authenticated-performance-release-performance
+- Blocked batches: none
+- Closure waves: 10
+- Commands: 9
+- Env keys: 12
+- Missing artifacts: 3
+- Content blockers: 0
+- Stop reasons: 12
+- First command: `node scripts/ddd-authenticated-performance-smoke.mjs`
+- Env key names:
+  - `BASE_URL`
+  - `DDD_AUTH_PASSWORD`
+  - `DDD_AUTH_PERF_BASELINE_ACCEPTED_BY`
+  - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
+  - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
+  - `DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE`
+  - `DDD_AUTH_PERF_ENVIRONMENT`
+  - `DDD_AUTH_USERNAME`
+  - `DDD_EVIDENCE_OPERATOR`
+  - `DDD_RELEASE_CANDIDATE`
+  - `DEPLOY_CHECK_BASE_URL`
+  - `LUMIRA_BASE_URL`
+- Missing artifacts:
+  - `artifacts/ddd/performance/authenticated-runtime-actual.json`
+  - `artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json`
+  - `artifacts/ddd/performance/authenticated-runtime-baseline.json`
+- Rerun commands:
+  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
+  - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`
+  - `bash artifacts/ddd/release/release-preflight-gate.sh`
+  - `node scripts/ddd-release-evidence-gate.mjs`
+  - `node scripts/ddd-release-readiness-summary.mjs`
+
+## ai
+
+- Queue order: 8
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: runtime-business-acceptance
+- Cutover items: runtime-business-acceptance, strict-release-gate
 - Ready batches: none
 - Blocked batches: p1-ai-runtime-ai
 - Closure waves: none
@@ -356,7 +437,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 12
 - Missing artifacts: 1
 - Content blockers: 0
-- Stop reasons: 1
+- Stop reasons: 2
 - First command: `node scripts/ddd-ai-runtime-drill.mjs`
 - Env key names:
   - `BASE_URL`
@@ -382,11 +463,11 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## auth-owner
 
-- Queue order: 7
+- Queue order: 9
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: rollback-safety
+- Cutover items: rollback-safety, strict-release-gate
 - Ready batches: none
 - Blocked batches: p1-rollback-auth-owner
 - Closure waves: none
@@ -394,7 +475,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 8
 - Missing artifacts: 1
 - Content blockers: 0
-- Stop reasons: 1
+- Stop reasons: 2
 - First command: `node scripts/ddd-rollback-deferral-template.mjs`
 - Env key names:
   - `DDD_EVIDENCE_ENVIRONMENT`
@@ -416,11 +497,11 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## database
 
-- Queue order: 8
+- Queue order: 10
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: database-performance, evidence-integrity
+- Cutover items: database-performance, evidence-integrity, strict-release-gate
 - Ready batches: none
 - Blocked batches: p2-explain-database, p3-orchestrator-database
 - Closure waves: none
@@ -428,7 +509,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 16
 - Missing artifacts: 5
 - Content blockers: 0
-- Stop reasons: 2
+- Stop reasons: 3
 - First command: `node scripts/ddd-collect-explain.mjs`
 - Env key names:
   - `DDD_EVIDENCE_OPERATOR`
@@ -462,11 +543,11 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## file-owner
 
-- Queue order: 9
+- Queue order: 11
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: rollback-safety, runtime-business-acceptance
+- Cutover items: rollback-safety, runtime-business-acceptance, strict-release-gate
 - Ready batches: none
 - Blocked batches: p1-business-e2e-file-owner, p1-rollback-file-owner
 - Closure waves: none
@@ -474,7 +555,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 14
 - Missing artifacts: 2
 - Content blockers: 0
-- Stop reasons: 2
+- Stop reasons: 3
 - First command: `node scripts/ddd-file-processing-e2e-smoke.mjs`
 - Env key names:
   - `BASE_URL`
@@ -503,11 +584,11 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## frontend
 
-- Queue order: 10
+- Queue order: 12
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: evidence-integrity, runtime-business-acceptance
+- Cutover items: evidence-integrity, runtime-business-acceptance, strict-release-gate
 - Ready batches: none
 - Blocked batches: p1-frontend-smoke-frontend, p3-orchestrator-frontend
 - Closure waves: none
@@ -515,7 +596,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 3
 - Missing artifacts: 5
 - Content blockers: 0
-- Stop reasons: 2
+- Stop reasons: 3
 - First command: `node scripts/ddd-frontend-playwright-smoke.mjs`
 - Env key names:
   - `DDD_FRONTEND_EXPECT_DEPLOYED`
@@ -536,11 +617,11 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## iam-owner
 
-- Queue order: 11
+- Queue order: 13
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: rollback-safety
+- Cutover items: rollback-safety, strict-release-gate
 - Ready batches: none
 - Blocked batches: p1-rollback-iam-owner
 - Closure waves: none
@@ -548,7 +629,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 8
 - Missing artifacts: 1
 - Content blockers: 0
-- Stop reasons: 1
+- Stop reasons: 2
 - First command: `node scripts/ddd-rollback-deferral-template.mjs`
 - Env key names:
   - `DDD_EVIDENCE_ENVIRONMENT`
@@ -570,11 +651,11 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## job-owner
 
-- Queue order: 12
+- Queue order: 14
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: rollback-safety, runtime-business-acceptance
+- Cutover items: rollback-safety, runtime-business-acceptance, strict-release-gate
 - Ready batches: none
 - Blocked batches: p1-business-e2e-job-owner, p1-rollback-job-owner
 - Closure waves: none
@@ -582,7 +663,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 13
 - Missing artifacts: 2
 - Content blockers: 0
-- Stop reasons: 2
+- Stop reasons: 3
 - First command: `node scripts/ddd-job-e2e-smoke.mjs`
 - Env key names:
   - `BASE_URL`
@@ -610,11 +691,11 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## localization-owner
 
-- Queue order: 13
+- Queue order: 15
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: rollback-safety
+- Cutover items: rollback-safety, strict-release-gate
 - Ready batches: none
 - Blocked batches: p1-rollback-localization-owner
 - Closure waves: none
@@ -622,7 +703,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 8
 - Missing artifacts: 1
 - Content blockers: 0
-- Stop reasons: 1
+- Stop reasons: 2
 - First command: `node scripts/ddd-rollback-deferral-template.mjs`
 - Env key names:
   - `DDD_EVIDENCE_ENVIRONMENT`
@@ -644,11 +725,11 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## message-owner
 
-- Queue order: 14
+- Queue order: 16
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: rollback-safety
+- Cutover items: rollback-safety, strict-release-gate
 - Ready batches: none
 - Blocked batches: p1-rollback-message-owner
 - Closure waves: none
@@ -656,7 +737,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 8
 - Missing artifacts: 1
 - Content blockers: 0
-- Stop reasons: 1
+- Stop reasons: 2
 - First command: `node scripts/ddd-rollback-deferral-template.mjs`
 - Env key names:
   - `DDD_EVIDENCE_ENVIRONMENT`
@@ -678,11 +759,11 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## platform-owner
 
-- Queue order: 15
+- Queue order: 17
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: rollback-safety
+- Cutover items: rollback-safety, strict-release-gate
 - Ready batches: none
 - Blocked batches: p1-rollback-platform-owner
 - Closure waves: none
@@ -690,7 +771,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 8
 - Missing artifacts: 1
 - Content blockers: 0
-- Stop reasons: 1
+- Stop reasons: 2
 - First command: `node scripts/ddd-rollback-deferral-template.mjs`
 - Env key names:
   - `DDD_EVIDENCE_ENVIRONMENT`
@@ -712,11 +793,11 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## plugin-owner
 
-- Queue order: 16
+- Queue order: 18
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
-- Cutover items: rollback-safety
+- Cutover items: rollback-safety, strict-release-gate
 - Ready batches: none
 - Blocked batches: p1-rollback-plugin-owner
 - Closure waves: none
@@ -724,7 +805,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Env keys: 8
 - Missing artifacts: 1
 - Content blockers: 0
-- Stop reasons: 1
+- Stop reasons: 2
 - First command: `node scripts/ddd-rollback-deferral-template.mjs`
 - Env key names:
   - `DDD_EVIDENCE_ENVIRONMENT`
@@ -737,71 +818,6 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
   - `DDD_ROLLBACK_DRILL_STRICT`
 - Missing artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
-- Rerun commands:
-  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
-  - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`
-  - `bash artifacts/ddd/release/release-preflight-gate.sh`
-  - `node scripts/ddd-release-evidence-gate.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
-
-## release-owner
-
-- Queue order: 17
-- Execution order hint: none
-- Queue status: WAITING
-- Can execute: false
-- Cutover items: evidence-integrity
-- Ready batches: none
-- Blocked batches: p3-orchestrator-release-owner
-- Closure waves: none
-- Commands: 2
-- Env keys: 1
-- Missing artifacts: 3
-- Content blockers: 0
-- Stop reasons: 1
-- First command: `node scripts/ddd-release-evidence-orchestrator.mjs`
-- Env key names:
-  - `DDD_RELEASE_EVIDENCE_STRICT`
-- Missing artifacts:
-  - `artifacts/ddd/release/orchestrator-report.json`
-  - `artifacts/ddd/release/readiness-summary.json`
-  - `artifacts/ddd/release/release-evidence-gate.json`
-- Rerun commands:
-  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
-  - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`
-  - `bash artifacts/ddd/release/release-preflight-gate.sh`
-  - `node scripts/ddd-release-evidence-gate.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
-
-## release-performance
-
-- Queue order: 18
-- Execution order hint: none
-- Queue status: WAITING
-- Can execute: false
-- Cutover items: none
-- Ready batches: none
-- Blocked batches: none
-- Closure waves: none
-- Commands: 8
-- Env keys: 12
-- Missing artifacts: 0
-- Content blockers: 0
-- Stop reasons: 1
-- First command: `DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh`
-- Env key names:
-  - `BASE_URL`
-  - `DDD_AUTH_PASSWORD`
-  - `DDD_AUTH_PERF_BASELINE_ACCEPTED_BY`
-  - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
-  - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
-  - `DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE`
-  - `DDD_AUTH_PERF_ENVIRONMENT`
-  - `DDD_AUTH_USERNAME`
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_RELEASE_CANDIDATE`
-  - `DEPLOY_CHECK_BASE_URL`
-  - `LUMIRA_BASE_URL`
 - Rerun commands:
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
   - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`

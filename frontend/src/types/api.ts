@@ -1333,15 +1333,54 @@ export interface PlatformUpdateLatestVersion {
   releasedAt?: string | null;
   title?: string | null;
   url?: string | null;
+  serverImage?: string | null;
+  frontendImage?: string | null;
+  migrationRequired?: boolean | null;
+  rollbackSupported?: boolean | null;
+}
+
+export interface PlatformUpdateManifest {
+  app?: string | null;
+  channel?: string | null;
+  minVersion?: string | null;
+  serverImage?: string | null;
+  frontendImage?: string | null;
+  migrationRequired?: boolean | null;
+  rollbackSupported?: boolean | null;
+  releaseNotes?: string | null;
+}
+
+export interface PlatformUpdateTask {
+  id: number;
+  taskType?: string | null;
+  status?: string | null;
+  targetVersion?: string | null;
+  targetCommit?: string | null;
+  serverImage?: string | null;
+  frontendImage?: string | null;
+  updaterTaskId?: string | null;
+  backupPath?: string | null;
+  logSummary?: string | null;
+  errorMessage?: string | null;
+  createdBy?: number | null;
+  createdByName?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface PlatformUpdateStatus {
   current?: PlatformUpdateCurrentVersion | null;
   latest?: PlatformUpdateLatestVersion | null;
+  manifest?: PlatformUpdateManifest | null;
+  activeTask?: PlatformUpdateTask | null;
   updateAvailable?: boolean;
   status?: 'UP_TO_DATE' | 'UPDATE_AVAILABLE' | 'UNKNOWN' | 'CHECK_FAILED' | string;
   currentKnown?: boolean;
   latestKnown?: boolean;
+  sourceReachable?: boolean;
+  updaterAvailable?: boolean;
   comparisonBasis?: string | null;
   actionRequired?: string | null;
   sourceType?: string | null;

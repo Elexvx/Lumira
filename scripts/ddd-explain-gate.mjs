@@ -45,7 +45,7 @@ function fail(message, scope = "gate") {
 function displayPath(file) {
   const relative = path.relative(repoRoot, file);
   return relative && !relative.startsWith("..") && !path.isAbsolute(relative)
-    ? relative
+    ? relative.replaceAll("\\", "/")
     : file;
 }
 

@@ -2,6 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const releaseDir = process.env.DDD_RELEASE_DIR
@@ -46,6 +47,7 @@ function redactCommand(command) {
 function redactLocalPaths(text) {
   return String(text || "")
     .replaceAll(`${repoRoot}${path.sep}`, "")
+    .replaceAll("\\", "/")
     .replace(/__REQUIRED__/g, "<placeholder>");
 }
 
@@ -703,7 +705,7 @@ function renderMarkdown(brief) {
 
 export { buildUnblockBrief, renderMarkdown };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const finalGoNoGo = readJson("release-final-go-no-go.json", {});
   const envHandoff = readJson("release-env-owner-handoff-redacted.json", {});
   const performanceClosure = readJson("release-performance-baseline-closure.json", {});

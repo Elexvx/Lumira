@@ -36,9 +36,12 @@ const synced = fs.readFileSync(envFile, "utf8");
 assert.match(synced, /^SPRING_DATASOURCE_URL=jdbc:mysql:\/\/prod-db\.internal:3306\/lumira$/m);
 assert.match(synced, /^SAAS_SECURITY_JWT_SECRET=abcdefghijklmnopqrstuvwxyz1234567890$/m);
 assert.match(synced, /^DEPLOY_CHECK_BASE_URL=https:\/\/api\.lumira-prod\.internal$/m);
-assert.equal((fs.statSync(envFile).mode & 0o777), 0o600);
+if (process.platform !== "win32") {
+  assert.equal((fs.statSync(envFile).mode & 0o777), 0o600);
+}
 const report = JSON.parse(fs.readFileSync(reportFile, "utf8"));
 assert.equal(report.status, "PASS");
+assert.equal(report.envFileSecurity.permissionCheckSkipped, process.platform === "win32");
 assert.equal(report.summary.updates, 3);
 assert.equal(report.summary.conflicts, 0);
 

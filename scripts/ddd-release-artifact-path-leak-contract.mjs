@@ -117,8 +117,8 @@ const expandedReleaseEnvDisplayFiles = [
 function portablePath(filePath) {
   const absolutePath = path.resolve(filePath);
   return absolutePath === repoRoot || absolutePath.startsWith(`${repoRoot}${path.sep}`)
-    ? path.relative(repoRoot, absolutePath) || "."
-    : filePath;
+    ? (path.relative(repoRoot, absolutePath) || ".").replaceAll("\\", "/")
+    : filePath.replaceAll("\\", "/");
 }
 
 function withoutGeneratedAt(value) {
@@ -148,9 +148,11 @@ function leakPatterns() {
   const patterns = [];
   if (repoRoot) {
     patterns.push({ label: "repoRoot", value: repoRoot });
+    patterns.push({ label: "repoRoot", value: repoRoot.replaceAll("\\", "\\\\") });
   }
   if (homeDir && homeDir !== "/" && homeDir !== repoRoot) {
     patterns.push({ label: "homeDir", value: homeDir });
+    patterns.push({ label: "homeDir", value: homeDir.replaceAll("\\", "\\\\") });
   }
   return patterns;
 }

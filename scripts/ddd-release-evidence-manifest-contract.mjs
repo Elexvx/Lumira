@@ -30,6 +30,7 @@ export const optionalManifestArtifacts = [
   "release/release-unblock-brief.json",
   "release/release-artifact-path-leak-contract.json",
   "release/release-env-owner-handoff-redacted-contract.json",
+  "release/evidence-manifest-preflight.json",
   "release/release-config-owner-input-reconciliation.json",
   "release/release-owner-input-receipt.json",
   "release/release-owner-input-receipt.csv",

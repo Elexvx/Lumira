@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "ADVISORY",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "NOT_READY",
   "redacted": true,
   "valuePolicy": "No concrete environment values are emitted; this packet lists only owner, key, validation, reason, and redacted collection guidance.",
   "owner": "ai-owner",

@@ -187,7 +187,8 @@ if (!fs.existsSync(envFile)) {
 
 const mode = fs.statSync(envFile).mode & 0o777;
 const modeOctal = mode.toString(8).padStart(3, "0");
-const permissionSafe = (mode & 0o077) === 0;
+const permissionCheckSkipped = process.platform === "win32";
+const permissionSafe = permissionCheckSkipped || (mode & 0o077) === 0;
 const parsed = parseEnvFile(envFile);
 const defaults = [
   { key: "DDD_RELEASE_CANDIDATE", value: inferReleaseCandidate(), source: process.env.DDD_RELEASE_CANDIDATE_DEFAULT ? "DDD_RELEASE_CANDIDATE_DEFAULT" : process.env.GITHUB_SHA ? "GITHUB_SHA" : "git rev-parse HEAD" },
@@ -208,6 +209,7 @@ if (blockers.length > 0) {
       checked: true,
       modeOctal,
       permissionSafe,
+      permissionCheckSkipped,
       requiredMode: "600",
     },
   });

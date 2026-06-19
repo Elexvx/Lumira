@@ -1,7 +1,7 @@
 # DDD Release Env Owner Handoff Redacted
 
-Generated at: 2026-06-17T08:13:17.325Z
-Status: ADVISORY
+Generated at: 2026-06-18T19:37:26.213Z
+Status: NOT_READY
 Value policy: No concrete environment values are emitted; only key names, ownership, validation metadata, and redacted fill status.
 Owner count: 6
 Owners with blockers: 5

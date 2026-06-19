@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-06-17T08:13:17.325Z",
-  "status": "READY_FOR_STRICT_GATE_RERUN",
+  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "status": "BLOCKED",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "readyToPromote": false,
@@ -153,7 +153,12 @@
     "uploadStatus": 200,
     "uploadElapsedMs": 45.49,
     "endpointCount": 9,
-    "shapeIssues": []
+    "shapeIssues": [
+      "authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+      "authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+      "authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+      "authenticated performance actual productionEquivalence.deploymentEvidence is required"
+    ]
   },
   "baseline": {
     "present": true,
@@ -170,7 +175,13 @@
     "uploadElapsedMs": 85.88,
     "endpointCount": 9,
     "shapeIssues": [],
-    "metadataIssues": []
+    "metadataIssues": [
+      "strict release baseline requires baselineType=authenticated-runtime",
+      "acceptedAt must be an ISO timestamp",
+      "acceptedBy is required",
+      "sourceArtifact is required",
+      "sourceSha256 must be a SHA-256 hex digest"
+    ]
   },
   "promotion": {
     "present": true,
@@ -187,7 +198,17 @@
     "baseline": null,
     "blockers": []
   },
-  "blockers": [],
+  "blockers": [
+    "acceptedAt must be an ISO timestamp",
+    "acceptedBy is required",
+    "authenticated performance actual productionEquivalence.deploymentEvidence is required",
+    "authenticated performance actual productionEquivalence.https must be true for strict release evidence",
+    "authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence",
+    "authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+    "sourceArtifact is required",
+    "sourceSha256 must be a SHA-256 hex digest",
+    "strict release baseline requires baselineType=authenticated-runtime"
+  ],
   "requiredEnvKeys": [
     "BASE_URL",
     "DDD_AUTH_PASSWORD",
@@ -218,5 +239,59 @@
     "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
     "artifacts/ddd/release/evidence-manifest.json"
   ],
-  "waves": []
+  "waves": [
+    {
+      "wave": 10,
+      "batchId": "p0-authenticated-performance-release-performance",
+      "owner": "release-performance",
+      "priority": "P0",
+      "closureKinds": [
+        "RUN_NOW_LOCAL",
+        "RUN_NOW_WITH_REAL_ENV"
+      ],
+      "itemOrders": [
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83
+      ],
+      "itemIds": [
+        "performance-actual-shape-1",
+        "performance-actual-shape-2",
+        "performance-actual-shape-3",
+        "performance-actual-shape-4",
+        "performance-baseline-metadata-5",
+        "performance-baseline-metadata-6",
+        "performance-baseline-metadata-7",
+        "performance-baseline-metadata-8",
+        "performance-baseline-metadata-9"
+      ],
+      "envKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "commands": [
+        "node scripts/ddd-authenticated-performance-smoke.mjs",
+        "node scripts/ddd-promote-performance-baseline.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
+        "artifacts/ddd/performance/authenticated-runtime-baseline.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    }
+  ]
 }

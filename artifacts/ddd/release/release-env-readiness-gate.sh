@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD release env readiness gate.
-# Generated at: 2026-06-17T08:13:17.325Z
+# Generated at: 2026-06-18T19:37:26.213Z
 # Default mode prints redacted env readiness. Set DDD_RELEASE_ENV_READINESS_ENFORCE=1 to fail while env blockers remain.
 # Exit codes: 21 means release env values are unresolved; 22 means the redacted readiness packet is invalid.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -13,19 +13,22 @@ if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
   fi
 fi
+export LUMIRA_REPO_ROOT
 cd "${LUMIRA_REPO_ROOT}"
 
 DDD_RELEASE_ENV_READINESS_PACKET="${DDD_RELEASE_ENV_READINESS_PACKET:-artifacts/ddd/release/release-env-readiness-redacted.json}"
 DDD_RELEASE_ENV_READINESS_ENFORCE="${DDD_RELEASE_ENV_READINESS_ENFORCE:-}"
+DDD_NODE_BIN="${DDD_NODE_BIN:-node}"
 if [[ ! -f "${DDD_RELEASE_ENV_READINESS_PACKET}" ]]; then
   echo "Release env readiness packet does not exist: ${DDD_RELEASE_ENV_READINESS_PACKET}" >&2
   echo "Run: node scripts/ddd-release-readiness-summary.mjs" >&2
   exit 2
 fi
 set +e
-node --input-type=module - "${DDD_RELEASE_ENV_READINESS_PACKET}" <<'NODE'
+"${DDD_NODE_BIN}" --input-type=module - "${DDD_RELEASE_ENV_READINESS_PACKET}" "${DDD_RELEASE_ENV_READINESS_ENFORCE}" <<'NODE'
 import fs from 'node:fs';
 const packetPath = process.argv[2];
+const enforceMode = process.argv[3];
 const packet = JSON.parse(fs.readFileSync(packetPath, 'utf8'));
 const schemaIssues = [];
 if (packet.redacted !== true) schemaIssues.push('redacted must be true');
@@ -94,7 +97,7 @@ if (byOwner.length > 0) {
   for (const owner of byOwner) console.log(`- ${owner.owner}: blockers=${owner.blockers} placeholder=${owner.placeholder} missing=${owner.missing} optionalEmpty=${owner.optionalEmpty} secretKeys=${owner.secretKeys} safeDefaultAvailable=${owner.safeDefaultAvailable} requiresOwnerInput=${owner.requiresOwnerInput}`);
 }
 const unresolved = Number(summary.blockers || 0) + Number(summary.missing || 0) + Number(summary.placeholders || 0);
-if (process.env.DDD_RELEASE_ENV_READINESS_ENFORCE === '1' || process.env.DDD_RELEASE_ENV_READINESS_ENFORCE === 'true') {
+if (enforceMode === '1' || enforceMode === 'true' || process.env.DDD_RELEASE_ENV_READINESS_ENFORCE === '1' || process.env.DDD_RELEASE_ENV_READINESS_ENFORCE === 'true') {
   if (unresolved > 0) {
     console.error(`[ddd-release-env-readiness][no-go] unresolved release env values remain: blockers=${summary.blockers ?? 0} placeholders=${summary.placeholders ?? 0} missing=${summary.missing ?? 0}`);
     process.exit(21);
