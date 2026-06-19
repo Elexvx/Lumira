@@ -1,0 +1,70 @@
+{
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T13:47:18.561Z",
+  "willWriteFiles": false,
+  "redacted": true,
+  "envFile": ".env.release.local",
+  "envFileSha256": "e9198c92d83b959a67db31c895f3124b6e9811e44dadc5c68699dcb66d7fae5f",
+  "keyCount": 80,
+  "duplicateKeys": [],
+  "requiredSelectedKeyCount": 8,
+  "requiredSelectedKeys": [
+    "DDD_DEPLOYMENT_EVIDENCE",
+    "DDD_EVIDENCE_ENVIRONMENT",
+    "DDD_EVIDENCE_OPERATOR",
+    "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+    "DDD_FRONTEND_EXPECT_DEPLOYED",
+    "DDD_RELEASE_CANDIDATE",
+    "LUMIRA_BASE_URL",
+    "PLAYWRIGHT_BASE_URL"
+  ],
+  "laneReceipts": [
+    {
+      "lane": "p1-runtime-business",
+      "owner": "release-infra",
+      "sourcePlan": "runtime-business-submission-plan.json",
+      "status": "PASS",
+      "inputCount": 5,
+      "passedInputCount": 5,
+      "selectedKeys": [
+        "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL"
+      ],
+      "candidateKeyCount": 5,
+      "issueCount": 0,
+      "firstIssue": null
+    },
+    {
+      "lane": "p1-p2-data-safety",
+      "owner": "bounded-context owners",
+      "sourcePlan": "data-safety-submission-plan.json",
+      "status": "BLOCKED",
+      "inputCount": 4,
+      "passedInputCount": 3,
+      "selectedKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "candidateKeyCount": 9,
+      "issueCount": 2,
+      "firstIssue": "DDD_ROLLBACK_DRILL_FILE is required"
+    }
+  ],
+  "issueCount": 2,
+  "issues": [
+    "p1-p2-data-safety: DDD_ROLLBACK_DRILL_FILE is required",
+    "p1-p2-data-safety: DDD_ROLLBACK_DRILL_DEFERRAL_FILE is required"
+  ],
+  "passCriteria": [
+    "status must be PASS",
+    "duplicateKeys must be empty",
+    "all laneReceipts must have status PASS",
+    "envFileSha256 must be present for the validated file",
+    "receipt must not include env values"
+  ],
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-template"
+}

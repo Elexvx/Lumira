@@ -107,7 +107,10 @@ for (const marker of [
   "32 个阻断输入",
   "5 个阻断 gate",
   "3 条并行解阻工作流",
-  "5 个阻断审计项",
+  "7 个阻断审计项",
+  "E-REL-09",
+  "生产解锁本地尝试",
+  "release-env-lint.attempt.json",
 ]) {
   assertIncludes(combinedText, marker);
 }

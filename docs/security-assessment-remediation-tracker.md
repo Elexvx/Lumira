@@ -6,7 +6,7 @@
 
 已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`、`d23d4580`、`5c4a5501`、`d8392d64`、`d4322be6`、`9d63573e`、`ec75d416`、`c2da00ef`、`8b487153`、`982964d8`、`d51b4c5e`、`79cbdccc`、`94781f29`、`d203483f`、`26c0b98d`、`713414b0`
 
-当前补充证据：本轮补充报告结构合约测试、lane completion receipt 自动填充辅助命令、P0 release env 填写清单、交接包内 release env 填写清单和 release env 安全占位模板、第一波 env 脱敏回执样例合约，自动校验 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、关键标准和证据编号；发布汇总和生产证据就绪门禁仍显示 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断，机器判定为 `NO_GO_STRICT`。
+当前补充证据：本轮补充报告结构合约测试、lane completion receipt 自动填充辅助命令、P0 release env 填写清单、交接包内 release env 填写清单和 release env 安全占位模板、第一波 env 脱敏回执样例合约、生产解锁本地尝试脚本和独立 attempt 证据目录，自动校验 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、关键标准和证据编号；发布汇总和生产证据就绪门禁仍显示 Docker 证据通道通过、5 个 evidence gate 中 4 个仍阻断、生产审计阻断项 7 个、ready evidence 1 项，机器判定为 `NO_GO_STRICT`。
 
 ## 范围与依据
 
@@ -65,12 +65,13 @@
 - 2026-06-19：部署运行态检查失败：`node scripts/check-deployment.mjs` 对 `127.0.0.1:8000` 与 `127.0.0.1:8080` 均无 HTTP 响应。
 - 2026-06-19：前端端到端冒烟测试所需 Chromium 已安装；因 `127.0.0.1:8000`/`127.0.0.1:8080` 未提供运行态，未形成新的 2026-06-19 端到端运行态通过证据。
 - 2026-06-19：主报告补充 21 条详细测评项清单，覆盖 GB/T 22239、GB/T 28449、GB/T 20984、GB/T 30279、OWASP、ATT&CK、NIST 的本地证据、执行结果和未闭环条件。
-- 2026-06-19：再次复核 `node scripts/ddd-staging-execution-checklist.mjs --rollup` 与 `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`；结果仍为 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门阻断。
-- 2026-06-19：主报告补充剩余阻断责任矩阵；`--blocking-inputs-markdown` 显示 32 个阻断输入、5 个阻断 gate，`--production-unblock-plan-markdown` 显示 3 条并行解阻工作流和 5 个阻断审计项。
+- 2026-06-19：再次复核 `node scripts/ddd-staging-execution-checklist.mjs --rollup` 与 `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`；结果仍为 Docker 证据通道通过、`NO_GO_STRICT`，5 个 evidence gate 中 4 个仍阻断，生产审计阻断项 7 个，ready evidence 1 项。
+- 2026-06-19：主报告补充剩余阻断责任矩阵；`--blocking-inputs-markdown` 显示 32 个阻断输入、5 个阻断 gate，`--production-unblock-plan-markdown` 显示 3 条并行解阻工作流和 7 个阻断审计项。
 - 2026-06-19：补充报告结构合约测试 `node scripts/security-assessment-report-contract.test.mjs`，覆盖 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、标准名称、关键证据 ID 和阻断摘要，并接入 CI。
 - 2026-06-19：补充 lane completion receipt 自动填充辅助命令 `node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>`，并接入命令列表、提交计划、交接包模板和 owner packet；该命令只根据 owner evidence intake 中 PASS 的 lane 预填 receipt，不替代 `--lane-completion-submission-check` 和最终 go/no-go。
 - 2026-06-19：补充 P0 release env 填写清单 `node scripts/ddd-release-env-fill-checklist.mjs`，从 release env lint 与 config evidence 中提取阻断 key 并按责任域分组输出 Markdown/JSON 和 `release-env-fill.template.env` 安全占位模板；当前真实落盘证据为 55 个 primary blocker key、63 个 config blocker。该清单和模板不包含 secret 值，不替代 `ddd-release-env-file-lint.mjs` 和 `ddd-release-config-evidence.mjs`。
 - 2026-06-19：复核第一波 env 脱敏回执样例合约 `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json`；结构合约通过，样例 redacted=true、3 条 lane、5 条 pass criteria，但 receiptStatus 仍为 BLOCKED，仅用于展示安全回执形态。
+- 2026-06-19：补充生产解锁本地尝试 `node scripts/ddd-production-unblock-attempt.mjs` 和合约测试 `node scripts/ddd-production-unblock-attempt.test.mjs`；尝试产物写入 `artifacts/ddd/release/production-unblock-attempt/`，包括 placeholder env scaffold、独立 `release-env-lint.attempt.json`、next-action env receipt attempt、lane completion receipt attempt 和 Markdown/JSON 汇总。该脚本不覆盖正式 `release-env-lint.json`，最终仍为 `NO_GO_STRICT`、`cutoverAllowed=false`、ready evidence 1 项、阻断项 5 项。
 - 2026-06-19：脚本门禁复核：
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`：输出“阻断/严格不放行”。
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce`：证据未齐时按设计非零阻断。

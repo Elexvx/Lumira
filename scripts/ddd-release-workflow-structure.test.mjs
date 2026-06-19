@@ -712,6 +712,14 @@ assert(
   "production readiness plan must document the release-env fill template command",
 );
 assert(
+  productionReadinessPlanText.includes("scripts/ddd-production-unblock-attempt.mjs"),
+  "production readiness plan must document the local production unblock attempt wrapper",
+);
+assert(
+  productionReadinessPlanText.includes("release-env-lint.attempt.json"),
+  "production readiness plan must document that production unblock attempts use an attempt-only lint artifact",
+);
+assert(
   productionReadinessPlanText.includes("handoff summary, production closeout status, release-owner closeout, lane receipt coverage, closure board, receipt fragments, receipt draft, owner evidence intake, operator progress, daily brief, dispatch inputs, and final review"),
   "production readiness plan must document the release evidence summary handoff sections",
 );

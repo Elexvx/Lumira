@@ -8,7 +8,7 @@
 
 已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`、`d23d4580`、`5c4a5501`、`d8392d64`、`d4322be6`、`9d63573e`、`ec75d416`、`c2da00ef`、`8b487153`、`982964d8`、`d51b4c5e`、`79cbdccc`、`94781f29`、`d203483f`、`26c0b98d`、`713414b0`
 
-当前补充证据：本轮补充报告结构合约测试、lane completion receipt 自动填充辅助命令、P0 release env 填写清单、交接包内 release env 填写清单和 release env 安全占位模板、第一波 env 脱敏回执样例合约，自动校验 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、关键标准和证据编号；发布汇总和生产证据就绪门禁仍显示 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断，机器判定为 `NO_GO_STRICT`。
+当前补充证据：本轮补充报告结构合约测试、lane completion receipt 自动填充辅助命令、P0 release env 填写清单、交接包内 release env 填写清单和 release env 安全占位模板、第一波 env 脱敏回执样例合约、生产解锁本地尝试脚本和独立 attempt 证据目录，自动校验 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、关键标准和证据编号；发布汇总和生产证据就绪门禁仍显示 Docker 证据通道通过、5 个 evidence gate 中 4 个仍阻断、生产审计阻断项 7 个、ready evidence 1 项，机器判定为 `NO_GO_STRICT`。
 
 ## 1. 结论
 
@@ -120,10 +120,11 @@
 | E-REL-02 | 发布证据强制门禁 | `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` | 按设计在证据未齐时非零阻断。 |
 | E-REL-03 | 交接包完整性 | `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle`、`--handoff-bundle-verify` | 本轮重新生成正式交接包，写入 117 个文件；验证通过，检查 116 个文件，问题列表为空，并确认 manifest 包含 `production-unblock-quickstart.md` 与 `release-env-fill.template.env`。 |
 | E-REL-04 | 发布制品/配置门禁 | `ddd-release-artifact-integrity-gate-contract.test.mjs`、`ddd-release-config-sync.test.mjs` | 均通过。 |
-| E-REL-05 | 生产证据就绪轻量回归 | `node scripts/ddd-production-evidence-readiness.test.mjs` | 通过；覆盖生产解阻计划、生产证据就绪 JSON、交接包完整性，并确认当前 5 个生产证据门仍处于阻断状态。 |
+| E-REL-05 | 生产证据就绪轻量回归 | `node scripts/ddd-production-evidence-readiness.test.mjs` | 通过；覆盖生产解阻计划、生产证据就绪 JSON、交接包完整性；最新 `--production-evidence-readiness` 显示 5 个 evidence gate 中 4 个仍阻断，owner-evidence 已 PASS，ready evidence 1 项。 |
 | E-REL-06 | lane completion receipt 自动填充辅助 | `node scripts/ddd-lane-completion-receipt-autofill.test.mjs`、`node --check scripts/ddd-staging-execution-checklist.mjs` | 通过；owner evidence intake 中 PASS 的 lane 可预填 receipt，并在命令列表、提交计划、交接包模板和 owner packet 中展示下一步命令，但不绕过最终提交检查。 |
 | E-REL-07 | P0 release env 填写清单 | `node scripts/ddd-release-env-fill-checklist.test.mjs`、`node scripts/ddd-release-env-fill-checklist.mjs --json`、`node scripts/ddd-release-env-fill-checklist.mjs --env-template` | 通过；当前真实落盘证据提取到 55 个 primary blocker key、63 个 config blocker，并按 runtime、database、security、evidence、AI、jobs、other 分组生成 Markdown/JSON 填写清单和 `release-env-fill.template.env` 占位模板；模板只含 `__REQUIRED_*__` 占位符或 secret 引用哨兵，不包含 secret 值且不替代 lint/config evidence。 |
 | E-REL-08 | 第一波 env 脱敏回执样例合约 | `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json` | 结构合约通过；样例为 redacted=true、3 条 lane、5 条 pass criteria，receiptStatus 仍为 BLOCKED，用于展示安全回执形态，不作为真实 env 通过证据。 |
+| E-REL-09 | 生产解锁本地尝试 | `node scripts/ddd-production-unblock-attempt.test.mjs`、`node scripts/ddd-production-unblock-attempt.mjs` | 合约测试通过；实际尝试生成 `artifacts/ddd/release/production-unblock-attempt/production-unblock-attempt.md`、`release-env.local.scaffold.env`、`release-env-lint.attempt.json`、`next-action-env-receipt.attempt.json`、`lane-completion-receipt.attempt.json`。脚本将 scaffold lint 写入独立 attempt 文件，不覆盖正式 `release-env-lint.json`；严格门禁仍为 `NO_GO_STRICT`，`cutoverAllowed=false`，ready evidence 仅 1 项，阻断项 5 项。 |
 | E-DEPLOY-FAIL | 部署运行态检查 | `node scripts/check-deployment.mjs` | 失败：`127.0.0.1:8000/health`、`/api/health`、`127.0.0.1:8080/actuator/health` 均无 HTTP 响应。 |
 | E-DEPLOY-PS | Compose 部署脚本探测 | `node scripts/deploy-container.mjs --ps --local-mysql` | 通过；修复 Windows 下 Docker/Compose 调用、目录准备和 compose 相对路径后，可正常输出 compose `ps`。 |
 | E-DEPLOY-START-BLOCKED | 本地 compose 启动尝试 | `node scripts/start-platform.mjs --skip-build --local-mysql --skip-check` | 启动进入 Docker volume/image 阶段，但 busybox/base image 拉取超时，未形成可访问运行态。 |
@@ -173,10 +174,10 @@
 | first-wave-env-receipt | release-infra | 第一波环境输入文件和脱敏回执缺失。 | `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>` | `--next-action-env-receipt-contract` 通过。 |
 | lane-completion-receipt | release-owner | 5 条 owner lane 的完成回执缺失，当前覆盖率 0/5。 | `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>` | `--lane-completion-submission-check` 显示 dispatchReady=true 且覆盖 5/5。 |
 | owner-evidence | platform-owners | owner evidence intake 仍有 2 个缺失 artifact、54 个阻断输入。 | `node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown` | owner evidence intake 无必需 artifact 缺失。 |
-| production-audit | release-owner | 生产切换审计仍有 5 个阻断审计项。 | `node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit` | production cutover audit 的 blockedAuditItems 为 0。 |
+| production-audit | release-owner | 生产切换审计仍有 7 个阻断审计项。 | `node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit` | production cutover audit 的 blockedAuditItems 为 0。 |
 | final-go-no-go | release-owner | final review 和严格 go/no-go 均未放行。 | `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` | final review 输出 GO_STRICT 且 `cutoverAllowed=true`。 |
 
-当前阻断输入汇总：`node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown` 输出 32 个阻断输入、5 个阻断 gate；`node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown` 输出 3 条并行工作流和 5 个阻断审计项。
+当前阻断输入汇总：`node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown` 输出 32 个阻断输入、5 个阻断 gate；`node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown` 输出 3 条并行工作流和 7 个阻断审计项。
 
 ## 11. 全量排查判定
 
