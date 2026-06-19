@@ -8,7 +8,7 @@
 
 已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`、`d23d4580`、`5c4a5501`、`d8392d64`、`d4322be6`、`9d63573e`、`ec75d416`、`c2da00ef`、`8b487153`、`982964d8`、`d51b4c5e`、`79cbdccc`
 
-当前补充证据：本轮补充报告结构合约测试、lane completion receipt 自动填充辅助命令和 P0 release env 填写清单，自动校验 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、关键标准和证据编号；发布汇总和生产证据就绪门禁仍显示 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断，机器判定为 `NO_GO_STRICT`。
+当前补充证据：本轮补充报告结构合约测试、lane completion receipt 自动填充辅助命令、P0 release env 填写清单和第一波 env 脱敏回执样例合约，自动校验 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、关键标准和证据编号；发布汇总和生产证据就绪门禁仍显示 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断，机器判定为 `NO_GO_STRICT`。
 
 ## 1. 结论
 
@@ -123,6 +123,7 @@
 | E-REL-05 | 生产证据就绪轻量回归 | `node scripts/ddd-production-evidence-readiness.test.mjs` | 通过；覆盖生产解阻计划、生产证据就绪 JSON、交接包完整性，并确认当前 5 个生产证据门仍处于阻断状态。 |
 | E-REL-06 | lane completion receipt 自动填充辅助 | `node scripts/ddd-lane-completion-receipt-autofill.test.mjs`、`node --check scripts/ddd-staging-execution-checklist.mjs` | 通过；owner evidence intake 中 PASS 的 lane 可预填 receipt，并在命令列表、提交计划、交接包模板和 owner packet 中展示下一步命令，但不绕过最终提交检查。 |
 | E-REL-07 | P0 release env 填写清单 | `node scripts/ddd-release-env-fill-checklist.test.mjs`、`node scripts/ddd-release-env-fill-checklist.mjs --json` | 通过；当前真实落盘证据提取到 55 个 primary blocker key、63 个 config blocker，并按 runtime、database、security、evidence、AI、jobs、other 分组生成 Markdown/JSON 填写清单，帮助 release-infra 补齐 `release-env`，但不包含 secret 值且不替代 lint/config evidence。 |
+| E-REL-08 | 第一波 env 脱敏回执样例合约 | `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json` | 结构合约通过；样例为 redacted=true、3 条 lane、5 条 pass criteria，receiptStatus 仍为 BLOCKED，用于展示安全回执形态，不作为真实 env 通过证据。 |
 | E-DEPLOY-FAIL | 部署运行态检查 | `node scripts/check-deployment.mjs` | 失败：`127.0.0.1:8000/health`、`/api/health`、`127.0.0.1:8080/actuator/health` 均无 HTTP 响应。 |
 | E-DEPLOY-PS | Compose 部署脚本探测 | `node scripts/deploy-container.mjs --ps --local-mysql` | 通过；修复 Windows 下 Docker/Compose 调用、目录准备和 compose 相对路径后，可正常输出 compose `ps`。 |
 | E-DEPLOY-START-BLOCKED | 本地 compose 启动尝试 | `node scripts/start-platform.mjs --skip-build --local-mysql --skip-check` | 启动进入 Docker volume/image 阶段，但 busybox/base image 拉取超时，未形成可访问运行态。 |

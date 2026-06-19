@@ -410,6 +410,43 @@ function readJson(file, fallback = {}) {
   }
 }
 
+const releaseEnvFillGroupDefinitions = {
+  runtime: [
+    "LUMIRA_BASE_URL",
+    "BASE_URL",
+    "PLAYWRIGHT_BASE_URL",
+    "FRONTEND_BASE_URL",
+    "AI_SERVICE_BASE_URL",
+    "AUTH_SERVICE_BASE_URL",
+    "PAYMENT_SERVICE_BASE_URL",
+    "FILE_SERVICE_BASE_URL",
+    "JOB_EXECUTOR_BASE_URL",
+    "MESSAGE_SERVICE_BASE_URL",
+    "SYSTEM_SERVICE_BASE_URL",
+  ],
+  database: ["DB_URL", "DB_USERNAME", "DB_PASSWORD", "MYSQL_HOST", "MYSQL_PORT", "MYSQL_DATABASE", "MYSQL_USER", "MYSQL_PASSWORD"],
+  security: ["JWT_SECRET", "FIELD_SECRET", "DDD_AUTH_PASSWORD", "DDD_AUTH_USERNAME"],
+  evidence: [
+    "DDD_DEPLOYMENT_EVIDENCE",
+    "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+    "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+    "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+    "DDD_MIGRATION_COMPLETED_AT",
+    "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+    "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+    "DDD_EXPLAIN_DATABASE",
+  ],
+  ai: [
+    "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
+    "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
+    "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
+    "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+    "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+    "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+  ],
+  jobs: ["SAAS_JOB_INTERNAL_TOKEN", "XXL_JOB_ACCESS_TOKEN", "XXL_JOB_ADMIN_ADDRESSES"],
+};
+
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
 }
@@ -880,6 +917,8 @@ function verifyHandoffBundleResult() {
     "release-env-merge-plan.md",
     "release-env-submission-plan.json",
     "release-env-submission-plan.md",
+    "release-env-fill-checklist.json",
+    "release-env-fill-checklist.md",
     "docker-image-plan.json",
     "docker-image-plan.md",
     "docker-image-submission-plan.json",
@@ -971,6 +1010,9 @@ function verifyHandoffBundleResult() {
     ["production-cutover-audit.md", "## Audit Items"],
     ["production-cutover-audit.md", "## Parallel Next Actions"],
     ["production-cutover-audit.md", "## Required Commands"],
+    ["release-env-fill-checklist.md", "# P0 Release Env Fill Checklist"],
+    ["release-env-fill-checklist.md", "## Required Keys By Group"],
+    ["release-env-fill-checklist.md", "## Validation Commands"],
     ["lane-receipt-fragments.md", "# DDD Lane Receipt Fragments"],
     ["lane-receipt-fragments.md", "## Receipt JSON Skeleton"],
     ["lane-receipt-fragments.md", "## Owner Fragment Copy Blocks"],
@@ -8976,6 +9018,8 @@ function renderHandoffBundleReadme(rollup) {
     "- `release-env-merge-plan.md`: paste-ready release env merge and validation plan.",
     "- `release-env-submission-plan.json`: machine-readable release env owner submission and receipt plan.",
     "- `release-env-submission-plan.md`: paste-ready release env owner submission and receipt plan.",
+    "- `release-env-fill-checklist.json`: machine-readable P0 release env blocker key checklist.",
+    "- `release-env-fill-checklist.md`: paste-ready P0 release env blocker key checklist.",
     "- `docker-image-plan.json`: machine-readable Docker image build or inspect evidence plan.",
     "- `docker-image-plan.md`: paste-ready Docker image evidence plan.",
     "- `docker-image-submission-plan.json`: machine-readable Docker image evidence submission route.",
@@ -9050,6 +9094,7 @@ function renderHandoffBundleReadme(rollup) {
     "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
     "node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown",
+    "node scripts/ddd-release-env-fill-checklist.mjs --markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown",
@@ -9072,6 +9117,85 @@ function renderHandoffBundleReadme(rollup) {
     "",
   ];
   return `${lines.join("\n")}`;
+}
+
+function releaseEnvFillBlockerKey(blocker) {
+  return String(blocker).split(":")[0]?.trim();
+}
+
+function groupReleaseEnvFillKeys(keys) {
+  const groupedKeys = new Set(Object.values(releaseEnvFillGroupDefinitions).flat());
+  const groups = {};
+  for (const [group, groupKeys] of Object.entries(releaseEnvFillGroupDefinitions)) {
+    const present = groupKeys.filter((key) => keys.includes(key));
+    if (present.length > 0) {
+      groups[group] = present;
+    }
+  }
+  groups.other = keys.filter((key) => !groupedKeys.has(key));
+  return groups;
+}
+
+function buildReleaseEnvFillChecklist() {
+  const lintFile = "artifacts/ddd/release/release-env-lint.json";
+  const configEvidenceFile = "artifacts/ddd/config/release-config-evidence.json";
+  const lint = readJson(lintFile, {});
+  const configEvidence = readJson(configEvidenceFile, {});
+  const blockers = lint.primaryBlockers || lint.blockers || [];
+  const keys = [...new Set(blockers.map(releaseEnvFillBlockerKey).filter(Boolean))];
+  return {
+    generatedAt,
+    status: lint.status || "UNKNOWN",
+    envFile: lint.envFile || ".env.release.local",
+    lintFile,
+    configEvidenceFile,
+    primaryBlockerCount: lint.summary?.primaryBlockers ?? blockers.length,
+    configBlockerCount: configEvidence.summary?.blockers ?? (configEvidence.blockers || []).length,
+    keyCount: keys.length,
+    keys,
+    groups: groupReleaseEnvFillKeys(keys),
+    validationCommands: [
+      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-config-evidence.mjs",
+      "node scripts/ddd-release-readiness-summary.mjs",
+      "node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan",
+    ],
+  };
+}
+
+function renderReleaseEnvFillChecklistMarkdown(checklist) {
+  const lines = [
+    "# P0 Release Env Fill Checklist",
+    "",
+    `Generated at: ${checklist.generatedAt}`,
+    "",
+    `Lint status: ${checklist.status}`,
+    `Env file: ${checklist.envFile}`,
+    `Primary blockers: ${checklist.primaryBlockerCount}`,
+    `Config blocker count: ${checklist.configBlockerCount}`,
+    "",
+    "## Required Keys By Group",
+    "",
+  ];
+
+  for (const [group, keys] of Object.entries(checklist.groups)) {
+    if (keys.length === 0) continue;
+    lines.push(`### ${group}`, "", ...keys.map((key) => `- ${key}`), "");
+  }
+
+  lines.push(
+    "## Validation Commands",
+    "",
+    "```bash",
+    ...checklist.validationCommands,
+    "```",
+    "",
+    "## Acceptance Rule",
+    "",
+    "Do not mark `release-infra:p0-release-env` PASS until release env lint and release config evidence are PASS, and the resulting artifacts are attached to the lane receipt.",
+    "",
+  );
+  return lines.join("\n");
 }
 
 function buildReleaseOwnerCloseout({ finalReview, evidenceClosureBoard }) {
@@ -9192,6 +9316,7 @@ function writeHandoffBundle() {
   const releaseEnvNextOwnerTemplate = buildReleaseEnvNextOwnerTemplateReport({ rollupOverride: rollup, matrixOverride: releaseEnvOwnerMatrix });
   const releaseEnvMergePlan = buildReleaseEnvMergePlan({ releaseEnvPlanOverride: releaseEnvPlan, matrixOverride: releaseEnvOwnerMatrix });
   const releaseEnvSubmissionPlan = buildReleaseEnvSubmissionPlan({ releaseEnvPlanOverride: releaseEnvPlan, matrixOverride: releaseEnvOwnerMatrix, mergePlanOverride: releaseEnvMergePlan });
+  const releaseEnvFillChecklist = buildReleaseEnvFillChecklist();
   const dockerImagePlan = buildDockerImagePlan({ rollupOverride: rollup });
   const dockerImageSubmissionPlan = buildDockerImageSubmissionPlan({ dockerImagePlanOverride: dockerImagePlan, rollupOverride: rollup });
   const runtimeBusinessPlan = buildRuntimeBusinessPlan({ rollupOverride: rollup });
@@ -9246,6 +9371,8 @@ function writeHandoffBundle() {
     "release-env-merge-plan.md": renderReleaseEnvMergePlanMarkdown(releaseEnvMergePlan),
     "release-env-submission-plan.json": `${JSON.stringify(releaseEnvSubmissionPlan, null, 2)}\n`,
     "release-env-submission-plan.md": renderReleaseEnvSubmissionPlanMarkdown(releaseEnvSubmissionPlan),
+    "release-env-fill-checklist.json": `${JSON.stringify(releaseEnvFillChecklist, null, 2)}\n`,
+    "release-env-fill-checklist.md": renderReleaseEnvFillChecklistMarkdown(releaseEnvFillChecklist),
     "docker-image-plan.json": `${JSON.stringify(dockerImagePlan, null, 2)}\n`,
     "docker-image-plan.md": renderDockerImagePlanMarkdown(dockerImagePlan),
     "docker-image-submission-plan.json": `${JSON.stringify(dockerImageSubmissionPlan, null, 2)}\n`,
