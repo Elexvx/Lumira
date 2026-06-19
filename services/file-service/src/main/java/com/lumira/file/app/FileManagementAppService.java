@@ -1115,14 +1115,14 @@ public class FileManagementAppService {
     }
 
     private Path resolveStorageRoot(String rootPath) {
+        Path uploadRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
         if (!StringUtils.hasText(rootPath)) {
-            return Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
+            return uploadRoot;
         }
         Path root = Path.of(rootPath);
         if (root.isAbsolute()) {
-            return root.normalize();
+            return requireStorageRootWithinUploadRoot(root.normalize(), uploadRoot);
         }
-        Path uploadRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
         String normalizedRootPath = rootPath.trim().replace('\\', '/');
         while (normalizedRootPath.endsWith("/")) {
             normalizedRootPath = normalizedRootPath.substring(0, normalizedRootPath.length() - 1);
@@ -1131,9 +1131,17 @@ public class FileManagementAppService {
             return uploadRoot;
         }
         if (normalizedRootPath.startsWith("storage/uploads/")) {
-            return uploadRoot.resolve(normalizedRootPath.substring("storage/uploads/".length())).normalize();
+            return requireStorageRootWithinUploadRoot(uploadRoot.resolve(normalizedRootPath.substring("storage/uploads/".length())).normalize(), uploadRoot);
         }
-        return uploadRoot.resolve(normalizedRootPath).normalize();
+        return requireStorageRootWithinUploadRoot(uploadRoot.resolve(normalizedRootPath).normalize(), uploadRoot);
+    }
+
+    private Path requireStorageRootWithinUploadRoot(Path storageRoot, Path uploadRoot) {
+        Path normalizedStorageRoot = storageRoot.toAbsolutePath().normalize();
+        if (!normalizedStorageRoot.startsWith(uploadRoot)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "storage root must stay under upload root");
+        }
+        return normalizedStorageRoot;
     }
 
     private String resolvePublicPath(Path storageRoot) {

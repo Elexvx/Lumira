@@ -36,6 +36,7 @@ backend/.env.*
 *.tar.gz
 output/
 tmp/
+backups/
 storage/
 services/*/storage/
 

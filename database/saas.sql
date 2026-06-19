@@ -1,4 +1,4 @@
-
+﻿
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
@@ -664,7 +664,7 @@ CREATE TABLE `iam_user_credential` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `iam_user_credential` DISABLE KEYS */;
-INSERT INTO `iam_user_credential` VALUES (1,1001,'PASSWORD','$2a$10$WtjEUx.BG6UCYlPxWAs7LeUJduy0dO8Dgl56TfD./iTyvuSMonO8a','BCRYPT',1,NULL,'2026-06-18 22:05:06','ENABLED','2026-06-18 22:05:06','2026-06-18 22:05:06',0);
+INSERT INTO `iam_user_credential` VALUES (1,1001,'PASSWORD','$2a$10$OoeukQEfBNqpig.E0ZnA.e3wWxfEYg.WdWXPN5in.AfiH3BQTzHDu','BCRYPT',1,NULL,'2026-06-18 22:05:06','ENABLED','2026-06-18 22:05:06','2026-06-18 22:05:06',0);
 /*!40000 ALTER TABLE `iam_user_credential` ENABLE KEYS */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -1782,7 +1782,7 @@ CREATE TABLE `sys_user` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `sys_user` DISABLE KEYS */;
-INSERT INTO `sys_user` VALUES (1001,'admin','平台管理�?,'平台管理�?,NULL,NULL,NULL,NULL,NULL,NULL,'$2a$10$WtjEUx.BG6UCYlPxWAs7LeUJduy0dO8Dgl56TfD./iTyvuSMonO8a',NULL,'admin@example.com','ENABLED',0,'2026-06-18 22:05:06',0,'2026-06-18 22:05:06',0);
+INSERT INTO `sys_user` VALUES (1001,'admin','平台管理�?,'平台管理�?,NULL,NULL,NULL,NULL,NULL,NULL,'$2a$10$OoeukQEfBNqpig.E0ZnA.e3wWxfEYg.WdWXPN5in.AfiH3BQTzHDu',NULL,'admin@example.com','ENABLED',0,'2026-06-18 22:05:06',0,'2026-06-18 22:05:06',0);
 /*!40000 ALTER TABLE `sys_user` ENABLE KEYS */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;

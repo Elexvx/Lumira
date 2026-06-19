@@ -238,12 +238,17 @@ public class AuthAppService {
             loginProtectionService.ensureCanAttempt(account, loginIp);
             loginProtectionService.recordAttempt(account, loginIp);
 
-            if (request.captchaId() != null || request.captchaCode() != null || request.captchaProof() != null) {
+            if (securitySettingsService.isCaptchaEnabled() || hasCaptchaEvidence(request)) {
+                if (!hasCaptchaEvidence(request)) {
+                    loginProtectionService.recordFailure(account, loginIp);
+                    recordLoginAudit(null, PlatformConstants.PLATFORM_TENANT_ID, account, "CAPTCHA", "FAIL", "CAPTCHA_REQUIRED", loginIp, userAgent);
+                    throw new BizException(ErrorCode.CAPTCHA_INVALID, "captcha required");
+                }
                 boolean captchaValid = Boolean.TRUE.equals(systemInternalApi.validateCaptcha(new com.lumira.api.system.CaptchaValidationRequestDTO(request.captchaId(), request.captchaCode(), request.captchaProof())));
                 if (!captchaValid) {
                     loginProtectionService.recordFailure(account, loginIp);
-                    recordLoginAudit(null, PlatformConstants.PLATFORM_TENANT_ID, account, "CAPTCHA", "FAIL", "验证码错误", loginIp, userAgent);
-                    throw new BizException(ErrorCode.CAPTCHA_INVALID, "验证码错误，请重新输入");
+                    recordLoginAudit(null, PlatformConstants.PLATFORM_TENANT_ID, account, "CAPTCHA", "FAIL", "CAPTCHA_INVALID", loginIp, userAgent);
+                    throw new BizException(ErrorCode.CAPTCHA_INVALID, "captcha invalid");
                 }
             }
 
@@ -302,6 +307,12 @@ public class AuthAppService {
         return adminAccount && INITIAL_ADMIN_PASSWORD.equals(loginPassword);
     }
 
+    private boolean hasCaptchaEvidence(LoginRequest request) {
+        return StringUtils.hasText(request.captchaId())
+                || StringUtils.hasText(request.captchaCode())
+                || StringUtils.hasText(request.captchaProof());
+    }
+
     private boolean requiresInitialAdminPasswordChange(SystemUserSnapshotDTO user) {
         return user != null
                 && DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username())
@@ -320,9 +331,6 @@ public class AuthAppService {
         }
         boolean adminAccount = DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(account) || DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username());
         if (!adminAccount || !UNSAFE_DEFAULT_ADMIN_PASSWORDS.contains(loginPassword)) {
-            return;
-        }
-        if (INITIAL_ADMIN_PASSWORD.equals(loginPassword)) {
             return;
         }
         loginProtectionService.recordFailure(account, loginIp);
@@ -407,6 +415,7 @@ public class AuthAppService {
             }
             AuthSession session = authSessionStore.findBySessionId(claims.getSessionId())
                     .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "会话已失效"));
+            validateRefreshTokenClaims(claims, session);
             AuthSessionAggregate sessionAggregate = new AuthSessionAggregate(
                     session.getSessionId(),
                     session.getCurrentTenantId(),
@@ -428,6 +437,16 @@ public class AuthAppService {
             stopAuthTimer(authRefreshTokenTimer, start);
         }
     }
+
+    private void validateRefreshTokenClaims(JwtTokenClaims claims, AuthSession session) {
+        if (!StringUtils.hasText(claims.getTokenId())
+                || !Objects.equals(claims.getTokenId(), session.getRefreshTokenId())
+                || !Objects.equals(claims.getUserId(), session.getUserId())
+                || !Objects.equals(claims.getSessionVersion(), session.getSessionVersion())) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "refresh token invalid");
+        }
+    }
+
     public CurrentUserDTO currentUser() {
         long start = System.nanoTime();
         try {

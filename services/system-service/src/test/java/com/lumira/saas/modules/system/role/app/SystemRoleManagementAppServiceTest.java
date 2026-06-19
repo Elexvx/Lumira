@@ -100,6 +100,20 @@ class SystemRoleManagementAppServiceTest {
     }
 
     @Test
+    void updateRolePermissionsShouldRejectWildcardPermission() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemRoleManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
+
+        boolean updated = service.updateRolePermissions(currentUser(), 2001L, List.of("system:user:view", "*", "system:role:view"));
+
+        assertTrue(updated);
+        assertTrue(jdbcTemplate.deletedRolePermissions);
+        assertEquals(List.of("system:user:view", "system:role:view"), jdbcTemplate.insertedPermissionKeys);
+        verify(permissionSnapshotService).invalidateTenant(1001L);
+    }
+
+    @Test
     void updateRolePermissionsShouldPublishDomainEventWhenPermissionSetChanges() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);

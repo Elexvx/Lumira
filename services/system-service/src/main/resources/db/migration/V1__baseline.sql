@@ -1398,7 +1398,7 @@ INSERT INTO `sys_tenant` (`id`, `tenant_code`, `tenant_name`, `status`, `remark`
 (1001,'platform','平台默认租户','ENABLED','系统默认租户，用于兼容既有平台数据。',0,0,0);
 
 INSERT INTO `sys_user` (`id`, `username`, `nickname`, `real_name`, `avatar_url`, `password_hash`, `mobile`, `email`, `status`, `created_by`, `updated_by`, `deleted`) VALUES
-(1001,'admin','平台管理员','平台管理员',NULL,'$2a$10$WtjEUx.BG6UCYlPxWAs7LeUJduy0dO8Dgl56TfD./iTyvuSMonO8a',NULL,'admin@example.com','ENABLED',0,0,0);
+(1001,'admin','平台管理员','平台管理员',NULL,'$2a$10$OoeukQEfBNqpig.E0ZnA.e3wWxfEYg.WdWXPN5in.AfiH3BQTzHDu',NULL,'admin@example.com','ENABLED',0,0,0);
 
 INSERT INTO `sys_user_tenant` (`tenant_id`, `user_id`, `is_default`, `status`, `created_by`, `updated_by`, `deleted`) VALUES
 (1001,1001,1,'ENABLED',0,0,0);
@@ -1416,7 +1416,7 @@ INSERT INTO `iam_user_identity` (`user_id`, `identity_type`, `identifier`, `iden
 (1001,'USERNAME','admin','admin',1,1,'ENABLED',0);
 
 INSERT INTO `iam_user_credential` (`user_id`, `credential_type`, `credential_secret`, `algorithm`, `version`, `status`, `deleted`) VALUES
-(1001,'PASSWORD','$2a$10$WtjEUx.BG6UCYlPxWAs7LeUJduy0dO8Dgl56TfD./iTyvuSMonO8a','BCRYPT',1,'ENABLED',0);
+(1001,'PASSWORD','$2a$10$OoeukQEfBNqpig.E0ZnA.e3wWxfEYg.WdWXPN5in.AfiH3BQTzHDu','BCRYPT',1,'ENABLED',0);
 
 INSERT INTO `iam_user_profile` (`user_id`, `nickname`, `real_name`, `locale`, `deleted`) VALUES
 (1001,'平台管理员','平台管理员','zh-CN',0);

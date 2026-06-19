@@ -3,6 +3,7 @@ package com.lumira.auth.service;
 import com.lumira.api.auth.LoginRequest;
 import com.lumira.api.auth.LoginResponseDTO;
 import com.lumira.api.auth.CurrentUserDTO;
+import com.lumira.api.auth.RefreshTokenRequest;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.LoginCapabilitiesDTO;
 import com.lumira.api.system.SecuritySettingsDTO;
@@ -13,6 +14,8 @@ import com.lumira.auth.model.AuthSession;
 import com.lumira.common.web.repeatsubmit.ClientIpResolver;
 import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.JwtTokenClaims;
+import com.lumira.common.security.JwtTokenType;
 import com.lumira.common.security.SecurityContextFacade;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +35,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -50,6 +54,7 @@ class AuthAppServiceTest {
     private LoginEncryptionService loginEncryptionService;
     private LoginProtectionService loginProtectionService;
     private AuthSessionStore authSessionStore;
+    private JwtTokenService jwtTokenService;
     private PasswordEncoder passwordEncoder;
     private AuthAppService authAppService;
     private SecurityContextFacade securityContextFacade;
@@ -61,7 +66,7 @@ class AuthAppServiceTest {
         loginEncryptionService = mock(LoginEncryptionService.class);
         loginProtectionService = mock(LoginProtectionService.class);
         authSessionStore = mock(AuthSessionStore.class);
-        JwtTokenService jwtTokenService = mock(JwtTokenService.class);
+        jwtTokenService = mock(JwtTokenService.class);
         passwordEncoder = mock(PasswordEncoder.class);
         securityContextFacade = mock(SecurityContextFacade.class);
         ClientIpResolver clientIpResolver = mock(ClientIpResolver.class);
@@ -99,6 +104,43 @@ class AuthAppServiceTest {
                 securityProperties,
                 securitySettingsService
         );
+    }
+
+    @Test
+    void loginShouldRequireCaptchaWhenCaptchaIsEnabled() {
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");
+        when(securitySettingsService.isCaptchaEnabled()).thenReturn(true);
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> authAppService.login(new LoginRequest("jane", null, "ciphertext", null, null, null), httpRequest)
+        );
+
+        verify(systemInternalApi, never()).findLoginUser("jane");
+        verify(systemInternalApi, never()).validateCaptcha(any());
+        verify(loginProtectionService).recordFailure("jane", "127.0.0.1");
+    }
+
+    @Test
+    void refreshTokenShouldRejectStaleTokenId() {
+        AuthSession session = cachedSession();
+        session.setRefreshTokenId("current-refresh-id");
+        JwtTokenClaims claims = new JwtTokenClaims();
+        claims.setTokenType(JwtTokenType.REFRESH);
+        claims.setSessionId(session.getSessionId());
+        claims.setUserId(session.getUserId());
+        claims.setSessionVersion(session.getSessionVersion());
+        claims.setTokenId("stale-refresh-id");
+        when(jwtTokenService.parseToken("refresh-token")).thenReturn(claims);
+        when(authSessionStore.findBySessionId(session.getSessionId())).thenReturn(Optional.of(session));
+
+        assertThrows(
+                com.lumira.common.exception.BizException.class,
+                () -> authAppService.refreshToken(new RefreshTokenRequest("refresh-token"))
+        );
+
+        verify(authSessionStore, never()).save(any(), anyBoolean());
     }
 
     @Test

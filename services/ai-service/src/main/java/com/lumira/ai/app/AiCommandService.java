@@ -19,6 +19,7 @@ import com.lumira.ai.vo.AiToolVO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PermissionGuard;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -52,19 +53,22 @@ public class AiCommandService {
     private final AiOwnerToolGateway ownerToolGateway;
     private final AiProviderRuntime providerRuntime;
     private final ObjectMapper objectMapper;
+    private final PermissionGuard permissionGuard;
 
     public AiCommandService(
             JdbcTemplate jdbcTemplate,
             AiReadQueryService readQueryService,
             AiOwnerToolGateway ownerToolGateway,
             AiProviderRuntime providerRuntime,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            PermissionGuard permissionGuard
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.readQueryService = readQueryService;
         this.ownerToolGateway = ownerToolGateway;
         this.providerRuntime = providerRuntime;
         this.objectMapper = objectMapper;
+        this.permissionGuard = permissionGuard;
     }
 
     @Transactional
@@ -243,6 +247,7 @@ public class AiCommandService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "工具编码不能为空");
         }
         AiToolVO tool = findTool(request.toolCode());
+        requireToolPermission(currentUser, tool);
         Long tenantId = currentTenantId(currentUser);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusMinutes(10);
@@ -341,6 +346,7 @@ public class AiCommandService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "工具编码不能为空");
         }
         AiToolVO tool = findTool(request.toolCode());
+        requireToolPermission(currentUser, tool);
         if (Boolean.TRUE.equals(tool.needConfirm()) && !Boolean.TRUE.equals(request.confirmed())) {
             throw new BizException(ErrorCode.FORBIDDEN, "高风险工具需要确认后执行");
         }
@@ -514,6 +520,12 @@ public class AiCommandService {
                 .filter(tool -> tool.toolCode().equals(toolCode))
                 .findFirst()
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "AI 工具不存在: " + toolCode));
+    }
+
+    private void requireToolPermission(CurrentUser currentUser, AiToolVO tool) {
+        if (tool != null && StringUtils.hasText(tool.requiredPermission())) {
+            permissionGuard.requirePermission(currentUser, tool.requiredPermission());
+        }
     }
 
     private Long insertAndReturnId(String sql, StatementBinder binder) {

@@ -835,6 +835,9 @@ public class PermissionSnapshotService {
             return false;
         }
         String normalizedKey = permissionKey.trim();
+        if ("*".equals(normalizedKey)) {
+            return false;
+        }
         if (ADMIN_ONLY_ROLE_PERMISSION_KEYS.contains(normalizedKey)) {
             return false;
         }

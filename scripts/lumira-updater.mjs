@@ -217,7 +217,7 @@ function startTask(type, request) {
 
 function authorized(req) {
   if (!token) {
-    return true;
+    return false;
   }
   return req.headers['x-lumira-updater-token'] === token;
 }

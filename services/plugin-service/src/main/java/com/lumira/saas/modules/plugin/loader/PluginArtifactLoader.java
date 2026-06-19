@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -38,6 +39,7 @@ public class PluginArtifactLoader {
     private static final long MAX_EXTRACTED_BYTES = 200L * 1024L * 1024L;
     private static final long MAX_ENTRY_BYTES = 120L * 1024L * 1024L;
     private static final int MAX_EXTRACTED_FILES = 500;
+    private static final Pattern SAFE_PLUGIN_CODE = Pattern.compile("^[A-Za-z][A-Za-z0-9_-]{0,63}$");
     private static final Set<String> BLOCKED_ARCHIVE_EXTENSIONS = Set.of(".zip", ".7z", ".rar", ".tar", ".gz", ".bz2", ".xz");
     private static final Set<String> ALLOWED_FILE_EXTENSIONS = Set.of(
             ".json", ".sig", ".jar", ".js", ".mjs", ".cjs", ".css", ".map",
@@ -71,7 +73,10 @@ public class PluginArtifactLoader {
             Path artifactDir = stagingRoot.resolve(UUID.randomUUID().toString());
             Path extractedDir = artifactDir.resolve("extracted");
             Files.createDirectories(extractedDir);
-            Path zipPath = artifactDir.resolve(file.getOriginalFilename() == null ? "plugin.zip" : file.getOriginalFilename());
+            Path zipPath = artifactDir.resolve("plugin.zip").normalize();
+            if (!zipPath.startsWith(artifactDir)) {
+                throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "invalid plugin package path");
+            }
             try (InputStream inputStream = file.getInputStream()) {
                 Files.copy(inputStream, zipPath, StandardCopyOption.REPLACE_EXISTING);
             }
@@ -131,11 +136,17 @@ public class PluginArtifactLoader {
 
     public Path installToVersionHome(String pluginCode, String version, Path extractedDir) {
         try {
-            Path versionHome = Path.of(pluginProperties.getStorageRoot())
+            validateSafePluginCode(pluginCode);
+            Path storageRoot = Path.of(pluginProperties.getStorageRoot())
                     .toAbsolutePath()
-                    .normalize()
+                    .normalize();
+            Path versionHome = storageRoot
                     .resolve(pluginCode)
-                    .resolve(version);
+                    .resolve(version)
+                    .normalize();
+            if (!versionHome.startsWith(storageRoot)) {
+                throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "invalid plugin storage path");
+            }
             if (Files.exists(versionHome)) {
                 deleteRecursively(versionHome);
             }
@@ -144,6 +155,12 @@ public class PluginArtifactLoader {
             return versionHome;
         } catch (IOException exception) {
             throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件落盘失败: " + exception.getMessage());
+        }
+    }
+
+    private void validateSafePluginCode(String pluginCode) {
+        if (!StringUtils.hasText(pluginCode) || !SAFE_PLUGIN_CODE.matcher(pluginCode).matches()) {
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "invalid pluginCode");
         }
     }
 
@@ -163,6 +180,7 @@ public class PluginArtifactLoader {
         if (metadata == null) {
             throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin.json 不存在或格式错误");
         }
+        validateSafePluginCode(metadata.getPluginCode());
         pluginSemver.requireValid(metadata.getVersion(), "插件版本");
         pluginSemver.requireValid(metadata.getPluginApiVersion(), "插件 API 版本");
         pluginSemver.requireValid(metadata.getMinPlatformVersion(), "最小平台版本");

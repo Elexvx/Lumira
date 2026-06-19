@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DefaultAdminPasswordBaselineTest {
@@ -20,19 +21,19 @@ class DefaultAdminPasswordBaselineTest {
     );
 
     @Test
-    void freshFlywayBaselineUsesInitialAdminPassword() throws IOException {
+    void freshFlywayBaselineDoesNotUseInitialAdminPassword() throws IOException {
         String hash = extractAdminPasswordHash(Path.of("src/main/resources/db/migration/V1__baseline.sql"));
 
-        assertTrue(new BCryptPasswordEncoder().matches(INITIAL_ADMIN_PASSWORD, hash));
+        assertFalse(new BCryptPasswordEncoder().matches(INITIAL_ADMIN_PASSWORD, hash));
     }
 
     @Test
-    void referenceSaasSqlUsesSameInitialAdminPassword() throws IOException {
+    void referenceSaasSqlUsesSameNonDefaultAdminPasswordHash() throws IOException {
         String baselineHash = extractAdminPasswordHash(Path.of("src/main/resources/db/migration/V1__baseline.sql"));
         String referenceHash = extractAdminPasswordHash(Path.of("../../database/saas.sql"));
 
         assertEquals(baselineHash, referenceHash);
-        assertTrue(new BCryptPasswordEncoder().matches(INITIAL_ADMIN_PASSWORD, referenceHash));
+        assertFalse(new BCryptPasswordEncoder().matches(INITIAL_ADMIN_PASSWORD, referenceHash));
     }
 
     private String extractAdminPasswordHash(Path path) throws IOException {

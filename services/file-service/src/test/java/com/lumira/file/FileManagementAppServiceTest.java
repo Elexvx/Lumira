@@ -18,6 +18,7 @@ import com.lumira.file.vo.FileVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +27,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
+import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
@@ -67,6 +69,9 @@ class FileManagementAppServiceTest {
 
     @Mock
     private FileStorageMetrics storageMetrics;
+
+    @TempDir
+    Path tempDir;
 
     private FileManagementAppService service;
 
@@ -179,6 +184,20 @@ class FileManagementAppServiceTest {
                 .isInstanceOf(com.lumira.common.exception.BizException.class);
 
         verify(fileObjectMapper).selectOne(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileObjectEntity>>any());
+    }
+
+    @Test
+    void testStorageSpace_shouldRejectLocalRootOutsideUploadRoot() {
+        CurrentUser currentUser = currentUser();
+        FileStorageSpaceEntity entity = storageSpaceEntities(1, 1001L).getFirst();
+        entity.setRootPath(tempDir.resolve("outside").toString());
+        when(uploadProperties.getStorageRoot()).thenReturn(tempDir.resolve("uploads").toString());
+        when(fileStorageSpaceMapper.findByIdWithUsage(1001L, 5L)).thenReturn(entity);
+
+        var result = service.testStorageSpace(currentUser, 5L);
+
+        assertThat(result.getStatus()).isEqualTo("DOWN");
+        assertThat(result.getMessage()).contains("upload root");
     }
 
     private CurrentUser currentUser() {

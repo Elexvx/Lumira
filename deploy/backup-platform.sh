@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${ROOT_DIR}/deploy/.env"
-BACKUP_ROOT="${BACKUP_ROOT:-${ROOT_DIR}/backups}"
+BACKUP_ROOT="${BACKUP_ROOT:-/var/backups/lumira}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 OUT_DIR="${BACKUP_ROOT}/${STAMP}"
 DRY_RUN="${DRY_RUN:-0}"
@@ -71,7 +71,7 @@ if [[ -d "${ROOT_DIR}/data/plugins" ]]; then
 else
   echo "Skipping plugin files archive: data/plugins not found"
 fi
-run cp "${ENV_FILE}" "${OUT_DIR}/deploy.env.snapshot"
+run install -m 600 "${ENV_FILE}" "${OUT_DIR}/deploy.env.snapshot"
 
 if [[ "${DRY_RUN}" == "1" || "${DRY_RUN}" == "true" ]]; then
   echo "[dry-run] write ${OUT_DIR}/MANIFEST.txt"

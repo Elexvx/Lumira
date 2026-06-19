@@ -41,6 +41,7 @@ public class PlatformUpdateAppService {
     private static final String TASK_RUNNING = "RUNNING";
     private static final String TASK_INSTALL = "INSTALL";
     private static final String TASK_ROLLBACK = "ROLLBACK";
+    private static final String IMAGE_DIGEST_MARKER = "@sha256:";
 
     private final Environment environment;
     private final ObjectProvider<BuildProperties> buildPropertiesProvider;
@@ -342,11 +343,22 @@ public class PlatformUpdateAppService {
         latest.setReleasedAt(root.path("releasedAt").asText(null));
         latest.setTitle(firstText(root.path("releaseNotes").asText(null), root.path("title").asText(null), "Lumira release"));
         latest.setUrl(firstText(root.path("url").asText(null), root.path("releaseUrl").asText(null)));
-        latest.setServerImage(root.path("serverImage").asText(null));
-        latest.setFrontendImage(root.path("frontendImage").asText(null));
+        latest.setServerImage(requireDigestPinnedImage(root.path("serverImage").asText(null), "serverImage"));
+        latest.setFrontendImage(requireDigestPinnedImage(root.path("frontendImage").asText(null), "frontendImage"));
         latest.setMigrationRequired(root.path("migrationRequired").asBoolean(false));
         latest.setRollbackSupported(root.path("rollbackSupported").asBoolean(true));
         return latest;
+    }
+
+    private String requireDigestPinnedImage(String image, String fieldName) {
+        if (!StringUtils.hasText(image)) {
+            return image;
+        }
+        String trimmed = image.trim();
+        if (!trimmed.contains(IMAGE_DIGEST_MARKER)) {
+            throw new IllegalStateException("Update manifest " + fieldName + " must use sha256 digest pinning");
+        }
+        return trimmed;
     }
 
     private PlatformUpdateVO.LatestVersionVO fromGithubCommit(JsonNode root) {
