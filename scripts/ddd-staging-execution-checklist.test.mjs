@@ -352,6 +352,7 @@ try {
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-template$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-template-markdown$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node scripts\/ddd-lane-completion-receipt-autofill\.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>$/m);
@@ -1055,6 +1056,7 @@ try {
   assert.equal(laneCompletionSubmissionPlan.nextCommand, "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>");
   assert(laneCompletionSubmissionPlan.lanes.some((lane) => lane.key === "platform-owners:p1-p2-data-safety" && lane.missingArtifacts.includes("tmp/ddd-explain/*.json")));
   assert(laneCompletionSubmissionPlan.commands.includes("node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"));
+  assert(laneCompletionSubmissionPlan.commands.includes("node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>"));
   assert(laneCompletionSubmissionPlan.commands.includes("node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>"));
 
   const laneCompletionSubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["scripts/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-plan-markdown"], {
@@ -2545,6 +2547,7 @@ try {
   const bundleLaneCompletionReceiptTemplate = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "lane-completion-receipt.template.json"), "utf8"));
   assert.equal(bundleLaneCompletionReceiptTemplate.redacted, true);
   assert(bundleLaneCompletionReceiptTemplate.laneReceipts.some((lane) => lane.lane === "p1-p2-data-safety"));
+  assert(bundleLaneCompletionReceiptTemplate.submissionFlow.includes("node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>"));
   assert(bundleLaneCompletionReceiptTemplate.submissionFlow.includes("node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>"));
   assert(bundleLaneCompletionReceiptTemplate.submissionFlow.includes("node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
   const bundleLaneCompletionReceiptTemplateMarkdown = fs.readFileSync(path.join(handoffBundleDir, "lane-completion-receipt.template.md"), "utf8");
@@ -2917,6 +2920,7 @@ try {
   assert(ownerEvidenceIntake.owners.some((owner) => owner.owner === "release-infra" && owner.receiptFragments.length === 4));
   assert(ownerEvidenceIntake.owners.some((owner) => owner.owner === "release-infra" && owner.receiptWorkflow.laneKeys.includes("release-infra:final-review")));
   assert(ownerEvidenceIntake.owners.every((owner) => owner.receiptWorkflow.initCommand.includes("--lane-completion-receipt-init")));
+  assert(ownerEvidenceIntake.owners.every((owner) => owner.receiptWorkflow.autofillCommand.includes("ddd-lane-completion-receipt-autofill.mjs")));
   assert(ownerEvidenceIntake.owners.every((owner) => owner.submissionCommands.includes("node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>")));
 
   const ownerEvidenceIntakeMarkdownResult = spawnSyncWithTimeout("node", ["scripts/ddd-staging-execution-checklist.mjs", "--owner-evidence-intake-markdown", "--owner=platform-owners"], {

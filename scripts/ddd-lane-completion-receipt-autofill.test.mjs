@@ -8,6 +8,7 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-lane-receipt-autofill-"));
+const autofillCommand = "node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>";
 
 try {
   const receiptFile = path.join(tmpDir, "receipt.json");
@@ -105,6 +106,32 @@ try {
   });
   assert.notEqual(overwriteResult.status, 0, "autofill should refuse to overwrite without --force");
   assert.match(overwriteResult.stderr, /refusing to overwrite/);
+
+  const commandsResult = spawnSync("node", ["scripts/ddd-staging-execution-checklist.mjs", "--commands"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  assert.equal(commandsResult.status, 0, commandsResult.stderr || commandsResult.stdout);
+  assert.match(commandsResult.stdout, new RegExp(`^${autofillCommand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
+
+  const submissionPlanResult = spawnSync("node", ["scripts/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-plan"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  assert.equal(submissionPlanResult.status, 0, submissionPlanResult.stderr || submissionPlanResult.stdout);
+  const submissionPlan = JSON.parse(submissionPlanResult.stdout);
+  assert(submissionPlan.commands.includes(autofillCommand));
+
+  const ownerEvidenceIntakeResult = spawnSync("node", ["scripts/ddd-staging-execution-checklist.mjs", "--owner-evidence-intake"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  assert.equal(ownerEvidenceIntakeResult.status, 0, ownerEvidenceIntakeResult.stderr || ownerEvidenceIntakeResult.stdout);
+  const ownerEvidenceIntake = JSON.parse(ownerEvidenceIntakeResult.stdout);
+  assert(ownerEvidenceIntake.owners.every((owner) => owner.receiptWorkflow.autofillCommand === autofillCommand));
 
   console.log("[ddd-lane-completion-receipt-autofill.test] ok");
 } finally {

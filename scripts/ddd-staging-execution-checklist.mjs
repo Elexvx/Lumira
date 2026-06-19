@@ -8451,6 +8451,7 @@ function buildOwnerEvidenceIntake({
       receiptWorkflow: {
         laneKeys: fragments.map((fragment) => fragment.key),
         initCommand: "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+        autofillCommand: laneCompletionReceiptAutofillCommand,
         editRule: "update only this owner's laneReceipts entries, then leave unrelated owner/lane pairs unchanged",
         checkCommand: "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
         coverageCommand: "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
@@ -8547,6 +8548,7 @@ function renderOwnerEvidenceIntakeMarkdown(intake) {
       "",
       "Receipt workflow:",
       `- Init: \`${owner.receiptWorkflow.initCommand}\``,
+      `- Autofill: \`${owner.receiptWorkflow.autofillCommand}\``,
       `- Edit rule: ${owner.receiptWorkflow.editRule}`,
       `- Lane keys: ${owner.receiptWorkflow.laneKeys.length > 0 ? owner.receiptWorkflow.laneKeys.map((key) => `\`${key}\``).join(", ") : "none"}`,
       `- Check: \`${owner.receiptWorkflow.checkCommand}\``,
@@ -10088,6 +10090,7 @@ function renderOwnerPacket(owner, { rollup = null } = {}) {
     "Commands:",
     commandList([
       packet.receiptWorkflow.initCommand,
+      packet.receiptWorkflow.autofillCommand,
       "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
       packet.receiptWorkflow.checkCommand,
       "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",

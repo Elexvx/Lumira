@@ -6,9 +6,9 @@
 
 评估基线：`89381581`
 
-已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`、`d23d4580`、`5c4a5501`、`d8392d64`、`d4322be6`
+已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`、`d23d4580`、`5c4a5501`、`d8392d64`、`d4322be6`、`9d63573e`
 
-当前补充证据：本轮补充报告结构合约测试，自动校验 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、关键标准和证据编号；发布汇总和生产证据就绪门禁仍显示 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断。
+当前补充证据：本轮补充报告结构合约测试和 lane completion receipt 自动填充辅助命令，自动校验 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、关键标准和证据编号；发布汇总和生产证据就绪门禁仍显示 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断。
 
 ## 1. 结论
 
@@ -121,6 +121,7 @@
 | E-REL-03 | 交接包完整性 | `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle`、`--handoff-bundle-verify` | 本轮重新生成交接包，写入 113 个文件；验证通过，检查 112 个文件，问题列表为空。 |
 | E-REL-04 | 发布制品/配置门禁 | `ddd-release-artifact-integrity-gate-contract.test.mjs`、`ddd-release-config-sync.test.mjs` | 均通过。 |
 | E-REL-05 | 生产证据就绪轻量回归 | `node scripts/ddd-production-evidence-readiness.test.mjs` | 通过；覆盖生产解阻计划、生产证据就绪 JSON、交接包完整性，并确认当前 5 个生产证据门仍处于阻断状态。 |
+| E-REL-06 | lane completion receipt 自动填充辅助 | `node scripts/ddd-lane-completion-receipt-autofill.test.mjs`、`node --check scripts/ddd-staging-execution-checklist.mjs` | 通过；owner evidence intake 中 PASS 的 lane 可预填 receipt，并在命令列表、提交计划、交接包模板和 owner packet 中展示下一步命令，但不绕过最终提交检查。 |
 | E-DEPLOY-FAIL | 部署运行态检查 | `node scripts/check-deployment.mjs` | 失败：`127.0.0.1:8000/health`、`/api/health`、`127.0.0.1:8080/actuator/health` 均无 HTTP 响应。 |
 | E-DEPLOY-PS | Compose 部署脚本探测 | `node scripts/deploy-container.mjs --ps --local-mysql` | 通过；修复 Windows 下 Docker/Compose 调用、目录准备和 compose 相对路径后，可正常输出 compose `ps`。 |
 | E-DEPLOY-START-BLOCKED | 本地 compose 启动尝试 | `node scripts/start-platform.mjs --skip-build --local-mysql --skip-check` | 启动进入 Docker volume/image 阶段，但 busybox/base image 拉取超时，未形成可访问运行态。 |
