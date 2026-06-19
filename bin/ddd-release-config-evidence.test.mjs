@@ -8,7 +8,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { validateReleaseConfigArtifact } from "./ddd-release-config-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const script = path.join(repoRoot, "scripts", "ddd-release-config-evidence.mjs");
+const script = path.join(repoRoot, "bin", "ddd-release-config-evidence.mjs");
 
 function validEnv() {
   return {

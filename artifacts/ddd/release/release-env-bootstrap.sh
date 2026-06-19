@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Lumira DDD release env bootstrap.
 # Merges owner-scoped env templates, canonical values, aliases, and strict env/config evidence.
-# Generated at: 2026-06-19T18:09:18.921Z
+# Generated at: 2026-06-19T18:19:45.629Z
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
   if [[ -f "bin/ddd-release-readiness-summary.mjs" ]]; then

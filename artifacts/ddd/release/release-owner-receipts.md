@@ -1,6 +1,6 @@
 # DDD Release Owner Receipts
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -8,7 +8,7 @@ Ready for strict gate rerun owners: 0
 Content blocked owners: 14
 Artifact missing owners: 2
 Missing artifacts: 4
-Pending actions: 51
+Pending actions: 42
 
 ## release-infra
 
@@ -196,38 +196,6 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - [authenticated-performance] performance-baseline-metadata-5: strict release baseline requires baselineType=authenticated-runtime
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 
-## release-owner
-
-- Receipt status: CONTENT_BLOCKED
-- Ready batches: p0-manifest-release-owner
-- Present artifacts: 4
-- Missing artifacts: 0
-- Pending actions: 8
-- Pending action reasons:
-  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh: optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh
-  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs: optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs
-  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs: optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs
-  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs: optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs
-  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet
-- Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
-
-## database
-
-- Receipt status: ARTIFACT_MISSING
-- Ready batches: p0-manifest-database
-- Present artifacts: 5
-- Missing artifacts: 1
-- Pending actions: 5
-- Missing artifact paths:
-  - `tmp/ddd-explain/*.json`
-- Pending action reasons:
-  - [explain] message-archive-total.json: [plan] message-archive-total.json: archive_candidates does not report an index key for access_type=ALL | [plan] message-archive-total.json: archive_candidates uses full scan access_type=ALL
-  - [explain] message-unread-count.json: [plan] message-unread-count.json: unread_candidates does not report an index key for access_type=ALL | [plan] message-unread-count.json: unread_candidates uses full scan access_type=ALL
-  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs: optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs
-  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff
-  - [orchestrator] orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
-- Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
-
 ## lumira-ui
 
 - Receipt status: ARTIFACT_MISSING
@@ -256,6 +224,21 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - [ai-runtime] ai-owner-gateway: ownerGateway status=CONFIGURED configuredOwners=0
   - [ai-runtime] ai-provider-runtime: provider status=CONFIGURED remoteConfigured=false
   - [ai-runtime] ai-runtime-base-url: missing production-equivalent AI base URL
+- Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
+
+## database
+
+- Receipt status: ARTIFACT_MISSING
+- Ready batches: none
+- Present artifacts: 4
+- Missing artifacts: 1
+- Pending actions: 3
+- Missing artifact paths:
+  - `tmp/ddd-explain/*.json`
+- Pending action reasons:
+  - [explain] message-archive-total.json: [plan] message-archive-total.json: archive_candidates does not report an index key for access_type=ALL | [plan] message-archive-total.json: archive_candidates uses full scan access_type=ALL
+  - [explain] message-unread-count.json: [plan] message-unread-count.json: unread_candidates does not report an index key for access_type=ALL | [plan] message-unread-count.json: unread_candidates uses full scan access_type=ALL
+  - [orchestrator] orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 
 ## file-owner
@@ -369,5 +352,16 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - Pending actions: 1
 - Pending action reasons:
   - [rollback] Plugin: Plugin rollback drill is DEFERRED with approved deferral evidence
+- Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
+
+## release-owner
+
+- Receipt status: CONTENT_BLOCKED
+- Ready batches: none
+- Present artifacts: 3
+- Missing artifacts: 0
+- Pending actions: 1
+- Pending action reasons:
+  - [orchestrator] orchestrator-run-mode: strict release requires run mode report, got plan
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 

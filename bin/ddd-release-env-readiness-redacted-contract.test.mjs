@@ -112,7 +112,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-env-readiness-redacted-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-env-readiness-redacted-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_DIR: directory },

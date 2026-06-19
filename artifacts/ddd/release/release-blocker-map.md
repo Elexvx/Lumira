@@ -1,6 +1,6 @@
 # DDD Release Blocker Map
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Release gate mode: strict
 Release gate blockers: 94
@@ -38,16 +38,12 @@ Total blockers: 94
 
 - Blockers: 14
 - Categories: manifest=2, manifest-provenance=3, orchestrator=3, other=5, rollback-drill=1
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
@@ -184,18 +180,14 @@ Total blockers: 94
 
 - Blockers: 3
 - Categories: explain-plan=1, migration=2
-- Ready batches: p0-manifest-database
+- Ready batches: none
 - Blocked batches: p2-explain-database, p3-orchestrator-database
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
   - `node bin/ddd-collect-explain.mjs`
   - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `tmp/ddd-explain/*.json`
   - `artifacts/ddd/release/explain-gate-report.json`
   - `artifacts/ddd/release/orchestrator-report.json`
@@ -343,16 +335,12 @@ Total blockers: 94
 
 - Blockers: 5
 - Owners: release-owner=5
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
@@ -412,16 +400,12 @@ Total blockers: 94
 
 - Blockers: 3
 - Owners: release-owner=3
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
@@ -434,16 +418,12 @@ Total blockers: 94
 
 - Blockers: 3
 - Owners: release-owner=3
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
@@ -456,16 +436,12 @@ Total blockers: 94
 
 - Blockers: 2
 - Owners: release-owner=2
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
@@ -477,18 +453,14 @@ Total blockers: 94
 
 - Blockers: 2
 - Owners: database=2
-- Ready batches: p0-manifest-database
+- Ready batches: none
 - Blocked batches: p2-explain-database, p3-orchestrator-database
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
   - `node bin/ddd-collect-explain.mjs`
   - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `tmp/ddd-explain/*.json`
   - `artifacts/ddd/release/explain-gate-report.json`
   - `artifacts/ddd/release/orchestrator-report.json`
@@ -502,18 +474,14 @@ Total blockers: 94
 
 - Blockers: 1
 - Owners: database=1
-- Ready batches: p0-manifest-database
+- Ready batches: none
 - Blocked batches: p2-explain-database, p3-orchestrator-database
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
   - `node bin/ddd-collect-explain.mjs`
   - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `tmp/ddd-explain/*.json`
   - `artifacts/ddd/release/explain-gate-report.json`
   - `artifacts/ddd/release/orchestrator-report.json`
@@ -551,16 +519,12 @@ Total blockers: 94
 
 - Blockers: 1
 - Owners: release-owner=1
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`

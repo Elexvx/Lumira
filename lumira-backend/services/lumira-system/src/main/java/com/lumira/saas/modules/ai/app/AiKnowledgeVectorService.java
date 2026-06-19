@@ -22,6 +22,18 @@ public class AiKnowledgeVectorService {
         return new VectorProjection(vector.model(), vector.dimensions(), serialize(vector.values()));
     }
 
+    public List<VectorProjection> projectBatch(List<String> texts) {
+        if (texts == null || texts.isEmpty()) {
+            return List.of();
+        }
+        List<AiEmbeddingVector> vectors = embeddingModel.embedBatch(texts);
+        List<VectorProjection> projections = new ArrayList<>(vectors.size());
+        for (AiEmbeddingVector vector : vectors) {
+            projections.add(new VectorProjection(vector.model(), vector.dimensions(), serialize(vector.values())));
+        }
+        return projections;
+    }
+
     public AiEmbeddingVector embedQuery(String query) {
         return embeddingModel.embed(query);
     }

@@ -1,14 +1,14 @@
 # DDD Release Next Action Queue
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
 Cutover allowed: false
 Stop reasons: 8
 releaseEnvFileCutoverSafe: false
-Run now: 5
-Waiting: 11
+Run now: 3
+Waiting: 13
 Owner input receipt status: PENDING_OWNER_INPUT
 Owner input receipt cutover ready: false
 Owner input receipt required inputs: 0
@@ -67,23 +67,7 @@ Owner input receipt pending owners: 0
   - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 - Env keys: BASE_URL, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL
 
-## 2. release-owner
-
-- Queue status: RUN_NOW
-- Receipt status: CONTENT_BLOCKED
-- Strict gate blockers: 14
-- Ready batches: p0-manifest-release-owner
-- Blocked batches: p3-orchestrator-release-owner
-- Next action: Inspect the strict release gate blocker and attach an owner-specific remediation.
-- Reason: strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h
-- Executable commands:
-  - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
-- Env keys: DDD_RELEASE_EVIDENCE_STRICT
-
-## 3. release-performance
+## 2. release-performance
 
 - Queue status: RUN_NOW
 - Receipt status: CONTENT_BLOCKED
@@ -100,7 +84,7 @@ Owner input receipt pending owners: 0
   - `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
   - `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 
-## 4. lumira-ui
+## 3. lumira-ui
 
 - Queue status: RUN_NOW
 - Receipt status: ARTIFACT_MISSING
@@ -116,25 +100,18 @@ Owner input receipt pending owners: 0
   - `DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_FRONTEND_EXPECT_DEPLOYED, DDD_RELEASE_CANDIDATE, PLAYWRIGHT_BASE_URL
 
-## 5. database
+## 4. release-owner
 
-- Queue status: RUN_NOW
-- Receipt status: ARTIFACT_MISSING
-- Strict gate blockers: 3
-- Ready batches: p0-manifest-database
-- Blocked batches: p2-explain-database, p3-orchestrator-database
-- Next action: Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.
-- Reason: strictGate=migration-evidence-freshness generatedAt is 57.7h old; limit=24h
-- Executable commands:
-  - `DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs`
-  - `node bin/ddd-migration-evidence.mjs`
-  - `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
-- Env keys: DDD_EVIDENCE_OPERATOR, DDD_MIGRATION_COMPLETED_AT, DDD_MIGRATION_ENVIRONMENT, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_HANDOFF_FILE, DDD_MIGRATION_OPERATOR, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_RELEASE_CANDIDATE
+- Queue status: WAIT_FOR_DEPENDENCIES
+- Receipt status: CONTENT_BLOCKED
+- Strict gate blockers: 14
+- Ready batches: none
+- Blocked batches: p3-orchestrator-release-owner
+- Next action: Inspect the strict release gate blocker and attach an owner-specific remediation.
+- Reason: strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h
+- Env keys: DDD_RELEASE_EVIDENCE_STRICT
 
-## 6. ai
+## 5. ai
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
@@ -145,7 +122,7 @@ Owner input receipt pending owners: 0
 - Reason: strictGate=ai-runtime-drill AI runtime productionEquivalence.strict must be true for strict release evidence
 - Env keys: DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE, LUMIRA_AI_OWNER_FILE_BASE_URL, LUMIRA_AI_OWNER_IAM_BASE_URL, LUMIRA_AI_OWNER_PLATFORM_BASE_URL
 
-## 7. file-owner
+## 6. file-owner
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
@@ -156,7 +133,7 @@ Owner input receipt pending owners: 0
 - Reason: strictGate=file-processing-freshness finishedAt is 131.7h old; limit=24h
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN, LUMIRA_UPLOAD_STORAGE_ROOT
 
-## 8. job-owner
+## 7. job-owner
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
@@ -167,7 +144,7 @@ Owner input receipt pending owners: 0
 - Reason: strictGate=job-e2e-freshness checkedAt is 131.4h old; limit=24h
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN
 
-## 9. payment-owner
+## 8. payment-owner
 
 - Queue status: WAIT_FOR_DEPENDENCIES
 - Receipt status: CONTENT_BLOCKED
@@ -177,6 +154,20 @@ Owner input receipt pending owners: 0
 - Next action: Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.
 - Reason: strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
+
+## 9. database
+
+- Queue status: WAIT_FOR_DEPENDENCIES
+- Receipt status: ARTIFACT_MISSING
+- Strict gate blockers: 3
+- Ready batches: none
+- Blocked batches: p2-explain-database, p3-orchestrator-database
+- Next action: Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.
+- Reason: strictGate=migration-evidence-freshness generatedAt is 57.7h old; limit=24h
+- Executable commands:
+  - `DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs`
+  - `node bin/ddd-migration-evidence.mjs`
+- Env keys: DDD_EVIDENCE_OPERATOR, DDD_MIGRATION_COMPLETED_AT, DDD_MIGRATION_ENVIRONMENT, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_HANDOFF_FILE, DDD_MIGRATION_OPERATOR, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_RELEASE_CANDIDATE
 
 ## 10. ai-owner
 

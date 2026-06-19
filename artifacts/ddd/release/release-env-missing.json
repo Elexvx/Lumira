@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T18:09:16.572Z",
-      "generatedAt": "2026-06-19T18:09:16.571Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 12,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -248,12 +248,12 @@
     "blockers": 94,
     "warnings": 8
   },
-  "uniqueEnvKeyCount": 48,
-  "templateEnvKeyCount": 46,
+  "uniqueEnvKeyCount": 47,
+  "templateEnvKeyCount": 45,
   "templateControlKeys": [
     "DDD_RELEASE_ENV_FILE"
   ],
-  "groupCount": 24,
+  "groupCount": 22,
   "uniqueEnvKeys": [
     "BASE_URL",
     "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
@@ -277,7 +277,6 @@
     "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
     "DDD_RELEASE_CANDIDATE",
     "DDD_RELEASE_EVIDENCE_STRICT",
-    "DDD_RELEASE_MANIFEST_STRICT",
     "DDD_ROLLBACK_DRILL_CHECK_ENV",
     "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
     "DDD_ROLLBACK_DRILL_FILE",
@@ -330,7 +329,6 @@
     "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
     "DDD_RELEASE_CANDIDATE",
     "DDD_RELEASE_EVIDENCE_STRICT",
-    "DDD_RELEASE_MANIFEST_STRICT",
     "DDD_ROLLBACK_DRILL_CHECK_ENV",
     "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
     "DDD_ROLLBACK_DRILL_FILE",
@@ -517,74 +515,6 @@
       ]
     },
     {
-      "batchId": "p0-manifest-database",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "database",
-      "pendingItems": 2,
-      "dependsOn": [],
-      "canRunImmediately": true,
-      "envKeys": [
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-          "keys": [
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE"
-          ],
-          "spec": "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_FRESH_DB_VALIDATED",
-          "keys": [
-            "DDD_MIGRATION_FRESH_DB_VALIDATED"
-          ],
-          "spec": "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED"
-        },
-        {
-          "label": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-          "keys": [
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-          ],
-          "spec": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-          "keys": [
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-          ],
-          "spec": "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-        }
-      ],
-      "templateEnvKeys": [
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-      ],
-      "aliasMappings": [],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff"
-      ]
-    },
-    {
       "batchId": "p0-manifest-lumira-ui",
       "priority": "P0",
       "source": "manifest",
@@ -655,79 +585,6 @@
         "manifest-missing-lumira-ui-frontend-smoke-json",
         "manifest-missing-lumira-ui-lumira-ui-build-evidence-json",
         "manifest-missing-lumira-ui-lumira-ui-static-evidence-json"
-      ]
-    },
-    {
-      "batchId": "p0-manifest-release-owner",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "pendingItems": 7,
-      "dependsOn": [],
-      "canRunImmediately": true,
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "DDD_EVIDENCE_ENVIRONMENT",
-          "keys": [
-            "DDD_EVIDENCE_ENVIRONMENT"
-          ],
-          "spec": "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT"
-        },
-        {
-          "label": "DDD_EVIDENCE_OPERATOR",
-          "keys": [
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "spec": "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR"
-        },
-        {
-          "label": "DDD_RELEASE_CANDIDATE",
-          "keys": [
-            "DDD_RELEASE_CANDIDATE"
-          ],
-          "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
-        },
-        {
-          "label": "DDD_RELEASE_MANIFEST_STRICT",
-          "keys": [
-            "DDD_RELEASE_MANIFEST_STRICT"
-          ],
-          "spec": "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
-        }
-      ],
-      "templateEnvKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "aliasMappings": [],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff"
       ]
     },
     {
@@ -816,9 +673,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -983,9 +838,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -1082,9 +935,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -1167,9 +1018,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -1246,9 +1095,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -1355,9 +1202,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -1464,9 +1309,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -1573,9 +1416,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -1682,9 +1523,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -1791,9 +1630,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -1900,9 +1737,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -2009,9 +1844,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -2118,9 +1951,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -2227,9 +2058,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false,
@@ -2336,9 +2165,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2510,9 +2337,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2601,9 +2426,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2697,9 +2520,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",

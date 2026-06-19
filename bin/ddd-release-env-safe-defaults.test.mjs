@@ -15,7 +15,7 @@ function write(file, text, mode = 0o600) {
 }
 
 function runSafeDefaults(root, envFile, extraEnv = {}) {
-  return spawnSync("node", ["bin/ddd-release-env-safe-defaults.mjs", envFile], {
+  return spawnSync("node", ["bin\/ddd-release-env-safe-defaults.mjs", envFile], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

@@ -10,7 +10,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-env-canonical-lint-"));
 
 function runLint(sourceFile, reportFile) {
-  return spawnSync("node", ["bin/ddd-release-env-canonical-lint.mjs", sourceFile], {
+  return spawnSync("node", ["bin\/ddd-release-env-canonical-lint.mjs", sourceFile], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

@@ -358,8 +358,8 @@ writeJson("release/release-final-owner-queue-env-init-receipt.json", {
   unresolvedTemplateKeyCount: 2,
   unresolvedTemplateKeys: ["JWT_SECRET", "DB_PASSWORD"],
   nextCommands: [
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-readiness-summary.mjs",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-readiness-summary.mjs",
   ],
 });
 writeJson("release/explain-gate-report.json", {
@@ -607,7 +607,7 @@ writeJson("build/docker-image-evidence.json", {
           "DDD_DOCKER_NODE_IMAGE",
           "DDD_DOCKER_NGINX_IMAGE",
         ],
-        exampleCommand: "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 node bin/ddd-docker-build-evidence.mjs",
+        exampleCommand: "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 node bin\/ddd-docker-build-evidence.mjs",
       },
       {
         id: "docker-existing-image-inspect",
@@ -618,7 +618,7 @@ writeJson("build/docker-image-evidence.json", {
           "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
           "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
         ],
-        exampleCommand: "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<release-candidate> node bin/ddd-docker-build-evidence.mjs",
+        exampleCommand: "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<release-candidate> node bin\/ddd-docker-build-evidence.mjs",
       },
     ],
   },
@@ -1036,7 +1036,7 @@ const staleRedactedHandoffDir = path.join(artifactRoot, "release", "release-env-
 fs.mkdirSync(staleRedactedHandoffDir, { recursive: true });
 fs.writeFileSync(path.join(staleRedactedHandoffDir, "99-stale-owner.md"), "# stale owner handoff\n");
 
-const result = spawnSync("node", ["bin/ddd-release-readiness-summary.mjs"], {
+const result = spawnSync("node", ["bin\/ddd-release-readiness-summary.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -1213,7 +1213,7 @@ function assertReleaseScriptPortable(scriptName, scriptText) {
     `${scriptName} must infer its location before resolving the repo root`,
   );
   assert(
-    scriptText.includes("if [[ -f \"bin/ddd-release-readiness-summary.mjs\" ]]; then"),
+    scriptText.includes("if [[ -f \"bin\/ddd-release-readiness-summary.mjs\" ]]; then"),
     `${scriptName} must detect when it is already running from the repo root`,
   );
   assert(
@@ -1294,7 +1294,7 @@ assert(releasePreflightGate.includes("Default preflight PASS means checks comple
 const finalGoNoGoEnforceCommand = "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh";
 assert(releaseFinalGoNoGoGate.includes("DDD_STAGING_FINAL_REVIEW_ENFORCE"));
 assert(releaseFinalGoNoGoGate.includes("DDD_NODE_BIN"));
-assert(releaseFinalGoNoGoGate.includes("\"${DDD_NODE_BIN}\" bin/ddd-staging-execution-checklist.mjs --final-review-enforce"));
+assert(releaseFinalGoNoGoGate.includes("\"${DDD_NODE_BIN}\" bin\/ddd-staging-execution-checklist.mjs --final-review-enforce"));
 assert(releaseFinalGoNoGoGate.includes("[ddd-final-go-no-go][staging-final-review-blocked]"));
 for (const [scriptName, scriptText] of [
   ["release-env-bootstrap.sh", releaseEnvBootstrap],
@@ -1326,7 +1326,7 @@ assert.match(releaseEnvBootstrap, /ddd-release-provenance-defaults\.mjs/);
 assert.match(releaseEnvBootstrap, /ddd-release-env-alias-sync\.mjs/);
 assert.match(releaseEnvBootstrap, /ddd-release-env-file-lint\.mjs/);
 assert.match(releaseEnvBootstrap, /DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts\/ddd\/release\/release-env-readiness-gate\.sh/);
-assert.match(releaseEnvBootstrap, /DDD_RELEASE_MANIFEST_CHECK_ENV=true "\$\{DDD_NODE_BIN\}" scripts\/ddd-release-evidence-manifest\.mjs/);
+assert.match(releaseEnvBootstrap, /DDD_RELEASE_MANIFEST_CHECK_ENV=true "\$\{DDD_NODE_BIN\}" bin\/ddd-release-evidence-manifest\.mjs/);
 assert.match(releaseEnvBootstrap, /DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts\/ddd\/release\/release-final-go-no-go-gate\.sh/);
 assert.match(releaseEnvBootstrap, /DDD_RELEASE_ENV_BOOTSTRAP_RECEIPT/);
 assert.match(releaseEnvBootstrap, /DDD_NODE_BIN="\$\{DDD_NODE_BIN:-node\}"/);
@@ -1389,9 +1389,9 @@ if (process.platform !== "win32") {
   assert.equal(releaseEnvBootstrapReceipt.artifactIntegrityGateCommand, "bash artifacts/ddd/release/release-artifact-integrity-gate.sh");
   assert.equal(releaseEnvBootstrapReceipt.artifactIntegrityArtifact, "artifacts/ddd/release/release-artifact-integrity.json");
   assert.equal(releaseEnvBootstrapReceipt.artifactIntegrityMarkdown, "artifacts/ddd/release/release-artifact-integrity.md");
-  assert.equal(releaseEnvBootstrapReceipt.envSafeDefaultsCommand, "node bin/ddd-release-env-safe-defaults.mjs");
+  assert.equal(releaseEnvBootstrapReceipt.envSafeDefaultsCommand, "node bin\/ddd-release-env-safe-defaults.mjs");
   assert.equal(releaseEnvBootstrapReceipt.envSafeDefaultsArtifact, "artifacts/ddd/release/release-env-safe-defaults.json");
-  assert.equal(releaseEnvBootstrapReceipt.provenanceDefaultsCommand, "node bin/ddd-release-provenance-defaults.mjs");
+  assert.equal(releaseEnvBootstrapReceipt.provenanceDefaultsCommand, "node bin\/ddd-release-provenance-defaults.mjs");
   assert.equal(releaseEnvBootstrapReceipt.provenanceDefaultsArtifact, "artifacts/ddd/release/release-provenance-defaults.json");
   assert.equal(releaseEnvBootstrapReceipt.envReadinessGateCommand, "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh");
   assert.equal(releaseEnvBootstrapReceipt.envReadinessArtifact, "artifacts/ddd/release/release-env-readiness-redacted.json");
@@ -1459,7 +1459,7 @@ assert.equal(ownerRollup.owners["release-performance"].pendingItems, 8);
 assert.equal(ownerRollup.owners.database.sources.explain, 8);
 assert.equal(ownerRollup.owners.ai.collapsedItems, 3);
 assert.equal(ownerRollup.owners.database.collapsedItems, 2);
-assert.equal(ownerRollup.owners.lumira-ui.collapsedItems, 2);
+assert.equal(ownerRollup.owners["lumira-ui"].collapsedItems, 2);
 assert.equal(ownerRollup.owners["release-infra"].collapsedItems, 2);
 assert.equal(ownerRollup.owners["release-infra"].collapsed[0].id, "orchestrator-preflight-backend-runtime-base-url");
 assert.deepEqual(ownerRollup.owners["release-infra"].collapsed[0].coveredBy, {
@@ -1595,8 +1595,8 @@ assert.equal(releaseBatches.batches[0].canRunImmediately, true);
 assert.equal(releaseBatches.batches[0].source, "release-env-lint");
 assert.equal(releaseBatches.batches[0].owner, "release-infra");
 assert.deepEqual(releaseBatches.batches[0].commands, [
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
-  "node bin/ddd-release-config-evidence.mjs",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
+  "node bin\/ddd-release-config-evidence.mjs",
 ]);
 assert.deepEqual(releaseBatches.batches[0].expectedArtifacts, [
   "artifacts/ddd/release/release-env-lint.json",
@@ -1658,8 +1658,8 @@ assert(releaseBatches.batches.some((batch) => (
 )));
 assert(releaseBatches.batches.some((batch) => (
   batch.source === "orchestrator"
-    && batch.commands.includes("node bin/ddd-release-evidence-orchestrator.mjs")
-    && batch.commands.includes("DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict")
+    && batch.commands.includes("node bin\/ddd-release-evidence-orchestrator.mjs")
+    && batch.commands.includes("DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator.mjs --run --strict")
     && batch.expectedArtifacts.includes("artifacts/ddd/release/orchestrator-report.json")
     && batch.exitCriteria.some((criterion) => criterion.includes("strict run mode"))
 )));
@@ -1668,27 +1668,27 @@ assert.equal(releaseBatches.batches.at(-1).canRunImmediately, false);
 assert(releaseBatches.batches.at(-1).dependsOn.length > p0BatchIds.length);
 assert(releaseBatches.batches.some((batch) => (
   batch.source === "runtime-readiness"
-    && batch.commands.includes("node bin/ddd-runtime-readiness-smoke.mjs")
+    && batch.commands.includes("node bin\/ddd-runtime-readiness-smoke.mjs")
 )));
 assert(releaseBatches.batches.some((batch) => (
   batch.source === "authenticated-performance"
-    && batch.commands.includes("node bin/ddd-authenticated-performance-smoke.mjs")
-    && batch.commands.includes("node bin/ddd-promote-performance-baseline.mjs")
+    && batch.commands.includes("node bin\/ddd-authenticated-performance-smoke.mjs")
+    && batch.commands.includes("node bin\/ddd-promote-performance-baseline.mjs")
 )));
 assert(releaseBatches.batches.some((batch) => (
   batch.source === "frontend-smoke"
-    && batch.commands.includes("node bin/ddd-frontend-playwright-smoke.mjs")
-    && batch.commands.includes("node bin/ddd-frontend-smoke-evidence.mjs")
+    && batch.commands.includes("node bin\/ddd-frontend-playwright-smoke.mjs")
+    && batch.commands.includes("node bin\/ddd-frontend-smoke-evidence.mjs")
 )));
 assert(releaseBatches.batches.some((batch) => (
   batch.source === "migration"
-    && batch.commands.includes("node bin/ddd-migration-evidence.mjs")
+    && batch.commands.includes("node bin\/ddd-migration-evidence.mjs")
 )));
 assert(releaseBatches.batches.some((batch) => (
   batch.source === "rollback"
     && batch.envKeys.includes("DDD_ROLLBACK_DRILL_FILE")
     && batch.envKeys.includes("DDD_ROLLBACK_DRILL_CHECK_ENV")
-    && batch.commands.includes("DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs")
+    && batch.commands.includes("DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs")
     && batch.envKeys.includes("DDD_ROLLBACK_DRILL_DEFERRAL_FILE")
     && batch.envCheckGroups.some((group) => group.spec === "DDD_ROLLBACK_DRILL_FILE=DDD_ROLLBACK_DRILL_FILE")
 )));
@@ -1703,24 +1703,24 @@ assert(releaseBatches.batches.some((batch) => (
   batch.source === "docker"
     && batch.owner === "release-infra"
     && batch.pendingItems === 1
-    && batch.commands.includes("DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs")
+    && batch.commands.includes("DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs")
 )));
 assert(releaseBatches.batches.some((batch) => (
   batch.source === "business-e2e"
     && batch.owner === "file-owner"
-    && batch.commands.includes("node bin/ddd-file-processing-e2e-smoke.mjs")
+    && batch.commands.includes("node bin\/ddd-file-processing-e2e-smoke.mjs")
     && JSON.stringify(batch.expectedArtifacts) === JSON.stringify(["artifacts/ddd/file/file-processing-e2e.json"])
 )));
 assert(releaseBatches.batches.some((batch) => (
   batch.source === "business-e2e"
     && batch.owner === "payment-owner"
-    && batch.commands.includes("node bin/ddd-payment-webhook-e2e-smoke.mjs")
+    && batch.commands.includes("node bin\/ddd-payment-webhook-e2e-smoke.mjs")
     && JSON.stringify(batch.expectedArtifacts) === JSON.stringify(["artifacts/ddd/payment/payment-webhook-e2e.json"])
 )));
 assert(releaseBatches.batches.some((batch) => (
   batch.source === "business-e2e"
     && batch.owner === "job-owner"
-    && batch.commands.includes("node bin/ddd-job-e2e-smoke.mjs")
+    && batch.commands.includes("node bin\/ddd-job-e2e-smoke.mjs")
     && JSON.stringify(batch.expectedArtifacts) === JSON.stringify(["artifacts/ddd/jobs/job-e2e-smoke.json"])
 )));
 assert.equal(releaseMissingEnv.status, "NOT_READY");
@@ -1974,8 +1974,8 @@ assert.equal(releaseEnvOwnerInputPacket.postCollectionReceipt.redacted, true);
 assert.equal(releaseEnvOwnerInputPacket.postCollectionReceipt.passCriteria.releaseEnvReadinessBlockers, 0);
 assert.equal(releaseEnvOwnerInputPacket.postCollectionReceipt.passCriteria.releaseEnvReadinessPlaceholders, 0);
 assert.equal(releaseEnvOwnerInputPacket.postCollectionReceipt.passCriteria.configOwnerInputReconciliationStatus, "PASS");
-assert(releaseEnvOwnerInputPacket.postCollectionReceipt.commands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs"));
-assert(releaseEnvOwnerInputPacket.postCollectionReceipt.commands.includes("node bin/ddd-release-config-owner-input-reconciliation.mjs"));
+assert(releaseEnvOwnerInputPacket.postCollectionReceipt.commands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs"));
+assert(releaseEnvOwnerInputPacket.postCollectionReceipt.commands.includes("node bin\/ddd-release-config-owner-input-reconciliation.mjs"));
 assert(releaseEnvOwnerInputPacket.postCollectionReceipt.commands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> bash artifacts/ddd/release/release-preflight-gate.sh"));
 assert.match(releaseEnvOwnerInputPacketCsv.split("\n")[0], /inputOrder,owner,canonicalKey,aliases,group,requirement,status,valueClass,ownerInputReason/);
 assert.match(releaseEnvOwnerInputPacketMarkdown, /^# DDD Release Env Owner Input Packet/m);
@@ -2093,8 +2093,8 @@ assert(releaseEnvOwnerHandoff.owners.some((owner) => (
     && owner.postFillCommands.some((command) => command.includes("ddd-release-env-safe-defaults.mjs"))
     && owner.postFillCommands.some((command) => command.includes("ddd-release-provenance-defaults.mjs"))
     && owner.postFillCommands.some((command) => command.includes("ddd-release-env-alias-sync.mjs"))
-    && owner.postFillCommands.some((command) => command.includes("DDD_RELEASE_ENV_FILE=") && command.endsWith("node bin/ddd-release-env-file-lint.mjs"))
-    && owner.postFillCommands.includes("node bin/ddd-release-config-evidence.mjs")
+    && owner.postFillCommands.some((command) => command.includes("DDD_RELEASE_ENV_FILE=") && command.endsWith("node bin\/ddd-release-env-file-lint.mjs"))
+    && owner.postFillCommands.includes("node bin\/ddd-release-config-evidence.mjs")
     && owner.postFillCommands.includes("DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh")
 )));
 assert.equal(
@@ -2110,7 +2110,7 @@ assert.equal(releaseEnvOwnerTemplates.ownerCount, releaseEnvOwnerHandoff.ownerCo
 assert.equal(releaseEnvOwnerTemplates.canonicalFillItemCount, releaseEnvOwnerHandoff.canonicalFillItemCount);
 assert.match(releaseEnvOwnerTemplatesMarkdown, /^# DDD Release Env Owner Templates/m);
 assert.match(releaseEnvOwnerTemplatesMarkdown, /release-env-owner-templates\/\d+-release-infra\.env/);
-assert.match(releaseEnvOwnerTemplatesMarkdown, /DDD_RELEASE_ENV_FILE=[^`\s]+ node scripts\/ddd-release-env-file-lint\.mjs/);
+assert.match(releaseEnvOwnerTemplatesMarkdown, /DDD_RELEASE_ENV_FILE=[^`\s]+ node bin\/ddd-release-env-file-lint\.mjs/);
 assert.deepEqual(
   fs.readdirSync(path.join(artifactRoot, "release", "release-env-owner-templates")).filter((file) => file.endsWith(".env")).sort(),
   releaseEnvOwnerTemplates.owners.map((owner) => owner.fileName).sort(),
@@ -2123,7 +2123,7 @@ assert.match(releaseInfraOwnerTemplateText, /^DB_PASSWORD=__REQUIRED__$/m);
 assert.match(releaseInfraOwnerTemplateText, /# Value class: secret; secret=true; safeToPreFill=false/);
 assert.doesNotMatch(releaseInfraOwnerTemplateText, /^LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=/m);
 assert(releaseInfraOwnerTemplate.postFillCommands[0].includes("ddd-release-env-owner-templates-merge.mjs"));
-assert(releaseInfraOwnerTemplate.postFillCommands.some((command) => command.includes("DDD_RELEASE_ENV_FILE=") && command.endsWith("node bin/ddd-release-env-file-lint.mjs")));
+assert(releaseInfraOwnerTemplate.postFillCommands.some((command) => command.includes("DDD_RELEASE_ENV_FILE=") && command.endsWith("node bin\/ddd-release-env-file-lint.mjs")));
 assert(releaseInfraOwnerTemplate.postFillCommands.includes("DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"));
 assert.equal(ownerRollupCsv.split("\n")[0], "owner,pendingItems,source,id,reason,envKeys,action");
 assert(ownerRollupCsv.includes("release-performance,8,manifest,manifest-missing-performance-authenticated-runtime-baseline-json"));
@@ -2136,7 +2136,7 @@ assert(sourceRollupCsv.includes("docker,1,release-infra,docker-daemon"));
 assert.equal(releasePriorityCsv.split("\n")[0], "priority,source,owner,id,check,reason,detail,structured,envKeys,action");
 assert(releasePriorityCsv.includes("P0,release-env-lint,release-infra,release-env-lint-placeholders"));
 assert(releasePriorityCsv.includes("P0,release-config,ai-owner"));
-assert(releasePriorityCsv.includes("node bin/ddd-release-config-evidence.mjs"));
+assert(releasePriorityCsv.includes("node bin\/ddd-release-config-evidence.mjs"));
 assert(releasePriorityCsv.includes("P0,docker,release-infra,docker-daemon"));
 assert(releasePriorityCsv.includes("P2,explain,database,message-visible-list.json"));
 assert.equal(releaseBatchesCsv.split("\n")[0], "order,priority,source,owner,id,pendingItems,canRunImmediately,dependsOn,commands,envKeys,envCheckGroups,expectedArtifacts,exitCriteria,itemIds");
@@ -2146,7 +2146,7 @@ assert.match(releaseBatchesCsv, /9,P0,authenticated-performance,release-performa
 assert.match(releaseBatchesCsv, /P1,ai-runtime,ai,p1-ai-runtime-ai,4,false,[^\n]*p0-release-env-lint-release-infra[^\n]*p0-docker-release-infra/);
 assert.equal(releaseExecutionQueueCsv.split("\n")[0], "queueStatus,priority,source,owner,id,pendingItems,dependsOn,commands,envKeys,envCheckGroups,expectedArtifacts,exitCriteria");
 assert(releaseExecutionQueueCsv.includes("ready,P0,release-env-lint,release-infra,p0-release-env-lint-release-infra"));
-assert(releaseExecutionQueueCsv.includes("node bin/ddd-release-env-file-lint.mjs"));
+assert(releaseExecutionQueueCsv.includes("node bin\/ddd-release-env-file-lint.mjs"));
 assert(releaseExecutionQueueCsv.includes("artifacts/ddd/release/release-env-lint.json"));
 assert(releaseExecutionQueueCsv.includes("LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"));
 assert(releaseExecutionQueueCsv.includes("blocked,P1,ai-runtime,ai,p1-ai-runtime-ai"));
@@ -2155,7 +2155,7 @@ assert.match(ownerRollupMarkdown, /^# DDD Owner Action Rollup/m);
 assert.match(ownerRollupMarkdown, /Status: NOT_READY/);
 assert.match(ownerRollupMarkdown, /## release-performance/);
 assert.match(ownerRollupMarkdown, /\[manifest\] manifest-missing-performance-authenticated-runtime-baseline-json/);
-assert.match(ownerRollupMarkdown, /## sql/);
+assert.match(ownerRollupMarkdown, /## database/);
 assert.match(ownerRollupMarkdown, /\[explain\] message-visible-list\.json/);
 assert.match(ownerRollupMarkdown, /## release-infra/);
 assert.match(ownerRollupMarkdown, /\[docker\] docker-daemon/);
@@ -2171,7 +2171,7 @@ assert.match(releaseBlockerMapMarkdown, /^# DDD Release Blocker Map/m);
 assert.match(releaseBlockerMapMarkdown, /Category count: \d+/);
 assert.match(releaseBlockerMapMarkdown, /Owner count: \d+/);
 assert.match(releaseBlockerMapMarkdown, /## Owners/);
-assert.match(releaseBlockerMapMarkdown, /### sql/);
+assert.match(releaseBlockerMapMarkdown, /### database/);
 assert.match(releaseBlockerMapMarkdown, /runtime-readiness-freshness: checkedAt is 28\.1h old/);
 assert.match(releaseBlockerMapMarkdown, /## Categories/);
 assert.match(releaseBlockerMapMarkdown, /### rollback-context-drills/);
@@ -2391,8 +2391,8 @@ assert(databaseNextAction);
 assert(databaseNextAction.strictGateBlockerCount > 0);
 assert.match(databaseNextAction.reason, /^strictGate=/);
 assert.match(databaseNextAction.nextAction, /Flyway drills|migration evidence/i);
-assert.equal(databaseNextAction.executableCommands[0], "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs");
-assert(databaseNextAction.executableCommands.includes("node bin/ddd-migration-evidence.mjs"));
+assert.equal(databaseNextAction.executableCommands[0], "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs");
+assert(databaseNextAction.executableCommands.includes("node bin\/ddd-migration-evidence.mjs"));
 assert(databaseNextAction.envKeys.includes("DDD_MIGRATION_FRESH_DB_EVIDENCE"));
 assert(databaseNextAction.envKeys.includes("DDD_MIGRATION_UPGRADE_DB_EVIDENCE"));
 assert(databaseNextAction.envKeys.includes("DDD_MIGRATION_HANDOFF_FILE"));
@@ -2449,9 +2449,9 @@ assert.doesNotMatch(releaseNextActionCommands, /^\s*source "\$\{DDD_RELEASE_ENV_
 assert(releaseNextActionCommands.includes("[ddd-release-next-action][dry-run]"));
 assert((releaseBatches.batches || []).some((batch) => (
   batch.source === "explain"
-    && (batch.commands || []).includes("node bin/ddd-collect-explain.mjs")
+    && (batch.commands || []).includes("node bin\/ddd-collect-explain.mjs")
 )));
-assert(releaseNextActionCommands.includes("node bin/ddd-release-readiness-summary.mjs"));
+assert(releaseNextActionCommands.includes("node bin\/ddd-release-readiness-summary.mjs"));
 assert(releaseNextActionCommands.includes("run_next_action_command '0' 'release-next-action' 'RERUN' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'"));
 const releaseNextActionCommandsSyntax = spawnSync("bash", ["-n", path.join(artifactRoot, "release/release-next-action-commands.sh")], { encoding: "utf8" });
 assert.equal(releaseNextActionCommandsSyntax.status, 0, releaseNextActionCommandsSyntax.stderr);
@@ -2536,8 +2536,8 @@ assert(releaseBlockerClosureCommands.includes("release-env-missing.template.env"
 assert(releaseBlockerClosureCommands.includes("release-closure-wave-env.template.env"));
 assert(releaseBlockerClosureCommands.includes("release-final-owner-queue-env.template.env"));
 assert(releaseBlockerClosureCommands.includes("Release env file permissions are too broad"));
-assert(releaseBlockerClosureCommands.includes("DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"));
-assert(releaseBlockerClosureCommands.includes("node bin/ddd-release-readiness-summary.mjs"));
+assert(releaseBlockerClosureCommands.includes("DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs"));
+assert(releaseBlockerClosureCommands.includes("node bin\/ddd-release-readiness-summary.mjs"));
 const releaseBlockerClosureCommandsSyntax = spawnSync("bash", ["-n", releaseBlockerClosureCommandsPath], { encoding: "utf8" });
 assert.equal(releaseBlockerClosureCommandsSyntax.status, 0, releaseBlockerClosureCommandsSyntax.stderr);
 const releaseBlockerClosureCommandsList = spawnSync("bash", [releaseBlockerClosureCommandsPath], {
@@ -2632,7 +2632,7 @@ assert.equal(
 assert(releaseClosureWaveReceipts.waves.every((wave) => (
   (wave.blockerHints || []).length === 0 || wave.receiptStatus === "CONTENT_BLOCKED"
 )));
-assert(releaseClosureWaveReceipts.waves.every((wave) => wave.rerunCommands.includes("node bin/ddd-release-readiness-summary.mjs")));
+assert(releaseClosureWaveReceipts.waves.every((wave) => wave.rerunCommands.includes("node bin\/ddd-release-readiness-summary.mjs")));
 assert.equal(
   releaseClosureWaveReceiptsCsv.split("\n")[0],
   "wave,owner,batchId,priority,receiptStatus,itemOrders,itemIds,expectedArtifactCount,presentArtifactCount,missingArtifactCount,missingArtifacts,blockerHints,rerunCommands",
@@ -2679,9 +2679,9 @@ assert.equal(releasePerformanceBaselineClosure.nextCommand, "DDD_AUTH_PERF_BASEL
 assert.equal(releasePerformanceBaselineClosure.fastPath.commands.at(-1), finalGoNoGoEnforceCommand);
 assert(releasePerformanceBaselineClosure.requiredEnvKeys.includes("DDD_AUTH_PERF_BASELINE_ACCEPTED_BY"));
 assert(releasePerformanceBaselineClosure.commands.includes("DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh"));
-assert(releasePerformanceBaselineClosure.commands.includes("DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs"));
-assert(releasePerformanceBaselineClosure.commands.includes("node bin/ddd-promote-performance-baseline.mjs"));
-assert(releasePerformanceBaselineClosure.commands.includes("DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs"));
+assert(releasePerformanceBaselineClosure.commands.includes("DDD_AUTH_PERF_STRICT=true node bin\/ddd-authenticated-performance-smoke.mjs"));
+assert(releasePerformanceBaselineClosure.commands.includes("node bin\/ddd-promote-performance-baseline.mjs"));
+assert(releasePerformanceBaselineClosure.commands.includes("DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin\/ddd-release-evidence-manifest.mjs"));
 assert(releasePerformanceBaselineClosure.commands.includes(finalGoNoGoEnforceCommand));
 assert(releasePerformanceBaselineClosure.expectedArtifacts.includes("artifacts/ddd/performance/authenticated-runtime-baseline.json"));
 assert.match(releasePerformanceBaselineClosureMarkdown, /^# DDD Release Performance Baseline Closure/m);
@@ -2701,11 +2701,11 @@ assert(releasePerformanceBaselineCommands.includes("[ddd-auth-perf-baseline][env
 assert(releasePerformanceBaselineCommands.includes("[ddd-auth-perf-baseline][env-placeholder]"));
 assert(releasePerformanceBaselineCommands.includes("[ddd-auth-perf-baseline][env-not-https]"));
 assert(releasePerformanceBaselineCommands.includes("[ddd-auth-perf-baseline][env-local-url]"));
-assert(releasePerformanceBaselineCommands.includes("DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs"));
-assert(releasePerformanceBaselineCommands.includes("DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs"));
-assert(releasePerformanceBaselineCommands.includes("DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"));
-assert.doesNotMatch(releasePerformanceBaselineCommands, /run_command 'node scripts\/ddd-release-evidence-manifest\.mjs'/);
-assert.doesNotMatch(releasePerformanceBaselineCommands, /echo '- node scripts\/ddd-release-evidence-manifest\.mjs'/);
+assert(releasePerformanceBaselineCommands.includes("DDD_AUTH_PERF_STRICT=true node bin\/ddd-authenticated-performance-smoke.mjs"));
+assert(releasePerformanceBaselineCommands.includes("DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin\/ddd-release-evidence-manifest.mjs"));
+assert(releasePerformanceBaselineCommands.includes("DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin\/ddd-release-evidence-manifest.mjs"));
+assert.doesNotMatch(releasePerformanceBaselineCommands, /run_command 'node bin\/ddd-release-evidence-manifest\.mjs'/);
+assert.doesNotMatch(releasePerformanceBaselineCommands, /echo '- node bin\/ddd-release-evidence-manifest\.mjs'/);
 assert.equal(releaseFinalGoNoGo.recommendation, releaseFastTrack.recommendation);
 assert.equal(releaseFinalGoNoGo.finalRecommendation, releaseFinalGoNoGo.recommendation);
 assert.equal(releaseFinalGoNoGo.noAutoWaivers, true);
@@ -2766,26 +2766,26 @@ for (const fileName of ownerReceiptItemFiles) {
 }
 assert(releaseOwnerInputReceiptMarkdown.includes("Concrete values are intentionally omitted"));
 assert(releaseFinalGoNoGo.currentStopReasons.length > 0);
-assert(releaseFinalGoNoGo.nextCommands.includes("node bin/ddd-release-readiness-summary.mjs"));
+assert(releaseFinalGoNoGo.nextCommands.includes("node bin\/ddd-release-readiness-summary.mjs"));
 assert.equal(releaseFinalGoNoGo.nextCommands[0], "bash artifacts/ddd/release/release-preflight-gate.sh");
 assert.equal(releaseFinalGoNoGo.nextCommands[1], "bash artifacts/ddd/release/release-artifact-integrity-gate.sh");
 assert.equal(releaseFinalGoNoGo.nextCommands[2], "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh");
 assert.equal(releaseFinalGoNoGo.nextCommands[3], "DDD_RELEASE_ENV_FILE=<release-env-file> bash artifacts/ddd/release/release-env-bootstrap.sh");
-assert.equal(releaseFinalGoNoGo.nextCommands[4], "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env");
-assert.equal(releaseFinalGoNoGo.nextCommands[5], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>");
-assert.equal(releaseFinalGoNoGo.nextCommands[6], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs");
-assert.equal(releaseFinalGoNoGo.nextCommands[7], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs");
-assert.equal(releaseFinalGoNoGo.nextCommands[8], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs");
-assert.equal(releaseFinalGoNoGo.nextCommands[9], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env");
-assert.equal(releaseFinalGoNoGo.nextCommands[10], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs");
+assert.equal(releaseFinalGoNoGo.nextCommands[4], "node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env");
+assert.equal(releaseFinalGoNoGo.nextCommands[5], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>");
+assert.equal(releaseFinalGoNoGo.nextCommands[6], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-safe-defaults.mjs");
+assert.equal(releaseFinalGoNoGo.nextCommands[7], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-provenance-defaults.mjs");
+assert.equal(releaseFinalGoNoGo.nextCommands[8], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-alias-sync.mjs");
+assert.equal(releaseFinalGoNoGo.nextCommands[9], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env");
+assert.equal(releaseFinalGoNoGo.nextCommands[10], "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs");
 assert.doesNotMatch(JSON.stringify(releaseFinalGoNoGo), /DDD_RELEASE_ENV_FILE=(?!<release-env-file>)/);
 assert.doesNotMatch(JSON.stringify(releaseFinalGoNoGo), /(^|\s)(?:[^\s`|]*\/)?\.env\.release(?:\.[A-Za-z0-9_-]+)?(?=\s|`|\)|,|$)/);
-assert(releaseFinalGoNoGo.nextCommands.includes("DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs"));
-assert(releaseFinalGoNoGo.nextCommands.includes("DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs"));
+assert(releaseFinalGoNoGo.nextCommands.includes("DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs"));
+assert(releaseFinalGoNoGo.nextCommands.includes("DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs"));
 assert(releaseFinalGoNoGo.nextCommands.includes("DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh"));
-assert(releaseFinalGoNoGo.nextCommands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs"));
-assert(releaseFinalGoNoGo.nextCommands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs"));
-assert(releaseFinalGoNoGo.nextCommands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs"));
+assert(releaseFinalGoNoGo.nextCommands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-safe-defaults.mjs"));
+assert(releaseFinalGoNoGo.nextCommands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-provenance-defaults.mjs"));
+assert(releaseFinalGoNoGo.nextCommands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"));
 assert.equal(releaseFinalGoNoGo.ciSummary.firstNextCommand, releaseFinalGoNoGo.nextCommands[0]);
 assert.equal(releaseFinalGoNoGo.ciSummary.firstOwnerAction.owner, releaseNextActionQueue.items[0].owner);
 assert.equal(releaseFinalGoNoGo.ciSummary.firstOwnerActionCommand, releaseNextActionQueue.items[0].executableCommands[0]);
@@ -2896,8 +2896,8 @@ assert.match(releaseFinalGoNoGoMarkdown, /Orchestrator preflight owners: /);
 assert.match(releaseFinalGoNoGoMarkdown, /First orchestrator preflight action: /);
 assert.match(releaseFinalGoNoGoMarkdown, /Release env redacted handoff: artifacts\/ddd\/release\/release-env-owner-handoff-redacted/);
 assert.match(releaseFinalGoNoGoMarkdown, /Release env redacted handoff CSV: artifacts\/ddd\/release\/release-env-owner-handoff-redacted\.csv/);
-assert.match(releaseFinalGoNoGoMarkdown, /DDD_MIGRATION_CHECK_ENV=true node scripts\/ddd-migration-evidence\.mjs/);
-assert.match(releaseFinalGoNoGoMarkdown, /DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts\/ddd-rollback-drill-evidence\.mjs/);
+assert.match(releaseFinalGoNoGoMarkdown, /DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence\.mjs/);
+assert.match(releaseFinalGoNoGoMarkdown, /DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence\.mjs/);
 assert.match(releaseFinalGoNoGoMarkdown, /DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts\/ddd\/release\/release-performance-baseline-commands\.sh/);
 assert.match(releaseFinalGoNoGoMarkdown, /## Stop Reasons/);
 assert.match(releaseFinalGoNoGoMarkdown, /## Safety Signals/);
@@ -2935,7 +2935,7 @@ assert.match(releaseFinalGoNoGoGateDefault.stdout, /releaseEnvOwnerBlockers /);
 assert.match(releaseFinalGoNoGoGateDefault.stdout, /orchestratorPreflight mode=.* status=.* blockers=\d+ warnings=\d+ selectedSteps=\d+ executedResults=\d+ artifact=artifacts\/ddd\/release\/orchestrator-report\.json/);
 assert.match(releaseFinalGoNoGoGateDefault.stdout, /orchestratorPreflightOwners /);
 assert.match(releaseFinalGoNoGoGateDefault.stdout, /first env owner action: owner=.*blockers=\d+ placeholders=\d+ missing=\d+ handoff=artifacts\/ddd\/release\/release-env-owner-handoff-redacted\//);
-assert.match(releaseFinalGoNoGoGateDefault.stdout, /first orchestrator preflight action: owner=.*check=.*reason=.*envKeys=.*command=DDD_RELEASE_EVIDENCE_STRICT=true node scripts\/ddd-release-evidence-orchestrator\.mjs --run --strict/);
+assert.match(releaseFinalGoNoGoGateDefault.stdout, /first orchestrator preflight action: owner=.*check=.*reason=.*envKeys=.*command=DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator\.mjs --run --strict/);
 assert.match(releaseFinalGoNoGoGateDefault.stdout, /safety releaseEnvFile ready=false status=FAIL inputKind=release-env-file envFilePresent=true securityChecked=true permissionSafe=true mode=600 requiredMode=600/);
 assert(releaseFinalGoNoGoGate.includes("releaseEnvFileCutoverSafe"));
 assert(releaseFinalGoNoGoGate.includes("releaseEnvFile must be PASS release-env-file with checked chmod 600 permissions"));
@@ -3030,7 +3030,7 @@ const releasePreflightGateEnforced = spawnSync("bash", [releasePreflightGatePath
   },
 });
 assert.equal(releasePreflightGateEnforced.status, releasePreflightGateDefaultReport.steps.find((step) => step.name === "manifest-provenance-preflight")?.exitCode);
-assert.match(releasePreflightGateEnforced.stderr, /(?:manifest provenance sourceEnvironment is required|missing explain directory|no explain JSON files)/);
+assert.match(releasePreflightGateEnforced.stderr, /(?:manifest provenance sourceEnvironment is required|missing explain directory|no explain JSON files|missing artifact lumira-ui\/frontend-smoke\.json)/);
 const releasePreflightGateEnforcedReport = JSON.parse(fs.readFileSync(releasePreflightGateEnforcedReportPath, "utf8"));
 assert.equal(releasePreflightGateEnforcedReport.status, "NO_GO");
 assert.equal(releasePreflightGateEnforcedReport.enforce, true);
@@ -3185,15 +3185,15 @@ const releasePerformanceOwnerQueueForCounts = releaseFinalOwnerQueue.ownerQueues
 assert(releasePerformanceOwnerQueueForCounts);
 const databaseOwnerQueueForCounts = releaseFinalOwnerQueue.ownerQueues.find((owner) => owner.owner === "database");
 assert(databaseOwnerQueueForCounts);
-assert.equal(databaseOwnerQueueForCounts.firstCommand, "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs");
-assert.equal(databaseOwnerQueueForCounts.commands[0], "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs");
-assert(databaseOwnerQueueForCounts.commands.includes("node bin/ddd-migration-evidence.mjs"));
+assert.equal(databaseOwnerQueueForCounts.firstCommand, "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs");
+assert.equal(databaseOwnerQueueForCounts.commands[0], "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs");
+assert(databaseOwnerQueueForCounts.commands.includes("node bin\/ddd-migration-evidence.mjs"));
 assert(releaseFinalOwnerQueue.ownerQueues.every((owner, index) => owner.queueOrder === index + 1));
 const actionableFinalOwnerQueues = releaseFinalOwnerQueue.ownerQueues.filter((owner) => owner.canExecute === true);
 assert(actionableFinalOwnerQueues.every((owner) => Number.isFinite(owner.executionOrderHint)));
-assert(actionableFinalOwnerQueues.every((owner) => owner.commands.includes("node bin/ddd-release-readiness-summary.mjs")));
+assert(actionableFinalOwnerQueues.every((owner) => owner.commands.includes("node bin\/ddd-release-readiness-summary.mjs")));
 assert(actionableFinalOwnerQueues.every((owner) => owner.commands.includes("DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh")));
-assert(actionableFinalOwnerQueues.every((owner) => owner.commands.at(-2) === "node bin/ddd-release-readiness-summary.mjs"));
+assert(actionableFinalOwnerQueues.every((owner) => owner.commands.at(-2) === "node bin\/ddd-release-readiness-summary.mjs"));
 assert(actionableFinalOwnerQueues.every((owner) => owner.commands.at(-1) === "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"));
 const prioritizedFinalOwnerQueues = actionableFinalOwnerQueues.filter((owner) => owner.firstOwnerActionPriority === true);
 assert.equal(prioritizedFinalOwnerQueues.length, 1);
@@ -3230,7 +3230,7 @@ assert.equal(releaseFinalOwnerQueue.fastPath.queueOrder, releaseFinalOwnerQueueF
 assert.equal(releaseFinalOwnerQueue.fastPath.firstCommand, releaseFinalOwnerQueueFirstExecutable.firstCommand);
 assert.equal(releaseFinalOwnerQueue.fastPath.finalGateCommand, finalGoNoGoEnforceCommand);
 assert.equal(releaseFinalOwnerQueue.fastPath.commands.at(-1), finalGoNoGoEnforceCommand);
-assert(releaseFinalOwnerQueue.fastPath.commands.includes("node bin/ddd-release-readiness-summary.mjs"));
+assert(releaseFinalOwnerQueue.fastPath.commands.includes("node bin\/ddd-release-readiness-summary.mjs"));
 assert.equal(releaseFinalOwnerQueue.fastPath.releaseEnvFileRequired, true);
 assert(releaseFinalGoNoGo.nextCommands.includes(releaseFinalOwnerQueue.summary.nextExecutableCommand));
 assert.equal(releaseFinalOwnerQueue.summary.nextExecutableEnvKeyCount, releaseFinalOwnerQueueFirstExecutable.envKeyCount);
@@ -3250,7 +3250,7 @@ assert.equal(releasePerformanceOwnerQueueForCounts.missingArtifactCount, release
 assert.equal(releasePerformanceOwnerQueueForCounts.contentBlockerCount, releasePerformanceOwnerQueueForCounts.contentBlockers.length);
 assert.equal(releasePerformanceOwnerQueueForCounts.stopReasonCount, releasePerformanceOwnerQueueForCounts.stopReasons.length);
 assert(releasePerformanceOwnerQueueForCounts.missingArtifacts.includes("artifacts/ddd/performance/authenticated-runtime-baseline.json"));
-assert(releasePerformanceOwnerQueueForCounts.commands.includes("DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs"));
+assert(releasePerformanceOwnerQueueForCounts.commands.includes("DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin\/ddd-release-evidence-manifest.mjs"));
 assert(releaseFinalOwnerQueue.ownerQueues.every((owner) => (
   owner.missingArtifacts || []
 ).every((artifactPath) => /^(artifacts\/ddd\/|tmp\/ddd-explain\/)[^\s]+$/.test(artifactPath))));
@@ -3588,13 +3588,13 @@ assert.equal(releaseFinalOwnerQueueEnvInitRun.status, 0, releaseFinalOwnerQueueE
 assert.match(releaseFinalOwnerQueueEnvInitRun.stdout, /\[ddd-final-owner-queue\]\[env-init\]/);
 assert.match(releaseFinalOwnerQueueEnvInitRun.stdout, /release-final-owner-queue-env-init-receipt\.json/);
 assert.match(releaseFinalOwnerQueueEnvInitRun.stdout, /bash artifacts\/ddd\/release\/release-artifact-integrity-gate\.sh/);
-assert.match(releaseFinalOwnerQueueEnvInitRun.stdout, /node scripts\/ddd-release-env-file-lint\.mjs/);
+assert.match(releaseFinalOwnerQueueEnvInitRun.stdout, /node bin\/ddd-release-env-file-lint\.mjs/);
 assert.match(releaseFinalOwnerQueueEnvInitRun.stdout, /DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts\/ddd\/release\/release-env-readiness-gate\.sh/);
 assert.match(
   releaseFinalOwnerQueueEnvInitRun.stdout,
   new RegExp(`DDD_FINAL_OWNER_QUEUE_OWNER=${releaseFinalOwnerQueueNextOwner}`),
 );
-assert.match(releaseFinalOwnerQueueEnvInitRun.stdout, /node scripts\/ddd-release-readiness-summary\.mjs/);
+assert.match(releaseFinalOwnerQueueEnvInitRun.stdout, /node bin\/ddd-release-readiness-summary\.mjs/);
 assert.match(releaseFinalOwnerQueueEnvInitRun.stdout, /DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts\/ddd\/release\/release-final-go-no-go-gate\.sh/);
 const releaseFinalOwnerQueueEnvInitTargetText = fs.readFileSync(releaseFinalOwnerQueueEnvInitTarget, "utf8");
 const releaseFinalOwnerQueueTemplateHasEnvFileKey = releaseFinalOwnerQueueEnvTemplateKeys.includes("DDD_RELEASE_ENV_FILE");
@@ -3626,7 +3626,7 @@ assert.deepEqual(releaseFinalOwnerQueueEnvInitReceiptJson.safeDefaultKeys.sort()
 assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.artifactIntegrityGateCommand, "bash artifacts/ddd/release/release-artifact-integrity-gate.sh");
 assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.artifactIntegrityArtifact, "artifacts/ddd/release/release-artifact-integrity.json");
 assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.artifactIntegrityMarkdown, "artifacts/ddd/release/release-artifact-integrity.md");
-assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.provenanceDefaultsCommand, "node bin/ddd-release-provenance-defaults.mjs");
+assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.provenanceDefaultsCommand, "node bin\/ddd-release-provenance-defaults.mjs");
 assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.provenanceDefaultsArtifact, "artifacts/ddd/release/release-provenance-defaults.json");
 assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.finalGoNoGoGateCommand, "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh");
 assert.equal(releaseFinalOwnerQueueEnvInitReceiptJson.finalGoNoGoPacket, "artifacts/ddd/release/release-final-go-no-go.json");
@@ -3767,15 +3767,15 @@ assert.match(releaseBatchesMarkdown, /P1 ai-runtime -> ai[\s\S]*- Depends on: p0
 assert.match(releaseBatchesMarkdown, /P1 ai-runtime -> ai[\s\S]*- Can run immediately: false/);
 assert.match(releaseBatchesMarkdown, /- Env keys: \d+ keys\n  - [A-Z0-9_]+, [A-Z0-9_]+/);
 assert.match(releaseBatchesMarkdown, /- Env check groups: \d+ groups[\s\S]*  - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL\|LUMIRA_BASE_URL`/);
-assert.match(releaseBatchesMarkdown, /- Commands:\n  - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts\/ddd-release-env-file-lint\.mjs`\n  - `node scripts\/ddd-release-config-evidence\.mjs`/);
+assert.match(releaseBatchesMarkdown, /- Commands:\n  - `DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint\.mjs`\n  - `node bin\/ddd-release-config-evidence\.mjs`/);
 assert.doesNotMatch(JSON.stringify(releaseBatches), /DDD_RELEASE_ENV_FILE=(?!<release-env-file>)/);
 assert.match(releaseBatchesMarkdown, /- Expected artifacts:\n  - `artifacts\/ddd\/release\/release-env-lint\.json`\n  - `artifacts\/ddd\/config\/release-config-evidence\.json`/);
 assert.match(releaseBatchesMarkdown, /- Exit criteria:\n  - Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing\.template\.env\./);
 assert.match(releaseBatchesMarkdown, /P0 release-config -> ai-owner/);
 assert.match(releaseBatchesMarkdown, /P0 docker -> release-infra/);
-assert.match(releaseBatchesMarkdown, /node scripts\/ddd-authenticated-performance-smoke\.mjs/);
-assert.match(releaseBatchesMarkdown, /node scripts\/ddd-lumira-ui-playwright-smoke\.mjs/);
-assert.match(releaseBatchesMarkdown, /DDD_RELEASE_EVIDENCE_STRICT=true node scripts\/ddd-release-evidence-orchestrator\.mjs --run --strict/);
+assert.match(releaseBatchesMarkdown, /node bin\/ddd-authenticated-performance-smoke\.mjs/);
+assert.match(releaseBatchesMarkdown, /node bin\/ddd-frontend-smoke-evidence\.mjs/);
+assert.match(releaseBatchesMarkdown, /DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator\.mjs --run --strict/);
 assert.match(releaseDependencyGraphMarkdown, /^# DDD Release Action Dependency Graph/m);
 assert.match(releaseDependencyGraphMarkdown, /Graph density: \d+\.\d+/);
 assert.match(releaseDependencyGraphMarkdown, /Compressed edge count: \d+/);
@@ -3802,7 +3802,7 @@ assert.match(releaseExecutionQueueMarkdown, /releaseEnvFile: ready=false status=
 assert.match(releaseExecutionQueueMarkdown, /securityChecked=true permissionSafe=true mode=600 requiredMode=600 reason=env-file permissionCheckSkipped=false/);
 assert.match(releaseExecutionQueueMarkdown, /## Ready Now[\s\S]*### p0-release-env-lint-release-infra/);
 assert.match(releaseExecutionQueueMarkdown, /- Env check groups:\n  - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL\|LUMIRA_BASE_URL`/);
-assert.match(releaseExecutionQueueMarkdown, /### p0-release-env-lint-release-infra[\s\S]*- Commands:\n  - `DDD_RELEASE_ENV_FILE=\.env\.release\.local node scripts\/ddd-release-env-file-lint\.mjs`/);
+assert.match(releaseExecutionQueueMarkdown, /### p0-release-env-lint-release-infra[\s\S]*- Commands:\n  - `DDD_RELEASE_ENV_FILE=\.env\.release\.local node bin\/ddd-release-env-file-lint\.mjs`/);
 assert.match(releaseExecutionQueueMarkdown, /### p0-release-env-lint-release-infra[\s\S]*- Expected artifacts:\n  - `artifacts\/ddd\/release\/release-env-lint\.json`/);
 assert.match(releaseExecutionQueueMarkdown, /## Blocked Later[\s\S]*p1-ai-runtime-ai: waits for p0-release-env-lint-release-infra/);
 const blockedBatchWithArtifacts = releaseExecutionQueue.blockedBatches.find((batch) => batch.expectedArtifacts.length > 0);
@@ -3816,7 +3816,7 @@ for (const artifactPath of blockedBatchWithArtifacts.expectedArtifacts) {
 }
 assert.match(releaseExecutionCommands, /^#!\/usr\/bin\/env bash\nset -euo pipefail/m);
 assert.match(releaseExecutionCommands, /SCRIPT_DIR=\$\(cd "\$\(dirname "\$\{BASH_SOURCE\[0\]\}"\)" && pwd\)/);
-assert.match(releaseExecutionCommands, /if \[\[ -f "scripts\/ddd-release-readiness-summary\.mjs" \]\]; then\n    LUMIRA_REPO_ROOT=\$\(pwd\)/);
+assert.match(releaseExecutionCommands, /if \[\[ -f "bin\/ddd-release-readiness-summary\.mjs" \]\]; then\n    LUMIRA_REPO_ROOT=\$\(pwd\)/);
 assert.match(releaseExecutionCommands, /LUMIRA_REPO_ROOT=\$\(cd "\$\{SCRIPT_DIR\}\/\.\.\/\.\.\/\.\." && pwd\)/);
 assert(!releaseExecutionCommands.includes(repoRoot), "release execution commands must not embed the local repo path");
 assert.match(releaseExecutionCommands, /DDD_RELEASE_LIST_BATCHES:-/);
@@ -3864,14 +3864,14 @@ assert.match(releaseExecutionCommands, /No ready release batch matched DDD_RELEA
 assert.match(releaseExecutionCommands, /No ready release batch matched DDD_RELEASE_OWNER=\$\{DDD_RELEASE_OWNER\}/);
 assert.match(releaseExecutionCommands, /No ready release batch matched DDD_RELEASE_PRIORITY=\$\{DDD_RELEASE_PRIORITY\}/);
 assert.match(releaseExecutionCommands, /# p0-release-env-lint-release-infra: P0 release-env-lint -> release-infra/);
-assert.match(releaseExecutionCommands, /run_command 'p0-release-env-lint-release-infra' 'release-infra' 'P0' 'DDD_RELEASE_ENV_FILE=\.env\.release\.local node scripts\/ddd-release-env-file-lint\.mjs'/);
-assert.match(releaseExecutionCommands, /run_command 'p0-docker-release-infra' 'release-infra' 'P0' 'DDD_DOCKER_BUILD_STRICT=true node scripts\/ddd-docker-build-evidence\.mjs'/);
-assert.match(releaseExecutionCommands, /run_command 'p0-manifest-release-performance' 'release-performance' 'P0' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts\/ddd-release-evidence-manifest\.mjs'/);
-assert.doesNotMatch(releaseExecutionCommands, /run_command '.*' '.*' '.*' 'node scripts\/ddd-release-evidence-manifest\.mjs'/);
+assert.match(releaseExecutionCommands, /run_command 'p0-release-env-lint-release-infra' 'release-infra' 'P0' 'DDD_RELEASE_ENV_FILE=\.env\.release\.local node bin\/ddd-release-env-file-lint\.mjs'/);
+assert.match(releaseExecutionCommands, /run_command 'p0-docker-release-infra' 'release-infra' 'P0' 'DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence\.mjs'/);
+assert.match(releaseExecutionCommands, /run_command 'p0-manifest-release-performance' 'release-performance' 'P0' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin\/ddd-release-evidence-manifest\.mjs'/);
+assert.doesNotMatch(releaseExecutionCommands, /run_command '.*' '.*' '.*' 'node bin\/ddd-release-evidence-manifest\.mjs'/);
 assert.match(releaseExecutionCommands, /# Expected artifacts: artifacts\/ddd\/release\/release-env-lint\.json; artifacts\/ddd\/config\/release-config-evidence\.json/);
 assert.match(
   releaseExecutionCommands,
-  /run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node scripts\/ddd-release-evidence-gate\.mjs'\nrun_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node scripts\/ddd-release-readiness-summary\.mjs'\nrun_command 'release-execution-rerun' 'release-owner' 'RERUN' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts\/ddd\/release\/release-final-go-no-go-gate\.sh'/,
+  /run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node bin\/ddd-release-evidence-gate\.mjs'\nrun_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node bin\/ddd-release-readiness-summary\.mjs'\nrun_command 'release-execution-rerun' 'release-owner' 'RERUN' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts\/ddd\/release\/release-final-go-no-go-gate\.sh'/,
 );
 const releaseExecutionCommandsSyntax = spawnSync("bash", ["-n", releaseExecutionCommandsPath], { encoding: "utf8" });
 assert.equal(releaseExecutionCommandsSyntax.status, 0, releaseExecutionCommandsSyntax.stderr);
@@ -3949,7 +3949,7 @@ const releaseExecutionCommandsDryRunWithoutEnv = spawnSync("bash", [releaseExecu
 });
 assert.equal(releaseExecutionCommandsDryRunWithoutEnv.status, 0, releaseExecutionCommandsDryRunWithoutEnv.stderr);
 assert.match(releaseExecutionCommandsDryRunWithoutEnv.stdout, /\[ddd-release-execution\] running p0-docker-release-infra owner=release-infra priority=P0/);
-assert.match(releaseExecutionCommandsDryRunWithoutEnv.stdout, /\[ddd-release-execution\]\[dry-run\] DDD_DOCKER_BUILD_STRICT=true node scripts\/ddd-docker-build-evidence\.mjs/);
+assert.match(releaseExecutionCommandsDryRunWithoutEnv.stdout, /\[ddd-release-execution\]\[dry-run\] DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence\.mjs/);
 assert.match(releaseExecutionCommandsDryRunWithoutEnv.stderr, /\[ddd-release-execution\]\[env-check\] p0-docker-release-infra missing env groups:/);
 const unmatchedBatchEnvFile = writeBashEnvFixture("valid-release.env", "DDD_RELEASE_EVIDENCE_STRICT=true\n");
 const broadModeEnvFile = path.join(artifactRoot, "release", "broad-mode-release.env");
@@ -3993,7 +3993,7 @@ const releaseExecutionCommandsDryRun = spawnSync("bash", [releaseExecutionComman
 });
 assert.equal(releaseExecutionCommandsDryRun.status, 0, releaseExecutionCommandsDryRun.stderr);
 assert.match(releaseExecutionCommandsDryRun.stdout, /\[ddd-release-execution\] running p0-docker-release-infra owner=release-infra priority=P0/);
-assert.match(releaseExecutionCommandsDryRun.stdout, /\[ddd-release-execution\]\[dry-run\] DDD_DOCKER_BUILD_STRICT=true node scripts\/ddd-docker-build-evidence\.mjs/);
+assert.match(releaseExecutionCommandsDryRun.stdout, /\[ddd-release-execution\]\[dry-run\] DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence\.mjs/);
 assert.match(releaseExecutionCommandsDryRun.stderr, /\[ddd-release-execution\]\[env-check\] p0-docker-release-infra missing env groups: DDD_DOCKER_BUILD_STRICT\(DDD_DOCKER_BUILD_STRICT\) DDD_DOCKER_COMMAND\(DDD_DOCKER_COMMAND\)/);
 assert.match(releaseExecutionCommandsDryRun.stderr, /continuing because DDD_RELEASE_ALLOW_MISSING_ENV=1/);
 assert.doesNotMatch(releaseExecutionCommandsDryRun.stdout, /\[ddd-release-execution\] running p0-release-env-lint-release-infra/);
@@ -4081,7 +4081,7 @@ const releaseExecutionCommandsEnvCheckOnly = spawnSync("bash", [releaseExecution
 });
 assert.equal(releaseExecutionCommandsEnvCheckOnly.status, 0, releaseExecutionCommandsEnvCheckOnly.stderr);
 assert.match(releaseExecutionCommandsEnvCheckOnly.stdout, /\[ddd-release-execution\] running p0-docker-release-infra/);
-assert.match(releaseExecutionCommandsEnvCheckOnly.stdout, /\[ddd-release-execution\]\[env-check-only\] skip DDD_DOCKER_BUILD_STRICT=true node scripts\/ddd-docker-build-evidence\.mjs/);
+assert.match(releaseExecutionCommandsEnvCheckOnly.stdout, /\[ddd-release-execution\]\[env-check-only\] skip DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence\.mjs/);
 assert.match(releaseExecutionCommandsEnvCheckOnly.stderr, /\[ddd-release-execution\]\[env-check\] p0-docker-release-infra missing env groups: DDD_DOCKER_BUILD_STRICT\(DDD_DOCKER_BUILD_STRICT\) DDD_DOCKER_COMMAND\(DDD_DOCKER_COMMAND\)/);
 assert.match(releaseExecutionCommandsEnvCheckOnly.stderr, /continuing because DDD_RELEASE_ALLOW_MISSING_ENV=1/);
 const aliasEnvFile = writeBashEnvFixture("alias-release.env", [
@@ -4128,8 +4128,8 @@ assert.deepEqual(
   [...releaseMissingEnv.templateEnvKeys].sort(),
 );
 assert.match(releaseMissingEnvTemplate, /# export DDD_RELEASE_ENV_FILE=\/secure\/path\/to\/\.env\.release/);
-assert.match(releaseMissingEnvTemplate, /# node scripts\/ddd-release-env-file-lint\.mjs/);
-assert.match(releaseMissingEnvTemplate, /# node scripts\/ddd-release-config-evidence\.mjs/);
+assert.match(releaseMissingEnvTemplate, /# node bin\/ddd-release-env-file-lint\.mjs/);
+assert.match(releaseMissingEnvTemplate, /# node bin\/ddd-release-config-evidence\.mjs/);
 assert.match(releaseMissingEnvTemplate, /# DDD_RELEASE_CONTINUE_ON_ERROR=1 bash artifacts\/ddd\/release\/release-execution-commands\.sh # diagnostic only; final exit remains non-zero on failures/);
 assert.match(releaseMissingEnvTemplate, /# DDD_RELEASE_NEXT_ACTION_CONTINUE_ON_ERROR=1 DDD_RELEASE_NEXT_ACTION_EXECUTE=1 bash artifacts\/ddd\/release\/release-next-action-commands\.sh # diagnostic only; final exit remains non-zero on failures/);
 assert.match(releaseMissingEnvTemplate, /# DDD_RELEASE_CLOSURE_CONTINUE_ON_ERROR=1 DDD_RELEASE_CLOSURE_EXECUTE=1 bash artifacts\/ddd\/release\/release-blocker-closure-commands\.sh # diagnostic only; final exit remains non-zero on failures/);
@@ -4151,7 +4151,7 @@ assert.equal(summary.ownerActionRollup.database.sources.migration, 2);
 assert.equal(summary.ownerActionRollup["release-infra"].pendingItems, 9);
 assert.equal(summary.ownerActionRollup.ai.collapsedItems, 3);
 assert.equal(summary.ownerActionRollup.database.collapsedItems, 2);
-assert.equal(summary.ownerActionRollup.lumira-ui.collapsedItems, 2);
+assert.equal(summary.ownerActionRollup["lumira-ui"].collapsedItems, 2);
 assert.equal(summary.ownerActionRollup["release-infra"].collapsedItems, 2);
 assert.equal(summary.ownerActionRollup["release-infra"].sources.docker, 1);
 assert.equal(summary.ownerActionRollup["release-infra"].sources["release-env-lint"], 2);
@@ -4164,7 +4164,7 @@ assert.equal(summary.actionsByOwner["release-performance"].length, 2);
 assert.equal(summary.actionsByOwner["file-owner"].length, 3);
 assert.equal(summary.actionsByOwner["payment-owner"].length, 2);
 assert.equal(summary.actionsByOwner["job-owner"].length, 2);
-assert.equal(summary.actionsByOwner.lumira-ui.length, 1);
+assert.equal(summary.actionsByOwner["lumira-ui"].length, 1);
 assert.equal(summary.actionsByOwner.ai.length, 1);
 assert.equal(summary.actionsByOwner["release-infra"].length, 3);
 assert.equal(summary.actionsByOwner["iam-owner"].length, 1);
@@ -4331,7 +4331,7 @@ assert.equal(summary.diagnostics.orchestrator.executedResultCount, 0);
 assert.deepEqual(summary.diagnostics.orchestrator.missingResults, []);
 assert.equal(summary.diagnostics.orchestrator.actionPlan.ai.pendingItems, 3);
 assert.equal(summary.diagnostics.orchestrator.actionPlan.database.pendingItems, 1);
-assert.equal(summary.diagnostics.orchestrator.actionPlan.lumira-ui.pendingItems, 2);
+assert.equal(summary.diagnostics.orchestrator.actionPlan["lumira-ui"].pendingItems, 2);
 assert.equal(summary.diagnostics.orchestrator.actionPlan["release-infra"].pendingItems, 2);
 assert.equal(summary.diagnostics.orchestrator.actionPlan["release-infra"].items[0].id, "orchestrator-preflight-backend-runtime-base-url");
 assert.equal(summary.diagnostics.orchestrator.actionPlan["release-owner"].pendingItems, 1);
@@ -4423,12 +4423,12 @@ assert.match(markdown, /cliVersion: Docker version 29\.4\.1/);
 assert.match(markdown, /daemonError: Cannot connect to the Docker daemon/);
 assert.match(markdown, /image lumira-server: status=SKIPPED dockerfile=deploy\/docker\/service\.Dockerfile tag=lumira\/lumira-server:test expectedPort=8080\/tcp nonRoot=true/);
 assert.match(markdown, /staticDockerfile: status=PASS exists=true sha256=abc123/);
-assert.match(markdown, /action: Start Docker daemon or run DDD_DOCKER_BUILD_STRICT=true node scripts\/ddd-docker-build-evidence\.mjs/);
+assert.match(markdown, /action: Start Docker daemon or run DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence\.mjs/);
 assert.match(markdown, /actionPlan: owner=release-infra pendingItems=1 envKeys=DDD_DOCKER_BUILD_STRICT,DDD_DOCKER_COMMAND/);
 assert.match(markdown, /remediation: transientRegistryFailure=true dockerUnavailable=true/);
 assert.match(markdown, /dockerTransientImage: lumira-server; attempts=3; retries=2; dockerfile=deploy\/docker\/service\.Dockerfile/);
-assert.match(markdown, /dockerRemediationAction: docker-registry-mirror-retry; owner=release-infra; envKeys=DDD_DOCKER_BUILD_RETRIES,DDD_DOCKER_MAVEN_IMAGE,DDD_DOCKER_JRE_IMAGE,DDD_DOCKER_NODE_IMAGE,DDD_DOCKER_NGINX_IMAGE; action=Rerun Docker evidence with registry-local mirror images and a higher retry budget\.; exampleCommand=DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>\/maven:3\.9\.11-eclipse-temurin-21 node scripts\/ddd-docker-build-evidence\.mjs/);
-assert.match(markdown, /dockerRemediationAction: docker-existing-image-inspect; owner=release-infra; envKeys=DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE,DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE,DDD_DOCKER_EXISTING_FRONTEND_IMAGE; action=If CI already built and pushed the release candidate images, pull them and rerun Docker evidence in explicit inspect-only mode\.; exampleCommand=DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>\/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>\/lumira-ui:<release-candidate> node scripts\/ddd-docker-build-evidence\.mjs/);
+assert.match(markdown, /dockerRemediationAction: docker-registry-mirror-retry; owner=release-infra; envKeys=DDD_DOCKER_BUILD_RETRIES,DDD_DOCKER_MAVEN_IMAGE,DDD_DOCKER_JRE_IMAGE,DDD_DOCKER_NODE_IMAGE,DDD_DOCKER_NGINX_IMAGE; action=Rerun Docker evidence with registry-local mirror images and a higher retry budget\.; exampleCommand=DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>\/maven:3\.9\.11-eclipse-temurin-21 node bin\/ddd-docker-build-evidence\.mjs/);
+assert.match(markdown, /dockerRemediationAction: docker-existing-image-inspect; owner=release-infra; envKeys=DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE,DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE,DDD_DOCKER_EXISTING_FRONTEND_IMAGE; action=If CI already built and pushed the release candidate images, pull them and rerun Docker evidence in explicit inspect-only mode\.; exampleCommand=DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>\/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>\/lumira-ui:<release-candidate> node bin\/ddd-docker-build-evidence\.mjs/);
 assert.match(markdown, /dockerAction: docker-daemon; owner=release-infra; reason=Cannot connect to the Docker daemon; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=.*inspect-only evidence/);
 assert.doesNotMatch(markdown, /dockerAction: docker-image-lumira-server-skipped/);
 assert.match(markdown, /lumira-server: docker daemon is not available/);
@@ -4487,7 +4487,7 @@ assert.match(markdown, /ownerPlan: iam-owner pending=1 ready=0 missingEvidence=1
 assert.match(markdown, /IAM: MISSING; owner=iam-owner; reason=IAM rollback drill requires PASS evidence or approved DEFERRED risk acceptance; status=MISSING; evidence=missing; action=Exercise IAM rollback\./);
 assert.match(markdown, /## Orchestrator Preflight/);
 assert.match(markdown, /selectedSteps: 2; executedResults: 0/);
-assert.match(markdown, /action: Run `DDD_RELEASE_EVIDENCE_STRICT=true node scripts\/ddd-release-evidence-orchestrator\.mjs --run --strict` after resolving preflight blockers\./);
+assert.match(markdown, /action: Run `DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator\.mjs --run --strict` after resolving preflight blockers\./);
 assert.match(markdown, /actionPlan: owner=release-infra pendingItems=2 envKeys=BASE_URL,DDD_DOCKER_COMMAND,DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL/);
 assert.match(markdown, /orchestratorAction: orchestrator-preflight-backend-runtime-base-url; owner=release-infra; reason=missing backend runtime base URL; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL; checkId=backend-runtime-base-url/);
 assert.match(markdown, /orchestratorAction: orchestrator-preflight-docker-daemon; owner=release-infra; reason=Docker daemon is not available; envKeys=DDD_DOCKER_COMMAND; checkId=docker-daemon/);
@@ -4522,7 +4522,7 @@ fs.writeFileSync(path.join(driftArtifactRoot, "release/release-evidence-gate.jso
   blockers: ["one", "two"],
   warnings: [],
 }, null, 2)}\n`);
-const driftResult = spawnSync("node", ["bin/ddd-release-readiness-summary.mjs"], {
+const driftResult = spawnSync("node", ["bin\/ddd-release-readiness-summary.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -4584,7 +4584,7 @@ fs.writeFileSync(path.join(configDriftArtifactRoot, "config/release-config-evide
   blockersByOwner: { "release-infra": 1 },
   warnings: [],
 }, null, 2)}\n`);
-const configDriftResult = spawnSync("node", ["bin/ddd-release-readiness-summary.mjs"], {
+const configDriftResult = spawnSync("node", ["bin\/ddd-release-readiness-summary.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -4730,7 +4730,7 @@ fs.writeFileSync(path.join(missingEnvRoot, "config/release-config-evidence.json"
   blockersByOwner: { "ai-owner": 1, "release-infra": 1 },
   warnings: [],
 }, null, 2)}\n`);
-const missingEnvResult = spawnSync("node", ["bin/ddd-release-readiness-summary.mjs"], {
+const missingEnvResult = spawnSync("node", ["bin\/ddd-release-readiness-summary.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -4874,7 +4874,7 @@ fs.writeFileSync(path.join(processEnvOnlyRoot, "config/release-config-evidence.j
   blockersByOwner: { "ai-owner": 1, "release-infra": 1 },
   warnings: [],
 }, null, 2)}\n`);
-const processEnvOnlyResult = spawnSync("node", ["bin/ddd-release-readiness-summary.mjs"], {
+const processEnvOnlyResult = spawnSync("node", ["bin\/ddd-release-readiness-summary.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -4960,7 +4960,7 @@ fs.writeFileSync(path.join(broadEnvPermissionRoot, "release/release-env-lint.jso
   ],
   warnings: [],
 }, null, 2)}\n`);
-const broadEnvPermissionResult = spawnSync("node", ["bin/ddd-release-readiness-summary.mjs"], {
+const broadEnvPermissionResult = spawnSync("node", ["bin\/ddd-release-readiness-summary.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

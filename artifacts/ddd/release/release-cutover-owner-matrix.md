@@ -1,6 +1,6 @@
 # DDD Cutover Owner Matrix
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -21,7 +21,7 @@ Blocked owners: 16
   - Env check groups: DDD_DOCKER_BUILD_STRICT=DDD_DOCKER_BUILD_STRICT, DDD_DOCKER_COMMAND=DDD_DOCKER_COMMAND
   - Expected artifacts: artifacts/ddd/build/docker-image-evidence.json
 - [BLOCKED] evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean.
-  - Pending items: 16
+  - Pending items: 7
   - Lanes: evidence-integrity, final-verification
   - Batches: p3-orchestrator-release-infra
   - Env check groups: BASE_URL=BASE_URL, LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL, PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL
@@ -37,7 +37,7 @@ Blocked owners: 16
 
 - Blocked items: 2
 - Total items: 2
-- Ready batches: p0-manifest-database
+- Ready batches: none
 - Blocked batches: p2-explain-database, p3-orchestrator-database
 - [BLOCKED] database-performance: Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.
   - Pending items: 2
@@ -46,11 +46,11 @@ Blocked owners: 16
   - Env check groups: DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD, DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME, DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE=DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR=DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT=DDD_EXPLAIN_ENVIRONMENT, DDD_EXPLAIN_STRICT=DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE, MYSQL_CLI=MYSQL_CLI, MYSQL_DATABASE=MYSQL_DATABASE, MYSQL_HOST=MYSQL_HOST, MYSQL_PORT=MYSQL_PORT
   - Expected artifacts: artifacts/ddd/release/explain-gate-report.json, tmp/ddd-explain/*.json
 - [BLOCKED] evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean.
-  - Pending items: 16
+  - Pending items: 7
   - Lanes: evidence-integrity, final-verification
-  - Batches: p0-manifest-database, p3-orchestrator-database
+  - Batches: p3-orchestrator-database
   - Env check groups: DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED
-  - Expected artifacts: artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
+  - Expected artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
 
 ## file-owner
 
@@ -113,14 +113,14 @@ Blocked owners: 16
 
 - Blocked items: 2
 - Total items: 4
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - [BLOCKED] evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean.
-  - Pending items: 16
+  - Pending items: 7
   - Lanes: evidence-integrity, final-verification
-  - Batches: p0-manifest-release-owner, p3-orchestrator-release-owner
-  - Env check groups: DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE, DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT, DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT
-  - Expected artifacts: artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
+  - Batches: p3-orchestrator-release-owner
+  - Env check groups: DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT
+  - Expected artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
 - [BLOCKED] strict-release-gate: Strict release gate has zero blockers and no contract issues.
   - Pending items: 94
   - Lanes: none
@@ -206,7 +206,7 @@ Blocked owners: 16
 - Ready batches: p0-manifest-lumira-ui
 - Blocked batches: none
 - [BLOCKED] evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean.
-  - Pending items: 16
+  - Pending items: 7
   - Lanes: evidence-integrity, final-verification
   - Batches: p0-manifest-lumira-ui
   - Env check groups: DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT, DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED, DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE, PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL

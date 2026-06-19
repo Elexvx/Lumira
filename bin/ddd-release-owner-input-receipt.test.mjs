@@ -52,15 +52,15 @@ function baseArtifacts({ ready = false } = {}) {
         redacted: true,
         purpose: "Verify that collected owner values removed release env placeholders without exposing concrete values.",
         commands: [
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-safe-defaults.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-provenance-defaults.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-alias-sync.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
           "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-readiness-summary.mjs",
-          "node bin/ddd-release-config-owner-input-reconciliation.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-readiness-summary.mjs",
+          "node bin\/ddd-release-config-owner-input-reconciliation.mjs",
           "DDD_RELEASE_ENV_FILE=<release-env-file> bash artifacts/ddd/release/release-preflight-gate.sh",
           "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         ],
@@ -110,7 +110,7 @@ function runGenerator(mutator = () => {}, env = {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  const result = spawnSync("node", ["bin/ddd-release-owner-input-receipt.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-release-owner-input-receipt.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_DIR: directory, ...env },
@@ -127,7 +127,7 @@ function runGenerator(mutator = () => {}, env = {}) {
 }
 
 function runContract(directory) {
-  return spawnSync("node", ["bin/ddd-release-owner-input-receipt-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-owner-input-receipt-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_DIR: directory },
@@ -175,7 +175,7 @@ assert.equal(runContract(pass.directory).status, 0);
 
 const leak = runGenerator();
 const leakedReceipt = readJson(leak.receiptPath);
-leakedReceipt.validationCommands.push("DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs");
+leakedReceipt.validationCommands.push("DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs");
 writeJson(leak.receiptPath, leakedReceipt);
 const leakContract = runContract(leak.directory);
 assert.notEqual(leakContract.status, 0);

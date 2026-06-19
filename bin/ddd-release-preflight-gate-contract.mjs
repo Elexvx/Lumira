@@ -153,7 +153,7 @@ try {
   const unresolvedReadiness = Number(envReadinessPacket?.summary?.blockers || 0)
     + Number(envReadinessPacket?.summary?.placeholders || 0)
     + Number(envReadinessPacket?.summary?.missing || 0);
-  const initialRefreshRun = spawnSync("node", ["bin/ddd-release-readiness-summary.mjs"], {
+  const initialRefreshRun = spawnSync("node", ["bin\/ddd-release-readiness-summary.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -227,7 +227,7 @@ try {
     addFailure("default preflight report must record zero exit codes for advisory gate wrappers except manifest provenance preflight");
   }
 
-  const refreshRun = spawnSync("node", ["bin/ddd-release-readiness-summary.mjs"], {
+  const refreshRun = spawnSync("node", ["bin\/ddd-release-readiness-summary.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
   });

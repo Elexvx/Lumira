@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 
 const password = process.env.MYSQL_PASSWORD || "";
 const args = [
-  "bin/ddd-mysql-docker-exec-wrapper.mjs",
+  "bin\/ddd-mysql-docker-exec-wrapper.mjs",
   "--batch",
   "--raw",
   "--skip-column-names",

@@ -11,6 +11,7 @@ import com.lumira.file.entity.FileStorageSpaceEntity;
 import com.lumira.file.mapper.FileObjectMapper;
 import com.lumira.file.mapper.FileStorageSpaceMapper;
 import com.lumira.file.processing.FileProcessingTaskService;
+import com.lumira.file.security.SafeUrlValidator;
 import com.lumira.file.upload.DocumentUploadService;
 import com.lumira.file.upload.FileStorageMetrics;
 import com.lumira.file.upload.ImageUploadService;
@@ -87,7 +88,8 @@ class FileManagementAppServiceTest {
                 domainEventPublisher,
                 fileProcessingTaskService,
                 fieldCryptoService,
-                storageMetrics
+                storageMetrics,
+                new SafeUrlValidator()
         );
     }
 
@@ -198,6 +200,13 @@ class FileManagementAppServiceTest {
 
         assertThat(result.getStatus()).isEqualTo("DOWN");
         assertThat(result.getMessage()).contains("upload root");
+    }
+
+    @Test
+    void safeUrlValidatorShouldRejectLocalhostEndpoint() {
+        assertThatThrownBy(() -> new SafeUrlValidator().validateHttpUrl("http://localhost:8080/internal"))
+                .isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasMessageContaining("Remote storage endpoint is not allowed");
     }
 
     private CurrentUser currentUser() {

@@ -25,6 +25,7 @@ export interface RequestOptions {
   silent?: boolean;
   allowDuplicate?: boolean;
   timeoutMs?: number;
+  credentials?: RequestCredentials;
 }
 
 export interface StreamRequestOptions extends RequestOptions {

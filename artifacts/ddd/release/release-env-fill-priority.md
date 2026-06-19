@@ -1,14 +1,14 @@
 # DDD Release Env Fill Priority
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Release gate blockers: 94
-Owners with unresolved keys: 16
-Run now owners: 5
-Waiting owners: 11
+Owners with unresolved keys: 15
+Run now owners: 3
+Waiting owners: 12
 Unique unresolved template env keys: 29
-Unresolved owner assignments: 67
-Filled owner assignments: 66
+Unresolved owner assignments: 65
+Filled owner assignments: 64
 Placeholder owner assignments: 0
 Missing owner assignments: 1
 
@@ -31,36 +31,7 @@ Missing owner assignments: 1
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 
-## 2. database
-
-- Priority: RUN_NOW
-- Unresolved env keys: 12
-- Fill status: filled=12, placeholder=0, missing=0
-- Ready batches: p0-manifest-database
-- Blocked batches: p2-explain-database, p3-orchestrator-database
-- Fill keys:
-  - `DB_PASSWORD` (filled)
-  - `DB_USERNAME` (filled)
-  - `DDD_EVIDENCE_OPERATOR` (filled)
-  - `DDD_EXPLAIN_DATABASE` (filled)
-  - `DDD_MIGRATION_FRESH_DB_EVIDENCE` (filled)
-  - `DDD_MIGRATION_FRESH_DB_VALIDATED` (filled)
-  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE` (filled)
-  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED` (filled)
-  - `DDD_RELEASE_CANDIDATE` (filled)
-  - `MYSQL_DATABASE` (filled)
-  - `MYSQL_HOST` (filled)
-  - `MYSQL_PORT` (filled)
-- Rerun after fill:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-collect-explain.mjs`
-  - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
-  - `node bin/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
-
-## 3. release-performance
+## 2. release-performance
 
 - Priority: RUN_NOW
 - Unresolved env keys: 4
@@ -76,7 +47,7 @@ Missing owner assignments: 1
   - `node bin/ddd-authenticated-performance-smoke.mjs`
   - `node bin/ddd-promote-performance-baseline.mjs`
 
-## 4. lumira-ui
+## 3. lumira-ui
 
 - Priority: RUN_NOW
 - Unresolved env keys: 2
@@ -91,24 +62,33 @@ Missing owner assignments: 1
   - `node bin/ddd-promote-performance-baseline.mjs`
   - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
 
-## 5. release-owner
+## 4. database
 
-- Priority: RUN_NOW
-- Unresolved env keys: 2
-- Fill status: filled=2, placeholder=0, missing=0
-- Ready batches: p0-manifest-release-owner
-- Blocked batches: p3-orchestrator-release-owner
+- Priority: WAITING
+- Unresolved env keys: 12
+- Fill status: filled=12, placeholder=0, missing=0
+- Ready batches: none
+- Blocked batches: p2-explain-database, p3-orchestrator-database
 - Fill keys:
+  - `DB_PASSWORD` (filled)
+  - `DB_USERNAME` (filled)
   - `DDD_EVIDENCE_OPERATOR` (filled)
+  - `DDD_EXPLAIN_DATABASE` (filled)
+  - `DDD_MIGRATION_FRESH_DB_EVIDENCE` (filled)
+  - `DDD_MIGRATION_FRESH_DB_VALIDATED` (filled)
+  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE` (filled)
+  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
+  - `MYSQL_DATABASE` (filled)
+  - `MYSQL_HOST` (filled)
+  - `MYSQL_PORT` (filled)
 - Rerun after fill:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-  - `node bin/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
+  - `node bin/ddd-collect-explain.mjs`
+  - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 
-## 6. ai
+## 5. ai
 
 - Priority: WAITING
 - Unresolved env keys: 9
@@ -128,7 +108,7 @@ Missing owner assignments: 1
 - Rerun after fill:
   - `node bin/ddd-ai-runtime-drill.mjs`
 
-## 7. file-owner
+## 6. file-owner
 
 - Priority: WAITING
 - Unresolved env keys: 7
@@ -149,7 +129,7 @@ Missing owner assignments: 1
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
   - `node bin/ddd-rollback-drill-evidence.mjs`
 
-## 8. job-owner
+## 7. job-owner
 
 - Priority: WAITING
 - Unresolved env keys: 6
@@ -169,7 +149,7 @@ Missing owner assignments: 1
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
   - `node bin/ddd-rollback-drill-evidence.mjs`
 
-## 9. payment-owner
+## 8. payment-owner
 
 - Priority: WAITING
 - Unresolved env keys: 6
@@ -189,7 +169,7 @@ Missing owner assignments: 1
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
   - `node bin/ddd-rollback-drill-evidence.mjs`
 
-## 10. ai-owner
+## 9. ai-owner
 
 - Priority: WAITING
 - Unresolved env keys: 2
@@ -204,7 +184,7 @@ Missing owner assignments: 1
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
   - `node bin/ddd-rollback-drill-evidence.mjs`
 
-## 11. auth-owner
+## 10. auth-owner
 
 - Priority: WAITING
 - Unresolved env keys: 2
@@ -219,7 +199,7 @@ Missing owner assignments: 1
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
   - `node bin/ddd-rollback-drill-evidence.mjs`
 
-## 12. iam-owner
+## 11. iam-owner
 
 - Priority: WAITING
 - Unresolved env keys: 2
@@ -234,7 +214,7 @@ Missing owner assignments: 1
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
   - `node bin/ddd-rollback-drill-evidence.mjs`
 
-## 13. localization-owner
+## 12. localization-owner
 
 - Priority: WAITING
 - Unresolved env keys: 2
@@ -249,7 +229,7 @@ Missing owner assignments: 1
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
   - `node bin/ddd-rollback-drill-evidence.mjs`
 
-## 14. message-owner
+## 13. message-owner
 
 - Priority: WAITING
 - Unresolved env keys: 2
@@ -264,7 +244,7 @@ Missing owner assignments: 1
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
   - `node bin/ddd-rollback-drill-evidence.mjs`
 
-## 15. platform-owner
+## 14. platform-owner
 
 - Priority: WAITING
 - Unresolved env keys: 2
@@ -279,7 +259,7 @@ Missing owner assignments: 1
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
   - `node bin/ddd-rollback-drill-evidence.mjs`
 
-## 16. plugin-owner
+## 15. plugin-owner
 
 - Priority: WAITING
 - Unresolved env keys: 2

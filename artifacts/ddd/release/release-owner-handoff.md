@@ -1,14 +1,14 @@
 # DDD Release Owner Handoff
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
 Cutover allowed: false
 Stop reasons: 8
 releaseEnvFileCutoverSafe: false
-Ready owners: 5
-Blocked owners: 11
+Ready owners: 3
+Blocked owners: 13
 
 ## Final Cutover Decision
 
@@ -93,73 +93,6 @@ Blocked owners: 11
   - Archive or refresh every expected artifact listed for this owner.
   - Confirm every exit criterion before the next dependent batch starts.
 
-## release-owner
-
-- Status: READY
-- Pending items: 8
-- Ready batches: p0-manifest-release-owner
-- Blocked batches: p3-orchestrator-release-owner
-- Blocked by: p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
-- Env keys: 5
-- Expected artifacts: artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
-- Commands:
-  - list: `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - envCheck: `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - dryRun: `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - execute: `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
-- Template env keys:
-  - `DDD_EVIDENCE_ENVIRONMENT`
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_RELEASE_CANDIDATE`
-  - `DDD_RELEASE_EVIDENCE_STRICT`
-  - `DDD_RELEASE_MANIFEST_STRICT`
-- Handoff checklist:
-  - Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.
-  - Run the owner env-check command before collecting evidence.
-  - Run the owner dry-run command to confirm batch scope.
-  - Run the owner execute command in the production-equivalent release environment.
-  - Archive or refresh every expected artifact listed for this owner.
-  - Confirm every exit criterion before the next dependent batch starts.
-
-## database
-
-- Status: READY
-- Pending items: 5
-- Ready batches: p0-manifest-database
-- Blocked batches: p2-explain-database, p3-orchestrator-database
-- Blocked by: p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
-- Env keys: 16
-- Expected artifacts: artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/explain-gate-report.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json, tmp/ddd-explain/*.json
-- Commands:
-  - list: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - envCheck: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - dryRun: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - execute: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
-- Template env keys:
-  - `DB_PASSWORD`
-  - `DB_USERNAME`
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_EXPLAIN_DATABASE`
-  - `DDD_EXPLAIN_DIR`
-  - `DDD_EXPLAIN_ENVIRONMENT`
-  - `DDD_EXPLAIN_STRICT`
-  - `DDD_MIGRATION_FRESH_DB_EVIDENCE`
-  - `DDD_MIGRATION_FRESH_DB_VALIDATED`
-  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
-  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED`
-  - `DDD_RELEASE_CANDIDATE`
-  - `MYSQL_CLI`
-  - `MYSQL_DATABASE`
-  - `MYSQL_HOST`
-  - `MYSQL_PORT`
-- Handoff checklist:
-  - Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.
-  - Run the owner env-check command before collecting evidence.
-  - Run the owner dry-run command to confirm batch scope.
-  - Run the owner execute command in the production-equivalent release environment.
-  - Archive or refresh every expected artifact listed for this owner.
-  - Confirm every exit criterion before the next dependent batch starts.
-
 ## lumira-ui
 
 - Status: READY
@@ -208,6 +141,37 @@ Blocked owners: 11
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY`
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL`
   - `LUMIRA_BASE_URL`
+- Handoff checklist:
+  - Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.
+  - Archive or refresh every expected artifact listed for this owner.
+  - Confirm every exit criterion before the next dependent batch starts.
+
+## database
+
+- Status: BLOCKED
+- Pending items: 3
+- Ready batches: none
+- Blocked batches: p2-explain-database, p3-orchestrator-database
+- Blocked by: p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Env keys: 16
+- Expected artifacts: artifacts/ddd/release/explain-gate-report.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json, tmp/ddd-explain/*.json
+- Template env keys:
+  - `DB_PASSWORD`
+  - `DB_USERNAME`
+  - `DDD_EVIDENCE_OPERATOR`
+  - `DDD_EXPLAIN_DATABASE`
+  - `DDD_EXPLAIN_DIR`
+  - `DDD_EXPLAIN_ENVIRONMENT`
+  - `DDD_EXPLAIN_STRICT`
+  - `DDD_MIGRATION_FRESH_DB_EVIDENCE`
+  - `DDD_MIGRATION_FRESH_DB_VALIDATED`
+  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
+  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED`
+  - `DDD_RELEASE_CANDIDATE`
+  - `MYSQL_CLI`
+  - `MYSQL_DATABASE`
+  - `MYSQL_HOST`
+  - `MYSQL_PORT`
 - Handoff checklist:
   - Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.
   - Archive or refresh every expected artifact listed for this owner.
@@ -451,6 +415,22 @@ Blocked owners: 11
   - `DDD_ROLLBACK_DRILL_FILE`
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT`
+- Handoff checklist:
+  - Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.
+  - Archive or refresh every expected artifact listed for this owner.
+  - Confirm every exit criterion before the next dependent batch starts.
+
+## release-owner
+
+- Status: BLOCKED
+- Pending items: 1
+- Ready batches: none
+- Blocked batches: p3-orchestrator-release-owner
+- Blocked by: p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Env keys: 1
+- Expected artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
+- Template env keys:
+  - `DDD_RELEASE_EVIDENCE_STRICT`
 - Handoff checklist:
   - Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.
   - Archive or refresh every expected artifact listed for this owner.

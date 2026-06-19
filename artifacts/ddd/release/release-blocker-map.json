@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T18:09:16.572Z",
-      "generatedAt": "2026-06-19T18:09:16.571Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 12,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -635,45 +635,20 @@
           "action": "Run `node bin/ddd-init-rollback-drill.mjs`, fill real PASS/DEFERRED evidence for every context, then run `node bin/ddd-rollback-drill-evidence.mjs`."
         }
       ],
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-release-owner"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
         "artifacts/ddd/release/orchestrator-report.json",
         "artifacts/ddd/release/release-evidence-gate.json",
         "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p3-orchestrator-release-owner",
           "priority": "P3",
@@ -1489,24 +1464,18 @@
           "action": "Collect production-equivalent MySQL `EXPLAIN FORMAT=JSON` artifacts for all required hot paths and ensure no full scans or missing hotspot indexes remain."
         }
       ],
-      "readyBatchIds": [
-        "p0-manifest-database"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p2-explain-database",
         "p3-orchestrator-database"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
         "node bin/ddd-collect-explain.mjs",
         "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
         "tmp/ddd-explain/*.json",
         "artifacts/ddd/release/explain-gate-report.json",
         "artifacts/ddd/release/orchestrator-report.json",
@@ -1514,25 +1483,6 @@
         "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p2-explain-database",
           "priority": "P2",
@@ -2650,45 +2600,20 @@
           "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
         }
       ],
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-release-owner"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
         "artifacts/ddd/release/orchestrator-report.json",
         "artifacts/ddd/release/release-evidence-gate.json",
         "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p3-orchestrator-release-owner",
           "priority": "P3",
@@ -3021,45 +2946,20 @@
           "action": "Regenerate the manifest with `DDD_RELEASE_MANIFEST_STRICT=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR` after regenerating provenance-bearing artifacts."
         }
       ],
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-release-owner"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
         "artifacts/ddd/release/orchestrator-report.json",
         "artifacts/ddd/release/release-evidence-gate.json",
         "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p3-orchestrator-release-owner",
           "priority": "P3",
@@ -3115,45 +3015,20 @@
           "action": "Run `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict` with real provenance and keep the generated `artifacts/ddd/release/orchestrator-report.json` with the release evidence bundle."
         }
       ],
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-release-owner"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
         "artifacts/ddd/release/orchestrator-report.json",
         "artifacts/ddd/release/release-evidence-gate.json",
         "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p3-orchestrator-release-owner",
           "priority": "P3",
@@ -3201,45 +3076,20 @@
           "action": "Regenerate all missing evidence artifacts, then run `node bin/ddd-release-evidence-manifest.mjs`."
         }
       ],
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-release-owner"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
         "artifacts/ddd/release/orchestrator-report.json",
         "artifacts/ddd/release/release-evidence-gate.json",
         "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p3-orchestrator-release-owner",
           "priority": "P3",
@@ -3287,24 +3137,18 @@
           "action": "Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags."
         }
       ],
-      "readyBatchIds": [
-        "p0-manifest-database"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p2-explain-database",
         "p3-orchestrator-database"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
         "node bin/ddd-collect-explain.mjs",
         "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
         "tmp/ddd-explain/*.json",
         "artifacts/ddd/release/explain-gate-report.json",
         "artifacts/ddd/release/orchestrator-report.json",
@@ -3312,25 +3156,6 @@
         "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p2-explain-database",
           "priority": "P2",
@@ -3389,24 +3214,18 @@
           "action": "Collect production-equivalent MySQL `EXPLAIN FORMAT=JSON` artifacts for all required hot paths and ensure no full scans or missing hotspot indexes remain."
         }
       ],
-      "readyBatchIds": [
-        "p0-manifest-database"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p2-explain-database",
         "p3-orchestrator-database"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
         "node bin/ddd-collect-explain.mjs",
         "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
         "tmp/ddd-explain/*.json",
         "artifacts/ddd/release/explain-gate-report.json",
         "artifacts/ddd/release/orchestrator-report.json",
@@ -3414,25 +3233,6 @@
         "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p2-explain-database",
           "priority": "P2",
@@ -3566,45 +3366,20 @@
           "action": "Run `node bin/ddd-init-rollback-drill.mjs`, fill real PASS/DEFERRED evidence for every context, then run `node bin/ddd-rollback-drill-evidence.mjs`."
         }
       ],
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-release-owner"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
         "artifacts/ddd/release/orchestrator-report.json",
         "artifacts/ddd/release/release-evidence-gate.json",
         "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p3-orchestrator-release-owner",
           "priority": "P3",

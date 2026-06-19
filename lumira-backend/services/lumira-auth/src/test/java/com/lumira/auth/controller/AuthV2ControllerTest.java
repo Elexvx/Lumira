@@ -8,8 +8,10 @@ import com.lumira.api.auth.RefreshTokenRequest;
 import com.lumira.api.auth.RefreshTokenResponseDTO;
 import com.lumira.api.auth.AuthBootstrapDTO;
 import com.lumira.auth.service.AuthAppService;
+import com.lumira.auth.service.AuthCookieService;
 import com.lumira.api.system.SecuritySettingsDTO;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,12 +25,14 @@ import static org.mockito.Mockito.when;
 class AuthV2ControllerTest {
 
     private AuthAppService authAppService;
+    private AuthCookieService authCookieService;
     private AuthV2Controller controller;
 
     @BeforeEach
     void setUp() {
         authAppService = mock(AuthAppService.class);
-        controller = new AuthV2Controller(authAppService);
+        authCookieService = mock(AuthCookieService.class);
+        controller = new AuthV2Controller(authAppService, authCookieService);
     }
 
     @Test
@@ -96,15 +100,19 @@ class AuthV2ControllerTest {
     @Test
     void login_shouldDelegateToApplicationServiceWithRequestContract() {
         HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        HttpServletResponse httpResponse = mock(HttpServletResponse.class);
         LoginRequest request = new LoginRequest("alice", null, "ciphertext", null, null, null);
         LoginResponseDTO loginResponse = new LoginResponseDTO();
         loginResponse.setAccessToken("access-token");
+        loginResponse.setRefreshToken("refresh-token");
         when(authAppService.login(request, httpRequest)).thenReturn(loginResponse);
 
-        var response = controller.login(request, httpRequest);
+        var response = controller.login(request, httpRequest, httpResponse);
 
         assertThat(response.getData()).isSameAs(loginResponse);
+        assertThat(response.getData().getRefreshToken()).isNull();
         verify(authAppService).login(request, httpRequest);
+        verify(authCookieService).writeRefreshToken(httpResponse, "refresh-token");
     }
 
     @Test
@@ -146,23 +154,29 @@ class AuthV2ControllerTest {
     @Test
     void refreshToken_shouldDelegateToApplicationService() {
         RefreshTokenRequest request = new RefreshTokenRequest("refresh-token");
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        HttpServletResponse httpResponse = mock(HttpServletResponse.class);
         RefreshTokenResponseDTO refreshResponse = new RefreshTokenResponseDTO("access", "refresh", "Bearer", 7200L);
         when(authAppService.refreshToken(request)).thenReturn(refreshResponse);
 
-        var response = controller.refreshToken(request);
+        var response = controller.refreshToken(request, httpRequest, httpResponse);
 
-        assertThat(response.getData()).isSameAs(refreshResponse);
+        assertThat(response.getData().accessToken()).isEqualTo("access");
+        assertThat(response.getData().refreshToken()).isNull();
         verify(authAppService).refreshToken(request);
+        verify(authCookieService).writeRefreshToken(httpResponse, "refresh");
     }
 
     @Test
     void logout_shouldDelegateToApplicationService() {
         HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        HttpServletResponse httpResponse = mock(HttpServletResponse.class);
 
-        var response = controller.logout(httpRequest);
+        var response = controller.logout(httpRequest, httpResponse);
 
         assertThat(response.getData()).isTrue();
         verify(authAppService).logout(httpRequest);
+        verify(authCookieService).clearRefreshToken(httpResponse);
     }
 
     @Test

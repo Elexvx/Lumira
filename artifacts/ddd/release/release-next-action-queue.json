@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -52,8 +52,8 @@
   "releaseEnvFileCutoverSafe": false,
   "summary": {
     "itemCount": 16,
-    "runNowCount": 5,
-    "waitingCount": 11,
+    "runNowCount": 3,
+    "waitingCount": 13,
     "artifactMissingCount": 2,
     "contentBlockedCount": 14,
     "readyForStrictGateRerunCount": 0,
@@ -120,39 +120,6 @@
     },
     {
       "order": 2,
-      "owner": "release-owner",
-      "queueStatus": "RUN_NOW",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
-      ],
-      "strictGateBlockerCount": 14,
-      "strictGateBlocker": {
-        "check": "physical-split-readiness-freshness",
-        "category": "other",
-        "detail": "generatedAt is 57.7h old; limit=24h"
-      },
-      "missingArtifacts": [],
-      "pendingActionCount": 8,
-      "collapsedActionCount": 0,
-      "nextAction": "Inspect the strict release gate blocker and attach an owner-specific remediation.",
-      "reason": "strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h",
-      "commandHint": "Inspect the strict release gate blocker and attach an owner-specific remediation.",
-      "executableCommands": [
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      ],
-      "envKeys": [
-        "DDD_RELEASE_EVIDENCE_STRICT"
-      ]
-    },
-    {
-      "order": 3,
       "owner": "release-performance",
       "queueStatus": "RUN_NOW",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -183,7 +150,7 @@
       "envKeys": []
     },
     {
-      "order": 4,
+      "order": 3,
       "owner": "lumira-ui",
       "queueStatus": "RUN_NOW",
       "receiptStatus": "ARTIFACT_MISSING",
@@ -221,54 +188,33 @@
       ]
     },
     {
-      "order": 5,
-      "owner": "database",
-      "queueStatus": "RUN_NOW",
-      "receiptStatus": "ARTIFACT_MISSING",
-      "readyBatchIds": [
-        "p0-manifest-database"
-      ],
+      "order": 4,
+      "owner": "release-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
       "blockedBatchIds": [
-        "p2-explain-database",
-        "p3-orchestrator-database"
+        "p3-orchestrator-release-owner"
       ],
-      "strictGateBlockerCount": 3,
+      "strictGateBlockerCount": 14,
       "strictGateBlocker": {
-        "check": "migration-evidence-freshness",
-        "category": "migration",
+        "check": "physical-split-readiness-freshness",
+        "category": "other",
         "detail": "generatedAt is 57.7h old; limit=24h"
       },
-      "missingArtifacts": [
-        "tmp/ddd-explain/*.json"
-      ],
-      "pendingActionCount": 5,
+      "missingArtifacts": [],
+      "pendingActionCount": 1,
       "collapsedActionCount": 0,
-      "nextAction": "Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.",
-      "reason": "strictGate=migration-evidence-freshness generatedAt is 57.7h old; limit=24h",
-      "commandHint": "Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.",
-      "executableCommands": [
-        "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-        "node bin/ddd-migration-evidence.mjs",
-        "DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      ],
+      "nextAction": "Inspect the strict release gate blocker and attach an owner-specific remediation.",
+      "reason": "strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h",
+      "commandHint": "Inspect the strict release gate blocker and attach an owner-specific remediation.",
+      "executableCommands": [],
       "envKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_ENVIRONMENT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_HANDOFF_FILE",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_RELEASE_CANDIDATE"
+        "DDD_RELEASE_EVIDENCE_STRICT"
       ]
     },
     {
-      "order": 6,
+      "order": 5,
       "owner": "ai",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -297,7 +243,7 @@
       ]
     },
     {
-      "order": 7,
+      "order": 6,
       "owner": "file-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -329,7 +275,7 @@
       ]
     },
     {
-      "order": 8,
+      "order": 7,
       "owner": "job-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -360,7 +306,7 @@
       ]
     },
     {
-      "order": 9,
+      "order": 8,
       "owner": "payment-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -388,6 +334,47 @@
         "DEPLOY_CHECK_BASE_URL",
         "LUMIRA_BASE_URL",
         "PAYMENT_PUBLIC_BASE_URL"
+      ]
+    },
+    {
+      "order": 9,
+      "owner": "database",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "ARTIFACT_MISSING",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p2-explain-database",
+        "p3-orchestrator-database"
+      ],
+      "strictGateBlockerCount": 3,
+      "strictGateBlocker": {
+        "check": "migration-evidence-freshness",
+        "category": "migration",
+        "detail": "generatedAt is 57.7h old; limit=24h"
+      },
+      "missingArtifacts": [
+        "tmp/ddd-explain/*.json"
+      ],
+      "pendingActionCount": 3,
+      "collapsedActionCount": 0,
+      "nextAction": "Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.",
+      "reason": "strictGate=migration-evidence-freshness generatedAt is 57.7h old; limit=24h",
+      "commandHint": "Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.",
+      "executableCommands": [
+        "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        "node bin/ddd-migration-evidence.mjs"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_MIGRATION_COMPLETED_AT",
+        "DDD_MIGRATION_ENVIRONMENT",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_HANDOFF_FILE",
+        "DDD_MIGRATION_OPERATOR",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_RELEASE_CANDIDATE"
       ]
     },
     {

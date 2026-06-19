@@ -21,8 +21,8 @@ function baseArtifacts() {
     secretCanonicalKeys: ["DB_PASSWORD"],
     safeToPreFillCanonicalKeys: ["TRUST_FORWARDED_HEADERS"],
     postFillCommands: [
-      "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-      "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+      "node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
       "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
     ],
   };
@@ -73,8 +73,8 @@ function baseArtifacts() {
       "",
       "Each owner template is intentionally scoped to one owner so release values can be collected in parallel without sharing unrelated secrets.",
       "- Template: `artifacts/ddd/release/release-env-owner-templates/01-release-infra.env`",
-      "- `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`",
-      "- `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`",
+      "- `node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`",
+      "- `DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs`",
       "- `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`",
       "",
     ].join("\n"),
@@ -104,7 +104,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-env-owner-templates-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-env-owner-templates-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_DIR: directory },
@@ -141,14 +141,14 @@ assert.match(commandMismatchResult.stderr, /postFillCommands/);
 
 const implicitLintResult = runContract((artifacts) => {
   artifacts.handoff.owners[0].postFillCommands = [
-    "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-    "node bin/ddd-release-env-file-lint.mjs",
+    "node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+    "node bin\/ddd-release-env-file-lint.mjs",
     "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
   ];
   artifacts.templates.owners[0].postFillCommands = artifacts.handoff.owners[0].postFillCommands;
   artifacts.markdown = artifacts.markdown.replace(
-    "- `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`",
-    "- `node bin/ddd-release-env-file-lint.mjs`",
+    "- `DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs`",
+    "- `node bin\/ddd-release-env-file-lint.mjs`",
   );
 });
 assert.notEqual(implicitLintResult.status, 0);

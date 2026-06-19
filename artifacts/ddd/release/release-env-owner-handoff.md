@@ -1,6 +1,6 @@
 # DDD Release Env Owner Handoff
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Env file: .env.release.local
 Owners: 6

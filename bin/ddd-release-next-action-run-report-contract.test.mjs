@@ -25,7 +25,7 @@ function validReport(overrides = {}) {
       order: 1,
       owner: "database",
       receiptStatus: "ARTIFACT_MISSING",
-      command: "node bin/ddd-collect-explain.mjs",
+      command: "node bin\/ddd-collect-explain.mjs",
       status: 0,
       durationMs: 12,
       finishedAt: "2026-06-15T00:00:01.000Z",
@@ -113,16 +113,16 @@ assert(validateReleaseNextActionRunReport(null).includes("release next action ru
 {
   const unsafeCommandIssue = "release next action run report entries[0].command must not expose concrete secret values, release env files, or local repo paths";
   assert(validateReleaseNextActionRunReport(validReport({
-    entries: [{ ...validReport().entries[0], command: "OPENAI_API_KEY=real-secret node bin/ddd-release-config-evidence.mjs" }],
+    entries: [{ ...validReport().entries[0], command: "OPENAI_API_KEY=real-secret node bin\/ddd-release-config-evidence.mjs" }],
   })).includes(unsafeCommandIssue));
   assert(validateReleaseNextActionRunReport(validReport({
-    entries: [{ ...validReport().entries[0], command: "DDD_RELEASE_ENV_FILE=/tmp/.env.release.local node bin/ddd-release-env-file-lint.mjs" }],
+    entries: [{ ...validReport().entries[0], command: "DDD_RELEASE_ENV_FILE=/tmp/.env.release.local node bin\/ddd-release-env-file-lint.mjs" }],
   })).includes(unsafeCommandIssue));
   assert(validateReleaseNextActionRunReport(validReport({
-    entries: [{ ...validReport().entries[0], command: `node ${path.join(repoRoot, "bin/ddd-release-config-evidence.mjs")}` }],
+    entries: [{ ...validReport().entries[0], command: `node ${path.join(repoRoot, "bin\/ddd-release-config-evidence.mjs")}` }],
   })).includes(unsafeCommandIssue));
   assert.deepEqual(validateReleaseNextActionRunReport(validReport({
-    entries: [{ ...validReport().entries[0], command: "OPENAI_API_KEY=<redacted> DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs" }],
+    entries: [{ ...validReport().entries[0], command: "OPENAI_API_KEY=<redacted> DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs" }],
   })), []);
 }
 
@@ -130,7 +130,7 @@ assert(validateReleaseNextActionRunReport(null).includes("release next action ru
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-next-action-run-report-"));
   const reportPath = path.join(directory, "release-next-action-run-report.json");
   fs.writeFileSync(reportPath, `${JSON.stringify(validReport(), null, 2)}\n`);
-  const result = spawnSync("node", ["bin/ddd-release-next-action-run-report-contract.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-release-next-action-run-report-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

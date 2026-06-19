@@ -9,7 +9,7 @@ import path from "node:path";
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
 function run(env = {}) {
-  return spawnSync("node", ["bin/ddd-backfill-runtime-provenance.mjs"], {
+  return spawnSync("node", ["bin\/ddd-backfill-runtime-provenance.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

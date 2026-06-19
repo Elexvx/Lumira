@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T18:09:16.572Z",
-      "generatedAt": "2026-06-19T18:09:16.571Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 12,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -281,9 +281,9 @@
     },
     "note": "P0 clears release-evidence prerequisites and production-equivalent baseline gates; P1 clears runtime/business acceptance; P2 clears database plan recertification; P3 reruns final orchestration after prerequisite evidence is ready."
   },
-  "totalPendingItems": 51,
+  "totalPendingItems": 42,
   "byPriority": {
-    "P0": 29,
+    "P0": 20,
     "P1": 16,
     "P2": 2,
     "P3": 4
@@ -294,7 +294,7 @@
     "business-e2e": 3,
     "docker": 4,
     "explain": 2,
-    "manifest": 12,
+    "manifest": 3,
     "orchestrator": 4,
     "rollback": 10,
     "runtime-readiness": 4
@@ -303,7 +303,7 @@
     "ai": 3,
     "ai-owner": 1,
     "auth-owner": 1,
-    "database": 5,
+    "database": 3,
     "file-owner": 2,
     "iam-owner": 1,
     "job-owner": 2,
@@ -314,7 +314,7 @@
     "platform-owner": 1,
     "plugin-owner": 1,
     "release-infra": 10,
-    "release-owner": 8,
+    "release-owner": 1,
     "release-performance": 9
   },
   "items": [
@@ -457,42 +457,6 @@
     {
       "priority": "P0",
       "source": "manifest",
-      "owner": "database",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
-      "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
-      "reason": "optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-      "detail": "optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-      "structured": false,
-      "envKeys": [
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-      ],
-      "action": "Run fresh/upgrade migration drills and regenerate migration evidence before rebuilding the release manifest.",
-      "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs"
-    },
-    {
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "database",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff",
-      "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff",
-      "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff",
-      "detail": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff",
-      "structured": false,
-      "envKeys": [
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-      ],
-      "action": "Run fresh/upgrade migration drills and regenerate migration evidence before rebuilding the release manifest.",
-      "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff"
-    },
-    {
-      "priority": "P0",
-      "source": "manifest",
       "owner": "lumira-ui",
       "id": "manifest-missing-lumira-ui-frontend-smoke-json",
       "check": "manifest-missing-lumira-ui-frontend-smoke-json",
@@ -543,132 +507,6 @@
       ],
       "action": "Run deployed frontend smoke and regenerate lumira-ui evidence before rebuilding the release manifest.",
       "artifact": "lumira-ui/lumira-ui-static-evidence.json"
-    },
-    {
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
-      "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
-      "reason": "optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh",
-      "detail": "optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh",
-      "structured": false,
-      "envKeys": [
-        "DDD_RELEASE_MANIFEST_STRICT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_EVIDENCE_OPERATOR"
-      ],
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "artifact": "optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh"
-    },
-    {
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
-      "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
-      "reason": "optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs",
-      "detail": "optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs",
-      "structured": false,
-      "envKeys": [
-        "DDD_RELEASE_MANIFEST_STRICT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_EVIDENCE_OPERATOR"
-      ],
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs"
-    },
-    {
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
-      "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
-      "reason": "optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs",
-      "detail": "optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs",
-      "structured": false,
-      "envKeys": [
-        "DDD_RELEASE_MANIFEST_STRICT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_EVIDENCE_OPERATOR"
-      ],
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs"
-    },
-    {
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
-      "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
-      "reason": "optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs",
-      "detail": "optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs",
-      "structured": false,
-      "envKeys": [
-        "DDD_RELEASE_MANIFEST_STRICT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_EVIDENCE_OPERATOR"
-      ],
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs"
-    },
-    {
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
-      "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
-      "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet",
-      "detail": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet",
-      "structured": false,
-      "envKeys": [
-        "DDD_RELEASE_MANIFEST_STRICT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_EVIDENCE_OPERATOR"
-      ],
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet"
-    },
-    {
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
-      "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
-      "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt",
-      "detail": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt",
-      "structured": false,
-      "envKeys": [
-        "DDD_RELEASE_MANIFEST_STRICT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_EVIDENCE_OPERATOR"
-      ],
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt"
-    },
-    {
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff",
-      "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff",
-      "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff",
-      "detail": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff",
-      "structured": false,
-      "envKeys": [
-        "DDD_RELEASE_MANIFEST_STRICT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_EVIDENCE_OPERATOR"
-      ],
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff"
     },
     {
       "priority": "P0",

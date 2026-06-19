@@ -66,23 +66,16 @@ const revokeServerSession = async () => {
 };
 
 const refreshTokenRequest = async () => {
-  const refreshToken = tokenManager.getRefreshToken();
-  if (!refreshToken) {
-    return false;
-  }
-
-  const requestBody = { refreshToken };
   try {
     const response = await request<RefreshTokenResponse>('/v2/auth/refresh-token', {
       method: 'POST',
-      data: requestBody,
       skipAuth: true,
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
+      credentials: 'include',
     });
     tokenManager.setTokens({
       accessToken: response.accessToken,
-      refreshToken: response.refreshToken,
       tokenType: response.tokenType,
       expiresIn: response.expiresIn,
     });
@@ -95,14 +88,13 @@ const refreshTokenRequest = async () => {
     try {
       const response = await request<RefreshTokenResponse>(AUTH_REFRESH_TOKEN_PATH, {
         method: 'POST',
-        data: requestBody,
         skipAuth: true,
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
+        credentials: 'include',
       });
       tokenManager.setTokens({
         accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
         tokenType: response.tokenType,
         expiresIn: response.expiresIn,
       });

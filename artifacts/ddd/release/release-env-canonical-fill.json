@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T18:09:16.572Z",
-      "generatedAt": "2026-06-19T18:09:16.571Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 12,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {

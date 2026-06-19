@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.ai.controller;
 
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
@@ -158,6 +159,10 @@ public class AiV2Controller {
     @RepeatSubmit
     public ApiResponse<AiVO.ToolExecuteResultVO> executeTool(@Valid @RequestBody AiDTO.ToolExecuteRequest request) {
         CurrentUser currentUser = require("ai:tool:execute");
+        if (!aiNativeToolRuntimeService.isDirectExecutable(currentUser, request.getToolCode())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Direct AI tool execution is limited to read-only LOW risk tools; use propose/confirm");
+        }
+        request.setConfirmed(false);
         return ApiResponse.success(aiNativeToolRuntimeService.execute(currentUser, request), TraceContext.getRequestId());
     }
 

@@ -34,7 +34,7 @@ function printHelp() {
   console.log(`DDD Docker image evidence
 
 Usage:
-  node bin/ddd-docker-build-evidence.mjs [options]
+  node bin\/ddd-docker-build-evidence.mjs [options]
 
 Options:
   --check       Print a read-only Docker evidence readiness check and exit without writing artifacts.
@@ -48,9 +48,9 @@ Environment:
   DDD_DOCKER_EXISTING_FRONTEND_IMAGE         Existing lumira-ui image to inspect instead of building.
 
 Examples:
-  node bin/ddd-docker-build-evidence.mjs --check
-  DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs
-  DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<rc> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<rc> node bin/ddd-docker-build-evidence.mjs
+  node bin\/ddd-docker-build-evidence.mjs --check
+  DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs
+  DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<rc> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<rc> node bin\/ddd-docker-build-evidence.mjs
 `);
 }
 
@@ -186,7 +186,7 @@ function dockerRemediation(imageReports, blockerList) {
         "DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre",
         "DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim",
         "DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine",
-        "node bin/ddd-docker-build-evidence.mjs",
+        "node bin\/ddd-docker-build-evidence.mjs",
       ].join(" "),
     });
   }
@@ -205,7 +205,7 @@ function dockerRemediation(imageReports, blockerList) {
         "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url>",
         "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate>",
         "DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<release-candidate>",
-        "node bin/ddd-docker-build-evidence.mjs",
+        "node bin\/ddd-docker-build-evidence.mjs",
       ].join(" "),
     });
   }
@@ -350,11 +350,11 @@ function runReadOnlyCheck() {
         "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url>",
         "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate>",
         "DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<release-candidate>",
-        "node bin/ddd-docker-build-evidence.mjs",
+        "node bin\/ddd-docker-build-evidence.mjs",
       ].join(" ")
     : dockerAvailable
-      ? "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
-      : "Run DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs on a Docker-enabled CI runner, or provide DDD_DOCKER_EXISTING_* image env vars for inspect-only evidence.";
+      ? "DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs"
+      : "Run DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs on a Docker-enabled CI runner, or provide DDD_DOCKER_EXISTING_* image env vars for inspect-only evidence.";
   const result = {
     status: issues.length === 0 ? "PASS" : "BLOCKED",
     generatedAt: new Date().toISOString(),

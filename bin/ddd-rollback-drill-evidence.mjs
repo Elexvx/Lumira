@@ -113,17 +113,17 @@ function buildRollbackEnvReadiness(artifact = {}) {
 
 function writeRollbackHandoff(readiness, file) {
   const validationCommands = [
-    "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-    "node bin/ddd-rollback-deferral-template.mjs",
-    "DDD_ROLLBACK_DRILL_STRICT=true node bin/ddd-rollback-drill-evidence.mjs",
-    "node bin/ddd-release-readiness-summary.mjs",
+    "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs",
+    "node bin\/ddd-rollback-deferral-template.mjs",
+    "DDD_ROLLBACK_DRILL_STRICT=true node bin\/ddd-rollback-drill-evidence.mjs",
+    "node bin\/ddd-release-readiness-summary.mjs",
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
   ];
   const fastPathCommands = [
-    "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-    "node bin/ddd-rollback-deferral-template.mjs",
-    "DDD_ROLLBACK_DRILL_STRICT=true node bin/ddd-rollback-drill-evidence.mjs",
-    "node bin/ddd-release-readiness-summary.mjs",
+    "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs",
+    "node bin\/ddd-rollback-deferral-template.mjs",
+    "DDD_ROLLBACK_DRILL_STRICT=true node bin\/ddd-rollback-drill-evidence.mjs",
+    "node bin\/ddd-release-readiness-summary.mjs",
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
   ];
   const ownerSummary = [...readiness.reduce((map, item) => {
@@ -156,8 +156,8 @@ function writeRollbackHandoff(readiness, file) {
       .filter((item) => item.owner === owner.owner)
       .flatMap((item) => item.requiredGroups.flatMap((group) => group))),
     nextCommand: owner.missing === 0
-      ? "DDD_ROLLBACK_DRILL_STRICT=true node bin/ddd-rollback-drill-evidence.mjs"
-      : "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+      ? "DDD_ROLLBACK_DRILL_STRICT=true node bin\/ddd-rollback-drill-evidence.mjs"
+      : "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs",
   }));
   const artifact = {
     generatedAt: new Date().toISOString(),

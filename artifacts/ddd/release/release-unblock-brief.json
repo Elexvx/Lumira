@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:16.916Z",
+  "generatedAt": "2026-06-19T18:34:09.835Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
@@ -34,7 +34,7 @@
     "orchestratorPreflightBlockers": 4,
     "orchestratorPreflightOwners": 3,
     "blockedCutoverItems": 7,
-    "stopReasons": 12
+    "stopReasons": 11
   },
   "releaseEnvSafety": {
     "cutoverSafe": false,
@@ -183,7 +183,7 @@
       "readyBatchIds": [
         "p0-authenticated-performance-release-performance",
         "p0-docker-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-runtime-readiness-release-infra"
       ],
       "blockedBatchIds": [
@@ -241,11 +241,11 @@
           ]
         },
         {
-          "id": "p0-manifest-release-owner",
+          "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
-          "owner": "release-owner",
-          "pendingItems": 1,
+          "owner": "lumira-ui",
+          "pendingItems": 3,
           "canRunImmediately": true,
           "dependsOn": [],
           "commands": [
@@ -254,7 +254,10 @@
             "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
           ],
           "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
           ]
         },
         {
@@ -284,7 +287,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -304,7 +307,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -324,7 +327,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -344,7 +347,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -364,7 +367,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -386,7 +389,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -408,7 +411,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -430,7 +433,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -452,7 +455,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -474,7 +477,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -496,7 +499,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -518,7 +521,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -540,7 +543,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -562,7 +565,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -584,7 +587,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
@@ -620,7 +623,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
@@ -658,7 +661,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
@@ -696,7 +699,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
@@ -822,7 +825,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -842,7 +845,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -862,7 +865,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -882,7 +885,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -923,7 +926,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -945,7 +948,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -967,7 +970,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -989,7 +992,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -1011,7 +1014,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -1033,7 +1036,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -1055,7 +1058,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -1077,7 +1080,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -1099,7 +1102,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -1121,7 +1124,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
@@ -1155,7 +1158,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
@@ -1186,9 +1189,9 @@
     {
       "id": "evidence-integrity",
       "title": "Evidence manifest and final orchestrator strict rerun are clean.",
-      "pendingItems": 5,
+      "pendingItems": 7,
       "readyBatchIds": [
-        "p0-manifest-release-owner"
+        "p0-manifest-lumira-ui"
       ],
       "blockedBatchIds": [
         "p3-orchestrator-database",
@@ -1197,11 +1200,11 @@
       ],
       "readyBatches": [
         {
-          "id": "p0-manifest-release-owner",
+          "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
-          "owner": "release-owner",
-          "pendingItems": 1,
+          "owner": "lumira-ui",
+          "pendingItems": 3,
           "canRunImmediately": true,
           "dependsOn": [],
           "commands": [
@@ -1210,7 +1213,10 @@
             "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
           ],
           "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
           ]
         }
       ],
@@ -1225,7 +1231,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
@@ -1263,7 +1269,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
@@ -1301,7 +1307,7 @@
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
-            "p0-manifest-release-owner",
+            "p0-manifest-lumira-ui",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
@@ -1339,13 +1345,13 @@
       "runnableBatchIds": [
         "p0-authenticated-performance-release-performance",
         "p0-docker-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-runtime-readiness-release-infra"
       ],
       "blockedBatchIds": [],
       "owners": [
+        "lumira-ui",
         "release-infra",
-        "release-owner",
         "release-performance"
       ],
       "dependsOn": [],
@@ -1393,7 +1399,7 @@
       "dependsOn": [
         "p0-authenticated-performance-release-performance",
         "p0-docker-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-runtime-readiness-release-infra"
       ],
       "commandCount": 34,
@@ -1412,7 +1418,7 @@
       "dependsOn": [
         "p0-authenticated-performance-release-performance",
         "p0-docker-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-runtime-readiness-release-infra",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -1449,7 +1455,7 @@
       "dependsOn": [
         "p0-authenticated-performance-release-performance",
         "p0-docker-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-runtime-readiness-release-infra",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -1613,23 +1619,6 @@
     },
     {
       "order": 2,
-      "owner": "release-owner",
-      "queueStatus": "RUN_NOW",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "nextAction": "Inspect the strict release gate blocker and attach an owner-specific remediation.",
-      "reason": "strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h",
-      "envKeys": [
-        "DDD_RELEASE_EVIDENCE_STRICT"
-      ],
-      "executableCommands": [
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      ]
-    },
-    {
-      "order": 3,
       "owner": "release-performance",
       "queueStatus": "RUN_NOW",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -1643,12 +1632,31 @@
         "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh"
       ]
+    },
+    {
+      "order": 3,
+      "owner": "lumira-ui",
+      "queueStatus": "RUN_NOW",
+      "receiptStatus": "ARTIFACT_MISSING",
+      "nextAction": "Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.",
+      "reason": "strictGate=frontend-smoke-freshness generatedAt is 57.8h old; limit=24h",
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
+      ],
+      "executableCommands": [
+        "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      ]
     }
   ],
   "stopReasons": [
     "authenticated performance baseline not ready: BLOCKED",
-    "closure wave 3 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain",
-    "closure wave CONTENT_BLOCKED: wave 3 release-owner/p0-manifest-release-owner",
+    "closure wave ARTIFACT_MISSING: wave 3 lumira-ui/p0-manifest-lumira-ui",
     "cutover checklist blocked: database-performance",
     "cutover checklist blocked: deployable-images",
     "cutover checklist blocked: evidence-integrity",

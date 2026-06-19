@@ -50,7 +50,7 @@ const report = {
 fs.writeFileSync(inputFile, `${JSON.stringify(report, null, 2)}\n`);
 
 {
-  const result = spawnSync("node", ["bin/ddd-frontend-smoke-evidence.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-frontend-smoke-evidence.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -73,7 +73,7 @@ fs.writeFileSync(inputFile, `${JSON.stringify(report, null, 2)}\n`);
 }
 
 {
-  const result = spawnSync("node", ["bin/ddd-frontend-smoke-evidence.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-frontend-smoke-evidence.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -98,7 +98,7 @@ fs.writeFileSync(inputFile, `${JSON.stringify(report, null, 2)}\n`);
 {
   const missingInput = path.join(directory, "missing-playwright.json");
   const missingOutput = path.join(directory, "frontend-smoke-missing.json");
-  const result = spawnSync("node", ["bin/ddd-frontend-smoke-evidence.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-frontend-smoke-evidence.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -135,7 +135,7 @@ fs.writeFileSync(inputFile, `${JSON.stringify(report, null, 2)}\n`);
 fs.mkdirSync(repoDirectory, { recursive: true });
 fs.writeFileSync(repoInputFile, `${JSON.stringify(report, null, 2)}\n`);
 try {
-  const result = spawnSync("node", ["bin/ddd-frontend-smoke-evidence.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-frontend-smoke-evidence.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

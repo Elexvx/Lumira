@@ -1,19 +1,19 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "summary": {
     "ownerCount": 16,
-    "readyOwnerCount": 5,
+    "readyOwnerCount": 3,
     "readyForStrictGateRerunOwnerCount": 0,
     "contentBlockedOwnerCount": 14,
     "artifactMissingOwnerCount": 2,
     "waitingOnDependenciesOwnerCount": 0,
-    "expectedArtifactCount": 36,
-    "presentArtifactCount": 32,
+    "expectedArtifactCount": 34,
+    "presentArtifactCount": 30,
     "missingArtifactCount": 4,
-    "pendingActionCount": 51
+    "pendingActionCount": 42
   },
   "owners": [
     {
@@ -301,262 +301,6 @@
       "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
     },
     {
-      "owner": "release-owner",
-      "status": "READY",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
-      ],
-      "expectedArtifactCount": 4,
-      "presentArtifactCount": 4,
-      "missingArtifactCount": 0,
-      "pendingActionCount": 8,
-      "collapsedActionCount": 0,
-      "pendingActions": [
-        {
-          "source": "manifest",
-          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
-          "reason": "optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh",
-          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-          "envKeys": [
-            "DDD_RELEASE_MANIFEST_STRICT",
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "artifact": "optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh"
-        },
-        {
-          "source": "manifest",
-          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
-          "reason": "optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs",
-          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-          "envKeys": [
-            "DDD_RELEASE_MANIFEST_STRICT",
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs"
-        },
-        {
-          "source": "manifest",
-          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
-          "reason": "optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs",
-          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-          "envKeys": [
-            "DDD_RELEASE_MANIFEST_STRICT",
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs"
-        },
-        {
-          "source": "manifest",
-          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
-          "reason": "optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs",
-          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-          "envKeys": [
-            "DDD_RELEASE_MANIFEST_STRICT",
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs"
-        },
-        {
-          "source": "manifest",
-          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
-          "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet",
-          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-          "envKeys": [
-            "DDD_RELEASE_MANIFEST_STRICT",
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet"
-        },
-        {
-          "source": "manifest",
-          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
-          "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt",
-          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-          "envKeys": [
-            "DDD_RELEASE_MANIFEST_STRICT",
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt"
-        },
-        {
-          "source": "manifest",
-          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff",
-          "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff",
-          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-          "envKeys": [
-            "DDD_RELEASE_MANIFEST_STRICT",
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff"
-        },
-        {
-          "source": "orchestrator",
-          "id": "orchestrator-run-mode",
-          "reason": "strict release requires run mode report, got plan",
-          "action": "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node bin/ddd-release-evidence-orchestrator.mjs`.",
-          "envKeys": [
-            "DDD_RELEASE_EVIDENCE_STRICT"
-          ],
-          "artifact": null
-        }
-      ],
-      "presentArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/readiness-summary.json",
-        "artifacts/ddd/release/release-evidence-gate.json"
-      ],
-      "missingArtifacts": [],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Rerun strict release gate and readiness summary after evidence is refreshed.",
-        "Run only after all prerequisite evidence batches are clean."
-      ],
-      "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
-    },
-    {
-      "owner": "database",
-      "status": "READY",
-      "receiptStatus": "ARTIFACT_MISSING",
-      "readyBatchIds": [
-        "p0-manifest-database"
-      ],
-      "blockedBatchIds": [
-        "p2-explain-database",
-        "p3-orchestrator-database"
-      ],
-      "expectedArtifactCount": 6,
-      "presentArtifactCount": 5,
-      "missingArtifactCount": 1,
-      "pendingActionCount": 5,
-      "collapsedActionCount": 0,
-      "pendingActions": [
-        {
-          "source": "explain",
-          "id": "message-archive-total.json",
-          "reason": "[plan] message-archive-total.json: archive_candidates does not report an index key for access_type=ALL | [plan] message-archive-total.json: archive_candidates uses full scan access_type=ALL",
-          "action": "Run production-equivalent MySQL EXPLAIN collection with `node bin/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`.",
-          "envKeys": [
-            "DDD_EXPLAIN_DIR",
-            "DDD_EXPLAIN_STRICT",
-            "DDD_EXPLAIN_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR",
-            "MYSQL_CLI",
-            "MYSQL_HOST",
-            "MYSQL_PORT",
-            "MYSQL_USER",
-            "MYSQL_PASSWORD",
-            "MYSQL_DATABASE",
-            "DDD_EXPLAIN_DATABASE"
-          ],
-          "artifact": null
-        },
-        {
-          "source": "explain",
-          "id": "message-unread-count.json",
-          "reason": "[plan] message-unread-count.json: unread_candidates does not report an index key for access_type=ALL | [plan] message-unread-count.json: unread_candidates uses full scan access_type=ALL",
-          "action": "Run production-equivalent MySQL EXPLAIN collection with `node bin/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`.",
-          "envKeys": [
-            "DDD_EXPLAIN_DIR",
-            "DDD_EXPLAIN_STRICT",
-            "DDD_EXPLAIN_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR",
-            "MYSQL_CLI",
-            "MYSQL_HOST",
-            "MYSQL_PORT",
-            "MYSQL_USER",
-            "MYSQL_PASSWORD",
-            "MYSQL_DATABASE",
-            "DDD_EXPLAIN_DATABASE"
-          ],
-          "artifact": null
-        },
-        {
-          "source": "manifest",
-          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
-          "reason": "optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-          "action": "Run fresh/upgrade migration drills and regenerate migration evidence before rebuilding the release manifest.",
-          "envKeys": [
-            "DDD_MIGRATION_FRESH_DB_VALIDATED",
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-          ],
-          "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs"
-        },
-        {
-          "source": "manifest",
-          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff",
-          "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff",
-          "action": "Run fresh/upgrade migration drills and regenerate migration evidence before rebuilding the release manifest.",
-          "envKeys": [
-            "DDD_MIGRATION_FRESH_DB_VALIDATED",
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-          ],
-          "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff"
-        },
-        {
-          "source": "orchestrator",
-          "id": "orchestrator-preflight-migration-runtime-evidence",
-          "reason": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`.",
-          "envKeys": [
-            "DDD_MIGRATION_FRESH_DB_VALIDATED",
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-          ],
-          "artifact": null
-        }
-      ],
-      "presentArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
-        "artifacts/ddd/release/explain-gate-report.json",
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/readiness-summary.json",
-        "artifacts/ddd/release/release-evidence-gate.json"
-      ],
-      "missingArtifacts": [
-        "tmp/ddd-explain/*.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Rerun strict release gate and readiness summary after evidence is refreshed.",
-        "Run only after all prerequisite evidence batches are clean.",
-        "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
-      ],
-      "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
-    },
-    {
       "owner": "lumira-ui",
       "status": "READY",
       "receiptStatus": "ARTIFACT_MISSING",
@@ -687,6 +431,96 @@
         "AI runtime drill uses HTTPS non-local base URL with remote provider and owner gateway expectations enabled.",
         "Provider is not local fallback and owner gateway has configured owner integrations.",
         "Rerun strict release gate and readiness summary after evidence is refreshed."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
+    },
+    {
+      "owner": "database",
+      "status": "BLOCKED",
+      "receiptStatus": "ARTIFACT_MISSING",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p2-explain-database",
+        "p3-orchestrator-database"
+      ],
+      "expectedArtifactCount": 5,
+      "presentArtifactCount": 4,
+      "missingArtifactCount": 1,
+      "pendingActionCount": 3,
+      "collapsedActionCount": 0,
+      "pendingActions": [
+        {
+          "source": "explain",
+          "id": "message-archive-total.json",
+          "reason": "[plan] message-archive-total.json: archive_candidates does not report an index key for access_type=ALL | [plan] message-archive-total.json: archive_candidates uses full scan access_type=ALL",
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node bin/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "explain",
+          "id": "message-unread-count.json",
+          "reason": "[plan] message-unread-count.json: unread_candidates does not report an index key for access_type=ALL | [plan] message-unread-count.json: unread_candidates uses full scan access_type=ALL",
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node bin/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`.",
+          "envKeys": [
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR",
+            "MYSQL_CLI",
+            "MYSQL_HOST",
+            "MYSQL_PORT",
+            "MYSQL_USER",
+            "MYSQL_PASSWORD",
+            "MYSQL_DATABASE",
+            "DDD_EXPLAIN_DATABASE"
+          ],
+          "artifact": null
+        },
+        {
+          "source": "orchestrator",
+          "id": "orchestrator-preflight-migration-runtime-evidence",
+          "reason": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`.",
+          "envKeys": [
+            "DDD_MIGRATION_FRESH_DB_VALIDATED",
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+          ],
+          "artifact": null
+        }
+      ],
+      "presentArtifacts": [
+        "artifacts/ddd/release/explain-gate-report.json",
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/readiness-summary.json",
+        "artifacts/ddd/release/release-evidence-gate.json"
+      ],
+      "missingArtifacts": [
+        "tmp/ddd-explain/*.json"
+      ],
+      "exitCriteria": [
+        "Final strict release gate and readiness summary report zero blockers.",
+        "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Rerun strict release gate and readiness summary after evidence is refreshed.",
+        "Run only after all prerequisite evidence batches are clean.",
+        "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
       ],
       "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
     },
@@ -1162,6 +996,45 @@
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
         "Rerun strict release gate and readiness summary after evidence is refreshed."
+      ],
+      "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
+    },
+    {
+      "owner": "release-owner",
+      "status": "BLOCKED",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-owner"
+      ],
+      "expectedArtifactCount": 3,
+      "presentArtifactCount": 3,
+      "missingArtifactCount": 0,
+      "pendingActionCount": 1,
+      "collapsedActionCount": 0,
+      "pendingActions": [
+        {
+          "source": "orchestrator",
+          "id": "orchestrator-run-mode",
+          "reason": "strict release requires run mode report, got plan",
+          "action": "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node bin/ddd-release-evidence-orchestrator.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_EVIDENCE_STRICT"
+          ],
+          "artifact": null
+        }
+      ],
+      "presentArtifacts": [
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/readiness-summary.json",
+        "artifacts/ddd/release/release-evidence-gate.json"
+      ],
+      "missingArtifacts": [],
+      "exitCriteria": [
+        "Final strict release gate and readiness summary report zero blockers.",
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Rerun strict release gate and readiness summary after evidence is refreshed.",
+        "Run only after all prerequisite evidence batches are clean."
       ],
       "nextCheck": "Rerun strict release gate and readiness summary after all missing artifacts are present."
     }

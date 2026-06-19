@@ -6,7 +6,7 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-const helpResult = spawnSync("node", ["bin/ddd-staging-runtime-check.mjs", "--help"], {
+const helpResult = spawnSync("node", ["bin\/ddd-staging-runtime-check.mjs", "--help"], {
   cwd: repoRoot,
   encoding: "utf8",
 });
@@ -14,7 +14,7 @@ assert.equal(helpResult.status, 0, helpResult.stderr || helpResult.stdout);
 assert.match(helpResult.stdout, /DDD staging runtime readiness check/);
 assert.match(helpResult.stdout, /LUMIRA_BASE_URL/);
 
-const blockedResult = spawnSync("node", ["bin/ddd-staging-runtime-check.mjs"], {
+const blockedResult = spawnSync("node", ["bin\/ddd-staging-runtime-check.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -35,7 +35,7 @@ assert(blocked.issues.some((issue) => issue.includes("LUMIRA_BASE_URL must be an
 assert(blocked.issues.some((issue) => issue.includes("PLAYWRIGHT_BASE_URL must not be localhost")));
 assert(blocked.issues.some((issue) => issue.includes("DDD_FRONTEND_EXPECT_DEPLOYED must be true")));
 
-const passResult = spawnSync("node", ["bin/ddd-staging-runtime-check.mjs"], {
+const passResult = spawnSync("node", ["bin\/ddd-staging-runtime-check.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -55,7 +55,7 @@ assert.equal(passResult.status, 0, passResult.stderr || passResult.stdout);
 const pass = JSON.parse(passResult.stdout);
 assert.equal(pass.status, "PASS");
 assert.equal(pass.productionEquivalence.backend.https, true);
-assert.equal(pass.productionEquivalence.lumira-ui.localOnly, false);
-assert(pass.nextCommands.includes("node bin/ddd-runtime-readiness-smoke.mjs"));
+assert.equal(pass.productionEquivalence["lumira-ui"].localOnly, false);
+assert(pass.nextCommands.includes("node bin\/ddd-runtime-readiness-smoke.mjs"));
 
 console.log("[ddd-staging-runtime-check.test] ok");

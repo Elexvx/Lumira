@@ -14,9 +14,9 @@ import {
 import { expectedExplainSqlSha256ByFile } from "./ddd-explain-query-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const hotPathDoc = fs.readFileSync(path.join(repoRoot, "docs", "28-ddd-hot-path-explain-plan.md"), "utf8");
-const operationalRunbook = fs.readFileSync(path.join(repoRoot, "docs", "31-ddd-operational-runbook.md"), "utf8");
-const releaseChecklist = fs.readFileSync(path.join(repoRoot, "docs", "34-ddd-release-evidence-checklist.md"), "utf8");
+const hotPathDoc = fs.readFileSync(path.join(repoRoot, "doc", "28-ddd-hot-path-explain-plan.md"), "utf8");
+const operationalRunbook = fs.readFileSync(path.join(repoRoot, "doc", "31-ddd-operational-runbook.md"), "utf8");
+const releaseChecklist = fs.readFileSync(path.join(repoRoot, "doc", "34-ddd-release-evidence-checklist.md"), "utf8");
 const explainFileHotPathNames = new Map([
   ["platform-runtime-appearance.json", "Platform runtime appearance"],
   ["plugin-bootstrap.json", "Plugin bootstrap"],

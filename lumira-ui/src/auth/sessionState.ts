@@ -15,6 +15,11 @@ export const getStoredCurrentUser = (): CurrentUser | null => storage.get<Curren
 
 export const getStoredSessionMeta = (): SessionMetaState | null => storage.get<SessionMetaState>(SESSION_META_KEY);
 
+export const clearStoredSessionState = () => {
+  storage.remove(USER_PROFILE_KEY);
+  storage.remove(SESSION_META_KEY);
+};
+
 export const persistSessionMeta = (meta: SessionMetaState) => {
   storage.set(SESSION_META_KEY, {
     ...getStoredSessionMeta(),

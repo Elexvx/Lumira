@@ -26,7 +26,7 @@ const report = {
       batchId: "p0-docker-release-infra",
       owner: "release-infra",
       priority: "P0",
-      command: "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+      command: "DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs",
       status: 0,
       durationMs: 120,
       finishedAt: "2026-06-15T00:00:01.000Z",
@@ -35,7 +35,7 @@ const report = {
       batchId: "p0-migration-database",
       owner: "database",
       priority: "P0",
-      command: "node bin/ddd-migration-evidence.mjs",
+      command: "node bin\/ddd-migration-evidence.mjs",
       status: 2,
       durationMs: 80,
       finishedAt: "2026-06-15T00:00:02.000Z",
@@ -54,8 +54,8 @@ const report = {
   assert.match(markdown, /\| Succeeded entries \| 1 \|/);
   assert.match(markdown, /\| Failed entries \| 1 \|/);
   assert.match(markdown, /\| Batch \| Owner \| Priority \| Status \| Duration ms \| Command \|/);
-  assert.match(markdown, /\| p0-docker-release-infra \| release-infra \| P0 \| PASS \| 120 \| `DDD_DOCKER_BUILD_STRICT=true node scripts\/ddd-docker-build-evidence.mjs` \|/);
-  assert.match(markdown, /\| p0-migration-database \| database \| P0 \| FAIL\(2\) \| 80 \| `node scripts\/ddd-migration-evidence.mjs` \|/);
+  assert.match(markdown, /\| p0-docker-release-infra \| release-infra \| P0 \| PASS \| 120 \| `DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs` \|/);
+  assert.match(markdown, /\| p0-migration-database \| database \| P0 \| FAIL\(2\) \| 80 \| `node bin\/ddd-migration-evidence.mjs` \|/);
 }
 
 {
@@ -63,7 +63,7 @@ const report = {
     ...report,
     entries: [{
       ...report.entries[0],
-      command: `OPENAI_API_KEY=real-secret DDD_RELEASE_ENV_FILE=/tmp/.env.release.local node ${path.join(repoRoot, "bin/ddd-release-config-evidence.mjs")}`,
+      command: `OPENAI_API_KEY=real-secret DDD_RELEASE_ENV_FILE=/tmp/.env.release.local node ${path.join(repoRoot, "bin\/ddd-release-config-evidence.mjs")}`,
     }],
   });
   assert.doesNotMatch(markdown, /real-secret/);
@@ -71,7 +71,7 @@ const report = {
   assert(!markdown.includes(repoRoot), "summary must not expose the local repo path");
   assert.match(markdown, /OPENAI_API_KEY=<redacted>/);
   assert.match(markdown, /DDD_RELEASE_ENV_FILE=<release-env-file>/);
-  assert.match(markdown, /node <repo>\/scripts\/ddd-release-config-evidence\.mjs/);
+  assert.match(markdown, /node <repo>\/bin\/ddd-release-config-evidence\.mjs/);
 }
 
 {
@@ -90,7 +90,7 @@ const report = {
   const outputPath = path.join(tempDir, "summary.md");
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 
-  const result = spawnSync("node", ["bin/ddd-release-execution-run-report-summary.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-release-execution-run-report-summary.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

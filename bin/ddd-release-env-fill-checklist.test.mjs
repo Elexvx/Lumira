@@ -38,7 +38,7 @@ try {
   }, null, 2)}\n`);
 
   const result = spawnSync("node", [
-    "bin/ddd-release-env-fill-checklist.mjs",
+    "bin\/ddd-release-env-fill-checklist.mjs",
     `--lint-file=${lintFile}`,
     `--config-evidence-file=${configEvidenceFile}`,
     `--markdown-output=${markdownOutput}`,
@@ -67,7 +67,7 @@ try {
   assert.match(markdown, /^# P0 Release Env Fill Checklist/m);
   assert.match(markdown, /### runtime/);
   assert.match(markdown, /- LUMIRA_BASE_URL/);
-  assert.match(markdown, /DDD_RELEASE_ENV_FILE=.env.release.local node scripts\/ddd-release-env-file-lint\.mjs/);
+  assert.match(markdown, /DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint\.mjs/);
   assert.match(markdown, /Do not mark `release-infra:p0-release-env` PASS/);
 
   const envTemplate = fs.readFileSync(envTemplateOutput, "utf8");
@@ -79,7 +79,7 @@ try {
   assert.doesNotMatch(envTemplate, /real-/);
 
   const jsonOnlyResult = spawnSync("node", [
-    "bin/ddd-release-env-fill-checklist.mjs",
+    "bin\/ddd-release-env-fill-checklist.mjs",
     `--lint-file=${lintFile}`,
     `--config-evidence-file=${configEvidenceFile}`,
     "--json",
@@ -91,7 +91,7 @@ try {
   assert.equal(JSON.parse(jsonOnlyResult.stdout).keyCount, 5);
 
   const envTemplateOnlyResult = spawnSync("node", [
-    "bin/ddd-release-env-fill-checklist.mjs",
+    "bin\/ddd-release-env-fill-checklist.mjs",
     `--lint-file=${lintFile}`,
     `--config-evidence-file=${configEvidenceFile}`,
     "--env-template",
@@ -103,15 +103,15 @@ try {
   assert.match(envTemplateOnlyResult.stdout, /^# P0 release env fill template\./m);
   assert.match(envTemplateOnlyResult.stdout, /^JWT_SECRET=__REQUIRED_SECRET_REF__$/m);
 
-  const commandsResult = spawnSync("node", ["bin/ddd-staging-execution-checklist.mjs", "--commands"], {
+  const commandsResult = spawnSync("node", ["bin\/ddd-staging-execution-checklist.mjs", "--commands"], {
     cwd: repoRoot,
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
   });
   assert.equal(commandsResult.status, 0, commandsResult.stderr || commandsResult.stdout);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs --markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs --env-template$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-release-env-fill-checklist\.mjs$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-release-env-fill-checklist\.mjs --markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-release-env-fill-checklist\.mjs --env-template$/m);
 
   console.log("[ddd-release-env-fill-checklist.test] ok");
 } finally {

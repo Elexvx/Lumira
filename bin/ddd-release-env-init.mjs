@@ -13,7 +13,7 @@ function printHelp() {
   console.log(`DDD release env initializer
 
 Usage:
-  node bin/ddd-release-env-init.mjs [--check]
+  node bin\/ddd-release-env-init.mjs [--check]
 
 Runs artifacts/ddd/release/release-final-owner-queue-env-init.sh through a temporary LF-normalized copy.
 This keeps the generated bash initializer usable from Windows worktrees where .sh files may be checked out with CRLF.
@@ -153,7 +153,7 @@ function runCheck() {
     forceEnabled,
     receipt: path.relative(repoRoot, envInitReceiptPath()).replaceAll("\\", "/"),
     willWriteFiles: false,
-    nextCommand: "node bin/ddd-release-env-init.mjs",
+    nextCommand: "node bin\/ddd-release-env-init.mjs",
     issues,
   };
   console.log(JSON.stringify(report, null, 2));

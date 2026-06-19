@@ -6,7 +6,7 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-const helpResult = spawnSync("node", ["bin/ddd-staging-data-safety-check.mjs", "--help"], {
+const helpResult = spawnSync("node", ["bin\/ddd-staging-data-safety-check.mjs", "--help"], {
   cwd: repoRoot,
   encoding: "utf8",
 });
@@ -14,7 +14,7 @@ assert.equal(helpResult.status, 0, helpResult.stderr || helpResult.stdout);
 assert.match(helpResult.stdout, /DDD staging data safety check/);
 assert.match(helpResult.stdout, /DDD_MIGRATION_FRESH_DB_VALIDATED/);
 
-const blockedResult = spawnSync("node", ["bin/ddd-staging-data-safety-check.mjs"], {
+const blockedResult = spawnSync("node", ["bin\/ddd-staging-data-safety-check.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -42,7 +42,7 @@ assert(blocked.issues.some((issue) => issue.includes("rollback-evidence-source")
 assert(blocked.issues.some((issue) => issue.includes("DDD_MIGRATION_FRESH_DB_VALIDATED must be true")));
 assert(blocked.issues.some((issue) => issue.includes("DDD_EXPLAIN_DATABASE")));
 
-const passResult = spawnSync("node", ["bin/ddd-staging-data-safety-check.mjs"], {
+const passResult = spawnSync("node", ["bin\/ddd-staging-data-safety-check.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -69,6 +69,6 @@ assert.equal(pass.status, "PASS");
 assert.equal(pass.tracks.rollback.status, "PASS");
 assert.equal(pass.tracks.migration.status, "PASS");
 assert.equal(pass.tracks.explain.status, "PASS");
-assert(pass.tracks.explain.nextCommands.includes("DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"));
+assert(pass.tracks.explain.nextCommands.includes("DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs"));
 
 console.log("[ddd-staging-data-safety-check.test] ok");

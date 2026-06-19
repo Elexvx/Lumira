@@ -108,7 +108,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-command-catalog-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-command-catalog-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

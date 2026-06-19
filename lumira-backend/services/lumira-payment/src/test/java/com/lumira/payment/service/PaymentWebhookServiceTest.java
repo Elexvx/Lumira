@@ -1,6 +1,7 @@
 package com.lumira.payment.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
@@ -94,7 +95,6 @@ class PaymentWebhookServiceTest {
                 any(),
                 any()
         );
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentWebhookService service = new PaymentWebhookService(
                 jdbcTemplate,
                 new ObjectMapper(),
@@ -104,7 +104,7 @@ class PaymentWebhookServiceTest {
                 domainEventPublisher
         );
 
-        PaymentWebhookEventDTO result = service.handleWebhook(
+        assertThatThrownBy(() -> service.handleWebhook(
                 1L,
                 "stripe",
                 "{\"eventId\":\"evt-bad\",\"eventType\":\"payment.succeeded\",\"orderNo\":\"ord-1\"}",
@@ -114,24 +114,13 @@ class PaymentWebhookServiceTest {
                         "X-Timestamp", String.valueOf(System.currentTimeMillis() / 1000L),
                         "Stripe-Signature", "bad-signature"
                 )
-        );
+        )).isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasMessageContaining("Webhook signature invalid");
 
-        assertThat(result.eventId()).isEqualTo("evt-bad");
-        assertThat(result.signatureValid()).isFalse();
-        assertThat(result.processed()).isFalse();
-        assertThat(result.processMessage()).isEqualTo("签名校验失败");
-        verify(outboxService).recordAfterCommit(
-                eq(1L),
-                eq(0L),
-                eq("payment"),
-                eq("payment.webhook.received"),
-                eq("stripe:evt-bad"),
-                any()
-        );
-        verifyNoInteractions(domainEventPublisher);
+        verifyNoInteractions(outboxService, domainEventPublisher);
+        verify(jdbcTemplate, never()).update(contains("insert into payment_webhook_event"), any(Object[].class));
         verify(jdbcTemplate, never()).update(contains("update payment_order"), any(Object[].class));
     }
-
     @Test
     void replayedNonceIsRejectedBeforeSignatureProcessing() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
@@ -155,7 +144,6 @@ class PaymentWebhookServiceTest {
                 any(),
                 any()
         );
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PaymentWebhookService service = new PaymentWebhookService(
                 jdbcTemplate,
                 new ObjectMapper(),
@@ -165,7 +153,7 @@ class PaymentWebhookServiceTest {
                 domainEventPublisher
         );
 
-        PaymentWebhookEventDTO result = service.handleWebhook(
+        assertThatThrownBy(() -> service.handleWebhook(
                 1L,
                 "stripe",
                 "{\"eventId\":\"evt-replay\",\"eventType\":\"payment.succeeded\"}",
@@ -176,15 +164,12 @@ class PaymentWebhookServiceTest {
                         "X-Nonce", "nonce-1",
                         "Stripe-Signature", "bad-signature"
                 )
-        );
+        )).isInstanceOf(com.lumira.common.exception.BizException.class)
+                .hasMessageContaining("Webhook replay rejected");
 
-        assertThat(result.eventId()).isEqualTo("evt-replay");
-        assertThat(result.signatureValid()).isFalse();
-        assertThat(result.processed()).isFalse();
-        assertThat(result.processMessage()).isEqualTo("请求已被重放");
         verifyNoInteractions(outboxService, domainEventPublisher);
+        verify(jdbcTemplate, never()).update(contains("insert into payment_webhook_event"), any(Object[].class));
     }
-
     private PaymentProviderSettingsDTO stripeSettings() {
         PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
         settings.setProviderCode("stripe");

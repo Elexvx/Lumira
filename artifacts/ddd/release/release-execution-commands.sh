@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD release execution commands.
-# Generated at: 2026-06-19T18:09:18.921Z
+# Generated at: 2026-06-19T18:19:45.629Z
 # Status: NOT_READY
 # Release gate blockers: 94
 # This file contains command hints only. Provide a real DDD_RELEASE_ENV_FILE before running evidence commands.
@@ -29,16 +29,8 @@ if [[ "${DDD_RELEASE_LIST_BATCHES:-}" == "1" || "${DDD_RELEASE_LIST_BATCHES:-}" 
     echo 'p0-runtime-readiness-release-infra P0 runtime-readiness->release-infra owner=release-infra priority=P0'
     DDD_RELEASE_LIST_MATCHED=1
   fi
-  if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-manifest-database' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'database' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
-    echo 'p0-manifest-database P0 manifest->database owner=database priority=P0'
-    DDD_RELEASE_LIST_MATCHED=1
-  fi
   if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-manifest-lumira-ui' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'lumira-ui' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
     echo 'p0-manifest-lumira-ui P0 manifest->lumira-ui owner=lumira-ui priority=P0'
-    DDD_RELEASE_LIST_MATCHED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-manifest-release-owner' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'release-owner' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
-    echo 'p0-manifest-release-owner P0 manifest->release-owner owner=release-owner priority=P0'
     DDD_RELEASE_LIST_MATCHED=1
   fi
   if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-authenticated-performance-release-performance' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'release-performance' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
@@ -237,22 +229,6 @@ if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "$
 run_command 'p0-runtime-readiness-release-infra' 'release-infra' 'P0' 'node bin/ddd-runtime-readiness-smoke.mjs'
 fi
 
-run_batch 'p0-manifest-database' 'database' 'P0'
-if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "${DDD_RELEASE_BATCH}" == 'p0-manifest-database' ) && ( -z "${DDD_RELEASE_OWNER}" || "${DDD_RELEASE_OWNER}" == 'database' ) && ( -z "${DDD_RELEASE_PRIORITY}" || "${DDD_RELEASE_PRIORITY}" == 'P0' ) ]]; then
-# -----
-# p0-manifest-database: P0 manifest -> database
-# Pending items: 2
-# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
-# Env keys: DDD_MIGRATION_FRESH_DB_EVIDENCE; DDD_MIGRATION_FRESH_DB_VALIDATED; DDD_MIGRATION_UPGRADE_DB_EVIDENCE; DDD_MIGRATION_UPGRADE_DB_VALIDATED
-  print_missing_env_groups 'p0-manifest-database' 'DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE' 'DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED' 'DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE' 'DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED'
-# Exit criteria:
-# - All required release evidence artifacts are present and checksummed.
-# - Clear this batch before running downstream runtime-heavy evidence.
-run_command 'p0-manifest-database' 'database' 'P0' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
-run_command 'p0-manifest-database' 'database' 'P0' 'node bin/ddd-promote-performance-baseline.mjs'
-run_command 'p0-manifest-database' 'database' 'P0' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
-fi
-
 run_batch 'p0-manifest-lumira-ui' 'lumira-ui' 'P0'
 if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "${DDD_RELEASE_BATCH}" == 'p0-manifest-lumira-ui' ) && ( -z "${DDD_RELEASE_OWNER}" || "${DDD_RELEASE_OWNER}" == 'lumira-ui' ) && ( -z "${DDD_RELEASE_PRIORITY}" || "${DDD_RELEASE_PRIORITY}" == 'P0' ) ]]; then
 # -----
@@ -267,22 +243,6 @@ if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "$
 run_command 'p0-manifest-lumira-ui' 'lumira-ui' 'P0' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
 run_command 'p0-manifest-lumira-ui' 'lumira-ui' 'P0' 'node bin/ddd-promote-performance-baseline.mjs'
 run_command 'p0-manifest-lumira-ui' 'lumira-ui' 'P0' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
-fi
-
-run_batch 'p0-manifest-release-owner' 'release-owner' 'P0'
-if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "${DDD_RELEASE_BATCH}" == 'p0-manifest-release-owner' ) && ( -z "${DDD_RELEASE_OWNER}" || "${DDD_RELEASE_OWNER}" == 'release-owner' ) && ( -z "${DDD_RELEASE_PRIORITY}" || "${DDD_RELEASE_PRIORITY}" == 'P0' ) ]]; then
-# -----
-# p0-manifest-release-owner: P0 manifest -> release-owner
-# Pending items: 7
-# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
-# Env keys: DDD_EVIDENCE_ENVIRONMENT; DDD_EVIDENCE_OPERATOR; DDD_RELEASE_CANDIDATE; DDD_RELEASE_MANIFEST_STRICT
-  print_missing_env_groups 'p0-manifest-release-owner' 'DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT'
-# Exit criteria:
-# - All required release evidence artifacts are present and checksummed.
-# - Clear this batch before running downstream runtime-heavy evidence.
-run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
-run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'node bin/ddd-promote-performance-baseline.mjs'
-run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
 fi
 
 run_batch 'p0-authenticated-performance-release-performance' 'release-performance' 'P0'

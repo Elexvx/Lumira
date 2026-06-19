@@ -19,9 +19,10 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -42,7 +43,7 @@ class AiNativeToolRuntimeServiceTest {
         assertThat(jdbcTemplate.lastUpdateArgs[3]).isEqualTo("system.permission.snapshot");
         assertThat(jdbcTemplate.lastUpdateArgs[5]).isEqualTo("allow");
         assertThat(jdbcTemplate.lastUpdateArgs[8]).isEqualTo("SUCCESS");
-        verify(permissionChecker).verifyAllowed(anyLong(), anyLong(), anyList(), anyBoolean());
+        verify(permissionChecker).verifyToolAllowed(anyLong(), anyLong(), anyString(), any(), anyString(), anyBoolean());
     }
 
     @Test
@@ -104,6 +105,20 @@ class AiNativeToolRuntimeServiceTest {
                 .hasMessageContaining("数字员工不存在或已禁用");
         assertThat(jdbcTemplate.employeeExistsChecked).isTrue();
         assertThat(jdbcTemplate.employeeCountQueried).isFalse();
+    }
+
+    @Test
+    void rejectsMissingEmployeeBeforePermissionGrantCheck() {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        AiSkillPermissionChecker permissionChecker = mock(AiSkillPermissionChecker.class);
+        DefaultAiNativeToolRuntimeService service = newService(jdbcTemplate, permissionChecker);
+        AiDTO.ToolExecuteRequest request = request("system.permission.snapshot", Map.of());
+        request.setEmployeeId(null);
+
+        assertThatThrownBy(() -> service.execute(currentUser(), request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("valid digital employee");
+        assertThat(jdbcTemplate.employeeExistsChecked).isFalse();
     }
 
     private DefaultAiNativeToolRuntimeService newService(

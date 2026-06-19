@@ -28,7 +28,7 @@ const passingOwnerInputReceipt = {
   missingCriteria: ["releaseEnvReadinessStatus"],
 };
 
-const run = spawnSync("node", ["bin/ddd-release-final-go-no-go-gate-contract.mjs"], {
+const run = spawnSync("node", ["bin\/ddd-release-final-go-no-go-gate-contract.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
 });
@@ -48,7 +48,7 @@ try {
     gate: { blockers: 1, warnings: 0 },
     currentStopReasons: ["authenticated performance baseline not ready: MISSING"],
     nextCommands: [
-      "node bin/ddd-release-readiness-summary.mjs",
+      "node bin\/ddd-release-readiness-summary.mjs",
       "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
     ],
     ciSummary: {
@@ -65,7 +65,7 @@ try {
       },
       configOwnerInputReconciliation: passingConfigOwnerInputReconciliation,
       ownerInputReceipt: passingOwnerInputReceipt,
-      firstNextCommand: "node bin/ddd-release-readiness-summary.mjs",
+      firstNextCommand: "node bin\/ddd-release-readiness-summary.mjs",
     },
     safetySignals: {
       releaseEnvFile: {
@@ -85,10 +85,10 @@ try {
     "",
     "## Next Commands",
     "",
-    "- `node bin/ddd-release-readiness-summary.mjs`",
+    "- `node bin\/ddd-release-readiness-summary.mjs`",
     "",
   ].join("\n"));
-  const missingMarkdownCommand = spawnSync("node", ["bin/ddd-release-final-go-no-go-gate-contract.mjs"], {
+  const missingMarkdownCommand = spawnSync("node", ["bin\/ddd-release-final-go-no-go-gate-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -112,8 +112,8 @@ try {
     gate: { blockers: 1, warnings: 0 },
     currentStopReasons: ["release environment unresolved"],
     nextCommands: [
-      "node bin/ddd-release-readiness-summary.mjs",
-      "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+      "node bin\/ddd-release-readiness-summary.mjs",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
     ],
     ciSummary: {
       finalGoNoGoEnforceCommand: "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
@@ -129,7 +129,7 @@ try {
       },
       configOwnerInputReconciliation: passingConfigOwnerInputReconciliation,
       ownerInputReceipt: passingOwnerInputReceipt,
-      firstNextCommand: "node bin/ddd-release-readiness-summary.mjs",
+      firstNextCommand: "node bin\/ddd-release-readiness-summary.mjs",
     },
     safetySignals: {
       releaseEnvFile: {
@@ -149,11 +149,11 @@ try {
     "",
     "## Next Commands",
     "",
-    "- `node bin/ddd-release-readiness-summary.mjs`",
-    "- `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`",
+    "- `node bin\/ddd-release-readiness-summary.mjs`",
+    "- `DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs`",
     "",
   ].join("\n"));
-  const unsafeReleaseEnvCommand = spawnSync("node", ["bin/ddd-release-final-go-no-go-gate-contract.mjs"], {
+  const unsafeReleaseEnvCommand = spawnSync("node", ["bin\/ddd-release-final-go-no-go-gate-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

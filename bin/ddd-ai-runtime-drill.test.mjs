@@ -11,7 +11,7 @@ import { validateAiRuntimeArtifact } from "./ddd-ai-runtime-contract.mjs";
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-ai-runtime-drill-"));
 
-const result = spawnSync("node", ["bin/ddd-ai-runtime-drill.mjs"], {
+const result = spawnSync("node", ["bin\/ddd-ai-runtime-drill.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -80,7 +80,7 @@ await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 try {
   const contractOutputDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-ai-runtime-contract-"));
   const { port } = server.address();
-  const contractResult = await spawnNode(["bin/ddd-ai-runtime-drill.mjs"], {
+  const contractResult = await spawnNode(["bin\/ddd-ai-runtime-drill.mjs"], {
     cwd: repoRoot,
     env: {
       ...process.env,

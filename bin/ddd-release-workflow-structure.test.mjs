@@ -7,7 +7,7 @@ import path from "node:path";
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const workflowFile = path.join(repoRoot, ".github", "workflows", "ddd-release-evidence.yml");
 const ciWorkflowFile = path.join(repoRoot, ".github", "workflows", "ci.yml");
-const productionReadinessPlanFile = path.join(repoRoot, "docs", "37-production-readiness-execution-plan.md");
+const productionReadinessPlanFile = path.join(repoRoot, "doc", "37-production-readiness-execution-plan.md");
 
 const workflowText = fs.readFileSync(workflowFile, "utf8");
 const ciWorkflowText = fs.readFileSync(ciWorkflowFile, "utf8");
@@ -70,15 +70,15 @@ assertBefore("Upload release evidence artifacts", "Append release readiness summ
 assertBefore("Append release readiness summary", "Enforce release evidence result");
 
 assert(
-  workflowText.includes("node bin/ddd-release-execution-run-report-contract.mjs"),
+  workflowText.includes("node bin\/ddd-release-execution-run-report-contract.mjs"),
   "release evidence workflow must validate release execution run reports",
 );
 assert(
-  workflowText.includes("node bin/ddd-release-execution-run-report-summary.mjs"),
+  workflowText.includes("node bin\/ddd-release-execution-run-report-summary.mjs"),
   "release evidence workflow must append release execution run report summaries",
 );
 assert(
-  workflowText.includes("node bin/ddd-release-artifact-path-leak-contract.mjs"),
+  workflowText.includes("node bin\/ddd-release-artifact-path-leak-contract.mjs"),
   "release evidence workflow must validate release artifacts for local path leaks",
 );
 assert(
@@ -86,7 +86,7 @@ assert(
   "release evidence workflow must keep strict preflight enforcement available",
 );
 assert(
-  workflowText.includes("node bin/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-output.txt"),
+  workflowText.includes("node bin\/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-output.txt"),
   "release evidence workflow must redact captured preflight output",
 );
 assert(
@@ -98,19 +98,19 @@ assert(
   "release evidence workflow must refresh manifest provenance preflight before the final manifest checksum",
 );
 assert(
-  workflowText.includes("node bin/ddd-release-unblock-brief-contract.mjs"),
+  workflowText.includes("node bin\/ddd-release-unblock-brief-contract.mjs"),
   "release evidence workflow must revalidate unblock brief after the final pre-upload manifest refresh",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --handoff-bundle"),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle"),
   "release evidence workflow must generate the staging handoff bundle before uploading artifacts",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify"),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle-verify"),
   "release evidence workflow must verify the staging handoff bundle before uploading artifacts",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json"),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json"),
   "release evidence workflow must validate the bundled next-action env receipt sample",
 );
 assert(
@@ -122,7 +122,7 @@ assert(
   "release evidence workflow dispatch input validation must run before run-mode evidence collection",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=\"$dispatch_inputs_file\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=\"$dispatch_inputs_file\""),
   "release evidence workflow must hard-validate actual workflow_dispatch inputs with the contract",
 );
 for (const [workflowInput, envKey, payloadKey] of [
@@ -149,169 +149,169 @@ for (const [workflowInput, envKey, payloadKey] of [
   );
 }
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append staging handoff summary to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append production closeout status to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append production cutover audit to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append release-owner closeout to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> \"$GITHUB_STEP_SUMMARY\" || true"),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> \"$GITHUB_STEP_SUMMARY\" || true"),
   "release evidence workflow must expose lane receipt coverage in release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append evidence closure board to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append lane receipt fragments to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append lane receipt draft to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append lane receipt submission plan to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append lane receipt submission check to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append workflow dispatch input plan to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command"),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command"),
   "release evidence workflow must append workflow dispatch command template to release evidence summary",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show handoff summary before the production closeout status",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show production closeout status before the production cutover audit",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show production cutover audit before the release-owner closeout",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> \"$GITHUB_STEP_SUMMARY\" || true",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> \"$GITHUB_STEP_SUMMARY\" || true",
   "release evidence workflow must show closeout before lane coverage",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> \"$GITHUB_STEP_SUMMARY\" || true",
-  "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> \"$GITHUB_STEP_SUMMARY\" || true",
+  "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show lane coverage before the evidence closure board",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show evidence closure board before receipt fragments",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show receipt fragments before the receipt draft",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show receipt draft before the receipt submission plan",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show receipt submission plan before the receipt submission check",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show receipt submission check before workflow dispatch inputs",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show workflow dispatch inputs before artifact gaps",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append evidence artifact gap report to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append EXPLAIN artifact plan to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append operator progress to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append release-owner daily brief to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append owner evidence intake to release evidence summary",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show daily brief before owner evidence intake",
 );
 assertTextBefore(
   workflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "release evidence workflow must show owner evidence intake before detailed owner submission plans",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append release-env submission plan to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append Docker image submission plan to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append runtime/business submission plan to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append data-safety submission plan to release evidence summary",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "release evidence workflow must append staging final review to release evidence summary",
 );
 assert(
@@ -347,68 +347,68 @@ assert(
   "release evidence workflow must fail fast on invalid lane completion receipts when either optional input is provided",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract"),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract"),
   "release evidence workflow must hard-validate the provided lane completion receipt contract",
 );
 assert(
-  workflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage"),
+  workflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage"),
   "release evidence workflow must hard-validate the provided lane completion receipt coverage",
 );
 
 assert(
-  ciWorkflowText.includes("node --check bin/ddd-release-workflow-structure.test.mjs"),
+  ciWorkflowText.includes("node --check bin\/ddd-release-workflow-structure.test.mjs"),
   "CI syntax checks must cover release workflow structure tests",
 );
 assert(
-  ciWorkflowText.includes("node --check bin/ddd-production-evidence-readiness.test.mjs"),
+  ciWorkflowText.includes("node --check bin\/ddd-production-evidence-readiness.test.mjs"),
   "CI syntax checks must cover production evidence readiness tests",
 );
 assert(
-  ciWorkflowText.includes("node --check bin/ddd-lane-completion-receipt-autofill.mjs"),
+  ciWorkflowText.includes("node --check bin\/ddd-lane-completion-receipt-autofill.mjs"),
   "CI syntax checks must cover lane completion receipt autofill",
 );
 assert(
-  ciWorkflowText.includes("node --check bin/ddd-lane-completion-receipt-autofill.test.mjs"),
+  ciWorkflowText.includes("node --check bin\/ddd-lane-completion-receipt-autofill.test.mjs"),
   "CI syntax checks must cover lane completion receipt autofill tests",
 );
 assert(
-  ciWorkflowText.includes("node --check bin/ddd-release-env-fill-checklist.mjs"),
+  ciWorkflowText.includes("node --check bin\/ddd-release-env-fill-checklist.mjs"),
   "CI syntax checks must cover release env fill checklist",
 );
 assert(
-  ciWorkflowText.includes("node --check bin/ddd-release-env-fill-checklist.test.mjs"),
+  ciWorkflowText.includes("node --check bin\/ddd-release-env-fill-checklist.test.mjs"),
   "CI syntax checks must cover release env fill checklist tests",
 );
 assert(
-  ciWorkflowText.includes("node --check bin/security-assessment-report-contract.test.mjs"),
+  ciWorkflowText.includes("node --check bin\/security-assessment-report-contract.test.mjs"),
   "CI syntax checks must cover security assessment report contract tests",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-release-workflow-structure.test.mjs"),
+  ciWorkflowText.includes("node bin\/ddd-release-workflow-structure.test.mjs"),
   "CI must run release workflow structure tests",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-production-evidence-readiness.test.mjs"),
+  ciWorkflowText.includes("node bin\/ddd-production-evidence-readiness.test.mjs"),
   "CI must run production evidence readiness tests",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-lane-completion-receipt-autofill.test.mjs"),
+  ciWorkflowText.includes("node bin\/ddd-lane-completion-receipt-autofill.test.mjs"),
   "CI must run lane completion receipt autofill tests",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-release-env-fill-checklist.test.mjs"),
+  ciWorkflowText.includes("node bin\/ddd-release-env-fill-checklist.test.mjs"),
   "CI must run release env fill checklist tests",
 );
 assert(
-  ciWorkflowText.includes("node bin/security-assessment-report-contract.test.mjs"),
+  ciWorkflowText.includes("node bin\/security-assessment-report-contract.test.mjs"),
   "CI must run security assessment report contract tests",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --handoff-bundle"),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle"),
   "CI must generate the staging handoff bundle for release-infra",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify"),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle-verify"),
   "CI must verify the staging handoff bundle manifest before upload",
 );
 assert(
@@ -416,11 +416,11 @@ assert(
   "CI must append a staging handoff summary for release-infra",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must use the tested summary renderer",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include production closeout status",
 );
 assert(
@@ -428,227 +428,227 @@ assert(
   "CI staging handoff summary must include production unblock quickstart",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include production cutover audit",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include production unblock plan",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include production evidence readiness",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include release-owner closeout",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show handoff summary before production closeout status",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "cat artifacts/ddd/release/staging-handoff-bundle/production-unblock-quickstart.md >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show production closeout status before production unblock quickstart",
 );
 assertTextBefore(
   ciWorkflowText,
   "cat artifacts/ddd/release/staging-handoff-bundle/production-unblock-quickstart.md >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show production unblock quickstart before production cutover audit",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show production cutover audit before production unblock plan",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show production unblock plan before production evidence readiness",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show production evidence readiness before release-owner closeout",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include the release-owner final review",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include operator progress",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include evidence artifact gap report",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include EXPLAIN artifact plan",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include release-owner daily brief",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include owner evidence intake",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show daily brief before owner evidence intake",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --release-env-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-env-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show owner evidence intake before detailed owner plans",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include release-env submission plan",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include release-env fill checklist",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-release-env-fill-checklist.mjs --env-template"),
+  ciWorkflowText.includes("node bin\/ddd-release-env-fill-checklist.mjs --env-template"),
   "CI staging handoff summary must include release-env fill template",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show release-env submission plan before release-env fill checklist",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-release-env-fill-checklist.mjs --env-template",
+  "node bin\/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-release-env-fill-checklist.mjs --env-template",
   "CI staging handoff summary must show release-env fill checklist before release-env fill template",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-release-env-fill-checklist.mjs --env-template",
-  "node bin/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-release-env-fill-checklist.mjs --env-template",
+  "node bin\/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show release-env fill template before Docker plans",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include Docker image submission plan",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include runtime/business submission plan",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include data-safety submission plan",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown >> \"$GITHUB_STEP_SUMMARY\" || true"),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown >> \"$GITHUB_STEP_SUMMARY\" || true"),
   "CI staging handoff summary must include redacted next-action env receipt shape",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> \"$GITHUB_STEP_SUMMARY\" || true"),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> \"$GITHUB_STEP_SUMMARY\" || true"),
   "CI staging handoff summary must expose owner lane receipt coverage before final review",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include evidence closure board",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include lane receipt fragments",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include lane receipt draft",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include lane receipt submission plan",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include lane receipt submission check",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include release evidence dispatch input plan",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command"),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command"),
   "CI staging handoff summary must include release evidence dispatch command template",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show handoff summary before the closeout",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --closure-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --closure-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show closeout before detailed closure planning",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> \"$GITHUB_STEP_SUMMARY\" || true",
-  "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> \"$GITHUB_STEP_SUMMARY\" || true",
+  "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show lane coverage before the evidence closure board",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show evidence closure board before receipt fragments",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show receipt fragments before the receipt draft",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show receipt draft before the receipt submission plan",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show receipt submission plan before the receipt submission check",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show receipt submission check before workflow dispatch inputs",
 );
 assertTextBefore(
   ciWorkflowText,
-  "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown >> \"$GITHUB_STEP_SUMMARY\" || true",
-  "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown >> \"$GITHUB_STEP_SUMMARY\" || true",
+  "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "CI staging handoff summary must show receipt samples before lane submission check",
 );
 assert(
-  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json"),
+  ciWorkflowText.includes("node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json"),
   "CI must validate the redacted next-action env receipt sample contract",
 );
 assert(
@@ -712,7 +712,7 @@ assert(
   "production readiness plan must document the release-env fill template command",
 );
 assert(
-  productionReadinessPlanText.includes("bin/ddd-production-unblock-attempt.mjs"),
+  productionReadinessPlanText.includes("bin\/ddd-production-unblock-attempt.mjs"),
   "production readiness plan must document the local production unblock attempt wrapper",
 );
 assert(

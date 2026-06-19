@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -27,11 +27,11 @@
   },
   "releaseEnvFileCutoverSafe": false,
   "summary": {
-    "itemCount": 51,
+    "itemCount": 42,
     "runNowLocalCount": 3,
-    "runNowWithRealEnvCount": 26,
+    "runNowWithRealEnvCount": 17,
     "waitingForDependenciesCount": 22,
-    "runnableWaveCount": 6,
+    "runnableWaveCount": 4,
     "ownerCount": 16,
     "ownerInputReceiptStatus": "PENDING_OWNER_INPUT",
     "ownerInputReceiptCutoverReady": false,
@@ -58,14 +58,14 @@
   },
   "byClosureKind": {
     "RUN_NOW_LOCAL": 3,
-    "RUN_NOW_WITH_REAL_ENV": 26,
+    "RUN_NOW_WITH_REAL_ENV": 17,
     "WAIT_FOR_DEPENDENCIES": 22
   },
   "byOwner": {
     "ai": 3,
     "ai-owner": 1,
     "auth-owner": 1,
-    "database": 5,
+    "database": 3,
     "file-owner": 2,
     "iam-owner": 1,
     "job-owner": 2,
@@ -76,7 +76,7 @@
     "platform-owner": 1,
     "plugin-owner": 1,
     "release-infra": 10,
-    "release-owner": 8,
+    "release-owner": 1,
     "release-performance": 9
   },
   "waves": [
@@ -158,45 +158,6 @@
     },
     {
       "wave": 3,
-      "batchId": "p0-manifest-database",
-      "owner": "database",
-      "priority": "P0",
-      "closureKinds": [
-        "RUN_NOW_WITH_REAL_ENV"
-      ],
-      "itemOrders": [
-        9,
-        10
-      ],
-      "itemIds": [
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff"
-      ],
-      "envKeys": [
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "wave": 4,
       "batchId": "p0-manifest-lumira-ui",
       "owner": "lumira-ui",
       "priority": "P0",
@@ -204,9 +165,9 @@
         "RUN_NOW_WITH_REAL_ENV"
       ],
       "itemOrders": [
-        11,
-        12,
-        13
+        9,
+        10,
+        11
       ],
       "itemIds": [
         "manifest-missing-lumira-ui-frontend-smoke-json",
@@ -237,61 +198,7 @@
       ]
     },
     {
-      "wave": 5,
-      "batchId": "p0-manifest-release-owner",
-      "owner": "release-owner",
-      "priority": "P0",
-      "closureKinds": [
-        "RUN_NOW_WITH_REAL_ENV"
-      ],
-      "itemOrders": [
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
-        20
-      ],
-      "itemIds": [
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh",
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs",
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs",
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs",
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet",
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt",
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "wave": 6,
+      "wave": 4,
       "batchId": "p0-authenticated-performance-release-performance",
       "owner": "release-performance",
       "priority": "P0",
@@ -300,15 +207,15 @@
         "RUN_NOW_WITH_REAL_ENV"
       ],
       "itemOrders": [
-        21,
-        22,
-        23,
-        24,
-        25,
-        26,
-        27,
-        28,
-        29
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
       ],
       "itemIds": [
         "performance-actual-shape-1",
@@ -590,74 +497,6 @@
       "closureKind": "RUN_NOW_WITH_REAL_ENV",
       "priority": "P0",
       "source": "manifest",
-      "owner": "database",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
-      "reason": "optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-      "action": "Run fresh/upgrade migration drills and regenerate migration evidence before rebuilding the release manifest.",
-      "batchId": "p0-manifest-database",
-      "batchReady": true,
-      "dependencies": [],
-      "envKeys": [
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "order": 10,
-      "closureKind": "RUN_NOW_WITH_REAL_ENV",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "database",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff",
-      "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff",
-      "action": "Run fresh/upgrade migration drills and regenerate migration evidence before rebuilding the release manifest.",
-      "batchId": "p0-manifest-database",
-      "batchReady": true,
-      "dependencies": [],
-      "envKeys": [
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "order": 11,
-      "closureKind": "RUN_NOW_WITH_REAL_ENV",
-      "priority": "P0",
-      "source": "manifest",
       "owner": "lumira-ui",
       "id": "manifest-missing-lumira-ui-frontend-smoke-json",
       "reason": "missing artifact lumira-ui/frontend-smoke.json",
@@ -689,7 +528,7 @@
       ]
     },
     {
-      "order": 12,
+      "order": 10,
       "closureKind": "RUN_NOW_WITH_REAL_ENV",
       "priority": "P0",
       "source": "manifest",
@@ -724,7 +563,7 @@
       ]
     },
     {
-      "order": 13,
+      "order": 11,
       "closureKind": "RUN_NOW_WITH_REAL_ENV",
       "priority": "P0",
       "source": "manifest",
@@ -759,245 +598,7 @@
       ]
     },
     {
-      "order": 14,
-      "closureKind": "RUN_NOW_WITH_REAL_ENV",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
-      "reason": "optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh",
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "batchId": "p0-manifest-release-owner",
-      "batchReady": true,
-      "dependencies": [],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "order": 15,
-      "closureKind": "RUN_NOW_WITH_REAL_ENV",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
-      "reason": "optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs",
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "batchId": "p0-manifest-release-owner",
-      "batchReady": true,
-      "dependencies": [],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "order": 16,
-      "closureKind": "RUN_NOW_WITH_REAL_ENV",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
-      "reason": "optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs",
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "batchId": "p0-manifest-release-owner",
-      "batchReady": true,
-      "dependencies": [],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "order": 17,
-      "closureKind": "RUN_NOW_WITH_REAL_ENV",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
-      "reason": "optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs",
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "batchId": "p0-manifest-release-owner",
-      "batchReady": true,
-      "dependencies": [],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "order": 18,
-      "closureKind": "RUN_NOW_WITH_REAL_ENV",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
-      "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet",
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "batchId": "p0-manifest-release-owner",
-      "batchReady": true,
-      "dependencies": [],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "order": 19,
-      "closureKind": "RUN_NOW_WITH_REAL_ENV",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
-      "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt",
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "batchId": "p0-manifest-release-owner",
-      "batchReady": true,
-      "dependencies": [],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "order": 20,
-      "closureKind": "RUN_NOW_WITH_REAL_ENV",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff",
-      "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff",
-      "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
-      "batchId": "p0-manifest-release-owner",
-      "batchReady": true,
-      "dependencies": [],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "order": 21,
+      "order": 12,
       "closureKind": "RUN_NOW_LOCAL",
       "priority": "P0",
       "source": "authenticated-performance",
@@ -1026,7 +627,7 @@
       ]
     },
     {
-      "order": 22,
+      "order": 13,
       "closureKind": "RUN_NOW_WITH_REAL_ENV",
       "priority": "P0",
       "source": "authenticated-performance",
@@ -1055,7 +656,7 @@
       ]
     },
     {
-      "order": 23,
+      "order": 14,
       "closureKind": "RUN_NOW_LOCAL",
       "priority": "P0",
       "source": "authenticated-performance",
@@ -1084,7 +685,7 @@
       ]
     },
     {
-      "order": 24,
+      "order": 15,
       "closureKind": "RUN_NOW_LOCAL",
       "priority": "P0",
       "source": "authenticated-performance",
@@ -1113,7 +714,7 @@
       ]
     },
     {
-      "order": 25,
+      "order": 16,
       "closureKind": "RUN_NOW_WITH_REAL_ENV",
       "priority": "P0",
       "source": "authenticated-performance",
@@ -1147,7 +748,7 @@
       ]
     },
     {
-      "order": 26,
+      "order": 17,
       "closureKind": "RUN_NOW_WITH_REAL_ENV",
       "priority": "P0",
       "source": "authenticated-performance",
@@ -1181,7 +782,7 @@
       ]
     },
     {
-      "order": 27,
+      "order": 18,
       "closureKind": "RUN_NOW_WITH_REAL_ENV",
       "priority": "P0",
       "source": "authenticated-performance",
@@ -1215,7 +816,7 @@
       ]
     },
     {
-      "order": 28,
+      "order": 19,
       "closureKind": "RUN_NOW_WITH_REAL_ENV",
       "priority": "P0",
       "source": "authenticated-performance",
@@ -1249,7 +850,7 @@
       ]
     },
     {
-      "order": 29,
+      "order": 20,
       "closureKind": "RUN_NOW_WITH_REAL_ENV",
       "priority": "P0",
       "source": "authenticated-performance",
@@ -1283,7 +884,7 @@
       ]
     },
     {
-      "order": 30,
+      "order": 21,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "ai-runtime",
@@ -1296,9 +897,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1320,7 +919,7 @@
       ]
     },
     {
-      "order": 31,
+      "order": 22,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "ai-runtime",
@@ -1333,9 +932,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1357,7 +954,7 @@
       ]
     },
     {
-      "order": 32,
+      "order": 23,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "ai-runtime",
@@ -1370,9 +967,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1394,7 +989,7 @@
       ]
     },
     {
-      "order": 33,
+      "order": 24,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "business-e2e",
@@ -1407,9 +1002,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1433,7 +1026,7 @@
       ]
     },
     {
-      "order": 34,
+      "order": 25,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "business-e2e",
@@ -1446,9 +1039,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1471,7 +1062,7 @@
       ]
     },
     {
-      "order": 35,
+      "order": 26,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "business-e2e",
@@ -1484,9 +1075,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1509,7 +1098,7 @@
       ]
     },
     {
-      "order": 36,
+      "order": 27,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P1",
       "source": "rollback",
@@ -1522,9 +1111,367 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "commands": [
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ]
+    },
+    {
+      "order": 28,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P1",
+      "source": "rollback",
+      "owner": "auth-owner",
+      "id": "Auth",
+      "reason": "Auth rollback drill is DEFERRED with approved deferral evidence",
+      "action": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "batchId": "p1-rollback-auth-owner",
+      "batchReady": false,
+      "dependencies": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-lumira-ui",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "commands": [
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ]
+    },
+    {
+      "order": 29,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P1",
+      "source": "rollback",
+      "owner": "file-owner",
+      "id": "File",
+      "reason": "File rollback drill is DEFERRED with approved deferral evidence",
+      "action": "Exercise file processing pause, stable object-key access, and task rerun by id; attach upload, processing row, and storage evidence. Required evidence: file processing pause/resume command or job output; stable object-key read evidence after rollback; processing task rerun by id with final state; storage artifact or upload row proving access continuity. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "batchId": "p1-rollback-file-owner",
+      "batchReady": false,
+      "dependencies": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-lumira-ui",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "commands": [
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ]
+    },
+    {
+      "order": 30,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P1",
+      "source": "rollback",
+      "owner": "iam-owner",
+      "id": "IAM",
+      "reason": "IAM rollback drill is DEFERRED with approved deferral evidence",
+      "action": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "batchId": "p1-rollback-iam-owner",
+      "batchReady": false,
+      "dependencies": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-lumira-ui",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "commands": [
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ]
+    },
+    {
+      "order": 31,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P1",
+      "source": "rollback",
+      "owner": "job-owner",
+      "id": "Job",
+      "reason": "Job rollback drill is DEFERRED with approved deferral evidence",
+      "action": "Exercise XXL-JOB handler disablement and manual owner internal endpoint fallback; attach dashboard, token, and endpoint evidence. Required evidence: XXL-JOB handler disablement or dashboard evidence; manual owner internal endpoint fallback result; internal job token provenance or redacted request evidence; job readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "batchId": "p1-rollback-job-owner",
+      "batchReady": false,
+      "dependencies": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-lumira-ui",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "commands": [
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ]
+    },
+    {
+      "order": 32,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P1",
+      "source": "rollback",
+      "owner": "localization-owner",
+      "id": "Localization",
+      "reason": "Localization rollback drill is DEFERRED with approved deferral evidence",
+      "action": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "batchId": "p1-rollback-localization-owner",
+      "batchReady": false,
+      "dependencies": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-lumira-ui",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "commands": [
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ]
+    },
+    {
+      "order": 33,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P1",
+      "source": "rollback",
+      "owner": "message-owner",
+      "id": "Message",
+      "reason": "Message rollback drill is DEFERRED with approved deferral evidence",
+      "action": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "batchId": "p1-rollback-message-owner",
+      "batchReady": false,
+      "dependencies": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-lumira-ui",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "commands": [
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ]
+    },
+    {
+      "order": 34,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P1",
+      "source": "rollback",
+      "owner": "payment-owner",
+      "id": "Payment",
+      "reason": "Payment rollback drill is DEFERRED with approved deferral evidence",
+      "action": "Exercise payment webhook route fallback and idempotent event replay; attach provider routing, webhook metrics, and order trace evidence. Required evidence: payment provider route fallback configuration evidence; webhook idempotent replay result; order status trace before and after replay; webhook metrics or audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "batchId": "p1-rollback-payment-owner",
+      "batchReady": false,
+      "dependencies": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-lumira-ui",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "commands": [
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ]
+    },
+    {
+      "order": 35,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P1",
+      "source": "rollback",
+      "owner": "platform-owner",
+      "id": "Platform",
+      "reason": "Platform rollback drill is DEFERRED with approved deferral evidence",
+      "action": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "batchId": "p1-rollback-platform-owner",
+      "batchReady": false,
+      "dependencies": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-lumira-ui",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "commands": [
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ]
+    },
+    {
+      "order": 36,
+      "closureKind": "WAIT_FOR_DEPENDENCIES",
+      "priority": "P1",
+      "source": "rollback",
+      "owner": "plugin-owner",
+      "id": "Plugin",
+      "reason": "Plugin rollback drill is DEFERRED with approved deferral evidence",
+      "action": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "batchId": "p1-rollback-plugin-owner",
+      "batchReady": false,
+      "dependencies": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1553,384 +1500,6 @@
     {
       "order": 37,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
-      "priority": "P1",
-      "source": "rollback",
-      "owner": "auth-owner",
-      "id": "Auth",
-      "reason": "Auth rollback drill is DEFERRED with approved deferral evidence",
-      "action": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
-      "batchId": "p1-rollback-auth-owner",
-      "batchReady": false,
-      "dependencies": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT"
-      ],
-      "commands": [
-        "node bin/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "node bin/ddd-rollback-drill-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "blockerHints": [],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ]
-    },
-    {
-      "order": 38,
-      "closureKind": "WAIT_FOR_DEPENDENCIES",
-      "priority": "P1",
-      "source": "rollback",
-      "owner": "file-owner",
-      "id": "File",
-      "reason": "File rollback drill is DEFERRED with approved deferral evidence",
-      "action": "Exercise file processing pause, stable object-key access, and task rerun by id; attach upload, processing row, and storage evidence. Required evidence: file processing pause/resume command or job output; stable object-key read evidence after rollback; processing task rerun by id with final state; storage artifact or upload row proving access continuity. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
-      "batchId": "p1-rollback-file-owner",
-      "batchReady": false,
-      "dependencies": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT"
-      ],
-      "commands": [
-        "node bin/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "node bin/ddd-rollback-drill-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "blockerHints": [],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ]
-    },
-    {
-      "order": 39,
-      "closureKind": "WAIT_FOR_DEPENDENCIES",
-      "priority": "P1",
-      "source": "rollback",
-      "owner": "iam-owner",
-      "id": "IAM",
-      "reason": "IAM rollback drill is DEFERRED with approved deferral evidence",
-      "action": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
-      "batchId": "p1-rollback-iam-owner",
-      "batchReady": false,
-      "dependencies": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT"
-      ],
-      "commands": [
-        "node bin/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "node bin/ddd-rollback-drill-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "blockerHints": [],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ]
-    },
-    {
-      "order": 40,
-      "closureKind": "WAIT_FOR_DEPENDENCIES",
-      "priority": "P1",
-      "source": "rollback",
-      "owner": "job-owner",
-      "id": "Job",
-      "reason": "Job rollback drill is DEFERRED with approved deferral evidence",
-      "action": "Exercise XXL-JOB handler disablement and manual owner internal endpoint fallback; attach dashboard, token, and endpoint evidence. Required evidence: XXL-JOB handler disablement or dashboard evidence; manual owner internal endpoint fallback result; internal job token provenance or redacted request evidence; job readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
-      "batchId": "p1-rollback-job-owner",
-      "batchReady": false,
-      "dependencies": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT"
-      ],
-      "commands": [
-        "node bin/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "node bin/ddd-rollback-drill-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "blockerHints": [],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ]
-    },
-    {
-      "order": 41,
-      "closureKind": "WAIT_FOR_DEPENDENCIES",
-      "priority": "P1",
-      "source": "rollback",
-      "owner": "localization-owner",
-      "id": "Localization",
-      "reason": "Localization rollback drill is DEFERRED with approved deferral evidence",
-      "action": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
-      "batchId": "p1-rollback-localization-owner",
-      "batchReady": false,
-      "dependencies": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT"
-      ],
-      "commands": [
-        "node bin/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "node bin/ddd-rollback-drill-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "blockerHints": [],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ]
-    },
-    {
-      "order": 42,
-      "closureKind": "WAIT_FOR_DEPENDENCIES",
-      "priority": "P1",
-      "source": "rollback",
-      "owner": "message-owner",
-      "id": "Message",
-      "reason": "Message rollback drill is DEFERRED with approved deferral evidence",
-      "action": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
-      "batchId": "p1-rollback-message-owner",
-      "batchReady": false,
-      "dependencies": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT"
-      ],
-      "commands": [
-        "node bin/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "node bin/ddd-rollback-drill-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "blockerHints": [],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ]
-    },
-    {
-      "order": 43,
-      "closureKind": "WAIT_FOR_DEPENDENCIES",
-      "priority": "P1",
-      "source": "rollback",
-      "owner": "payment-owner",
-      "id": "Payment",
-      "reason": "Payment rollback drill is DEFERRED with approved deferral evidence",
-      "action": "Exercise payment webhook route fallback and idempotent event replay; attach provider routing, webhook metrics, and order trace evidence. Required evidence: payment provider route fallback configuration evidence; webhook idempotent replay result; order status trace before and after replay; webhook metrics or audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
-      "batchId": "p1-rollback-payment-owner",
-      "batchReady": false,
-      "dependencies": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT"
-      ],
-      "commands": [
-        "node bin/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "node bin/ddd-rollback-drill-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "blockerHints": [],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ]
-    },
-    {
-      "order": 44,
-      "closureKind": "WAIT_FOR_DEPENDENCIES",
-      "priority": "P1",
-      "source": "rollback",
-      "owner": "platform-owner",
-      "id": "Platform",
-      "reason": "Platform rollback drill is DEFERRED with approved deferral evidence",
-      "action": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
-      "batchId": "p1-rollback-platform-owner",
-      "batchReady": false,
-      "dependencies": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT"
-      ],
-      "commands": [
-        "node bin/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "node bin/ddd-rollback-drill-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "blockerHints": [],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ]
-    },
-    {
-      "order": 45,
-      "closureKind": "WAIT_FOR_DEPENDENCIES",
-      "priority": "P1",
-      "source": "rollback",
-      "owner": "plugin-owner",
-      "id": "Plugin",
-      "reason": "Plugin rollback drill is DEFERRED with approved deferral evidence",
-      "action": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
-      "batchId": "p1-rollback-plugin-owner",
-      "batchReady": false,
-      "dependencies": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT"
-      ],
-      "commands": [
-        "node bin/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "node bin/ddd-rollback-drill-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "blockerHints": [],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ]
-    },
-    {
-      "order": 46,
-      "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P2",
       "source": "explain",
       "owner": "database",
@@ -1942,9 +1511,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -1990,7 +1557,7 @@
       ]
     },
     {
-      "order": 47,
+      "order": 38,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P2",
       "source": "explain",
@@ -2003,9 +1570,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2051,7 +1616,7 @@
       ]
     },
     {
-      "order": 48,
+      "order": 39,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P3",
       "source": "orchestrator",
@@ -2064,9 +1629,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2107,7 +1670,7 @@
       ]
     },
     {
-      "order": 49,
+      "order": 40,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P3",
       "source": "orchestrator",
@@ -2120,9 +1683,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2162,7 +1723,7 @@
       ]
     },
     {
-      "order": 50,
+      "order": 41,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P3",
       "source": "orchestrator",
@@ -2175,9 +1736,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2216,7 +1775,7 @@
       ]
     },
     {
-      "order": 51,
+      "order": 42,
       "closureKind": "WAIT_FOR_DEPENDENCIES",
       "priority": "P3",
       "source": "orchestrator",
@@ -2229,9 +1788,7 @@
       "dependencies": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",

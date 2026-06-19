@@ -10,7 +10,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-owner-templates-merge-"));
 
 function runMerge(sourceDir, targetFile, reportFile) {
-  return spawnSync("node", ["bin/ddd-release-env-owner-templates-merge.mjs", sourceDir, targetFile], {
+  return spawnSync("node", ["bin\/ddd-release-env-owner-templates-merge.mjs", sourceDir, targetFile], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

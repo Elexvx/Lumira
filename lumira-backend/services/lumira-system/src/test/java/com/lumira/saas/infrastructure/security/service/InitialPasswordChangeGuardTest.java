@@ -29,7 +29,7 @@ class InitialPasswordChangeGuardTest {
     }
 
     @Test
-    void shouldUseSessionDecisionBeforeLegacyPasswordLookup() {
+    void shouldRecheckDatabaseWhenSessionRequiresPasswordChange() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations("initial-hash");
         RecordingPasswordEncoder passwordEncoder = new RecordingPasswordEncoder(true);
         InitialPasswordChangeGuard guard = new InitialPasswordChangeGuard(queryOperations, passwordEncoderProvider(passwordEncoder));
@@ -37,11 +37,26 @@ class InitialPasswordChangeGuardTest {
         currentUser.setRequiresPasswordChange(true);
 
         assertTrue(guard.requiresPasswordChange(currentUser));
+        assertEquals(1, queryOperations.queryCount);
+        assertEquals(1, passwordEncoder.matchesCount);
 
         currentUser.setRequiresPasswordChange(false);
         assertFalse(guard.requiresPasswordChange(currentUser));
-        assertEquals(0, queryOperations.queryCount);
-        assertEquals(0, passwordEncoder.matchesCount);
+        assertEquals(1, queryOperations.queryCount);
+        assertEquals(1, passwordEncoder.matchesCount);
+    }
+
+    @Test
+    void shouldAllowChangedPasswordEvenWhenSessionStillRequiresPasswordChange() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations("changed-hash");
+        RecordingPasswordEncoder passwordEncoder = new RecordingPasswordEncoder(false);
+        InitialPasswordChangeGuard guard = new InitialPasswordChangeGuard(queryOperations, passwordEncoderProvider(passwordEncoder));
+        CurrentUser currentUser = buildAdminUser("session-1", 1);
+        currentUser.setRequiresPasswordChange(true);
+
+        assertFalse(guard.requiresPasswordChange(currentUser));
+        assertEquals(1, queryOperations.queryCount);
+        assertEquals(1, passwordEncoder.matchesCount);
     }
 
     @Test

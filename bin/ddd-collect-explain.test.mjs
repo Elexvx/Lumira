@@ -9,8 +9,8 @@ import { requiredExplainFilesWhenPresent } from "./ddd-explain-evidence-contract
 import { explainQueries } from "./ddd-explain-query-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const collectScript = fs.readFileSync(path.join(repoRoot, "scripts", "ddd-collect-explain.mjs"), "utf8");
-const normalizeScript = fs.readFileSync(path.join(repoRoot, "scripts", "ddd-normalize-explain-artifacts.mjs"), "utf8");
+const collectScript = fs.readFileSync(path.join(repoRoot, "bin", "ddd-collect-explain.mjs"), "utf8");
+const normalizeScript = fs.readFileSync(path.join(repoRoot, "bin", "ddd-normalize-explain-artifacts.mjs"), "utf8");
 
 assert.equal(explainQueries.length, requiredExplainFilesWhenPresent.length);
 
@@ -58,7 +58,7 @@ assert(
   "strict collector should reject localhost database evidence",
 );
 
-const strictMissingProvenance = spawnSync("node", ["bin/ddd-collect-explain.mjs"], {
+const strictMissingProvenance = spawnSync("node", ["bin\/ddd-collect-explain.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -77,7 +77,7 @@ assert.match(
   /strict explain collection requires DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_CANDIDATE, DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE/u,
 );
 
-const strictLocalHost = spawnSync("node", ["bin/ddd-collect-explain.mjs"], {
+const strictLocalHost = spawnSync("node", ["bin\/ddd-collect-explain.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -113,7 +113,7 @@ console.log(JSON.stringify({
 `);
 fs.chmodSync(fakeMysqlPath, 0o700);
 
-const strictSuccessfulCollection = spawnSync("node", ["bin/ddd-collect-explain.mjs"], {
+const strictSuccessfulCollection = spawnSync("node", ["bin\/ddd-collect-explain.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -143,7 +143,7 @@ for (const fileName of requiredExplainFilesWhenPresent) {
 }
 
 for (const queryContractText of [
-  fs.readFileSync(path.join(repoRoot, "scripts", "ddd-explain-query-contract.mjs"), "utf8"),
+  fs.readFileSync(path.join(repoRoot, "bin", "ddd-explain-query-contract.mjs"), "utf8"),
 ]) {
   assert(
     queryContractText.includes("FROM msg_notice n FORCE INDEX (idx_msg_notice_visible_recent)"),

@@ -222,15 +222,23 @@ if (strict) {
 }
 
 function read(relativePath) {
-  return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
+  return fs.readFileSync(resolveRepoPath(relativePath), "utf8");
 }
 
 function exists(relativePath) {
-  return fs.existsSync(path.join(repoRoot, relativePath));
+  return fs.existsSync(resolveRepoPath(relativePath));
+}
+
+function resolveRepoPath(relativePath) {
+  const primary = path.join(repoRoot, relativePath);
+  if (fs.existsSync(primary) || !relativePath.startsWith("services/")) {
+    return primary;
+  }
+  return path.join(repoRoot, "lumira-backend", relativePath);
 }
 
 function findFiles(directory, predicate, collected = []) {
-  const absoluteDir = path.join(repoRoot, directory);
+  const absoluteDir = resolveRepoPath(directory);
   if (!fs.existsSync(absoluteDir)) {
     return collected;
   }

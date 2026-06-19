@@ -8,15 +8,15 @@ import { spawnSync } from "node:child_process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const validationCommands = [
-  "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+  "node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-safe-defaults.mjs",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-provenance-defaults.mjs",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-alias-sync.mjs",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
   "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-  "node bin/ddd-release-readiness-summary.mjs",
+  "node bin\/ddd-release-readiness-summary.mjs",
   "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
 ];
 
@@ -124,7 +124,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  const result = spawnSync("node", ["bin/ddd-release-env-owner-handoff-redacted-contract.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-release-env-owner-handoff-redacted-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_DIR: directory },
@@ -179,7 +179,7 @@ assert.notEqual(missingKeyResult.status, 0);
 assert.match(missingKeyResult.stderr, /keys/);
 
 const unsafeConcreteCommandResult = runContract((artifacts) => {
-  const unsafeCommand = "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs";
+  const unsafeCommand = "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs";
   artifacts.handoff.validationCommands = [unsafeCommand];
   artifacts.handoff.owners[0].postFillCommands = [unsafeCommand];
   artifacts.markdown += `- \`${unsafeCommand}\`\n`;

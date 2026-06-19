@@ -11,18 +11,18 @@ import {
 import { expectedExplainKeys } from "./ddd-explain-evidence-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const ownerManifestPath = path.join(repoRoot, "docs", "27-ddd-owner-table-manifest.csv");
-const evidenceScriptPath = path.join(repoRoot, "scripts", "ddd-migration-evidence.mjs");
+const ownerManifestPath = path.join(repoRoot, "doc", "27-ddd-owner-table-manifest.csv");
+const evidenceScriptPath = path.join(repoRoot, "bin", "ddd-migration-evidence.mjs");
 
 const expectedOwnerModules = [
-  "system-service",
-  "auth-service",
-  "message-service",
-  "file-service",
-  "plugin-service",
-  "localization-service",
-  "payment-service",
-  "ai-service",
+  "lumira-system",
+  "lumira-auth",
+  "lumira-message",
+  "lumira-file",
+  "lumira-plugin",
+  "lumira-localization",
+  "lumira-payment",
+  "lumira-ai",
 ];
 
 assert.equal(
@@ -89,7 +89,7 @@ assert.match(
 
 const migrationSqlByLocation = new Map(requiredMigrationLocations.map((location) => [
   location,
-  migrationSql(path.join(repoRoot, location)),
+  migrationSql(resolveRepoPath(location)),
 ]));
 
 const explainMigrationLocations = new Map([
@@ -194,7 +194,7 @@ for (const token of [
 }
 
 const locations = requiredMigrationLocations.map((location) => {
-  const absolute = path.join(repoRoot, location);
+  const absolute = resolveRepoPath(location);
   const exists = fs.existsSync(absolute);
   const migrations = exists
     ? fs.readdirSync(absolute)
@@ -332,4 +332,12 @@ function migrationSql(directory) {
     .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
     .map((file) => fs.readFileSync(path.join(directory, file), "utf8"))
     .join("\n");
+}
+
+function resolveRepoPath(relativePath) {
+  const primary = path.join(repoRoot, relativePath);
+  if (fs.existsSync(primary) || !relativePath.startsWith("services/")) {
+    return primary;
+  }
+  return path.join(repoRoot, "lumira-backend", relativePath);
 }

@@ -91,12 +91,12 @@ const resetEnv = {
 };
 
 log('Stopping deployment and deleting Docker volumes.');
-run(process.execPath, ['bin/deploy-container.mjs', '--reset', '--local-mysql'], resetEnv);
+run(process.execPath, ['bin\/deploy-container.mjs', '--reset', '--local-mysql'], resetEnv);
 
 log('Rebuilding and starting a clean local-mysql deployment.');
-run(process.execPath, ['bin/deploy-container.mjs', '--rebuild', '--local-mysql'], resetEnv);
+run(process.execPath, ['bin\/deploy-container.mjs', '--rebuild', '--local-mysql'], resetEnv);
 
 log('Running deployment checks against the local E2E entrypoint.');
-run(process.execPath, ['bin/check-deployment.mjs'], resetEnv);
+run(process.execPath, ['bin\/check-deployment.mjs'], resetEnv);
 
 log('Clean E2E platform is ready.');

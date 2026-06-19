@@ -1,17 +1,17 @@
 # DDD Release Action Dependency Graph
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Release gate mode: strict
 Release gate blockers: 94
-Batch count: 24
-Edge count: 167
-Graph density: 0.3025
+Batch count: 22
+Edge count: 131
+Graph density: 0.2835
 Compressed edge count: 6
 
 ## Execution Levels
 
-- P0: 6 batches, 6 ready, 0 blocked
+- P0: 4 batches, 4 ready, 0 blocked
 - P1: 14 batches, 0 ready, 14 blocked
 - P2: 1 batches, 0 ready, 1 blocked
 - P3: 3 batches, 0 ready, 3 blocked
@@ -20,7 +20,7 @@ Compressed edge count: 6
 
 ```mermaid
 flowchart TD
-  p_P0["P0: 6 batches / 6 ready / 0 blocked"]
+  p_P0["P0: 4 batches / 4 ready / 0 blocked"]
   p_P1["P1: 14 batches / 0 ready / 14 blocked"]
   p_P2["P2: 1 batches / 0 ready / 1 blocked"]
   p_P3["P3: 3 batches / 0 ready / 3 blocked"]
@@ -38,9 +38,7 @@ flowchart TD
 flowchart TD
   b_p0_docker_release_infra["P0 docker / release-infra"]
   b_p0_runtime_readiness_release_infra["P0 runtime-readiness / release-infra"]
-  b_p0_manifest_database["P0 manifest / database"]
   b_p0_manifest_lumira_ui["P0 manifest / lumira-ui"]
-  b_p0_manifest_release_owner["P0 manifest / release-owner"]
   b_p0_authenticated_performance_release_performance["P0 authenticated-performance / release-performance"]
   b_p1_ai_runtime_ai["P1 ai-runtime / ai"]
   b_p1_business_e2e_file_owner["P1 business-e2e / file-owner"]
@@ -62,93 +60,63 @@ flowchart TD
   b_p3_orchestrator_release_owner["P3 orchestrator / release-owner"]
   b_p0_docker_release_infra --> b_p1_ai_runtime_ai
   b_p0_runtime_readiness_release_infra --> b_p1_ai_runtime_ai
-  b_p0_manifest_database --> b_p1_ai_runtime_ai
   b_p0_manifest_lumira_ui --> b_p1_ai_runtime_ai
-  b_p0_manifest_release_owner --> b_p1_ai_runtime_ai
   b_p0_authenticated_performance_release_performance --> b_p1_ai_runtime_ai
   b_p0_docker_release_infra --> b_p1_business_e2e_file_owner
   b_p0_runtime_readiness_release_infra --> b_p1_business_e2e_file_owner
-  b_p0_manifest_database --> b_p1_business_e2e_file_owner
   b_p0_manifest_lumira_ui --> b_p1_business_e2e_file_owner
-  b_p0_manifest_release_owner --> b_p1_business_e2e_file_owner
   b_p0_authenticated_performance_release_performance --> b_p1_business_e2e_file_owner
   b_p0_docker_release_infra --> b_p1_business_e2e_job_owner
   b_p0_runtime_readiness_release_infra --> b_p1_business_e2e_job_owner
-  b_p0_manifest_database --> b_p1_business_e2e_job_owner
   b_p0_manifest_lumira_ui --> b_p1_business_e2e_job_owner
-  b_p0_manifest_release_owner --> b_p1_business_e2e_job_owner
   b_p0_authenticated_performance_release_performance --> b_p1_business_e2e_job_owner
   b_p0_docker_release_infra --> b_p1_business_e2e_payment_owner
   b_p0_runtime_readiness_release_infra --> b_p1_business_e2e_payment_owner
-  b_p0_manifest_database --> b_p1_business_e2e_payment_owner
   b_p0_manifest_lumira_ui --> b_p1_business_e2e_payment_owner
-  b_p0_manifest_release_owner --> b_p1_business_e2e_payment_owner
   b_p0_authenticated_performance_release_performance --> b_p1_business_e2e_payment_owner
   b_p0_docker_release_infra --> b_p1_rollback_ai_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_ai_owner
-  b_p0_manifest_database --> b_p1_rollback_ai_owner
   b_p0_manifest_lumira_ui --> b_p1_rollback_ai_owner
-  b_p0_manifest_release_owner --> b_p1_rollback_ai_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_ai_owner
   b_p0_docker_release_infra --> b_p1_rollback_auth_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_auth_owner
-  b_p0_manifest_database --> b_p1_rollback_auth_owner
   b_p0_manifest_lumira_ui --> b_p1_rollback_auth_owner
-  b_p0_manifest_release_owner --> b_p1_rollback_auth_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_auth_owner
   b_p0_docker_release_infra --> b_p1_rollback_file_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_file_owner
-  b_p0_manifest_database --> b_p1_rollback_file_owner
   b_p0_manifest_lumira_ui --> b_p1_rollback_file_owner
-  b_p0_manifest_release_owner --> b_p1_rollback_file_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_file_owner
   b_p0_docker_release_infra --> b_p1_rollback_iam_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_iam_owner
-  b_p0_manifest_database --> b_p1_rollback_iam_owner
   b_p0_manifest_lumira_ui --> b_p1_rollback_iam_owner
-  b_p0_manifest_release_owner --> b_p1_rollback_iam_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_iam_owner
   b_p0_docker_release_infra --> b_p1_rollback_job_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_job_owner
-  b_p0_manifest_database --> b_p1_rollback_job_owner
   b_p0_manifest_lumira_ui --> b_p1_rollback_job_owner
-  b_p0_manifest_release_owner --> b_p1_rollback_job_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_job_owner
   b_p0_docker_release_infra --> b_p1_rollback_localization_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_localization_owner
-  b_p0_manifest_database --> b_p1_rollback_localization_owner
   b_p0_manifest_lumira_ui --> b_p1_rollback_localization_owner
-  b_p0_manifest_release_owner --> b_p1_rollback_localization_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_localization_owner
   b_p0_docker_release_infra --> b_p1_rollback_message_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_message_owner
-  b_p0_manifest_database --> b_p1_rollback_message_owner
   b_p0_manifest_lumira_ui --> b_p1_rollback_message_owner
-  b_p0_manifest_release_owner --> b_p1_rollback_message_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_message_owner
   b_p0_docker_release_infra --> b_p1_rollback_payment_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_payment_owner
-  b_p0_manifest_database --> b_p1_rollback_payment_owner
   b_p0_manifest_lumira_ui --> b_p1_rollback_payment_owner
-  b_p0_manifest_release_owner --> b_p1_rollback_payment_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_payment_owner
   b_p0_docker_release_infra --> b_p1_rollback_platform_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_platform_owner
-  b_p0_manifest_database --> b_p1_rollback_platform_owner
   b_p0_manifest_lumira_ui --> b_p1_rollback_platform_owner
-  b_p0_manifest_release_owner --> b_p1_rollback_platform_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_platform_owner
   b_p0_docker_release_infra --> b_p1_rollback_plugin_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_plugin_owner
-  b_p0_manifest_database --> b_p1_rollback_plugin_owner
   b_p0_manifest_lumira_ui --> b_p1_rollback_plugin_owner
-  b_p0_manifest_release_owner --> b_p1_rollback_plugin_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_plugin_owner
   b_p0_docker_release_infra --> b_p2_explain_database
   b_p0_runtime_readiness_release_infra --> b_p2_explain_database
-  b_p0_manifest_database --> b_p2_explain_database
   b_p0_manifest_lumira_ui --> b_p2_explain_database
-  b_p0_manifest_release_owner --> b_p2_explain_database
   b_p0_authenticated_performance_release_performance --> b_p2_explain_database
   b_p1_ai_runtime_ai --> b_p2_explain_database
   b_p1_business_e2e_file_owner --> b_p2_explain_database
@@ -166,9 +134,7 @@ flowchart TD
   b_p1_rollback_plugin_owner --> b_p2_explain_database
   b_p0_docker_release_infra --> b_p3_orchestrator_database
   b_p0_runtime_readiness_release_infra --> b_p3_orchestrator_database
-  b_p0_manifest_database --> b_p3_orchestrator_database
   b_p0_manifest_lumira_ui --> b_p3_orchestrator_database
-  b_p0_manifest_release_owner --> b_p3_orchestrator_database
   b_p0_authenticated_performance_release_performance --> b_p3_orchestrator_database
   b_p1_ai_runtime_ai --> b_p3_orchestrator_database
   b_p1_business_e2e_file_owner --> b_p3_orchestrator_database
@@ -187,9 +153,7 @@ flowchart TD
   b_p2_explain_database --> b_p3_orchestrator_database
   b_p0_docker_release_infra --> b_p3_orchestrator_release_infra
   b_p0_runtime_readiness_release_infra --> b_p3_orchestrator_release_infra
-  b_p0_manifest_database --> b_p3_orchestrator_release_infra
   b_p0_manifest_lumira_ui --> b_p3_orchestrator_release_infra
-  b_p0_manifest_release_owner --> b_p3_orchestrator_release_infra
   b_p0_authenticated_performance_release_performance --> b_p3_orchestrator_release_infra
   b_p1_ai_runtime_ai --> b_p3_orchestrator_release_infra
   b_p1_business_e2e_file_owner --> b_p3_orchestrator_release_infra
@@ -208,9 +172,7 @@ flowchart TD
   b_p2_explain_database --> b_p3_orchestrator_release_infra
   b_p0_docker_release_infra --> b_p3_orchestrator_release_owner
   b_p0_runtime_readiness_release_infra --> b_p3_orchestrator_release_owner
-  b_p0_manifest_database --> b_p3_orchestrator_release_owner
   b_p0_manifest_lumira_ui --> b_p3_orchestrator_release_owner
-  b_p0_manifest_release_owner --> b_p3_orchestrator_release_owner
   b_p0_authenticated_performance_release_performance --> b_p3_orchestrator_release_owner
   b_p1_ai_runtime_ai --> b_p3_orchestrator_release_owner
   b_p1_business_e2e_file_owner --> b_p3_orchestrator_release_owner
@@ -233,28 +195,26 @@ flowchart TD
 
 - p0-docker-release-infra: P0 docker / release-infra
 - p0-runtime-readiness-release-infra: P0 runtime-readiness / release-infra
-- p0-manifest-database: P0 manifest / database
 - p0-manifest-lumira-ui: P0 manifest / lumira-ui
-- p0-manifest-release-owner: P0 manifest / release-owner
 - p0-authenticated-performance-release-performance: P0 authenticated-performance / release-performance
 
 ## Blocked Batches
 
-- p1-ai-runtime-ai: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-business-e2e-file-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-business-e2e-job-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-business-e2e-payment-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-ai-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-auth-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-file-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-iam-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-job-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-localization-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-message-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-payment-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-platform-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-plugin-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p2-explain-database: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
-- p3-orchestrator-database: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
-- p3-orchestrator-release-infra: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
-- p3-orchestrator-release-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- p1-ai-runtime-ai: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-business-e2e-file-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-business-e2e-job-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-business-e2e-payment-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-rollback-ai-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-rollback-auth-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-rollback-file-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-rollback-iam-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-rollback-job-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-rollback-localization-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-rollback-message-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-rollback-payment-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-rollback-platform-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p1-rollback-plugin-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+- p2-explain-database: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
+- p3-orchestrator-database: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- p3-orchestrator-release-infra: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- p3-orchestrator-release-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database

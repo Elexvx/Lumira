@@ -548,14 +548,14 @@ function runVerification(options, profile) {
   }
   const baseUrl = process.env.DEPLOY_CHECK_BASE_URL || `https://${options.apiDomain}`;
   const backendUrl = process.env.DEPLOY_CHECK_BACKEND_URL || process.env.DEPLOY_CHECK_GATEWAY_URL || 'http://127.0.0.1:8080';
-  run('node', ['bin/check-deployment.mjs'], {
+  run('node', ['bin\/check-deployment.mjs'], {
     env: {
       DEPLOY_CHECK_BASE_URL: baseUrl,
       DEPLOY_CHECK_BACKEND_URL: backendUrl,
     },
   });
   if (!skipSmoke) {
-    run('node', ['bin/load-smoke.mjs'], {
+    run('node', ['bin\/load-smoke.mjs'], {
       env: {
         LOAD_SMOKE_BASE_URL: baseUrl,
         LOAD_SMOKE_DURATION_MS: process.env.LOAD_SMOKE_DURATION_MS || '15000',

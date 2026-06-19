@@ -1,6 +1,6 @@
 # DDD Release Command Catalog
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -53,16 +53,6 @@ Next priority: P0
 
 ## Owners
 
-### database
-
-- Priority: P0
-- Ready batches: p0-manifest-database
-- Expected artifacts: artifacts/ddd/release/evidence-manifest.json
-- list: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- envCheck: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- dryRun: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- execute: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
-
 ### lumira-ui
 
 - Priority: P0
@@ -83,16 +73,6 @@ Next priority: P0
 - dryRun: `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - execute: `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 
-### release-owner
-
-- Priority: P0
-- Ready batches: p0-manifest-release-owner
-- Expected artifacts: artifacts/ddd/release/evidence-manifest.json
-- list: `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- envCheck: `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- dryRun: `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- execute: `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
-
 ### release-performance
 
 - Priority: P0
@@ -104,16 +84,6 @@ Next priority: P0
 - execute: `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 
 ## Batches
-
-### p0-manifest-database
-
-- Owner: database
-- Priority: P0
-- Expected artifacts: artifacts/ddd/release/evidence-manifest.json
-- list: `DDD_RELEASE_BATCH=p0-manifest-database DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- envCheck: `DDD_RELEASE_BATCH=p0-manifest-database DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- dryRun: `DDD_RELEASE_BATCH=p0-manifest-database DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- execute: `DDD_RELEASE_BATCH=p0-manifest-database bash artifacts/ddd/release/release-execution-commands.sh`
 
 ### p0-manifest-lumira-ui
 
@@ -144,16 +114,6 @@ Next priority: P0
 - envCheck: `DDD_RELEASE_BATCH=p0-runtime-readiness-release-infra DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - dryRun: `DDD_RELEASE_BATCH=p0-runtime-readiness-release-infra DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - execute: `DDD_RELEASE_BATCH=p0-runtime-readiness-release-infra bash artifacts/ddd/release/release-execution-commands.sh`
-
-### p0-manifest-release-owner
-
-- Owner: release-owner
-- Priority: P0
-- Expected artifacts: artifacts/ddd/release/evidence-manifest.json
-- list: `DDD_RELEASE_BATCH=p0-manifest-release-owner DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- envCheck: `DDD_RELEASE_BATCH=p0-manifest-release-owner DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- dryRun: `DDD_RELEASE_BATCH=p0-manifest-release-owner DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- execute: `DDD_RELEASE_BATCH=p0-manifest-release-owner bash artifacts/ddd/release/release-execution-commands.sh`
 
 ### p0-authenticated-performance-release-performance
 

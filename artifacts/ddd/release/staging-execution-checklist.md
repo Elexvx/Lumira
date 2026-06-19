@@ -1,10 +1,10 @@
 # DDD Staging Execution Checklist
 
-Generated at: 2026-06-19T17:42:14.912Z
+Generated at: 2026-06-19T18:33:26.298Z
 Status: STAGING_REQUIRED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
-Evidence gate: blockers=94 warnings=8 strict=true
+Evidence gate: blockers=148 warnings=9 strict=true
 
 ## First Move
 
@@ -20,12 +20,12 @@ Evidence gate: blockers=94 warnings=8 strict=true
 ## Blocked Cutover Items
 
 - strict-release-gate: Strict release gate has zero blockers and no contract issues. pending=94
-- deployable-images: Deployable backend/frontend images are built and inspected. pending=4
+- deployable-images: Deployable backend/lumira-ui images are built and inspected. pending=4
 - production-equivalence: Runtime and performance evidence use HTTPS non-local production-equivalent endpoints. pending=13
-- runtime-business-acceptance: AI, frontend, file, job, and payment acceptance evidence is complete. pending=7
+- runtime-business-acceptance: AI, lumira-ui, file, job, and payment acceptance evidence is complete. pending=6
 - rollback-safety: Every bounded context has rollback PASS or approved unexpired DEFERRED risk acceptance. pending=10
-- database-performance: Fresh production-equivalent EXPLAIN evidence has no scan/index blockers. pending=8
-- evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean. pending=5
+- database-performance: Fresh production-equivalent EXPLAIN evidence has no scan/index blockers. pending=2
+- evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean. pending=7
 
 ## Immediate P0 Waves
 
@@ -34,32 +34,31 @@ Evidence gate: blockers=94 warnings=8 strict=true
 Owner: release-infra
 Receipt status: READY_FOR_STRICT_GATE_RERUN
 
-  - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-docker-build-evidence.mjs`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
 
 ### p0-runtime-readiness-release-infra
 
 Owner: release-infra
 Receipt status: READY_FOR_STRICT_GATE_RERUN
 
-  - `node scripts/ddd-runtime-readiness-smoke.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
 
-### p0-manifest-release-owner
+### p0-manifest-lumira-ui
 
-Owner: release-owner
-Receipt status: CONTENT_BLOCKED
+Owner: lumira-ui
+Receipt status: ARTIFACT_MISSING
 
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
 
 ### p0-authenticated-performance-release-performance
 
 Owner: release-performance
 Receipt status: READY_FOR_STRICT_GATE_RERUN
 
-  - `node scripts/ddd-authenticated-performance-smoke.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
+  - `node bin/ddd-authenticated-performance-smoke.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
 
 ## Execution Tracks
 
@@ -177,4 +176,5 @@ Artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release
 - commandCatalog: artifacts/ddd/release/release-command-catalog.md
 - missingEnvTemplate: artifacts/ddd/release/release-env-missing.template.env
 - releaseEnvInit: artifacts/ddd/release/release-final-owner-queue-env-init.sh
+- releaseEnvInitWrapper: bin/ddd-release-env-init.mjs
 

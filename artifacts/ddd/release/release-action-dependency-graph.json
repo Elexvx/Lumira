@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T18:09:16.572Z",
-      "generatedAt": "2026-06-19T18:09:16.571Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 12,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -248,16 +248,14 @@
     "blockers": 94,
     "warnings": 8
   },
-  "batchCount": 24,
-  "edgeCount": 167,
-  "graphDensity": 0.3025,
+  "batchCount": 22,
+  "edgeCount": 131,
+  "graphDensity": 0.2835,
   "compressedEdgeCount": 6,
   "readyBatchIds": [
     "p0-docker-release-infra",
     "p0-runtime-readiness-release-infra",
-    "p0-manifest-database",
     "p0-manifest-lumira-ui",
-    "p0-manifest-release-owner",
     "p0-authenticated-performance-release-performance"
   ],
   "blockedBatchIds": [
@@ -284,9 +282,7 @@
     "P0": [
       "p0-docker-release-infra",
       "p0-runtime-readiness-release-infra",
-      "p0-manifest-database",
       "p0-manifest-lumira-ui",
-      "p0-manifest-release-owner",
       "p0-authenticated-performance-release-performance"
     ],
     "P1": [
@@ -320,12 +316,10 @@
       "batchIds": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
-      "ready": 6,
+      "ready": 4,
       "blocked": 0
     },
     {
@@ -469,66 +463,8 @@
       ]
     },
     {
-      "id": "p0-manifest-database",
-      "order": 3,
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "database",
-      "pendingItems": 2,
-      "canRunImmediately": true,
-      "dependsOn": [],
-      "envKeys": [
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-          "keys": [
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE"
-          ],
-          "spec": "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_FRESH_DB_VALIDATED",
-          "keys": [
-            "DDD_MIGRATION_FRESH_DB_VALIDATED"
-          ],
-          "spec": "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED"
-        },
-        {
-          "label": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-          "keys": [
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-          ],
-          "spec": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-          "keys": [
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-          ],
-          "spec": "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-        }
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
       "id": "p0-manifest-lumira-ui",
-      "order": 4,
+      "order": 3,
       "priority": "P0",
       "source": "manifest",
       "owner": "lumira-ui",
@@ -589,66 +525,8 @@
       ]
     },
     {
-      "id": "p0-manifest-release-owner",
-      "order": 5,
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "pendingItems": 7,
-      "canRunImmediately": true,
-      "dependsOn": [],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "DDD_EVIDENCE_ENVIRONMENT",
-          "keys": [
-            "DDD_EVIDENCE_ENVIRONMENT"
-          ],
-          "spec": "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT"
-        },
-        {
-          "label": "DDD_EVIDENCE_OPERATOR",
-          "keys": [
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "spec": "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR"
-        },
-        {
-          "label": "DDD_RELEASE_CANDIDATE",
-          "keys": [
-            "DDD_RELEASE_CANDIDATE"
-          ],
-          "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
-        },
-        {
-          "label": "DDD_RELEASE_MANIFEST_STRICT",
-          "keys": [
-            "DDD_RELEASE_MANIFEST_STRICT"
-          ],
-          "spec": "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
-        }
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
       "id": "p0-authenticated-performance-release-performance",
-      "order": 6,
+      "order": 4,
       "priority": "P0",
       "source": "authenticated-performance",
       "owner": "release-performance",
@@ -708,7 +586,7 @@
     },
     {
       "id": "p1-ai-runtime-ai",
-      "order": 7,
+      "order": 5,
       "priority": "P1",
       "source": "ai-runtime",
       "owner": "ai",
@@ -717,9 +595,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -836,7 +712,7 @@
     },
     {
       "id": "p1-business-e2e-file-owner",
-      "order": 8,
+      "order": 6,
       "priority": "P1",
       "source": "business-e2e",
       "owner": "file-owner",
@@ -845,9 +721,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -912,7 +786,7 @@
     },
     {
       "id": "p1-business-e2e-job-owner",
-      "order": 9,
+      "order": 7,
       "priority": "P1",
       "source": "business-e2e",
       "owner": "job-owner",
@@ -921,9 +795,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -979,7 +851,7 @@
     },
     {
       "id": "p1-business-e2e-payment-owner",
-      "order": 10,
+      "order": 8,
       "priority": "P1",
       "source": "business-e2e",
       "owner": "payment-owner",
@@ -988,9 +860,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1044,7 +914,7 @@
     },
     {
       "id": "p1-rollback-ai-owner",
-      "order": 11,
+      "order": 9,
       "priority": "P1",
       "source": "rollback",
       "owner": "ai-owner",
@@ -1053,9 +923,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1140,7 +1008,7 @@
     },
     {
       "id": "p1-rollback-auth-owner",
-      "order": 12,
+      "order": 10,
       "priority": "P1",
       "source": "rollback",
       "owner": "auth-owner",
@@ -1149,9 +1017,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1236,7 +1102,7 @@
     },
     {
       "id": "p1-rollback-file-owner",
-      "order": 13,
+      "order": 11,
       "priority": "P1",
       "source": "rollback",
       "owner": "file-owner",
@@ -1245,9 +1111,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1332,7 +1196,7 @@
     },
     {
       "id": "p1-rollback-iam-owner",
-      "order": 14,
+      "order": 12,
       "priority": "P1",
       "source": "rollback",
       "owner": "iam-owner",
@@ -1341,9 +1205,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1428,7 +1290,7 @@
     },
     {
       "id": "p1-rollback-job-owner",
-      "order": 15,
+      "order": 13,
       "priority": "P1",
       "source": "rollback",
       "owner": "job-owner",
@@ -1437,9 +1299,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1524,7 +1384,7 @@
     },
     {
       "id": "p1-rollback-localization-owner",
-      "order": 16,
+      "order": 14,
       "priority": "P1",
       "source": "rollback",
       "owner": "localization-owner",
@@ -1533,9 +1393,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1620,7 +1478,7 @@
     },
     {
       "id": "p1-rollback-message-owner",
-      "order": 17,
+      "order": 15,
       "priority": "P1",
       "source": "rollback",
       "owner": "message-owner",
@@ -1629,9 +1487,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1716,7 +1572,7 @@
     },
     {
       "id": "p1-rollback-payment-owner",
-      "order": 18,
+      "order": 16,
       "priority": "P1",
       "source": "rollback",
       "owner": "payment-owner",
@@ -1725,9 +1581,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1812,7 +1666,7 @@
     },
     {
       "id": "p1-rollback-platform-owner",
-      "order": 19,
+      "order": 17,
       "priority": "P1",
       "source": "rollback",
       "owner": "platform-owner",
@@ -1821,9 +1675,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -1908,7 +1760,7 @@
     },
     {
       "id": "p1-rollback-plugin-owner",
-      "order": 20,
+      "order": 18,
       "priority": "P1",
       "source": "rollback",
       "owner": "plugin-owner",
@@ -1917,9 +1769,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
@@ -2004,7 +1854,7 @@
     },
     {
       "id": "p2-explain-database",
-      "order": 21,
+      "order": 19,
       "priority": "P2",
       "source": "explain",
       "owner": "database",
@@ -2013,9 +1863,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2151,7 +1999,7 @@
     },
     {
       "id": "p3-orchestrator-database",
-      "order": 22,
+      "order": 20,
       "priority": "P3",
       "source": "orchestrator",
       "owner": "database",
@@ -2160,9 +2008,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2233,7 +2079,7 @@
     },
     {
       "id": "p3-orchestrator-release-infra",
-      "order": 23,
+      "order": 21,
       "priority": "P3",
       "source": "orchestrator",
       "owner": "release-infra",
@@ -2242,9 +2088,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2311,7 +2155,7 @@
     },
     {
       "id": "p3-orchestrator-release-owner",
-      "order": 24,
+      "order": 22,
       "priority": "P3",
       "source": "orchestrator",
       "owner": "release-owner",
@@ -2320,9 +2164,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -2378,15 +2220,7 @@
       "to": "p1-ai-runtime-ai"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-ai-runtime-ai"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-ai-runtime-ai"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-ai-runtime-ai"
     },
     {
@@ -2402,15 +2236,7 @@
       "to": "p1-business-e2e-file-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-business-e2e-file-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-business-e2e-file-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-business-e2e-file-owner"
     },
     {
@@ -2426,15 +2252,7 @@
       "to": "p1-business-e2e-job-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-business-e2e-job-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-business-e2e-job-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-business-e2e-job-owner"
     },
     {
@@ -2450,15 +2268,7 @@
       "to": "p1-business-e2e-payment-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-business-e2e-payment-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-business-e2e-payment-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-business-e2e-payment-owner"
     },
     {
@@ -2474,15 +2284,7 @@
       "to": "p1-rollback-ai-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-rollback-ai-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-rollback-ai-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-rollback-ai-owner"
     },
     {
@@ -2498,15 +2300,7 @@
       "to": "p1-rollback-auth-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-rollback-auth-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-rollback-auth-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-rollback-auth-owner"
     },
     {
@@ -2522,15 +2316,7 @@
       "to": "p1-rollback-file-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-rollback-file-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-rollback-file-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-rollback-file-owner"
     },
     {
@@ -2546,15 +2332,7 @@
       "to": "p1-rollback-iam-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-rollback-iam-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-rollback-iam-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-rollback-iam-owner"
     },
     {
@@ -2570,15 +2348,7 @@
       "to": "p1-rollback-job-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-rollback-job-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-rollback-job-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-rollback-job-owner"
     },
     {
@@ -2594,15 +2364,7 @@
       "to": "p1-rollback-localization-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-rollback-localization-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-rollback-localization-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-rollback-localization-owner"
     },
     {
@@ -2618,15 +2380,7 @@
       "to": "p1-rollback-message-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-rollback-message-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-rollback-message-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-rollback-message-owner"
     },
     {
@@ -2642,15 +2396,7 @@
       "to": "p1-rollback-payment-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-rollback-payment-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-rollback-payment-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-rollback-payment-owner"
     },
     {
@@ -2666,15 +2412,7 @@
       "to": "p1-rollback-platform-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-rollback-platform-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-rollback-platform-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-rollback-platform-owner"
     },
     {
@@ -2690,15 +2428,7 @@
       "to": "p1-rollback-plugin-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p1-rollback-plugin-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p1-rollback-plugin-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p1-rollback-plugin-owner"
     },
     {
@@ -2714,15 +2444,7 @@
       "to": "p2-explain-database"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p2-explain-database"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p2-explain-database"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p2-explain-database"
     },
     {
@@ -2794,15 +2516,7 @@
       "to": "p3-orchestrator-database"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p3-orchestrator-database"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p3-orchestrator-database"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p3-orchestrator-database"
     },
     {
@@ -2878,15 +2592,7 @@
       "to": "p3-orchestrator-release-infra"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p3-orchestrator-release-infra"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p3-orchestrator-release-infra"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p3-orchestrator-release-infra"
     },
     {
@@ -2962,15 +2668,7 @@
       "to": "p3-orchestrator-release-owner"
     },
     {
-      "from": "p0-manifest-database",
-      "to": "p3-orchestrator-release-owner"
-    },
-    {
       "from": "p0-manifest-lumira-ui",
-      "to": "p3-orchestrator-release-owner"
-    },
-    {
-      "from": "p0-manifest-release-owner",
       "to": "p3-orchestrator-release-owner"
     },
     {

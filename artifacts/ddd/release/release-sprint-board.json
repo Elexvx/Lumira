@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -9,10 +9,10 @@
     "warnings": 8
   },
   "summary": {
-    "batchCount": 24,
-    "readyBatchCount": 6,
+    "batchCount": 22,
+    "readyBatchCount": 4,
     "blockedBatchCount": 18,
-    "pendingItems": 51,
+    "pendingItems": 42,
     "priorityCount": 4,
     "ownerCount": 16,
     "blockedCutoverItems": 7
@@ -20,21 +20,17 @@
   "nextWave": {
     "priority": "P0",
     "batchIds": [
-      "p0-manifest-database",
       "p0-manifest-lumira-ui",
       "p0-docker-release-infra",
       "p0-runtime-readiness-release-infra",
-      "p0-manifest-release-owner",
       "p0-authenticated-performance-release-performance"
     ],
     "owners": [
-      "database",
       "lumira-ui",
       "release-infra",
-      "release-owner",
       "release-performance"
     ],
-    "commandCount": 13,
+    "commandCount": 7,
     "expectedArtifacts": [
       "artifacts/ddd/build/docker-image-evidence.json",
       "artifacts/ddd/lumira-ui/frontend-smoke.json",
@@ -50,23 +46,19 @@
   "priorities": [
     {
       "priority": "P0",
-      "batchCount": 6,
-      "readyBatchCount": 6,
+      "batchCount": 4,
+      "readyBatchCount": 4,
       "blockedBatchCount": 0,
-      "pendingItems": 29,
+      "pendingItems": 20,
       "owners": [
-        "database",
         "lumira-ui",
         "release-infra",
-        "release-owner",
         "release-performance"
       ],
       "readyBatchIds": [
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "blockedBatchIds": []
@@ -175,42 +167,6 @@
       "blockedBatchIds": []
     },
     {
-      "owner": "release-owner",
-      "batchCount": 2,
-      "readyBatchCount": 1,
-      "blockedBatchCount": 1,
-      "pendingItems": 8,
-      "priorities": [
-        "P0",
-        "P3"
-      ],
-      "nextReadyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
-      ]
-    },
-    {
-      "owner": "database",
-      "batchCount": 3,
-      "readyBatchCount": 1,
-      "blockedBatchCount": 2,
-      "pendingItems": 5,
-      "priorities": [
-        "P0",
-        "P2",
-        "P3"
-      ],
-      "nextReadyBatchIds": [
-        "p0-manifest-database"
-      ],
-      "blockedBatchIds": [
-        "p2-explain-database",
-        "p3-orchestrator-database"
-      ]
-    },
-    {
       "owner": "lumira-ui",
       "batchCount": 1,
       "readyBatchCount": 1,
@@ -236,6 +192,22 @@
       "nextReadyBatchIds": [],
       "blockedBatchIds": [
         "p1-ai-runtime-ai"
+      ]
+    },
+    {
+      "owner": "database",
+      "batchCount": 2,
+      "readyBatchCount": 0,
+      "blockedBatchCount": 2,
+      "pendingItems": 3,
+      "priorities": [
+        "P2",
+        "P3"
+      ],
+      "nextReadyBatchIds": [],
+      "blockedBatchIds": [
+        "p2-explain-database",
+        "p3-orchestrator-database"
       ]
     },
     {
@@ -380,47 +352,23 @@
       "blockedBatchIds": [
         "p1-rollback-plugin-owner"
       ]
+    },
+    {
+      "owner": "release-owner",
+      "batchCount": 1,
+      "readyBatchCount": 0,
+      "blockedBatchCount": 1,
+      "pendingItems": 1,
+      "priorities": [
+        "P3"
+      ],
+      "nextReadyBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-owner"
+      ]
     }
   ],
   "batchCards": [
-    {
-      "id": "p0-manifest-database",
-      "priority": "P0",
-      "status": "READY",
-      "source": "manifest",
-      "owner": "database",
-      "pendingItems": 2,
-      "dependsOn": [],
-      "unmetDependencies": [],
-      "lanes": [
-        "evidence-integrity"
-      ],
-      "cutoverChecklistIds": [
-        "evidence-integrity"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "envCheckGroups": [
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff"
-      ]
-    },
     {
       "id": "p0-manifest-lumira-ui",
       "priority": "P0",
@@ -540,49 +488,6 @@
       ]
     },
     {
-      "id": "p0-manifest-release-owner",
-      "priority": "P0",
-      "status": "READY",
-      "source": "manifest",
-      "owner": "release-owner",
-      "pendingItems": 7,
-      "dependsOn": [],
-      "unmetDependencies": [],
-      "lanes": [
-        "evidence-integrity"
-      ],
-      "cutoverChecklistIds": [
-        "evidence-integrity"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "envCheckGroups": [
-        "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff"
-      ]
-    },
-    {
       "id": "p0-authenticated-performance-release-performance",
       "priority": "P0",
       "status": "READY",
@@ -639,9 +544,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -690,9 +593,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -737,9 +638,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -784,9 +683,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -827,9 +724,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -874,9 +769,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -921,9 +814,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -963,9 +854,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1010,9 +899,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1057,9 +944,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1104,9 +989,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1146,9 +1029,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1193,9 +1074,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1240,9 +1119,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1287,9 +1164,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -1369,9 +1244,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -1446,9 +1319,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
@@ -1523,9 +1394,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",

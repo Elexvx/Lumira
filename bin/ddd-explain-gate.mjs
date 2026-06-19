@@ -8,7 +8,7 @@ import {
 } from "./ddd-explain-evidence-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const hotPathDoc = path.join(repoRoot, "docs", "28-ddd-hot-path-explain-plan.md");
+const hotPathDoc = path.join(repoRoot, "doc", "28-ddd-hot-path-explain-plan.md");
 const explainDir = process.env.DDD_EXPLAIN_DIR
   ? path.resolve(process.env.DDD_EXPLAIN_DIR)
   : path.join(repoRoot, "tmp", "ddd-explain");

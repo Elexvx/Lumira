@@ -6,29 +6,53 @@ let authTokenGeneration = 0;
 
 export interface AuthTokenState {
   accessToken: string;
-  refreshToken: string;
   tokenType: string;
   expiresIn: number;
   expiresAt: number;
 }
 
-const getTokenState = (): AuthTokenState | null => storage.get<AuthTokenState>(TOKEN_STORAGE_KEY);
+let memoryTokenState: AuthTokenState | null = null;
 
-const writeTokenState = (state: AuthTokenState) => storage.set(TOKEN_STORAGE_KEY, state);
+const getPersistedTokenMeta = (): AuthTokenState | null => {
+  const state = storage.get<Partial<AuthTokenState> & { refreshToken?: string }>(TOKEN_STORAGE_KEY);
+  if (!state?.accessToken) {
+    return null;
+  }
+  return {
+    accessToken: state.accessToken,
+    tokenType: state.tokenType || 'Bearer',
+    expiresIn: Number(state.expiresIn || 0),
+    expiresAt: Number(state.expiresAt || 0),
+  };
+};
 
-const removeTokenState = () => storage.remove(TOKEN_STORAGE_KEY);
+const getTokenState = (): AuthTokenState | null => memoryTokenState ?? getPersistedTokenMeta();
+
+const writeTokenState = (state: AuthTokenState) => {
+  memoryTokenState = state;
+  storage.set(TOKEN_STORAGE_KEY, {
+    accessToken: state.accessToken,
+    tokenType: state.tokenType,
+    expiresIn: state.expiresIn,
+    expiresAt: state.expiresAt,
+  });
+};
+
+const removeTokenState = () => {
+  memoryTokenState = null;
+  storage.remove(TOKEN_STORAGE_KEY);
+};
 
 export const tokenManager = {
   getTokenState,
   getAccessToken: () => getTokenState()?.accessToken ?? '',
-  getRefreshToken: () => getTokenState()?.refreshToken ?? '',
+  getRefreshToken: () => '',
   getTokenGeneration: () => authTokenGeneration,
-  hasToken: () => Boolean(getTokenState()?.accessToken && getTokenState()?.refreshToken),
-  setTokens: (payload: { accessToken: string; refreshToken: string; tokenType?: string; expiresIn: number }) => {
+  hasToken: () => Boolean(getTokenState()?.accessToken),
+  setTokens: (payload: { accessToken: string; refreshToken?: string; tokenType?: string; expiresIn: number }) => {
     const expiresAt = Date.now() + payload.expiresIn * 1000;
     writeTokenState({
       accessToken: payload.accessToken,
-      refreshToken: payload.refreshToken,
       tokenType: payload.tokenType || 'Bearer',
       expiresIn: payload.expiresIn,
       expiresAt,

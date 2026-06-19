@@ -83,7 +83,7 @@ function runContract(mutator = () => {}) {
   mutator(artifacts);
   writeJson(configPath, artifacts.config);
   writeJson(path.join(releaseDir, "release-env-owner-input-packet.json"), artifacts.packet);
-  const result = spawnSync("node", ["bin/ddd-release-config-owner-input-reconciliation.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-release-config-owner-input-reconciliation.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

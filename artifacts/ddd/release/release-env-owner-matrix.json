@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T18:09:16.572Z",
-      "generatedAt": "2026-06-19T18:09:16.571Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 12,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -249,11 +249,11 @@
     "warnings": 8
   },
   "ownerCount": 16,
-  "readyOwnerCount": 5,
-  "templateEnvKeyCount": 46,
+  "readyOwnerCount": 3,
+  "templateEnvKeyCount": 45,
   "uniqueUnresolvedTemplateKeyCount": 29,
-  "unresolvedOwnerAssignmentCount": 67,
-  "groupCount": 24,
+  "unresolvedOwnerAssignmentCount": 65,
+  "groupCount": 22,
   "owners": [
     {
       "owner": "release-infra",
@@ -446,9 +446,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
@@ -541,616 +539,6 @@
         "DDD_RELEASE_CANDIDATE",
         "LUMIRA_BASE_URL",
         "PLAYWRIGHT_BASE_URL"
-      ]
-    },
-    {
-      "owner": "database",
-      "groupCount": 3,
-      "readyGroupCount": 1,
-      "blockedGroupCount": 2,
-      "templateEnvKeys": [
-        "DB_PASSWORD",
-        "DB_USERNAME",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_EXPLAIN_DIR",
-        "DDD_EXPLAIN_ENVIRONMENT",
-        "DDD_EXPLAIN_STRICT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_RELEASE_CANDIDATE",
-        "MYSQL_CLI",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "MYSQL_PASSWORD",
-          "canonical": "DB_PASSWORD"
-        },
-        {
-          "alias": "MYSQL_USER",
-          "canonical": "DB_USERNAME"
-        }
-      ],
-      "batchIds": [
-        "p0-manifest-database",
-        "p2-explain-database",
-        "p3-orchestrator-database"
-      ],
-      "readyBatchIds": [
-        "p0-manifest-database"
-      ],
-      "blockedBatchIds": [
-        "p2-explain-database",
-        "p3-orchestrator-database"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
-        "node bin/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
-        "artifacts/ddd/release/explain-gate-report.json",
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/readiness-summary.json",
-        "artifacts/ddd/release/release-evidence-gate.json",
-        "tmp/ddd-explain/*.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Run only after all prerequisite evidence batches are clean.",
-        "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
-      ],
-      "groups": [
-        {
-          "batchId": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "pendingItems": 2,
-          "dependsOn": [],
-          "canRunImmediately": true,
-          "envKeys": [
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-            "DDD_MIGRATION_FRESH_DB_VALIDATED",
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-          ],
-          "envCheckGroups": [
-            {
-              "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-              "keys": [
-                "DDD_MIGRATION_FRESH_DB_EVIDENCE"
-              ],
-              "spec": "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE"
-            },
-            {
-              "label": "DDD_MIGRATION_FRESH_DB_VALIDATED",
-              "keys": [
-                "DDD_MIGRATION_FRESH_DB_VALIDATED"
-              ],
-              "spec": "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED"
-            },
-            {
-              "label": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-              "keys": [
-                "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-              ],
-              "spec": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-            },
-            {
-              "label": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-              "keys": [
-                "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-              ],
-              "spec": "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-            }
-          ],
-          "templateEnvKeys": [
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-            "DDD_MIGRATION_FRESH_DB_VALIDATED",
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-          ],
-          "aliasMappings": [],
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ],
-          "itemIds": [
-            "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
-            "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff"
-          ]
-        },
-        {
-          "batchId": "p2-explain-database",
-          "priority": "P2",
-          "source": "explain",
-          "owner": "database",
-          "pendingItems": 2,
-          "dependsOn": [
-            "p0-docker-release-infra",
-            "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
-            "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
-            "p0-authenticated-performance-release-performance",
-            "p1-ai-runtime-ai",
-            "p1-business-e2e-file-owner",
-            "p1-business-e2e-job-owner",
-            "p1-business-e2e-payment-owner",
-            "p1-rollback-ai-owner",
-            "p1-rollback-auth-owner",
-            "p1-rollback-file-owner",
-            "p1-rollback-iam-owner",
-            "p1-rollback-job-owner",
-            "p1-rollback-localization-owner",
-            "p1-rollback-message-owner",
-            "p1-rollback-payment-owner",
-            "p1-rollback-platform-owner",
-            "p1-rollback-plugin-owner"
-          ],
-          "canRunImmediately": false,
-          "envKeys": [
-            "DDD_EVIDENCE_OPERATOR",
-            "DDD_EXPLAIN_DATABASE",
-            "DDD_EXPLAIN_DIR",
-            "DDD_EXPLAIN_ENVIRONMENT",
-            "DDD_EXPLAIN_STRICT",
-            "DDD_RELEASE_CANDIDATE",
-            "MYSQL_CLI",
-            "MYSQL_DATABASE",
-            "MYSQL_HOST",
-            "MYSQL_PASSWORD",
-            "MYSQL_PORT",
-            "MYSQL_USER"
-          ],
-          "envCheckGroups": [
-            {
-              "label": "DDD_EVIDENCE_OPERATOR",
-              "keys": [
-                "DDD_EVIDENCE_OPERATOR"
-              ],
-              "spec": "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR"
-            },
-            {
-              "label": "DDD_EXPLAIN_DATABASE",
-              "keys": [
-                "DDD_EXPLAIN_DATABASE"
-              ],
-              "spec": "DDD_EXPLAIN_DATABASE=DDD_EXPLAIN_DATABASE"
-            },
-            {
-              "label": "DDD_EXPLAIN_DIR",
-              "keys": [
-                "DDD_EXPLAIN_DIR"
-              ],
-              "spec": "DDD_EXPLAIN_DIR=DDD_EXPLAIN_DIR"
-            },
-            {
-              "label": "DDD_EXPLAIN_ENVIRONMENT",
-              "keys": [
-                "DDD_EXPLAIN_ENVIRONMENT"
-              ],
-              "spec": "DDD_EXPLAIN_ENVIRONMENT=DDD_EXPLAIN_ENVIRONMENT"
-            },
-            {
-              "label": "DDD_EXPLAIN_STRICT",
-              "keys": [
-                "DDD_EXPLAIN_STRICT"
-              ],
-              "spec": "DDD_EXPLAIN_STRICT=DDD_EXPLAIN_STRICT"
-            },
-            {
-              "label": "DDD_RELEASE_CANDIDATE",
-              "keys": [
-                "DDD_RELEASE_CANDIDATE"
-              ],
-              "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
-            },
-            {
-              "label": "MYSQL_CLI",
-              "keys": [
-                "MYSQL_CLI"
-              ],
-              "spec": "MYSQL_CLI=MYSQL_CLI"
-            },
-            {
-              "label": "MYSQL_DATABASE",
-              "keys": [
-                "MYSQL_DATABASE"
-              ],
-              "spec": "MYSQL_DATABASE=MYSQL_DATABASE"
-            },
-            {
-              "label": "MYSQL_HOST",
-              "keys": [
-                "MYSQL_HOST"
-              ],
-              "spec": "MYSQL_HOST=MYSQL_HOST"
-            },
-            {
-              "label": "DB_PASSWORD",
-              "keys": [
-                "DB_PASSWORD",
-                "MYSQL_PASSWORD",
-                "SPRING_DATASOURCE_PASSWORD"
-              ],
-              "spec": "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD"
-            },
-            {
-              "label": "MYSQL_PORT",
-              "keys": [
-                "MYSQL_PORT"
-              ],
-              "spec": "MYSQL_PORT=MYSQL_PORT"
-            },
-            {
-              "label": "DB_USERNAME",
-              "keys": [
-                "DB_USERNAME",
-                "MYSQL_USER",
-                "SPRING_DATASOURCE_USERNAME"
-              ],
-              "spec": "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME"
-            }
-          ],
-          "templateEnvKeys": [
-            "DB_PASSWORD",
-            "DB_USERNAME",
-            "DDD_EVIDENCE_OPERATOR",
-            "DDD_EXPLAIN_DATABASE",
-            "DDD_EXPLAIN_DIR",
-            "DDD_EXPLAIN_ENVIRONMENT",
-            "DDD_EXPLAIN_STRICT",
-            "DDD_RELEASE_CANDIDATE",
-            "MYSQL_CLI",
-            "MYSQL_DATABASE",
-            "MYSQL_HOST",
-            "MYSQL_PORT"
-          ],
-          "aliasMappings": [
-            {
-              "alias": "MYSQL_PASSWORD",
-              "canonical": "DB_PASSWORD"
-            },
-            {
-              "alias": "MYSQL_USER",
-              "canonical": "DB_USERNAME"
-            }
-          ],
-          "commands": [
-            "node bin/ddd-collect-explain.mjs",
-            "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
-          ],
-          "expectedArtifacts": [
-            "tmp/ddd-explain/*.json",
-            "artifacts/ddd/release/explain-gate-report.json"
-          ],
-          "exitCriteria": [
-            "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
-            "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
-          ],
-          "itemIds": [
-            "message-archive-total.json",
-            "message-unread-count.json"
-          ]
-        },
-        {
-          "batchId": "p3-orchestrator-database",
-          "priority": "P3",
-          "source": "orchestrator",
-          "owner": "database",
-          "pendingItems": 1,
-          "dependsOn": [
-            "p0-docker-release-infra",
-            "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
-            "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
-            "p0-authenticated-performance-release-performance",
-            "p1-ai-runtime-ai",
-            "p1-business-e2e-file-owner",
-            "p1-business-e2e-job-owner",
-            "p1-business-e2e-payment-owner",
-            "p1-rollback-ai-owner",
-            "p1-rollback-auth-owner",
-            "p1-rollback-file-owner",
-            "p1-rollback-iam-owner",
-            "p1-rollback-job-owner",
-            "p1-rollback-localization-owner",
-            "p1-rollback-message-owner",
-            "p1-rollback-payment-owner",
-            "p1-rollback-platform-owner",
-            "p1-rollback-plugin-owner",
-            "p2-explain-database"
-          ],
-          "canRunImmediately": false,
-          "envKeys": [
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-            "DDD_MIGRATION_FRESH_DB_VALIDATED",
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-          ],
-          "envCheckGroups": [
-            {
-              "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-              "keys": [
-                "DDD_MIGRATION_FRESH_DB_EVIDENCE"
-              ],
-              "spec": "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE"
-            },
-            {
-              "label": "DDD_MIGRATION_FRESH_DB_VALIDATED",
-              "keys": [
-                "DDD_MIGRATION_FRESH_DB_VALIDATED"
-              ],
-              "spec": "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED"
-            },
-            {
-              "label": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-              "keys": [
-                "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-              ],
-              "spec": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-            },
-            {
-              "label": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-              "keys": [
-                "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-              ],
-              "spec": "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-            }
-          ],
-          "templateEnvKeys": [
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-            "DDD_MIGRATION_FRESH_DB_VALIDATED",
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-          ],
-          "aliasMappings": [],
-          "commands": [
-            "node bin/ddd-release-evidence-orchestrator.mjs",
-            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/orchestrator-report.json",
-            "artifacts/ddd/release/release-evidence-gate.json",
-            "artifacts/ddd/release/readiness-summary.json"
-          ],
-          "exitCriteria": [
-            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-            "Final strict release gate and readiness summary report zero blockers.",
-            "Run only after all prerequisite evidence batches are clean."
-          ],
-          "itemIds": [
-            "orchestrator-preflight-migration-runtime-evidence"
-          ]
-        }
-      ],
-      "unresolvedTemplateKeyCount": 12,
-      "unresolvedTemplateKeys": [
-        "DB_PASSWORD",
-        "DB_USERNAME",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_RELEASE_CANDIDATE",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT"
-      ]
-    },
-    {
-      "owner": "release-owner",
-      "groupCount": 2,
-      "readyGroupCount": 1,
-      "blockedGroupCount": 1,
-      "templateEnvKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_EVIDENCE_STRICT",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "aliasMappings": [],
-      "batchIds": [
-        "p0-manifest-release-owner",
-        "p3-orchestrator-release-owner"
-      ],
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json",
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/readiness-summary.json",
-        "artifacts/ddd/release/release-evidence-gate.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Run only after all prerequisite evidence batches are clean."
-      ],
-      "groups": [
-        {
-          "batchId": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "pendingItems": 7,
-          "dependsOn": [],
-          "canRunImmediately": true,
-          "envKeys": [
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_EVIDENCE_OPERATOR",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_RELEASE_MANIFEST_STRICT"
-          ],
-          "envCheckGroups": [
-            {
-              "label": "DDD_EVIDENCE_ENVIRONMENT",
-              "keys": [
-                "DDD_EVIDENCE_ENVIRONMENT"
-              ],
-              "spec": "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT"
-            },
-            {
-              "label": "DDD_EVIDENCE_OPERATOR",
-              "keys": [
-                "DDD_EVIDENCE_OPERATOR"
-              ],
-              "spec": "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR"
-            },
-            {
-              "label": "DDD_RELEASE_CANDIDATE",
-              "keys": [
-                "DDD_RELEASE_CANDIDATE"
-              ],
-              "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
-            },
-            {
-              "label": "DDD_RELEASE_MANIFEST_STRICT",
-              "keys": [
-                "DDD_RELEASE_MANIFEST_STRICT"
-              ],
-              "spec": "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
-            }
-          ],
-          "templateEnvKeys": [
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_EVIDENCE_OPERATOR",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_RELEASE_MANIFEST_STRICT"
-          ],
-          "aliasMappings": [],
-          "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ],
-          "itemIds": [
-            "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
-            "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
-            "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
-            "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
-            "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
-            "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
-            "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff"
-          ]
-        },
-        {
-          "batchId": "p3-orchestrator-release-owner",
-          "priority": "P3",
-          "source": "orchestrator",
-          "owner": "release-owner",
-          "pendingItems": 1,
-          "dependsOn": [
-            "p0-docker-release-infra",
-            "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
-            "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
-            "p0-authenticated-performance-release-performance",
-            "p1-ai-runtime-ai",
-            "p1-business-e2e-file-owner",
-            "p1-business-e2e-job-owner",
-            "p1-business-e2e-payment-owner",
-            "p1-rollback-ai-owner",
-            "p1-rollback-auth-owner",
-            "p1-rollback-file-owner",
-            "p1-rollback-iam-owner",
-            "p1-rollback-job-owner",
-            "p1-rollback-localization-owner",
-            "p1-rollback-message-owner",
-            "p1-rollback-payment-owner",
-            "p1-rollback-platform-owner",
-            "p1-rollback-plugin-owner",
-            "p2-explain-database"
-          ],
-          "canRunImmediately": false,
-          "envKeys": [
-            "DDD_RELEASE_EVIDENCE_STRICT"
-          ],
-          "envCheckGroups": [
-            {
-              "label": "DDD_RELEASE_EVIDENCE_STRICT",
-              "keys": [
-                "DDD_RELEASE_EVIDENCE_STRICT"
-              ],
-              "spec": "DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT"
-            }
-          ],
-          "templateEnvKeys": [
-            "DDD_RELEASE_EVIDENCE_STRICT"
-          ],
-          "aliasMappings": [],
-          "commands": [
-            "node bin/ddd-release-evidence-orchestrator.mjs",
-            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/orchestrator-report.json",
-            "artifacts/ddd/release/release-evidence-gate.json",
-            "artifacts/ddd/release/readiness-summary.json"
-          ],
-          "exitCriteria": [
-            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-            "Final strict release gate and readiness summary report zero blockers.",
-            "Run only after all prerequisite evidence batches are clean."
-          ],
-          "itemIds": [
-            "orchestrator-run-mode"
-          ]
-        }
-      ],
-      "unresolvedTemplateKeyCount": 2,
-      "unresolvedTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
       ]
     },
     {
@@ -1389,6 +777,347 @@
       ]
     },
     {
+      "owner": "database",
+      "groupCount": 2,
+      "readyGroupCount": 0,
+      "blockedGroupCount": 2,
+      "templateEnvKeys": [
+        "DB_PASSWORD",
+        "DB_USERNAME",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_EXPLAIN_DATABASE",
+        "DDD_EXPLAIN_DIR",
+        "DDD_EXPLAIN_ENVIRONMENT",
+        "DDD_EXPLAIN_STRICT",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_RELEASE_CANDIDATE",
+        "MYSQL_CLI",
+        "MYSQL_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PORT"
+      ],
+      "aliasMappings": [
+        {
+          "alias": "MYSQL_PASSWORD",
+          "canonical": "DB_PASSWORD"
+        },
+        {
+          "alias": "MYSQL_USER",
+          "canonical": "DB_USERNAME"
+        }
+      ],
+      "batchIds": [
+        "p2-explain-database",
+        "p3-orchestrator-database"
+      ],
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p2-explain-database",
+        "p3-orchestrator-database"
+      ],
+      "commands": [
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/explain-gate-report.json",
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/readiness-summary.json",
+        "artifacts/ddd/release/release-evidence-gate.json",
+        "tmp/ddd-explain/*.json"
+      ],
+      "exitCriteria": [
+        "Final strict release gate and readiness summary report zero blockers.",
+        "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Run only after all prerequisite evidence batches are clean.",
+        "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
+      ],
+      "groups": [
+        {
+          "batchId": "p2-explain-database",
+          "priority": "P2",
+          "source": "explain",
+          "owner": "database",
+          "pendingItems": 2,
+          "dependsOn": [
+            "p0-docker-release-infra",
+            "p0-runtime-readiness-release-infra",
+            "p0-manifest-lumira-ui",
+            "p0-authenticated-performance-release-performance",
+            "p1-ai-runtime-ai",
+            "p1-business-e2e-file-owner",
+            "p1-business-e2e-job-owner",
+            "p1-business-e2e-payment-owner",
+            "p1-rollback-ai-owner",
+            "p1-rollback-auth-owner",
+            "p1-rollback-file-owner",
+            "p1-rollback-iam-owner",
+            "p1-rollback-job-owner",
+            "p1-rollback-localization-owner",
+            "p1-rollback-message-owner",
+            "p1-rollback-payment-owner",
+            "p1-rollback-platform-owner",
+            "p1-rollback-plugin-owner"
+          ],
+          "canRunImmediately": false,
+          "envKeys": [
+            "DDD_EVIDENCE_OPERATOR",
+            "DDD_EXPLAIN_DATABASE",
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_RELEASE_CANDIDATE",
+            "MYSQL_CLI",
+            "MYSQL_DATABASE",
+            "MYSQL_HOST",
+            "MYSQL_PASSWORD",
+            "MYSQL_PORT",
+            "MYSQL_USER"
+          ],
+          "envCheckGroups": [
+            {
+              "label": "DDD_EVIDENCE_OPERATOR",
+              "keys": [
+                "DDD_EVIDENCE_OPERATOR"
+              ],
+              "spec": "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR"
+            },
+            {
+              "label": "DDD_EXPLAIN_DATABASE",
+              "keys": [
+                "DDD_EXPLAIN_DATABASE"
+              ],
+              "spec": "DDD_EXPLAIN_DATABASE=DDD_EXPLAIN_DATABASE"
+            },
+            {
+              "label": "DDD_EXPLAIN_DIR",
+              "keys": [
+                "DDD_EXPLAIN_DIR"
+              ],
+              "spec": "DDD_EXPLAIN_DIR=DDD_EXPLAIN_DIR"
+            },
+            {
+              "label": "DDD_EXPLAIN_ENVIRONMENT",
+              "keys": [
+                "DDD_EXPLAIN_ENVIRONMENT"
+              ],
+              "spec": "DDD_EXPLAIN_ENVIRONMENT=DDD_EXPLAIN_ENVIRONMENT"
+            },
+            {
+              "label": "DDD_EXPLAIN_STRICT",
+              "keys": [
+                "DDD_EXPLAIN_STRICT"
+              ],
+              "spec": "DDD_EXPLAIN_STRICT=DDD_EXPLAIN_STRICT"
+            },
+            {
+              "label": "DDD_RELEASE_CANDIDATE",
+              "keys": [
+                "DDD_RELEASE_CANDIDATE"
+              ],
+              "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
+            },
+            {
+              "label": "MYSQL_CLI",
+              "keys": [
+                "MYSQL_CLI"
+              ],
+              "spec": "MYSQL_CLI=MYSQL_CLI"
+            },
+            {
+              "label": "MYSQL_DATABASE",
+              "keys": [
+                "MYSQL_DATABASE"
+              ],
+              "spec": "MYSQL_DATABASE=MYSQL_DATABASE"
+            },
+            {
+              "label": "MYSQL_HOST",
+              "keys": [
+                "MYSQL_HOST"
+              ],
+              "spec": "MYSQL_HOST=MYSQL_HOST"
+            },
+            {
+              "label": "DB_PASSWORD",
+              "keys": [
+                "DB_PASSWORD",
+                "MYSQL_PASSWORD",
+                "SPRING_DATASOURCE_PASSWORD"
+              ],
+              "spec": "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD"
+            },
+            {
+              "label": "MYSQL_PORT",
+              "keys": [
+                "MYSQL_PORT"
+              ],
+              "spec": "MYSQL_PORT=MYSQL_PORT"
+            },
+            {
+              "label": "DB_USERNAME",
+              "keys": [
+                "DB_USERNAME",
+                "MYSQL_USER",
+                "SPRING_DATASOURCE_USERNAME"
+              ],
+              "spec": "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME"
+            }
+          ],
+          "templateEnvKeys": [
+            "DB_PASSWORD",
+            "DB_USERNAME",
+            "DDD_EVIDENCE_OPERATOR",
+            "DDD_EXPLAIN_DATABASE",
+            "DDD_EXPLAIN_DIR",
+            "DDD_EXPLAIN_ENVIRONMENT",
+            "DDD_EXPLAIN_STRICT",
+            "DDD_RELEASE_CANDIDATE",
+            "MYSQL_CLI",
+            "MYSQL_DATABASE",
+            "MYSQL_HOST",
+            "MYSQL_PORT"
+          ],
+          "aliasMappings": [
+            {
+              "alias": "MYSQL_PASSWORD",
+              "canonical": "DB_PASSWORD"
+            },
+            {
+              "alias": "MYSQL_USER",
+              "canonical": "DB_USERNAME"
+            }
+          ],
+          "commands": [
+            "node bin/ddd-collect-explain.mjs",
+            "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
+          ],
+          "expectedArtifacts": [
+            "tmp/ddd-explain/*.json",
+            "artifacts/ddd/release/explain-gate-report.json"
+          ],
+          "exitCriteria": [
+            "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
+            "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
+          ],
+          "itemIds": [
+            "message-archive-total.json",
+            "message-unread-count.json"
+          ]
+        },
+        {
+          "batchId": "p3-orchestrator-database",
+          "priority": "P3",
+          "source": "orchestrator",
+          "owner": "database",
+          "pendingItems": 1,
+          "dependsOn": [
+            "p0-docker-release-infra",
+            "p0-runtime-readiness-release-infra",
+            "p0-manifest-lumira-ui",
+            "p0-authenticated-performance-release-performance",
+            "p1-ai-runtime-ai",
+            "p1-business-e2e-file-owner",
+            "p1-business-e2e-job-owner",
+            "p1-business-e2e-payment-owner",
+            "p1-rollback-ai-owner",
+            "p1-rollback-auth-owner",
+            "p1-rollback-file-owner",
+            "p1-rollback-iam-owner",
+            "p1-rollback-job-owner",
+            "p1-rollback-localization-owner",
+            "p1-rollback-message-owner",
+            "p1-rollback-payment-owner",
+            "p1-rollback-platform-owner",
+            "p1-rollback-plugin-owner",
+            "p2-explain-database"
+          ],
+          "canRunImmediately": false,
+          "envKeys": [
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+            "DDD_MIGRATION_FRESH_DB_VALIDATED",
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+          ],
+          "envCheckGroups": [
+            {
+              "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+              "keys": [
+                "DDD_MIGRATION_FRESH_DB_EVIDENCE"
+              ],
+              "spec": "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE"
+            },
+            {
+              "label": "DDD_MIGRATION_FRESH_DB_VALIDATED",
+              "keys": [
+                "DDD_MIGRATION_FRESH_DB_VALIDATED"
+              ],
+              "spec": "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED"
+            },
+            {
+              "label": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+              "keys": [
+                "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+              ],
+              "spec": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+            },
+            {
+              "label": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+              "keys": [
+                "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+              ],
+              "spec": "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+            }
+          ],
+          "templateEnvKeys": [
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+            "DDD_MIGRATION_FRESH_DB_VALIDATED",
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+          ],
+          "aliasMappings": [],
+          "commands": [
+            "node bin/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/release/orchestrator-report.json",
+            "artifacts/ddd/release/release-evidence-gate.json",
+            "artifacts/ddd/release/readiness-summary.json"
+          ],
+          "exitCriteria": [
+            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+            "Final strict release gate and readiness summary report zero blockers.",
+            "Run only after all prerequisite evidence batches are clean."
+          ],
+          "itemIds": [
+            "orchestrator-preflight-migration-runtime-evidence"
+          ]
+        }
+      ],
+      "unresolvedTemplateKeyCount": 12,
+      "unresolvedTemplateKeys": [
+        "DB_PASSWORD",
+        "DB_USERNAME",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_EXPLAIN_DATABASE",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_RELEASE_CANDIDATE",
+        "MYSQL_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PORT"
+      ]
+    },
+    {
       "owner": "file-owner",
       "groupCount": 2,
       "readyGroupCount": 0,
@@ -1456,9 +1185,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -1555,9 +1282,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -1730,9 +1455,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -1815,9 +1538,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -1985,9 +1706,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -2064,9 +1783,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -2242,9 +1959,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -2458,9 +2173,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -2609,9 +2322,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -2760,9 +2471,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -2911,9 +2620,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -3062,9 +2769,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -3213,9 +2918,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -3364,9 +3067,7 @@
           "dependsOn": [
             "p0-docker-release-infra",
             "p0-runtime-readiness-release-infra",
-            "p0-manifest-database",
             "p0-manifest-lumira-ui",
-            "p0-manifest-release-owner",
             "p0-authenticated-performance-release-performance"
           ],
           "canRunImmediately": false,
@@ -3470,6 +3171,103 @@
         "DDD_EVIDENCE_OPERATOR",
         "DDD_RELEASE_CANDIDATE"
       ]
+    },
+    {
+      "owner": "release-owner",
+      "groupCount": 1,
+      "readyGroupCount": 0,
+      "blockedGroupCount": 1,
+      "templateEnvKeys": [
+        "DDD_RELEASE_EVIDENCE_STRICT"
+      ],
+      "aliasMappings": [],
+      "batchIds": [
+        "p3-orchestrator-release-owner"
+      ],
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-owner"
+      ],
+      "commands": [
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/readiness-summary.json",
+        "artifacts/ddd/release/release-evidence-gate.json"
+      ],
+      "exitCriteria": [
+        "Final strict release gate and readiness summary report zero blockers.",
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Run only after all prerequisite evidence batches are clean."
+      ],
+      "groups": [
+        {
+          "batchId": "p3-orchestrator-release-owner",
+          "priority": "P3",
+          "source": "orchestrator",
+          "owner": "release-owner",
+          "pendingItems": 1,
+          "dependsOn": [
+            "p0-docker-release-infra",
+            "p0-runtime-readiness-release-infra",
+            "p0-manifest-lumira-ui",
+            "p0-authenticated-performance-release-performance",
+            "p1-ai-runtime-ai",
+            "p1-business-e2e-file-owner",
+            "p1-business-e2e-job-owner",
+            "p1-business-e2e-payment-owner",
+            "p1-rollback-ai-owner",
+            "p1-rollback-auth-owner",
+            "p1-rollback-file-owner",
+            "p1-rollback-iam-owner",
+            "p1-rollback-job-owner",
+            "p1-rollback-localization-owner",
+            "p1-rollback-message-owner",
+            "p1-rollback-payment-owner",
+            "p1-rollback-platform-owner",
+            "p1-rollback-plugin-owner",
+            "p2-explain-database"
+          ],
+          "canRunImmediately": false,
+          "envKeys": [
+            "DDD_RELEASE_EVIDENCE_STRICT"
+          ],
+          "envCheckGroups": [
+            {
+              "label": "DDD_RELEASE_EVIDENCE_STRICT",
+              "keys": [
+                "DDD_RELEASE_EVIDENCE_STRICT"
+              ],
+              "spec": "DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT"
+            }
+          ],
+          "templateEnvKeys": [
+            "DDD_RELEASE_EVIDENCE_STRICT"
+          ],
+          "aliasMappings": [],
+          "commands": [
+            "node bin/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/release/orchestrator-report.json",
+            "artifacts/ddd/release/release-evidence-gate.json",
+            "artifacts/ddd/release/readiness-summary.json"
+          ],
+          "exitCriteria": [
+            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+            "Final strict release gate and readiness summary report zero blockers.",
+            "Run only after all prerequisite evidence batches are clean."
+          ],
+          "itemIds": [
+            "orchestrator-run-mode"
+          ]
+        }
+      ],
+      "unresolvedTemplateKeyCount": 0,
+      "unresolvedTemplateKeys": []
     }
   ]
 }

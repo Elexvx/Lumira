@@ -15,7 +15,7 @@ function write(file, text, mode = 0o600) {
 }
 
 function runDefaults(root, envFile, extraEnv = {}) {
-  return spawnSync("node", ["bin/ddd-release-provenance-defaults.mjs", envFile], {
+  return spawnSync("node", ["bin\/ddd-release-provenance-defaults.mjs", envFile], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

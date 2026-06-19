@@ -121,10 +121,10 @@ const releaseActionBatchesCsvOutput = path.join(outputDir, "release-action-batch
 const releaseActionBatchesMarkdownOutput = path.join(outputDir, "release-action-batches.md");
 const releaseActionDependencyGraphOutput = path.join(outputDir, "release-action-dependency-graph.json");
 const releaseActionDependencyGraphMarkdownOutput = path.join(outputDir, "release-action-dependency-graph.md");
-const finalReadinessSummaryCommand = "node bin/ddd-release-readiness-summary.mjs";
+const finalReadinessSummaryCommand = "node bin\/ddd-release-readiness-summary.mjs";
 const finalGoNoGoEnforceCommand = "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh";
-const releaseEnvSafeDefaultsCommand = "node bin/ddd-release-env-safe-defaults.mjs";
-const releaseProvenanceDefaultsCommand = "node bin/ddd-release-provenance-defaults.mjs";
+const releaseEnvSafeDefaultsCommand = "node bin\/ddd-release-env-safe-defaults.mjs";
+const releaseProvenanceDefaultsCommand = "node bin\/ddd-release-provenance-defaults.mjs";
 
 function portableDisplayPath(value) {
   if (!value || typeof value !== "string") return value;
@@ -222,7 +222,7 @@ const dockerExistingImageInspectExampleCommand = [
   "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url>",
   "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate>",
   "DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<release-candidate>",
-  "node bin/ddd-docker-build-evidence.mjs",
+  "node bin\/ddd-docker-build-evidence.mjs",
 ].join(" ");
 
 const prioritySourceOrder = [
@@ -582,7 +582,7 @@ function classify(blockerEntry) {
     return {
       category: "explain-metadata",
       owner: "database",
-      action: "Regenerate EXPLAIN artifacts with `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR` by running `node bin/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`.",
+      action: "Regenerate EXPLAIN artifacts with `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR` by running `node bin\/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs`.",
     };
   }
   if (text.includes("explain-evidence")) {
@@ -612,7 +612,7 @@ function classify(blockerEntry) {
     return {
       category: "rollback-metadata",
       owner: "release-owner",
-      action: "Initialize or update rollback evidence with `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      action: "Initialize or update rollback evidence with `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`, then run `node bin\/ddd-rollback-drill-evidence.mjs`.",
     };
   }
   if (text.includes("rollback-drill:") && text.includes("status must be PASS or DEFERRED")) {
@@ -649,7 +649,7 @@ function classify(blockerEntry) {
     return {
       category: "outbox-state-machine",
       owner: "platform-events",
-      action: "Run `DDD_OUTBOX_SMOKE_STRICT=true node bin/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.",
+      action: "Run `DDD_OUTBOX_SMOKE_STRICT=true node bin\/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.",
     };
   }
   if (text.includes("backend-build-evidence-provenance")
@@ -666,49 +666,49 @@ function classify(blockerEntry) {
     return {
       category: "docker",
       owner: "release-infra",
-      action: "Start Docker daemon or run `node bin/ddd-docker-build-evidence.mjs` in CI with Docker Buildx available.",
+      action: "Start Docker daemon or run `node bin\/ddd-docker-build-evidence.mjs` in CI with Docker Buildx available.",
     };
   }
   if (text.includes("baseline")) {
     return {
       category: "performance-baseline",
       owner: "release-performance",
-      action: "Run authenticated performance smoke against production-equivalent URL, then promote the accepted actual with `bin/ddd-promote-performance-baseline.mjs`.",
+      action: "Run authenticated performance smoke against production-equivalent URL, then promote the accepted actual with `bin\/ddd-promote-performance-baseline.mjs`.",
     };
   }
   if (text.includes("rollback")) {
     return {
       category: "rollback-drill",
       owner: "release-owner",
-      action: "Run `node bin/ddd-init-rollback-drill.mjs`, fill real PASS/DEFERRED evidence for every context, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      action: "Run `node bin\/ddd-init-rollback-drill.mjs`, fill real PASS/DEFERRED evidence for every context, then run `node bin\/ddd-rollback-drill-evidence.mjs`.",
     };
   }
   if (text.includes("release-env-lint")) {
     return {
       category: "configuration",
       owner: "release-infra",
-      action: "Replace all release env placeholders in `DDD_RELEASE_ENV_FILE`, run `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`, then regenerate config evidence with `node bin/ddd-release-config-evidence.mjs`.",
+      action: "Replace all release env placeholders in `DDD_RELEASE_ENV_FILE`, run `DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs`, then regenerate config evidence with `node bin\/ddd-release-config-evidence.mjs`.",
     };
   }
   if (text.includes("release-config")) {
     return {
       category: "configuration",
       owner: "release-infra",
-      action: "Generate production-equivalent config evidence with `DDD_RELEASE_ENV_FILE=.env.release DDD_RELEASE_CONFIG_STRICT=true node bin/ddd-release-config-evidence.mjs`.",
+      action: "Generate production-equivalent config evidence with `DDD_RELEASE_ENV_FILE=.env.release DDD_RELEASE_CONFIG_STRICT=true node bin\/ddd-release-config-evidence.mjs`.",
     };
   }
   if (text.includes("frontend-smoke")) {
     return {
       category: "frontend-smoke",
       owner: "lumira-ui",
-      action: "Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.",
+      action: "Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin\/ddd-frontend-smoke-evidence.mjs`.",
     };
   }
   if (text.includes("ai-runtime")) {
     return {
       category: "ai-runtime",
       owner: "ai",
-      action: "Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node bin/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime.",
+      action: "Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node bin\/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime.",
     };
   }
   if (text.includes("authenticated-performance-production-equivalence")
@@ -779,14 +779,14 @@ function classify(blockerEntry) {
     return {
       category: "ai-runtime",
       owner: "ai",
-      action: "Set production-equivalent AI base URL and remote provider/owner-gateway expectations, then rerun `bin/ddd-ai-runtime-drill.mjs` or the strict orchestrator.",
+      action: "Set production-equivalent AI base URL and remote provider/owner-gateway expectations, then rerun `bin\/ddd-ai-runtime-drill.mjs` or the strict orchestrator.",
     };
   }
   if (text.includes("release-evidence-orchestrator")) {
     return {
       category: "orchestrator",
       owner: "release-owner",
-      action: "Run `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict` with real provenance and keep the generated `artifacts/ddd/release/orchestrator-report.json` with the release evidence bundle.",
+      action: "Run `DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator.mjs --run --strict` with real provenance and keep the generated `artifacts/ddd/release/orchestrator-report.json` with the release evidence bundle.",
     };
   }
   if (text.includes("physical-split-readiness-provenance")) {
@@ -825,7 +825,7 @@ function classify(blockerEntry) {
     return {
       category: "manifest",
       owner: "release-owner",
-      action: "Regenerate all missing evidence artifacts, then run `node bin/ddd-release-evidence-manifest.mjs`.",
+      action: "Regenerate all missing evidence artifacts, then run `node bin\/ddd-release-evidence-manifest.mjs`.",
     };
   }
   return {
@@ -876,7 +876,7 @@ function manifestArtifactOwner(artifactPath = "") {
 
 function manifestArtifactAction(artifactPath = "") {
   if (artifactPath.includes("authenticated-runtime-baseline")) {
-    return "Run authenticated performance smoke against production-equivalent URL, then promote the accepted actual with `node bin/ddd-promote-performance-baseline.mjs`.";
+    return "Run authenticated performance smoke against production-equivalent URL, then promote the accepted actual with `node bin\/ddd-promote-performance-baseline.mjs`.";
   }
   if (artifactPath.includes("lumira-ui")) {
     return "Run deployed frontend smoke and regenerate lumira-ui evidence before rebuilding the release manifest.";
@@ -887,7 +887,7 @@ function manifestArtifactAction(artifactPath = "") {
   if (artifactPath.includes("docker") || artifactPath.includes("build/")) {
     return "Generate Docker build evidence in a Docker-capable CI runner before rebuilding the release manifest.";
   }
-  return "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.";
+  return "Regenerate the missing evidence artifact, then rerun `node bin\/ddd-release-evidence-manifest.mjs`.";
 }
 
 function manifestArtifactEnvKeys(artifactPath = "") {
@@ -2866,7 +2866,7 @@ function releaseBlockerHint(value, item = {}) {
     return [
       `artifacts/ddd/release/evidence-manifest.json requires ${manifestMatch[1]}`,
       "set DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_CANDIDATE, and DDD_EVIDENCE_OPERATOR",
-      "run DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
+      "run DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin\/ddd-release-evidence-manifest.mjs",
     ].join("; ");
   }
   if (item?.source === "manifest" && text) {
@@ -3204,8 +3204,8 @@ function releaseBlockerClosureCommands(summary) {
   lines.push("fi");
   lines.push("");
   lines.push(shellCommentLine("After closure commands refresh artifacts, rerun:"));
-  lines.push("run_closure_command 'node bin/ddd-release-evidence-gate.mjs'");
-  lines.push("run_closure_command 'node bin/ddd-release-readiness-summary.mjs'");
+  lines.push("run_closure_command 'node bin\/ddd-release-evidence-gate.mjs'");
+  lines.push("run_closure_command 'node bin\/ddd-release-readiness-summary.mjs'");
   lines.push("run_closure_command 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'");
   lines.push("if [[ \"${DDD_RELEASE_CLOSURE_COMMAND_FAILURES}\" != \"0\" ]]; then");
   lines.push("  echo \"[ddd-release-closure][completed-with-failures] commandFailures=${DDD_RELEASE_CLOSURE_COMMAND_FAILURES}\" >&2");
@@ -3398,8 +3398,8 @@ function releaseClosureWaveReceiptsArtifact(summary) {
           ? "Regenerate this wave's content/provenance evidence, then rerun strict release gate and readiness summary."
           : "Run this wave in a production-equivalent environment, then rerun strict release gate and readiness summary.",
       rerunCommands: [
-        "node bin/ddd-release-evidence-gate.mjs",
-        "node bin/ddd-release-readiness-summary.mjs",
+        "node bin\/ddd-release-evidence-gate.mjs",
+        "node bin\/ddd-release-readiness-summary.mjs",
       ],
     };
   });
@@ -3558,8 +3558,8 @@ function releaseClosureWaveBlockerMapArtifact(summary) {
       blockerHints: wave.blockerHints || [],
       exitCriteria: wave.exitCriteria || [],
       rerunCommands: [
-        "node bin/ddd-release-evidence-gate.mjs",
-        "node bin/ddd-release-readiness-summary.mjs",
+        "node bin\/ddd-release-evidence-gate.mjs",
+        "node bin\/ddd-release-readiness-summary.mjs",
       ],
     };
   });
@@ -3695,11 +3695,11 @@ function releasePerformanceBaselineClosureArtifact(summary) {
     && (performance.actual.productionEquivalence?.blockers || []).length === 0;
   const commands = [
     "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
-    "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
-    "node bin/ddd-promote-performance-baseline.mjs",
-    "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-    "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
-    "node bin/ddd-release-evidence-gate.mjs",
+    "DDD_AUTH_PERF_STRICT=true node bin\/ddd-authenticated-performance-smoke.mjs",
+    "node bin\/ddd-promote-performance-baseline.mjs",
+    "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin\/ddd-release-evidence-manifest.mjs",
+    "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin\/ddd-release-evidence-manifest.mjs",
+    "node bin\/ddd-release-evidence-gate.mjs",
     finalReadinessSummaryCommand,
     finalGoNoGoEnforceCommand,
   ];
@@ -3717,7 +3717,7 @@ function releasePerformanceBaselineClosureArtifact(summary) {
     },
     evidenceChecklist: requiredPerformanceBaselineEvidenceChecklist,
     nextCommand: readyToPromote
-      ? "node bin/ddd-promote-performance-baseline.mjs"
+      ? "node bin\/ddd-promote-performance-baseline.mjs"
       : "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
     fastPath: {
       objective: "Capture authenticated hot-path performance from a production-equivalent HTTPS backend, promote it as baseline, then rerun final release gates.",
@@ -3989,13 +3989,13 @@ function releaseFinalGoNoGoArtifact(summary) {
     ? [
       "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} bash artifacts/ddd/release/release-env-bootstrap.sh`,
-      "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-      `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${releaseEnvFileCommandPath}`,
+      "node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+      `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${releaseEnvFileCommandPath}`,
       `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} ${releaseEnvSafeDefaultsCommand}`,
       `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} ${releaseProvenanceDefaultsCommand}`,
-      `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} node bin/ddd-release-env-alias-sync.mjs`,
-      `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`,
-      `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} node bin/ddd-release-env-file-lint.mjs`,
+      `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} node bin\/ddd-release-env-alias-sync.mjs`,
+      `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`,
+      `DDD_RELEASE_ENV_FILE=${releaseEnvFileCommandPath} node bin\/ddd-release-env-file-lint.mjs`,
     ]
     : ["bash artifacts/ddd/release/release-final-owner-queue-env-init.sh"];
   const nextActionQueueCommands = (nextActionQueue.items || [])
@@ -4009,8 +4009,8 @@ function releaseFinalGoNoGoArtifact(summary) {
     ...(performanceBaseline.commands || []),
     ...((summary.releaseActionBatches || []).flatMap((batch) => batch.commands || [])),
     ...((closurePlan.waves || []).flatMap((wave) => wave.commands || [])),
-    "node bin/ddd-release-evidence-gate.mjs",
-    "node bin/ddd-release-readiness-summary.mjs",
+    "node bin\/ddd-release-evidence-gate.mjs",
+    "node bin\/ddd-release-readiness-summary.mjs",
   ].map(redactReleaseEnvCommandForDisplay));
   const stopOwners = sortedUniqueStrings([
     ...blockedCutoverItems.flatMap((item) => [...(item.readyBatchIds || []), ...(item.blockedBatchIds || [])]
@@ -4081,7 +4081,7 @@ function releaseFinalGoNoGoArtifact(summary) {
       reason: orchestratorPreflightOwnerSummary[0].actions[0].reason,
       envKeys: orchestratorPreflightOwnerSummary[0].actions[0].envKeys,
       action: orchestratorPreflightOwnerSummary[0].actions[0].action,
-      command: "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+      command: "DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator.mjs --run --strict",
     }
     : null;
   const firstOwnerActionCommand = firstOwnerAction?.executableCommands?.[0] || null;
@@ -4176,8 +4176,8 @@ function releaseFinalGoNoGoArtifact(summary) {
     rerunCommands: [
       "bash artifacts/ddd/release/release-preflight-gate.sh",
       "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
-      "node bin/ddd-release-evidence-gate.mjs",
-      "node bin/ddd-release-readiness-summary.mjs",
+      "node bin\/ddd-release-evidence-gate.mjs",
+      "node bin\/ddd-release-readiness-summary.mjs",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     ],
   };
@@ -4411,7 +4411,7 @@ function releaseFinalGoNoGoGate(summary) {
     "DDD_NODE_BIN=\"${DDD_NODE_BIN:-node}\"",
     "if [[ ! -f \"${DDD_FINAL_GO_NO_GO_PACKET}\" ]]; then",
     "  echo \"Final go/no-go packet does not exist: ${DDD_FINAL_GO_NO_GO_PACKET}\" >&2",
-    "  echo \"Run: node bin/ddd-release-readiness-summary.mjs\" >&2",
+    "  echo \"Run: node bin\/ddd-release-readiness-summary.mjs\" >&2",
     "  exit 2",
     "fi",
     "set +e",
@@ -4521,11 +4521,11 @@ function releaseFinalGoNoGoGate(summary) {
     "if [[ \"${DDD_FINAL_GO_NO_GO_STATUS}\" == \"0\" ]]; then",
     "  if [[ \"${DDD_STAGING_FINAL_REVIEW_ENFORCE}\" == \"1\" || \"${DDD_STAGING_FINAL_REVIEW_ENFORCE}\" == \"true\" ]]; then",
     "    set +e",
-    "    \"${DDD_NODE_BIN}\" bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "    \"${DDD_NODE_BIN}\" bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
     "    DDD_STAGING_FINAL_REVIEW_STATUS=$?",
     "    set -e",
     "    if [[ \"${DDD_STAGING_FINAL_REVIEW_STATUS}\" != \"0\" ]]; then",
-    "      echo \"[ddd-final-go-no-go][staging-final-review-blocked] cutover blocked; run node bin/ddd-staging-execution-checklist.mjs --final-review\" >&2",
+    "      echo \"[ddd-final-go-no-go][staging-final-review-blocked] cutover blocked; run node bin\/ddd-staging-execution-checklist.mjs --final-review\" >&2",
     "      if [[ \"${DDD_FINAL_GO_NO_GO_ENFORCE}\" == \"1\" || \"${DDD_FINAL_GO_NO_GO_ENFORCE}\" == \"true\" ]]; then",
     "        exit 10",
     "      fi",
@@ -4598,13 +4598,13 @@ function releasePreflightGate(summary) {
     "const releaseEnvFileCutoverSafe = releaseEnvFileCutoverSafeValue === 'true';",
     "const steps = [",
     "  { name: 'artifact-integrity', exitCode: toNumber(artifactIntegrityStatus), command: 'bash ${DDD_RELEASE_DIR}/release-artifact-integrity-gate.sh' },",
-    "  { name: 'manifest-provenance-preflight', exitCode: toNumber(manifestPreflightStatus), command: 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs' },",
-    "  { name: 'artifact-path-leak', exitCode: toNumber(pathLeakStatus), command: 'node bin/ddd-release-artifact-path-leak-contract.mjs' },",
-    "  { name: 'unblock-brief', exitCode: toNumber(unblockBriefStatus), command: 'node bin/ddd-release-unblock-brief.mjs && node bin/ddd-release-unblock-brief-contract.mjs' },",
-    "  { name: 'env-owner-handoff-redacted', exitCode: toNumber(envOwnerHandoffStatus), command: 'node bin/ddd-release-env-owner-handoff-redacted-contract.mjs' },",
-    "  { name: 'env-owner-input-packet', exitCode: toNumber(envOwnerInputPacketStatus), command: 'node bin/ddd-release-env-owner-input-packet-contract.mjs' },",
-    "  { name: 'config-owner-input-reconciliation', exitCode: toNumber(configOwnerInputReconciliationStatus), command: 'DDD_RELEASE_CONFIG_REPORT=${DDD_RELEASE_CONFIG_REPORT} node bin/ddd-release-config-owner-input-reconciliation.mjs' },",
-    "  { name: 'owner-input-receipt', exitCode: toNumber(ownerInputReceiptStatus), command: 'node bin/ddd-release-owner-input-receipt.mjs && node bin/ddd-release-owner-input-receipt-contract.mjs' },",
+    "  { name: 'manifest-provenance-preflight', exitCode: toNumber(manifestPreflightStatus), command: 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin\/ddd-release-evidence-manifest.mjs' },",
+    "  { name: 'artifact-path-leak', exitCode: toNumber(pathLeakStatus), command: 'node bin\/ddd-release-artifact-path-leak-contract.mjs' },",
+    "  { name: 'unblock-brief', exitCode: toNumber(unblockBriefStatus), command: 'node bin\/ddd-release-unblock-brief.mjs && node bin\/ddd-release-unblock-brief-contract.mjs' },",
+    "  { name: 'env-owner-handoff-redacted', exitCode: toNumber(envOwnerHandoffStatus), command: 'node bin\/ddd-release-env-owner-handoff-redacted-contract.mjs' },",
+    "  { name: 'env-owner-input-packet', exitCode: toNumber(envOwnerInputPacketStatus), command: 'node bin\/ddd-release-env-owner-input-packet-contract.mjs' },",
+    "  { name: 'config-owner-input-reconciliation', exitCode: toNumber(configOwnerInputReconciliationStatus), command: 'DDD_RELEASE_CONFIG_REPORT=${DDD_RELEASE_CONFIG_REPORT} node bin\/ddd-release-config-owner-input-reconciliation.mjs' },",
+    "  { name: 'owner-input-receipt', exitCode: toNumber(ownerInputReceiptStatus), command: 'node bin\/ddd-release-owner-input-receipt.mjs && node bin\/ddd-release-owner-input-receipt-contract.mjs' },",
     "  { name: 'env-readiness', exitCode: toNumber(envReadinessStatus), command: enforceValue === '1' || enforceValue === 'true' ? 'DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash ${DDD_RELEASE_DIR}/release-env-readiness-gate.sh' : 'bash ${DDD_RELEASE_DIR}/release-env-readiness-gate.sh' },",
     "  { name: 'final-go-no-go', exitCode: toNumber(finalGoNoGoStatus), command: enforceValue === '1' || enforceValue === 'true' ? 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash ${DDD_RELEASE_DIR}/release-final-go-no-go-gate.sh' : 'bash ${DDD_RELEASE_DIR}/release-final-go-no-go-gate.sh' },",
     "];",
@@ -4652,9 +4652,9 @@ function releasePreflightGate(summary) {
     "  write_preflight_report FAIL",
     "  exit \"${artifact_integrity_status}\"",
     "fi",
-    "run_preflight_step manifest-provenance-preflight env DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+    "run_preflight_step manifest-provenance-preflight env DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin\/ddd-release-evidence-manifest.mjs",
     "manifest_preflight_status=\"${preflight_step_status}\"",
-    "run_preflight_step artifact-path-leak node bin/ddd-release-artifact-path-leak-contract.mjs",
+    "run_preflight_step artifact-path-leak node bin\/ddd-release-artifact-path-leak-contract.mjs",
     "path_leak_status=\"${preflight_step_status}\"",
     "if [[ \"${path_leak_status}\" != \"0\" ]]; then",
     "  failed_step=\"artifact-path-leak\"",
@@ -4666,10 +4666,10 @@ function releasePreflightGate(summary) {
     "  write_preflight_report NO_GO",
     "  exit \"${manifest_preflight_status}\"",
     "fi",
-    "run_preflight_step unblock-brief node bin/ddd-release-unblock-brief.mjs",
+    "run_preflight_step unblock-brief node bin\/ddd-release-unblock-brief.mjs",
     "unblock_brief_status=\"${preflight_step_status}\"",
     "if [[ \"${unblock_brief_status}\" == \"0\" ]]; then",
-    "  run_preflight_step unblock-brief-contract node bin/ddd-release-unblock-brief-contract.mjs",
+    "  run_preflight_step unblock-brief-contract node bin\/ddd-release-unblock-brief-contract.mjs",
     "  unblock_brief_status=\"${preflight_step_status}\"",
     "fi",
     "if [[ \"${unblock_brief_status}\" != \"0\" ]]; then",
@@ -4677,31 +4677,31 @@ function releasePreflightGate(summary) {
     "  write_preflight_report FAIL",
     "  exit \"${unblock_brief_status}\"",
     "fi",
-    "run_preflight_step env-owner-handoff-redacted node bin/ddd-release-env-owner-handoff-redacted-contract.mjs",
+    "run_preflight_step env-owner-handoff-redacted node bin\/ddd-release-env-owner-handoff-redacted-contract.mjs",
     "env_owner_handoff_status=\"${preflight_step_status}\"",
     "if [[ \"${env_owner_handoff_status}\" != \"0\" ]]; then",
     "  failed_step=\"env-owner-handoff-redacted\"",
     "  write_preflight_report FAIL",
     "  exit \"${env_owner_handoff_status}\"",
     "fi",
-    "run_preflight_step env-owner-input-packet node bin/ddd-release-env-owner-input-packet-contract.mjs",
+    "run_preflight_step env-owner-input-packet node bin\/ddd-release-env-owner-input-packet-contract.mjs",
     "env_owner_input_packet_status=\"${preflight_step_status}\"",
     "if [[ \"${env_owner_input_packet_status}\" != \"0\" ]]; then",
     "  failed_step=\"env-owner-input-packet\"",
     "  write_preflight_report FAIL",
     "  exit \"${env_owner_input_packet_status}\"",
     "fi",
-    "run_preflight_step config-owner-input-reconciliation env DDD_RELEASE_CONFIG_REPORT=\"${DDD_RELEASE_CONFIG_REPORT}\" node bin/ddd-release-config-owner-input-reconciliation.mjs",
+    "run_preflight_step config-owner-input-reconciliation env DDD_RELEASE_CONFIG_REPORT=\"${DDD_RELEASE_CONFIG_REPORT}\" node bin\/ddd-release-config-owner-input-reconciliation.mjs",
     "config_owner_input_reconciliation_status=\"${preflight_step_status}\"",
     "if [[ \"${config_owner_input_reconciliation_status}\" != \"0\" ]]; then",
     "  failed_step=\"config-owner-input-reconciliation\"",
     "  write_preflight_report FAIL",
     "  exit \"${config_owner_input_reconciliation_status}\"",
     "fi",
-    "run_preflight_step owner-input-receipt node bin/ddd-release-owner-input-receipt.mjs",
+    "run_preflight_step owner-input-receipt node bin\/ddd-release-owner-input-receipt.mjs",
     "owner_input_receipt_status=\"${preflight_step_status}\"",
     "if [[ \"${owner_input_receipt_status}\" == \"0\" ]]; then",
-    "  run_preflight_step owner-input-receipt-contract node bin/ddd-release-owner-input-receipt-contract.mjs",
+    "  run_preflight_step owner-input-receipt-contract node bin\/ddd-release-owner-input-receipt-contract.mjs",
     "  owner_input_receipt_status=\"${preflight_step_status}\"",
     "fi",
     "if [[ \"${owner_input_receipt_status}\" != \"0\" ]]; then",
@@ -5233,7 +5233,7 @@ function releaseFinalOwnerQueueCommands(summary) {
     "  if [[ \"${DDD_FINAL_OWNER_QUEUE_EXECUTE}\" != \"1\" && \"${DDD_FINAL_OWNER_QUEUE_EXECUTE}\" != \"true\" ]]; then return 0; fi",
     "  mkdir -p \"$(dirname \"${DDD_FINAL_OWNER_QUEUE_REPORT}\")\"",
     "  node --input-type=module -e 'import fs from \"node:fs\"; const [tmp, out, exitCode, ownerFilter, statusFilter] = process.argv.slice(1); const entries = fs.existsSync(tmp) ? fs.readFileSync(tmp, \"utf8\").split(\"\\n\").filter(Boolean).map((line) => JSON.parse(line)) : []; const exit = Number(exitCode); const failedEntries = entries.filter((entry) => Number(entry.status) !== 0).length; const summary = { totalEntries: entries.length, succeededEntries: entries.length - failedEntries, failedEntries }; fs.writeFileSync(out, `${JSON.stringify({ generatedAt: new Date().toISOString(), reportStatus: exit === 0 ? \"PASS\" : \"FAIL\", exitCode: exit, ownerFilter: ownerFilter || null, statusFilter: statusFilter || null, summary, entries }, null, 2)}\\n`); if (fs.existsSync(tmp)) fs.rmSync(tmp);' \"${DDD_FINAL_OWNER_QUEUE_REPORT_TMP}\" \"${DDD_FINAL_OWNER_QUEUE_REPORT}\" \"${exit_code}\" \"${DDD_FINAL_OWNER_QUEUE_OWNER}\" \"${DDD_FINAL_OWNER_QUEUE_STATUS}\"",
-    "  if ! DDD_FINAL_OWNER_QUEUE_REPORT=\"${DDD_FINAL_OWNER_QUEUE_REPORT}\" node bin/ddd-final-owner-queue-run-report-contract.mjs; then",
+    "  if ! DDD_FINAL_OWNER_QUEUE_REPORT=\"${DDD_FINAL_OWNER_QUEUE_REPORT}\" node bin\/ddd-final-owner-queue-run-report-contract.mjs; then",
     "    echo \"[ddd-final-owner-queue][report-contract] failed\" >&2",
     "    return 1",
     "  fi",
@@ -5351,8 +5351,8 @@ function releaseFinalOwnerQueueCommands(summary) {
   lines.push("fi");
   lines.push("");
   lines.push(shellCommentLine("After owner commands refresh evidence, rerun:"));
-  lines.push("run_owner_queue_command 'post-run' '0' 'POST_RUN' '1' '3' 'node bin/ddd-release-evidence-gate.mjs'");
-  lines.push("run_owner_queue_command 'post-run' '0' 'POST_RUN' '2' '3' 'node bin/ddd-release-readiness-summary.mjs'");
+  lines.push("run_owner_queue_command 'post-run' '0' 'POST_RUN' '1' '3' 'node bin\/ddd-release-evidence-gate.mjs'");
+  lines.push("run_owner_queue_command 'post-run' '0' 'POST_RUN' '2' '3' 'node bin\/ddd-release-readiness-summary.mjs'");
   lines.push("run_owner_queue_command 'post-run' '0' 'POST_RUN' '3' '3' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'");
   lines.push("if [[ \"${DDD_FINAL_OWNER_QUEUE_COMMAND_FAILURES}\" != \"0\" ]]; then");
   lines.push("  echo \"[ddd-final-owner-queue][completed-with-failures] commandFailures=${DDD_FINAL_OWNER_QUEUE_COMMAND_FAILURES}\" >&2");
@@ -5441,9 +5441,9 @@ function releaseFinalOwnerQueueEnvInit(summary) {
     "  artifactIntegrityGateCommand: 'bash artifacts/ddd/release/release-artifact-integrity-gate.sh',",
     "  artifactIntegrityArtifact: 'artifacts/ddd/release/release-artifact-integrity.json',",
     "  artifactIntegrityMarkdown: 'artifacts/ddd/release/release-artifact-integrity.md',",
-    "  envSafeDefaultsCommand: 'node bin/ddd-release-env-safe-defaults.mjs',",
+    "  envSafeDefaultsCommand: 'node bin\/ddd-release-env-safe-defaults.mjs',",
     "  envSafeDefaultsArtifact: 'artifacts/ddd/release/release-env-safe-defaults.json',",
-    "  provenanceDefaultsCommand: 'node bin/ddd-release-provenance-defaults.mjs',",
+    "  provenanceDefaultsCommand: 'node bin\/ddd-release-provenance-defaults.mjs',",
     "  provenanceDefaultsArtifact: 'artifacts/ddd/release/release-provenance-defaults.json',",
     "  envReadinessGateCommand: 'DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh',",
     "  envReadinessArtifact: 'artifacts/ddd/release/release-env-readiness-redacted.json',",
@@ -5456,16 +5456,16 @@ function releaseFinalOwnerQueueEnvInit(summary) {
     "  ownerHandoffDir: 'artifacts/ddd/release/release-env-owner-handoff-redacted',",
     "  nextCommands: [",
     "    'bash artifacts/ddd/release/release-artifact-integrity-gate.sh',",
-    "    `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`,",
-    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${targetPath}`,",
-    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin/ddd-release-env-safe-defaults.mjs`,",
-    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin/ddd-release-provenance-defaults.mjs`,",
-    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin/ddd-release-env-alias-sync.mjs`,",
-    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`,",
+    "    `node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`,",
+    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${targetPath}`,",
+    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin\/ddd-release-env-safe-defaults.mjs`,",
+    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin\/ddd-release-provenance-defaults.mjs`,",
+    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin\/ddd-release-env-alias-sync.mjs`,",
+    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`,",
     "    'DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh',",
-    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin/ddd-release-env-file-lint.mjs`,",
+    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin\/ddd-release-env-file-lint.mjs`,",
     "    `DDD_RELEASE_ENV_FILE=${targetPath} DDD_FINAL_OWNER_QUEUE_CHECK_ENV=1 DDD_FINAL_OWNER_QUEUE_OWNER=${nextOwner} bash artifacts/ddd/release/release-final-owner-queue-commands.sh`,",
-    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin/ddd-release-readiness-summary.mjs`,",
+    "    `DDD_RELEASE_ENV_FILE=${targetPath} node bin\/ddd-release-readiness-summary.mjs`,",
     "    'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh',",
     "  ],",
     "};",
@@ -5508,16 +5508,16 @@ function releaseFinalOwnerQueueEnvInit(summary) {
     "echo \"[ddd-final-owner-queue][env-init] receipt=${DDD_FINAL_OWNER_QUEUE_ENV_INIT_RECEIPT}\"",
     "echo \"[ddd-final-owner-queue][env-init] fill __REQUIRED__ values, then run:\"",
     "echo \"bash artifacts/ddd/release/release-artifact-integrity-gate.sh\"",
-    "echo \"node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env\"",
-    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${DDD_FINAL_OWNER_QUEUE_ENV_TARGET}\"",
-    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin/ddd-release-env-safe-defaults.mjs\"",
-    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin/ddd-release-provenance-defaults.mjs\"",
-    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin/ddd-release-env-alias-sync.mjs\"",
-    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env\"",
+    "echo \"node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env\"",
+    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${DDD_FINAL_OWNER_QUEUE_ENV_TARGET}\"",
+    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin\/ddd-release-env-safe-defaults.mjs\"",
+    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin\/ddd-release-provenance-defaults.mjs\"",
+    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin\/ddd-release-env-alias-sync.mjs\"",
+    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env\"",
     "echo \"DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh\"",
-    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin/ddd-release-env-file-lint.mjs\"",
+    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin\/ddd-release-env-file-lint.mjs\"",
     `echo "DDD_RELEASE_ENV_FILE=\${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} DDD_FINAL_OWNER_QUEUE_CHECK_ENV=1 DDD_FINAL_OWNER_QUEUE_OWNER=${nextOwner} bash artifacts/ddd/release/release-final-owner-queue-commands.sh"`,
-    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin/ddd-release-readiness-summary.mjs\"",
+    "echo \"DDD_RELEASE_ENV_FILE=${DDD_FINAL_OWNER_QUEUE_ENV_TARGET} node bin\/ddd-release-readiness-summary.mjs\"",
     "echo \"DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh\"",
   ];
   return `${lines.join("\n")}\n`;
@@ -5557,9 +5557,9 @@ function releaseEnvBootstrapScript(summary) {
     "  artifactIntegrityGateCommand: 'bash artifacts/ddd/release/release-artifact-integrity-gate.sh',",
     "  artifactIntegrityArtifact: 'artifacts/ddd/release/release-artifact-integrity.json',",
     "  artifactIntegrityMarkdown: 'artifacts/ddd/release/release-artifact-integrity.md',",
-    "  envSafeDefaultsCommand: 'node bin/ddd-release-env-safe-defaults.mjs',",
+    "  envSafeDefaultsCommand: 'node bin\/ddd-release-env-safe-defaults.mjs',",
     "  envSafeDefaultsArtifact: 'artifacts/ddd/release/release-env-safe-defaults.json',",
-    "  provenanceDefaultsCommand: 'node bin/ddd-release-provenance-defaults.mjs',",
+    "  provenanceDefaultsCommand: 'node bin\/ddd-release-provenance-defaults.mjs',",
     "  provenanceDefaultsArtifact: 'artifacts/ddd/release/release-provenance-defaults.json',",
     "  envReadinessGateCommand: 'DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh',",
     "  envReadinessArtifact: 'artifacts/ddd/release/release-env-readiness-redacted.json',",
@@ -5629,37 +5629,37 @@ function releaseEnvBootstrapScript(summary) {
     "",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"owner-templates-merge\"",
     "echo \"[ddd-release-env-bootstrap] owner templates -> canonical\"",
-    "\"${DDD_NODE_BIN}\" bin/ddd-release-env-owner-templates-merge.mjs \"${DDD_RELEASE_OWNER_ENV_TEMPLATE_DIR}\" \"${DDD_RELEASE_CANONICAL_ENV_FILE}\"",
+    "\"${DDD_NODE_BIN}\" bin\/ddd-release-env-owner-templates-merge.mjs \"${DDD_RELEASE_OWNER_ENV_TEMPLATE_DIR}\" \"${DDD_RELEASE_CANONICAL_ENV_FILE}\"",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"canonical-merge\"",
     "echo \"[ddd-release-env-bootstrap] canonical -> release env\"",
-    "\"${DDD_NODE_BIN}\" bin/ddd-release-env-canonical-merge.mjs \"${DDD_RELEASE_CANONICAL_ENV_FILE}\" \"${DDD_RELEASE_ENV_FILE}\"",
+    "\"${DDD_NODE_BIN}\" bin\/ddd-release-env-canonical-merge.mjs \"${DDD_RELEASE_CANONICAL_ENV_FILE}\" \"${DDD_RELEASE_ENV_FILE}\"",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"safe-defaults\"",
     "echo \"[ddd-release-env-bootstrap] safe defaults\"",
-    "\"${DDD_NODE_BIN}\" bin/ddd-release-env-safe-defaults.mjs",
+    "\"${DDD_NODE_BIN}\" bin\/ddd-release-env-safe-defaults.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"provenance-defaults\"",
     "echo \"[ddd-release-env-bootstrap] provenance defaults\"",
-    "\"${DDD_NODE_BIN}\" bin/ddd-release-provenance-defaults.mjs",
+    "\"${DDD_NODE_BIN}\" bin\/ddd-release-provenance-defaults.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"alias-sync\"",
     "echo \"[ddd-release-env-bootstrap] alias sync\"",
-    "\"${DDD_NODE_BIN}\" bin/ddd-release-env-alias-sync.mjs",
+    "\"${DDD_NODE_BIN}\" bin\/ddd-release-env-alias-sync.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"canonical-lint\"",
     "echo \"[ddd-release-env-bootstrap] canonical lint\"",
-    "\"${DDD_NODE_BIN}\" bin/ddd-release-env-canonical-lint.mjs \"${DDD_RELEASE_CANONICAL_ENV_FILE}\"",
+    "\"${DDD_NODE_BIN}\" bin\/ddd-release-env-canonical-lint.mjs \"${DDD_RELEASE_CANONICAL_ENV_FILE}\"",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"env-readiness-gate\"",
     "echo \"[ddd-release-env-bootstrap] env readiness gate\"",
     "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"release-env-lint\"",
     "echo \"[ddd-release-env-bootstrap] release env lint\"",
-    "\"${DDD_NODE_BIN}\" bin/ddd-release-env-file-lint.mjs",
+    "\"${DDD_NODE_BIN}\" bin\/ddd-release-env-file-lint.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"release-config-evidence\"",
     "echo \"[ddd-release-env-bootstrap] release config evidence\"",
-    "\"${DDD_NODE_BIN}\" bin/ddd-release-config-evidence.mjs",
+    "\"${DDD_NODE_BIN}\" bin\/ddd-release-config-evidence.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"manifest-provenance-env\"",
     "echo \"[ddd-release-env-bootstrap] manifest provenance env\"",
-    "DDD_RELEASE_MANIFEST_CHECK_ENV=true \"${DDD_NODE_BIN}\" bin/ddd-release-evidence-manifest.mjs",
+    "DDD_RELEASE_MANIFEST_CHECK_ENV=true \"${DDD_NODE_BIN}\" bin\/ddd-release-evidence-manifest.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"readiness-summary\"",
     "echo \"[ddd-release-env-bootstrap] readiness summary\"",
-    "\"${DDD_NODE_BIN}\" bin/ddd-release-readiness-summary.mjs",
+    "\"${DDD_NODE_BIN}\" bin\/ddd-release-readiness-summary.mjs",
     "DDD_RELEASE_ENV_BOOTSTRAP_STEP=\"final-go-no-go\"",
     "echo \"[ddd-release-env-bootstrap] final go/no-go\"",
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
@@ -5676,55 +5676,55 @@ function commandHintsFromAction(action) {
   const commands = [...text.matchAll(/`([^`]+)`/g)]
     .map((match) => match[1].trim())
     .map(normalizeCommandHint)
-    .filter((command) => /^(?:(?:[A-Z0-9_]+=\S+|export\s+[A-Z0-9_]+=.+)\s+)*(?:DDD_[A-Z0-9_]+=\S+\s+)*node\s+scripts\//.test(command));
+    .filter((command) => /^(?:(?:[A-Z0-9_]+=\S+|export\s+[A-Z0-9_]+=.+)\s+)*(?:DDD_[A-Z0-9_]+=\S+\s+)*node\s+bin\//.test(command));
   return [...new Set(commands)];
 }
 
 function normalizeCommandHint(command) {
-  return command === "node bin/ddd-release-evidence-manifest.mjs"
-    ? "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
+  return command === "node bin\/ddd-release-evidence-manifest.mjs"
+    ? "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin\/ddd-release-evidence-manifest.mjs"
     : command;
 }
 
 const defaultCommandHintsBySource = {
-  "ai-runtime": ["node bin/ddd-ai-runtime-drill.mjs"],
+  "ai-runtime": ["node bin\/ddd-ai-runtime-drill.mjs"],
   "authenticated-performance": [
-    "node bin/ddd-authenticated-performance-smoke.mjs",
-    "node bin/ddd-promote-performance-baseline.mjs",
+    "node bin\/ddd-authenticated-performance-smoke.mjs",
+    "node bin\/ddd-promote-performance-baseline.mjs",
   ],
-  docker: ["DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"],
+  docker: ["DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs"],
   explain: [
-    "node bin/ddd-collect-explain.mjs",
-    "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
+    "node bin\/ddd-collect-explain.mjs",
+    "DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs",
   ],
   "frontend-smoke": [
-    "node bin/ddd-frontend-playwright-smoke.mjs",
-    "node bin/ddd-frontend-smoke-evidence.mjs",
+    "node bin\/ddd-frontend-playwright-smoke.mjs",
+    "node bin\/ddd-frontend-smoke-evidence.mjs",
   ],
   manifest: [
-    "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-    "node bin/ddd-promote-performance-baseline.mjs",
-    "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
+    "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin\/ddd-release-evidence-manifest.mjs",
+    "node bin\/ddd-promote-performance-baseline.mjs",
+    "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin\/ddd-release-evidence-manifest.mjs",
   ],
   migration: [
-    "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-    "node bin/ddd-migration-evidence.mjs",
+    "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+    "node bin\/ddd-migration-evidence.mjs",
   ],
   orchestrator: [
-    "node bin/ddd-release-evidence-orchestrator.mjs",
-    "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+    "node bin\/ddd-release-evidence-orchestrator.mjs",
+    "DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator.mjs --run --strict",
   ],
-  "release-config": ["node bin/ddd-release-config-evidence.mjs"],
+  "release-config": ["node bin\/ddd-release-config-evidence.mjs"],
   "release-env-lint": [
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
-    "node bin/ddd-release-config-evidence.mjs",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
+    "node bin\/ddd-release-config-evidence.mjs",
   ],
   rollback: [
-    "node bin/ddd-rollback-deferral-template.mjs",
-    "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-    "node bin/ddd-rollback-drill-evidence.mjs",
+    "node bin\/ddd-rollback-deferral-template.mjs",
+    "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs",
+    "node bin\/ddd-rollback-drill-evidence.mjs",
   ],
-  "runtime-readiness": ["node bin/ddd-runtime-readiness-smoke.mjs"],
+  "runtime-readiness": ["node bin\/ddd-runtime-readiness-smoke.mjs"],
 };
 
 const defaultEnvKeysBySource = {
@@ -5767,9 +5767,9 @@ const defaultEnvKeysBySource = {
 };
 
 const businessCommandHintsByOwner = {
-  "file-owner": ["node bin/ddd-file-processing-e2e-smoke.mjs"],
-  "job-owner": ["node bin/ddd-job-e2e-smoke.mjs"],
-  "payment-owner": ["node bin/ddd-payment-webhook-e2e-smoke.mjs"],
+  "file-owner": ["node bin\/ddd-file-processing-e2e-smoke.mjs"],
+  "job-owner": ["node bin\/ddd-job-e2e-smoke.mjs"],
+  "payment-owner": ["node bin\/ddd-payment-webhook-e2e-smoke.mjs"],
 };
 
 function requiredCommandHintsForBatch(batch) {
@@ -6702,7 +6702,7 @@ function releaseEnvCanonicalFillArtifact(summary) {
           pattern: requirement.pattern || null,
           disallowValues: requirement.disallowValues || [],
         },
-        aliasSyncCommand: `DDD_RELEASE_ENV_FILE=${envFilePath} node bin/ddd-release-env-alias-sync.mjs`,
+        aliasSyncCommand: `DDD_RELEASE_ENV_FILE=${envFilePath} node bin\/ddd-release-env-alias-sync.mjs`,
       });
     }
   }
@@ -6861,19 +6861,19 @@ function releaseEnvOwnerHandoffArtifact(summary) {
   const canonicalFill = releaseEnvCanonicalFillArtifact(summary);
   const finalQueue = releaseFinalOwnerQueueArtifact(summary);
   const queueByOwner = new Map((finalQueue.ownerQueues || []).map((owner) => [owner.owner, owner]));
-  const explicitEnvFileLintCommand = `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin/ddd-release-env-file-lint.mjs`;
+  const explicitEnvFileLintCommand = `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin\/ddd-release-env-file-lint.mjs`;
   const explicitEnvSafeDefaultsCommand = `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} ${releaseEnvSafeDefaultsCommand}`;
   const explicitProvenanceDefaultsCommand = `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} ${releaseProvenanceDefaultsCommand}`;
   const ownerPostFillCommand = (command) => (
-    command === "node bin/ddd-release-env-file-lint.mjs" ? explicitEnvFileLintCommand : command
+    command === "node bin\/ddd-release-env-file-lint.mjs" ? explicitEnvFileLintCommand : command
   );
   const fastPathCommands = [
-    "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-    `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${canonicalFill.envFile || ".env.release.local"}`,
+    "node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+    `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${canonicalFill.envFile || ".env.release.local"}`,
     explicitEnvSafeDefaultsCommand,
     explicitProvenanceDefaultsCommand,
-    `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin/ddd-release-env-alias-sync.mjs`,
-    `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`,
+    `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin\/ddd-release-env-alias-sync.mjs`,
+    `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`,
     explicitEnvFileLintCommand,
     "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
     finalReadinessSummaryCommand,
@@ -6911,14 +6911,14 @@ function releaseEnvOwnerHandoffArtifact(summary) {
       requiredCanonicalKeys: owner.canonicalFillItems.filter((item) => item.required).map((item) => item.canonicalKey),
       nextCommand: "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       postFillCommands: orderedUniqueStrings([
-        "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-        `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${canonicalFill.envFile || ".env.release.local"}`,
+        "node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${canonicalFill.envFile || ".env.release.local"}`,
         explicitEnvSafeDefaultsCommand,
         explicitProvenanceDefaultsCommand,
         owner.aliasSyncCommand,
-        `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`,
+        `DDD_RELEASE_ENV_FILE=${canonicalFill.envFile || ".env.release.local"} node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`,
         explicitEnvFileLintCommand,
-        "node bin/ddd-release-config-evidence.mjs",
+        "node bin\/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
         ...(owner.firstCommand ? [ownerPostFillCommand(owner.firstCommand)] : []),
         finalReadinessSummaryCommand,
@@ -7027,13 +7027,13 @@ function releaseEnvCanonicalFillTemplate(summary) {
     lines.push("");
   }
   lines.push("# Usage after filling real values:");
-  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local");
-  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs");
-  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs");
-  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs");
-  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env");
-  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs");
-  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-readiness-summary.mjs");
+  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local");
+  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-safe-defaults.mjs");
+  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-provenance-defaults.mjs");
+  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-alias-sync.mjs");
+  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env");
+  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs");
+  lines.push("# DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-readiness-summary.mjs");
   return `${lines.join("\n")}\n`;
 }
 
@@ -7196,8 +7196,8 @@ function releaseMissingEnvTemplate(summary) {
   }
   lines.push("# After completing this file:");
   lines.push("# export DDD_RELEASE_ENV_FILE=/secure/path/to/.env.release");
-  lines.push("# node bin/ddd-release-env-file-lint.mjs");
-  lines.push("# node bin/ddd-release-config-evidence.mjs");
+  lines.push("# node bin\/ddd-release-env-file-lint.mjs");
+  lines.push("# node bin\/ddd-release-config-evidence.mjs");
   lines.push("# DDD_RELEASE_CONTINUE_ON_ERROR=1 bash artifacts/ddd/release/release-execution-commands.sh # diagnostic only; final exit remains non-zero on failures");
   lines.push("# DDD_RELEASE_NEXT_ACTION_CONTINUE_ON_ERROR=1 DDD_RELEASE_NEXT_ACTION_EXECUTE=1 bash artifacts/ddd/release/release-next-action-commands.sh # diagnostic only; final exit remains non-zero on failures");
   lines.push("# DDD_RELEASE_CLOSURE_CONTINUE_ON_ERROR=1 DDD_RELEASE_CLOSURE_EXECUTE=1 bash artifacts/ddd/release/release-blocker-closure-commands.sh # diagnostic only; final exit remains non-zero on failures");
@@ -8157,7 +8157,7 @@ function releaseEnvReadinessGate(summary) {
     "DDD_NODE_BIN=\"${DDD_NODE_BIN:-node}\"",
     "if [[ ! -f \"${DDD_RELEASE_ENV_READINESS_PACKET}\" ]]; then",
     "  echo \"Release env readiness packet does not exist: ${DDD_RELEASE_ENV_READINESS_PACKET}\" >&2",
-    "  echo \"Run: node bin/ddd-release-readiness-summary.mjs\" >&2",
+    "  echo \"Run: node bin\/ddd-release-readiness-summary.mjs\" >&2",
     "  exit 2",
     "fi",
     "set +e",
@@ -8251,13 +8251,13 @@ function releaseEnvReadinessGate(summary) {
 function releaseEnvOwnerHandoffRedactedArtifact(summary) {
   const redacted = releaseEnvReadinessRedactedArtifact(summary);
   const validationCommands = [
-    "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+    "node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-safe-defaults.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-provenance-defaults.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-alias-sync.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
     "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
     finalReadinessSummaryCommand,
     finalGoNoGoEnforceCommand,
@@ -8525,20 +8525,20 @@ function releaseEnvOwnerInputPacketArtifact(summary) {
     return counts;
   }, {});
   const validationCommands = [
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-safe-defaults.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-provenance-defaults.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-alias-sync.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
     "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
     finalReadinessSummaryCommand,
     finalGoNoGoEnforceCommand,
   ];
   const receiptCommands = [
     ...validationCommands.slice(0, 6),
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-readiness-summary.mjs",
-    "node bin/ddd-release-config-owner-input-reconciliation.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-readiness-summary.mjs",
+    "node bin\/ddd-release-config-owner-input-reconciliation.mjs",
     "DDD_RELEASE_ENV_FILE=<release-env-file> bash artifacts/ddd/release/release-preflight-gate.sh",
     finalGoNoGoEnforceCommand,
   ];
@@ -9224,7 +9224,7 @@ function releaseRepoRootPreambleLines() {
   return [
     "SCRIPT_DIR=$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)",
     "if [[ -z \"${LUMIRA_REPO_ROOT:-}\" ]]; then",
-    "  if [[ -f \"bin/ddd-release-readiness-summary.mjs\" ]]; then",
+    "  if [[ -f \"bin\/ddd-release-readiness-summary.mjs\" ]]; then",
     "    LUMIRA_REPO_ROOT=$(pwd)",
     "  else",
     "    LUMIRA_REPO_ROOT=$(cd \"${SCRIPT_DIR}/../../..\" && pwd)",
@@ -9424,7 +9424,7 @@ function releaseExecutionCommands(summary) {
   lines.push("  DDD_RELEASE_EXECUTION_REPORT_FINALIZED=1");
   lines.push("  mkdir -p \"$(dirname \"${DDD_RELEASE_EXECUTION_REPORT}\")\"");
   lines.push("  node --input-type=module -e 'import fs from \"node:fs\"; const [tmp, out, exitCode, batchFilter, ownerFilter, priorityFilter] = process.argv.slice(1); const entries = fs.existsSync(tmp) ? fs.readFileSync(tmp, \"utf8\").split(\"\\n\").filter(Boolean).map((line) => JSON.parse(line)) : []; const exit = Number(exitCode); const failedEntries = entries.filter((entry) => Number(entry.status) !== 0).length; const summary = { totalEntries: entries.length, succeededEntries: entries.length - failedEntries, failedEntries }; fs.writeFileSync(out, `${JSON.stringify({ generatedAt: new Date().toISOString(), reportStatus: exit === 0 ? \"PASS\" : \"FAIL\", exitCode: exit, batchFilter: batchFilter || null, ownerFilter: ownerFilter || null, priorityFilter: priorityFilter || null, summary, entries }, null, 2)}\\n`); if (fs.existsSync(tmp)) fs.rmSync(tmp);' \"${DDD_RELEASE_EXECUTION_REPORT_TMP}\" \"${DDD_RELEASE_EXECUTION_REPORT}\" \"${exit_code}\" \"${DDD_RELEASE_BATCH}\" \"${DDD_RELEASE_OWNER}\" \"${DDD_RELEASE_PRIORITY}\"");
-  lines.push("  if ! DDD_RELEASE_EXECUTION_REPORT=\"${DDD_RELEASE_EXECUTION_REPORT}\" node bin/ddd-release-execution-run-report-contract.mjs; then");
+  lines.push("  if ! DDD_RELEASE_EXECUTION_REPORT=\"${DDD_RELEASE_EXECUTION_REPORT}\" node bin\/ddd-release-execution-run-report-contract.mjs; then");
   lines.push("    echo \"[ddd-release-execution][report-contract] failed\" >&2");
   lines.push("    return 1");
   lines.push("  fi");
@@ -9553,8 +9553,8 @@ function releaseExecutionCommands(summary) {
   lines.push("fi");
   lines.push("");
   lines.push(shellCommentLine("After these commands refresh artifacts, rerun:"));
-  lines.push("run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node bin/ddd-release-evidence-gate.mjs'");
-  lines.push("run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node bin/ddd-release-readiness-summary.mjs'");
+  lines.push("run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node bin\/ddd-release-evidence-gate.mjs'");
+  lines.push("run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node bin\/ddd-release-readiness-summary.mjs'");
   lines.push("run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'");
   lines.push("if [[ \"${DDD_RELEASE_COMMAND_FAILURES}\" != \"0\" ]]; then");
   lines.push("  echo \"[ddd-release-execution][completed-with-failures] commandFailures=${DDD_RELEASE_COMMAND_FAILURES}\" >&2");
@@ -9653,7 +9653,7 @@ function releaseNextActionCommands(summary) {
     "  DDD_RELEASE_NEXT_ACTION_REPORT_FINALIZED=1",
     "  mkdir -p \"$(dirname \"${DDD_RELEASE_NEXT_ACTION_REPORT}\")\"",
     "  node --input-type=module -e 'import fs from \"node:fs\"; const [tmp, out, exitCode, ownerFilter, orderFilter] = process.argv.slice(1); const entries = fs.existsSync(tmp) ? fs.readFileSync(tmp, \"utf8\").split(\"\\n\").filter(Boolean).map((line) => JSON.parse(line)) : []; const exit = Number(exitCode); const failedEntries = entries.filter((entry) => Number(entry.status) !== 0).length; const summary = { totalEntries: entries.length, succeededEntries: entries.length - failedEntries, failedEntries }; fs.writeFileSync(out, `${JSON.stringify({ generatedAt: new Date().toISOString(), reportStatus: exit === 0 ? \"PASS\" : \"FAIL\", exitCode: exit, ownerFilter: ownerFilter || null, orderFilter: orderFilter || null, summary, entries }, null, 2)}\\n`); if (fs.existsSync(tmp)) fs.rmSync(tmp);' \"${DDD_RELEASE_NEXT_ACTION_REPORT_TMP}\" \"${DDD_RELEASE_NEXT_ACTION_REPORT}\" \"${exit_code}\" \"${DDD_RELEASE_NEXT_ACTION_OWNER}\" \"${DDD_RELEASE_NEXT_ACTION_ORDER}\"",
-    "  if ! DDD_RELEASE_NEXT_ACTION_REPORT=\"${DDD_RELEASE_NEXT_ACTION_REPORT}\" node bin/ddd-release-next-action-run-report-contract.mjs; then",
+    "  if ! DDD_RELEASE_NEXT_ACTION_REPORT=\"${DDD_RELEASE_NEXT_ACTION_REPORT}\" node bin\/ddd-release-next-action-run-report-contract.mjs; then",
     "    echo \"[ddd-release-next-action][report-contract] failed\" >&2",
     "    return 1",
     "  fi",
@@ -9798,8 +9798,8 @@ function releaseNextActionCommands(summary) {
   lines.push("fi");
   lines.push("");
   lines.push(shellCommentLine("After next-action commands refresh artifacts, rerun:"));
-  lines.push("run_next_action_command '0' 'release-next-action' 'RERUN' 'node bin/ddd-release-evidence-gate.mjs'");
-  lines.push("run_next_action_command '0' 'release-next-action' 'RERUN' 'node bin/ddd-release-readiness-summary.mjs'");
+  lines.push("run_next_action_command '0' 'release-next-action' 'RERUN' 'node bin\/ddd-release-evidence-gate.mjs'");
+  lines.push("run_next_action_command '0' 'release-next-action' 'RERUN' 'node bin\/ddd-release-readiness-summary.mjs'");
   lines.push("run_next_action_command '0' 'release-next-action' 'RERUN' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'");
   lines.push("if [[ \"${DDD_RELEASE_NEXT_ACTION_COMMAND_FAILURES}\" != \"0\" ]]; then");
   lines.push("  echo \"[ddd-release-next-action][completed-with-failures] commandFailures=${DDD_RELEASE_NEXT_ACTION_COMMAND_FAILURES}\" >&2");
@@ -10137,7 +10137,7 @@ function releaseConfigActionPlan(details = []) {
   const actionFor = (detail, envKeys) => {
     const keys = envKeys.length > 0 ? envKeys.join(" or ") : "the required runtime key";
     const check = detail?.check || "release configuration check";
-    return `Set ${keys} for ${check} in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun \`node bin/ddd-release-config-evidence.mjs\`.`;
+    return `Set ${keys} for ${check} in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun \`node bin\/ddd-release-config-evidence.mjs\`.`;
   };
   for (const detail of details || []) {
     const owner = detail?.owner || "release-infra";
@@ -10209,7 +10209,7 @@ function releaseEnvLintActionPlan(diagnostics) {
         owner: "release-infra",
         reason: "release env lint used generated missing-env template instead of a completed release env file",
         envKeys: [...new Set(envKeys)].sort(),
-        action: "Create a secure completed env file from `artifacts/ddd/release/release-env-missing.template.env`, set `DDD_RELEASE_ENV_FILE` to that path, then rerun `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs` and `node bin/ddd-release-config-evidence.mjs`.",
+        action: "Create a secure completed env file from `artifacts/ddd/release/release-env-missing.template.env`, set `DDD_RELEASE_ENV_FILE` to that path, then rerun `DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs` and `node bin\/ddd-release-config-evidence.mjs`.",
       }],
     };
   }
@@ -10219,7 +10219,7 @@ function releaseEnvLintActionPlan(diagnostics) {
       owner: "release-infra",
       reason: `envFileMode=${envFileSecurity.modeOctal || "unknown"} requiredMode=${envFileSecurity.requiredMode || "600"}`,
       envKeys: [],
-      action: "Restrict `DDD_RELEASE_ENV_FILE` permissions with `chmod 600`, then rerun `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`.",
+      action: "Restrict `DDD_RELEASE_ENV_FILE` permissions with `chmod 600`, then rerun `DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs`.",
     });
   }
   if (diagnostics.status !== "PASS") {
@@ -10228,7 +10228,7 @@ function releaseEnvLintActionPlan(diagnostics) {
       owner: "release-infra",
       reason: `status=${diagnostics.status || "missing"} primaryBlockers=${diagnostics.summary?.primaryBlockers ?? diagnostics.summary?.blockers ?? 0}`,
       envKeys: combinedEnvKeys,
-      action: "Replace placeholders and invalid values in `DDD_RELEASE_ENV_FILE`, then rerun `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`.",
+      action: "Replace placeholders and invalid values in `DDD_RELEASE_ENV_FILE`, then rerun `DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs`.",
     });
   }
   if ((diagnostics.summary?.unresolvedTemplateKeys || 0) > 0) {
@@ -10246,7 +10246,7 @@ function releaseEnvLintActionPlan(diagnostics) {
       owner: "release-infra",
       reason: `releaseConfigBlockersAfterPlaceholders=${diagnostics.summary.releaseConfigBlockersAfterPlaceholders}`,
       envKeys: releaseConfigEnvKeys.length > 0 ? releaseConfigEnvKeys : combinedEnvKeys,
-      action: "Fix values in `DDD_RELEASE_ENV_FILE` so `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs` and `node bin/ddd-release-config-evidence.mjs` both pass.",
+      action: "Fix values in `DDD_RELEASE_ENV_FILE` so `DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs` and `node bin\/ddd-release-config-evidence.mjs` both pass.",
     });
   }
   if (items.length === 0) {
@@ -10302,7 +10302,7 @@ function rollbackActionPlan(contextDiagnostics = []) {
     const requirementText = requirements.length > 0
       ? ` Required evidence: ${requirements.join("; ")}.`
       : "";
-    return `${baseAction}${requirementText} If the drill is not safely exercisable, generate a reviewed deferral input with \`node bin/ddd-rollback-deferral-template.mjs\`, fill real approval evidence, then run \`node bin/ddd-rollback-drill-evidence.mjs\`.`;
+    return `${baseAction}${requirementText} If the drill is not safely exercisable, generate a reviewed deferral input with \`node bin\/ddd-rollback-deferral-template.mjs\`, fill real approval evidence, then run \`node bin\/ddd-rollback-drill-evidence.mjs\`.`;
   };
   for (const diagnostic of contextDiagnostics || []) {
     const owner = diagnostic?.owner || "release-owner";
@@ -10372,7 +10372,7 @@ function explainActionPlan({ missingRequiredFiles = [], legacyPlanImports = [], 
         file: key,
         reasons: [],
         envKeys: explainEnvKeys,
-        command: "Run production-equivalent MySQL EXPLAIN collection with `node bin/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`.",
+        command: "Run production-equivalent MySQL EXPLAIN collection with `node bin\/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs`.",
       });
     }
     return itemByFile.get(key);
@@ -10448,7 +10448,7 @@ function frontendSmokeActionPlan(artifact, strictGate) {
     add(
       "lumira-ui-playwright-report",
       "lumira-ui",
-      "Run deployed Playwright smoke and convert the JSON report with `node bin/ddd-frontend-smoke-evidence.mjs`.",
+      "Run deployed Playwright smoke and convert the JSON report with `node bin\/ddd-frontend-smoke-evidence.mjs`.",
       ["PLAYWRIGHT_BASE_URL", "DDD_FRONTEND_EXPECT_DEPLOYED", "DDD_EVIDENCE_ENVIRONMENT", "DDD_RELEASE_CANDIDATE", "DDD_EVIDENCE_OPERATOR"],
       playwrightReport?.file ? `missing Playwright JSON report ${portablePath(playwrightReport.file)}` : "missing Playwright JSON report",
     );
@@ -10544,7 +10544,7 @@ function aiRuntimeActionPlan(aiRuntime) {
     add(
       `ai-failure-${detail.category || "unknown"}-${detail.owner || "unknown"}`,
       detail.owner || "ai",
-      "Resolve AI runtime drill failure and rerun `node bin/ddd-ai-runtime-drill.mjs` with strict remote expectations.",
+      "Resolve AI runtime drill failure and rerun `node bin\/ddd-ai-runtime-drill.mjs` with strict remote expectations.",
       ["DDD_AI_EXPECT_PROVIDER_REMOTE", "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"],
       detail.message || "AI runtime drill failure",
     );
@@ -10624,7 +10624,7 @@ function orchestratorActionPlan(orchestratorDiagnostics) {
     add(
       "release-owner",
       "orchestrator-run-mode",
-      "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node bin/ddd-release-evidence-orchestrator.mjs`.",
+      "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node bin\/ddd-release-evidence-orchestrator.mjs`.",
       ["DDD_RELEASE_EVIDENCE_STRICT"],
       `strict release requires run mode report, got ${orchestratorDiagnostics.mode || "missing"}`,
     );
@@ -10634,7 +10634,7 @@ function orchestratorActionPlan(orchestratorDiagnostics) {
     add(
       owner,
       `orchestrator-preflight-${check.id || "unknown"}`,
-      "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`.",
+      "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin\/ddd-release-evidence-orchestrator.mjs`.",
       check.envKeys || [],
       check.detail || "orchestrator preflight blocker",
       { checkId: check.id || null },
@@ -10644,7 +10644,7 @@ function orchestratorActionPlan(orchestratorDiagnostics) {
     add(
       "release-owner",
       `orchestrator-missing-result-${stepId}`,
-      "Rerun the strict orchestrator with `node bin/ddd-release-evidence-orchestrator.mjs` and keep the generated result for every enabled selected step.",
+      "Rerun the strict orchestrator with `node bin\/ddd-release-evidence-orchestrator.mjs` and keep the generated result for every enabled selected step.",
       ["DDD_RELEASE_EVIDENCE_STRICT"],
       `missing orchestrator result for enabled step ${stepId}`,
       { stepId },
@@ -10660,7 +10660,7 @@ function orchestratorActionPlan(orchestratorDiagnostics) {
       add(
         orchestratorOwnerFor(step.id || ""),
         `orchestrator-step-${step.id}`,
-        "Fix the failed orchestrator step and rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`.",
+        "Fix the failed orchestrator step and rerun strict release evidence with `node bin\/ddd-release-evidence-orchestrator.mjs`.",
         step.envKeys || [],
         `step ${step.id} failed with status=${result.status || "missing"} exitCode=${result.exitCode ?? "missing"}`,
         { stepId: step.id },
@@ -10719,7 +10719,7 @@ function dockerActionPlan(dockerDiagnostics) {
   if (dockerDiagnostics.daemonStatus !== 0 || dockerDiagnostics.daemonError) {
     add(
       "docker-daemon",
-      `Start Docker daemon locally or run \`DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs\` in a CI runner with Docker Buildx available; set \`DDD_DOCKER_*_IMAGE\` values when using a registry mirror.${existingImageInspectSuffix}`,
+      `Start Docker daemon locally or run \`DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs\` in a CI runner with Docker Buildx available; set \`DDD_DOCKER_*_IMAGE\` values when using a registry mirror.${existingImageInspectSuffix}`,
       dockerBuildEvidenceEnvKeys,
       dockerDiagnostics.daemonError || `docker daemon status=${dockerDiagnostics.daemonStatus ?? "missing"}`,
     );
@@ -10730,7 +10730,7 @@ function dockerActionPlan(dockerDiagnostics) {
     }
     add(
       `docker-blocker-${items.length + 1}`,
-      `Resolve Docker image evidence blocker and rerun \`node bin/ddd-docker-build-evidence.mjs\`; for Docker Hub/network failures set \`DDD_DOCKER_MAVEN_IMAGE\`, \`DDD_DOCKER_JRE_IMAGE\`, \`DDD_DOCKER_NODE_IMAGE\`, and \`DDD_DOCKER_NGINX_IMAGE\` to trusted registry mirror images.${mirrorRetrySuffix}${existingImageInspectSuffix}`,
+      `Resolve Docker image evidence blocker and rerun \`node bin\/ddd-docker-build-evidence.mjs\`; for Docker Hub/network failures set \`DDD_DOCKER_MAVEN_IMAGE\`, \`DDD_DOCKER_JRE_IMAGE\`, \`DDD_DOCKER_NODE_IMAGE\`, and \`DDD_DOCKER_NGINX_IMAGE\` to trusted registry mirror images.${mirrorRetrySuffix}${existingImageInspectSuffix}`,
       dockerBuildEvidenceEnvKeys,
       blocker,
     );
@@ -10739,7 +10739,7 @@ function dockerActionPlan(dockerDiagnostics) {
     if (image.status === "SKIPPED" && !hasDockerPreflightBlocker) {
       add(
         `docker-image-${image.name || "unknown"}-skipped`,
-        "Build and inspect the skipped Docker image in an environment with Docker daemon access by running `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`; use `DDD_DOCKER_*_IMAGE` mirror overrides if Docker Hub is unreliable.",
+        "Build and inspect the skipped Docker image in an environment with Docker daemon access by running `DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs`; use `DDD_DOCKER_*_IMAGE` mirror overrides if Docker Hub is unreliable.",
         dockerBuildEvidenceEnvKeys,
         image.skipReason || "image build skipped",
         { image: image.name || null, dockerfile: image.dockerfile || null },
@@ -10748,7 +10748,7 @@ function dockerActionPlan(dockerDiagnostics) {
     if (image.status === "FAIL" || image.buildStatus > 0 || image.inspectStatus > 0) {
       add(
         `docker-image-${image.name || "unknown"}-failed`,
-        `Fix Docker image build/inspect failure and regenerate image evidence with \`DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs\`; for transient registry failures configure \`DDD_DOCKER_*_IMAGE\` mirror overrides and rerun.${mirrorRetrySuffix}${existingImageInspectSuffix}`,
+        `Fix Docker image build/inspect failure and regenerate image evidence with \`DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs\`; for transient registry failures configure \`DDD_DOCKER_*_IMAGE\` mirror overrides and rerun.${mirrorRetrySuffix}${existingImageInspectSuffix}`,
         dockerBuildEvidenceEnvKeys,
         (image.blockers || []).join("; ") || `image status=${image.status || "missing"}`,
         { image: image.name || null, dockerfile: image.dockerfile || null },
@@ -10821,7 +10821,7 @@ function migrationActionPlan(migrationDiagnostics) {
     add(
       "database",
       "migration-fresh-database-drill",
-      "Run Flyway against an empty production-equivalent database, archive schema history plus Flyway logs, then regenerate migration evidence with `node bin/ddd-migration-evidence.mjs`.",
+      "Run Flyway against an empty production-equivalent database, archive schema history plus Flyway logs, then regenerate migration evidence with `node bin\/ddd-migration-evidence.mjs`.",
       ["DDD_MIGRATION_FRESH_DB_VALIDATED", "DDD_MIGRATION_FRESH_DB_EVIDENCE"],
       `freshDatabaseValidated=${runtime.freshDatabaseValidated === true} evidence=${runtime.freshDatabaseEvidence || "missing"}`,
     );
@@ -10830,7 +10830,7 @@ function migrationActionPlan(migrationDiagnostics) {
     add(
       "database",
       "migration-upgrade-database-drill",
-      "Run Flyway upgrade against a copy of the previous production schema, archive before/after schema history plus Flyway logs, then regenerate migration evidence with `node bin/ddd-migration-evidence.mjs`.",
+      "Run Flyway upgrade against a copy of the previous production schema, archive before/after schema history plus Flyway logs, then regenerate migration evidence with `node bin\/ddd-migration-evidence.mjs`.",
       ["DDD_MIGRATION_UPGRADE_DB_VALIDATED", "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"],
       `upgradeDatabaseValidated=${runtime.upgradeDatabaseValidated === true} evidence=${runtime.upgradeDatabaseEvidence || "missing"}`,
     );
@@ -10840,7 +10840,7 @@ function migrationActionPlan(migrationDiagnostics) {
       add(
         proof.owner || "database",
         `migration-proof-${proof.id || "unknown"}`,
-        `${proof.action || "Attach production-equivalent migration drill proof and regenerate migration evidence."} Rerun \`node bin/ddd-migration-evidence.mjs\`.`,
+        `${proof.action || "Attach production-equivalent migration drill proof and regenerate migration evidence."} Rerun \`node bin\/ddd-migration-evidence.mjs\`.`,
         proof.requiredEnvKeys || [],
         `validated=${proof.validated === true} evidence=${proof.evidence || "missing"}`,
         { proofId: proof.id || null },
@@ -10852,7 +10852,7 @@ function migrationActionPlan(migrationDiagnostics) {
       add(
         diagnostic.owner || "database",
         `migration-diagnostic-${diagnostic.id || "unknown"}`,
-        `${diagnostic.action || "Resolve migration runtime diagnostic and regenerate migration evidence."} Rerun \`node bin/ddd-migration-evidence.mjs\`.`,
+        `${diagnostic.action || "Resolve migration runtime diagnostic and regenerate migration evidence."} Rerun \`node bin\/ddd-migration-evidence.mjs\`.`,
         diagnostic.envKeys || [],
         `status=${diagnostic.status || "missing"} evidence=${diagnostic.evidence || "missing"}`,
         { diagnosticId: diagnostic.id || null },
@@ -10863,7 +10863,7 @@ function migrationActionPlan(migrationDiagnostics) {
     add(
       "release-owner",
       "migration-runtime-ready",
-      "Regenerate migration evidence with `node bin/ddd-migration-evidence.mjs` after both fresh and upgrade drills pass with concrete evidence links.",
+      "Regenerate migration evidence with `node bin\/ddd-migration-evidence.mjs` after both fresh and upgrade drills pass with concrete evidence links.",
       ["DDD_MIGRATION_ENVIRONMENT", "DDD_MIGRATION_OPERATOR", "DDD_MIGRATION_COMPLETED_AT"],
       "migration runtime evidence is not ready",
     );
@@ -11511,7 +11511,7 @@ function validateReadinessSummary(summary) {
   if (!performanceBaselineCommands.includes("DDD_AUTH_PERF_BASELINE_EXECUTE")) {
     issues.push("releasePerformanceBaselineCommands must include execute toggle");
   }
-  if (!performanceBaselineCommands.includes("DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs")) {
+  if (!performanceBaselineCommands.includes("DDD_AUTH_PERF_STRICT=true node bin\/ddd-authenticated-performance-smoke.mjs")) {
     issues.push("releasePerformanceBaselineCommands must run authenticated performance smoke");
   }
   const finalGoNoGo = releaseFinalGoNoGoArtifact(summary);
@@ -11554,12 +11554,12 @@ function validateReadinessSummary(summary) {
   if (!Array.isArray(finalGoNoGo.nextCommands) || finalGoNoGo.nextCommands.length === 0) {
     issues.push("releaseFinalGoNoGo must include nextCommands");
   }
-  if (finalGoNoGoActionCommands.includes("DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs")
-    && !finalGoNoGo.nextCommands.includes("DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs")) {
+  if (finalGoNoGoActionCommands.includes("DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs")
+    && !finalGoNoGo.nextCommands.includes("DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs")) {
     issues.push("releaseFinalGoNoGo nextCommands must include migration check-env handoff command");
   }
-  if (finalGoNoGoActionCommands.includes("DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs")
-    && !finalGoNoGo.nextCommands.includes("DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs")) {
+  if (finalGoNoGoActionCommands.includes("DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs")
+    && !finalGoNoGo.nextCommands.includes("DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs")) {
     issues.push("releaseFinalGoNoGo nextCommands must include rollback check-env handoff command");
   }
   if (performanceBaselineClosure.status !== "READY"
@@ -12236,7 +12236,7 @@ function performanceActionPlan(performance) {
     add(
       `performance-baseline-promotion-${items.length + 1}`,
       "release-performance",
-      "Resolve baseline promotion blocker and rerun `node bin/ddd-promote-performance-baseline.mjs`.",
+      "Resolve baseline promotion blocker and rerun `node bin\/ddd-promote-performance-baseline.mjs`.",
       promotion.requiredEnvKeys || ["DDD_AUTH_PERF_BASELINE_ACCEPTED_BY", "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT", "DDD_RELEASE_CANDIDATE"],
       blocker,
     );
@@ -12308,7 +12308,7 @@ function businessRuntimeActionPlan(business) {
     add(
       "file-owner",
       "file-processing-artifact",
-      "Run file processing E2E smoke with `node bin/ddd-file-processing-e2e-smoke.mjs` and attach the generated file-processing-e2e.json evidence.",
+      "Run file processing E2E smoke with `node bin\/ddd-file-processing-e2e-smoke.mjs` and attach the generated file-processing-e2e.json evidence.",
       ["LUMIRA_BASE_URL", "LUMIRA_JOB_INTERNAL_TOKEN", "LUMIRA_UPLOAD_STORAGE_ROOT"],
       file.file ? `missing file processing artifact ${file.file}` : "missing file processing artifact",
     );
@@ -12317,7 +12317,7 @@ function businessRuntimeActionPlan(business) {
       add(
         "file-owner",
         "file-processing-production-equivalence",
-        "Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node bin/ddd-file-processing-e2e-smoke.mjs`.",
+        "Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node bin\/ddd-file-processing-e2e-smoke.mjs`.",
         ["LUMIRA_BASE_URL", "DEPLOY_CHECK_BASE_URL", "BASE_URL", "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE", "LUMIRA_UPLOAD_STORAGE_ROOT", "LUMIRA_JOB_INTERNAL_TOKEN"],
         file.productionEquivalence.issues.join("; "),
       );
@@ -12351,7 +12351,7 @@ function businessRuntimeActionPlan(business) {
     add(
       "payment-owner",
       "payment-webhook-artifact",
-      "Run payment webhook E2E smoke with `node bin/ddd-payment-webhook-e2e-smoke.mjs` and attach payment-webhook-e2e.json evidence.",
+      "Run payment webhook E2E smoke with `node bin\/ddd-payment-webhook-e2e-smoke.mjs` and attach payment-webhook-e2e.json evidence.",
       ["LUMIRA_BASE_URL", "PAYMENT_PUBLIC_BASE_URL"],
       payment.file ? `missing payment webhook artifact ${payment.file}` : "missing payment webhook artifact",
     );
@@ -12360,7 +12360,7 @@ function businessRuntimeActionPlan(business) {
       add(
         "payment-owner",
         "payment-webhook-production-equivalence",
-        "Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node bin/ddd-payment-webhook-e2e-smoke.mjs`.",
+        "Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node bin\/ddd-payment-webhook-e2e-smoke.mjs`.",
         ["LUMIRA_BASE_URL", "DEPLOY_CHECK_BASE_URL", "BASE_URL", "PAYMENT_PUBLIC_BASE_URL", "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"],
         payment.productionEquivalence.issues.join("; "),
       );
@@ -12393,7 +12393,7 @@ function businessRuntimeActionPlan(business) {
     add(
       "job-owner",
       "job-e2e-artifact",
-      "Run Job/internal E2E smoke with `node bin/ddd-job-e2e-smoke.mjs` and attach job-e2e-smoke.json evidence.",
+      "Run Job/internal E2E smoke with `node bin\/ddd-job-e2e-smoke.mjs` and attach job-e2e-smoke.json evidence.",
       ["LUMIRA_BASE_URL", "LUMIRA_JOB_INTERNAL_TOKEN"],
       job.file ? `missing job E2E artifact ${job.file}` : "missing job E2E artifact",
     );
@@ -12402,7 +12402,7 @@ function businessRuntimeActionPlan(business) {
       add(
         "job-owner",
         "job-e2e-production-equivalence",
-        "Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token using `node bin/ddd-job-e2e-smoke.mjs`.",
+        "Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token using `node bin\/ddd-job-e2e-smoke.mjs`.",
         ["LUMIRA_BASE_URL", "DEPLOY_CHECK_BASE_URL", "BASE_URL", "LUMIRA_JOB_INTERNAL_TOKEN", "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"],
         job.productionEquivalence.issues.join("; "),
       );
@@ -12478,7 +12478,7 @@ function runtimeReadinessActionPlan(readiness) {
     add(
       "runtime-readiness-artifact",
       "release-infra",
-      "Run runtime readiness smoke with `node bin/ddd-runtime-readiness-smoke.mjs` and attach artifacts/ddd/readiness/summary.json.",
+      "Run runtime readiness smoke with `node bin\/ddd-runtime-readiness-smoke.mjs` and attach artifacts/ddd/readiness/summary.json.",
       ["LUMIRA_BASE_URL", "DEPLOY_CHECK_BASE_URL", "BASE_URL", "DDD_EVIDENCE_ENVIRONMENT", "DDD_RELEASE_CANDIDATE", "DDD_EVIDENCE_OPERATOR"],
       readiness.file ? `missing runtime readiness artifact ${readiness.file}` : "missing runtime readiness artifact",
     );
@@ -12487,7 +12487,7 @@ function runtimeReadinessActionPlan(readiness) {
       add(
         "runtime-readiness-production-equivalence",
         "release-infra",
-        "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL with `node bin/ddd-runtime-readiness-smoke.mjs`.",
+        "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL with `node bin\/ddd-runtime-readiness-smoke.mjs`.",
         ["LUMIRA_BASE_URL", "DEPLOY_CHECK_BASE_URL", "BASE_URL", "DDD_DEPLOYMENT_EVIDENCE", "DDD_EVIDENCE_ENVIRONMENT", "DDD_RELEASE_CANDIDATE", "DDD_EVIDENCE_OPERATOR"],
         readiness.productionEquivalence.issues.join("; "),
       );
@@ -12496,7 +12496,7 @@ function runtimeReadinessActionPlan(readiness) {
       add(
         `runtime-readiness-contract-${items.length + 1}`,
         "release-infra",
-        "Fix runtime readiness artifact contract issues and regenerate summary.json with `node bin/ddd-runtime-readiness-smoke.mjs`.",
+        "Fix runtime readiness artifact contract issues and regenerate summary.json with `node bin\/ddd-runtime-readiness-smoke.mjs`.",
         ["LUMIRA_BASE_URL", "DDD_EVIDENCE_ENVIRONMENT", "DDD_RELEASE_CANDIDATE", "DDD_EVIDENCE_OPERATOR"],
         issue,
       );
@@ -12600,7 +12600,7 @@ function performanceDiagnostics(actualRead, baselineRead, promotionRead, strictG
         "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
         "DDD_RELEASE_CANDIDATE",
       ],
-      action: "Run authenticated performance smoke against a production-equivalent URL, then promote the accepted actual with bin/ddd-promote-performance-baseline.mjs.",
+      action: "Run authenticated performance smoke against a production-equivalent URL, then promote the accepted actual with bin\/ddd-promote-performance-baseline.mjs.",
     },
     missingBaselineEndpoints,
     regressionIssues,
@@ -13001,7 +13001,7 @@ const dockerDiagnostics = docker.data ? {
       exposedPorts: image.inspect?.image?.exposedPorts || [],
       blockers: image.blockers || [],
       action: image.status === "SKIPPED"
-        ? `Start Docker daemon or run DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs in a CI runner with ${docker.data.dockerCommand || "docker"} available.`
+        ? `Start Docker daemon or run DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs in a CI runner with ${docker.data.dockerCommand || "docker"} available.`
         : "Inspect Docker build blockers and rebuild the image evidence artifact.",
     })),
   skippedImages: (docker.data.images || [])
@@ -13190,7 +13190,7 @@ const summary = {
       })),
       missingResults: orchestratorMissingResults(orchestrator.data),
       action: orchestrator.data.mode !== "run"
-        ? "Run `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict` after resolving preflight blockers."
+        ? "Run `DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator.mjs --run --strict` after resolving preflight blockers."
         : null,
       blockerChecks: (orchestrator.data.preflight?.checks || [])
         .filter((check) => check.status === "BLOCKER")

@@ -150,13 +150,13 @@ const ownerPacketDir = process.env.DDD_STAGING_OWNER_PACKET_DIR
 const handoffBundleDir = process.env.DDD_STAGING_HANDOFF_BUNDLE_DIR
   ? path.resolve(repoRoot, process.env.DDD_STAGING_HANDOFF_BUNDLE_DIR)
   : path.join(releaseDir, "staging-handoff-bundle");
-const laneCompletionReceiptAutofillCommand = "node bin/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>";
+const laneCompletionReceiptAutofillCommand = "node bin\/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>";
 
 function printHelp() {
   console.log(`DDD staging execution checklist
 
 Usage:
-  node bin/ddd-staging-execution-checklist.mjs [options]
+  node bin\/ddd-staging-execution-checklist.mjs [options]
 
 Options:
   --json                 Write only JSON output.
@@ -290,110 +290,110 @@ Environment:
   DDD_LANE_COMPLETION_RECEIPT_FILE Override redacted lane completion receipt contract input.
 
 Examples:
-  node bin/ddd-staging-execution-checklist.mjs
-  node bin/ddd-staging-execution-checklist.mjs --owner-packets
-  node bin/ddd-staging-execution-checklist.mjs --list-owners
-  node bin/ddd-staging-execution-checklist.mjs --summary
-  node bin/ddd-staging-execution-checklist.mjs --dispatch-check
-  node bin/ddd-staging-execution-checklist.mjs --rollup
-  node bin/ddd-staging-execution-checklist.mjs --rollup-markdown
-  node bin/ddd-staging-execution-checklist.mjs --rollup-enforce
-  node bin/ddd-staging-execution-checklist.mjs --commands
-  node bin/ddd-staging-execution-checklist.mjs --evidence-env-template
-  node bin/ddd-staging-execution-checklist.mjs --evidence-gaps
-  node bin/ddd-staging-execution-checklist.mjs --evidence-runbook
-  node bin/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown
-  node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance
-  node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance-markdown
-  node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report
-  node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown
-  node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan
-  node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --closure-plan
-  node bin/ddd-staging-execution-checklist.mjs --closure-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --next-action-queue
-  node bin/ddd-staging-execution-checklist.mjs --next-action-queue-markdown
-  node bin/ddd-staging-execution-checklist.mjs --owner-lane-matrix
-  node bin/ddd-staging-execution-checklist.mjs --owner-lane-matrix-markdown
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>
-  node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>
-  node bin/ddd-staging-execution-checklist.mjs --next-action-env-template
-  node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>
-  node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file>
-  node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>
-  node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>
-  node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>
-  node bin/ddd-staging-execution-checklist.mjs --next-action-verification-plan
-  node bin/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --release-env-plan
-  node bin/ddd-staging-execution-checklist.mjs --release-env-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix
-  node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown
-  node bin/ddd-staging-execution-checklist.mjs --release-env-next-owner-template
-  node bin/ddd-staging-execution-checklist.mjs --release-env-merge-plan
-  node bin/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan
-  node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --docker-image-plan
-  node bin/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan
-  node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --runtime-business-plan
-  node bin/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --runtime-smoke-plan
-  node bin/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan
-  node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --data-safety-plan
-  node bin/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --data-safety-owner-plan
-  node bin/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan
-  node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan
-  node bin/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --blocking-inputs
-  node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown
-  node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template
-  node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra
-  node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan
-  node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs
-  node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command
-  node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>
-  node bin/ddd-staging-execution-checklist.mjs --execution-status
-  node bin/ddd-staging-execution-checklist.mjs --execution-status-markdown
-  node bin/ddd-staging-execution-checklist.mjs --handoff-summary-markdown
-  node bin/ddd-staging-execution-checklist.mjs --final-review
-  node bin/ddd-staging-execution-checklist.mjs --final-review-markdown
-  node bin/ddd-staging-execution-checklist.mjs --final-review-enforce
-  node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout
-  node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown
-  node bin/ddd-staging-execution-checklist.mjs --production-closeout-status
-  node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown
-  node bin/ddd-staging-execution-checklist.mjs --production-unblock-plan
-  node bin/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown
-  node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness
-  node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown
-  node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce
-  node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit
-  node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown
-  node bin/ddd-staging-execution-checklist.mjs --operator-progress
-  node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown
-  node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief
-  node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown
-  node bin/ddd-staging-execution-checklist.mjs --handoff-bundle
-  node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify
-  node bin/ddd-staging-execution-checklist.mjs --owner-packets --owner=release-infra
+  node bin\/ddd-staging-execution-checklist.mjs
+  node bin\/ddd-staging-execution-checklist.mjs --owner-packets
+  node bin\/ddd-staging-execution-checklist.mjs --list-owners
+  node bin\/ddd-staging-execution-checklist.mjs --summary
+  node bin\/ddd-staging-execution-checklist.mjs --dispatch-check
+  node bin\/ddd-staging-execution-checklist.mjs --rollup
+  node bin\/ddd-staging-execution-checklist.mjs --rollup-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --rollup-enforce
+  node bin\/ddd-staging-execution-checklist.mjs --commands
+  node bin\/ddd-staging-execution-checklist.mjs --evidence-env-template
+  node bin\/ddd-staging-execution-checklist.mjs --evidence-gaps
+  node bin\/ddd-staging-execution-checklist.mjs --evidence-runbook
+  node bin\/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance
+  node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report
+  node bin\/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --explain-artifact-plan
+  node bin\/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --closure-plan
+  node bin\/ddd-staging-execution-checklist.mjs --closure-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --next-action-queue
+  node bin\/ddd-staging-execution-checklist.mjs --next-action-queue-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --owner-lane-matrix
+  node bin\/ddd-staging-execution-checklist.mjs --owner-lane-matrix-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>
+  node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>
+  node bin\/ddd-staging-execution-checklist.mjs --next-action-env-template
+  node bin\/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>
+  node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file>
+  node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>
+  node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>
+  node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>
+  node bin\/ddd-staging-execution-checklist.mjs --next-action-verification-plan
+  node bin\/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --release-env-plan
+  node bin\/ddd-staging-execution-checklist.mjs --release-env-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --release-env-owner-matrix
+  node bin\/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --release-env-next-owner-template
+  node bin\/ddd-staging-execution-checklist.mjs --release-env-merge-plan
+  node bin\/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan
+  node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --docker-image-plan
+  node bin\/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --docker-image-submission-plan
+  node bin\/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --runtime-business-plan
+  node bin\/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --runtime-smoke-plan
+  node bin\/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan
+  node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --data-safety-plan
+  node bin\/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --data-safety-owner-plan
+  node bin\/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan
+  node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan
+  node bin\/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs
+  node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template
+  node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra
+  node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan
+  node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs
+  node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command
+  node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>
+  node bin\/ddd-staging-execution-checklist.mjs --execution-status
+  node bin\/ddd-staging-execution-checklist.mjs --execution-status-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --handoff-summary-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --final-review
+  node bin\/ddd-staging-execution-checklist.mjs --final-review-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce
+  node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout
+  node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status
+  node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --production-unblock-plan
+  node bin\/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness
+  node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce
+  node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit
+  node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --operator-progress
+  node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --release-owner-daily-brief
+  node bin\/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown
+  node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle
+  node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle-verify
+  node bin\/ddd-staging-execution-checklist.mjs --owner-packets --owner=release-infra
 `);
 }
 
@@ -476,12 +476,12 @@ const readinessPath = path.join(releaseDir, "readiness-summary.json");
 const commandCatalogPath = path.join(releaseDir, "release-command-catalog.md");
 const missingEnvTemplatePath = path.join(releaseDir, "release-env-missing.template.env");
 const envInitScriptPath = path.join(releaseDir, "release-final-owner-queue-env-init.sh");
-const envInitWrapperPath = path.join(repoRoot, "scripts", "ddd-release-env-init.mjs");
-const envInitCommand = "node bin/ddd-release-env-init.mjs";
-const envInitCheckCommand = "node bin/ddd-release-env-init.mjs --check";
-const dockerEvidenceCheckCommand = "node bin/ddd-docker-build-evidence.mjs --check";
-const runtimeStagingCheckCommand = "node bin/ddd-staging-runtime-check.mjs";
-const dataSafetyCheckCommand = "node bin/ddd-staging-data-safety-check.mjs";
+const envInitWrapperPath = path.join(repoRoot, "bin", "ddd-release-env-init.mjs");
+const envInitCommand = "node bin\/ddd-release-env-init.mjs";
+const envInitCheckCommand = "node bin\/ddd-release-env-init.mjs --check";
+const dockerEvidenceCheckCommand = "node bin\/ddd-docker-build-evidence.mjs --check";
+const runtimeStagingCheckCommand = "node bin\/ddd-staging-runtime-check.mjs";
+const dataSafetyCheckCommand = "node bin\/ddd-staging-data-safety-check.mjs";
 
 const finalPacket = readJson(finalPacketPath);
 const evidenceGate = readJson(evidenceGatePath);
@@ -540,9 +540,9 @@ const tracks = [
       ...(orchestratorPreflight.blockerChecks || []).flatMap((check) => check.envKeys || []),
     ]),
     commands: [
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
-      "node bin/ddd-release-readiness-summary.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs",
+      "node bin\/ddd-release-readiness-summary.mjs",
     ],
     artifacts: [
       "artifacts/ddd/release/release-env-lint.json",
@@ -562,8 +562,8 @@ const tracks = [
     reason: "backend and lumira-ui images must be built or inspected from CI-produced release images",
     envKeys: ["DDD_DOCKER_BUILD_STRICT", "DDD_DOCKER_COMMAND", "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE", "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"],
     commands: [
-      "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
-      "node bin/ddd-release-readiness-summary.mjs",
+      "DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs",
+      "node bin\/ddd-release-readiness-summary.mjs",
     ],
     setupCommands: [
       dockerEvidenceCheckCommand,
@@ -578,14 +578,14 @@ const tracks = [
     reason: "local-only runtime evidence must be replaced by HTTPS staging evidence",
     envKeys: ["LUMIRA_BASE_URL", "PLAYWRIGHT_BASE_URL", "DDD_FRONTEND_EXPECT_DEPLOYED", "DDD_AI_EXPECT_PROVIDER_REMOTE", "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"],
     commands: [
-      "node bin/ddd-runtime-readiness-smoke.mjs",
-      "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
-      "node bin/ddd-ai-runtime-drill.mjs",
-      "node bin/ddd-frontend-playwright-smoke.mjs",
-      "node bin/ddd-frontend-smoke-evidence.mjs",
-      "node bin/ddd-file-processing-e2e-smoke.mjs",
-      "node bin/ddd-job-e2e-smoke.mjs",
-      "node bin/ddd-payment-webhook-e2e-smoke.mjs",
+      "node bin\/ddd-runtime-readiness-smoke.mjs",
+      "DDD_AUTH_PERF_STRICT=true node bin\/ddd-authenticated-performance-smoke.mjs",
+      "node bin\/ddd-ai-runtime-drill.mjs",
+      "node bin\/ddd-frontend-playwright-smoke.mjs",
+      "node bin\/ddd-frontend-smoke-evidence.mjs",
+      "node bin\/ddd-file-processing-e2e-smoke.mjs",
+      "node bin\/ddd-job-e2e-smoke.mjs",
+      "node bin\/ddd-payment-webhook-e2e-smoke.mjs",
     ],
     setupCommands: [
       runtimeStagingCheckCommand,
@@ -608,8 +608,8 @@ const tracks = [
     reason: "every bounded context needs PASS rollback drill evidence or approved unexpired deferral",
     envKeys: ["DDD_ROLLBACK_DRILL_CHECK_ENV", "DDD_ROLLBACK_DRILL_STRICT", "DDD_ROLLBACK_DRILL_FILE"],
     commands: [
-      "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-      "node bin/ddd-rollback-drill-evidence.mjs",
+      "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs",
+      "node bin\/ddd-rollback-drill-evidence.mjs",
     ],
     setupCommands: [
       dataSafetyCheckCommand,
@@ -624,10 +624,10 @@ const tracks = [
     reason: "fresh production-equivalent migration and hot-path EXPLAIN evidence are required",
     envKeys: ["DDD_MIGRATION_FRESH_DB_VALIDATED", "DDD_MIGRATION_UPGRADE_DB_VALIDATED", "DDD_EXPLAIN_DATABASE", "DDD_EXPLAIN_ENVIRONMENT"],
     commands: [
-      "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-      "DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs",
-      "node bin/ddd-collect-explain.mjs",
-      "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
+      "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+      "DDD_MIGRATION_STRICT=true node bin\/ddd-migration-evidence.mjs",
+      "node bin\/ddd-collect-explain.mjs",
+      "DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs",
     ],
     setupCommands: [
       dataSafetyCheckCommand,
@@ -648,10 +648,10 @@ const tracks = [
       : `final recommendation is ${finalPacket.finalRecommendation || finalPacket.recommendation || "unknown"}`,
     envKeys: ["DDD_RELEASE_EVIDENCE_STRICT", "DDD_FINAL_GO_NO_GO_ENFORCE"],
     commands: [
-      "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
-      "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
-      "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-gate.mjs",
-      "node bin/ddd-release-readiness-summary.mjs",
+      "DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator.mjs --run --strict",
+      "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin\/ddd-release-evidence-manifest.mjs",
+      "DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-gate.mjs",
+      "node bin\/ddd-release-readiness-summary.mjs",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     ],
     artifacts: [
@@ -736,7 +736,7 @@ function renderSummary(report) {
     "Next commands:",
     `- ${envInitCheckCommand}`,
     `- ${envInitCommand}`,
-    "- node bin/ddd-staging-execution-checklist.mjs --owner-packets",
+    "- node bin\/ddd-staging-execution-checklist.mjs --owner-packets",
     "- DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
   ];
   return `${lines.join("\n")}\n`;
@@ -795,7 +795,7 @@ function buildEvidenceRunbook(report) {
     trackCount: tracks.length,
     blockedTrackCount: tracks.filter((track) => track.status !== "ready").length,
     tracks,
-    nextCommand: "node bin/ddd-staging-execution-checklist.mjs --execution-status",
+    nextCommand: "node bin\/ddd-staging-execution-checklist.mjs --execution-status",
   };
 }
 
@@ -1019,7 +1019,7 @@ function verifyHandoffBundleResult() {
     ["release-env-fill-checklist.md", "## Required Keys By Group"],
     ["release-env-fill-checklist.md", "## Validation Commands"],
     ["release-env-fill.template.env", "# P0 release env fill template."],
-    ["release-env-fill.template.env", "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs"],
+    ["release-env-fill.template.env", "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs"],
     ["lane-receipt-fragments.md", "# DDD Lane Receipt Fragments"],
     ["lane-receipt-fragments.md", "## Receipt JSON Skeleton"],
     ["lane-receipt-fragments.md", "## Owner Fragment Copy Blocks"],
@@ -1458,8 +1458,8 @@ function buildEvidenceAcceptance({ rollupOverride = null } = {}) {
     missingArtifactCount: items.reduce((count, item) => count + item.missingArtifactCount, 0),
     items,
     nextCommand: items.every((item) => item.accepted)
-      ? "node bin/ddd-staging-execution-checklist.mjs --rollup-enforce"
-      : "node bin/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown",
+      ? "node bin\/ddd-staging-execution-checklist.mjs --rollup-enforce"
+      : "node bin\/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown",
   };
 }
 
@@ -1636,7 +1636,7 @@ function buildEvidenceArtifactGapReport({ acceptanceOverride = null, rollupOverr
     presentArtifacts,
     artifacts,
     nextCommand: missingArtifacts.length === 0
-      ? "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance"
+      ? "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance"
       : missingArtifacts[0]?.acceptanceCommands[0] || acceptance.nextCommand,
   };
 }
@@ -1712,12 +1712,12 @@ function buildExplainArtifactPlan({ artifactGapReportOverride = null, ownerPlanO
   const explainPhases = (ownerPlan.phases || []).filter((phase) => phase.id?.startsWith("explain-"));
   const requiredInputs = unique(explainPhases.flatMap((phase) => phase.requiredInputs || []));
   const evidenceCommands = unique([
-    "node bin/ddd-staging-data-safety-check.mjs",
+    "node bin\/ddd-staging-data-safety-check.mjs",
     ...explainPhases.flatMap((phase) => phase.commands || []),
     ...(explainArtifact?.evidenceCommands || []),
-    "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
   ]);
   const expectedArtifacts = unique([
     "tmp/ddd-explain/*.json",
@@ -1743,7 +1743,7 @@ function buildExplainArtifactPlan({ artifactGapReportOverride = null, ownerPlanO
     requiredInputs,
     expectedArtifacts,
     commands: evidenceCommands,
-    acceptanceCommands: unique(explainArtifact?.acceptanceCommands || ["node bin/ddd-staging-data-safety-check.mjs"]),
+    acceptanceCommands: unique(explainArtifact?.acceptanceCommands || ["node bin\/ddd-staging-data-safety-check.mjs"]),
     envTemplate: [
       "DDD_EXPLAIN_DATABASE=__REQUIRED__",
       "DDD_EXPLAIN_ENVIRONMENT=staging",
@@ -1757,14 +1757,14 @@ function buildExplainArtifactPlan({ artifactGapReportOverride = null, ownerPlanO
       "DDD_EVIDENCE_OPERATOR=__REQUIRED__",
     ],
     passCriteria: [
-      "`node bin/ddd-collect-explain.mjs` writes JSON files under `tmp/ddd-explain/`.",
-      "`DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs` passes and writes the EXPLAIN gate report.",
-      "`node bin/ddd-staging-data-safety-check.mjs` accepts rollback, migration, and EXPLAIN evidence.",
-      "`node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report` shows no missing EXPLAIN artifact.",
+      "`node bin\/ddd-collect-explain.mjs` writes JSON files under `tmp/ddd-explain/`.",
+      "`DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs` passes and writes the EXPLAIN gate report.",
+      "`node bin\/ddd-staging-data-safety-check.mjs` accepts rollback, migration, and EXPLAIN evidence.",
+      "`node bin\/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report` shows no missing EXPLAIN artifact.",
     ],
     nextCommand: artifactPresent
-      ? "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
-      : "node bin/ddd-collect-explain.mjs",
+      ? "DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs"
+      : "node bin\/ddd-collect-explain.mjs",
   };
 }
 
@@ -1933,14 +1933,14 @@ function buildClosurePlan({ rollupOverride = null } = {}) {
       "Final cutover requires --final-review-enforce and release-final-go-no-go-gate.sh to pass.",
     ],
     verificationCommands: [
-      "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-      "node bin/ddd-staging-execution-checklist.mjs --rollup-enforce",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "node bin\/ddd-staging-execution-checklist.mjs --rollup-enforce",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     ],
     nextCommand: items.length === 0
-      ? "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
-      : (items[0]?.setupCommands?.[0] || items[0]?.acceptanceCommand || "node bin/ddd-staging-execution-checklist.mjs --commands"),
+      ? "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      : (items[0]?.setupCommands?.[0] || items[0]?.acceptanceCommand || "node bin\/ddd-staging-execution-checklist.mjs --commands"),
   };
 }
 
@@ -2033,12 +2033,12 @@ function buildNextActionQueue({ rollupOverride = null } = {}) {
       title: "Fill and validate the secure release env file",
       blocker: releaseEnvPlan.blocker || null,
       command: releaseEnvNextOwner.owner
-        ? `node bin/ddd-staging-execution-checklist.mjs --release-env-next-owner-template`
+        ? `node bin\/ddd-staging-execution-checklist.mjs --release-env-next-owner-template`
         : releaseEnvPlan.nextCommand,
       followUpCommands: [
-        "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
-        "node bin/ddd-staging-execution-checklist.mjs --release-env-merge-plan",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+        "node bin\/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+        "node bin\/ddd-staging-execution-checklist.mjs --release-env-merge-plan",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
       ],
       artifacts: [
         "artifacts/ddd/release/staging-handoff-bundle/release-env-next-owner.template.env",
@@ -2054,7 +2054,7 @@ function buildNextActionQueue({ rollupOverride = null } = {}) {
       status: dockerImagePlan.status,
       title: "Produce Docker build or existing-image inspect evidence",
       blocker: dockerImagePlan.docker?.issues?.[0] || dockerImagePlan.staticDockerfiles?.issues?.[0] || null,
-      command: "node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
       followUpCommands: dockerImageSubmissionPlan.validationCommands || [],
       artifacts: [
         "artifacts/ddd/release/staging-handoff-bundle/docker-image-submission-plan.md",
@@ -2070,7 +2070,7 @@ function buildNextActionQueue({ rollupOverride = null } = {}) {
       status: runtimeSmokePlan.status,
       title: runtimeSmokePlan.nextPhase?.goal || "Run runtime and business staging smokes",
       blocker: runtimeSmokePlan.nextPhase?.blocker || runtimeBusinessPlan.runtimeGate?.blocker || null,
-      command: "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
       followUpCommands: runtimeBusinessSubmissionPlan.validationCommands || [],
       artifacts: [
         "artifacts/ddd/release/staging-handoff-bundle/runtime-business-submission-plan.md",
@@ -2086,7 +2086,7 @@ function buildNextActionQueue({ rollupOverride = null } = {}) {
       status: dataSafetyOwnerPlan.status,
       title: dataSafetyOwnerPlan.nextPhase?.goal || "Run rollback, migration, and EXPLAIN evidence",
       blocker: dataSafetyOwnerPlan.nextPhase?.blocker || null,
-      command: "node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
       followUpCommands: dataSafetySubmissionPlan.validationCommands || [],
       artifacts: [
         "artifacts/ddd/release/staging-handoff-bundle/data-safety-submission-plan.md",
@@ -2102,7 +2102,7 @@ function buildNextActionQueue({ rollupOverride = null } = {}) {
       status: rollup.status === "PASS" && rollup.cutoverAllowed === true ? "READY" : "BLOCKED",
       title: "Regenerate readiness and enforce final cutover gates",
       blocker: rollup.status === "PASS" && rollup.cutoverAllowed === true ? null : `${rollup.finalRecommendation}; blocked=${rollup.blockedCount}/${rollup.items.length}`,
-      command: "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
       followUpCommands: closurePlan.verificationCommands,
       artifacts: [
         "artifacts/ddd/release/staging-handoff-bundle/final-review.json",
@@ -2131,7 +2131,7 @@ function buildNextActionQueue({ rollupOverride = null } = {}) {
     const uniqueMissingEvidenceArtifacts = [...missingEvidenceArtifactsByPath.values()];
     const artifactPlanCommands = item.lane === "p1-p2-data-safety" && missingEvidenceArtifacts.some((artifact) => artifact.artifact === "tmp/ddd-explain/*.json")
       ? [
-        "node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown",
+        "node bin\/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown",
         ...explainArtifactPlan.commands,
       ]
       : [];
@@ -2155,7 +2155,7 @@ function buildNextActionQueue({ rollupOverride = null } = {}) {
     immediateActions: enrichedQueue.filter((item) => item.order <= 4 && item.status !== "PASS"),
     parallelNow: enrichedQueue.filter((item) => ["p0-release-env", "p0-docker-images", "p1-runtime-business", "p1-p2-data-safety"].includes(item.lane) && item.status !== "PASS").map((item) => item.lane),
     nextAction: actionable[0] || enrichedQueue.at(-1),
-    nextCommand: actionable[0]?.command || "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    nextCommand: actionable[0]?.command || "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
     verificationCommands: closurePlan.verificationCommands,
     safety: [
       "Treat this as the operator queue; use each source plan for full owner details.",
@@ -2379,15 +2379,15 @@ function buildLaneCompletionReceiptTemplate({ matrixOverride = null } = {}) {
       "each PASS lane must include completedAt and completedBy",
       "each owner:lane key must appear at most once",
       "run each lane acceptanceCommands before marking PASS",
-      "run node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+      "run node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
     ],
     submissionFlow: [
       laneCompletionReceiptAutofillCommand,
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
     ],
   };
 }
@@ -2707,7 +2707,7 @@ function buildEvidenceClosureBoard({ receiptFile = laneCompletionReceiptFile, ro
     issueCount: issues.length,
     issues,
     nextCommand: openLanes[0]?.nextCommand
-      || "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      || "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
   };
 }
 
@@ -2850,15 +2850,15 @@ function buildLaneCompletionSubmissionPlan({ rollupOverride = null } = {}) {
       base64TakesPrecedence: true,
     },
     commands: [
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
       laneCompletionReceiptAutofillCommand,
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
     ],
     passCriteria: [
       "receipt.redacted must be true",
@@ -2878,7 +2878,7 @@ function buildLaneCompletionSubmissionPlan({ rollupOverride = null } = {}) {
       missingLanes: coverage.coverage.missingLanes,
       issues: coverage.issues,
     },
-    nextCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+    nextCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
   };
 }
 
@@ -2971,7 +2971,7 @@ function buildLaneCompletionSubmissionCheck({ receiptFile = laneCompletionReceip
     base64: {
       status: base64Report?.status || "SKIPPED",
       ready: canSubmitBase64,
-      command: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
       printsValue: true,
     },
     dispatch: {
@@ -2985,8 +2985,8 @@ function buildLaneCompletionSubmissionCheck({ receiptFile = laneCompletionReceip
     nextCommand: canSubmitBase64
       ? "gh workflow run ddd-release-evidence.yml -f mode=run -f lane_completion_receipt_base64=<base64-value>"
       : (receiptFile
-        ? "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>"
-        : "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"),
+        ? "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>"
+        : "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"),
   };
 }
 
@@ -3017,7 +3017,7 @@ function renderLaneCompletionSubmissionCheckMarkdown(check) {
     "",
     "## Submission Commands",
     "",
-    `- Check coverage: \`node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>\``,
+    `- Check coverage: \`node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>\``,
     `- Generate base64: \`${check.base64.command}\``,
     `- Dispatch: \`${check.dispatch.commandTemplate}\``,
     "",
@@ -3037,7 +3037,7 @@ function buildLaneCompletionReceiptInit({ outputFile = laneCompletionReceiptOutp
       redacted: true,
       contract: null,
       issues: ["--lane-completion-receipt-output=<file> is required"],
-      nextCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+      nextCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
     };
   }
   const resolved = path.resolve(repoRoot, outputFile);
@@ -3077,7 +3077,7 @@ function buildLaneCompletionReceiptInit({ outputFile = laneCompletionReceiptOutp
       blockedLaneCount: contract.summary.blockedLaneCount,
     },
     issues: contract.issues,
-    nextCommand: "edit the receipt, then run node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+    nextCommand: "edit the receipt, then run node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
   };
 }
 
@@ -3230,15 +3230,15 @@ function buildReleaseEnvPlan({ rollupOverride = null } = {}) {
   const dispatch = buildDispatchCheck(checklist);
   const releaseEnvTrack = checklist.tracks.find((track) => track.id === "p0-release-env") || {};
   const releaseEnvGate = (rollup.items || []).find((item) => item.id === "release-env") || {};
-  const ownerPacketsCommand = "node bin/ddd-staging-execution-checklist.mjs --owner-packets";
-  const releaseInfraEnvTemplateCommand = "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra";
+  const ownerPacketsCommand = "node bin\/ddd-staging-execution-checklist.mjs --owner-packets";
+  const releaseInfraEnvTemplateCommand = "node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra";
   const target = dispatch.envInitCheck?.target || process.env.DDD_RELEASE_ENV_FILE || ".env.release.local";
   const validationCommands = [
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
-    "node bin/ddd-release-readiness-summary.mjs",
-    "node bin/ddd-staging-execution-checklist.mjs --rollup",
-    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs",
+    "node bin\/ddd-release-readiness-summary.mjs",
+    "node bin\/ddd-staging-execution-checklist.mjs --rollup",
+    "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
   ];
   const ownerSteps = (ownerBlockerSummary || []).map((owner) => ({
     owner: owner.owner,
@@ -3248,7 +3248,7 @@ function buildReleaseEnvPlan({ rollupOverride = null } = {}) {
     handoffPath: owner.handoffPath,
     keys: owner.keys || [],
     reasons: owner.ownerInputReasons || [],
-    envTemplateCommand: `node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=${owner.owner}`,
+    envTemplateCommand: `node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=${owner.owner}`,
   }));
   const status = releaseEnvGate.status === "PASS" ? "PASS" : "BLOCKED";
   return {
@@ -3263,7 +3263,7 @@ function buildReleaseEnvPlan({ rollupOverride = null } = {}) {
       status: releaseEnvGate.status || status,
       blocker: releaseEnvGate.issue || releaseEnvTrack.reason || null,
       blockingInputs: releaseEnvGate.blockingInputs || ["DDD_RELEASE_ENV_FILE"],
-      acceptanceCommand: releaseEnvGate.nextCommand || "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+      acceptanceCommand: releaseEnvGate.nextCommand || "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
     },
     ownerCount: ownerSteps.length,
     ownerSteps,
@@ -3399,8 +3399,8 @@ function buildReleaseEnvOwnerMatrix({ releaseEnvPlanOverride = null } = {}) {
       }
       : null,
     commands: {
-      ownerPackets: "node bin/ddd-staging-execution-checklist.mjs --owner-packets",
-      allBlockingInputsTemplate: "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template",
+      ownerPackets: "node bin\/ddd-staging-execution-checklist.mjs --owner-packets",
+      allBlockingInputsTemplate: "node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template",
       validate: plan.commands.validate,
     },
     nextCommand: topOwner?.envTemplateCommand || plan.nextCommand,
@@ -3480,7 +3480,7 @@ function buildReleaseEnvNextOwnerTemplateReport({ rollupOverride = null, matrixO
       owner: null,
       reason: "no release-env owner blockers remain",
       content: renderBlockingInputsEnvTemplate(buildBlockingInputs({ rollupOverride, owner: "__none__" })),
-      nextCommand: "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+      nextCommand: "node bin\/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
     };
   }
   const report = buildOwnerBlockingInputsEnvReport(owner, { rollupOverride });
@@ -3506,7 +3506,7 @@ function buildReleaseEnvNextOwnerTemplateReport({ rollupOverride = null, matrixO
     keyCount: (owner.keys || []).length,
     handoffPath: owner.handoffPath || null,
     content,
-    nextCommand: "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+    nextCommand: "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
   };
 }
 
@@ -3537,19 +3537,19 @@ function buildReleaseEnvMergePlan({ releaseEnvPlanOverride = null, matrixOverrid
   const ownerTemplateDir = "artifacts/ddd/release/release-env-owner-templates";
   const releaseEnvFile = "<release-env-file>";
   const mergeCommands = [
-    `node bin/ddd-release-env-owner-templates-merge.mjs ${ownerTemplateDir} ${canonicalTemplate}`,
-    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin/ddd-release-env-canonical-merge.mjs ${canonicalTemplate} ${releaseEnvFile}`,
-    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin/ddd-release-env-safe-defaults.mjs`,
-    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin/ddd-release-provenance-defaults.mjs`,
-    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin/ddd-release-env-alias-sync.mjs`,
+    `node bin\/ddd-release-env-owner-templates-merge.mjs ${ownerTemplateDir} ${canonicalTemplate}`,
+    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin\/ddd-release-env-canonical-merge.mjs ${canonicalTemplate} ${releaseEnvFile}`,
+    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin\/ddd-release-env-safe-defaults.mjs`,
+    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin\/ddd-release-provenance-defaults.mjs`,
+    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin\/ddd-release-env-alias-sync.mjs`,
   ];
   const validateCommands = [
-    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin/ddd-release-env-canonical-lint.mjs ${canonicalTemplate}`,
-    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin/ddd-release-env-file-lint.mjs`,
-    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin/ddd-release-config-evidence.mjs`,
-    "node bin/ddd-release-readiness-summary.mjs",
-    "node bin/ddd-staging-execution-checklist.mjs --rollup",
-    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin\/ddd-release-env-canonical-lint.mjs ${canonicalTemplate}`,
+    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin\/ddd-release-env-file-lint.mjs`,
+    `DDD_RELEASE_ENV_FILE=${releaseEnvFile} node bin\/ddd-release-config-evidence.mjs`,
+    "node bin\/ddd-release-readiness-summary.mjs",
+    "node bin\/ddd-staging-execution-checklist.mjs --rollup",
+    "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
   ];
   return {
     status: plan.status,
@@ -3568,9 +3568,9 @@ function buildReleaseEnvMergePlan({ releaseEnvPlanOverride = null, matrixOverrid
         id: "collect-owner-values",
         owner: "release-owner",
         commands: [
-          "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
-          "node bin/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
-          "node bin/ddd-staging-execution-checklist.mjs --owner-packets",
+          "node bin\/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+          "node bin\/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+          "node bin\/ddd-staging-execution-checklist.mjs --owner-packets",
         ],
         artifacts: [
           "artifacts/ddd/release/staging-handoff-bundle/release-env-next-owner.template.env",
@@ -3599,7 +3599,7 @@ function buildReleaseEnvMergePlan({ releaseEnvPlanOverride = null, matrixOverrid
       "Run canonical lint and env-file lint before config evidence.",
       "Rerun final review only after readiness summary is regenerated from the completed env file.",
     ],
-    nextCommand: matrix.topOwner?.envTemplateCommand || "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+    nextCommand: matrix.topOwner?.envTemplateCommand || "node bin\/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
   };
 }
 
@@ -3704,9 +3704,9 @@ function buildReleaseEnvSubmissionPlan({ releaseEnvPlanOverride = null, matrixOv
       receiptFile,
       redacted: true,
       commands: [
-        `node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=${envFile}`,
-        `node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=${envFile} --next-action-env-receipt-output=${receiptFile}`,
-        `node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=${receiptFile}`,
+        `node bin\/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=${envFile}`,
+        `node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=${envFile} --next-action-env-receipt-output=${receiptFile}`,
+        `node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=${receiptFile}`,
       ],
     },
     laneReceiptFragment: {
@@ -3726,16 +3726,16 @@ function buildReleaseEnvSubmissionPlan({ releaseEnvPlanOverride = null, matrixOv
       completedAt: "<ISO-8601 timestamp after validation commands pass>",
       completedBy: "<owner or workflow actor>",
       acceptanceCommands: [
-        `DDD_RELEASE_ENV_FILE=${envFile} node bin/ddd-release-env-file-lint.mjs`,
+        `DDD_RELEASE_ENV_FILE=${envFile} node bin\/ddd-release-env-file-lint.mjs`,
       ],
     },
     validationCommands: [
-      `DDD_RELEASE_ENV_FILE=${envFile} node bin/ddd-release-env-canonical-lint.mjs ${mergePlan.canonicalTemplate}`,
-      `DDD_RELEASE_ENV_FILE=${envFile} node bin/ddd-release-env-file-lint.mjs`,
-      `DDD_RELEASE_ENV_FILE=${envFile} node bin/ddd-release-config-evidence.mjs`,
-      "node bin/ddd-release-readiness-summary.mjs",
-      `node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=${receiptFile}`,
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      `DDD_RELEASE_ENV_FILE=${envFile} node bin\/ddd-release-env-canonical-lint.mjs ${mergePlan.canonicalTemplate}`,
+      `DDD_RELEASE_ENV_FILE=${envFile} node bin\/ddd-release-env-file-lint.mjs`,
+      `DDD_RELEASE_ENV_FILE=${envFile} node bin\/ddd-release-config-evidence.mjs`,
+      "node bin\/ddd-release-readiness-summary.mjs",
+      `node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=${receiptFile}`,
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
     ],
     passCriteria: [
       "owner templates must be completed without committing populated secrets",
@@ -3744,7 +3744,7 @@ function buildReleaseEnvSubmissionPlan({ releaseEnvPlanOverride = null, matrixOv
       "next-action env receipt must be redacted and pass its contract",
       "release config evidence and readiness summary must be regenerated after env validation",
     ],
-    nextCommand: matrix.topOwner?.envTemplateCommand || "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+    nextCommand: matrix.topOwner?.envTemplateCommand || "node bin\/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
   };
 }
 
@@ -3832,7 +3832,7 @@ if (releaseEnvSubmissionPlanMarkdownOnly) {
 }
 
 function dockerImageCheckFromSubprocess() {
-  const result = spawnSync("node", ["bin/ddd-docker-build-evidence.mjs", "--check"], {
+  const result = spawnSync("node", ["bin\/ddd-docker-build-evidence.mjs", "--check"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: process.env,
@@ -3855,8 +3855,8 @@ function buildDockerImagePlan({ rollupOverride = null } = {}) {
   const dockerCheck = dockerImageCheckFromSubprocess();
   const existingInputs = dockerCheck.existingImageInputs || [];
   const remediationActions = dockerCheck.remediation?.nextActions || [];
-  const dockerRunnerCommand = "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs";
-  const inspectOnlyCommand = "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<release-candidate> node bin/ddd-docker-build-evidence.mjs";
+  const dockerRunnerCommand = "DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs";
+  const inspectOnlyCommand = "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<release-candidate> node bin\/ddd-docker-build-evidence.mjs";
   return {
     status: dockerGate.status || dockerCheck.status || "BLOCKED",
     generatedAt,
@@ -3891,10 +3891,10 @@ function buildDockerImagePlan({ rollupOverride = null } = {}) {
       },
     ],
     validationCommands: [
-      "node bin/ddd-docker-build-evidence.mjs --check",
-      "node bin/ddd-release-readiness-summary.mjs",
-      "node bin/ddd-staging-execution-checklist.mjs --rollup",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      "node bin\/ddd-docker-build-evidence.mjs --check",
+      "node bin\/ddd-release-readiness-summary.mjs",
+      "node bin\/ddd-staging-execution-checklist.mjs --rollup",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
     ],
     remediationActions,
     nextCommand: dockerCheck.nextCommand || dockerEvidenceCheckCommand,
@@ -3997,10 +3997,10 @@ function buildDockerImageSubmissionPlan({ dockerImagePlanOverride = null, rollup
           ],
     })),
     validationCommands: [
-      "node bin/ddd-docker-build-evidence.mjs --check",
-      "node bin/ddd-release-readiness-summary.mjs",
-      "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      "node bin\/ddd-docker-build-evidence.mjs --check",
+      "node bin\/ddd-release-readiness-summary.mjs",
+      "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
     ],
     laneReceiptFragment: {
       owner: "release-infra",
@@ -4010,15 +4010,15 @@ function buildDockerImageSubmissionPlan({ dockerImagePlanOverride = null, rollup
       missingArtifacts: plan.status === "PASS" ? [] : ["artifacts/ddd/build/docker-image-evidence.json"],
       completedAt: "<ISO-8601 timestamp after validation commands pass>",
       completedBy: "<owner or workflow actor>",
-      acceptanceCommands: ["node bin/ddd-docker-build-evidence.mjs --check"],
+      acceptanceCommands: ["node bin\/ddd-docker-build-evidence.mjs --check"],
     },
     passCriteria: [
-      "Docker image evidence artifact exists and passes `node bin/ddd-docker-build-evidence.mjs --check`.",
+      "Docker image evidence artifact exists and passes `node bin\/ddd-docker-build-evidence.mjs --check`.",
       "Image references are scoped to the release candidate and include build provenance evidence.",
       "Readiness summary and operator progress are regenerated after evidence capture.",
       "The docker-images gate no longer blocks final review.",
     ],
-    nextCommand: plan.nextCommand || "node bin/ddd-staging-execution-checklist.mjs --docker-image-plan",
+    nextCommand: plan.nextCommand || "node bin\/ddd-staging-execution-checklist.mjs --docker-image-plan",
   };
 }
 
@@ -4144,7 +4144,7 @@ if (dockerImageSubmissionPlanMarkdownOnly) {
 }
 
 function runtimeCheckFromSubprocess() {
-  const result = spawnSync("node", ["bin/ddd-staging-runtime-check.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-staging-runtime-check.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -4176,43 +4176,43 @@ function buildRuntimeBusinessPlan({ rollupOverride = null } = {}) {
     {
       id: "runtime-readiness",
       owner: "release-infra",
-      command: "node bin/ddd-runtime-readiness-smoke.mjs",
+      command: "node bin\/ddd-runtime-readiness-smoke.mjs",
       artifact: "artifacts/ddd/readiness/summary.json",
     },
     {
       id: "authenticated-performance",
       owner: "release-performance",
-      command: "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
+      command: "DDD_AUTH_PERF_STRICT=true node bin\/ddd-authenticated-performance-smoke.mjs",
       artifact: "artifacts/ddd/performance/authenticated-runtime-actual.json",
     },
     {
       id: "ai-runtime",
       owner: "ai",
-      command: "node bin/ddd-ai-runtime-drill.mjs",
+      command: "node bin\/ddd-ai-runtime-drill.mjs",
       artifact: "artifacts/ddd/ai/ai-runtime-drill.json",
     },
     {
       id: "frontend-smoke",
       owner: "lumira-ui",
-      command: "node bin/ddd-frontend-playwright-smoke.mjs && node bin/ddd-frontend-smoke-evidence.mjs",
+      command: "node bin\/ddd-frontend-playwright-smoke.mjs && node bin\/ddd-frontend-smoke-evidence.mjs",
       artifact: "artifacts/ddd/lumira-ui/frontend-smoke.json",
     },
     {
       id: "file-processing-e2e",
       owner: "file-owner",
-      command: "node bin/ddd-file-processing-e2e-smoke.mjs",
+      command: "node bin\/ddd-file-processing-e2e-smoke.mjs",
       artifact: "artifacts/ddd/file/file-processing-e2e.json",
     },
     {
       id: "job-e2e",
       owner: "job-owner",
-      command: "node bin/ddd-job-e2e-smoke.mjs",
+      command: "node bin\/ddd-job-e2e-smoke.mjs",
       artifact: "artifacts/ddd/jobs/job-e2e-smoke.json",
     },
     {
       id: "payment-webhook-e2e",
       owner: "payment-owner",
-      command: "node bin/ddd-payment-webhook-e2e-smoke.mjs",
+      command: "node bin\/ddd-payment-webhook-e2e-smoke.mjs",
       artifact: "artifacts/ddd/payment/payment-webhook-e2e.json",
     },
   ];
@@ -4250,14 +4250,14 @@ function buildRuntimeBusinessPlan({ rollupOverride = null } = {}) {
     commands: {
       preflight: [
         runtimeStagingCheckCommand,
-        "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra",
+        "node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra",
       ],
       smoke: smokeSteps.map((step) => step.command),
       validate: [
         runtimeStagingCheckCommand,
-        "node bin/ddd-release-readiness-summary.mjs",
-        "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-        "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+        "node bin\/ddd-release-readiness-summary.mjs",
+        "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+        "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
       ],
     },
     smokeSteps,
@@ -4267,7 +4267,7 @@ function buildRuntimeBusinessPlan({ rollupOverride = null } = {}) {
       "Attach deployment evidence for backend, lumira-ui, AI runtime, authenticated performance, and business E2E flows.",
       "Regenerate release readiness after every smoke artifact is refreshed.",
     ],
-    nextCommand: status === "PASS" ? "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance" : runtimeStagingCheckCommand,
+    nextCommand: status === "PASS" ? "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance" : runtimeStagingCheckCommand,
   };
 }
 
@@ -4354,7 +4354,7 @@ function buildRuntimeSmokePlan({ runtimeBusinessPlanOverride = null, rollupOverr
       ],
       commands: [
         runtimeStagingCheckCommand,
-        "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra",
+        "node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra",
       ],
       artifacts: ["artifacts/ddd/readiness/summary.json"],
       acceptanceCommand: runtimeStagingCheckCommand,
@@ -4374,7 +4374,7 @@ function buildRuntimeSmokePlan({ runtimeBusinessPlanOverride = null, rollupOverr
       ],
       commands: [smokeStepById.get("ai-runtime")?.command].filter(Boolean),
       artifacts: [smokeStepById.get("ai-runtime")?.artifact].filter(Boolean),
-      acceptanceCommand: "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      acceptanceCommand: "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       blocker: "missing AI runtime deployment evidence or remote expectation flags",
       dependencies: ["runtime-deployment-evidence"],
     },
@@ -4387,7 +4387,7 @@ function buildRuntimeSmokePlan({ runtimeBusinessPlanOverride = null, rollupOverr
       requiredInputs: ["DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE"],
       commands: [smokeStepById.get("authenticated-performance")?.command].filter(Boolean),
       artifacts: [smokeStepById.get("authenticated-performance")?.artifact].filter(Boolean),
-      acceptanceCommand: "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      acceptanceCommand: "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       blocker: "missing authenticated performance staging evidence",
       dependencies: ["runtime-deployment-evidence"],
     },
@@ -4400,7 +4400,7 @@ function buildRuntimeSmokePlan({ runtimeBusinessPlanOverride = null, rollupOverr
       requiredInputs: ["PLAYWRIGHT_BASE_URL", "DDD_FRONTEND_DEPLOYMENT_EVIDENCE", "DDD_FRONTEND_EXPECT_DEPLOYED=true"],
       commands: [smokeStepById.get("frontend-smoke")?.command].filter(Boolean),
       artifacts: [smokeStepById.get("frontend-smoke")?.artifact].filter(Boolean),
-      acceptanceCommand: "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      acceptanceCommand: "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       blocker: "missing lumira-ui staging smoke evidence",
       dependencies: ["runtime-deployment-evidence"],
     },
@@ -4413,7 +4413,7 @@ function buildRuntimeSmokePlan({ runtimeBusinessPlanOverride = null, rollupOverr
       requiredInputs: ["DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"],
       commands: [smokeStepById.get("file-processing-e2e")?.command].filter(Boolean),
       artifacts: [smokeStepById.get("file-processing-e2e")?.artifact].filter(Boolean),
-      acceptanceCommand: "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      acceptanceCommand: "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       blocker: "missing file processing E2E staging evidence",
       dependencies: ["runtime-deployment-evidence"],
     },
@@ -4426,7 +4426,7 @@ function buildRuntimeSmokePlan({ runtimeBusinessPlanOverride = null, rollupOverr
       requiredInputs: ["DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"],
       commands: [smokeStepById.get("job-e2e")?.command].filter(Boolean),
       artifacts: [smokeStepById.get("job-e2e")?.artifact].filter(Boolean),
-      acceptanceCommand: "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      acceptanceCommand: "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       blocker: "missing job E2E staging evidence",
       dependencies: ["runtime-deployment-evidence"],
     },
@@ -4439,7 +4439,7 @@ function buildRuntimeSmokePlan({ runtimeBusinessPlanOverride = null, rollupOverr
       requiredInputs: ["DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"],
       commands: [smokeStepById.get("payment-webhook-e2e")?.command].filter(Boolean),
       artifacts: [smokeStepById.get("payment-webhook-e2e")?.artifact].filter(Boolean),
-      acceptanceCommand: "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      acceptanceCommand: "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       blocker: "missing payment webhook E2E staging evidence",
       dependencies: ["runtime-deployment-evidence"],
     },
@@ -4452,7 +4452,7 @@ function buildRuntimeSmokePlan({ runtimeBusinessPlanOverride = null, rollupOverr
       requiredInputs: [],
       commands: runtimeBusinessPlan.commands.validate,
       artifacts: runtimeBusinessPlan.expectedArtifacts,
-      acceptanceCommand: "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      acceptanceCommand: "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
       blocker: runtimeBusinessPlan.status === "PASS" ? null : "runtime/business evidence is not fully accepted",
       dependencies: [
         "ai-runtime-evidence",
@@ -4723,7 +4723,7 @@ if (runtimeBusinessSubmissionPlanMarkdownOnly) {
 }
 
 function dataSafetyCheckFromSubprocess() {
-  const result = spawnSync("node", ["bin/ddd-staging-data-safety-check.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-staging-data-safety-check.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -4777,7 +4777,7 @@ function buildDataSafetyPlan({ rollupOverride = null } = {}) {
       status: dataSafetyCheck.tracks?.explain?.status || gateById.get("explain")?.status || "BLOCKED",
       blocker: dataSafetyCheck.tracks?.explain?.issues?.[0] || gateById.get("explain")?.issue || null,
       checks: dataSafetyCheck.tracks?.explain?.checks || [],
-      commands: dataSafetyCheck.tracks?.explain?.nextCommands || ["node bin/ddd-collect-explain.mjs", "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"],
+      commands: dataSafetyCheck.tracks?.explain?.nextCommands || ["node bin\/ddd-collect-explain.mjs", "DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs"],
       artifacts: ["tmp/ddd-explain/*.json", "artifacts/ddd/release/explain-gate-report.json"],
       acceptanceCommand: gateById.get("explain")?.nextCommand || dataSafetyCheckCommand,
       requiredInputs: blockingInputsFromChecks(dataSafetyCheck.tracks?.explain?.checks),
@@ -4805,9 +4805,9 @@ function buildDataSafetyPlan({ rollupOverride = null } = {}) {
       explain: trackPlans.find((track) => track.id === "explain")?.commands || [],
       validate: [
         dataSafetyCheckCommand,
-        "node bin/ddd-release-readiness-summary.mjs",
-        "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-        "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+        "node bin\/ddd-release-readiness-summary.mjs",
+        "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+        "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
       ],
     },
     expectedArtifacts: unique(trackPlans.flatMap((track) => track.artifacts || [])),
@@ -4817,7 +4817,7 @@ function buildDataSafetyPlan({ rollupOverride = null } = {}) {
       "EXPLAIN evidence must be collected from the production-equivalent database shape with read-only credentials.",
       "Regenerate readiness after rollback, migration, and EXPLAIN artifacts are refreshed.",
     ],
-    nextCommand: status === "PASS" ? "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance" : dataSafetyCheckCommand,
+    nextCommand: status === "PASS" ? "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance" : dataSafetyCheckCommand,
   };
 }
 
@@ -4960,9 +4960,9 @@ function buildDataSafetyOwnerPlan({ dataSafetyPlanOverride = null, rollupOverrid
         "MYSQL_PASSWORD",
         "DDD_EXPLAIN_ENVIRONMENT or DDD_EVIDENCE_ENVIRONMENT or DDD_RELEASE_ENVIRONMENT",
       ],
-      commands: ["node bin/ddd-collect-explain.mjs"],
+      commands: ["node bin\/ddd-collect-explain.mjs"],
       artifacts: ["tmp/ddd-explain/*.json"],
-      acceptanceCommand: "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
+      acceptanceCommand: "DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs",
       blocker: explainTrack.blocker || null,
       dependencies: [],
     },
@@ -4976,7 +4976,7 @@ function buildDataSafetyOwnerPlan({ dataSafetyPlanOverride = null, rollupOverrid
         "DDD_RELEASE_CANDIDATE or GITHUB_SHA",
         "DDD_EVIDENCE_OPERATOR or GITHUB_ACTOR",
       ],
-      commands: ["DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"],
+      commands: ["DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs"],
       artifacts: explainTrack.artifacts || ["artifacts/ddd/release/explain-gate-report.json"],
       acceptanceCommand: explainTrack.acceptanceCommand || dataSafetyCheckCommand,
       blocker: explainTrack.blocker || null,
@@ -4991,7 +4991,7 @@ function buildDataSafetyOwnerPlan({ dataSafetyPlanOverride = null, rollupOverrid
       requiredInputs: [],
       commands: dataSafetyPlan.commands.validate,
       artifacts: dataSafetyPlan.expectedArtifacts,
-      acceptanceCommand: "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      acceptanceCommand: "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
       blocker: dataSafetyPlan.status === "PASS" ? null : "rollback, migration, or EXPLAIN evidence is not fully accepted",
       dependencies: [
         "rollback-evidence-source",
@@ -5271,10 +5271,10 @@ function buildCutoverRehearsalPlan({ rollupOverride = null } = {}) {
       releaseEnvPlan.status,
       releaseEnvPlan.envInitCheck?.issues?.[0] || gateById.get("release-env")?.issue || null,
       [
-        "node bin/ddd-release-env-init.mjs --check",
-        "node bin/ddd-release-env-init.mjs",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
+        "node bin\/ddd-release-env-init.mjs --check",
+        "node bin\/ddd-release-env-init.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs",
       ],
       ["artifacts/ddd/release/release-config-evidence.json"],
     ),
@@ -5285,8 +5285,8 @@ function buildCutoverRehearsalPlan({ rollupOverride = null } = {}) {
       dockerGate.status || "BLOCKED",
       dockerGate.issue || null,
       [
-        "node bin/ddd-docker-build-evidence.mjs --check",
-        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin\/ddd-docker-build-evidence.mjs --check",
+        "DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs",
       ],
       ["artifacts/ddd/release/docker-image-evidence.json"],
       ["p0-release-env"],
@@ -5298,7 +5298,7 @@ function buildCutoverRehearsalPlan({ rollupOverride = null } = {}) {
       runtimeBusinessPlan.status,
       runtimeBusinessPlan.runtimeCheck?.issues?.[0] || runtimeGate.issue || null,
       [
-        "node bin/ddd-staging-runtime-check.mjs",
+        "node bin\/ddd-staging-runtime-check.mjs",
         ...((runtimeBusinessPlan.smokeSteps || []).map((step) => step.command)),
       ],
       (runtimeBusinessPlan.smokeSteps || []).map((step) => step.artifact),
@@ -5341,9 +5341,9 @@ function buildCutoverRehearsalPlan({ rollupOverride = null } = {}) {
       rollup.status === "PASS" && acceptance.acceptedCount === acceptance.itemCount ? "PASS" : "BLOCKED",
       acceptance.acceptedCount === acceptance.itemCount ? null : `accepted=${acceptance.acceptedCount}/${acceptance.itemCount}`,
       [
-        "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-        "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
-        "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+        "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+        "node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
+        "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
       ],
       [
@@ -5368,10 +5368,10 @@ function buildCutoverRehearsalPlan({ rollupOverride = null } = {}) {
     acceptedGateTotal: acceptance.itemCount,
     phases,
     validationCommands: [
-      "node bin/ddd-production-readiness-preflight.mjs --static-only --no-report",
-      "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle",
-      "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      "node bin\/ddd-production-readiness-preflight.mjs --static-only --no-report",
+      "node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle",
+      "node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
     ],
     nextPhase: nextPhase
       ? {
@@ -5504,8 +5504,8 @@ function buildBlockingInputs({ rollupOverride = null, owner = "" } = {}) {
     blockedGates: blockedGateIds,
     inputs,
     nextCommand: inputs.length === 0
-      ? "node bin/ddd-staging-execution-checklist.mjs --rollup-enforce"
-      : "node bin/ddd-staging-execution-checklist.mjs --evidence-env-template",
+      ? "node bin\/ddd-staging-execution-checklist.mjs --rollup-enforce"
+      : "node bin\/ddd-staging-execution-checklist.mjs --evidence-env-template",
   };
 }
 
@@ -5577,8 +5577,8 @@ function renderBlockingInputsEnvTemplate(report) {
   }
   lines.push(
     "# Validation sequence",
-    "# node bin/ddd-staging-execution-checklist.mjs --rollup",
-    "# node bin/ddd-staging-execution-checklist.mjs --blocking-inputs",
+    "# node bin\/ddd-staging-execution-checklist.mjs --rollup",
+    "# node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs",
     "",
   );
   return lines.join("\n");
@@ -5629,9 +5629,9 @@ function renderNextActionEnvTemplate(report) {
   }
   lines.push(
     "# Validation sequence",
-    "# node bin/ddd-staging-execution-checklist.mjs --next-action-queue",
-    "# node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-    "# node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "# node bin\/ddd-staging-execution-checklist.mjs --next-action-queue",
+    "# node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "# node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
     "",
   );
   return lines.join("\n");
@@ -5744,8 +5744,8 @@ function buildNextActionEnvCheck({ queueOverride = null, envFile = nextActionEnv
     laneChecks,
     issues,
     nextCommand: issues.length === 0
-      ? "node bin/ddd-staging-execution-checklist.mjs --next-action-queue"
-      : "node bin/ddd-staging-execution-checklist.mjs --next-action-env-template",
+      ? "node bin\/ddd-staging-execution-checklist.mjs --next-action-queue"
+      : "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-template",
   };
 }
 
@@ -5800,8 +5800,8 @@ function buildNextActionEnvReceipt({ checkOverride = null, envFile = nextActionE
       "receipt must not include env values",
     ],
     nextCommand: check.status === "PASS"
-      ? "node bin/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown"
-      : "node bin/ddd-staging-execution-checklist.mjs --next-action-env-template",
+      ? "node bin\/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown"
+      : "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-template",
   };
 }
 
@@ -5984,10 +5984,10 @@ if (nextActionEnvReceiptContractOnly) {
 function buildNextActionVerificationPlan({ rollupOverride = null } = {}) {
   const rollup = rollupOverride || loadReadinessRollup();
   const queue = buildNextActionQueue({ rollupOverride: rollup });
-  const envCheckCommand = "node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>";
-  const envReceiptCommand = "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>";
-  const envReceiptMarkdownCommand = "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>";
-  const envReceiptContractCommand = "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>";
+  const envCheckCommand = "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>";
+  const envReceiptCommand = "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>";
+  const envReceiptMarkdownCommand = "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>";
+  const envReceiptContractCommand = "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>";
   const phases = [
     {
       id: "verify-first-wave-env",
@@ -6005,17 +6005,17 @@ function buildNextActionVerificationPlan({ rollupOverride = null } = {}) {
       id: "verify-release-env",
       owner: "release-infra",
       status: rollup.items?.find((item) => item.id === "release-env")?.status || "BLOCKED",
-      command: "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+      command: "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
       expectedStatus: "PASS",
       sourcePlan: "release-env-plan.json",
       artifacts: ["artifacts/ddd/release/release-env-lint.json", "artifacts/ddd/release/release-config-evidence.json"],
-      notes: ["Run config evidence after lint passes: DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs"],
+      notes: ["Run config evidence after lint passes: DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs"],
     },
     {
       id: "verify-docker-images",
       owner: "release-infra",
       status: rollup.items?.find((item) => item.id === "docker-images")?.status || "BLOCKED",
-      command: "node bin/ddd-docker-build-evidence.mjs --check",
+      command: "node bin\/ddd-docker-build-evidence.mjs --check",
       expectedStatus: "PASS",
       sourcePlan: "docker-image-plan.json",
       artifacts: ["artifacts/ddd/release/docker-build-evidence.json"],
@@ -6025,7 +6025,7 @@ function buildNextActionVerificationPlan({ rollupOverride = null } = {}) {
       id: "verify-runtime",
       owner: "release-infra, lumira-ui, ai",
       status: rollup.items?.find((item) => item.id === "runtime-business")?.status || "BLOCKED",
-      command: "node bin/ddd-staging-runtime-check.mjs",
+      command: "node bin\/ddd-staging-runtime-check.mjs",
       expectedStatus: "PASS",
       sourcePlan: "runtime-smoke-plan.json",
       artifacts: ["artifacts/ddd/readiness/summary.json", "artifacts/ddd/lumira-ui/frontend-smoke.json", "artifacts/ddd/ai/ai-runtime-drill.json"],
@@ -6035,7 +6035,7 @@ function buildNextActionVerificationPlan({ rollupOverride = null } = {}) {
       id: "verify-data-safety",
       owner: "bounded-context owners, database",
       status: (rollup.items || []).some((item) => ["rollback", "migration", "explain"].includes(item.id) && item.status !== "PASS") ? "BLOCKED" : "PASS",
-      command: "node bin/ddd-staging-data-safety-check.mjs",
+      command: "node bin\/ddd-staging-data-safety-check.mjs",
       expectedStatus: "PASS",
       sourcePlan: "data-safety-owner-plan.json",
       artifacts: ["artifacts/ddd/rollback/rollback-drill.json", "artifacts/ddd/migration/migration-evidence.json", "artifacts/ddd/release/explain-gate-report.json"],
@@ -6045,7 +6045,7 @@ function buildNextActionVerificationPlan({ rollupOverride = null } = {}) {
       id: "verify-final-acceptance",
       owner: "release-infra",
       status: rollup.status,
-      command: "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
       expectedStatus: "PASS",
       sourcePlan: "final-review.json",
       artifacts: ["artifacts/ddd/release/staging-handoff-bundle/final-review.json", "artifacts/ddd/release/release-final-go-no-go.json"],
@@ -6141,7 +6141,7 @@ function buildOwnerBlockingInputsEnvReport(owner, { rollupOverride = null } = {}
       gateCount: 1,
       owners: [owner.owner],
       tracks: ["p0-release-env"],
-      nextCommands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs"],
+      nextCommands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"],
       firstBlockers: [`owner handoff input required for ${owner.owner}`],
       gates: [{
         gate: "release-env",
@@ -6149,7 +6149,7 @@ function buildOwnerBlockingInputsEnvReport(owner, { rollupOverride = null } = {}
         owner: owner.owner,
         status: "BLOCKED",
         blocker: `owner handoff input required for ${owner.owner}`,
-        nextCommand: "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+        nextCommand: "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
       }],
     }));
   const inputs = [...ownerInputEntries, ...report.inputs];
@@ -6222,7 +6222,7 @@ function buildReleaseEvidenceDispatchPlan({ rollupOverride = null, blockingInput
     ["promote_authenticated_baseline", true, false, "operator", "READY", "Switch to true only when the authenticated runtime actual is approved."],
     ["baseline_accepted_by", false, "", "operator", "READY", "Leave empty to use the workflow actor."],
     ["lane_completion_receipt_file", false, "", "DDD_LANE_COMPLETION_RECEIPT_FILE", laneCompletionReceiptFile ? "READY" : "BLOCKED", "Use only when the receipt already exists in the workflow workspace."],
-    ["lane_completion_receipt_base64", false, "__REQUIRED_AFTER_COVERAGE_5_OF_5__", "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>", "BLOCKED", "Preferred workflow_dispatch path after receipt contract and coverage pass."],
+    ["lane_completion_receipt_base64", false, "__REQUIRED_AFTER_COVERAGE_5_OF_5__", "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>", "BLOCKED", "Preferred workflow_dispatch path after receipt contract and coverage pass."],
   ].map(([input, required, suggestedValue, source, status, note]) => ({
     input,
     required,
@@ -6243,12 +6243,12 @@ function buildReleaseEvidenceDispatchPlan({ rollupOverride = null, blockingInput
     blockedInputCount: blockedInputs.length,
     inputs: workflowInputs,
     requiredBeforeRun: [
-      "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
     ],
-    nextCommand: "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
+    nextCommand: "node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
   };
 }
 
@@ -6303,8 +6303,8 @@ function buildReleaseEvidenceDispatchInputs(plan = buildReleaseEvidenceDispatchP
         notes: input.notes || [],
       })),
     validationCommands: plan.requiredBeforeRun,
-    dispatchInputValidationCommand: "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>",
-    nextCommand: "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command",
+    dispatchInputValidationCommand: "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>",
+    nextCommand: "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command",
   };
 }
 
@@ -6699,8 +6699,8 @@ function buildExecutionStatus({ rollupOverride = null, handoffBundleCheckOverrid
       missingEvidenceArtifactCount: lane.missingEvidenceArtifactCount ?? 0,
     })),
     nextCommand: status === "PASS"
-      ? "node bin/ddd-staging-execution-checklist.mjs --rollup-enforce"
-      : "node bin/ddd-staging-execution-checklist.mjs --commands",
+      ? "node bin\/ddd-staging-execution-checklist.mjs --rollup-enforce"
+      : "node bin\/ddd-staging-execution-checklist.mjs --commands",
   };
 }
 
@@ -6886,7 +6886,7 @@ function buildFinalReview({
       id: "owner-lane-completion-receipt",
       label: "Owner lane completion receipt contract passes",
       passed: laneReceiptPassed,
-      evidence: laneReceiptContract?.receiptFile || "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+      evidence: laneReceiptContract?.receiptFile || "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
       blocker: laneReceiptPassed
         ? null
         : (laneReceiptContract?.issues[0]
@@ -6897,14 +6897,14 @@ function buildFinalReview({
       id: "staging-evidence-accepted",
       label: "All staging evidence gates accepted",
       passed: acceptance.acceptedCount === acceptance.itemCount,
-      evidence: "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      evidence: "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       blocker: acceptance.acceptedCount === acceptance.itemCount ? null : `accepted=${acceptance.acceptedCount}/${acceptance.itemCount}`,
     },
     {
       id: "cutover-allowed",
       label: "Final rollup allows cutover",
       passed: rollup.status === "PASS" && rollup.cutoverAllowed === true,
-      evidence: "node bin/ddd-staging-execution-checklist.mjs --rollup-enforce",
+      evidence: "node bin\/ddd-staging-execution-checklist.mjs --rollup-enforce",
       blocker: rollup.status === "PASS" && rollup.cutoverAllowed === true ? null : `${rollup.finalRecommendation}; blocked=${rollup.blockedCount}/${rollup.items.length}`,
     },
   ];
@@ -6989,10 +6989,10 @@ function buildFinalReview({
       completedAt: "<ISO-8601 timestamp after final review enforce passes>",
       completedBy: "<owner or workflow actor>",
       acceptanceCommands: [
-        "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
-        "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-        "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-        "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+        "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
+        "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+        "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+        "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
       ],
     },
     checklist: checklistItems,
@@ -7152,27 +7152,27 @@ function buildLaneReceiptFragmentsIndex({
   const fragments = [
     {
       sourcePlan: "release-env-submission-plan.json",
-      sourceCommand: "node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown",
+      sourceCommand: "node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown",
       fragment: releaseEnvSubmissionPlan.laneReceiptFragment,
     },
     {
       sourcePlan: "docker-image-submission-plan.json",
-      sourceCommand: "node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
+      sourceCommand: "node bin\/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
       fragment: dockerImageSubmissionPlan.laneReceiptFragment,
     },
     {
       sourcePlan: "runtime-business-submission-plan.json",
-      sourceCommand: "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
+      sourceCommand: "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
       fragment: runtimeBusinessSubmissionPlan.laneReceiptFragment,
     },
     {
       sourcePlan: "data-safety-submission-plan.json",
-      sourceCommand: "node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+      sourceCommand: "node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
       fragment: dataSafetySubmissionPlan.laneReceiptFragment,
     },
     {
       sourcePlan: "final-review.json",
-      sourceCommand: "node bin/ddd-staging-execution-checklist.mjs --final-review-markdown",
+      sourceCommand: "node bin\/ddd-staging-execution-checklist.mjs --final-review-markdown",
       fragment: finalReview.laneReceiptFragment,
     },
   ].map((item) => ({
@@ -7198,11 +7198,11 @@ function buildLaneReceiptFragmentsIndex({
     blockedLaneCount: fragments.filter((fragment) => fragment.status !== "PASS").length,
     fragments,
     receiptAssembly: {
-      templateCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template",
-      contractCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
-      coverageCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-      base64Command: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
-      finalReviewCommand: "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      templateCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template",
+      contractCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+      coverageCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+      base64Command: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+      finalReviewCommand: "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
     },
     passCriteria: [
       "copy all five fragments into laneReceipts",
@@ -7212,7 +7212,7 @@ function buildLaneReceiptFragmentsIndex({
       "each PASS fragment must set completedAt and completedBy",
       "receipt coverage must show Coverage: 5/5 before final review enforce",
     ],
-    nextCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+    nextCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
   };
 }
 
@@ -7359,12 +7359,12 @@ function buildLaneReceiptDraft({ fragmentsIndexOverride = null } = {}) {
       "run contract and coverage before base64 submission",
     ],
     validationCommands: [
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
     ],
-    nextCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+    nextCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
   };
 }
 
@@ -7678,9 +7678,9 @@ function buildProductionUnblockPlan({
     reason: action.reason,
     command: action.command,
     verifyCommand: {
-      "first-wave-env": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
-      "lane-completion-receipt": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
-      "owner-evidence": "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
+      "first-wave-env": "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+      "lane-completion-receipt": "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+      "owner-evidence": "node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
     }[action.id] || action.command,
     evidence: {
       "first-wave-env": "redacted next-action env receipt",
@@ -7722,9 +7722,9 @@ function buildProductionUnblockPlan({
     blockedAuditItems,
     exitCriteria,
     verificationCommands: [
-      "node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown",
-      "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown",
+      "node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     ],
     nextCommand: parallelWorkstreams[0]?.command || cutoverAudit.nextCommand,
@@ -7786,8 +7786,8 @@ function renderProductionUnblockQuickstartMarkdown(plan) {
     "2. Validate the release env file:",
     "",
     "```bash",
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-config-evidence.mjs",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-config-evidence.mjs",
     "```",
     "",
     firstWorkstream
@@ -7806,7 +7806,7 @@ function renderProductionUnblockQuickstartMarkdown(plan) {
     "",
     "## Final Gate",
     "",
-    "- `node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` must exit 0.",
+    "- `node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` must exit 0.",
     "- `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh` must exit 0.",
     "- No manual waiver is allowed while `finalRecommendation` remains `NO_GO_STRICT`.",
     "",
@@ -7880,8 +7880,8 @@ function buildProductionEvidenceReadiness({
       label: "First-wave env receipt contract",
       status: envReceiptContract?.status || "MISSING",
       evidence: envReceiptContract?.receiptFile || "redacted next-action env receipt file not provided",
-      command: "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
-      verifyCommand: "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
+      verifyCommand: "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
       blocker: envReceiptContract
         ? (envReceiptContract.issues[0] || null)
         : "next-action env receipt file not provided",
@@ -7892,7 +7892,7 @@ function buildProductionEvidenceReadiness({
       status: laneSubmissionCheck.status,
       evidence: laneSubmissionCheck.receiptFile || "redacted lane completion receipt file not provided",
       command: laneSubmissionCheck.nextCommand,
-      verifyCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+      verifyCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
       blocker: laneSubmissionCheck.issues[0] || null,
     },
     {
@@ -7901,7 +7901,7 @@ function buildProductionEvidenceReadiness({
       status: ownerEvidenceReady ? "PASS" : "BLOCKED",
       evidence: "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
       command: ownerEvidenceIntake.nextCommand,
-      verifyCommand: "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
+      verifyCommand: "node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
       blocker: ownerEvidenceReady
         ? null
         : `missingArtifacts=${ownerEvidenceIntake.missingArtifactCount}; blockingInputs=${ownerEvidenceIntake.blockingInputCount}`,
@@ -7911,8 +7911,8 @@ function buildProductionEvidenceReadiness({
       label: "Production cutover audit",
       status: cutoverAudit.status,
       evidence: "artifacts/ddd/release/staging-handoff-bundle/production-cutover-audit.json",
-      command: "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
-      verifyCommand: "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
+      verifyCommand: "node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit",
       blocker: cutoverAudit.status === "PASS" ? null : `blockedAuditItems=${cutoverAudit.blockedAuditItemCount}`,
     },
     {
@@ -7920,7 +7920,7 @@ function buildProductionEvidenceReadiness({
       label: "Strict final go/no-go",
       status: finalReview.cutoverAllowed === true && finalReview.finalRecommendation === "GO_STRICT" ? "PASS" : "BLOCKED",
       evidence: "artifacts/ddd/release/release-final-go-no-go.json",
-      command: "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
       verifyCommand: "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
       blocker: finalReview.cutoverAllowed === true && finalReview.finalRecommendation === "GO_STRICT"
         ? null
@@ -7942,9 +7942,9 @@ function buildProductionEvidenceReadiness({
     blockingEvidence,
     parallelWorkstreams: unblockPlan.parallelWorkstreams,
     verificationCommands: [
-      "node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness",
-      "node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce",
-      "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit",
+      "node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness",
+      "node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce",
+      "node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     ],
     nextCommand: blockingEvidence[0]?.command || "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
@@ -8042,14 +8042,14 @@ function buildProductionCutoverAudit({
   });
   const laneReceiptCoverage = finalReview.laneCompletionReceipt.coverage;
   const laneReceiptAuditCommand = closeoutStatus.laneCompletionSubmission?.nextCommand
-    || "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>";
+    || "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>";
   const auditItems = [
     {
       id: "handoff-bundle-integrity",
       label: "Handoff bundle verifies and manifest hashes match",
       status: finalReview.handoffBundle.status,
       evidence: finalReview.handoffBundle.manifest || "artifacts/ddd/release/staging-handoff-bundle/manifest.json",
-      command: "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
       blocker: finalReview.handoffBundle.status === "PASS" ? null : (finalReview.handoffBundle.issues[0] || "handoff bundle verifier did not pass"),
     },
     {
@@ -8057,7 +8057,7 @@ function buildProductionCutoverAudit({
       label: "All owner packets and env templates are present",
       status: finalReview.ownerDispatch.status,
       evidence: "artifacts/ddd/release/staging-handoff-bundle/owner-dispatch.json",
-      command: "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
       blocker: finalReview.ownerDispatch.status === "PASS"
         ? null
         : `owner packets=${finalReview.ownerDispatch.ownerCount}/${finalReview.ownerDispatch.expectedOwnerCount}; templates=${finalReview.ownerDispatch.ownerTemplateCount}/${finalReview.ownerDispatch.expectedOwnerCount}`,
@@ -8077,7 +8077,7 @@ function buildProductionCutoverAudit({
       label: "Every staging evidence gate is accepted",
       status: finalReview.acceptedGateCount === finalReview.acceptedGateTotal ? "PASS" : "BLOCKED",
       evidence: "artifacts/ddd/release/staging-handoff-bundle/evidence-acceptance.json",
-      command: "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       blocker: finalReview.acceptedGateCount === finalReview.acceptedGateTotal
         ? null
         : `accepted=${finalReview.acceptedGateCount}/${finalReview.acceptedGateTotal}`,
@@ -8087,7 +8087,7 @@ function buildProductionCutoverAudit({
       label: "Critical path phases are all clear",
       status: (operatorProgress.criticalPath || []).every((phase) => phase.status === "PASS") ? "PASS" : "BLOCKED",
       evidence: "artifacts/ddd/release/staging-handoff-bundle/operator-progress.json",
-      command: "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
       blocker: (operatorProgress.criticalPath || []).every((phase) => phase.status === "PASS")
         ? null
         : `blocked=${(operatorProgress.criticalPath || []).filter((phase) => phase.status !== "PASS").length}/${(operatorProgress.criticalPath || []).length}`,
@@ -8097,7 +8097,7 @@ function buildProductionCutoverAudit({
       label: "Release-owner final review enforces PASS",
       status: finalReview.status,
       evidence: "artifacts/ddd/release/staging-handoff-bundle/final-review.json",
-      command: "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
       blocker: finalReview.status === "PASS" ? null : `finalReview=${finalReview.status}; recommendation=${finalReview.finalRecommendation}`,
     },
     {
@@ -8264,7 +8264,7 @@ function buildOperatorProgress({
       label: "First-wave env file",
       status: envCheck.status,
       detail: envCheck.issues[0] || `keys=${envCheck.keyCount}`,
-      command: "node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
     },
     {
       id: "first-wave-env-receipt",
@@ -8273,14 +8273,14 @@ function buildOperatorProgress({
       detail: envReceiptContract
         ? (envReceiptContract.issues[0] || `receiptStatus=${envReceiptContract.receiptStatus}; lanes=${envReceiptContract.laneCount}`)
         : (envCheck.status === "PASS" ? "receipt file not provided" : "waiting for first-wave env PASS"),
-      command: "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
     },
     {
       id: "handoff-bundle",
       label: "Handoff bundle integrity",
       status: handoffBundleCheck.status,
       detail: handoffBundleCheck.issues[0] || `checkedFiles=${handoffBundleCheck.checkedFileCount}`,
-      command: "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
     },
     {
       id: "lane-completion-receipt",
@@ -8291,21 +8291,21 @@ function buildOperatorProgress({
           || laneReceiptCoverageBlocker(laneReceiptCoverage)
           || `receiptStatus=${laneReceiptContract.receiptStatus}; lanes=${laneReceiptCoverage.coveredLaneCount}/${laneReceiptCoverage.expectedLaneCount}`)
         : "receipt file not provided",
-      command: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
     },
     {
       id: "verification-route",
       label: "Post-env verification route",
       status: verificationPlan.status,
       detail: `blockedPhases=${verificationPlan.blockedPhaseCount}/${verificationPlan.phaseCount}`,
-      command: "node bin/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown",
     },
     {
       id: "final-review",
       label: "Release-owner final review",
       status: finalReview.status,
       detail: finalReview.cutoverReady ? "cutoverReady=true" : `accepted=${finalReview.acceptedGateCount}/${finalReview.acceptedGateTotal}`,
-      command: "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      command: "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
     },
   ];
   const blockedStage = stages.find((stage) => stage.status !== "PASS") || null;
@@ -8543,23 +8543,23 @@ function buildOwnerEvidenceIntake({
       })),
       receiptWorkflow: {
         laneKeys: fragments.map((fragment) => fragment.key),
-        initCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+        initCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
         autofillCommand: laneCompletionReceiptAutofillCommand,
         editRule: "update only this owner's laneReceipts entries, then leave unrelated owner/lane pairs unchanged",
-        checkCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
-        coverageCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+        checkCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+        coverageCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
       },
       nextCommand: lanes.find((lane) => lane.status !== "PASS")?.command
         || lanes[0]?.command
         || owner.nextCommand
-        || (blockingInputs.length > 0 ? `node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=${ownerName}` : null),
+        || (blockingInputs.length > 0 ? `node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=${ownerName}` : null),
       submissionCommands: unique([
         ...lanes.map((lane) => lane.command).filter(Boolean),
-        "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
-        fragments.length > 0 ? "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown" : null,
-        "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
-        "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
-        "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+        "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+        fragments.length > 0 ? "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown" : null,
+        "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+        "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+        "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
       ].filter(Boolean)),
     };
   });
@@ -8585,7 +8585,7 @@ function buildOwnerEvidenceIntake({
       "all receipt fragments are copied into the submitted lane completion receipt",
       "receipt contract and coverage must pass before final review",
     ],
-    nextCommand: nextOwner?.nextCommand || "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+    nextCommand: nextOwner?.nextCommand || "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
   };
 }
 
@@ -8948,10 +8948,10 @@ function renderEvidenceEnvTemplate() {
     "MYSQL_PASSWORD=__REQUIRED_SECRET_REF__",
     "",
     "# Validation sequence",
-    "# node bin/ddd-staging-execution-checklist.mjs --rollup",
-    "# node bin/ddd-docker-build-evidence.mjs --check",
-    "# node bin/ddd-staging-runtime-check.mjs",
-    "# node bin/ddd-staging-data-safety-check.mjs",
+    "# node bin\/ddd-staging-execution-checklist.mjs --rollup",
+    "# node bin\/ddd-docker-build-evidence.mjs --check",
+    "# node bin\/ddd-staging-runtime-check.mjs",
+    "# node bin\/ddd-staging-data-safety-check.mjs",
     "",
   ];
   return `${lines.join("\n")}`;
@@ -8980,16 +8980,16 @@ function renderHandoffBundleReadme(rollup) {
     "4. Use `owner-evidence-intake.md` to send each owner exactly their packet, env template, missing artifacts, and submission commands.",
     "5. Use `next-action-queue.md` and `owner-lane-matrix.md` to route the first owner lane.",
     "6. Copy `next-action.template.env` to a secure local env file and replace every placeholder.",
-    "7. Validate that file with `node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>`.",
+    "7. Validate that file with `node bin\/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>`.",
     "8. Use `next-action-verification-plan.md` as the ordered route after the first-wave env check passes.",
-    "9. Validate owner lane receipt coverage with `node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>` and require `Coverage: 5/5`.",
+    "9. Validate owner lane receipt coverage with `node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>` and require `Coverage: 5/5`.",
     "10. Use `lane-receipt-fragments.md` as the 5-lane receipt assembly index before submitting the redacted receipt.",
     "11. Read `production-cutover-audit.md` before final approval; every audit item must be PASS.",
     "12. Start from `production-unblock-quickstart.md` when the audit is still `NO_GO_STRICT`.",
     "13. Use `production-unblock-plan.md` as the focused production unblock checklist when the quickstart needs detail.",
     "14. Use `production-evidence-readiness.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go/no-go evidence in one table.",
-    "15. Run `node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` before final go/no-go; it must exit 0.",
-    "16. Re-run `node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.",
+    "15. Run `node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` before final go/no-go; it must exit 0.",
+    "16. Re-run `node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.",
     "",
     "## Status Views",
     "",
@@ -9116,58 +9116,58 @@ function renderHandoffBundleReadme(rollup) {
     "## First Commands",
     "",
     "```sh",
-    "node bin/ddd-staging-execution-checklist.mjs --rollup-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --closure-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-queue-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --owner-lane-matrix-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-template",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown",
-    "node bin/ddd-release-env-fill-checklist.mjs --markdown",
-    "node bin/ddd-release-env-fill-checklist.mjs --env-template",
-    "node bin/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template",
-    "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs",
-    "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command",
-    "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --final-review-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-env-template",
-    "node bin/ddd-staging-execution-checklist.mjs --owner-packets",
+    "node bin\/ddd-staging-execution-checklist.mjs --rollup-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --closure-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-queue-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --owner-lane-matrix-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown",
+    "node bin\/ddd-release-env-fill-checklist.mjs --markdown",
+    "node bin\/ddd-release-env-fill-checklist.mjs --env-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --final-review-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-env-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --owner-packets",
     "```",
     "",
   ];
@@ -9210,10 +9210,10 @@ function buildReleaseEnvFillChecklist() {
     keys,
     groups: groupReleaseEnvFillKeys(keys),
     validationCommands: [
-      "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
-      "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-config-evidence.mjs",
-      "node bin/ddd-release-readiness-summary.mjs",
-      "node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-config-evidence.mjs",
+      "node bin\/ddd-release-readiness-summary.mjs",
+      "node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan",
     ],
   };
 }
@@ -9325,10 +9325,10 @@ function buildReleaseOwnerCloseout({ finalReview, evidenceClosureBoard }) {
       nextCommand: blocker.nextCommand,
     })),
     requiredCommandSequence: [
-      "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
     ],
     nextCommand: evidenceClosureBoard.nextLane?.nextCommand || finalReview.nextCommand,
   };
@@ -9748,7 +9748,7 @@ function buildDispatchCheck(report) {
   for (const trackId of ["p0-release-env", "p0-images", "p1-runtime-business", "p1-rollback", "p2-database-performance", "p3-final-strict"]) {
     if (!trackIds.includes(trackId)) issues.push(`missing execution track: ${trackId}`);
   }
-  if (!fs.existsSync(envInitWrapperPath)) issues.push("missing env init wrapper: bin/ddd-release-env-init.mjs");
+  if (!fs.existsSync(envInitWrapperPath)) issues.push("missing env init wrapper: bin\/ddd-release-env-init.mjs");
   if (!fs.existsSync(envInitScriptPath)) issues.push("missing generated env init script: artifacts/ddd/release/release-final-owner-queue-env-init.sh");
   if (!fs.existsSync(path.join(releaseDir, "release-env-owner-handoff-redacted.json"))) {
     issues.push("missing owner handoff artifact: artifacts/ddd/release/release-env-owner-handoff-redacted.json");
@@ -9776,7 +9776,7 @@ function buildDispatchCheck(report) {
   if (!databaseTrack?.setupCommands?.includes(dataSafetyCheckCommand)) {
     issues.push(`p2-database-performance missing setup command: ${dataSafetyCheckCommand}`);
   }
-  const envInitCheckResult = spawnSync("node", ["bin/ddd-release-env-init.mjs", "--check"], {
+  const envInitCheckResult = spawnSync("node", ["bin\/ddd-release-env-init.mjs", "--check"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -9795,7 +9795,7 @@ function buildDispatchCheck(report) {
   } else {
     issues.push(`env init check failed: ${envInitCheckResult.stderr.trim() || envInitCheckResult.stdout.trim() || envInitCheckResult.status}`);
   }
-  const dockerEvidenceCheckResult = spawnSync("node", ["bin/ddd-docker-build-evidence.mjs", "--check"], {
+  const dockerEvidenceCheckResult = spawnSync("node", ["bin\/ddd-docker-build-evidence.mjs", "--check"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -9805,7 +9805,7 @@ function buildDispatchCheck(report) {
   } catch {
     issues.push("docker evidence check returned non-JSON output");
   }
-  const runtimeStagingCheckResult = spawnSync("node", ["bin/ddd-staging-runtime-check.mjs"], {
+  const runtimeStagingCheckResult = spawnSync("node", ["bin\/ddd-staging-runtime-check.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -9815,7 +9815,7 @@ function buildDispatchCheck(report) {
   } catch {
     issues.push("runtime staging check returned non-JSON output");
   }
-  const dataSafetyCheckResult = spawnSync("node", ["bin/ddd-staging-data-safety-check.mjs"], {
+  const dataSafetyCheckResult = spawnSync("node", ["bin\/ddd-staging-data-safety-check.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -9841,15 +9841,15 @@ function buildDispatchCheck(report) {
     dockerEvidenceCheck,
     runtimeStagingCheck,
     dataSafetyCheck,
-    readinessRollupCommand: "node bin/ddd-staging-execution-checklist.mjs --rollup",
-    copyReadyCommand: "node bin/ddd-staging-execution-checklist.mjs --commands",
+    readinessRollupCommand: "node bin\/ddd-staging-execution-checklist.mjs --rollup",
+    copyReadyCommand: "node bin\/ddd-staging-execution-checklist.mjs --commands",
     nextCommands: [
       envInitCheckCommand,
       envInitCommand,
       dockerEvidenceCheckCommand,
       runtimeStagingCheckCommand,
       dataSafetyCheckCommand,
-      "node bin/ddd-staging-execution-checklist.mjs --owner-packets",
+      "node bin\/ddd-staging-execution-checklist.mjs --owner-packets",
       "DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
     ],
     issues,
@@ -9868,7 +9868,7 @@ if (dispatchCheck) {
 }
 
 function buildReleaseEnvCheck(report, releaseEnvTrack) {
-  const displayCommand = releaseEnvTrack?.commands?.[0] || "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs";
+  const displayCommand = releaseEnvTrack?.commands?.[0] || "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs";
   const envFile = process.env.DDD_RELEASE_ENV_FILE || "";
   if (!envFile) {
     return {
@@ -9885,7 +9885,7 @@ function buildReleaseEnvCheck(report, releaseEnvTrack) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-release-env-check-"));
   const tempReport = path.join(tempDir, "release-env-lint.json");
   try {
-    const result = spawnSync("node", ["bin/ddd-release-env-file-lint.mjs"], {
+    const result = spawnSync("node", ["bin\/ddd-release-env-file-lint.mjs"], {
       cwd: repoRoot,
       encoding: "utf8",
       env: {
@@ -9923,133 +9923,133 @@ function buildReleaseEnvCheck(report, releaseEnvTrack) {
 
 function renderCommands() {
   const commands = [
-    "node bin/ddd-production-readiness-preflight.mjs --quick --no-report --list",
-    "node bin/ddd-production-readiness-preflight.mjs --quick --no-report",
-    "node bin/ddd-staging-execution-checklist.mjs --dispatch-check",
-    "node bin/ddd-staging-execution-checklist.mjs --rollup",
-    "node bin/ddd-staging-execution-checklist.mjs --rollup-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --rollup-enforce",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-gaps",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-runbook",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --closure-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --closure-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-queue",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-queue-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --owner-lane-matrix",
-    "node bin/ddd-staging-execution-checklist.mjs --owner-lane-matrix-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+    "node bin\/ddd-production-readiness-preflight.mjs --quick --no-report --list",
+    "node bin\/ddd-production-readiness-preflight.mjs --quick --no-report",
+    "node bin\/ddd-staging-execution-checklist.mjs --dispatch-check",
+    "node bin\/ddd-staging-execution-checklist.mjs --rollup",
+    "node bin\/ddd-staging-execution-checklist.mjs --rollup-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --rollup-enforce",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-gaps",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-runbook",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --explain-artifact-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --closure-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --closure-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-queue",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-queue-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --owner-lane-matrix",
+    "node bin\/ddd-staging-execution-checklist.mjs --owner-lane-matrix-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
     laneCompletionReceiptAutofillCommand,
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-draft",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake",
-    "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-template",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-verification-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-merge-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown",
-    "node bin/ddd-release-env-fill-checklist.mjs",
-    "node bin/ddd-release-env-fill-checklist.mjs --markdown",
-    "node bin/ddd-release-env-fill-checklist.mjs --env-template",
-    "node bin/ddd-staging-execution-checklist.mjs --docker-image-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --runtime-business-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --runtime-smoke-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --data-safety-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --data-safety-owner-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs",
-    "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template",
-    "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs",
-    "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command",
-    "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --execution-status",
-    "node bin/ddd-staging-execution-checklist.mjs --execution-status-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --handoff-summary-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --final-review",
-    "node bin/ddd-staging-execution-checklist.mjs --final-review-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
-    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout",
-    "node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --production-closeout-status",
-    "node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --production-unblock-plan",
-    "node bin/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness",
-    "node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce",
-    "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit",
-    "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --operator-progress",
-    "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief",
-    "node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown",
-    "node bin/ddd-staging-execution-checklist.mjs --evidence-env-template",
-    "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle",
-    "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-fragments",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-draft",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake",
+    "node bin\/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-verification-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-merge-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown",
+    "node bin\/ddd-release-env-fill-checklist.mjs",
+    "node bin\/ddd-release-env-fill-checklist.mjs --markdown",
+    "node bin\/ddd-release-env-fill-checklist.mjs --env-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --docker-image-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --docker-image-submission-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --runtime-smoke-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --data-safety-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --data-safety-owner-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs",
+    "node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --execution-status",
+    "node bin\/ddd-staging-execution-checklist.mjs --execution-status-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --handoff-summary-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --final-review",
+    "node bin\/ddd-staging-execution-checklist.mjs --final-review-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status",
+    "node bin\/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --production-unblock-plan",
+    "node bin\/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness",
+    "node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce",
+    "node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit",
+    "node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --operator-progress",
+    "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-owner-daily-brief",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --evidence-env-template",
+    "node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle",
+    "node bin\/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
     envInitCheckCommand,
     envInitCommand,
     dockerEvidenceCheckCommand,
     runtimeStagingCheckCommand,
     dataSafetyCheckCommand,
-    "node bin/ddd-staging-execution-checklist.mjs --list-owners",
-    "node bin/ddd-staging-execution-checklist.mjs --owner-packets",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
+    "node bin\/ddd-staging-execution-checklist.mjs --list-owners",
+    "node bin\/ddd-staging-execution-checklist.mjs --owner-packets",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs",
     "DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
   ];
   return `${commands.join("\n")}\n`;
@@ -10164,11 +10164,11 @@ function buildOwnerPacket(owner, { rollup = null } = {}) {
   const laneKeys = queueLanes.map((lane) => `${owner.owner}:${lane.lane}`);
   const receiptWorkflow = {
     laneKeys,
-    initCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+    initCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
     autofillCommand: laneCompletionReceiptAutofillCommand,
     editRule: "update only this owner's laneReceipts entries, then leave unrelated owner/lane pairs unchanged",
-    checkCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
-    coverageCommand: "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+    checkCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+    coverageCommand: "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
   };
   const blockingInputs = unique(blockingInputGates.flatMap((gate) => gate.blockingInputs || []));
   const blockingInputCount = blockingInputGates.reduce((count, gate) => count + (gate.blockingInputs || []).length, 0);
@@ -10177,20 +10177,20 @@ function buildOwnerPacket(owner, { rollup = null } = {}) {
     owner.owner === "release-infra" ? envInitCheckCommand : null,
     owner.owner === "release-infra" ? envInitCommand : null,
     owner.nextCommand,
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
-    owner.owner === "release-infra" ? "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>" : null,
-    owner.owner === "release-infra" ? "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>" : null,
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
-    "node bin/ddd-release-readiness-summary.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
+    owner.owner === "release-infra" ? "node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>" : null,
+    owner.owner === "release-infra" ? "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>" : null,
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs",
+    "node bin\/ddd-release-readiness-summary.mjs",
     receiptWorkflow.initCommand,
     receiptWorkflow.autofillCommand,
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
     receiptWorkflow.checkCommand,
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
     receiptWorkflow.coverageCommand,
-    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
   ]);
   return {
     generatedAt,
@@ -10319,13 +10319,13 @@ function renderOwnerPacket(owner, { rollup = null } = {}) {
     commandList([
       packet.receiptWorkflow.initCommand,
       packet.receiptWorkflow.autofillCommand,
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
       packet.receiptWorkflow.checkCommand,
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
       packet.receiptWorkflow.coverageCommand,
-      "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
-      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>",
+      "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
     ]),
     "",
     "## Safety",
@@ -10363,7 +10363,7 @@ function renderOwnerPacketIndex(owners, { rollup = null } = {}) {
     "",
     "## Validation",
     "",
-    "- After owner values are merged into the secure release env file, run `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`.",
+    "- After owner values are merged into the secure release env file, run `DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs`.",
     "- Then run `DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh` before expensive evidence collection.",
     "- Do not cut over until `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh` exits cleanly.",
     "",

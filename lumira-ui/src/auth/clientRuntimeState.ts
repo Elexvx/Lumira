@@ -4,8 +4,10 @@ import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { clearSecuritySettings } from '@/auth/securitySettingsStorage';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { clearWatermarkSettings } from '@/watermark/settingsStorage';
+import { clearStoredSessionState } from '@/auth/sessionState';
 
 export const clearClientRuntimeState = () => {
+  clearStoredSessionState();
   clearSecuritySettings();
   clearBrandingSettings();
   clearWatermarkSettings();

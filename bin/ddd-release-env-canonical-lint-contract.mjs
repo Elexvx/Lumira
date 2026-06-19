@@ -7,7 +7,7 @@ import { spawnSync } from "node:child_process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const releaseDir = process.env.DDD_RELEASE_DIR || "artifacts/ddd/release";
-const scriptPath = path.join(repoRoot, "scripts", "ddd-release-env-canonical-lint.mjs");
+const scriptPath = path.join(repoRoot, "bin", "ddd-release-env-canonical-lint.mjs");
 const currentReportPath = path.join(releaseDir, "release-env-canonical-lint.json");
 const failures = [];
 
@@ -20,7 +20,7 @@ function readJson(file) {
 }
 
 function runLint(sourceFile, reportFile) {
-  return spawnSync("node", ["bin/ddd-release-env-canonical-lint.mjs", sourceFile], {
+  return spawnSync("node", ["bin\/ddd-release-env-canonical-lint.mjs", sourceFile], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_ENV_CANONICAL_LINT_REPORT: reportFile },

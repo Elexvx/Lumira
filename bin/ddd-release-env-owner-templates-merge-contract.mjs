@@ -6,7 +6,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const scriptPath = path.join(repoRoot, "scripts", "ddd-release-env-owner-templates-merge.mjs");
+const scriptPath = path.join(repoRoot, "bin", "ddd-release-env-owner-templates-merge.mjs");
 const artifactRoot = path.join(repoRoot, "artifacts", "ddd", "release");
 const ownerTemplatesDir = path.join(artifactRoot, "release-env-owner-templates");
 const canonicalTemplateFile = path.join(artifactRoot, "release-env-canonical-fill.template.env");
@@ -21,7 +21,7 @@ function readJson(file) {
 }
 
 function runMerge(sourceDir, targetFile, reportFile, env = {}) {
-  return spawnSync("node", ["bin/ddd-release-env-owner-templates-merge.mjs", sourceDir, targetFile], {
+  return spawnSync("node", ["bin\/ddd-release-env-owner-templates-merge.mjs", sourceDir, targetFile], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

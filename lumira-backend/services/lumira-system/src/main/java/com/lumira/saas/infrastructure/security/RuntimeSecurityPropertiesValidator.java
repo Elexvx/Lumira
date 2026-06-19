@@ -82,7 +82,10 @@ public class RuntimeSecurityPropertiesValidator implements ApplicationRunner {
     }
 
     private boolean isProdProfileActive() {
-        return Arrays.stream(environment.getActiveProfiles()).anyMatch("prod"::equalsIgnoreCase);
+        return Arrays.stream(environment.getActiveProfiles())
+                .anyMatch(profile -> "prod".equalsIgnoreCase(profile)
+                        || "production".equalsIgnoreCase(profile)
+                        || "cloud".equalsIgnoreCase(profile));
     }
 
     private String normalize(String value) {

@@ -7,11 +7,11 @@ import { redactReleaseOutput } from "./ddd-release-redact-output.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const raw = [
-  "JWT_SECRET=super-secret node bin/ddd-release-evidence-manifest.mjs",
-  "OPENAI_API_KEY='real-secret' node bin/ddd-release-config-evidence.mjs",
+  "JWT_SECRET=super-secret node bin\/ddd-release-evidence-manifest.mjs",
+  "OPENAI_API_KEY='real-secret' node bin\/ddd-release-config-evidence.mjs",
   "DDD_RELEASE_ENV_FILE=/tmp/.env.release.local bash artifacts/ddd/release/release-env-bootstrap.sh",
   `report=${path.join(repoRoot, "artifacts/ddd/release/evidence-manifest.json")}`,
-  `node bin/ddd-release-env-canonical-merge.mjs template ${path.join(repoRoot, ".env.release.local")}`,
+  `node bin\/ddd-release-env-canonical-merge.mjs template ${path.join(repoRoot, ".env.release.local")}`,
 ].join("\n");
 
 const redacted = redactReleaseOutput(raw);
@@ -26,7 +26,7 @@ assert.match(redacted, /DDD_RELEASE_ENV_FILE=<release-env-file>/);
 assert.match(redacted, /report=<repo>\/artifacts\/ddd\/release\/evidence-manifest\.json/);
 assert.match(redacted, /template <release-env-file>/);
 
-const cli = spawnSync("node", ["bin/ddd-release-redact-output.mjs"], {
+const cli = spawnSync("node", ["bin\/ddd-release-redact-output.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   input: raw,

@@ -9,7 +9,7 @@ function printHelp() {
   console.log(`DDD staging data safety check
 
 Usage:
-  node bin/ddd-staging-data-safety-check.mjs [options]
+  node bin\/ddd-staging-data-safety-check.mjs [options]
 
 Options:
   --help, -h    Show this help.
@@ -26,7 +26,7 @@ Environment:
   DDD_EXPLAIN_ENVIRONMENT or DDD_EVIDENCE_ENVIRONMENT or DDD_RELEASE_ENVIRONMENT
 
 Examples:
-  node bin/ddd-staging-data-safety-check.mjs
+  node bin\/ddd-staging-data-safety-check.mjs
 `);
 }
 
@@ -125,8 +125,8 @@ const result = {
       checks: rollbackChecks,
       issues: rollbackIssues,
       nextCommands: [
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "DDD_ROLLBACK_DRILL_STRICT=true node bin/ddd-rollback-drill-evidence.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs",
+        "DDD_ROLLBACK_DRILL_STRICT=true node bin\/ddd-rollback-drill-evidence.mjs",
       ],
     },
     migration: {
@@ -134,8 +134,8 @@ const result = {
       checks: migrationChecks,
       issues: migrationIssues,
       nextCommands: [
-        "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-        "DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node bin\/ddd-migration-evidence.mjs",
       ],
     },
     explain: {
@@ -143,8 +143,8 @@ const result = {
       checks: explainChecks,
       issues: explainIssues,
       nextCommands: [
-        "node bin/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
+        "node bin\/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs",
       ],
     },
   },

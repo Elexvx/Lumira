@@ -65,14 +65,14 @@ function validBrief(overrides = {}) {
       blockedUntil: "Required owner env keys and expected evidence artifacts are available in a permission-safe release env file.",
       owner: "database",
       queueOrder: 1,
-      firstCommand: "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+      firstCommand: "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
       envKeyCount: 20,
       missingArtifactCount: 6,
       releaseEnvFileRequired: true,
       finalGateCommand: "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
       commands: [
-        "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-        "node bin/ddd-release-readiness-summary.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+        "node bin\/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
       ],
     },
@@ -81,7 +81,7 @@ function validBrief(overrides = {}) {
       owner: "database",
       nextAction: "Run migration evidence environment check and fill the generated handoff.",
       reason: "strictGate=migration-evidence status=FAIL",
-      command: "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+      command: "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
       envKeys: ["DDD_MIGRATION_FRESH_DB_EVIDENCE", "DDD_MIGRATION_PREVIOUS_SCHEMA_EVIDENCE"],
     },
     orchestratorPreflight: {
@@ -176,7 +176,7 @@ function validBrief(overrides = {}) {
         path: "artifacts/ddd/migration/migration-evidence-handoff.md",
         present: true,
         purpose: "Fill migration runtime evidence.",
-        command: "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        command: "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
       },
       {
         id: "rollback-deferral-owner-handoff",
@@ -184,7 +184,7 @@ function validBrief(overrides = {}) {
         path: "artifacts/ddd/rollback/rollback-deferrals-owner-handoff/README.md",
         present: true,
         purpose: "Coordinate rollback approval.",
-        command: "node bin/ddd-rollback-deferral-template.mjs",
+        command: "node bin\/ddd-rollback-deferral-template.mjs",
       },
       {
         id: "performance-baseline-handoff",
@@ -200,7 +200,7 @@ function validBrief(overrides = {}) {
         path: "artifacts/ddd/release/release-env-owner-input-packet.md",
         present: true,
         purpose: "Collect remaining owner values.",
-        command: "node bin/ddd-release-env-owner-input-packet-contract.mjs",
+        command: "node bin\/ddd-release-env-owner-input-packet-contract.mjs",
       },
       {
         id: "release-owner-input-receipt",
@@ -208,7 +208,7 @@ function validBrief(overrides = {}) {
         path: "artifacts/ddd/release/release-owner-input-receipt.md",
         present: true,
         purpose: "Confirm owner values are reconciled before cutover.",
-        command: "node bin/ddd-release-owner-input-receipt-contract.mjs",
+        command: "node bin\/ddd-release-owner-input-receipt-contract.mjs",
       },
     ],
     performanceBaseline: {
@@ -217,7 +217,7 @@ function validBrief(overrides = {}) {
       blockerCount: 1,
       requiredEnvKeys: ["BASE_URL", "DDD_AUTH_USERNAME"],
       blockers: ["missing authenticated performance baseline"],
-      commands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-authenticated-performance-smoke.mjs"],
+      commands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-authenticated-performance-smoke.mjs"],
     },
     nextActions: [
       {
@@ -228,7 +228,7 @@ function validBrief(overrides = {}) {
         nextAction: "Produce missing artifact: artifacts/ddd/performance/authenticated-runtime-baseline.json",
         reason: "missingArtifact=artifacts/ddd/performance/authenticated-runtime-baseline.json",
         envKeys: ["BASE_URL", "DDD_AUTH_USERNAME"],
-        executableCommands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-authenticated-performance-smoke.mjs"],
+        executableCommands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-authenticated-performance-smoke.mjs"],
       },
     ],
     stopReasons: [
@@ -236,8 +236,8 @@ function validBrief(overrides = {}) {
       "strict release gate blockers=74",
     ],
     nextCommands: [
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs",
-      "JWT_SECRET=<redacted> node bin/ddd-release-evidence-manifest.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-lint.mjs",
+      "JWT_SECRET=<redacted> node bin\/ddd-release-evidence-manifest.mjs",
     ],
     ...overrides,
   };
@@ -288,7 +288,7 @@ const validMarkdown = [
   "",
   "## Final Owner Queue Fast Path",
   "",
-  "`node bin/ddd-release-readiness-summary.mjs`",
+  "`node bin\/ddd-release-readiness-summary.mjs`",
   "`DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`",
   "",
   "## Fastest Safe Path",
@@ -299,11 +299,11 @@ const validMarkdown = [
   "",
   "## Evidence Handoffs",
   "",
-  "`DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs`",
-  "`node bin/ddd-rollback-deferral-template.mjs`",
+  "`DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs`",
+  "`node bin\/ddd-rollback-deferral-template.mjs`",
   "`DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh`",
-  "`node bin/ddd-release-env-owner-input-packet-contract.mjs`",
-  "`node bin/ddd-release-owner-input-receipt-contract.mjs`",
+  "`node bin\/ddd-release-env-owner-input-packet-contract.mjs`",
+  "`node bin\/ddd-release-owner-input-receipt-contract.mjs`",
   "",
   "## Performance Baseline",
   "",
@@ -541,7 +541,7 @@ assert(validateReleaseUnblockBrief(null).includes("release unblock brief must be
       missingArtifactCount: 0.5,
       releaseEnvFileRequired: "true",
       finalGateCommand: "bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
-      commands: ["DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-release-readiness-summary.mjs"],
+      commands: ["DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-release-readiness-summary.mjs"],
     },
   }), validMarkdown);
   assert(issues.includes("finalOwnerQueueFastPath.owner must be a non-empty string"));
@@ -564,7 +564,7 @@ assert(validateReleaseUnblockBrief(null).includes("release unblock brief must be
       owner: "",
       nextAction: "",
       reason: "",
-      command: "DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-release-env-file-lint.mjs",
+      command: "DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-release-env-file-lint.mjs",
       envKeys: "DDD_MIGRATION_FRESH_DB_EVIDENCE",
     },
   }), validMarkdown);
@@ -605,7 +605,7 @@ assert(validateReleaseUnblockBrief(null).includes("release unblock brief must be
       blockerCount: 2,
       requiredEnvKeys: "BASE_URL",
       blockers: ["one"],
-      commands: ["DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-authenticated-performance-smoke.mjs"],
+      commands: ["DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-authenticated-performance-smoke.mjs"],
     },
   }), validMarkdown);
   assert(issues.includes("performanceBaseline.status must be a non-empty string"));
@@ -633,7 +633,7 @@ assert(validateReleaseUnblockBrief(null).includes("release unblock brief must be
 {
   const markdownWithoutPerformanceCommand = validMarkdown.replace(
     "`DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh`",
-    "`node bin/ddd-promote-performance-baseline.mjs`",
+    "`node bin\/ddd-promote-performance-baseline.mjs`",
   );
   const issues = validateReleaseUnblockBrief(validBrief(), markdownWithoutPerformanceCommand);
   assert(issues.includes("markdown evidence handoffs must include required command for performance-baseline-handoff"));
@@ -656,7 +656,7 @@ assert(validateReleaseUnblockBrief(null).includes("release unblock brief must be
         path: "../escape.md",
         present: true,
         purpose: "Duplicate id",
-        command: "DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-release-env-file-lint.mjs",
+        command: "DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-release-env-file-lint.mjs",
       },
     ],
   }), validMarkdown);
@@ -673,7 +673,7 @@ assert(validateReleaseUnblockBrief(null).includes("release unblock brief must be
 
 {
   const handoffs = validBrief().handoffReferences.map((reference) => ({ ...reference }));
-  handoffs.find((reference) => reference.id === "performance-baseline-handoff").command = "node bin/ddd-promote-performance-baseline.mjs";
+  handoffs.find((reference) => reference.id === "performance-baseline-handoff").command = "node bin\/ddd-promote-performance-baseline.mjs";
   const issues = validateReleaseUnblockBrief(validBrief({
     handoffReferences: handoffs,
   }), validMarkdown);
@@ -691,7 +691,7 @@ assert(validateReleaseUnblockBrief(null).includes("release unblock brief must be
         nextAction: "",
         reason: 123,
         envKeys: "BASE_URL",
-        executableCommands: ["DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-authenticated-performance-smoke.mjs"],
+        executableCommands: ["DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-authenticated-performance-smoke.mjs"],
       },
       {
         order: 1,
@@ -731,7 +731,7 @@ assert(validateReleaseUnblockBrief(null).includes("release unblock brief must be
 
 {
   const issues = validateReleaseUnblockBrief(validBrief({
-    nextCommands: ["DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-release-env-canonical-lint.mjs"],
+    nextCommands: ["DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-release-env-canonical-lint.mjs"],
   }), validMarkdown);
   assert(issues.includes("nextCommands[0] must redact DDD_RELEASE_ENV_FILE"));
 }
@@ -748,7 +748,7 @@ assert(validateReleaseUnblockBrief(null).includes("release unblock brief must be
 
 {
   const issues = validateReleaseUnblockBrief(validBrief({
-    nextCommands: ["JWT_SECRET=super-secret node bin/ddd-release-evidence-manifest.mjs"],
+    nextCommands: ["JWT_SECRET=super-secret node bin\/ddd-release-evidence-manifest.mjs"],
   }), validMarkdown);
   assert(issues.some((issue) => issue.startsWith("brief must not expose sensitive or concrete release values")));
 }
@@ -759,7 +759,7 @@ assert(validateReleaseUnblockBrief(null).includes("release unblock brief must be
   const markdownPath = path.join(tempDir, "release-unblock-brief.md");
   fs.writeFileSync(jsonPath, `${JSON.stringify(validBrief(), null, 2)}\n`);
   fs.writeFileSync(markdownPath, validMarkdown);
-  const result = spawnSync("node", ["bin/ddd-release-unblock-brief-contract.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-release-unblock-brief-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

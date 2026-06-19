@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD release next-action commands.
-# Generated at: 2026-06-19T18:09:18.921Z
+# Generated at: 2026-06-19T18:19:45.629Z
 # Status: NOT_READY
 # Release gate blockers: 94
 # Default mode lists RUN_NOW items. Set DDD_RELEASE_NEXT_ACTION_EXECUTE=1 to execute commands.
@@ -157,20 +157,12 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_LIST}" == "1" || "${DDD_RELEASE_NEXT_ACTION_LIS
     echo '1 owner=release-infra receiptStatus=CONTENT_BLOCKED next=Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.'
     DDD_RELEASE_NEXT_ACTION_LIST_MATCHED=1
   fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '2' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-owner' ) ]]; then
-    echo '2 owner=release-owner receiptStatus=CONTENT_BLOCKED next=Inspect the strict release gate blocker and attach an owner-specific remediation.'
+  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '2' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-performance' ) ]]; then
+    echo '2 owner=release-performance receiptStatus=CONTENT_BLOCKED next=Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion.'
     DDD_RELEASE_NEXT_ACTION_LIST_MATCHED=1
   fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-performance' ) ]]; then
-    echo '3 owner=release-performance receiptStatus=CONTENT_BLOCKED next=Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion.'
-    DDD_RELEASE_NEXT_ACTION_LIST_MATCHED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '4' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'lumira-ui' ) ]]; then
-    echo '4 owner=lumira-ui receiptStatus=ARTIFACT_MISSING next=Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.'
-    DDD_RELEASE_NEXT_ACTION_LIST_MATCHED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '5' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'database' ) ]]; then
-    echo '5 owner=database receiptStatus=ARTIFACT_MISSING next=Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.'
+  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'lumira-ui' ) ]]; then
+    echo '3 owner=lumira-ui receiptStatus=ARTIFACT_MISSING next=Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.'
     DDD_RELEASE_NEXT_ACTION_LIST_MATCHED=1
   fi
   if [[ "${DDD_RELEASE_NEXT_ACTION_LIST_MATCHED}" != "1" ]]; then
@@ -199,26 +191,9 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL}" == "1" || "${DDD_RELEASE_NEXT_ACTION_D
     echo '- DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
   fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '2' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-owner' ) ]]; then
+  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '2' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-performance' ) ]]; then
     DDD_RELEASE_NEXT_ACTION_DETAIL_MATCHED=1
     echo 'order=2'
-    echo 'owner=release-owner'
-    echo 'receiptStatus=CONTENT_BLOCKED'
-    echo 'next=Inspect the strict release gate blocker and attach an owner-specific remediation.'
-    echo 'reason=strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h'
-    echo 'readyBatches=p0-manifest-release-owner'
-    echo 'blockedBatches=p3-orchestrator-release-owner'
-    echo 'missingArtifacts=none'
-    echo 'envKeys=DDD_RELEASE_EVIDENCE_STRICT'
-    echo "commands:"
-    echo '- DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-performance' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_DETAIL_MATCHED=1
-    echo 'order=3'
     echo 'owner=release-performance'
     echo 'receiptStatus=CONTENT_BLOCKED'
     echo 'next=Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion.'
@@ -235,9 +210,9 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL}" == "1" || "${DDD_RELEASE_NEXT_ACTION_D
     echo '- DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
   fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '4' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'lumira-ui' ) ]]; then
+  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'lumira-ui' ) ]]; then
     DDD_RELEASE_NEXT_ACTION_DETAIL_MATCHED=1
-    echo 'order=4'
+    echo 'order=3'
     echo 'owner=lumira-ui'
     echo 'receiptStatus=ARTIFACT_MISSING'
     echo 'next=Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.'
@@ -251,25 +226,6 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL}" == "1" || "${DDD_RELEASE_NEXT_ACTION_D
     echo '- DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '5' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'database' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_DETAIL_MATCHED=1
-    echo 'order=5'
-    echo 'owner=database'
-    echo 'receiptStatus=ARTIFACT_MISSING'
-    echo 'next=Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.'
-    echo 'reason=strictGate=migration-evidence-freshness generatedAt is 57.7h old; limit=24h'
-    echo 'readyBatches=p0-manifest-database'
-    echo 'blockedBatches=p2-explain-database;p3-orchestrator-database'
-    echo 'missingArtifacts=tmp/ddd-explain/*.json'
-    echo 'envKeys=DDD_EVIDENCE_OPERATOR;DDD_MIGRATION_COMPLETED_AT;DDD_MIGRATION_ENVIRONMENT;DDD_MIGRATION_FRESH_DB_EVIDENCE;DDD_MIGRATION_FRESH_DB_VALIDATED;DDD_MIGRATION_HANDOFF_FILE;DDD_MIGRATION_OPERATOR;DDD_MIGRATION_UPGRADE_DB_EVIDENCE;DDD_MIGRATION_UPGRADE_DB_VALIDATED;DDD_RELEASE_CANDIDATE'
-    echo "commands:"
-    echo '- DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs'
-    echo '- node bin/ddd-migration-evidence.mjs'
-    echo '- DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
   fi
   if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL_MATCHED}" != "1" ]]; then
     echo "No RUN_NOW next action matched DDD_RELEASE_NEXT_ACTION_ORDER=${DDD_RELEASE_NEXT_ACTION_ORDER} DDD_RELEASE_NEXT_ACTION_OWNER=${DDD_RELEASE_NEXT_ACTION_OWNER}" >&2
@@ -285,21 +241,13 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_CHECK_ENV}" == "1" || "${DDD_RELEASE_NEXT_ACTIO
     DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
     check_next_action_env '1' 'release-infra' 'BASE_URL' 'DEPLOY_CHECK_BASE_URL' 'LUMIRA_BASE_URL' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
   fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '2' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-owner' ) ]]; then
+  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '2' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-performance' ) ]]; then
     DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
-    check_next_action_env '2' 'release-owner' 'DDD_RELEASE_EVIDENCE_STRICT' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
+    check_next_action_env '2' 'release-performance' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
   fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-performance' ) ]]; then
+  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'lumira-ui' ) ]]; then
     DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
-    check_next_action_env '3' 'release-performance' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '4' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'lumira-ui' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
-    check_next_action_env '4' 'lumira-ui' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_FRONTEND_EXPECT_DEPLOYED' 'DDD_RELEASE_CANDIDATE' 'PLAYWRIGHT_BASE_URL' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '5' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'database' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
-    check_next_action_env '5' 'database' 'DDD_EVIDENCE_OPERATOR' 'DDD_MIGRATION_COMPLETED_AT' 'DDD_MIGRATION_ENVIRONMENT' 'DDD_MIGRATION_FRESH_DB_EVIDENCE' 'DDD_MIGRATION_FRESH_DB_VALIDATED' 'DDD_MIGRATION_HANDOFF_FILE' 'DDD_MIGRATION_OPERATOR' 'DDD_MIGRATION_UPGRADE_DB_EVIDENCE' 'DDD_MIGRATION_UPGRADE_DB_VALIDATED' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
+    check_next_action_env '3' 'lumira-ui' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_FRONTEND_EXPECT_DEPLOYED' 'DDD_RELEASE_CANDIDATE' 'PLAYWRIGHT_BASE_URL' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
   fi
   if [[ "${DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED}" != "1" ]]; then
     echo "No RUN_NOW next action matched DDD_RELEASE_NEXT_ACTION_ORDER=${DDD_RELEASE_NEXT_ACTION_ORDER} DDD_RELEASE_NEXT_ACTION_OWNER=${DDD_RELEASE_NEXT_ACTION_OWNER}" >&2
@@ -321,50 +269,27 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_AC
   run_next_action_command '1' 'release-infra' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
 fi
 
-maybe_run_next_action '2' 'release-owner' 'CONTENT_BLOCKED' 'Inspect the strict release gate blocker and attach an owner-specific remediation.'
-if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '2' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-owner' ) ]]; then
-# -----
-# Reason: strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h
-  run_next_action_command '2' 'release-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '2' 'release-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '2' 'release-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '2' 'release-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-fi
-
-maybe_run_next_action '3' 'release-performance' 'CONTENT_BLOCKED' 'Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion.'
-if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-performance' ) ]]; then
+maybe_run_next_action '2' 'release-performance' 'CONTENT_BLOCKED' 'Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion.'
+if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '2' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-performance' ) ]]; then
 # -----
 # Reason: strictGate=authenticated-performance-shape authenticated performance actual productionEquivalence.strict must be true for strict release evidence
-  run_next_action_command '3' 'release-performance' 'CONTENT_BLOCKED' 'node bin/ddd-authenticated-performance-smoke.mjs'
-  run_next_action_command '3' 'release-performance' 'CONTENT_BLOCKED' 'node bin/ddd-promote-performance-baseline.mjs'
-  run_next_action_command '3' 'release-performance' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '3' 'release-performance' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '3' 'release-performance' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '3' 'release-performance' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
+  run_next_action_command '2' 'release-performance' 'CONTENT_BLOCKED' 'node bin/ddd-authenticated-performance-smoke.mjs'
+  run_next_action_command '2' 'release-performance' 'CONTENT_BLOCKED' 'node bin/ddd-promote-performance-baseline.mjs'
+  run_next_action_command '2' 'release-performance' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
+  run_next_action_command '2' 'release-performance' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
+  run_next_action_command '2' 'release-performance' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
+  run_next_action_command '2' 'release-performance' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
 fi
 
-maybe_run_next_action '4' 'lumira-ui' 'ARTIFACT_MISSING' 'Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.'
-if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '4' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'lumira-ui' ) ]]; then
+maybe_run_next_action '3' 'lumira-ui' 'ARTIFACT_MISSING' 'Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.'
+if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'lumira-ui' ) ]]; then
 # -----
 # Reason: strictGate=frontend-smoke-freshness generatedAt is 57.8h old; limit=24h
 # Missing artifacts: artifacts/ddd/lumira-ui/frontend-smoke.json; artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json; artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json
-  run_next_action_command '4' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '4' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '4' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '4' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-fi
-
-maybe_run_next_action '5' 'database' 'ARTIFACT_MISSING' 'Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.'
-if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '5' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'database' ) ]]; then
-# -----
-# Reason: strictGate=migration-evidence-freshness generatedAt is 57.7h old; limit=24h
-# Missing artifacts: tmp/ddd-explain/*.json
-  run_next_action_command '5' 'database' 'ARTIFACT_MISSING' 'DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs'
-  run_next_action_command '5' 'database' 'ARTIFACT_MISSING' 'node bin/ddd-migration-evidence.mjs'
-  run_next_action_command '5' 'database' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '5' 'database' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '5' 'database' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '5' 'database' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
+  run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
+  run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
+  run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
+  run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
 fi
 
 if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" != "1" ]]; then

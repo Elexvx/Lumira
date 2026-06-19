@@ -14,7 +14,7 @@ function write(file, text) {
 }
 
 function runContract(root, files, homeDir = "/Users/example", releaseEnvDisplayFiles = []) {
-  return spawnSync("node", ["bin/ddd-release-artifact-path-leak-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-artifact-path-leak-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -43,7 +43,7 @@ assert.equal(passReport.leakCount, 0);
 const releaseEnvPlaceholderRoot = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-release-env-display-pass-"));
 write(path.join(releaseEnvPlaceholderRoot, "release", "owner-action-rollup.md"), [
   "# Owner Rollup",
-  "`DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-evidence-gate.mjs --env-file <release-env-file>`",
+  "`DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-evidence-gate.mjs --env-file <release-env-file>`",
   "",
 ].join("\n"));
 const releaseEnvPlaceholderResult = runContract(
@@ -63,7 +63,7 @@ assert.equal(releaseEnvPlaceholderReport.releaseEnvDisplayScannedFiles, 1);
 const releaseEnvFailRoot = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-release-env-display-fail-"));
 write(path.join(releaseEnvFailRoot, "release", "owner-action-rollup.md"), [
   "# Owner Rollup",
-  "`DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-evidence-gate.mjs --env-file .env.release.local`",
+  "`DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-evidence-gate.mjs --env-file .env.release.local`",
   "",
 ].join("\n"));
 const releaseEnvFailResult = runContract(
@@ -132,12 +132,12 @@ for (const file of [
 }
 write(path.join(defaultRoot, "release", "release-env-owner-input-packet", "01-release-infra.json"), JSON.stringify({
   owner: "release-infra",
-  validationCommand: "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+  validationCommand: "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
 }, null, 2));
 write(path.join(defaultRoot, "release", "release-env-owner-input-packet", "01-release-infra.md"), [
   "# DDD Release Env Owner Input Packet: release-infra",
   "",
-  "`DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`",
+  "`DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs`",
   "",
 ].join("\n"));
 write(path.join(defaultRoot, "release", "release-owner-input-receipt-items", "01-release-infra.md"), [
@@ -146,7 +146,7 @@ write(path.join(defaultRoot, "release", "release-owner-input-receipt-items", "01
   "- [ ] 1. `DB_PASSWORD` status=PLACEHOLDER; class=secret",
   "",
 ].join("\n"));
-const defaultResult = spawnSync("node", ["bin/ddd-release-artifact-path-leak-contract.mjs"], {
+const defaultResult = spawnSync("node", ["bin\/ddd-release-artifact-path-leak-contract.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -183,7 +183,7 @@ const ownerPacketLeakRoot = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-path-l
 write(path.join(ownerPacketLeakRoot, "release", "release-env-owner-input-packet", "01-release-infra.md"), [
   "# DDD Release Env Owner Input Packet: release-infra",
   "",
-  "`DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`",
+  "`DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs`",
   "",
 ].join("\n"));
 const ownerPacketLeakResult = runContract(ownerPacketLeakRoot, []);

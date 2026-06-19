@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T18:09:16.572Z",
-      "generatedAt": "2026-06-19T18:09:16.571Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 12,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -274,9 +274,9 @@
     }
   },
   "summary": {
-    "totalPendingItems": 51,
+    "totalPendingItems": 42,
     "nonWaivableItems": 31,
-    "readyBatches": 6,
+    "readyBatches": 4,
     "blockedBatches": 18,
     "lanes": 9,
     "cutoverChecklistItems": 9,
@@ -301,9 +301,7 @@
       "readyBatchIds": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "blockedBatchIds": [
@@ -472,23 +470,19 @@
       "title": "Evidence manifest and final orchestrator strict rerun are clean.",
       "required": true,
       "status": "BLOCKED",
-      "pendingItems": 16,
+      "pendingItems": 7,
       "lanes": [
         "evidence-integrity",
         "final-verification"
       ],
       "batchIds": [
-        "p0-manifest-database",
         "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner",
         "p3-orchestrator-database",
         "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ],
       "readyBatchIds": [
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner"
+        "p0-manifest-lumira-ui"
       ],
       "blockedBatchIds": [
         "p3-orchestrator-database",
@@ -781,36 +775,24 @@
     {
       "lane": "evidence-integrity",
       "safetyClass": "required-before-cutover",
-      "pendingItems": 12,
+      "pendingItems": 3,
       "sources": [
         "manifest"
       ],
       "owners": [
-        "database",
-        "lumira-ui",
-        "release-owner"
+        "lumira-ui"
       ],
       "batchIds": [
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner"
+        "p0-manifest-lumira-ui"
       ],
       "readyBatchIds": [
-        "p0-manifest-database",
-        "p0-manifest-lumira-ui",
-        "p0-manifest-release-owner"
+        "p0-manifest-lumira-ui"
       ],
       "blockedBatchIds": [],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
         "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED",
         "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT",
         "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
       ],
       "commands": [

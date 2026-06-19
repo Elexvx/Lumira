@@ -24,7 +24,7 @@ for (const fileName of requiredExplainFilesWhenPresent) {
   fs.writeFileSync(path.join(explainDir, fileName), `${JSON.stringify(barePlan, null, 2)}\n`);
 }
 
-const result = spawnSync("node", ["bin/ddd-normalize-explain-artifacts.mjs"], {
+const result = spawnSync("node", ["bin\/ddd-normalize-explain-artifacts.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -53,7 +53,7 @@ assert.deepEqual(validateExplainArtifact("platform-outbox-owner-relay-message.js
   detail: "platform-outbox-owner-relay-message.json.legacyPlanImport must be false for strict release evidence",
 }]);
 
-const secondRun = spawnSync("node", ["bin/ddd-normalize-explain-artifacts.mjs"], {
+const secondRun = spawnSync("node", ["bin\/ddd-normalize-explain-artifacts.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

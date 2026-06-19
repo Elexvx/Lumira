@@ -1,6 +1,6 @@
 # DDD Fast Track Release Decision
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -22,7 +22,7 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 
 - [BLOCKED] strict-release-gate: Strict release gate has zero blockers and no contract issues.
   - Pending items: 94
-  - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+  - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
   - Blocked batches: p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database, p3-orchestrator-database, p3-orchestrator-release-infra, p3-orchestrator-release-owner
 - [PASS] release-environment: Completed release env file and config matrix are valid.
   - Pending items: 0
@@ -44,8 +44,8 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - Pending items: 2
   - Blocked batches: p2-explain-database
 - [BLOCKED] evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean.
-  - Pending items: 16
-  - Ready batches: p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner
+  - Pending items: 7
+  - Ready batches: p0-manifest-lumira-ui
   - Blocked batches: p3-orchestrator-database, p3-orchestrator-release-infra, p3-orchestrator-release-owner
 
 ## Safety Signals
@@ -203,22 +203,16 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 ### evidence-integrity
 
 - Safety class: required-before-cutover
-- Pending items: 12
+- Pending items: 3
 - Sources: manifest
-- Owners: database, lumira-ui, release-owner
-- Ready batches: p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner
+- Owners: lumira-ui
+- Ready batches: p0-manifest-lumira-ui
 - Blocked batches: none
 - Acceleration: Regenerate the manifest after all prerequisite artifacts exist.
 - Env check groups:
   - `DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT`
-  - `DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR`
   - `DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED`
-  - `DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE`
-  - `DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED`
-  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
-  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED`
   - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
-  - `DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT`
   - `PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL`
 - Commands:
   - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`

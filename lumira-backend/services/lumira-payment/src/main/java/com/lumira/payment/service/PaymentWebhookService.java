@@ -7,6 +7,8 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.payment.domain.model.PaymentDomainModels.PaymentOrderAggregate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -33,7 +35,9 @@ import java.util.UUID;
 @Service
 public class PaymentWebhookService {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentWebhookService.class);
     private static final long WEBHOOK_REPLAY_WINDOW_SECONDS = 600L;
+    private static final int MAX_WEBHOOK_PAYLOAD_BYTES = 256 * 1024;
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -61,8 +65,12 @@ public class PaymentWebhookService {
     @Transactional
     public PaymentWebhookEventDTO handleWebhook(Long tenantId, String providerCode, String payload, Map<String, String> headers) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
-        var settings = paymentManagementAppService.getRequiredProviderSettings(tenantId, providerCode);
         String normalizedPayload = StringUtils.hasText(payload) ? payload.trim() : "{}";
+        if (normalizedPayload.getBytes(StandardCharsets.UTF_8).length > MAX_WEBHOOK_PAYLOAD_BYTES) {
+            recordRejectedWebhook(tenantId, providerCode, "PAYLOAD_TOO_LARGE", normalizedPayload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook payload too large", "Webhook request is invalid");
+        }
+        var settings = paymentManagementAppService.getRequiredProviderSettings(tenantId, providerCode);
         String eventId = resolveEventId(headers, normalizedPayload);
         String eventType = resolveEventType(headers, normalizedPayload);
         String signature = resolveSignature(headers, normalizedPayload);
@@ -75,14 +83,19 @@ public class PaymentWebhookService {
         }
 
         if (StringUtils.hasText(nonce) && isNonceReplayed(tenantId, providerCode, nonce)) {
-            return insertRejectedWebhookEvent(tenantId, providerCode, eventId, eventType, normalizedPayload, signature, timestamp, nonce, "请求已被重放");
+            recordRejectedWebhook(tenantId, providerCode, "NONCE_REPLAY", normalizedPayload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook replay rejected", "Webhook request is invalid");
         }
 
-        boolean signatureValid = verifySignature(definition, settings, normalizedPayload, signature, timestamp, nonce);
-        boolean timestampFresh = isFreshTimestamp(timestamp);
-        if (signatureValid && !timestampFresh) {
-            signatureValid = false;
+        if (!verifySignature(definition, settings, normalizedPayload, signature, timestamp, nonce)) {
+            recordRejectedWebhook(tenantId, providerCode, "SIGNATURE_INVALID", normalizedPayload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook signature invalid", "Webhook request is invalid");
         }
+        if (!isFreshTimestamp(timestamp)) {
+            recordRejectedWebhook(tenantId, providerCode, "TIMESTAMP_EXPIRED", normalizedPayload, headers);
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook timestamp expired", "Webhook request is invalid");
+        }
+
         PaymentWebhookEventRow row = new PaymentWebhookEventRow();
         row.setTenantId(tenantId);
         row.setProviderCode(providerCatalog.normalize(providerCode));
@@ -92,9 +105,9 @@ public class PaymentWebhookService {
         row.setRequestTimestamp(timestamp);
         row.setPayloadJson(normalizedPayload);
         row.setSignature(signature);
-        row.setSignatureValid(signatureValid ? 1 : 0);
+        row.setSignatureValid(1);
         row.setProcessed(0);
-        row.setProcessMessage(signatureValid ? "待处理" : (timestampFresh ? "签名校验失败" : "请求时间戳超时"));
+        row.setProcessMessage("PENDING");
         row.setReceivedAt(LocalDateTime.now());
         row.setCreatedBy(0L);
         row.setUpdatedBy(0L);
@@ -123,13 +136,11 @@ public class PaymentWebhookService {
                 0L
         );
 
-        if (signatureValid) {
-            String processMessage = applyEvent(tenantId, providerCode, normalizedPayload, eventType);
-            markProcessed(tenantId, providerCode, eventId, processMessage);
-            row.setProcessed(1);
-            row.setProcessMessage(processMessage);
-            row.setProcessedAt(LocalDateTime.now());
-        }
+        String processMessage = applyEvent(tenantId, providerCode, normalizedPayload, eventType);
+        markProcessed(tenantId, providerCode, eventId, processMessage);
+        row.setProcessed(1);
+        row.setProcessMessage(processMessage);
+        row.setProcessedAt(LocalDateTime.now());
 
         outboxService.recordAfterCommit(
                 tenantId,
@@ -141,7 +152,7 @@ public class PaymentWebhookService {
                         "providerCode", providerCode,
                         "eventId", eventId,
                         "eventType", eventType,
-                        "signatureValid", signatureValid
+                        "signatureValid", true
                 )
         );
 
@@ -149,14 +160,33 @@ public class PaymentWebhookService {
                 providerCode,
                 eventId,
                 eventType,
-                signatureValid,
-                signatureValid,
+                true,
+                true,
                 row.getProcessMessage(),
                 row.getReceivedAt(),
                 row.getProcessedAt()
         );
     }
 
+    private void recordRejectedWebhook(Long tenantId, String providerCode, String reason, String payload, Map<String, String> headers) {
+        log.warn(
+                "Rejected payment webhook tenantId={} providerCode={} reason={} payloadHash={} headerKeys={}",
+                tenantId,
+                providerCatalog.normalize(providerCode),
+                reason,
+                sha256(payload),
+                headers == null ? java.util.Set.of() : headers.keySet()
+        );
+    }
+
+    private String sha256(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(normalizeText(value).getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (Exception exception) {
+            return "";
+        }
+    }
     private String applyEvent(Long tenantId, String providerCode, String payload, String eventType) {
         String normalizedEvent = normalizeText(eventType).toLowerCase(Locale.ROOT);
         if (normalizedEvent.contains("refund")) {
@@ -531,3 +561,4 @@ public class PaymentWebhookService {
         return value == null ? "" : value.trim();
     }
 }
+

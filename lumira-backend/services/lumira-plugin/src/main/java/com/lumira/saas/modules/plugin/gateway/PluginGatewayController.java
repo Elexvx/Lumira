@@ -6,6 +6,7 @@ import com.lumira.common.web.TraceContext;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.web.security.SensitiveErrorMessageSanitizer;
 import com.lumira.saas.modules.plugin.app.PluginManagementAppService;
 import com.lumira.saas.modules.plugin.registry.PluginRuntimeDescriptor;
 import com.lumira.saas.modules.plugin.runtime.PluginRuntimeSecurityPolicy;
@@ -34,17 +35,20 @@ public class PluginGatewayController {
     private final SecurityContextFacade securityContextFacade;
     private final PermissionGuard permissionGuard;
     private final PluginRuntimeSecurityPolicy runtimeSecurityPolicy;
+    private final SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer;
 
     public PluginGatewayController(
             PluginManagementAppService pluginManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
-            PluginRuntimeSecurityPolicy runtimeSecurityPolicy
+            PluginRuntimeSecurityPolicy runtimeSecurityPolicy,
+            SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer
     ) {
         this.pluginManagementAppService = pluginManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.runtimeSecurityPolicy = runtimeSecurityPolicy;
+        this.sensitiveErrorMessageSanitizer = sensitiveErrorMessageSanitizer;
     }
 
     @RequestMapping("/api/p/{pluginCode}/**")
@@ -80,10 +84,22 @@ public class PluginGatewayController {
         } catch (BizException exception) {
             throw exception;
         } catch (Exception exception) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件请求处理失败: " + exception.getMessage());
+            String sanitizedReason = sensitiveErrorMessageSanitizer.sanitize(exception.getMessage());
+            org.slf4j.LoggerFactory.getLogger(PluginGatewayController.class).warn(
+                    "Plugin request failed requestId={} traceId={} pluginCode={} reason={}",
+                    TraceContext.getRequestId(),
+                    TraceContext.getTraceId(),
+                    pluginCode,
+                    sanitizedReason,
+                    exception
+            );
+            throw new BizException(
+                    ErrorCode.PLUGIN_RUNTIME_ERROR,
+                    "Plugin request failed",
+                    "Plugin request failed, please contact an administrator"
+            );
         }
     }
-
     private String resolvePluginCode(String requestUri) {
         String prefix = "/api/p/";
         int start = requestUri.indexOf(prefix);
@@ -128,3 +144,4 @@ public class PluginGatewayController {
         return headers;
     }
 }
+

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T18:09:16.572Z",
-      "generatedAt": "2026-06-19T18:09:16.571Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 12,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -248,12 +248,12 @@
     "blockers": 94,
     "warnings": 8
   },
-  "ownerCount": 16,
-  "runNowOwnerCount": 5,
-  "waitingOwnerCount": 11,
+  "ownerCount": 15,
+  "runNowOwnerCount": 3,
+  "waitingOwnerCount": 12,
   "uniqueUnresolvedTemplateKeyCount": 29,
-  "unresolvedOwnerAssignmentCount": 67,
-  "filledOwnerAssignmentCount": 66,
+  "unresolvedOwnerAssignmentCount": 65,
+  "filledOwnerAssignmentCount": 64,
   "placeholderOwnerAssignmentCount": 0,
   "missingOwnerAssignmentCount": 1,
   "owners": [
@@ -330,10 +330,110 @@
       ]
     },
     {
-      "owner": "database",
+      "owner": "release-performance",
       "fillOrder": 2,
       "priority": "RUN_NOW",
       "readyGroupCount": 1,
+      "blockedGroupCount": 0,
+      "unresolvedTemplateKeyCount": 4,
+      "unresolvedTemplateKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "filledTemplateKeyCount": 4,
+      "placeholderTemplateKeyCount": 0,
+      "missingTemplateKeyCount": 0,
+      "filledTemplateKeys": [
+        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "placeholderTemplateKeys": [],
+      "missingTemplateKeys": [],
+      "fillStatusByKey": [
+        {
+          "envKey": "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
+          "status": "filled"
+        },
+        {
+          "envKey": "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
+          "status": "filled"
+        },
+        {
+          "envKey": "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+          "status": "filled"
+        },
+        {
+          "envKey": "DDD_RELEASE_CANDIDATE",
+          "status": "filled"
+        }
+      ],
+      "readyBatchIds": [
+        "p0-authenticated-performance-release-performance"
+      ],
+      "blockedBatchIds": [],
+      "commands": [
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs"
+      ],
+      "exitCriteria": [
+        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
+        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "owner": "lumira-ui",
+      "fillOrder": 3,
+      "priority": "RUN_NOW",
+      "readyGroupCount": 1,
+      "blockedGroupCount": 0,
+      "unresolvedTemplateKeyCount": 2,
+      "unresolvedTemplateKeys": [
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
+      ],
+      "filledTemplateKeyCount": 2,
+      "placeholderTemplateKeyCount": 0,
+      "missingTemplateKeyCount": 0,
+      "filledTemplateKeys": [
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
+      ],
+      "placeholderTemplateKeys": [],
+      "missingTemplateKeys": [],
+      "fillStatusByKey": [
+        {
+          "envKey": "DDD_RELEASE_CANDIDATE",
+          "status": "filled"
+        },
+        {
+          "envKey": "PLAYWRIGHT_BASE_URL",
+          "status": "filled"
+        }
+      ],
+      "readyBatchIds": [
+        "p0-manifest-lumira-ui"
+      ],
+      "blockedBatchIds": [],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "owner": "database",
+      "fillOrder": 4,
+      "priority": "WAITING",
+      "readyGroupCount": 0,
       "blockedGroupCount": 2,
       "unresolvedTemplateKeyCount": 12,
       "unresolvedTemplateKeys": [
@@ -419,25 +519,18 @@
           "status": "filled"
         }
       ],
-      "readyBatchIds": [
-        "p0-manifest-database"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p2-explain-database",
         "p3-orchestrator-database"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
         "node bin/ddd-collect-explain.mjs",
         "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence.",
         "Final strict release gate and readiness summary report zero blockers.",
         "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
         "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
@@ -446,159 +539,8 @@
       ]
     },
     {
-      "owner": "release-performance",
-      "fillOrder": 3,
-      "priority": "RUN_NOW",
-      "readyGroupCount": 1,
-      "blockedGroupCount": 0,
-      "unresolvedTemplateKeyCount": 4,
-      "unresolvedTemplateKeys": [
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_RELEASE_CANDIDATE"
-      ],
-      "filledTemplateKeyCount": 4,
-      "placeholderTemplateKeyCount": 0,
-      "missingTemplateKeyCount": 0,
-      "filledTemplateKeys": [
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_RELEASE_CANDIDATE"
-      ],
-      "placeholderTemplateKeys": [],
-      "missingTemplateKeys": [],
-      "fillStatusByKey": [
-        {
-          "envKey": "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-          "status": "filled"
-        },
-        {
-          "envKey": "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-          "status": "filled"
-        },
-        {
-          "envKey": "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-          "status": "filled"
-        },
-        {
-          "envKey": "DDD_RELEASE_CANDIDATE",
-          "status": "filled"
-        }
-      ],
-      "readyBatchIds": [
-        "p0-authenticated-performance-release-performance"
-      ],
-      "blockedBatchIds": [],
-      "commands": [
-        "node bin/ddd-authenticated-performance-smoke.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs"
-      ],
-      "exitCriteria": [
-        "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
-        "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "owner": "lumira-ui",
-      "fillOrder": 4,
-      "priority": "RUN_NOW",
-      "readyGroupCount": 1,
-      "blockedGroupCount": 0,
-      "unresolvedTemplateKeyCount": 2,
-      "unresolvedTemplateKeys": [
-        "DDD_RELEASE_CANDIDATE",
-        "PLAYWRIGHT_BASE_URL"
-      ],
-      "filledTemplateKeyCount": 2,
-      "placeholderTemplateKeyCount": 0,
-      "missingTemplateKeyCount": 0,
-      "filledTemplateKeys": [
-        "DDD_RELEASE_CANDIDATE",
-        "PLAYWRIGHT_BASE_URL"
-      ],
-      "placeholderTemplateKeys": [],
-      "missingTemplateKeys": [],
-      "fillStatusByKey": [
-        {
-          "envKey": "DDD_RELEASE_CANDIDATE",
-          "status": "filled"
-        },
-        {
-          "envKey": "PLAYWRIGHT_BASE_URL",
-          "status": "filled"
-        }
-      ],
-      "readyBatchIds": [
-        "p0-manifest-lumira-ui"
-      ],
-      "blockedBatchIds": [],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "owner": "release-owner",
-      "fillOrder": 5,
-      "priority": "RUN_NOW",
-      "readyGroupCount": 1,
-      "blockedGroupCount": 1,
-      "unresolvedTemplateKeyCount": 2,
-      "unresolvedTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
-      ],
-      "filledTemplateKeyCount": 2,
-      "placeholderTemplateKeyCount": 0,
-      "missingTemplateKeyCount": 0,
-      "filledTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
-      ],
-      "placeholderTemplateKeys": [],
-      "missingTemplateKeys": [],
-      "fillStatusByKey": [
-        {
-          "envKey": "DDD_EVIDENCE_OPERATOR",
-          "status": "filled"
-        },
-        {
-          "envKey": "DDD_RELEASE_CANDIDATE",
-          "status": "filled"
-        }
-      ],
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Run only after all prerequisite evidence batches are clean."
-      ]
-    },
-    {
       "owner": "ai",
-      "fillOrder": 6,
+      "fillOrder": 5,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -683,7 +625,7 @@
     },
     {
       "owner": "file-owner",
-      "fillOrder": 7,
+      "fillOrder": 6,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,
@@ -760,7 +702,7 @@
     },
     {
       "owner": "job-owner",
-      "fillOrder": 8,
+      "fillOrder": 7,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,
@@ -831,7 +773,7 @@
     },
     {
       "owner": "payment-owner",
-      "fillOrder": 9,
+      "fillOrder": 8,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,
@@ -902,7 +844,7 @@
     },
     {
       "owner": "ai-owner",
-      "fillOrder": 10,
+      "fillOrder": 9,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -945,7 +887,7 @@
     },
     {
       "owner": "auth-owner",
-      "fillOrder": 11,
+      "fillOrder": 10,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -988,7 +930,7 @@
     },
     {
       "owner": "iam-owner",
-      "fillOrder": 12,
+      "fillOrder": 11,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1031,7 +973,7 @@
     },
     {
       "owner": "localization-owner",
-      "fillOrder": 13,
+      "fillOrder": 12,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1074,7 +1016,7 @@
     },
     {
       "owner": "message-owner",
-      "fillOrder": 14,
+      "fillOrder": 13,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1117,7 +1059,7 @@
     },
     {
       "owner": "platform-owner",
-      "fillOrder": 15,
+      "fillOrder": 14,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1160,7 +1102,7 @@
     },
     {
       "owner": "plugin-owner",
-      "fillOrder": 16,
+      "fillOrder": 15,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,

@@ -1,15 +1,15 @@
 # DDD Final Owner Queue
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 Cutover allowed: false
 No auto waivers: true
 Owners: 16
-Actionable owners: 5
-Waiting owners: 11
+Actionable owners: 3
+Waiting owners: 13
 Unique missing artifacts: 19
-Unique content blockers: 9
+Unique content blockers: 0
 Owner input receipt status: PENDING_OWNER_INPUT
 Owner input receipt cutover ready: false
 Owner input receipt required inputs: 0
@@ -100,66 +100,16 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
   - `node bin/ddd-release-evidence-gate.mjs`
   - `node bin/ddd-release-readiness-summary.mjs`
 
-## database
+## lumira-ui
 
 - Queue order: 2
 - Execution order hint: 3
 - Queue status: ACTIONABLE
 - Can execute: true
-- Cutover items: database-performance, evidence-integrity, strict-release-gate
-- Ready batches: p0-manifest-database
-- Blocked batches: p2-explain-database, p3-orchestrator-database
-- Closure waves: 3
-- Commands: 9
-- Env keys: 16
-- Missing artifacts: 6
-- Content blockers: 2
-- Stop reasons: 6
-- First command: `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-- Env key names:
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_EXPLAIN_DATABASE`
-  - `DDD_EXPLAIN_DIR`
-  - `DDD_EXPLAIN_ENVIRONMENT`
-  - `DDD_EXPLAIN_STRICT`
-  - `DDD_MIGRATION_FRESH_DB_EVIDENCE`
-  - `DDD_MIGRATION_FRESH_DB_VALIDATED`
-  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
-  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED`
-  - `DDD_RELEASE_CANDIDATE`
-  - `MYSQL_CLI`
-  - `MYSQL_DATABASE`
-  - `MYSQL_HOST`
-  - `MYSQL_PASSWORD`
-  - `MYSQL_PORT`
-  - `MYSQL_USER`
-- Missing artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
-  - `artifacts/ddd/release/explain-gate-report.json`
-  - `artifacts/ddd/release/orchestrator-report.json`
-  - `artifacts/ddd/release/readiness-summary.json`
-  - `artifacts/ddd/release/release-evidence-gate.json`
-  - `tmp/ddd-explain/*.json`
-- Content blockers:
-  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs
-  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff
-- Rerun commands:
-  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
-  - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`
-  - `bash artifacts/ddd/release/release-preflight-gate.sh`
-  - `node bin/ddd-release-evidence-gate.mjs`
-  - `node bin/ddd-release-readiness-summary.mjs`
-
-## lumira-ui
-
-- Queue order: 3
-- Execution order hint: 4
-- Queue status: ACTIONABLE
-- Can execute: true
 - Cutover items: evidence-integrity, strict-release-gate
 - Ready batches: p0-manifest-lumira-ui
 - Blocked batches: none
-- Closure waves: 4
+- Closure waves: 3
 - Commands: 5
 - Env keys: 4
 - Missing artifacts: 4
@@ -183,58 +133,16 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
   - `node bin/ddd-release-evidence-gate.mjs`
   - `node bin/ddd-release-readiness-summary.mjs`
 
-## release-owner
-
-- Queue order: 4
-- Execution order hint: 5
-- Queue status: ACTIONABLE
-- Can execute: true
-- Cutover items: evidence-integrity, strict-release-gate
-- Ready batches: p0-manifest-release-owner
-- Blocked batches: p3-orchestrator-release-owner
-- Closure waves: 5
-- Commands: 7
-- Env keys: 5
-- Missing artifacts: 4
-- Content blockers: 7
-- Stop reasons: 10
-- First command: `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
-- Env key names:
-  - `DDD_EVIDENCE_ENVIRONMENT`
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_RELEASE_CANDIDATE`
-  - `DDD_RELEASE_EVIDENCE_STRICT`
-  - `DDD_RELEASE_MANIFEST_STRICT`
-- Missing artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
-  - `artifacts/ddd/release/orchestrator-report.json`
-  - `artifacts/ddd/release/readiness-summary.json`
-  - `artifacts/ddd/release/release-evidence-gate.json`
-- Content blockers:
-  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh
-  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs
-  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs
-  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs
-  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet
-  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt
-  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff
-- Rerun commands:
-  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
-  - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`
-  - `bash artifacts/ddd/release/release-preflight-gate.sh`
-  - `node bin/ddd-release-evidence-gate.mjs`
-  - `node bin/ddd-release-readiness-summary.mjs`
-
 ## release-performance
 
-- Queue order: 5
-- Execution order hint: 6
+- Queue order: 3
+- Execution order hint: 4
 - Queue status: ACTIONABLE
 - Can execute: true
 - Cutover items: production-equivalence, strict-release-gate
 - Ready batches: p0-authenticated-performance-release-performance
 - Blocked batches: none
-- Closure waves: 6
+- Closure waves: 4
 - Commands: 9
 - Env keys: 12
 - Missing artifacts: 3
@@ -267,7 +175,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## ai
 
-- Queue order: 6
+- Queue order: 4
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -305,7 +213,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## ai-owner
 
-- Queue order: 7
+- Queue order: 5
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -339,7 +247,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## auth-owner
 
-- Queue order: 8
+- Queue order: 6
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -371,9 +279,55 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
   - `node bin/ddd-release-evidence-gate.mjs`
   - `node bin/ddd-release-readiness-summary.mjs`
 
+## database
+
+- Queue order: 7
+- Execution order hint: none
+- Queue status: WAITING
+- Can execute: false
+- Cutover items: database-performance, evidence-integrity, strict-release-gate
+- Ready batches: none
+- Blocked batches: p2-explain-database, p3-orchestrator-database
+- Closure waves: none
+- Commands: 4
+- Env keys: 16
+- Missing artifacts: 5
+- Content blockers: 0
+- Stop reasons: 3
+- First command: `node bin/ddd-collect-explain.mjs`
+- Env key names:
+  - `DDD_EVIDENCE_OPERATOR`
+  - `DDD_EXPLAIN_DATABASE`
+  - `DDD_EXPLAIN_DIR`
+  - `DDD_EXPLAIN_ENVIRONMENT`
+  - `DDD_EXPLAIN_STRICT`
+  - `DDD_MIGRATION_FRESH_DB_EVIDENCE`
+  - `DDD_MIGRATION_FRESH_DB_VALIDATED`
+  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
+  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED`
+  - `DDD_RELEASE_CANDIDATE`
+  - `MYSQL_CLI`
+  - `MYSQL_DATABASE`
+  - `MYSQL_HOST`
+  - `MYSQL_PASSWORD`
+  - `MYSQL_PORT`
+  - `MYSQL_USER`
+- Missing artifacts:
+  - `artifacts/ddd/release/explain-gate-report.json`
+  - `artifacts/ddd/release/orchestrator-report.json`
+  - `artifacts/ddd/release/readiness-summary.json`
+  - `artifacts/ddd/release/release-evidence-gate.json`
+  - `tmp/ddd-explain/*.json`
+- Rerun commands:
+  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
+  - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`
+  - `bash artifacts/ddd/release/release-preflight-gate.sh`
+  - `node bin/ddd-release-evidence-gate.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
+
 ## file-owner
 
-- Queue order: 9
+- Queue order: 8
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -414,7 +368,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## iam-owner
 
-- Queue order: 10
+- Queue order: 9
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -448,7 +402,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## job-owner
 
-- Queue order: 11
+- Queue order: 10
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -488,7 +442,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## localization-owner
 
-- Queue order: 12
+- Queue order: 11
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -522,7 +476,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## message-owner
 
-- Queue order: 13
+- Queue order: 12
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -556,7 +510,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## payment-owner
 
-- Queue order: 14
+- Queue order: 13
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -596,7 +550,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## platform-owner
 
-- Queue order: 15
+- Queue order: 14
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -630,7 +584,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## plugin-owner
 
-- Queue order: 16
+- Queue order: 15
 - Execution order hint: none
 - Queue status: WAITING
 - Can execute: false
@@ -655,6 +609,35 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
   - `DDD_ROLLBACK_DRILL_STRICT`
 - Missing artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
+- Rerun commands:
+  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
+  - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`
+  - `bash artifacts/ddd/release/release-preflight-gate.sh`
+  - `node bin/ddd-release-evidence-gate.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
+
+## release-owner
+
+- Queue order: 16
+- Execution order hint: none
+- Queue status: WAITING
+- Can execute: false
+- Cutover items: evidence-integrity, strict-release-gate
+- Ready batches: none
+- Blocked batches: p3-orchestrator-release-owner
+- Closure waves: none
+- Commands: 2
+- Env keys: 1
+- Missing artifacts: 3
+- Content blockers: 0
+- Stop reasons: 2
+- First command: `node bin/ddd-release-evidence-orchestrator.mjs`
+- Env key names:
+  - `DDD_RELEASE_EVIDENCE_STRICT`
+- Missing artifacts:
+  - `artifacts/ddd/release/orchestrator-report.json`
+  - `artifacts/ddd/release/readiness-summary.json`
+  - `artifacts/ddd/release/release-evidence-gate.json`
 - Rerun commands:
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
   - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`

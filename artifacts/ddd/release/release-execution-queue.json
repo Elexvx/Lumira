@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T18:09:16.572Z",
-      "generatedAt": "2026-06-19T18:09:16.571Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 12,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -271,16 +271,14 @@
     }
   },
   "releaseEnvFileCutoverSafe": false,
-  "batchCount": 24,
-  "readyBatchCount": 6,
+  "batchCount": 22,
+  "readyBatchCount": 4,
   "blockedBatchCount": 18,
   "nextPriority": "P0",
   "nextBatchIds": [
     "p0-docker-release-infra",
     "p0-runtime-readiness-release-infra",
-    "p0-manifest-database",
     "p0-manifest-lumira-ui",
-    "p0-manifest-release-owner",
     "p0-authenticated-performance-release-performance"
   ],
   "readyBatches": [
@@ -390,65 +388,6 @@
       ]
     },
     {
-      "id": "p0-manifest-database",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "database",
-      "pendingItems": 2,
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "envKeys": [
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-          "keys": [
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE"
-          ],
-          "spec": "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_FRESH_DB_VALIDATED",
-          "keys": [
-            "DDD_MIGRATION_FRESH_DB_VALIDATED"
-          ],
-          "spec": "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED"
-        },
-        {
-          "label": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-          "keys": [
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-          ],
-          "spec": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-          "keys": [
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-          ],
-          "spec": "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff"
-      ]
-    },
-    {
       "id": "p0-manifest-lumira-ui",
       "priority": "P0",
       "source": "manifest",
@@ -510,70 +449,6 @@
         "manifest-missing-lumira-ui-frontend-smoke-json",
         "manifest-missing-lumira-ui-lumira-ui-build-evidence-json",
         "manifest-missing-lumira-ui-lumira-ui-static-evidence-json"
-      ]
-    },
-    {
-      "id": "p0-manifest-release-owner",
-      "priority": "P0",
-      "source": "manifest",
-      "owner": "release-owner",
-      "pendingItems": 7,
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-        "node bin/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
-      ],
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "DDD_EVIDENCE_ENVIRONMENT",
-          "keys": [
-            "DDD_EVIDENCE_ENVIRONMENT"
-          ],
-          "spec": "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT"
-        },
-        {
-          "label": "DDD_EVIDENCE_OPERATOR",
-          "keys": [
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "spec": "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR"
-        },
-        {
-          "label": "DDD_RELEASE_CANDIDATE",
-          "keys": [
-            "DDD_RELEASE_CANDIDATE"
-          ],
-          "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
-        },
-        {
-          "label": "DDD_RELEASE_MANIFEST_STRICT",
-          "keys": [
-            "DDD_RELEASE_MANIFEST_STRICT"
-          ],
-          "spec": "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
-        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff"
       ]
     },
     {
@@ -768,7 +643,7 @@
         "ai-provider-runtime",
         "ai-runtime-base-url"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -799,19 +674,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -821,19 +683,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -926,7 +775,7 @@
       "itemIds": [
         "file-processing-production-equivalence"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -957,19 +806,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -979,19 +815,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -1075,7 +898,7 @@
       "itemIds": [
         "job-e2e-production-equivalence"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1106,19 +929,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -1128,19 +938,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -1222,7 +1019,7 @@
       "itemIds": [
         "payment-webhook-production-equivalence"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1253,19 +1050,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -1275,19 +1059,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -1400,7 +1171,7 @@
       "itemIds": [
         "AI"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1431,19 +1202,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -1453,19 +1211,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -1578,7 +1323,7 @@
       "itemIds": [
         "Auth"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1609,19 +1354,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -1631,19 +1363,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -1756,7 +1475,7 @@
       "itemIds": [
         "File"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1787,19 +1506,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -1809,19 +1515,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -1934,7 +1627,7 @@
       "itemIds": [
         "IAM"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1965,19 +1658,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -1987,19 +1667,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -2112,7 +1779,7 @@
       "itemIds": [
         "Job"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2143,19 +1810,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -2165,19 +1819,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -2290,7 +1931,7 @@
       "itemIds": [
         "Localization"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2321,19 +1962,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -2343,19 +1971,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -2468,7 +2083,7 @@
       "itemIds": [
         "Message"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2499,19 +2114,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -2521,19 +2123,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -2646,7 +2235,7 @@
       "itemIds": [
         "Payment"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2677,19 +2266,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -2699,19 +2275,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -2824,7 +2387,7 @@
       "itemIds": [
         "Platform"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2855,19 +2418,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -2877,19 +2427,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -3002,7 +2539,7 @@
       "itemIds": [
         "Plugin"
       ],
-      "unmetDependencyCount": 6,
+      "unmetDependencyCount": 4,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -3033,19 +2570,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -3055,19 +2579,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -3218,7 +2729,7 @@
         "message-archive-total.json",
         "message-unread-count.json"
       ],
-      "unmetDependencyCount": 20,
+      "unmetDependencyCount": 18,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -3249,19 +2760,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -3271,19 +2769,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -3539,7 +3024,7 @@
       "itemIds": [
         "orchestrator-preflight-migration-runtime-evidence"
       ],
-      "unmetDependencyCount": 21,
+      "unmetDependencyCount": 19,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -3570,19 +3055,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -3592,19 +3064,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -3871,7 +3330,7 @@
         "orchestrator-preflight-backend-runtime-base-url",
         "orchestrator-preflight-frontend-runtime-base-url"
       ],
-      "unmetDependencyCount": 21,
+      "unmetDependencyCount": 19,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -3902,19 +3361,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -3924,19 +3370,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",
@@ -4182,7 +3615,7 @@
       "itemIds": [
         "orchestrator-run-mode"
       ],
-      "unmetDependencyCount": 21,
+      "unmetDependencyCount": 19,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -4213,19 +3646,6 @@
           ]
         },
         {
-          "id": "p0-manifest-database",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "database",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
           "id": "p0-manifest-lumira-ui",
           "priority": "P0",
           "source": "manifest",
@@ -4235,19 +3655,6 @@
             "artifacts/ddd/lumira-ui/frontend-smoke.json",
             "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
             "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-manifest-release-owner",
-          "priority": "P0",
-          "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
             "All required release evidence artifacts are present and checksummed.",

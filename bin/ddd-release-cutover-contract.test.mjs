@@ -81,7 +81,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-cutover-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-cutover-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -131,11 +131,11 @@ const unsafeDisplayCommandResult = runContract((artifacts) => {
   artifacts.fastTrack.lanes = [
     {
       lane: "environment",
-      commands: ["DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs"],
+      commands: ["DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs"],
     },
   ];
   artifacts.ownerMatrix.owners[0].items[0].commands = [
-    "DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-release-env-file-lint.mjs",
   ];
 });
 assert.notEqual(unsafeDisplayCommandResult.status, 0);

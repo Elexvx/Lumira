@@ -16,7 +16,7 @@ function baseArtifacts() {
     priority: "P0",
     itemOrders: [1],
     itemIds: ["release-env-lint-status"],
-    commands: ["node bin/ddd-release-env-file-lint.mjs"],
+    commands: ["node bin\/ddd-release-env-file-lint.mjs"],
     expectedArtifacts: ["artifacts/ddd/release/release-env-lint.json"],
     blockerHints: [],
     exitCriteria: ["release env lint passes"],
@@ -31,8 +31,8 @@ function baseArtifacts() {
     missingArtifacts: [],
     nextCheck: "Rerun strict release gate and readiness summary.",
     rerunCommands: [
-      "node bin/ddd-release-evidence-gate.mjs",
-      "node bin/ddd-release-readiness-summary.mjs",
+      "node bin\/ddd-release-evidence-gate.mjs",
+      "node bin\/ddd-release-readiness-summary.mjs",
     ],
   };
   return {
@@ -76,7 +76,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-closure-wave-receipts-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-closure-wave-receipts-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -112,17 +112,17 @@ assert.notEqual(blockerHintStatusResult.status, 0);
 assert.match(blockerHintStatusResult.stderr, /receiptStatus must be CONTENT_BLOCKED/);
 
 const planMismatchResult = runContract((artifacts) => {
-  artifacts.receipts.waves[0].commands = ["node bin/other.mjs"];
+  artifacts.receipts.waves[0].commands = ["node bin\/other.mjs"];
 });
 assert.notEqual(planMismatchResult.status, 0);
 assert.match(planMismatchResult.stderr, /commands must match closure plan/);
 
 const unsafeDisplayCommandResult = runContract((artifacts) => {
   artifacts.plan.waves[0].commands = [
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
   ];
   artifacts.receipts.waves[0].commands = [
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
   ];
 });
 assert.notEqual(unsafeDisplayCommandResult.status, 0);

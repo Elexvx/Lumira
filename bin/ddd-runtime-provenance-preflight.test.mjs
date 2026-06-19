@@ -31,7 +31,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-runtime-provenance-")
 
 {
   const dir = path.join(root, "job");
-  const result = runScript("bin/ddd-job-e2e-smoke.mjs", {
+  const result = runScript("bin\/ddd-job-e2e-smoke.mjs", {
     DDD_JOB_SMOKE_DIR: dir,
     DDD_JOB_DB_CHECK_ENABLED: "false",
   });
@@ -44,7 +44,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-runtime-provenance-")
 
 {
   const dir = path.join(root, "file");
-  const result = runScript("bin/ddd-file-processing-e2e-smoke.mjs", {
+  const result = runScript("bin\/ddd-file-processing-e2e-smoke.mjs", {
     DDD_FILE_PROCESSING_E2E_DIR: dir,
   });
   assert.notEqual(result.status, 0);
@@ -56,7 +56,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-runtime-provenance-")
 
 {
   const dir = path.join(root, "payment");
-  const result = runScript("bin/ddd-payment-webhook-e2e-smoke.mjs", {
+  const result = runScript("bin\/ddd-payment-webhook-e2e-smoke.mjs", {
     DDD_PAYMENT_WEBHOOK_E2E_DIR: dir,
   });
   assert.notEqual(result.status, 0);
@@ -68,7 +68,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-runtime-provenance-")
 
 {
   const dir = path.join(root, "ai");
-  const result = runScript("bin/ddd-ai-runtime-drill.mjs", {
+  const result = runScript("bin\/ddd-ai-runtime-drill.mjs", {
     DDD_AI_RUNTIME_DRILL_DIR: dir,
   });
   assert.notEqual(result.status, 0);

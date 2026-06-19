@@ -7,7 +7,7 @@ import path from "node:path";
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
 function runChecklist(args, options = {}) {
-  return spawnSync("node", ["bin/ddd-staging-execution-checklist.mjs", ...args], {
+  return spawnSync("node", ["bin\/ddd-staging-execution-checklist.mjs", ...args], {
     cwd: repoRoot,
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,

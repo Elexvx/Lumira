@@ -16,6 +16,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.lumira.common.api.ApiResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,6 +32,7 @@ import java.util.Collections;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
     public static final String AUTH_BIZ_EXCEPTION_ATTR = "auth.bizException";
     private static final String BEARER_PREFIX = "Bearer ";
 
@@ -111,9 +114,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         } catch (RuntimeException ex) {
             SecurityContextHolder.clearContext();
+            log.warn("Access token parse failed requestId={} reason={}", TraceContext.getRequestId(), ex.getMessage(), ex);
             BizException bizException = new BizException(
                     ErrorCode.SESSION_EXPIRED,
-                    "accessToken解析失败: " + ex.getMessage(),
+                    ErrorCode.SESSION_EXPIRED.getDefaultUserMessage(),
                     ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
             );
             writeUnauthorizedResponse(request, response, bizException);

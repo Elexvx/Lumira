@@ -33,7 +33,7 @@ const existingArtifact = {
 };
 fs.writeFileSync(report, `${JSON.stringify(existingArtifact, null, 2)}\n`);
 
-const blocked = spawnSync("node", ["bin/ddd-migration-evidence.mjs"], {
+const blocked = spawnSync("node", ["bin\/ddd-migration-evidence.mjs"], {
   cwd: path.resolve(import.meta.dirname, ".."),
   encoding: "utf8",
   env: {
@@ -59,7 +59,7 @@ assert.match(blocked.stderr, /refusing to overwrite existing migration operator 
 assert.match(blocked.stderr, /refusing to overwrite existing migration completedAt with an empty value/);
 assert.deepEqual(JSON.parse(fs.readFileSync(report, "utf8")).runtime, existingArtifact.runtime);
 
-const allowed = spawnSync("node", ["bin/ddd-migration-evidence.mjs"], {
+const allowed = spawnSync("node", ["bin\/ddd-migration-evidence.mjs"], {
   cwd: path.resolve(import.meta.dirname, ".."),
   encoding: "utf8",
   env: {

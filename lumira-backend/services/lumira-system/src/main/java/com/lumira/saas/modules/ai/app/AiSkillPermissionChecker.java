@@ -16,6 +16,8 @@ import java.util.Map;
 public interface AiSkillPermissionChecker {
 
     void verifyAllowed(Long tenantId, Long employeeId, List<String> skillCodes, boolean confirmed);
+
+    void verifyToolAllowed(Long tenantId, Long employeeId, String toolCode, String permissionKey, String riskLevel, boolean confirmed);
 }
 
 @Service
@@ -31,7 +33,7 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
     @Override
     public void verifyAllowed(Long tenantId, Long employeeId, List<String> skillCodes, boolean confirmed) {
         if (tenantId == null || employeeId == null || CollectionUtils.isEmpty(skillCodes)) {
-            return;
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool permission context is incomplete");
         }
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
@@ -80,6 +82,62 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
         }
     }
 
+    @Override
+    public void verifyToolAllowed(Long tenantId, Long employeeId, String toolCode, String permissionKey, String riskLevel, boolean confirmed) {
+        if (tenantId == null || employeeId == null || employeeId <= 0 || !StringUtils.hasText(toolCode)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool permission context is incomplete");
+        }
+        Map<String, Object> grant = jdbcTemplate.queryForList(
+                """
+                        select k.skill_code as skillCode, k.skill_name as skillName, k.read_only as readOnly,
+                               k.need_confirm as needConfirm, k.enabled as skillEnabled,
+                               coalesce(g.permission_mode, r.permission_mode, case when k.read_only = 1 then 'VIEW' else 'DENY' end) as permissionMode,
+                               coalesce(g.max_risk_level, k.risk_level, 'LOW') as maxRiskLevel,
+                               coalesce(g.require_confirm, k.need_confirm, 0) as requireConfirm,
+                               coalesce(g.require_approval, 0) as requireApproval
+                        from ai_skill k
+                        left join ai_employee_tool_grant g
+                          on g.tool_code = k.skill_code
+                         and g.tenant_id = ?
+                         and g.employee_id = ?
+                         and g.deleted = 0
+                         and g.enabled = 1
+                        left join ai_employee_skill r
+                          on r.skill_code = k.skill_code
+                         and r.tenant_id = ?
+                         and r.employee_id = ?
+                         and r.is_deleted = 0
+                        where k.is_deleted = 0
+                          and k.skill_code = ?
+                        limit 1
+                        """,
+                tenantId,
+                employeeId,
+                tenantId,
+                employeeId,
+                toolCode.trim()
+        ).stream().findFirst().orElse(null);
+        if (grant == null) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool is not registered or not granted: " + toolCode);
+        }
+        if (!toBoolean(grant.get("skillEnabled"))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool is disabled: " + toolCode);
+        }
+        String permissionMode = normalizePermissionMode(grant.get("permissionMode"));
+        if (!List.of("invoke", "execute").contains(permissionMode)) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool grant does not allow execution: " + toolCode);
+        }
+        if (riskExceeds(riskLevel, String.valueOf(grant.getOrDefault("maxRiskLevel", "LOW")))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool risk exceeds employee grant: " + toolCode);
+        }
+        if (toBoolean(grant.get("requireConfirm")) && !confirmed) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "AI tool requires confirmation: " + toolCode);
+        }
+        if (toBoolean(grant.get("requireApproval"))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool requires approval: " + toolCode);
+        }
+    }
+
     private String normalizePermissionMode(Object value) {
         return value == null ? "" : value.toString().trim().toLowerCase(Locale.ROOT);
     }
@@ -92,5 +150,18 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
             return number.intValue() != 0;
         }
         return value != null && "true".equalsIgnoreCase(value.toString());
+    }
+
+    private boolean riskExceeds(String actualRisk, String maxRisk) {
+        return riskRank(actualRisk) > riskRank(maxRisk);
+    }
+
+    private int riskRank(String risk) {
+        return switch (risk == null ? "LOW" : risk.trim().toUpperCase(Locale.ROOT)) {
+            case "CRITICAL" -> 4;
+            case "HIGH" -> 3;
+            case "MEDIUM" -> 2;
+            default -> 1;
+        };
     }
 }

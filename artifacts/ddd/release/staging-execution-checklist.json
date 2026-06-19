@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-06-19T17:42:14.912Z",
+  "generatedAt": "2026-06-19T18:33:26.298Z",
   "status": "STAGING_REQUIRED",
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
   "gate": {
     "strict": true,
-    "blockers": 94,
-    "warnings": 8
+    "blockers": 148,
+    "warnings": 9
   },
   "releaseEnv": {
     "ready": true,
@@ -67,12 +67,11 @@
       "readyBatchIds": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "blockedBatchIds": [
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -88,14 +87,13 @@
         "p1-rollback-plugin-owner",
         "p2-explain-database",
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
         "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ]
     },
     {
       "id": "deployable-images",
-      "title": "Deployable backend/frontend images are built and inspected.",
+      "title": "Deployable backend/lumira-ui images are built and inspected.",
       "pendingItems": 4,
       "readyBatchIds": [
         "p0-docker-release-infra"
@@ -114,12 +112,11 @@
     },
     {
       "id": "runtime-business-acceptance",
-      "title": "AI, frontend, file, job, and payment acceptance evidence is complete.",
-      "pendingItems": 7,
+      "title": "AI, lumira-ui, file, job, and payment acceptance evidence is complete.",
+      "pendingItems": 6,
       "readyBatchIds": [],
       "blockedBatchIds": [
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner"
@@ -146,7 +143,7 @@
     {
       "id": "database-performance",
       "title": "Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.",
-      "pendingItems": 8,
+      "pendingItems": 2,
       "readyBatchIds": [],
       "blockedBatchIds": [
         "p2-explain-database"
@@ -155,13 +152,12 @@
     {
       "id": "evidence-integrity",
       "title": "Evidence manifest and final orchestrator strict rerun are clean.",
-      "pendingItems": 5,
+      "pendingItems": 7,
       "readyBatchIds": [
-        "p0-manifest-release-owner"
+        "p0-manifest-lumira-ui"
       ],
       "blockedBatchIds": [
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
         "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ]
@@ -174,8 +170,7 @@
       "batchId": "p0-docker-release-infra",
       "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
       ]
     },
     {
@@ -184,18 +179,18 @@
       "batchId": "p0-runtime-readiness-release-infra",
       "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
       "commands": [
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node bin/ddd-runtime-readiness-smoke.mjs"
       ]
     },
     {
       "wave": 3,
-      "owner": "release-owner",
-      "batchId": "p0-manifest-release-owner",
-      "receiptStatus": "CONTENT_BLOCKED",
+      "owner": "lumira-ui",
+      "batchId": "p0-manifest-lumira-ui",
+      "receiptStatus": "ARTIFACT_MISSING",
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
       ]
     },
     {
@@ -204,8 +199,8 @@
       "batchId": "p0-authenticated-performance-release-performance",
       "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
       "commands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs"
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs"
       ]
     }
   ],
@@ -383,7 +378,7 @@
     "commandCatalog": "artifacts/ddd/release/release-command-catalog.md",
     "missingEnvTemplate": "artifacts/ddd/release/release-env-missing.template.env",
     "releaseEnvInit": "artifacts/ddd/release/release-final-owner-queue-env-init.sh",
-    "releaseEnvInitWrapper": null
+    "releaseEnvInitWrapper": "bin/ddd-release-env-init.mjs"
   },
   "readinessStatus": "NOT_READY"
 }

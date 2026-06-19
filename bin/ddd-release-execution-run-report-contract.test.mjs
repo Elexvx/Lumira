@@ -22,7 +22,7 @@ function passingReport(overrides = {}) {
         batchId: "p0-docker-release-infra",
         owner: "release-infra",
         priority: "P0",
-        command: "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        command: "DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs",
         status: 0,
         durationMs: 120,
         finishedAt: "2026-06-14T00:00:01.000Z",
@@ -136,16 +136,16 @@ assert.deepEqual(validateReleaseExecutionRunReport(passingReport({
 {
   const unsafeCommandIssue = "release execution run report entries[0].command must not expose concrete secret values, release env files, or local repo paths";
   assert(validateReleaseExecutionRunReport(passingReport({
-    entries: [{ ...passingReport().entries[0], command: "JWT_SECRET=real-secret node bin/ddd-release-readiness-summary.mjs" }],
+    entries: [{ ...passingReport().entries[0], command: "JWT_SECRET=real-secret node bin\/ddd-release-readiness-summary.mjs" }],
   })).includes(unsafeCommandIssue));
   assert(validateReleaseExecutionRunReport(passingReport({
-    entries: [{ ...passingReport().entries[0], command: "DDD_RELEASE_ENV_FILE=/tmp/.env.release.local node bin/ddd-release-env-file-lint.mjs" }],
+    entries: [{ ...passingReport().entries[0], command: "DDD_RELEASE_ENV_FILE=/tmp/.env.release.local node bin\/ddd-release-env-file-lint.mjs" }],
   })).includes(unsafeCommandIssue));
   assert(validateReleaseExecutionRunReport(passingReport({
-    entries: [{ ...passingReport().entries[0], command: `node ${path.join(repoRoot, "bin/ddd-release-readiness-summary.mjs")}` }],
+    entries: [{ ...passingReport().entries[0], command: `node ${path.join(repoRoot, "bin\/ddd-release-readiness-summary.mjs")}` }],
   })).includes(unsafeCommandIssue));
   assert.deepEqual(validateReleaseExecutionRunReport(passingReport({
-    entries: [{ ...passingReport().entries[0], command: "JWT_SECRET=<redacted> DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-readiness-summary.mjs" }],
+    entries: [{ ...passingReport().entries[0], command: "JWT_SECRET=<redacted> DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-readiness-summary.mjs" }],
   })), []);
 }
 
@@ -153,7 +153,7 @@ assert.deepEqual(validateReleaseExecutionRunReport(passingReport({
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-release-execution-report-"));
   const reportPath = path.join(tempDir, "report.json");
   fs.writeFileSync(reportPath, `${JSON.stringify(passingReport(), null, 2)}\n`);
-  const result = spawnSync("node", ["bin/ddd-release-execution-run-report-contract.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-release-execution-run-report-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -168,7 +168,7 @@ assert.deepEqual(validateReleaseExecutionRunReport(passingReport({
 {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-release-execution-report-"));
   const missingPath = path.join(tempDir, "missing.json");
-  const result = spawnSync("node", ["bin/ddd-release-execution-run-report-contract.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-release-execution-run-report-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

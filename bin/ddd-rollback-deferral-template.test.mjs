@@ -12,7 +12,7 @@ const directory = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-rollback-deferra
 const outputFile = path.join(directory, "rollback-deferrals.template.json");
 const handoffDir = path.join(directory, "handoff");
 
-const result = spawnSync("node", ["bin/ddd-rollback-deferral-template.mjs"], {
+const result = spawnSync("node", ["bin\/ddd-rollback-deferral-template.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -50,7 +50,7 @@ assert.match(iamHandoff, /Rollback Deferral Handoff: iam-owner/);
 assert.match(iamHandoff, /IAM/);
 assert.match(iamHandoff, /permission snapshot rollback/);
 
-const secondResult = spawnSync("node", ["bin/ddd-rollback-deferral-template.mjs"], {
+const secondResult = spawnSync("node", ["bin\/ddd-rollback-deferral-template.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

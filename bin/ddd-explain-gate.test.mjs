@@ -15,7 +15,7 @@ function runGate(env = {}) {
 
 function runGateWithDir(explainDir, env = {}) {
   const reportPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "lumira-explain-gate-report-")), "report.json");
-  const result = spawnSync("node", ["bin/ddd-explain-gate.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-explain-gate.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

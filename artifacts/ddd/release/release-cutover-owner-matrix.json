@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:09:18.921Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -93,7 +93,7 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 16,
+          "pendingItems": 7,
           "lanes": [
             "evidence-integrity",
             "final-verification"
@@ -166,15 +166,12 @@
       "owner": "database",
       "blockedItems": 2,
       "totalItems": 2,
-      "readyBatchIds": [
-        "p0-manifest-database"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p2-explain-database",
         "p3-orchestrator-database"
       ],
       "batchIds": [
-        "p0-manifest-database",
         "p2-explain-database",
         "p3-orchestrator-database"
       ],
@@ -227,26 +224,20 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 16,
+          "pendingItems": 7,
           "lanes": [
             "evidence-integrity",
             "final-verification"
           ],
           "batchIds": [
-            "p0-manifest-database",
             "p3-orchestrator-database"
           ],
-          "readyBatchIds": [
-            "p0-manifest-database"
-          ],
+          "readyBatchIds": [],
           "blockedBatchIds": [
             "p3-orchestrator-database"
           ],
           "commands": [
             "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
             "node bin/ddd-release-evidence-orchestrator.mjs"
           ],
           "envCheckGroups": [
@@ -256,14 +247,11 @@
             "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
           ],
           "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json",
             "artifacts/ddd/release/orchestrator-report.json",
             "artifacts/ddd/release/readiness-summary.json",
             "artifacts/ddd/release/release-evidence-gate.json"
           ],
           "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence.",
             "Final strict release gate and readiness summary report zero blockers.",
             "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
             "Run only after all prerequisite evidence batches are clean."
@@ -543,14 +531,11 @@
       "owner": "release-owner",
       "blockedItems": 2,
       "totalItems": 4,
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-release-owner"
       ],
       "batchIds": [
-        "p0-manifest-release-owner",
         "p3-orchestrator-release-owner"
       ],
       "items": [
@@ -559,44 +544,31 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 16,
+          "pendingItems": 7,
           "lanes": [
             "evidence-integrity",
             "final-verification"
           ],
           "batchIds": [
-            "p0-manifest-release-owner",
             "p3-orchestrator-release-owner"
           ],
-          "readyBatchIds": [
-            "p0-manifest-release-owner"
-          ],
+          "readyBatchIds": [],
           "blockedBatchIds": [
             "p3-orchestrator-release-owner"
           ],
           "commands": [
             "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
-            "node bin/ddd-promote-performance-baseline.mjs",
             "node bin/ddd-release-evidence-orchestrator.mjs"
           ],
           "envCheckGroups": [
-            "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
-            "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
-            "DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT",
-            "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
+            "DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT"
           ],
           "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json",
             "artifacts/ddd/release/orchestrator-report.json",
             "artifacts/ddd/release/readiness-summary.json",
             "artifacts/ddd/release/release-evidence-gate.json"
           ],
           "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence.",
             "Final strict release gate and readiness summary report zero blockers.",
             "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
             "Run only after all prerequisite evidence batches are clean."
@@ -934,7 +906,7 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 16,
+          "pendingItems": 7,
           "lanes": [
             "evidence-integrity",
             "final-verification"

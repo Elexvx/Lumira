@@ -6,6 +6,7 @@ import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
 public interface AiToolRegistry {
@@ -25,19 +26,23 @@ class DefaultAiToolRegistry implements AiToolRegistry {
 
     @Override
     public List<AiVO.SkillVO> listRegisteredSkills(Long tenantId, Long employeeId) {
+        if (tenantId == null || employeeId == null || employeeId <= 0) {
+            return Collections.emptyList();
+        }
         return jdbcTemplate.query(
                 """
                         select k.id, k.skill_code as skillCode, k.skill_name as skillName, k.category, k.description,
                                k.risk_level as riskLevel, k.read_only as readOnly, k.need_confirm as needConfirm,
                                k.enabled, k.create_time as createTime, k.update_time as updateTime
                         from ai_skill k
-                        left join ai_employee_skill r
+                        join ai_employee_skill r
                           on r.skill_code = k.skill_code
                          and r.tenant_id = ?
                          and r.employee_id = ?
                          and r.is_deleted = 0
                         where k.is_deleted = 0
                           and k.enabled = 1
+                          and lower(r.permission_mode) in ('view', 'visit', 'invoke', 'execute', 'allow')
                         order by k.category asc, k.skill_code asc
                         """,
                 new BeanPropertyRowMapper<>(AiVO.SkillVO.class),

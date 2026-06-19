@@ -6,7 +6,7 @@ import { spawnSync } from "node:child_process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-const run = spawnSync("node", ["bin/ddd-release-artifact-integrity-gate-contract.mjs"], {
+const run = spawnSync("node", ["bin\/ddd-release-artifact-integrity-gate-contract.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
 });

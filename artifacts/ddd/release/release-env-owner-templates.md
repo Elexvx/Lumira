@@ -1,6 +1,6 @@
 # DDD Release Env Owner Templates
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Env file: .env.release.local
 Template dir: artifacts/ddd/release/release-env-owner-templates
@@ -35,7 +35,7 @@ Each owner template is intentionally scoped to one owner so release values can b
 
 ## ai-owner
 
-- Template: `artifacts/ddd/release/release-env-owner-templates/07-ai-owner.env`
+- Template: `artifacts/ddd/release/release-env-owner-templates/05-ai-owner.env`
 - Queue: WAITING; canExecute=false
 - Canonical fill items: 12
 - Secret canonical keys: 2
@@ -57,7 +57,7 @@ Each owner template is intentionally scoped to one owner so release values can b
 
 ## file-owner
 
-- Template: `artifacts/ddd/release/release-env-owner-templates/09-file-owner.env`
+- Template: `artifacts/ddd/release/release-env-owner-templates/08-file-owner.env`
 - Queue: WAITING; canExecute=false
 - Canonical fill items: 3
 - Secret canonical keys: 0
@@ -79,7 +79,7 @@ Each owner template is intentionally scoped to one owner so release values can b
 
 ## payment-owner
 
-- Template: `artifacts/ddd/release/release-env-owner-templates/14-payment-owner.env`
+- Template: `artifacts/ddd/release/release-env-owner-templates/13-payment-owner.env`
 - Queue: WAITING; canExecute=false
 - Canonical fill items: 2
 - Secret canonical keys: 1

@@ -12,6 +12,10 @@ public class UploadProperties {
     private String publicPath = "/api/uploads";
     private long maxImageSizeBytes = 5L * 1024 * 1024;
     private long maxDocumentSizeBytes = 50L * 1024 * 1024;
+    private int zipMaxEntries = 1000;
+    private long zipMaxUncompressedBytes = 100L * 1024 * 1024;
+    private long zipMaxSingleEntryBytes = 20L * 1024 * 1024;
+    private long zipMaxCompressionRatio = 100L;
 
     public String getStorageRoot() {
         return hasText(storageRoot) ? storageRoot : DEFAULT_STORAGE_ROOT;
@@ -43,6 +47,38 @@ public class UploadProperties {
 
     public void setMaxDocumentSizeBytes(long maxDocumentSizeBytes) {
         this.maxDocumentSizeBytes = maxDocumentSizeBytes;
+    }
+
+    public int getZipMaxEntries() {
+        return zipMaxEntries;
+    }
+
+    public void setZipMaxEntries(int zipMaxEntries) {
+        this.zipMaxEntries = zipMaxEntries;
+    }
+
+    public long getZipMaxUncompressedBytes() {
+        return zipMaxUncompressedBytes;
+    }
+
+    public void setZipMaxUncompressedBytes(long zipMaxUncompressedBytes) {
+        this.zipMaxUncompressedBytes = zipMaxUncompressedBytes;
+    }
+
+    public long getZipMaxSingleEntryBytes() {
+        return zipMaxSingleEntryBytes;
+    }
+
+    public void setZipMaxSingleEntryBytes(long zipMaxSingleEntryBytes) {
+        this.zipMaxSingleEntryBytes = zipMaxSingleEntryBytes;
+    }
+
+    public long getZipMaxCompressionRatio() {
+        return zipMaxCompressionRatio;
+    }
+
+    public void setZipMaxCompressionRatio(long zipMaxCompressionRatio) {
+        this.zipMaxCompressionRatio = zipMaxCompressionRatio;
     }
 
     private boolean hasText(String value) {

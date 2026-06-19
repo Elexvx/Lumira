@@ -1,12 +1,12 @@
 # DDD Release Env Owner Matrix
 
-Generated at: 2026-06-19T18:09:18.921Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Release gate blockers: 94
 Owners: 16
-Template env keys: 46
+Template env keys: 45
 Unique unresolved template env keys: 29
-Unresolved owner assignments: 67
+Unresolved owner assignments: 65
 
 ## release-infra
 
@@ -33,64 +33,6 @@ Unresolved owner assignments: 67
 - Alias mappings:
   - `DEPLOY_CHECK_BASE_URL` -> `LUMIRA_BASE_URL`
   - `FRONTEND_BASE_URL` -> `PLAYWRIGHT_BASE_URL`
-
-## database
-
-- Env keys: 16
-- Unresolved env keys: 12
-- Ready batches: p0-manifest-database
-- Blocked batches: p2-explain-database, p3-orchestrator-database
-- Expected artifacts: artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/explain-gate-report.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json, tmp/ddd-explain/*.json
-- Unresolved template env keys:
-  - `DB_PASSWORD`
-  - `DB_USERNAME`
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_EXPLAIN_DATABASE`
-  - `DDD_MIGRATION_FRESH_DB_EVIDENCE`
-  - `DDD_MIGRATION_FRESH_DB_VALIDATED`
-  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
-  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED`
-  - `DDD_RELEASE_CANDIDATE`
-  - `MYSQL_DATABASE`
-  - `MYSQL_HOST`
-  - `MYSQL_PORT`
-- Template env keys:
-  - `DB_PASSWORD`
-  - `DB_USERNAME`
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_EXPLAIN_DATABASE`
-  - `DDD_EXPLAIN_DIR`
-  - `DDD_EXPLAIN_ENVIRONMENT`
-  - `DDD_EXPLAIN_STRICT`
-  - `DDD_MIGRATION_FRESH_DB_EVIDENCE`
-  - `DDD_MIGRATION_FRESH_DB_VALIDATED`
-  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
-  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED`
-  - `DDD_RELEASE_CANDIDATE`
-  - `MYSQL_CLI`
-  - `MYSQL_DATABASE`
-  - `MYSQL_HOST`
-  - `MYSQL_PORT`
-- Alias mappings:
-  - `MYSQL_PASSWORD` -> `DB_PASSWORD`
-  - `MYSQL_USER` -> `DB_USERNAME`
-
-## release-owner
-
-- Env keys: 5
-- Unresolved env keys: 2
-- Ready batches: p0-manifest-release-owner
-- Blocked batches: p3-orchestrator-release-owner
-- Expected artifacts: artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
-- Unresolved template env keys:
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_RELEASE_CANDIDATE`
-- Template env keys:
-  - `DDD_EVIDENCE_ENVIRONMENT`
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_RELEASE_CANDIDATE`
-  - `DDD_RELEASE_EVIDENCE_STRICT`
-  - `DDD_RELEASE_MANIFEST_STRICT`
 
 ## lumira-ui
 
@@ -125,6 +67,47 @@ Unresolved owner assignments: 67
   - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
   - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
   - `DDD_RELEASE_CANDIDATE`
+
+## database
+
+- Env keys: 16
+- Unresolved env keys: 12
+- Ready batches: none
+- Blocked batches: p2-explain-database, p3-orchestrator-database
+- Expected artifacts: artifacts/ddd/release/explain-gate-report.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json, tmp/ddd-explain/*.json
+- Unresolved template env keys:
+  - `DB_PASSWORD`
+  - `DB_USERNAME`
+  - `DDD_EVIDENCE_OPERATOR`
+  - `DDD_EXPLAIN_DATABASE`
+  - `DDD_MIGRATION_FRESH_DB_EVIDENCE`
+  - `DDD_MIGRATION_FRESH_DB_VALIDATED`
+  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
+  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED`
+  - `DDD_RELEASE_CANDIDATE`
+  - `MYSQL_DATABASE`
+  - `MYSQL_HOST`
+  - `MYSQL_PORT`
+- Template env keys:
+  - `DB_PASSWORD`
+  - `DB_USERNAME`
+  - `DDD_EVIDENCE_OPERATOR`
+  - `DDD_EXPLAIN_DATABASE`
+  - `DDD_EXPLAIN_DIR`
+  - `DDD_EXPLAIN_ENVIRONMENT`
+  - `DDD_EXPLAIN_STRICT`
+  - `DDD_MIGRATION_FRESH_DB_EVIDENCE`
+  - `DDD_MIGRATION_FRESH_DB_VALIDATED`
+  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
+  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED`
+  - `DDD_RELEASE_CANDIDATE`
+  - `MYSQL_CLI`
+  - `MYSQL_DATABASE`
+  - `MYSQL_HOST`
+  - `MYSQL_PORT`
+- Alias mappings:
+  - `MYSQL_PASSWORD` -> `DB_PASSWORD`
+  - `MYSQL_USER` -> `DB_USERNAME`
 
 ## file-owner
 
@@ -396,4 +379,14 @@ Unresolved owner assignments: 67
   - `DDD_ROLLBACK_DRILL_FILE`
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT`
+
+## release-owner
+
+- Env keys: 1
+- Unresolved env keys: 0
+- Ready batches: none
+- Blocked batches: p3-orchestrator-release-owner
+- Expected artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
+- Template env keys:
+  - `DDD_RELEASE_EVIDENCE_STRICT`
 

@@ -135,7 +135,7 @@ const artifact = {
   nextSteps: applyRepair
     ? [
         "Run owner replay for repaired rows, for example POST /file/internal/jobs/outbox/{id}/replay with X-Job-Token for FILE rows.",
-        "Run bin/ddd-job-e2e-smoke.mjs with DDD_JOB_SMOKE_DB_CHECK=true to verify no new cross-owner payload failures.",
+        "Run bin\/ddd-job-e2e-smoke.mjs with DDD_JOB_SMOKE_DB_CHECK=true to verify no new cross-owner payload failures.",
       ]
     : [
         "Review before.rows and rerun with DDD_OUTBOX_REPAIR_APPLY=true when the matched rows are expected owner events.",

@@ -34,6 +34,17 @@ public interface AiNativeToolRuntimeService {
     List<AiVO.ToolVO> listTools(CurrentUser currentUser);
 
     AiVO.ToolExecuteResultVO execute(CurrentUser currentUser, AiDTO.ToolExecuteRequest request);
+
+    default boolean isDirectExecutable(CurrentUser currentUser, String toolCode) {
+        if (!StringUtils.hasText(toolCode)) {
+            return false;
+        }
+        return listTools(currentUser).stream()
+                .filter(tool -> toolCode.trim().equals(tool.getToolCode()))
+                .findFirst()
+                .map(tool -> Boolean.TRUE.equals(tool.getReadOnly()) && "LOW".equalsIgnoreCase(tool.getRiskLevel()))
+                .orElse(false);
+    }
 }
 
 @Service
@@ -342,9 +353,14 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
         try {
             requireEmployee(tenantId, request.getEmployeeId());
-            if (request.getEmployeeId() != null && request.getEmployeeId() > 0) {
-                aiSkillPermissionChecker.verifyAllowed(tenantId, request.getEmployeeId(), List.of(toolCode), confirmed);
-            }
+            aiSkillPermissionChecker.verifyToolAllowed(
+                    tenantId,
+                    request.getEmployeeId(),
+                    toolCode,
+                    tool.requiredPermission(),
+                    tool.riskLevel(),
+                    confirmed
+            );
             if (StringUtils.hasText(tool.requiredPermission())) {
                 permissionGuard.requirePermission(currentUser, tool.requiredPermission());
             }
@@ -800,8 +816,8 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private void requireEmployee(Long tenantId, Long employeeId) {
-        if (employeeId == null || employeeId <= 0) {
-            return;
+        if (tenantId == null || employeeId == null || employeeId <= 0) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool execution requires a valid digital employee");
         }
         boolean exists = jdbcTemplate.exists(
                 "select 1 from ai_employee where tenant_id = ? and id = ? and is_deleted = 0 and enabled = 1 limit 1",

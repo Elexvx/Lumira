@@ -12,7 +12,7 @@ const outputDir = path.join(directory, "migration");
 const handoffFile = path.join(outputDir, "handoff.md");
 const reportFile = path.join(outputDir, "migration-evidence.json");
 
-const missingResult = spawnSync("node", ["bin/ddd-migration-evidence.mjs"], {
+const missingResult = spawnSync("node", ["bin\/ddd-migration-evidence.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -37,7 +37,7 @@ assert.match(missingHandoff, /fresh-database-evidence-package/);
 assert.match(missingHandoff, /previous-schema-upgrade-evidence-package/);
 assert.match(missingHandoff, /\| database \| MISSING \| fresh-database-drill; upgrade-database-drill \|/);
 assert.match(missingHandoff, /Validation commands:/);
-assert.match(missingHandoff, /DDD_MIGRATION_STRICT=true node scripts\/ddd-migration-evidence\.mjs/);
+assert.match(missingHandoff, /DDD_MIGRATION_STRICT=true node bin\/ddd-migration-evidence\.mjs/);
 assert.match(missingHandoff, /DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts\/ddd\/release\/release-final-go-no-go-gate\.sh/);
 const missingHandoffJson = JSON.parse(fs.readFileSync(path.join(outputDir, "handoff.json"), "utf8"));
 assert.equal(missingHandoffJson.redacted, true);
@@ -51,13 +51,13 @@ assert.deepEqual(missingHandoffJson.evidenceChecklist.map((item) => item.id), [
 assert(missingHandoffJson.evidenceChecklist[0].requiredArtifacts.some((artifact) => artifact.includes("Flyway migrate log")));
 assert(missingHandoffJson.evidenceChecklist[1].acceptanceCriteria.some((criterion) => criterion.includes("previous-schema source")));
 assert(missingHandoffJson.ownerRunbook.some((owner) => owner.owner === "database" && owner.status === "MISSING" && owner.missingChecks.includes("fresh-database-drill")));
-assert(missingHandoffJson.validationCommands.includes("DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs"));
+assert(missingHandoffJson.validationCommands.includes("DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs"));
 assert(missingHandoffJson.validationCommands.includes("DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"));
 const missingHandoffCsv = fs.readFileSync(path.join(outputDir, "handoff.csv"), "utf8");
 assert.match(missingHandoffCsv, /^owner,check,status,requiredEnvKeys,missingEnvKeys,nextCommand,action/m);
 assert.match(missingHandoffCsv, /database,fresh-database-drill,MISSING/);
 
-const readyResult = spawnSync("node", ["bin/ddd-migration-evidence.mjs"], {
+const readyResult = spawnSync("node", ["bin\/ddd-migration-evidence.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

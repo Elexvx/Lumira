@@ -174,7 +174,7 @@ function buildFirstOwnerAction(finalGoNoGo, nextActionQueue) {
     owner: "release-owner",
     nextAction: "Review release-final-go-no-go.json and release-next-action-queue.json.",
     reason: "No RUN_NOW owner action was present in the release queue.",
-    command: "node bin/ddd-release-final-go-no-go.mjs",
+    command: "node bin\/ddd-release-final-go-no-go.mjs",
     envKeys: [],
   };
 }
@@ -215,7 +215,7 @@ function buildOrchestratorPreflightSummary(finalGoNoGo) {
       checkId: firstAction.checkId || null,
       reason: redactLocalPaths(firstAction.reason || ""),
       envKeys: unique(asArray(firstAction.envKeys).map(String)).sort(),
-      command: redactCommand(firstAction.command || "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"),
+      command: redactCommand(firstAction.command || "DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator.mjs --run --strict"),
     } : null,
   };
 }
@@ -386,14 +386,14 @@ function buildHandoffReferences() {
       "Migration evidence handoff",
       "artifacts/ddd/migration/migration-evidence-handoff.md",
       "Fill production-equivalent fresh DB and previous-schema upgrade Flyway evidence before regenerating migration-evidence.json.",
-      "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+      "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
     ),
     handoffReference(
       "rollback-deferral-owner-handoff",
       "Rollback deferral owner handoff",
       "artifacts/ddd/rollback/rollback-deferrals-owner-handoff/README.md",
       "Coordinate real PASS rollback drills or approved DEFERRED risk acceptance by bounded-context owner.",
-      "node bin/ddd-rollback-deferral-template.mjs",
+      "node bin\/ddd-rollback-deferral-template.mjs",
     ),
     handoffReference(
       "performance-baseline-handoff",
@@ -407,14 +407,14 @@ function buildHandoffReferences() {
       "Release env owner input packet",
       "artifacts/ddd/release/release-env-owner-input-packet.md",
       "Collect the remaining real production-equivalent endpoints, secrets, and owner values without exposing concrete values in artifacts.",
-      "node bin/ddd-release-env-owner-input-packet-contract.mjs",
+      "node bin\/ddd-release-env-owner-input-packet-contract.mjs",
     ),
     handoffReference(
       "release-owner-input-receipt",
       "Release owner input receipt",
       "artifacts/ddd/release/release-owner-input-receipt.md",
       "Confirm whether every owner-supplied production value is reconciled with env readiness before allowing strict cutover.",
-      "node bin/ddd-release-owner-input-receipt-contract.mjs",
+      "node bin\/ddd-release-owner-input-receipt-contract.mjs",
     ),
   ];
 }
