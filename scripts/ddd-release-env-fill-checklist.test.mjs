@@ -79,6 +79,15 @@ try {
   assert.equal(jsonOnlyResult.status, 0, jsonOnlyResult.stderr || jsonOnlyResult.stdout);
   assert.equal(JSON.parse(jsonOnlyResult.stdout).keyCount, 5);
 
+  const commandsResult = spawnSync("node", ["scripts/ddd-staging-execution-checklist.mjs", "--commands"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  assert.equal(commandsResult.status, 0, commandsResult.stderr || commandsResult.stdout);
+  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs$/m);
+  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs --markdown$/m);
+
   console.log("[ddd-release-env-fill-checklist.test] ok");
 } finally {
   fs.rmSync(tmpDir, { recursive: true, force: true });

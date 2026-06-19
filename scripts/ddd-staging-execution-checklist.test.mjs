@@ -389,6 +389,8 @@ try {
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-merge-plan-markdown$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-submission-plan$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-submission-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs$/m);
+  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs --markdown$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-plan$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-plan-markdown$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-submission-plan$/m);

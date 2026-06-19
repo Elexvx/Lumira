@@ -510,6 +510,22 @@ assert(
   "CI staging handoff summary must include release-env submission plan",
 );
 assert(
+  ciWorkflowText.includes("node scripts/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  "CI staging handoff summary must include release-env fill checklist",
+);
+assertTextBefore(
+  ciWorkflowText,
+  "node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node scripts/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "CI staging handoff summary must show release-env submission plan before release-env fill checklist",
+);
+assertTextBefore(
+  ciWorkflowText,
+  "node scripts/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "CI staging handoff summary must show release-env fill checklist before Docker plans",
+);
+assert(
   ciWorkflowText.includes("node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include Docker image submission plan",
 );

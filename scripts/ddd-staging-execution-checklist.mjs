@@ -9759,6 +9759,8 @@ function renderCommands() {
     "node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan",
     "node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown",
+    "node scripts/ddd-release-env-fill-checklist.mjs",
+    "node scripts/ddd-release-env-fill-checklist.mjs --markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan",
     "node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan",
