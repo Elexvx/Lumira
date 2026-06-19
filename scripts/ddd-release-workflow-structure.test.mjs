@@ -372,6 +372,14 @@ assert(
   "CI syntax checks must cover lane completion receipt autofill tests",
 );
 assert(
+  ciWorkflowText.includes("node --check scripts/ddd-release-env-fill-checklist.mjs"),
+  "CI syntax checks must cover release env fill checklist",
+);
+assert(
+  ciWorkflowText.includes("node --check scripts/ddd-release-env-fill-checklist.test.mjs"),
+  "CI syntax checks must cover release env fill checklist tests",
+);
+assert(
   ciWorkflowText.includes("node --check scripts/security-assessment-report-contract.test.mjs"),
   "CI syntax checks must cover security assessment report contract tests",
 );
@@ -386,6 +394,10 @@ assert(
 assert(
   ciWorkflowText.includes("node scripts/ddd-lane-completion-receipt-autofill.test.mjs"),
   "CI must run lane completion receipt autofill tests",
+);
+assert(
+  ciWorkflowText.includes("node scripts/ddd-release-env-fill-checklist.test.mjs"),
+  "CI must run release env fill checklist tests",
 );
 assert(
   ciWorkflowText.includes("node scripts/security-assessment-report-contract.test.mjs"),

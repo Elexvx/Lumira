@@ -187,6 +187,8 @@ jobs:
           node --check scripts/ddd-production-evidence-readiness.test.mjs
           node --check scripts/ddd-lane-completion-receipt-autofill.mjs
           node --check scripts/ddd-lane-completion-receipt-autofill.test.mjs
+          node --check scripts/ddd-release-env-fill-checklist.mjs
+          node --check scripts/ddd-release-env-fill-checklist.test.mjs
           node --check scripts/ddd-release-closure-wave-receipts-contract.mjs
           node --check scripts/ddd-release-closure-wave-receipts-contract.test.mjs
           node --check scripts/ddd-release-next-action-queue-contract.mjs
@@ -362,6 +364,8 @@ jobs:
         run: node scripts/ddd-production-evidence-readiness.test.mjs
       - name: Lane completion receipt autofill tests
         run: node scripts/ddd-lane-completion-receipt-autofill.test.mjs
+      - name: Release env fill checklist tests
+        run: node scripts/ddd-release-env-fill-checklist.test.mjs
       - name: Security assessment report contract tests
         run: node scripts/security-assessment-report-contract.test.mjs
       - name: Staging runtime check contract tests
