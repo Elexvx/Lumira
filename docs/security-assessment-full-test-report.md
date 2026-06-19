@@ -8,13 +8,13 @@
 
 已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`
 
-当前补充证据：待提交
+当前补充证据：本轮待提交，包含 Windows Docker/Compose 调用修复与部署脚本复测。
 
 ## 1. 结论
 
 本轮已完成仓库内静态审计、自动化测试门禁、发布证据门禁和已知安全发现整改的全量排查。覆盖范围包括后端 17 个 Maven 模块、前端依赖锁定安装、lint、类型检查、单元测试、coverage、生产构建、smoke 测试、Dockerfile 静态契约、发布脚本门禁、交接包完整性，以及多轮子代理只读复核。原 11 项发现和子代理补充的 3 项发现均已完成代码整改；除 `DEPLOY-OPS-BACKUP-ENV-001` 属静态复核闭环外，其余发现项均有针对性回归测试。
 
-本报告不能判定“生产环境全量安全测评已完成”。Docker CLI 与 daemon 已可用，`docker --version` 和 `docker info` 均成功；但镜像 build evidence 仍失败，失败点为基础镜像层拉取/缓存读取异常，包括 `unexpected EOF`、`short read` 和 `ETIMEDOUT`。因此容器运行态、Playwright E2E、DAST、外部资产扫描、真实第三方服务、云账号、日志平台、备份介质、生产更新源签名链等仍需在授权的本地隔离、预生产或生产窗口继续执行。相关条款在本报告中判定为“受限/未验证/阻断”。
+本报告不能判定“生产环境全量安全测评已完成”。Docker CLI 与 daemon 已可用，`docker --version`、`docker info`、Docker 只读 evidence check 和 `deploy-container --ps --local-mysql` 均成功；但镜像 build/start evidence 仍受阻，失败点为基础镜像层拉取/缓存读取异常，包括 `unexpected EOF`、`short read`、`ETIMEDOUT` 和 busybox/base image pull timeout。因此容器运行态、Playwright E2E、DAST、外部资产扫描、真实第三方服务、云账号、日志平台、备份介质、生产更新源签名链等仍需在授权的本地隔离、预生产或生产窗口继续执行。相关条款在本报告中判定为“受限/未验证/阻断”。
 
 ## 2. 标准逐项对照矩阵
 
@@ -60,7 +60,7 @@
 - 未对真实生产环境执行授权渗透测试。
 - 未对互联网暴露资产执行外部扫描。
 - 未连接真实第三方服务、云账号、日志平台或密钥管理平台做现场核验。
-- Docker CLI/daemon 已可用，但 `node scripts/ddd-docker-build-evidence.mjs` 记录镜像构建证据 `FAIL`，失败点为 registry/network/build cache 的基础镜像层读取异常。
+- Docker CLI/daemon 已可用，`node scripts/ddd-docker-build-evidence.mjs --check`、`node scripts/deploy-container.mjs --ps --local-mysql` 已通过；但 `node scripts/ddd-docker-build-evidence.mjs` 记录镜像构建证据 `FAIL`，`node scripts/start-platform.mjs --skip-build --local-mysql --skip-check` 仍受镜像拉取超时阻断。
 - 前端 Playwright E2E smoke 已安装 Chromium，但本机 `127.0.0.1:8000` 与 `127.0.0.1:8080` 未提供可访问运行态，E2E smoke 因连接拒绝未完成。
 - `scripts/ddd-staging-execution-checklist.test.mjs` 全量脚本测试受重复 Node 进程干扰，已改用关键门禁命令复核并记录限制。
 
@@ -86,12 +86,15 @@
 | E-FE-03 | 前端生产构建 | `corepack pnpm --dir frontend run build` | 通过，输出 `dist`，87 个 assets。 |
 | E-DOCKER-01 | Docker 静态契约 | `node scripts/ddd-dockerfile-contract.test.mjs`、`node scripts/ddd-docker-evidence-contract.test.mjs` | 均通过。 |
 | E-DOCKER-02 | Docker build evidence | `node scripts/ddd-docker-build-evidence.mjs` | 写入 `artifacts/ddd/build/docker-image-evidence.json`；Docker 29.5.3 preflight 通过，但 2 个镜像 build 均 `FAIL`，阻断为 `unexpected EOF`、`short read`、`ETIMEDOUT` 等 registry/network/build cache 异常。 |
+| E-DOCKER-03 | Docker 只读检查 | `node scripts/ddd-docker-build-evidence.mjs --check` | 通过；Docker 可用，两个 Dockerfile 静态检查 `PASS`，推荐模式为 `build-and-inspect`。 |
 | E-DDD-01 | DDD 证据合约 | `ddd-backend-evidence-contract.test.mjs`、`ddd-frontend-evidence-contract.test.mjs`、`ddd-frontend-smoke-contract.test.mjs` | 均通过。 |
-| E-REL-01 | 发布证据就绪 | `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness` | 正常输出 `BLOCKED/NO_GO_STRICT`，列出 5 个缺失/阻断证据门。 |
+| E-REL-01 | 发布证据就绪 | `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness` | 正常输出 `BLOCKED/NO_GO_STRICT`，列出 5 个缺失/阻断证据门；当前 Docker lane 已在 rollup/queue 中转为 `PASS`，总 gate 为 5/6 阻断。 |
 | E-REL-02 | 发布证据强制门禁 | `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` | 按设计在证据未齐时非零阻断。 |
 | E-REL-03 | 交接包完整性 | `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify` | 通过，检查 112 个文件，`issues=[]`。 |
 | E-REL-04 | 发布制品/配置门禁 | `ddd-release-artifact-integrity-gate-contract.test.mjs`、`ddd-release-config-sync.test.mjs` | 均通过。 |
 | E-DEPLOY-FAIL | 部署运行态检查 | `node scripts/check-deployment.mjs` | 失败：`127.0.0.1:8000/health`、`/api/health`、`127.0.0.1:8080/actuator/health` 均无 HTTP 响应。 |
+| E-DEPLOY-PS | Compose 部署脚本探测 | `node scripts/deploy-container.mjs --ps --local-mysql` | 通过；修复 Windows 下 Docker/Compose 调用、目录准备和 compose 相对路径后，可正常输出 compose `ps`。 |
+| E-DEPLOY-START-BLOCKED | 本地 compose 启动尝试 | `node scripts/start-platform.mjs --skip-build --local-mysql --skip-check` | 启动进入 Docker volume/image 阶段，但 busybox/base image 拉取超时，未形成可访问运行态。 |
 | E-DOC-01 | 主报告 | `docs/security-assessment-full-test-report.md` | UTF-8 中文检查通过，无问号串、无替换字符、无 mojibake。 |
 | E-DOC-02 | 整改跟踪表 | `docs/security-assessment-remediation-tracker.md` | UTF-8 中文检查通过，无问号串、无替换字符、无 mojibake。 |
 | E-SUB-01 | 子代理审计 | Raman、Ampere、Poincare 等只读复核 | 发现并验证 3 项补充风险；指出标准逐项矩阵和测试缺口并已纳入本报告。 |
@@ -119,7 +122,7 @@
 
 | 阻断项 | 影响标准/测试 | 当前证据 | 完成条件 |
 |---|---|---|---|
-| Docker 镜像构建受 registry/network/build cache 异常阻断 | 容器部署、镜像 build/inspect、运行态健康检查 | E-DOCKER-02、E-DEPLOY-FAIL；Docker CLI/daemon 可用，但基础镜像层读取出现 `unexpected EOF`、`short read`、`ETIMEDOUT`。 | 使用稳定镜像仓库/本地镜像缓存/可信 CI Docker runner，重新执行 build evidence 与部署检查。 |
+| Docker 镜像构建/拉取受 registry/network/build cache 异常阻断 | 容器部署、镜像 build/inspect、运行态健康检查 | E-DOCKER-02、E-DOCKER-03、E-DEPLOY-PS、E-DEPLOY-START-BLOCKED；Docker CLI/daemon 与 compose `ps` 可用，但基础镜像层读取/拉取出现 `unexpected EOF`、`short read`、`ETIMEDOUT`。 | 使用稳定镜像仓库/本地镜像缓存/可信 CI Docker runner，重新执行 build/start evidence 与部署检查。 |
 | 本地 8000/8080 无服务 | Playwright E2E、API smoke、DAST | E-DEPLOY-FAIL | 启动隔离环境或提供 `PLAYWRIGHT_BASE_URL`/API 地址。 |
 | 生产授权缺失 | NIST Attack/Validation、外部扫描、DAST | 本报告范围声明 | 提供授权窗口、资产清单、测试边界、应急联系人。 |
 | 发布证据 NO_GO_STRICT | 发布前证据门禁 | E-REL-01、E-REL-02 | 补齐 first-wave env receipt、lane receipt、owner evidence、production audit、final go/no-go。 |

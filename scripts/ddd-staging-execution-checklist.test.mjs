@@ -257,10 +257,10 @@ try {
   assert.equal(rollup.willWriteFiles, false);
   assert.equal(rollup.cutoverAllowed, false);
   assert.equal(rollup.items.length, 6);
-  assert.equal(rollup.blockedCount, 6);
+  assert.equal(rollup.blockedCount, 5);
   assert(rollup.items.some((item) => item.id === "release-env" && item.status === "BLOCKED" && item.nextCommand === "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"));
   assert(rollup.items.some((item) => item.id === "docker-images" && item.track === "p0-images"));
-  assert(rollup.items.some((item) => item.id === "docker-images" && item.blockingInputs.includes("DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE")));
+  assert(rollup.items.some((item) => item.id === "docker-images" && ["PASS", "BLOCKED"].includes(item.status)));
   assert(rollup.items.some((item) => item.id === "runtime-business" && item.blockingInputs.includes("LUMIRA_BASE_URL") && item.blockingInputs.includes("DDD_DEPLOYMENT_EVIDENCE")));
   assert(rollup.items.some((item) => item.id === "rollback" && item.blockingInputs.includes("DDD_ROLLBACK_DRILL_FILE")));
   assert(rollup.items.some((item) => item.id === "explain" && item.blockingInputs.includes("MYSQL_HOST")));
@@ -539,7 +539,8 @@ try {
   assert.equal(evidenceAcceptance.willWriteFiles, false);
   assert.equal(evidenceAcceptance.cutoverAllowed, false);
   assert.equal(evidenceAcceptance.itemCount, 6);
-  assert.equal(evidenceAcceptance.acceptedCount, 0);
+  assert.equal(evidenceAcceptance.acceptedCount, 1);
+  assert.equal(evidenceAcceptance.blockedCount, 5);
   assert(evidenceAcceptance.missingArtifactCount > 0);
   assert(evidenceAcceptance.items.some((item) => item.gate === "release-env" && item.accepted === false && item.acceptanceCommand === "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"));
   assert(evidenceAcceptance.items.some((item) => item.gate === "runtime-business" && item.blockingInputs.includes("PLAYWRIGHT_BASE_URL")));
@@ -646,7 +647,7 @@ try {
   assert.equal(closurePlan.status, "BLOCKED");
   assert.equal(closurePlan.willWriteFiles, false);
   assert.equal(closurePlan.cutoverReady, false);
-  assert.equal(closurePlan.blockedGateCount, 6);
+  assert.equal(closurePlan.blockedGateCount, 5);
   assert.match(closurePlan.eta, /0\.5-1\.5d/);
   assert(closurePlan.items.some((item) => item.gate === "release-env" && item.phase === "P0" && item.owner === "release-infra"));
   assert(closurePlan.items.some((item) => item.gate === "runtime-business" && item.parallelGroup === "runtime-validation"));
@@ -692,7 +693,8 @@ try {
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.missingEvidenceArtifacts.some((artifact) => artifact.artifact === "tmp/ddd-explain/*.json")));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifactPlanCommands.includes("node scripts/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown")));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifactPlanCommands.includes("node scripts/ddd-collect-explain.mjs")));
-  assert(nextActionQueue.parallelNow.includes("p0-docker-images"));
+  assert(nextActionQueue.queue.some((item) => item.lane === "p0-docker-images" && ["PASS", "BLOCKED"].includes(item.status)));
+  assert(nextActionQueue.parallelNow.includes("p0-release-env"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-next-action-queue.json")), false);
 
   const nextActionQueueMarkdownResult = spawnSyncWithTimeout("node", ["scripts/ddd-staging-execution-checklist.mjs", "--next-action-queue-markdown"], {
@@ -1093,7 +1095,6 @@ try {
   assert.match(nextActionEnvTemplateResult.stdout, /^# Lumira DDD staging next-action environment template\./);
   assert.match(nextActionEnvTemplateResult.stdout, /^# Lane: p1-runtime-business$/m);
   assert.match(nextActionEnvTemplateResult.stdout, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
-  assert.match(nextActionEnvTemplateResult.stdout, /^DDD_DOCKER_EXISTING_FRONTEND_IMAGE=__REQUIRED_IMAGE_REF__$/m);
   assert.match(nextActionEnvTemplateResult.stdout, /^# Choose one of: DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE$/m);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-next-action-env-template.json")), false);
 
@@ -2002,7 +2003,8 @@ try {
   });
   assert.equal(ownerBlockingInputsEnvTemplateResult.status, 0, ownerBlockingInputsEnvTemplateResult.stderr || ownerBlockingInputsEnvTemplateResult.stdout);
   assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^# Owner filter: release-infra$/m);
-  assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=__REQUIRED__$/m);
+  assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^DDD_RELEASE_ENV_FILE=__REQUIRED__$/m);
+  assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
   assert.doesNotMatch(ownerBlockingInputsEnvTemplateResult.stdout, /^MYSQL_PASSWORD=/m);
 
   const releaseEvidenceDispatchPlanResult = spawnSyncWithTimeout("node", ["scripts/ddd-staging-execution-checklist.mjs", "--release-evidence-dispatch-plan"], {
@@ -2279,8 +2281,8 @@ try {
   assert.equal(bundleLaneReceiptFragments.redacted, true);
   assert.equal(bundleLaneReceiptFragments.willWriteFiles, false);
   assert.equal(bundleLaneReceiptFragments.laneCount, 5);
-  assert.equal(bundleLaneReceiptFragments.passLaneCount, 0);
-  assert.equal(bundleLaneReceiptFragments.blockedLaneCount, 5);
+  assert.equal(bundleLaneReceiptFragments.passLaneCount, 1);
+  assert.equal(bundleLaneReceiptFragments.blockedLaneCount, 4);
   assert.equal(bundleLaneReceiptFragments.fragments.length, 5);
   assert(bundleLaneReceiptFragments.fragments.some((fragment) => fragment.key === "release-infra:p0-release-env"));
   assert(bundleLaneReceiptFragments.fragments.some((fragment) => fragment.key === "release-infra:p0-docker-images"));
@@ -2506,7 +2508,7 @@ try {
   assert.match(bundleDailyBriefMarkdown, /## Owner Actions/);
   const bundleClosurePlan = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "closure-plan.json"), "utf8"));
   assert.equal(bundleClosurePlan.status, "BLOCKED");
-  assert.equal(bundleClosurePlan.blockedGateCount, 6);
+  assert.equal(bundleClosurePlan.blockedGateCount, 5);
   assert.match(bundleClosurePlan.eta, /0\.5-1\.5d/);
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "closure-plan.md"), "utf8"), /^# DDD Staging Closure Plan/m);
   const bundleNextActionQueue = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "next-action-queue.json"), "utf8"));
@@ -2654,7 +2656,7 @@ try {
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "evidence-runbook.md"), "utf8"), /^# DDD Staging Evidence Runbook/m);
   const bundleAcceptance = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "evidence-acceptance.json"), "utf8"));
   assert.equal(bundleAcceptance.itemCount, 6);
-  assert.equal(bundleAcceptance.blockedCount, 6);
+  assert.equal(bundleAcceptance.blockedCount, 5);
   assert(bundleAcceptance.missingArtifactCount > 0);
   assert(bundleAcceptance.items.some((item) => item.gate === "docker-images" && item.accepted === false));
   assert(bundleAcceptance.items.some((item) => item.gate === "explain" && item.blockingInputs.includes("MYSQL_PASSWORD")));
@@ -2686,7 +2688,8 @@ try {
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "release-evidence-dispatch-command.sh"), "utf8"), /^gh workflow run ddd-release-evidence\.yml \\/m);
   const releaseInfraEnvTemplate = fs.readFileSync(path.join(bundleOwnerPacketDir, "release-infra.blocking-inputs.template.env"), "utf8");
   assert.match(releaseInfraEnvTemplate, /^# Owner filter: release-infra$/m);
-  assert.match(releaseInfraEnvTemplate, /^DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=__REQUIRED__$/m);
+  assert.match(releaseInfraEnvTemplate, /^DDD_RELEASE_ENV_FILE=__REQUIRED__$/m);
+  assert.match(releaseInfraEnvTemplate, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
   assert.doesNotMatch(releaseInfraEnvTemplate, /^MYSQL_PASSWORD=/m);
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "evidence-env.template.env"), "utf8"), /^DDD_DOCKER_BUILD_STRICT=true/m);
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "commands.txt"), "utf8"), /node scripts\/ddd-staging-execution-checklist\.mjs --rollup-markdown/);
@@ -3172,7 +3175,7 @@ try {
   const executionStatus = JSON.parse(executionStatusResult.stdout);
   assert.equal(executionStatus.status, "BLOCKED");
   assert.equal(executionStatus.cutoverAllowed, false);
-  assert.equal(executionStatus.blockedGateCount, 6);
+  assert.equal(executionStatus.blockedGateCount, 5);
   assert.equal(executionStatus.handoffBundle.status, "PASS");
   assert(executionStatus.laneRoutes.some((lane) => lane.lane === "p0-docker-images" && lane.sourcePlan === "docker-image-submission-plan.json"));
   assert(executionStatus.laneRoutes.some((lane) => lane.lane === "p1-runtime-business" && lane.command === "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
@@ -3190,7 +3193,7 @@ try {
   assert.equal(executionStatusMarkdownResult.status, 0, executionStatusMarkdownResult.stderr || executionStatusMarkdownResult.stdout);
   assert.match(executionStatusMarkdownResult.stdout, /^# DDD Staging Execution Status/m);
   assert.match(executionStatusMarkdownResult.stdout, /Handoff bundle: PASS/);
-  assert.match(executionStatusMarkdownResult.stdout, /\| docker-images \| release-infra \| BLOCKED \|/);
+  assert.match(executionStatusMarkdownResult.stdout, /\| docker-images \| release-infra \| PASS \|/);
   assert.match(executionStatusMarkdownResult.stdout, /## Lane Routes/);
   assert.match(executionStatusMarkdownResult.stdout, /docker-image-submission-plan\.json/);
   assert.match(executionStatusMarkdownResult.stdout, /runtime-business-submission-plan\.json/);

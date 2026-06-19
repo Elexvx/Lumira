@@ -15,9 +15,10 @@ export function createLogger(prefix) {
 
 export function run(command, commandArgs, options = {}) {
   const { check = true, ...spawnOptions } = options;
-  const result = spawnSync(command, commandArgs, {
+  const { command: resolvedCommand, args: resolvedArgs, shell } = resolveSpawnCommand(command, commandArgs);
+  const result = spawnSync(resolvedCommand, resolvedArgs, {
     stdio: 'inherit',
-    shell: false,
+    shell,
     ...spawnOptions,
   });
 
@@ -31,9 +32,10 @@ export function run(command, commandArgs, options = {}) {
 
 export function output(command, commandArgs, options = {}) {
   const { check = true, ...spawnOptions } = options;
-  const result = spawnSync(command, commandArgs, {
+  const { command: resolvedCommand, args: resolvedArgs, shell } = resolveSpawnCommand(command, commandArgs);
+  const result = spawnSync(resolvedCommand, resolvedArgs, {
     encoding: 'utf8',
-    shell: false,
+    shell,
     ...spawnOptions,
   });
   
@@ -47,9 +49,10 @@ export function output(command, commandArgs, options = {}) {
 
 export function optionalOutput(command, commandArgs, options = {}) {
   const { check = false, ...spawnOptions } = options;
-  const result = spawnSync(command, commandArgs, {
+  const { command: resolvedCommand, args: resolvedArgs, shell } = resolveSpawnCommand(command, commandArgs);
+  const result = spawnSync(resolvedCommand, resolvedArgs, {
     encoding: 'utf8',
-    shell: false,
+    shell,
     ...spawnOptions,
   });
   return result.status === 0 ? result.stdout.trim() : '';
@@ -57,4 +60,23 @@ export function optionalOutput(command, commandArgs, options = {}) {
 
 export function commandExists(command) {
   return spawnSync('sh', ['-lc', `command -v ${command} >/dev/null 2>&1`], { stdio: 'ignore' }).status === 0;
+}
+
+function resolveSpawnCommand(command, args = []) {
+  if (process.platform !== 'win32' || /\.sh$/i.test(command)) {
+    return { command, args, shell: false };
+  }
+  return {
+    command: 'cmd.exe',
+    args: ['/d', '/c', [quoteCmdArg(command), ...args.map(quoteCmdArg)].join(' ')],
+    shell: false,
+  };
+}
+
+function quoteCmdArg(value) {
+  const text = String(value);
+  if (!/[\s"&<>|^]/.test(text)) {
+    return text;
+  }
+  return `"${text.replaceAll('"', '\\"')}"`;
 }

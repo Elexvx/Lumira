@@ -6,7 +6,7 @@
 
 已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`
 
-当前补充证据：待提交
+当前补充证据：本轮待提交，包含 Windows Docker/Compose 调用修复与部署脚本复测。
 
 ## 范围与依据
 
@@ -60,6 +60,8 @@
 - 2026-06-19：通过前端生产构建：`corepack pnpm --dir frontend run build`，输出 `dist`，87 个 assets。
 - 2026-06-19：通过静态/合约门禁：`ddd-dockerfile-contract.test.mjs`、`ddd-docker-evidence-contract.test.mjs`、`ddd-backend-evidence-contract.test.mjs`、`ddd-frontend-evidence-contract.test.mjs`、`ddd-frontend-smoke-contract.test.mjs`。
 - 2026-06-19：Docker build evidence 更新为更准确的阻断结论：`docker --version` 与 `docker info` 成功，Docker 版本 29.5.3；`node scripts/ddd-docker-build-evidence.mjs` 写入 `artifacts/ddd/build/docker-image-evidence.json`，状态 `FAIL`，2 个镜像 build 均失败，阻断为基础镜像层 `unexpected EOF`、`short read`、`ETIMEDOUT`。
+- 2026-06-19：修复 Windows 下部署脚本 Docker/Compose 调用问题：共享执行工具可正确调用 `docker.cmd`，`deploy-container.mjs` 改用 Node 原生目录创建并向 Compose 传递相对路径；`node scripts/deploy-container.mjs --ps --local-mysql` 通过。
+- 2026-06-19：`node scripts/ddd-docker-build-evidence.mjs --check` 通过，发布 rollup/next-action queue 中 `docker-images` lane 转为 `PASS`；但 `node scripts/start-platform.mjs --skip-build --local-mysql --skip-check` 仍受基础镜像拉取超时阻断，未形成运行态服务。
 - 2026-06-19：部署运行态检查失败：`node scripts/check-deployment.mjs` 对 `127.0.0.1:8000` 与 `127.0.0.1:8080` 均无 HTTP 响应。
 - 2026-06-19：前端 E2E smoke 安装 Chromium 后执行，因 `127.0.0.1:8000`/`127.0.0.1:8080` 未提供运行态而连接拒绝，未完成。
 - 2026-06-19：脚本门禁复核：
@@ -73,7 +75,7 @@
 
 | 阻断项 | 优先级 | 当前证据 | 完成条件 |
 |---|---|---|---|
-| Docker 镜像构建受 registry/network/build cache 异常阻断 | P0 | `artifacts/ddd/build/docker-image-evidence.json`：`status=FAIL`，Docker preflight 成功，2 个镜像 build 失败，错误包括 `unexpected EOF`、`short read`、`ETIMEDOUT`。 | 使用稳定镜像仓库、本地镜像缓存或可信 CI Docker runner，重新生成 PASS 的 build/inspect evidence。 |
+| Docker 镜像构建/拉取受 registry/network/build cache 异常阻断 | P0 | `artifacts/ddd/build/docker-image-evidence.json`：`status=FAIL`，Docker preflight 成功，2 个镜像 build 失败，错误包括 `unexpected EOF`、`short read`、`ETIMEDOUT`；`deploy-container --ps --local-mysql` 已通过，`start-platform --skip-build --local-mysql --skip-check` 卡在 busybox/base image 拉取。 | 使用稳定镜像仓库、本地镜像缓存或可信 CI Docker runner，重新生成 PASS 的 build/start/inspect evidence。 |
 | 本地 API proxy 与后端未运行 | P0 | `node scripts/check-deployment.mjs` 全部健康检查无 HTTP 响应。 | 启动隔离环境，确保 `127.0.0.1:8000`、`127.0.0.1:8080` 或指定目标可访问。 |
 | Playwright E2E/DAST 未完成 | P0 | E2E smoke 连接拒绝；无 DAST 报告。 | 提供运行态 URL、测试账号、测试数据和授权边界，执行 E2E 与 DAST。 |
 | 生产证据 `NO_GO_STRICT` | P0 | production evidence readiness 输出 5 个阻断证据门。 | 补齐 first-wave env receipt、lane completion receipt、owner evidence、production audit、final go/no-go。 |

@@ -438,8 +438,10 @@ function ensureEnvFile() {
 
 
 function ensureWritableDirectory(hostPath, label) {
-  run('mkdir', ['-p', hostPath]);
-  run('chmod', ['-R', 'a+rwX', hostPath]);
+  mkdirSync(hostPath, { recursive: true });
+  if (process.platform !== 'win32') {
+    run('chmod', ['-R', 'a+rwX', hostPath]);
+  }
   log(`${label} is writable at ${hostPath}`);
 }
 
@@ -606,14 +608,16 @@ policies:
 function composeArgs(...extraArgs) {
   const env = parseEnvFile(envPath);
   const useNacos = args.has('--nacos') || isEnabled(env.NACOS_CONFIG_ENABLED) || isEnabled(env.NACOS_DISCOVERY_ENABLED);
+  const composeBuildIdentityPath = path.relative(repoRoot, buildIdentityPath).replaceAll(path.sep, '/');
+  const composeFilePath = path.relative(repoRoot, composeFile).replaceAll(path.sep, '/');
   const profileArgs = [
     ...(!localMysql ? ['--profile', 'edge'] : []),
     ...(localMysql ? ['--profile', 'local-mysql'] : []),
     ...(observability ? ['--profile', 'observability'] : []),
     ...(useNacos ? ['--profile', 'nacos'] : []),
   ];
-  const envFileArgs = ['--env-file', 'deploy/.env', '--env-file', buildIdentityPath];
-  return ['compose', ...envFileArgs, '-f', composeFile, ...profileArgs, ...extraArgs];
+  const envFileArgs = ['--env-file', 'deploy/.env', '--env-file', composeBuildIdentityPath];
+  return ['compose', ...envFileArgs, '-f', composeFilePath, ...profileArgs, ...extraArgs];
 }
 
 
