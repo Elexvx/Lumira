@@ -64,6 +64,7 @@
 - 2026-06-19：`node scripts/ddd-docker-build-evidence.mjs --check` 通过，发布汇总和下一步队列中 Docker 镜像证据通道转为通过；但 `node scripts/start-platform.mjs --skip-build --local-mysql --skip-check` 仍受基础镜像拉取超时阻断，未形成运行态服务。
 - 2026-06-19：部署运行态检查失败：`node scripts/check-deployment.mjs` 对 `127.0.0.1:8000` 与 `127.0.0.1:8080` 均无 HTTP 响应。
 - 2026-06-19：前端端到端冒烟测试所需 Chromium 已安装；因 `127.0.0.1:8000`/`127.0.0.1:8080` 未提供运行态，未形成新的 2026-06-19 端到端运行态通过证据。
+- 2026-06-19：主报告补充 21 条详细测评项清单，覆盖 GB/T 22239、GB/T 28449、GB/T 20984、GB/T 30279、OWASP、ATT&CK、NIST 的本地证据、执行结果和未闭环条件。
 - 2026-06-19：脚本门禁复核：
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`：输出“阻断/严格不放行”。
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce`：证据未齐时按设计非零阻断。

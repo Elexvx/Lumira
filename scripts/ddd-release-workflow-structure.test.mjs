@@ -360,8 +360,16 @@ assert(
   "CI syntax checks must cover release workflow structure tests",
 );
 assert(
+  ciWorkflowText.includes("node --check scripts/ddd-production-evidence-readiness.test.mjs"),
+  "CI syntax checks must cover production evidence readiness tests",
+);
+assert(
   ciWorkflowText.includes("node scripts/ddd-release-workflow-structure.test.mjs"),
   "CI must run release workflow structure tests",
+);
+assert(
+  ciWorkflowText.includes("node scripts/ddd-production-evidence-readiness.test.mjs"),
+  "CI must run production evidence readiness tests",
 );
 assert(
   ciWorkflowText.includes("node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle"),

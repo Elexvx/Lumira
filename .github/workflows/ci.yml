@@ -183,6 +183,7 @@ jobs:
           node --check scripts/ddd-staging-runtime-check.test.mjs
           node --check scripts/ddd-staging-execution-checklist.mjs
           node --check scripts/ddd-staging-execution-checklist.test.mjs
+          node --check scripts/ddd-production-evidence-readiness.test.mjs
           node --check scripts/ddd-release-closure-wave-receipts-contract.mjs
           node --check scripts/ddd-release-closure-wave-receipts-contract.test.mjs
           node --check scripts/ddd-release-next-action-queue-contract.mjs
@@ -353,6 +354,9 @@ jobs:
         env:
           DDD_STAGING_CHECKLIST_TEST_CHILD_TIMEOUT_MS: "60000"
         run: node scripts/ddd-staging-execution-checklist.test.mjs
+      - name: Production evidence readiness contract tests
+        timeout-minutes: 10
+        run: node scripts/ddd-production-evidence-readiness.test.mjs
       - name: Staging runtime check contract tests
         run: node scripts/ddd-staging-runtime-check.test.mjs
       - name: Staging data safety check contract tests
