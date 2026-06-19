@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { theme as antdTheme } from 'antd';
 import { buildAntdThemeConfig } from '../src/theme/antdTheme';
 
-const projectRoot = new URL('..', import.meta.url);
-const sourceRoot = join(projectRoot.pathname, 'src');
+const projectRoot = fileURLToPath(new URL('..', import.meta.url));
+const sourceRoot = join(projectRoot, 'src');
 const sourceFiles = [
   'src/theme/antdTheme.tsx',
   'src/theme/ThemePreferenceProvider.tsx',
@@ -22,6 +23,7 @@ const sourceFiles = [
 const radiusScanExtensions = new Set(['.css', '.ts', '.tsx']);
 const allowedRadiusValuePatterns = [
   /^var\(--ant-border-radius(?:-[a-z]+)?\)$/,
+  /^var\(--ant-border-radius(?:-[a-z]+)?,\s*\d+px\)$/,
   /^var\(--saas-(?:card-radius|border-radius-(?:base|sm|lg)|profile-card-radius|ai-[a-z-]+-radius)\)$/,
   /^calc\(var\(--ant-border-radius\) \* \d+\)$/,
   /^inherit$/,
@@ -48,7 +50,7 @@ const themeReloadPatterns = [
 ];
 
 const readProjectFile = (relativePath: string) =>
-  readFileSync(join(projectRoot.pathname, relativePath), 'utf8');
+  readFileSync(join(projectRoot, relativePath), 'utf8');
 
 const collectSourceFiles = (directory: string): string[] =>
   readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -62,7 +64,7 @@ const collectSourceFiles = (directory: string): string[] =>
       return [];
     }
 
-    return [relative(projectRoot.pathname, absolutePath)];
+    return [relative(projectRoot, absolutePath).replaceAll('\\', '/')];
   });
 
 const assertNoLegacyThemePatterns = () => {

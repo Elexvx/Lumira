@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "generatedAt": "2026-06-19T06:54:03.604Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -758,7 +758,7 @@
         {
           "category": "docker",
           "owner": "release-infra",
-          "blocker": "docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h",
+          "blocker": "docker-build-evidence-freshness: generatedAt is 56.9h old; limit=24h",
           "action": "Start Docker daemon or run `node scripts/ddd-docker-build-evidence.mjs` in CI with Docker Buildx available."
         },
         {

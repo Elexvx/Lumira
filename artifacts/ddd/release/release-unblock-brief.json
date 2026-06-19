@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-18T19:37:44.437Z",
+  "generatedAt": "2026-06-19T06:38:12.054Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
@@ -2509,7 +2509,7 @@
       "queueStatus": "RUN_NOW",
       "receiptStatus": "CONTENT_BLOCKED",
       "nextAction": "Inspect the strict release gate blocker and attach an owner-specific remediation.",
-      "reason": "strictGate=physical-split-readiness-freshness generatedAt is 46.7h old; limit=24h",
+      "reason": "strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h",
       "envKeys": [
         "DDD_RELEASE_EVIDENCE_STRICT"
       ],
@@ -2527,7 +2527,7 @@
       "queueStatus": "RUN_NOW",
       "receiptStatus": "CONTENT_BLOCKED",
       "nextAction": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.",
-      "reason": "strictGate=payment-webhook-freshness finishedAt is 120.6h old; limit=24h",
+      "reason": "strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h",
       "envKeys": [
         "PAYMENT_PUBLIC_BASE_URL"
       ],
@@ -2545,7 +2545,7 @@
       "queueStatus": "RUN_NOW",
       "receiptStatus": "CONTENT_BLOCKED",
       "nextAction": "Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.",
-      "reason": "strictGate=outbox-replay-dead-letter-freshness generatedAt is 80.6h old; limit=24h",
+      "reason": "strictGate=outbox-replay-dead-letter-freshness generatedAt is 91.7h old; limit=24h",
       "envKeys": [
         "LUMIRA_EVENT_REDIS_STREAM_KEY",
         "SAAS_EVENT_REDIS_STREAM_KEY"

@@ -96,6 +96,8 @@ node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdo
 node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown --lane-completion-receipt-file=<receipt-file>
 node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status
 node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown
+node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan
+node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown
 node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit
 node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown
 node scripts/ddd-staging-execution-checklist.mjs --operator-progress

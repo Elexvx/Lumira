@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD release preflight gate.
-# Generated at: 2026-06-18T19:37:26.213Z
+# Generated at: 2026-06-19T06:54:03.604Z
 # Default mode reports every gate without failing on NO-GO. Set DDD_RELEASE_PREFLIGHT_ENFORCE=1 for CI blocking behavior.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then

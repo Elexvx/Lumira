@@ -1,6 +1,6 @@
 # DDD Staging Handoff Bundle
 
-Generated at: 2026-06-19T06:05:17.222Z
+Generated at: 2026-06-19T06:45:50.594Z
 Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
@@ -19,6 +19,7 @@ Blocked gates: 6/6
 9. Validate owner lane receipt coverage with `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>` and require `Coverage: 5/5`.
 10. Use `lane-receipt-fragments.md` as the 5-lane receipt assembly index before submitting the redacted receipt.
 11. Read `production-cutover-audit.md` before final approval; every audit item must be PASS.
+12. Use `production-unblock-plan.md` as the focused production unblock checklist when the audit is still `NO_GO_STRICT`.
 12. Re-run `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.
 
 ## Status Views
@@ -53,6 +54,8 @@ Blocked gates: 6/6
 - `release-owner-closeout.md`: paste-ready single-page release-owner closeout status.
 - `production-closeout-status.json`: machine-readable production closeout status with ETA band and next owner action.
 - `production-closeout-status.md`: paste-ready production closeout status with remaining production preconditions.
+- `production-unblock-plan.json`: machine-readable focused plan for clearing the remaining production blockers.
+- `production-unblock-plan.md`: paste-ready focused plan for the parallel unblock workstreams and exit criteria.
 - `production-cutover-audit.json`: machine-readable final production cutover audit matrix.
 - `production-cutover-audit.md`: paste-ready final production cutover audit matrix.
 - `operator-progress.json`: machine-readable operator progress across env, bundle, verification, and final review.

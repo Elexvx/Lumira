@@ -105,6 +105,10 @@ const releaseOwnerCloseoutOnly = args.has("--release-owner-closeout");
 const releaseOwnerCloseoutMarkdownOnly = args.has("--release-owner-closeout-markdown");
 const productionCloseoutStatusOnly = args.has("--production-closeout-status");
 const productionCloseoutStatusMarkdownOnly = args.has("--production-closeout-status-markdown");
+const productionUnblockPlanOnly = args.has("--production-unblock-plan");
+const productionUnblockPlanMarkdownOnly = args.has("--production-unblock-plan-markdown");
+const productionEvidenceReadinessOnly = args.has("--production-evidence-readiness");
+const productionEvidenceReadinessMarkdownOnly = args.has("--production-evidence-readiness-markdown");
 const productionCutoverAuditOnly = args.has("--production-cutover-audit");
 const productionCutoverAuditMarkdownOnly = args.has("--production-cutover-audit-markdown");
 const operatorProgressOnly = args.has("--operator-progress");
@@ -258,6 +262,10 @@ Options:
   --release-owner-closeout-markdown Print single-page release-owner closeout as Markdown and exit without writing files.
   --production-closeout-status Print production closeout status, ETA band, and next owner action as JSON.
   --production-closeout-status-markdown Print production closeout status, ETA band, and next owner action as Markdown.
+  --production-unblock-plan Print focused production unblock plan as JSON.
+  --production-unblock-plan-markdown Print focused production unblock plan as Markdown.
+  --production-evidence-readiness Print aggregated production evidence readiness as JSON.
+  --production-evidence-readiness-markdown Print aggregated production evidence readiness as Markdown.
   --production-cutover-audit Print final production cutover audit matrix as JSON.
   --production-cutover-audit-markdown Print final production cutover audit matrix as Markdown.
   --lane-completion-receipt-file=<file> Also used by final review to require a passing owner lane completion receipt contract.
@@ -369,6 +377,12 @@ Examples:
   node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown
   node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status
   node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown
+  node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan
+  node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown
+  node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness
+  node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown
+  node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit
+  node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown
   node scripts/ddd-staging-execution-checklist.mjs --operator-progress
   node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown
   node scripts/ddd-staging-execution-checklist.mjs --release-owner-daily-brief
@@ -817,6 +831,10 @@ function verifyHandoffBundleResult() {
     "release-owner-closeout.md",
     "production-closeout-status.json",
     "production-closeout-status.md",
+    "production-unblock-plan.json",
+    "production-unblock-plan.md",
+    "production-evidence-readiness.json",
+    "production-evidence-readiness.md",
     "production-cutover-audit.json",
     "production-cutover-audit.md",
     "operator-progress.json",
@@ -936,9 +954,17 @@ function verifyHandoffBundleResult() {
     ["release-owner-closeout.md", "## Immediate Next Lane"],
     ["release-owner-closeout.md", "## Required Command Sequence"],
     ["production-closeout-status.md", "# DDD Production Closeout Status"],
+    ["production-closeout-status.md", "## Parallel Next Actions"],
     ["production-closeout-status.md", "## Required Before Production"],
+    ["production-unblock-plan.md", "# DDD Production Unblock Plan"],
+    ["production-unblock-plan.md", "## Parallel Workstreams"],
+    ["production-unblock-plan.md", "## Exit Criteria"],
+    ["production-evidence-readiness.md", "# DDD Production Evidence Readiness"],
+    ["production-evidence-readiness.md", "## Evidence Gates"],
+    ["production-evidence-readiness.md", "## Blocking Evidence"],
     ["production-cutover-audit.md", "# DDD Production Cutover Audit"],
     ["production-cutover-audit.md", "## Audit Items"],
+    ["production-cutover-audit.md", "## Parallel Next Actions"],
     ["production-cutover-audit.md", "## Required Commands"],
     ["lane-receipt-fragments.md", "# DDD Lane Receipt Fragments"],
     ["lane-receipt-fragments.md", "## Receipt JSON Skeleton"],
@@ -1024,6 +1050,56 @@ function verifyHandoffBundleResult() {
     }
     if (laneReceiptDraft.redacted !== true) {
       issues.push("lane-receipt-draft must be redacted");
+    }
+  }
+  const productionCutoverAudit = readJson(path.join(handoffBundleDir, "production-cutover-audit.json"), null);
+  if (!productionCutoverAudit) {
+    issues.push("missing or invalid production cutover audit: production-cutover-audit.json");
+  } else {
+    const parallelNextActions = Array.isArray(productionCutoverAudit.parallelNextActions) ? productionCutoverAudit.parallelNextActions : [];
+    if (!Array.isArray(productionCutoverAudit.parallelNextActions)) {
+      issues.push("production-cutover-audit parallelNextActions must be an array");
+    }
+    const actionIds = parallelNextActions.map((action) => action.id);
+    for (const requiredActionId of ["first-wave-env", "lane-completion-receipt", "owner-evidence"]) {
+      if (!actionIds.includes(requiredActionId)) {
+        issues.push(`production-cutover-audit parallelNextActions missing action: ${requiredActionId}`);
+      }
+    }
+    for (const action of parallelNextActions) {
+      if (!action.id || !action.label || !action.owner || !action.reason || !action.command) {
+        issues.push(`production-cutover-audit parallelNextAction is incomplete: ${action.id || "unknown"}`);
+      }
+    }
+    const laneReceiptAction = parallelNextActions.find((action) => action.id === "lane-completion-receipt");
+    if (laneReceiptAction && !String(laneReceiptAction.command).includes("--lane-completion-receipt-init")) {
+      issues.push("production-cutover-audit lane-completion-receipt action must start from receipt init");
+    }
+  }
+  const productionUnblockPlan = readJson(path.join(handoffBundleDir, "production-unblock-plan.json"), null);
+  if (!productionUnblockPlan) {
+    issues.push("missing or invalid production unblock plan: production-unblock-plan.json");
+  } else {
+    const parallelWorkstreams = Array.isArray(productionUnblockPlan.parallelWorkstreams) ? productionUnblockPlan.parallelWorkstreams : [];
+    if (!Array.isArray(productionUnblockPlan.parallelWorkstreams)) {
+      issues.push("production-unblock-plan parallelWorkstreams must be an array");
+    }
+    const workstreamIds = parallelWorkstreams.map((workstream) => workstream.id);
+    for (const requiredWorkstreamId of ["first-wave-env", "lane-completion-receipt", "owner-evidence"]) {
+      if (!workstreamIds.includes(requiredWorkstreamId)) {
+        issues.push(`production-unblock-plan parallelWorkstreams missing workstream: ${requiredWorkstreamId}`);
+      }
+    }
+    for (const workstream of parallelWorkstreams) {
+      if (!workstream.id || !workstream.label || !workstream.owner || !workstream.reason || !workstream.command || !workstream.verifyCommand || !workstream.completionSignal) {
+        issues.push(`production-unblock-plan parallelWorkstream is incomplete: ${workstream.id || "unknown"}`);
+      }
+    }
+    if (!Array.isArray(productionUnblockPlan.exitCriteria) || productionUnblockPlan.exitCriteria.length === 0) {
+      issues.push("production-unblock-plan must include exitCriteria");
+    }
+    if (productionCutoverAudit && productionUnblockPlan.blockedAuditItemCount !== productionCutoverAudit.blockedAuditItemCount) {
+      issues.push(`production-unblock-plan blockedAuditItemCount mismatch: expected=${productionCutoverAudit.blockedAuditItemCount}; actual=${productionUnblockPlan.blockedAuditItemCount}`);
     }
   }
   const ownerEvidenceIntake = readJson(path.join(handoffBundleDir, "owner-evidence-intake.json"), null);
@@ -7490,6 +7566,152 @@ if (productionCloseoutStatusMarkdownOnly) {
   runProductionCloseoutStatus({ markdown: true });
 }
 
+function buildProductionUnblockPlan({
+  rollupOverride = null,
+  finalReviewOverride = null,
+  operatorProgressOverride = null,
+  closeoutStatusOverride = null,
+  cutoverAuditOverride = null,
+} = {}) {
+  const rollup = rollupOverride || loadReadinessRollup();
+  const finalReview = finalReviewOverride || buildFinalReview({ rollupOverride: rollup });
+  const operatorProgress = operatorProgressOverride || buildOperatorProgress({ rollupOverride: rollup, finalReviewOverride: finalReview });
+  const closeoutStatus = closeoutStatusOverride || buildProductionCloseoutStatus({
+    rollupOverride: rollup,
+    finalReviewOverride: finalReview,
+    operatorProgressOverride: operatorProgress,
+  });
+  const cutoverAudit = cutoverAuditOverride || buildProductionCutoverAudit({
+    rollupOverride: rollup,
+    finalReviewOverride: finalReview,
+    operatorProgressOverride: operatorProgress,
+    closeoutStatusOverride: closeoutStatus,
+  });
+  const parallelWorkstreams = (closeoutStatus.nextActions || []).map((action, index) => ({
+    order: index + 1,
+    id: action.id,
+    label: action.label,
+    owner: action.owner,
+    status: action.status || "ACTION_REQUIRED",
+    reason: action.reason,
+    command: action.command,
+    verifyCommand: {
+      "first-wave-env": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+      "lane-completion-receipt": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+      "owner-evidence": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
+    }[action.id] || action.command,
+    evidence: {
+      "first-wave-env": "redacted next-action env receipt",
+      "lane-completion-receipt": "redacted lane completion receipt with 5/5 coverage",
+      "owner-evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
+    }[action.id] || action.evidence || null,
+    completionSignal: {
+      "first-wave-env": "next-action env receipt contract passes",
+      "lane-completion-receipt": "lane completion submission check reports dispatchReady=true",
+      "owner-evidence": "owner evidence intake has 0 missing required artifacts",
+    }[action.id] || "workstream command and verification command pass",
+  }));
+  const blockedAuditItems = (cutoverAudit.blockedItems || []).map((item) => ({
+    id: item.id,
+    label: item.label,
+    blocker: item.blocker,
+    command: item.command,
+    evidence: item.evidence,
+  }));
+  const exitCriteria = [
+    "first-wave env validation has a passing redacted receipt",
+    "lane completion receipt contract and coverage pass for all 5 lanes",
+    "owner evidence intake has no missing required artifacts",
+    "production cutover audit has 0 blocked items",
+    "final review reports GO_STRICT and cutoverAllowed=true",
+  ];
+  return {
+    status: cutoverAudit.status === "PASS" ? "PASS" : "BLOCKED",
+    generatedAt,
+    willWriteFiles: false,
+    finalRecommendation: cutoverAudit.finalRecommendation,
+    cutoverReady: cutoverAudit.cutoverReady,
+    cutoverAllowed: cutoverAudit.cutoverAllowed,
+    eta: closeoutStatus.eta,
+    blockedAuditItemCount: cutoverAudit.blockedAuditItemCount,
+    passedAuditItemCount: cutoverAudit.passedAuditItemCount,
+    parallelWorkstreamCount: parallelWorkstreams.length,
+    parallelWorkstreams,
+    blockedAuditItems,
+    exitCriteria,
+    verificationCommands: [
+      "node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown",
+      "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
+      "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
+    ],
+    nextCommand: parallelWorkstreams[0]?.command || cutoverAudit.nextCommand,
+    noAutoWaivers: true,
+  };
+}
+
+function renderProductionUnblockPlanMarkdown(plan) {
+  const lines = [
+    "# DDD Production Unblock Plan",
+    "",
+    `Status: ${plan.status}`,
+    `Final recommendation: ${plan.finalRecommendation}`,
+    `Cutover ready: ${plan.cutoverReady}`,
+    `Cutover allowed: ${plan.cutoverAllowed}`,
+    `Audit items: ${plan.passedAuditItemCount} PASS; ${plan.blockedAuditItemCount} blocked`,
+    `ETA: ${plan.eta}`,
+    `No auto waivers: ${plan.noAutoWaivers}`,
+    "",
+    "## Parallel Workstreams",
+    "",
+    ...(plan.parallelWorkstreams.length > 0
+      ? plan.parallelWorkstreams.map((workstream) => `${workstream.order}. ${workstream.label}: owner=${workstream.owner}; status=${workstream.status}; reason=${workstream.reason}; command=\`${workstream.command}\`; verify=\`${workstream.verifyCommand}\`; evidence=${workstream.evidence || "none"}; done=${workstream.completionSignal}`)
+      : ["- none"]),
+    "",
+    "## Blocked Audit Items",
+    "",
+    ...(plan.blockedAuditItems.length > 0
+      ? plan.blockedAuditItems.map((item) => `- ${item.id}: ${item.blocker || "blocked"}; evidence=\`${item.evidence}\`; command=\`${item.command}\``)
+      : ["- none"]),
+    "",
+    "## Exit Criteria",
+    "",
+    ...plan.exitCriteria.map((item) => `- ${item}`),
+    "",
+    "## Verification Commands",
+    "",
+    ...plan.verificationCommands.map((command) => `- \`${command}\``),
+    "",
+    `Next: \`${plan.nextCommand}\``,
+    "",
+  ];
+  return lines.join("\n");
+}
+
+function runProductionUnblockPlan({ markdown = false } = {}) {
+  let plan;
+  try {
+    plan = buildProductionUnblockPlan();
+  } catch (error) {
+    console.error(`[ddd-staging-execution-checklist] ${error.message}`);
+    process.exit(1);
+  }
+  if (markdown) {
+    process.stdout.write(renderProductionUnblockPlanMarkdown(plan));
+  } else {
+    console.log(JSON.stringify(plan, null, 2));
+  }
+  process.exit(0);
+}
+
+if (productionUnblockPlanOnly) {
+  runProductionUnblockPlan();
+}
+
+if (productionUnblockPlanMarkdownOnly) {
+  runProductionUnblockPlan({ markdown: true });
+}
+
 function buildProductionCutoverAudit({
   rollupOverride = null,
   finalReviewOverride = null,
@@ -8447,6 +8669,7 @@ function renderHandoffBundleReadme(rollup) {
     "9. Validate owner lane receipt coverage with `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>` and require `Coverage: 5/5`.",
     "10. Use `lane-receipt-fragments.md` as the 5-lane receipt assembly index before submitting the redacted receipt.",
     "11. Read `production-cutover-audit.md` before final approval; every audit item must be PASS.",
+    "12. Use `production-unblock-plan.md` as the focused production unblock checklist when the audit is still `NO_GO_STRICT`.",
     "12. Re-run `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.",
     "",
     "## Status Views",
@@ -8481,6 +8704,8 @@ function renderHandoffBundleReadme(rollup) {
     "- `release-owner-closeout.md`: paste-ready single-page release-owner closeout status.",
     "- `production-closeout-status.json`: machine-readable production closeout status with ETA band and next owner action.",
     "- `production-closeout-status.md`: paste-ready production closeout status with remaining production preconditions.",
+    "- `production-unblock-plan.json`: machine-readable focused plan for clearing the remaining production blockers.",
+    "- `production-unblock-plan.md`: paste-ready focused plan for the parallel unblock workstreams and exit criteria.",
     "- `production-cutover-audit.json`: machine-readable final production cutover audit matrix.",
     "- `production-cutover-audit.md`: paste-ready final production cutover audit matrix.",
     "- `operator-progress.json`: machine-readable operator progress across env, bundle, verification, and final review.",
@@ -8926,6 +9151,13 @@ function writeHandoffBundle() {
     operatorProgressOverride: operatorProgress,
     closeoutStatusOverride: productionCloseoutStatus,
   });
+  const productionUnblockPlan = buildProductionUnblockPlan({
+    rollupOverride: rollup,
+    finalReviewOverride: finalReview,
+    operatorProgressOverride: operatorProgress,
+    closeoutStatusOverride: productionCloseoutStatus,
+    cutoverAuditOverride: productionCutoverAudit,
+  });
   const laneReceiptFragments = buildLaneReceiptFragmentsIndex({
     releaseEnvSubmissionPlanOverride: releaseEnvSubmissionPlan,
     dockerImageSubmissionPlanOverride: dockerImageSubmissionPlan,
@@ -8949,6 +9181,8 @@ function writeHandoffBundle() {
   files["release-owner-closeout.md"] = renderReleaseOwnerCloseoutMarkdown(releaseOwnerCloseout);
   files["production-closeout-status.json"] = `${JSON.stringify(productionCloseoutStatus, null, 2)}\n`;
   files["production-closeout-status.md"] = renderProductionCloseoutStatusMarkdown(productionCloseoutStatus);
+  files["production-unblock-plan.json"] = `${JSON.stringify(productionUnblockPlan, null, 2)}\n`;
+  files["production-unblock-plan.md"] = renderProductionUnblockPlanMarkdown(productionUnblockPlan);
   files["production-cutover-audit.json"] = `${JSON.stringify(productionCutoverAudit, null, 2)}\n`;
   files["production-cutover-audit.md"] = renderProductionCutoverAuditMarkdown(productionCutoverAudit);
   files["lane-receipt-fragments.json"] = `${JSON.stringify(laneReceiptFragments, null, 2)}\n`;
@@ -8980,6 +9214,15 @@ function writeHandoffBundle() {
     operatorProgressOverride: operatorProgress,
     closeoutStatusOverride: productionCloseoutStatus,
   });
+  const productionUnblockPlanWithCheckedFiles = buildProductionUnblockPlan({
+    rollupOverride: rollup,
+    finalReviewOverride: finalReview,
+    operatorProgressOverride: operatorProgress,
+    closeoutStatusOverride: productionCloseoutStatus,
+    cutoverAuditOverride: productionCutoverAuditWithCheckedFiles,
+  });
+  files["production-unblock-plan.json"] = `${JSON.stringify(productionUnblockPlanWithCheckedFiles, null, 2)}\n`;
+  files["production-unblock-plan.md"] = renderProductionUnblockPlanMarkdown(productionUnblockPlanWithCheckedFiles);
   files["production-cutover-audit.json"] = `${JSON.stringify(productionCutoverAuditWithCheckedFiles, null, 2)}\n`;
   files["production-cutover-audit.md"] = renderProductionCutoverAuditMarkdown(productionCutoverAuditWithCheckedFiles);
   for (const [file, content] of Object.entries(files)) {
@@ -9306,6 +9549,8 @@ function renderCommands() {
     "node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown --lane-completion-receipt-file=<receipt-file>",
     "node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status",
     "node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown",
+    "node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan",
+    "node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit",
     "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --operator-progress",

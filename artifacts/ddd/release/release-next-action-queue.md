@@ -1,6 +1,6 @@
 # DDD Release Next Action Queue
 
-Generated at: 2026-06-18T19:37:26.213Z
+Generated at: 2026-06-19T06:54:03.604Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -99,7 +99,7 @@ Owner input receipt pending owners: 5
 - Ready batches: p0-manifest-release-owner
 - Blocked batches: p3-orchestrator-release-owner
 - Next action: Inspect the strict release gate blocker and attach an owner-specific remediation.
-- Reason: strictGate=physical-split-readiness-freshness generatedAt is 46.7h old; limit=24h
+- Reason: strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h
 - Executable commands:
   - `node scripts/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
@@ -116,7 +116,7 @@ Owner input receipt pending owners: 5
 - Ready batches: p0-release-config-payment-owner
 - Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
 - Next action: Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.
-- Reason: strictGate=payment-webhook-freshness finishedAt is 120.6h old; limit=24h
+- Reason: strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h
 - Executable commands:
   - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
@@ -133,7 +133,7 @@ Owner input receipt pending owners: 5
 - Ready batches: p0-release-config-platform-events
 - Blocked batches: none
 - Next action: Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.
-- Reason: strictGate=outbox-replay-dead-letter-freshness generatedAt is 80.6h old; limit=24h
+- Reason: strictGate=outbox-replay-dead-letter-freshness generatedAt is 91.7h old; limit=24h
 - Executable commands:
   - `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs`
   - `node scripts/ddd-release-config-evidence.mjs`
@@ -211,7 +211,7 @@ Owner input receipt pending owners: 5
 - Ready batches: none
 - Blocked batches: p1-business-e2e-file-owner, p1-rollback-file-owner
 - Next action: Regenerate File processing E2E evidence within the release freshness window against the production-equivalent environment.
-- Reason: strictGate=file-processing-freshness finishedAt is 120.7h old; limit=24h
+- Reason: strictGate=file-processing-freshness finishedAt is 131.7h old; limit=24h
 - Executable commands:
   - `node scripts/ddd-file-processing-e2e-smoke.mjs`
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN, LUMIRA_UPLOAD_STORAGE_ROOT
@@ -224,7 +224,7 @@ Owner input receipt pending owners: 5
 - Ready batches: none
 - Blocked batches: p1-business-e2e-job-owner, p1-rollback-job-owner
 - Next action: Regenerate Job E2E evidence within the release freshness window against the production-equivalent environment.
-- Reason: strictGate=job-e2e-freshness checkedAt is 120.4h old; limit=24h
+- Reason: strictGate=job-e2e-freshness checkedAt is 131.4h old; limit=24h
 - Executable commands:
   - `node scripts/ddd-job-e2e-smoke.mjs`
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN
@@ -237,7 +237,7 @@ Owner input receipt pending owners: 5
 - Ready batches: none
 - Blocked batches: p2-explain-database, p3-orchestrator-database
 - Next action: Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.
-- Reason: strictGate=migration-evidence-freshness generatedAt is 46.7h old; limit=24h
+- Reason: strictGate=migration-evidence-freshness generatedAt is 57.7h old; limit=24h
 - Executable commands:
   - `DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs`
   - `node scripts/ddd-migration-evidence.mjs`

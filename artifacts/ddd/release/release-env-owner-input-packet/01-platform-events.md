@@ -1,7 +1,7 @@
 # DDD Release Env Owner Input Packet: platform-events
 
 Concrete values are intentionally omitted from this artifact.
-Generated at: 2026-06-18T19:37:26.213Z
+Generated at: 2026-06-19T06:54:03.604Z
 Status: NOT_READY
 Inputs: 9
 Secret inputs: 3

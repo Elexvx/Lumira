@@ -1,6 +1,6 @@
 # DDD Release Readiness Summary
 
-Generated at: 2026-06-18T19:37:26.213Z
+Generated at: 2026-06-19T06:54:03.604Z
 Status: NOT_READY
 Release gate mode: strict
 Release gate blockers: 94
@@ -656,14 +656,14 @@ Release gate warnings: 8
 - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.https must be true for strict release evidence
 - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.localOnly must be false for strict release evidence
 - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.deploymentEvidence is required
-- [runtime-freshness] runtime-readiness-freshness: checkedAt is 61.2h old; limit=24h
+- [runtime-freshness] runtime-readiness-freshness: checkedAt is 72.3h old; limit=24h
 - [production-equivalent-runtime] runtime-readiness-production-equivalence: strict runtime readiness deploymentEvidence is required
 - [production-equivalent-runtime] runtime-readiness-environment-strict: strict release requires production-equivalent non-local evidence
 - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.strict must be true for strict release evidence
 - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.https must be true for strict release evidence
 - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence
 - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.deploymentEvidence is required
-- [performance-freshness] authenticated-performance-freshness: checkedAt is 46.8h old; limit=24h
+- [performance-freshness] authenticated-performance-freshness: checkedAt is 57.8h old; limit=24h
 - [production-equivalent-runtime] authenticated-performance-production-equivalence: strict authenticated performance actual deploymentEvidence is required
 - [production-equivalent-runtime] authenticated-performance-environment-strict: strict release requires production-equivalent non-local evidence
 - [performance-baseline] authenticated-performance-baseline-environment: strict release requires a non-local baseline baseUrl, got http://127.0.0.1:8080
@@ -673,7 +673,7 @@ Release gate warnings: 8
 - [performance-baseline] authenticated-performance-baseline-metadata: sourceArtifact is required
 - [performance-baseline] authenticated-performance-baseline-metadata: sourceSha256 must be a SHA-256 hex digest
 - [performance-baseline] authenticated-performance-baseline-strict: strict release requires authenticated performance baseline comparison
-- [business-e2e-freshness] file-processing-freshness: finishedAt is 120.7h old; limit=24h
+- [business-e2e-freshness] file-processing-freshness: finishedAt is 131.7h old; limit=24h
 - [production-equivalent-runtime] file-processing-production-equivalence: strict file processing E2E requires HTTPS baseUrl evidence
 - [production-equivalent-runtime] file-processing-production-equivalence: strict file processing E2E deploymentEvidence is required
 - [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.https must be true for strict release evidence
@@ -681,7 +681,7 @@ Release gate warnings: 8
 - [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.deploymentEvidence is required
 - [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.issues must be empty for strict release evidence
 - [production-equivalent-runtime] file-processing-environment-strict: strict release requires production-equivalent non-local evidence
-- [business-e2e-freshness] payment-webhook-freshness: finishedAt is 120.6h old; limit=24h
+- [business-e2e-freshness] payment-webhook-freshness: finishedAt is 131.6h old; limit=24h
 - [production-equivalent-runtime] payment-webhook-production-equivalence: strict payment webhook E2E requires HTTPS baseUrl evidence
 - [production-equivalent-runtime] payment-webhook-production-equivalence: strict payment webhook E2E deploymentEvidence is required
 - [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.https must be true for strict release evidence
@@ -689,8 +689,8 @@ Release gate warnings: 8
 - [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.deploymentEvidence is required
 - [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.issues must be empty for strict release evidence
 - [production-equivalent-runtime] payment-webhook-environment-strict: strict release requires production-equivalent non-local evidence
-- [outbox-state-machine] outbox-replay-dead-letter-freshness: generatedAt is 80.6h old; limit=24h
-- [business-e2e-freshness] job-e2e-freshness: checkedAt is 120.4h old; limit=24h
+- [outbox-state-machine] outbox-replay-dead-letter-freshness: generatedAt is 91.7h old; limit=24h
+- [business-e2e-freshness] job-e2e-freshness: checkedAt is 131.4h old; limit=24h
 - [production-equivalent-runtime] job-e2e-production-equivalence: strict job E2E requires HTTPS baseUrl evidence
 - [production-equivalent-runtime] job-e2e-production-equivalence: strict job E2E deploymentEvidence is required
 - [production-equivalent-runtime] job-e2e-smoke: job E2E productionEquivalence.https must be true for strict release evidence
@@ -702,25 +702,25 @@ Release gate warnings: 8
 - [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.https must be true for strict release evidence
 - [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.localOnly must be false for strict release evidence
 - [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.deploymentEvidence is required
-- [ai-runtime] ai-runtime-freshness: checkedAt is 46.8h old; limit=24h
+- [ai-runtime] ai-runtime-freshness: checkedAt is 57.8h old; limit=24h
 - [ai-runtime] ai-runtime-production-equivalence: strict AI runtime drill deploymentEvidence is required
 - [ai-runtime] ai-runtime-environment-strict: strict release requires production-equivalent non-local evidence
 - [ai-runtime] ai-runtime-drill-provider: strict release requires DDD_AI_EXPECT_PROVIDER_REMOTE=true evidence
 - [ai-runtime] ai-runtime-drill-owner-gateway: strict release requires DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true evidence
-- [other] physical-split-readiness-freshness: generatedAt is 46.7h old; limit=24h
-- [other] backend-test-evidence-freshness: generatedAt is 46.7h old; limit=24h
-- [other] backend-build-evidence-freshness: generatedAt is 46.7h old; limit=24h
-- [docker] docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h
+- [other] physical-split-readiness-freshness: generatedAt is 57.7h old; limit=24h
+- [other] backend-test-evidence-freshness: generatedAt is 57.7h old; limit=24h
+- [other] backend-build-evidence-freshness: generatedAt is 57.7h old; limit=24h
+- [docker] docker-build-evidence-freshness: generatedAt is 56.9h old; limit=24h
 - [docker] docker-build-evidence: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1
 - [docker] docker-build-evidence: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1
-- [migration] migration-evidence-freshness: generatedAt is 46.7h old; limit=24h
-- [configuration] release-env-lint-freshness: generatedAt is 37.8h old; limit=24h
+- [migration] migration-evidence-freshness: generatedAt is 57.7h old; limit=24h
+- [configuration] release-env-lint-freshness: generatedAt is 48.9h old; limit=24h
 - [configuration] release-env-lint: status=FAIL, blockers=156
 - [configuration] release-env-lint-placeholders: unresolvedTemplateKeys=93
 - [configuration] release-env-lint-config: releaseConfigBlockers=63
-- [configuration] release-config-evidence-freshness: generatedAt is 37.1h old; limit=24h
+- [configuration] release-config-evidence-freshness: generatedAt is 48.2h old; limit=24h
 - [configuration] release-config-evidence: status=FAIL, blockers=63
-- [orchestrator] release-evidence-orchestrator-freshness: generatedAt is 46.1h old; limit=24h
+- [orchestrator] release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h
 - [production-equivalent-runtime] release-evidence-orchestrator-preflight-backend-runtime-base-url: missing backend runtime base URL
 - [ai-runtime] release-evidence-orchestrator-preflight-ai-runtime-base-url: missing AI runtime base URL
 - [frontend-smoke] release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
@@ -731,9 +731,9 @@ Release gate warnings: 8
 - [manifest-provenance] release-evidence-manifest-provenance: manifest provenance evidenceOperator is required
 - [manifest] release-evidence-manifest: manifest blockers length mismatch: declared=1, actual=4
 - [manifest] release-evidence-manifest: missing EXPLAIN files in evidence manifest
-- [other] frontend-build-evidence-freshness: generatedAt is 80.8h old; limit=24h
-- [other] frontend-static-evidence-freshness: generatedAt is 80.8h old; limit=24h
-- [frontend-smoke] frontend-smoke-freshness: generatedAt is 46.8h old; limit=24h
+- [other] frontend-build-evidence-freshness: generatedAt is 91.8h old; limit=24h
+- [other] frontend-static-evidence-freshness: generatedAt is 91.8h old; limit=24h
+- [frontend-smoke] frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h
 - [frontend-smoke] frontend-smoke-production-equivalence: strict frontend smoke deploymentEvidence is required
 - [frontend-smoke] frontend-smoke-environment-strict: strict release requires production-equivalent non-local evidence
 - [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.strict must be true for strict release evidence
@@ -744,5 +744,5 @@ Release gate warnings: 8
 - [frontend-smoke] frontend-smoke-environment: strict release requires HTTPS frontend baseURL evidence
 - [frontend-smoke] frontend-smoke-environment: artifact is local-only: http://127.0.0.1:8000
 - [frontend-smoke] frontend-smoke: frontend smoke blockers length mismatch: declared=0, actual=7
-- [rollback-drill] rollback-drill-freshness: generatedAt is 61.2h old; limit=24h
+- [rollback-drill] rollback-drill-freshness: generatedAt is 72.2h old; limit=24h
 - [explain-plan] explain-evidence-strict: strict release requires production-scale EXPLAIN artifacts

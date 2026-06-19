@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-06-18T19:37:45.445Z",
+  "generatedAt": "2026-06-19T06:54:09.853Z",
   "status": "PASS",
   "redacted": true,
   "contract": "ddd-release-config-owner-input-reconciliation",
-  "configArtifact": "artifacts\\ddd\\config\\release-config-evidence.json",
-  "ownerInputPacket": "artifacts\\ddd\\release\\release-env-owner-input-packet.json",
+  "configArtifact": "artifacts/ddd/config/release-config-evidence.json",
+  "ownerInputPacket": "artifacts/ddd/release/release-env-owner-input-packet.json",
   "summary": {
     "configPlaceholderBlockers": 63,
     "uniqueConfigPlaceholderKeys": 34,

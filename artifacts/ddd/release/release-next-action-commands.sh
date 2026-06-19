@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD release next-action commands.
-# Generated at: 2026-06-18T19:37:26.213Z
+# Generated at: 2026-06-19T06:54:03.604Z
 # Status: NOT_READY
 # Release gate blockers: 94
 # Default mode lists RUN_NOW items. Set DDD_RELEASE_NEXT_ACTION_EXECUTE=1 to execute commands.
@@ -232,7 +232,7 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL}" == "1" || "${DDD_RELEASE_NEXT_ACTION_D
     echo 'owner=release-owner'
     echo 'receiptStatus=CONTENT_BLOCKED'
     echo 'next=Inspect the strict release gate blocker and attach an owner-specific remediation.'
-    echo 'reason=strictGate=physical-split-readiness-freshness generatedAt is 46.7h old; limit=24h'
+    echo 'reason=strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h'
     echo 'readyBatches=p0-manifest-release-owner'
     echo 'blockedBatches=p3-orchestrator-release-owner'
     echo 'missingArtifacts=none'
@@ -250,7 +250,7 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL}" == "1" || "${DDD_RELEASE_NEXT_ACTION_D
     echo 'owner=payment-owner'
     echo 'receiptStatus=CONTENT_BLOCKED'
     echo 'next=Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.'
-    echo 'reason=strictGate=payment-webhook-freshness finishedAt is 120.6h old; limit=24h'
+    echo 'reason=strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h'
     echo 'readyBatches=p0-release-config-payment-owner'
     echo 'blockedBatches=p1-business-e2e-payment-owner;p1-rollback-payment-owner'
     echo 'missingArtifacts=none'
@@ -268,7 +268,7 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL}" == "1" || "${DDD_RELEASE_NEXT_ACTION_D
     echo 'owner=platform-events'
     echo 'receiptStatus=CONTENT_BLOCKED'
     echo 'next=Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.'
-    echo 'reason=strictGate=outbox-replay-dead-letter-freshness generatedAt is 80.6h old; limit=24h'
+    echo 'reason=strictGate=outbox-replay-dead-letter-freshness generatedAt is 91.7h old; limit=24h'
     echo 'readyBatches=p0-release-config-platform-events'
     echo 'blockedBatches=none'
     echo 'missingArtifacts=none'
@@ -390,7 +390,7 @@ fi
 maybe_run_next_action '3' 'release-owner' 'CONTENT_BLOCKED' 'Inspect the strict release gate blocker and attach an owner-specific remediation.'
 if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-owner' ) ]]; then
 # -----
-# Reason: strictGate=physical-split-readiness-freshness generatedAt is 46.7h old; limit=24h
+# Reason: strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h
   run_next_action_command '3' 'release-owner' 'CONTENT_BLOCKED' 'node scripts/ddd-release-evidence-orchestrator.mjs'
   run_next_action_command '3' 'release-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
   run_next_action_command '3' 'release-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
@@ -401,7 +401,7 @@ fi
 maybe_run_next_action '4' 'payment-owner' 'CONTENT_BLOCKED' 'Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.'
 if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '4' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'payment-owner' ) ]]; then
 # -----
-# Reason: strictGate=payment-webhook-freshness finishedAt is 120.6h old; limit=24h
+# Reason: strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h
   run_next_action_command '4' 'payment-owner' 'CONTENT_BLOCKED' 'node scripts/ddd-release-config-evidence.mjs'
   run_next_action_command '4' 'payment-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
   run_next_action_command '4' 'payment-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
@@ -412,7 +412,7 @@ fi
 maybe_run_next_action '5' 'platform-events' 'CONTENT_BLOCKED' 'Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.'
 if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '5' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'platform-events' ) ]]; then
 # -----
-# Reason: strictGate=outbox-replay-dead-letter-freshness generatedAt is 80.6h old; limit=24h
+# Reason: strictGate=outbox-replay-dead-letter-freshness generatedAt is 91.7h old; limit=24h
   run_next_action_command '5' 'platform-events' 'CONTENT_BLOCKED' 'DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs'
   run_next_action_command '5' 'platform-events' 'CONTENT_BLOCKED' 'node scripts/ddd-release-config-evidence.mjs'
   run_next_action_command '5' 'platform-events' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'

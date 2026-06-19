@@ -1,6 +1,6 @@
 # DDD Release Blocker Map
 
-Generated at: 2026-06-18T19:37:26.213Z
+Generated at: 2026-06-19T06:54:03.604Z
 Status: NOT_READY
 Release gate mode: strict
 Release gate blockers: 94
@@ -32,7 +32,7 @@ Total blockers: 94
   - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.https must be true for strict release evidence
   - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.localOnly must be false for strict release evidence
   - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.deploymentEvidence is required
-  - [runtime-freshness] runtime-readiness-freshness: checkedAt is 61.2h old; limit=24h
+  - [runtime-freshness] runtime-readiness-freshness: checkedAt is 72.3h old; limit=24h
 
 ### release-owner
 
@@ -52,10 +52,10 @@ Total blockers: 94
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
-  - [other] physical-split-readiness-freshness: generatedAt is 46.7h old; limit=24h
-  - [other] backend-test-evidence-freshness: generatedAt is 46.7h old; limit=24h
-  - [other] backend-build-evidence-freshness: generatedAt is 46.7h old; limit=24h
-  - [orchestrator] release-evidence-orchestrator-freshness: generatedAt is 46.1h old; limit=24h
+  - [other] physical-split-readiness-freshness: generatedAt is 57.7h old; limit=24h
+  - [other] backend-test-evidence-freshness: generatedAt is 57.7h old; limit=24h
+  - [other] backend-build-evidence-freshness: generatedAt is 57.7h old; limit=24h
+  - [orchestrator] release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h
   - [orchestrator] release-evidence-orchestrator: strict release requires run mode report, got plan
 
 ### release-performance
@@ -76,7 +76,7 @@ Total blockers: 94
   - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.https must be true for strict release evidence
   - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence
   - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.deploymentEvidence is required
-  - [performance-freshness] authenticated-performance-freshness: checkedAt is 46.8h old; limit=24h
+  - [performance-freshness] authenticated-performance-freshness: checkedAt is 57.8h old; limit=24h
 
 ### frontend
 
@@ -97,7 +97,7 @@ Total blockers: 94
   - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
   - [frontend-smoke] release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
-  - [frontend-smoke] frontend-smoke-freshness: generatedAt is 46.8h old; limit=24h
+  - [frontend-smoke] frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h
   - [frontend-smoke] frontend-smoke-production-equivalence: strict frontend smoke deploymentEvidence is required
   - [frontend-smoke] frontend-smoke-environment-strict: strict release requires production-equivalent non-local evidence
   - [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.strict must be true for strict release evidence
@@ -117,7 +117,7 @@ Total blockers: 94
   - [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.https must be true for strict release evidence
   - [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.localOnly must be false for strict release evidence
   - [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.deploymentEvidence is required
-  - [ai-runtime] ai-runtime-freshness: checkedAt is 46.8h old; limit=24h
+  - [ai-runtime] ai-runtime-freshness: checkedAt is 57.8h old; limit=24h
 
 ### file-owner
 
@@ -134,7 +134,7 @@ Total blockers: 94
   - `artifacts/ddd/file/file-processing-e2e.json`
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Sample blockers:
-  - [business-e2e-freshness] file-processing-freshness: finishedAt is 120.7h old; limit=24h
+  - [business-e2e-freshness] file-processing-freshness: finishedAt is 131.7h old; limit=24h
   - [production-equivalent-runtime] file-processing-production-equivalence: strict file processing E2E requires HTTPS baseUrl evidence
   - [production-equivalent-runtime] file-processing-production-equivalence: strict file processing E2E deploymentEvidence is required
   - [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.https must be true for strict release evidence
@@ -155,7 +155,7 @@ Total blockers: 94
   - `artifacts/ddd/jobs/job-e2e-smoke.json`
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Sample blockers:
-  - [business-e2e-freshness] job-e2e-freshness: checkedAt is 120.4h old; limit=24h
+  - [business-e2e-freshness] job-e2e-freshness: checkedAt is 131.4h old; limit=24h
   - [production-equivalent-runtime] job-e2e-production-equivalence: strict job E2E requires HTTPS baseUrl evidence
   - [production-equivalent-runtime] job-e2e-production-equivalence: strict job E2E deploymentEvidence is required
   - [production-equivalent-runtime] job-e2e-smoke: job E2E productionEquivalence.https must be true for strict release evidence
@@ -178,7 +178,7 @@ Total blockers: 94
   - `artifacts/ddd/payment/payment-webhook-e2e.json`
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Sample blockers:
-  - [business-e2e-freshness] payment-webhook-freshness: finishedAt is 120.6h old; limit=24h
+  - [business-e2e-freshness] payment-webhook-freshness: finishedAt is 131.6h old; limit=24h
   - [production-equivalent-runtime] payment-webhook-production-equivalence: strict payment webhook E2E requires HTTPS baseUrl evidence
   - [production-equivalent-runtime] payment-webhook-production-equivalence: strict payment webhook E2E deploymentEvidence is required
   - [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.https must be true for strict release evidence
@@ -202,7 +202,7 @@ Total blockers: 94
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
-  - [migration] migration-evidence-freshness: generatedAt is 46.7h old; limit=24h
+  - [migration] migration-evidence-freshness: generatedAt is 57.7h old; limit=24h
   - [migration] release-evidence-orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
   - [explain-plan] explain-evidence-strict: strict release requires production-scale EXPLAIN artifacts
 
@@ -217,7 +217,7 @@ Total blockers: 94
 - Expected artifacts:
   - `artifacts/ddd/config/release-config-evidence.json`
 - Sample blockers:
-  - [outbox-state-machine] outbox-replay-dead-letter-freshness: generatedAt is 80.6h old; limit=24h
+  - [outbox-state-machine] outbox-replay-dead-letter-freshness: generatedAt is 91.7h old; limit=24h
 
 ## Categories
 
@@ -279,7 +279,7 @@ Total blockers: 94
   - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
   - [frontend] release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
-  - [frontend] frontend-smoke-freshness: generatedAt is 46.8h old; limit=24h
+  - [frontend] frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h
   - [frontend] frontend-smoke-production-equivalence: strict frontend smoke deploymentEvidence is required
   - [frontend] frontend-smoke-environment-strict: strict release requires production-equivalent non-local evidence
   - [frontend] frontend-smoke-environment: frontend smoke productionEquivalence.strict must be true for strict release evidence
@@ -299,7 +299,7 @@ Total blockers: 94
   - [ai] ai-runtime-drill: AI runtime productionEquivalence.https must be true for strict release evidence
   - [ai] ai-runtime-drill: AI runtime productionEquivalence.localOnly must be false for strict release evidence
   - [ai] ai-runtime-drill: AI runtime productionEquivalence.deploymentEvidence is required
-  - [ai] ai-runtime-freshness: checkedAt is 46.8h old; limit=24h
+  - [ai] ai-runtime-freshness: checkedAt is 57.8h old; limit=24h
 
 ### performance-baseline
 
@@ -339,11 +339,11 @@ Total blockers: 94
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
 - Sample blockers:
-  - [release-infra] release-env-lint-freshness: generatedAt is 37.8h old; limit=24h
+  - [release-infra] release-env-lint-freshness: generatedAt is 48.9h old; limit=24h
   - [release-infra] release-env-lint: status=FAIL, blockers=156
   - [release-infra] release-env-lint-placeholders: unresolvedTemplateKeys=93
   - [release-infra] release-env-lint-config: releaseConfigBlockers=63
-  - [release-infra] release-config-evidence-freshness: generatedAt is 37.1h old; limit=24h
+  - [release-infra] release-config-evidence-freshness: generatedAt is 48.2h old; limit=24h
 
 ### other
 
@@ -363,11 +363,11 @@ Total blockers: 94
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
-  - [release-owner] physical-split-readiness-freshness: generatedAt is 46.7h old; limit=24h
-  - [release-owner] backend-test-evidence-freshness: generatedAt is 46.7h old; limit=24h
-  - [release-owner] backend-build-evidence-freshness: generatedAt is 46.7h old; limit=24h
-  - [release-owner] frontend-build-evidence-freshness: generatedAt is 80.8h old; limit=24h
-  - [release-owner] frontend-static-evidence-freshness: generatedAt is 80.8h old; limit=24h
+  - [release-owner] physical-split-readiness-freshness: generatedAt is 57.7h old; limit=24h
+  - [release-owner] backend-test-evidence-freshness: generatedAt is 57.7h old; limit=24h
+  - [release-owner] backend-build-evidence-freshness: generatedAt is 57.7h old; limit=24h
+  - [release-owner] frontend-build-evidence-freshness: generatedAt is 91.8h old; limit=24h
+  - [release-owner] frontend-static-evidence-freshness: generatedAt is 91.8h old; limit=24h
 
 ### business-e2e-freshness
 
@@ -390,9 +390,9 @@ Total blockers: 94
   - `artifacts/ddd/payment/payment-webhook-e2e.json`
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Sample blockers:
-  - [file-owner] file-processing-freshness: finishedAt is 120.7h old; limit=24h
-  - [payment-owner] payment-webhook-freshness: finishedAt is 120.6h old; limit=24h
-  - [job-owner] job-e2e-freshness: checkedAt is 120.4h old; limit=24h
+  - [file-owner] file-processing-freshness: finishedAt is 131.7h old; limit=24h
+  - [payment-owner] payment-webhook-freshness: finishedAt is 131.6h old; limit=24h
+  - [job-owner] job-e2e-freshness: checkedAt is 131.4h old; limit=24h
 
 ### docker
 
@@ -412,7 +412,7 @@ Total blockers: 94
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
 - Sample blockers:
-  - [release-infra] docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h
+  - [release-infra] docker-build-evidence-freshness: generatedAt is 56.9h old; limit=24h
   - [release-infra] docker-build-evidence: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1
   - [release-infra] docker-build-evidence: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1
 
@@ -477,7 +477,7 @@ Total blockers: 94
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
-  - [database] migration-evidence-freshness: generatedAt is 46.7h old; limit=24h
+  - [database] migration-evidence-freshness: generatedAt is 57.7h old; limit=24h
   - [database] release-evidence-orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
 
 ### orchestrator
@@ -498,7 +498,7 @@ Total blockers: 94
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
-  - [release-owner] release-evidence-orchestrator-freshness: generatedAt is 46.1h old; limit=24h
+  - [release-owner] release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h
   - [release-owner] release-evidence-orchestrator: strict release requires run mode report, got plan
 
 ### explain-plan
@@ -532,7 +532,7 @@ Total blockers: 94
 - Expected artifacts:
   - `artifacts/ddd/config/release-config-evidence.json`
 - Sample blockers:
-  - [platform-events] outbox-replay-dead-letter-freshness: generatedAt is 80.6h old; limit=24h
+  - [platform-events] outbox-replay-dead-letter-freshness: generatedAt is 91.7h old; limit=24h
 
 ### performance-freshness
 
@@ -548,7 +548,7 @@ Total blockers: 94
   - `artifacts/ddd/performance/authenticated-runtime-baseline.json`
   - `artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json`
 - Sample blockers:
-  - [release-performance] authenticated-performance-freshness: checkedAt is 46.8h old; limit=24h
+  - [release-performance] authenticated-performance-freshness: checkedAt is 57.8h old; limit=24h
 
 ### rollback-drill
 
@@ -568,7 +568,7 @@ Total blockers: 94
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
-  - [release-owner] rollback-drill-freshness: generatedAt is 61.2h old; limit=24h
+  - [release-owner] rollback-drill-freshness: generatedAt is 72.2h old; limit=24h
 
 ### runtime-freshness
 
@@ -588,5 +588,5 @@ Total blockers: 94
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
 - Sample blockers:
-  - [release-infra] runtime-readiness-freshness: checkedAt is 61.2h old; limit=24h
+  - [release-infra] runtime-readiness-freshness: checkedAt is 72.3h old; limit=24h
 

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "generatedAt": "2026-06-19T06:54:03.604Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -8,8 +8,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-18T19:37:02.450Z",
-      "generatedAt": "2026-06-18T19:37:02.443Z",
+      "modifiedAt": "2026-06-19T06:37:35.118Z",
+      "generatedAt": "2026-06-19T06:37:35.112Z",
       "status": null,
       "blockers": 94,
       "warnings": 8
@@ -20,8 +20,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-18T19:37:24.118Z",
-      "generatedAt": "2026-06-18T19:37:24.111Z",
+      "modifiedAt": "2026-06-19T06:38:14.272Z",
+      "generatedAt": "2026-06-19T06:38:14.269Z",
       "status": "FAIL",
       "blockers": 1,
       "warnings": null
@@ -6336,9 +6336,9 @@
           "structured": true
         },
         {
-          "blocker": "runtime-readiness-freshness: checkedAt is 61.2h old; limit=24h",
+          "blocker": "runtime-readiness-freshness: checkedAt is 72.3h old; limit=24h",
           "check": "runtime-readiness-freshness",
-          "detail": "checkedAt is 61.2h old; limit=24h",
+          "detail": "checkedAt is 72.3h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6385,9 +6385,9 @@
           "structured": true
         },
         {
-          "blocker": "authenticated-performance-freshness: checkedAt is 46.8h old; limit=24h",
+          "blocker": "authenticated-performance-freshness: checkedAt is 57.8h old; limit=24h",
           "check": "authenticated-performance-freshness",
-          "detail": "checkedAt is 46.8h old; limit=24h",
+          "detail": "checkedAt is 57.8h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6455,9 +6455,9 @@
           "structured": true
         },
         {
-          "blocker": "file-processing-freshness: finishedAt is 120.7h old; limit=24h",
+          "blocker": "file-processing-freshness: finishedAt is 131.7h old; limit=24h",
           "check": "file-processing-freshness",
-          "detail": "finishedAt is 120.7h old; limit=24h",
+          "detail": "finishedAt is 131.7h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6511,9 +6511,9 @@
           "structured": true
         },
         {
-          "blocker": "payment-webhook-freshness: finishedAt is 120.6h old; limit=24h",
+          "blocker": "payment-webhook-freshness: finishedAt is 131.6h old; limit=24h",
           "check": "payment-webhook-freshness",
-          "detail": "finishedAt is 120.6h old; limit=24h",
+          "detail": "finishedAt is 131.6h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6567,16 +6567,16 @@
           "structured": true
         },
         {
-          "blocker": "outbox-replay-dead-letter-freshness: generatedAt is 80.6h old; limit=24h",
+          "blocker": "outbox-replay-dead-letter-freshness: generatedAt is 91.7h old; limit=24h",
           "check": "outbox-replay-dead-letter-freshness",
-          "detail": "generatedAt is 80.6h old; limit=24h",
+          "detail": "generatedAt is 91.7h old; limit=24h",
           "file": null,
           "structured": true
         },
         {
-          "blocker": "job-e2e-freshness: checkedAt is 120.4h old; limit=24h",
+          "blocker": "job-e2e-freshness: checkedAt is 131.4h old; limit=24h",
           "check": "job-e2e-freshness",
-          "detail": "checkedAt is 120.4h old; limit=24h",
+          "detail": "checkedAt is 131.4h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6658,9 +6658,9 @@
           "structured": true
         },
         {
-          "blocker": "ai-runtime-freshness: checkedAt is 46.8h old; limit=24h",
+          "blocker": "ai-runtime-freshness: checkedAt is 57.8h old; limit=24h",
           "check": "ai-runtime-freshness",
-          "detail": "checkedAt is 46.8h old; limit=24h",
+          "detail": "checkedAt is 57.8h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6693,30 +6693,30 @@
           "structured": true
         },
         {
-          "blocker": "physical-split-readiness-freshness: generatedAt is 46.7h old; limit=24h",
+          "blocker": "physical-split-readiness-freshness: generatedAt is 57.7h old; limit=24h",
           "check": "physical-split-readiness-freshness",
-          "detail": "generatedAt is 46.7h old; limit=24h",
+          "detail": "generatedAt is 57.7h old; limit=24h",
           "file": null,
           "structured": true
         },
         {
-          "blocker": "backend-test-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+          "blocker": "backend-test-evidence-freshness: generatedAt is 57.7h old; limit=24h",
           "check": "backend-test-evidence-freshness",
-          "detail": "generatedAt is 46.7h old; limit=24h",
+          "detail": "generatedAt is 57.7h old; limit=24h",
           "file": null,
           "structured": true
         },
         {
-          "blocker": "backend-build-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+          "blocker": "backend-build-evidence-freshness: generatedAt is 57.7h old; limit=24h",
           "check": "backend-build-evidence-freshness",
-          "detail": "generatedAt is 46.7h old; limit=24h",
+          "detail": "generatedAt is 57.7h old; limit=24h",
           "file": null,
           "structured": true
         },
         {
-          "blocker": "docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h",
+          "blocker": "docker-build-evidence-freshness: generatedAt is 56.9h old; limit=24h",
           "check": "docker-build-evidence-freshness",
-          "detail": "generatedAt is 45.9h old; limit=24h",
+          "detail": "generatedAt is 56.9h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6735,16 +6735,16 @@
           "structured": true
         },
         {
-          "blocker": "migration-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+          "blocker": "migration-evidence-freshness: generatedAt is 57.7h old; limit=24h",
           "check": "migration-evidence-freshness",
-          "detail": "generatedAt is 46.7h old; limit=24h",
+          "detail": "generatedAt is 57.7h old; limit=24h",
           "file": null,
           "structured": true
         },
         {
-          "blocker": "release-env-lint-freshness: generatedAt is 37.8h old; limit=24h",
+          "blocker": "release-env-lint-freshness: generatedAt is 48.9h old; limit=24h",
           "check": "release-env-lint-freshness",
-          "detail": "generatedAt is 37.8h old; limit=24h",
+          "detail": "generatedAt is 48.9h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6770,9 +6770,9 @@
           "structured": true
         },
         {
-          "blocker": "release-config-evidence-freshness: generatedAt is 37.1h old; limit=24h",
+          "blocker": "release-config-evidence-freshness: generatedAt is 48.2h old; limit=24h",
           "check": "release-config-evidence-freshness",
-          "detail": "generatedAt is 37.1h old; limit=24h",
+          "detail": "generatedAt is 48.2h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6784,9 +6784,9 @@
           "structured": true
         },
         {
-          "blocker": "release-evidence-orchestrator-freshness: generatedAt is 46.1h old; limit=24h",
+          "blocker": "release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h",
           "check": "release-evidence-orchestrator-freshness",
-          "detail": "generatedAt is 46.1h old; limit=24h",
+          "detail": "generatedAt is 57.1h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6861,23 +6861,23 @@
           "structured": true
         },
         {
-          "blocker": "frontend-build-evidence-freshness: generatedAt is 80.8h old; limit=24h",
+          "blocker": "frontend-build-evidence-freshness: generatedAt is 91.8h old; limit=24h",
           "check": "frontend-build-evidence-freshness",
-          "detail": "generatedAt is 80.8h old; limit=24h",
+          "detail": "generatedAt is 91.8h old; limit=24h",
           "file": null,
           "structured": true
         },
         {
-          "blocker": "frontend-static-evidence-freshness: generatedAt is 80.8h old; limit=24h",
+          "blocker": "frontend-static-evidence-freshness: generatedAt is 91.8h old; limit=24h",
           "check": "frontend-static-evidence-freshness",
-          "detail": "generatedAt is 80.8h old; limit=24h",
+          "detail": "generatedAt is 91.8h old; limit=24h",
           "file": null,
           "structured": true
         },
         {
-          "blocker": "frontend-smoke-freshness: generatedAt is 46.8h old; limit=24h",
+          "blocker": "frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h",
           "check": "frontend-smoke-freshness",
-          "detail": "generatedAt is 46.8h old; limit=24h",
+          "detail": "generatedAt is 57.8h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -6952,9 +6952,9 @@
           "structured": true
         },
         {
-          "blocker": "rollback-drill-freshness: generatedAt is 61.2h old; limit=24h",
+          "blocker": "rollback-drill-freshness: generatedAt is 72.2h old; limit=24h",
           "check": "rollback-drill-freshness",
-          "detail": "generatedAt is 61.2h old; limit=24h",
+          "detail": "generatedAt is 72.2h old; limit=24h",
           "file": null,
           "structured": true
         },
@@ -8709,9 +8709,9 @@
       "action": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence."
     },
     {
-      "blocker": "runtime-readiness-freshness: checkedAt is 61.2h old; limit=24h",
+      "blocker": "runtime-readiness-freshness: checkedAt is 72.3h old; limit=24h",
       "check": "runtime-readiness-freshness",
-      "detail": "checkedAt is 61.2h old; limit=24h",
+      "detail": "checkedAt is 72.3h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "runtime-freshness",
@@ -8779,9 +8779,9 @@
       "action": "Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion."
     },
     {
-      "blocker": "authenticated-performance-freshness: checkedAt is 46.8h old; limit=24h",
+      "blocker": "authenticated-performance-freshness: checkedAt is 57.8h old; limit=24h",
       "check": "authenticated-performance-freshness",
-      "detail": "checkedAt is 46.8h old; limit=24h",
+      "detail": "checkedAt is 57.8h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "performance-freshness",
@@ -8879,9 +8879,9 @@
       "action": "Run authenticated performance smoke against production-equivalent URL, then promote the accepted actual with `scripts/ddd-promote-performance-baseline.mjs`."
     },
     {
-      "blocker": "file-processing-freshness: finishedAt is 120.7h old; limit=24h",
+      "blocker": "file-processing-freshness: finishedAt is 131.7h old; limit=24h",
       "check": "file-processing-freshness",
-      "detail": "finishedAt is 120.7h old; limit=24h",
+      "detail": "finishedAt is 131.7h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "business-e2e-freshness",
@@ -8959,9 +8959,9 @@
       "action": "Regenerate the runtime artifact against an HTTPS non-local production-equivalent URL."
     },
     {
-      "blocker": "payment-webhook-freshness: finishedAt is 120.6h old; limit=24h",
+      "blocker": "payment-webhook-freshness: finishedAt is 131.6h old; limit=24h",
       "check": "payment-webhook-freshness",
-      "detail": "finishedAt is 120.6h old; limit=24h",
+      "detail": "finishedAt is 131.6h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "business-e2e-freshness",
@@ -9039,9 +9039,9 @@
       "action": "Regenerate the runtime artifact against an HTTPS non-local production-equivalent URL."
     },
     {
-      "blocker": "outbox-replay-dead-letter-freshness: generatedAt is 80.6h old; limit=24h",
+      "blocker": "outbox-replay-dead-letter-freshness: generatedAt is 91.7h old; limit=24h",
       "check": "outbox-replay-dead-letter-freshness",
-      "detail": "generatedAt is 80.6h old; limit=24h",
+      "detail": "generatedAt is 91.7h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "outbox-state-machine",
@@ -9049,9 +9049,9 @@
       "action": "Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors."
     },
     {
-      "blocker": "job-e2e-freshness: checkedAt is 120.4h old; limit=24h",
+      "blocker": "job-e2e-freshness: checkedAt is 131.4h old; limit=24h",
       "check": "job-e2e-freshness",
-      "detail": "checkedAt is 120.4h old; limit=24h",
+      "detail": "checkedAt is 131.4h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "business-e2e-freshness",
@@ -9169,9 +9169,9 @@
       "action": "Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node scripts/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime."
     },
     {
-      "blocker": "ai-runtime-freshness: checkedAt is 46.8h old; limit=24h",
+      "blocker": "ai-runtime-freshness: checkedAt is 57.8h old; limit=24h",
       "check": "ai-runtime-freshness",
-      "detail": "checkedAt is 46.8h old; limit=24h",
+      "detail": "checkedAt is 57.8h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "ai-runtime",
@@ -9219,9 +9219,9 @@
       "action": "Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node scripts/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime."
     },
     {
-      "blocker": "physical-split-readiness-freshness: generatedAt is 46.7h old; limit=24h",
+      "blocker": "physical-split-readiness-freshness: generatedAt is 57.7h old; limit=24h",
       "check": "physical-split-readiness-freshness",
-      "detail": "generatedAt is 46.7h old; limit=24h",
+      "detail": "generatedAt is 57.7h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "other",
@@ -9229,9 +9229,9 @@
       "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
     },
     {
-      "blocker": "backend-test-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+      "blocker": "backend-test-evidence-freshness: generatedAt is 57.7h old; limit=24h",
       "check": "backend-test-evidence-freshness",
-      "detail": "generatedAt is 46.7h old; limit=24h",
+      "detail": "generatedAt is 57.7h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "other",
@@ -9239,9 +9239,9 @@
       "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
     },
     {
-      "blocker": "backend-build-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+      "blocker": "backend-build-evidence-freshness: generatedAt is 57.7h old; limit=24h",
       "check": "backend-build-evidence-freshness",
-      "detail": "generatedAt is 46.7h old; limit=24h",
+      "detail": "generatedAt is 57.7h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "other",
@@ -9249,9 +9249,9 @@
       "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
     },
     {
-      "blocker": "docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h",
+      "blocker": "docker-build-evidence-freshness: generatedAt is 56.9h old; limit=24h",
       "check": "docker-build-evidence-freshness",
-      "detail": "generatedAt is 45.9h old; limit=24h",
+      "detail": "generatedAt is 56.9h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "docker",
@@ -9279,9 +9279,9 @@
       "action": "Start Docker daemon or run `node scripts/ddd-docker-build-evidence.mjs` in CI with Docker Buildx available."
     },
     {
-      "blocker": "migration-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+      "blocker": "migration-evidence-freshness: generatedAt is 57.7h old; limit=24h",
       "check": "migration-evidence-freshness",
-      "detail": "generatedAt is 46.7h old; limit=24h",
+      "detail": "generatedAt is 57.7h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "migration",
@@ -9289,9 +9289,9 @@
       "action": "Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags."
     },
     {
-      "blocker": "release-env-lint-freshness: generatedAt is 37.8h old; limit=24h",
+      "blocker": "release-env-lint-freshness: generatedAt is 48.9h old; limit=24h",
       "check": "release-env-lint-freshness",
-      "detail": "generatedAt is 37.8h old; limit=24h",
+      "detail": "generatedAt is 48.9h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "configuration",
@@ -9329,9 +9329,9 @@
       "action": "Replace all release env placeholders in `DDD_RELEASE_ENV_FILE`, run `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`, then regenerate config evidence with `node scripts/ddd-release-config-evidence.mjs`."
     },
     {
-      "blocker": "release-config-evidence-freshness: generatedAt is 37.1h old; limit=24h",
+      "blocker": "release-config-evidence-freshness: generatedAt is 48.2h old; limit=24h",
       "check": "release-config-evidence-freshness",
-      "detail": "generatedAt is 37.1h old; limit=24h",
+      "detail": "generatedAt is 48.2h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "configuration",
@@ -9349,9 +9349,9 @@
       "action": "Generate production-equivalent config evidence with `DDD_RELEASE_ENV_FILE=.env.release DDD_RELEASE_CONFIG_STRICT=true node scripts/ddd-release-config-evidence.mjs`."
     },
     {
-      "blocker": "release-evidence-orchestrator-freshness: generatedAt is 46.1h old; limit=24h",
+      "blocker": "release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h",
       "check": "release-evidence-orchestrator-freshness",
-      "detail": "generatedAt is 46.1h old; limit=24h",
+      "detail": "generatedAt is 57.1h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "orchestrator",
@@ -9459,9 +9459,9 @@
       "action": "Regenerate all missing evidence artifacts, then run `node scripts/ddd-release-evidence-manifest.mjs`."
     },
     {
-      "blocker": "frontend-build-evidence-freshness: generatedAt is 80.8h old; limit=24h",
+      "blocker": "frontend-build-evidence-freshness: generatedAt is 91.8h old; limit=24h",
       "check": "frontend-build-evidence-freshness",
-      "detail": "generatedAt is 80.8h old; limit=24h",
+      "detail": "generatedAt is 91.8h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "other",
@@ -9469,9 +9469,9 @@
       "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
     },
     {
-      "blocker": "frontend-static-evidence-freshness: generatedAt is 80.8h old; limit=24h",
+      "blocker": "frontend-static-evidence-freshness: generatedAt is 91.8h old; limit=24h",
       "check": "frontend-static-evidence-freshness",
-      "detail": "generatedAt is 80.8h old; limit=24h",
+      "detail": "generatedAt is 91.8h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "other",
@@ -9479,9 +9479,9 @@
       "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
     },
     {
-      "blocker": "frontend-smoke-freshness: generatedAt is 46.8h old; limit=24h",
+      "blocker": "frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h",
       "check": "frontend-smoke-freshness",
-      "detail": "generatedAt is 46.8h old; limit=24h",
+      "detail": "generatedAt is 57.8h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "frontend-smoke",
@@ -9589,9 +9589,9 @@
       "action": "Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node scripts/ddd-frontend-smoke-evidence.mjs`."
     },
     {
-      "blocker": "rollback-drill-freshness: generatedAt is 61.2h old; limit=24h",
+      "blocker": "rollback-drill-freshness: generatedAt is 72.2h old; limit=24h",
       "check": "rollback-drill-freshness",
-      "detail": "generatedAt is 61.2h old; limit=24h",
+      "detail": "generatedAt is 72.2h old; limit=24h",
       "file": null,
       "structured": true,
       "category": "rollback-drill",
@@ -9652,9 +9652,9 @@
         "action": "Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node scripts/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime."
       },
       {
-        "blocker": "ai-runtime-freshness: checkedAt is 46.8h old; limit=24h",
+        "blocker": "ai-runtime-freshness: checkedAt is 57.8h old; limit=24h",
         "check": "ai-runtime-freshness",
-        "detail": "checkedAt is 46.8h old; limit=24h",
+        "detail": "checkedAt is 57.8h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "ai-runtime",
@@ -9714,9 +9714,9 @@
     ],
     "business-e2e-freshness": [
       {
-        "blocker": "file-processing-freshness: finishedAt is 120.7h old; limit=24h",
+        "blocker": "file-processing-freshness: finishedAt is 131.7h old; limit=24h",
         "check": "file-processing-freshness",
-        "detail": "finishedAt is 120.7h old; limit=24h",
+        "detail": "finishedAt is 131.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "business-e2e-freshness",
@@ -9724,9 +9724,9 @@
         "action": "Regenerate File processing E2E evidence within the release freshness window against the production-equivalent environment."
       },
       {
-        "blocker": "payment-webhook-freshness: finishedAt is 120.6h old; limit=24h",
+        "blocker": "payment-webhook-freshness: finishedAt is 131.6h old; limit=24h",
         "check": "payment-webhook-freshness",
-        "detail": "finishedAt is 120.6h old; limit=24h",
+        "detail": "finishedAt is 131.6h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "business-e2e-freshness",
@@ -9734,9 +9734,9 @@
         "action": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment."
       },
       {
-        "blocker": "job-e2e-freshness: checkedAt is 120.4h old; limit=24h",
+        "blocker": "job-e2e-freshness: checkedAt is 131.4h old; limit=24h",
         "check": "job-e2e-freshness",
-        "detail": "checkedAt is 120.4h old; limit=24h",
+        "detail": "checkedAt is 131.4h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "business-e2e-freshness",
@@ -9746,9 +9746,9 @@
     ],
     "configuration": [
       {
-        "blocker": "release-env-lint-freshness: generatedAt is 37.8h old; limit=24h",
+        "blocker": "release-env-lint-freshness: generatedAt is 48.9h old; limit=24h",
         "check": "release-env-lint-freshness",
-        "detail": "generatedAt is 37.8h old; limit=24h",
+        "detail": "generatedAt is 48.9h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "configuration",
@@ -9786,9 +9786,9 @@
         "action": "Replace all release env placeholders in `DDD_RELEASE_ENV_FILE`, run `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`, then regenerate config evidence with `node scripts/ddd-release-config-evidence.mjs`."
       },
       {
-        "blocker": "release-config-evidence-freshness: generatedAt is 37.1h old; limit=24h",
+        "blocker": "release-config-evidence-freshness: generatedAt is 48.2h old; limit=24h",
         "check": "release-config-evidence-freshness",
-        "detail": "generatedAt is 37.1h old; limit=24h",
+        "detail": "generatedAt is 48.2h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "configuration",
@@ -9808,9 +9808,9 @@
     ],
     "docker": [
       {
-        "blocker": "docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h",
+        "blocker": "docker-build-evidence-freshness: generatedAt is 56.9h old; limit=24h",
         "check": "docker-build-evidence-freshness",
-        "detail": "generatedAt is 45.9h old; limit=24h",
+        "detail": "generatedAt is 56.9h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "docker",
@@ -9862,9 +9862,9 @@
         "action": "Set deployed HTTPS `PLAYWRIGHT_BASE_URL` and `DDD_FRONTEND_EXPECT_DEPLOYED=true`, then rerun the strict release orchestrator/frontend smoke."
       },
       {
-        "blocker": "frontend-smoke-freshness: generatedAt is 46.8h old; limit=24h",
+        "blocker": "frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h",
         "check": "frontend-smoke-freshness",
-        "detail": "generatedAt is 46.8h old; limit=24h",
+        "detail": "generatedAt is 57.8h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "frontend-smoke",
@@ -10028,9 +10028,9 @@
     ],
     "migration": [
       {
-        "blocker": "migration-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+        "blocker": "migration-evidence-freshness: generatedAt is 57.7h old; limit=24h",
         "check": "migration-evidence-freshness",
-        "detail": "generatedAt is 46.7h old; limit=24h",
+        "detail": "generatedAt is 57.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "migration",
@@ -10050,9 +10050,9 @@
     ],
     "orchestrator": [
       {
-        "blocker": "release-evidence-orchestrator-freshness: generatedAt is 46.1h old; limit=24h",
+        "blocker": "release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h",
         "check": "release-evidence-orchestrator-freshness",
-        "detail": "generatedAt is 46.1h old; limit=24h",
+        "detail": "generatedAt is 57.1h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "orchestrator",
@@ -10072,9 +10072,9 @@
     ],
     "other": [
       {
-        "blocker": "physical-split-readiness-freshness: generatedAt is 46.7h old; limit=24h",
+        "blocker": "physical-split-readiness-freshness: generatedAt is 57.7h old; limit=24h",
         "check": "physical-split-readiness-freshness",
-        "detail": "generatedAt is 46.7h old; limit=24h",
+        "detail": "generatedAt is 57.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "other",
@@ -10082,9 +10082,9 @@
         "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
       },
       {
-        "blocker": "backend-test-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+        "blocker": "backend-test-evidence-freshness: generatedAt is 57.7h old; limit=24h",
         "check": "backend-test-evidence-freshness",
-        "detail": "generatedAt is 46.7h old; limit=24h",
+        "detail": "generatedAt is 57.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "other",
@@ -10092,9 +10092,9 @@
         "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
       },
       {
-        "blocker": "backend-build-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+        "blocker": "backend-build-evidence-freshness: generatedAt is 57.7h old; limit=24h",
         "check": "backend-build-evidence-freshness",
-        "detail": "generatedAt is 46.7h old; limit=24h",
+        "detail": "generatedAt is 57.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "other",
@@ -10102,9 +10102,9 @@
         "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
       },
       {
-        "blocker": "frontend-build-evidence-freshness: generatedAt is 80.8h old; limit=24h",
+        "blocker": "frontend-build-evidence-freshness: generatedAt is 91.8h old; limit=24h",
         "check": "frontend-build-evidence-freshness",
-        "detail": "generatedAt is 80.8h old; limit=24h",
+        "detail": "generatedAt is 91.8h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "other",
@@ -10112,9 +10112,9 @@
         "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
       },
       {
-        "blocker": "frontend-static-evidence-freshness: generatedAt is 80.8h old; limit=24h",
+        "blocker": "frontend-static-evidence-freshness: generatedAt is 91.8h old; limit=24h",
         "check": "frontend-static-evidence-freshness",
-        "detail": "generatedAt is 80.8h old; limit=24h",
+        "detail": "generatedAt is 91.8h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "other",
@@ -10124,9 +10124,9 @@
     ],
     "outbox-state-machine": [
       {
-        "blocker": "outbox-replay-dead-letter-freshness: generatedAt is 80.6h old; limit=24h",
+        "blocker": "outbox-replay-dead-letter-freshness: generatedAt is 91.7h old; limit=24h",
         "check": "outbox-replay-dead-letter-freshness",
-        "detail": "generatedAt is 80.6h old; limit=24h",
+        "detail": "generatedAt is 91.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "outbox-state-machine",
@@ -10208,9 +10208,9 @@
     ],
     "performance-freshness": [
       {
-        "blocker": "authenticated-performance-freshness: checkedAt is 46.8h old; limit=24h",
+        "blocker": "authenticated-performance-freshness: checkedAt is 57.8h old; limit=24h",
         "check": "authenticated-performance-freshness",
-        "detail": "checkedAt is 46.8h old; limit=24h",
+        "detail": "checkedAt is 57.8h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "performance-freshness",
@@ -10562,9 +10562,9 @@
     ],
     "rollback-drill": [
       {
-        "blocker": "rollback-drill-freshness: generatedAt is 61.2h old; limit=24h",
+        "blocker": "rollback-drill-freshness: generatedAt is 72.2h old; limit=24h",
         "check": "rollback-drill-freshness",
-        "detail": "generatedAt is 61.2h old; limit=24h",
+        "detail": "generatedAt is 72.2h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "rollback-drill",
@@ -10574,9 +10574,9 @@
     ],
     "runtime-freshness": [
       {
-        "blocker": "runtime-readiness-freshness: checkedAt is 61.2h old; limit=24h",
+        "blocker": "runtime-readiness-freshness: checkedAt is 72.3h old; limit=24h",
         "check": "runtime-readiness-freshness",
-        "detail": "checkedAt is 61.2h old; limit=24h",
+        "detail": "checkedAt is 72.3h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "runtime-freshness",
@@ -10628,9 +10628,9 @@
         "action": "Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node scripts/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime."
       },
       {
-        "blocker": "ai-runtime-freshness: checkedAt is 46.8h old; limit=24h",
+        "blocker": "ai-runtime-freshness: checkedAt is 57.8h old; limit=24h",
         "check": "ai-runtime-freshness",
-        "detail": "checkedAt is 46.8h old; limit=24h",
+        "detail": "checkedAt is 57.8h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "ai-runtime",
@@ -10690,9 +10690,9 @@
     ],
     "database": [
       {
-        "blocker": "migration-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+        "blocker": "migration-evidence-freshness: generatedAt is 57.7h old; limit=24h",
         "check": "migration-evidence-freshness",
-        "detail": "generatedAt is 46.7h old; limit=24h",
+        "detail": "generatedAt is 57.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "migration",
@@ -10722,9 +10722,9 @@
     ],
     "file-owner": [
       {
-        "blocker": "file-processing-freshness: finishedAt is 120.7h old; limit=24h",
+        "blocker": "file-processing-freshness: finishedAt is 131.7h old; limit=24h",
         "check": "file-processing-freshness",
-        "detail": "finishedAt is 120.7h old; limit=24h",
+        "detail": "finishedAt is 131.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "business-e2e-freshness",
@@ -10804,9 +10804,9 @@
         "action": "Set deployed HTTPS `PLAYWRIGHT_BASE_URL` and `DDD_FRONTEND_EXPECT_DEPLOYED=true`, then rerun the strict release orchestrator/frontend smoke."
       },
       {
-        "blocker": "frontend-smoke-freshness: generatedAt is 46.8h old; limit=24h",
+        "blocker": "frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h",
         "check": "frontend-smoke-freshness",
-        "detail": "generatedAt is 46.8h old; limit=24h",
+        "detail": "generatedAt is 57.8h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "frontend-smoke",
@@ -10916,9 +10916,9 @@
     ],
     "job-owner": [
       {
-        "blocker": "job-e2e-freshness: checkedAt is 120.4h old; limit=24h",
+        "blocker": "job-e2e-freshness: checkedAt is 131.4h old; limit=24h",
         "check": "job-e2e-freshness",
-        "detail": "checkedAt is 120.4h old; limit=24h",
+        "detail": "checkedAt is 131.4h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "business-e2e-freshness",
@@ -10988,9 +10988,9 @@
     ],
     "payment-owner": [
       {
-        "blocker": "payment-webhook-freshness: finishedAt is 120.6h old; limit=24h",
+        "blocker": "payment-webhook-freshness: finishedAt is 131.6h old; limit=24h",
         "check": "payment-webhook-freshness",
-        "detail": "finishedAt is 120.6h old; limit=24h",
+        "detail": "finishedAt is 131.6h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "business-e2e-freshness",
@@ -11060,9 +11060,9 @@
     ],
     "platform-events": [
       {
-        "blocker": "outbox-replay-dead-letter-freshness: generatedAt is 80.6h old; limit=24h",
+        "blocker": "outbox-replay-dead-letter-freshness: generatedAt is 91.7h old; limit=24h",
         "check": "outbox-replay-dead-letter-freshness",
-        "detail": "generatedAt is 80.6h old; limit=24h",
+        "detail": "generatedAt is 91.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "outbox-state-machine",
@@ -11112,9 +11112,9 @@
         "action": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence."
       },
       {
-        "blocker": "runtime-readiness-freshness: checkedAt is 61.2h old; limit=24h",
+        "blocker": "runtime-readiness-freshness: checkedAt is 72.3h old; limit=24h",
         "check": "runtime-readiness-freshness",
-        "detail": "checkedAt is 61.2h old; limit=24h",
+        "detail": "checkedAt is 72.3h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "runtime-freshness",
@@ -11182,9 +11182,9 @@
         "action": "Regenerate the runtime artifact against an HTTPS non-local production-equivalent URL."
       },
       {
-        "blocker": "docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h",
+        "blocker": "docker-build-evidence-freshness: generatedAt is 56.9h old; limit=24h",
         "check": "docker-build-evidence-freshness",
-        "detail": "generatedAt is 45.9h old; limit=24h",
+        "detail": "generatedAt is 56.9h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "docker",
@@ -11212,9 +11212,9 @@
         "action": "Start Docker daemon or run `node scripts/ddd-docker-build-evidence.mjs` in CI with Docker Buildx available."
       },
       {
-        "blocker": "release-env-lint-freshness: generatedAt is 37.8h old; limit=24h",
+        "blocker": "release-env-lint-freshness: generatedAt is 48.9h old; limit=24h",
         "check": "release-env-lint-freshness",
-        "detail": "generatedAt is 37.8h old; limit=24h",
+        "detail": "generatedAt is 48.9h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "configuration",
@@ -11252,9 +11252,9 @@
         "action": "Replace all release env placeholders in `DDD_RELEASE_ENV_FILE`, run `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`, then regenerate config evidence with `node scripts/ddd-release-config-evidence.mjs`."
       },
       {
-        "blocker": "release-config-evidence-freshness: generatedAt is 37.1h old; limit=24h",
+        "blocker": "release-config-evidence-freshness: generatedAt is 48.2h old; limit=24h",
         "check": "release-config-evidence-freshness",
-        "detail": "generatedAt is 37.1h old; limit=24h",
+        "detail": "generatedAt is 48.2h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "configuration",
@@ -11284,9 +11284,9 @@
     ],
     "release-owner": [
       {
-        "blocker": "physical-split-readiness-freshness: generatedAt is 46.7h old; limit=24h",
+        "blocker": "physical-split-readiness-freshness: generatedAt is 57.7h old; limit=24h",
         "check": "physical-split-readiness-freshness",
-        "detail": "generatedAt is 46.7h old; limit=24h",
+        "detail": "generatedAt is 57.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "other",
@@ -11294,9 +11294,9 @@
         "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
       },
       {
-        "blocker": "backend-test-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+        "blocker": "backend-test-evidence-freshness: generatedAt is 57.7h old; limit=24h",
         "check": "backend-test-evidence-freshness",
-        "detail": "generatedAt is 46.7h old; limit=24h",
+        "detail": "generatedAt is 57.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "other",
@@ -11304,9 +11304,9 @@
         "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
       },
       {
-        "blocker": "backend-build-evidence-freshness: generatedAt is 46.7h old; limit=24h",
+        "blocker": "backend-build-evidence-freshness: generatedAt is 57.7h old; limit=24h",
         "check": "backend-build-evidence-freshness",
-        "detail": "generatedAt is 46.7h old; limit=24h",
+        "detail": "generatedAt is 57.7h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "other",
@@ -11314,9 +11314,9 @@
         "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
       },
       {
-        "blocker": "release-evidence-orchestrator-freshness: generatedAt is 46.1h old; limit=24h",
+        "blocker": "release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h",
         "check": "release-evidence-orchestrator-freshness",
-        "detail": "generatedAt is 46.1h old; limit=24h",
+        "detail": "generatedAt is 57.1h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "orchestrator",
@@ -11384,9 +11384,9 @@
         "action": "Regenerate all missing evidence artifacts, then run `node scripts/ddd-release-evidence-manifest.mjs`."
       },
       {
-        "blocker": "frontend-build-evidence-freshness: generatedAt is 80.8h old; limit=24h",
+        "blocker": "frontend-build-evidence-freshness: generatedAt is 91.8h old; limit=24h",
         "check": "frontend-build-evidence-freshness",
-        "detail": "generatedAt is 80.8h old; limit=24h",
+        "detail": "generatedAt is 91.8h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "other",
@@ -11394,9 +11394,9 @@
         "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
       },
       {
-        "blocker": "frontend-static-evidence-freshness: generatedAt is 80.8h old; limit=24h",
+        "blocker": "frontend-static-evidence-freshness: generatedAt is 91.8h old; limit=24h",
         "check": "frontend-static-evidence-freshness",
-        "detail": "generatedAt is 80.8h old; limit=24h",
+        "detail": "generatedAt is 91.8h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "other",
@@ -11404,9 +11404,9 @@
         "action": "Inspect the strict release gate blocker and attach an owner-specific remediation."
       },
       {
-        "blocker": "rollback-drill-freshness: generatedAt is 61.2h old; limit=24h",
+        "blocker": "rollback-drill-freshness: generatedAt is 72.2h old; limit=24h",
         "check": "rollback-drill-freshness",
-        "detail": "generatedAt is 61.2h old; limit=24h",
+        "detail": "generatedAt is 72.2h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "rollback-drill",
@@ -11456,9 +11456,9 @@
         "action": "Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion."
       },
       {
-        "blocker": "authenticated-performance-freshness: checkedAt is 46.8h old; limit=24h",
+        "blocker": "authenticated-performance-freshness: checkedAt is 57.8h old; limit=24h",
         "check": "authenticated-performance-freshness",
-        "detail": "checkedAt is 46.8h old; limit=24h",
+        "detail": "checkedAt is 57.8h old; limit=24h",
         "file": null,
         "structured": true,
         "category": "performance-freshness",

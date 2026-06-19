@@ -1,6 +1,6 @@
 # DDD Release Closure Wave Blocker Map
 
-Generated at: 2026-06-18T19:37:26.213Z
+Generated at: 2026-06-19T06:54:03.604Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -111,7 +111,7 @@ Candidate blockers are traceability hints only. The strict release evidence gate
 - Item ids: docker-blocker-1, docker-blocker-2, docker-image-frontend-failed, docker-image-lumira-server-failed
 - Candidate blocker hints: 3
 - Candidate blockers:
-  - [docker] docker-build-evidence-freshness: generatedAt is 45.9h old; limit=24h
+  - [docker] docker-build-evidence-freshness: generatedAt is 56.9h old; limit=24h
   - [docker] docker-build-evidence: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1
   - [docker] docker-build-evidence: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1
 - Commands:

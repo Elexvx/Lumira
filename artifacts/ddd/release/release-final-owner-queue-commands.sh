@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD final owner queue commands.
-# Generated at: 2026-06-18T19:37:26.213Z
+# Generated at: 2026-06-19T06:54:03.604Z
 # Recommendation: NO_GO_STRICT
 # Default mode lists actionable owners. Set DDD_FINAL_OWNER_QUEUE_EXECUTE=1 to run commands.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)

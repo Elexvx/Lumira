@@ -143,6 +143,7 @@ try {
   assert.match(checklistHelpResult.stdout, /--handoff-summary-markdown/);
   assert.match(checklistHelpResult.stdout, /--release-owner-closeout/);
   assert.match(checklistHelpResult.stdout, /--production-closeout-status/);
+  assert.match(checklistHelpResult.stdout, /--production-unblock-plan/);
   assert.match(checklistHelpResult.stdout, /--production-cutover-audit/);
   assert.match(checklistHelpResult.stdout, /--final-review/);
   assert.match(checklistHelpResult.stdout, /--final-review-markdown/);
@@ -404,6 +405,8 @@ try {
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-owner-closeout-markdown --lane-completion-receipt-file=<receipt-file>$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-closeout-status$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-closeout-status-markdown$/m);
+  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-unblock-plan$/m);
+  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-unblock-plan-markdown$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-cutover-audit$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-cutover-audit-markdown$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --final-review$/m);
@@ -2116,7 +2119,7 @@ try {
   assert.equal(handoffBundleResult.status, 0, handoffBundleResult.stderr || handoffBundleResult.stdout);
   assert.match(handoffBundleResult.stdout, /handoffBundle=/);
   assert.match(handoffBundleResult.stdout, /ownerPackets=5/);
-  for (const file of ["README.md", "rollup.json", "rollup.md", "handoff-summary.md", "execution-status.json", "execution-status.md", "final-review.json", "final-review.md", "release-owner-closeout.json", "release-owner-closeout.md", "production-closeout-status.json", "production-closeout-status.md", "production-cutover-audit.json", "production-cutover-audit.md", "operator-progress.json", "operator-progress.md", "daily-brief.json", "daily-brief.md", "closure-plan.json", "closure-plan.md", "next-action-queue.json", "next-action-queue.md", "owner-lane-matrix.json", "owner-lane-matrix.md", "lane-completion-receipt.template.json", "lane-completion-receipt.template.md", "lane-completion-receipt.coverage.json", "lane-completion-receipt.coverage.md", "evidence-closure-board.json", "evidence-closure-board.md", "evidence-closure-board.csv", "lane-receipt-fragments.json", "lane-receipt-fragments.md", "lane-receipt-draft.json", "lane-receipt-draft.md", "owner-evidence-intake.json", "owner-evidence-intake.md", "lane-completion-submission-plan.json", "lane-completion-submission-plan.md", "lane-completion-submission-check.json", "lane-completion-submission-check.md", "next-action.template.env", "next-action-env-receipt.sample.json", "next-action-env-receipt.sample.md", "next-action-verification-plan.json", "next-action-verification-plan.md", "release-env-plan.json", "release-env-plan.md", "release-env-owner-matrix.json", "release-env-owner-matrix.md", "release-env-next-owner.template.env", "release-env-merge-plan.json", "release-env-merge-plan.md", "release-env-submission-plan.json", "release-env-submission-plan.md", "docker-image-plan.json", "docker-image-plan.md", "docker-image-submission-plan.json", "docker-image-submission-plan.md", "runtime-business-plan.json", "runtime-business-plan.md", "runtime-smoke-plan.json", "runtime-smoke-plan.md", "runtime-business-submission-plan.json", "runtime-business-submission-plan.md", "data-safety-plan.json", "data-safety-plan.md", "data-safety-owner-plan.json", "data-safety-owner-plan.md", "data-safety-submission-plan.json", "data-safety-submission-plan.md", "cutover-rehearsal-plan.json", "cutover-rehearsal-plan.md", "evidence-gaps.json", "evidence-runbook.json", "evidence-runbook.md", "evidence-acceptance.json", "evidence-acceptance.md", "evidence-artifact-gaps.json", "evidence-artifact-gaps.md", "explain-artifact-plan.json", "explain-artifact-plan.md", "blocking-inputs.json", "blocking-inputs.md", "blocking-inputs.template.env", "release-evidence-dispatch-plan.json", "release-evidence-dispatch-plan.md", "release-evidence-dispatch-inputs.json", "release-evidence-dispatch-command.sh", "evidence-env.template.env", "commands.txt", "owner-dispatch.json", "manifest.json"]) {
+  for (const file of ["README.md", "rollup.json", "rollup.md", "handoff-summary.md", "execution-status.json", "execution-status.md", "final-review.json", "final-review.md", "release-owner-closeout.json", "release-owner-closeout.md", "production-closeout-status.json", "production-closeout-status.md", "production-unblock-plan.json", "production-unblock-plan.md", "production-cutover-audit.json", "production-cutover-audit.md", "operator-progress.json", "operator-progress.md", "daily-brief.json", "daily-brief.md", "closure-plan.json", "closure-plan.md", "next-action-queue.json", "next-action-queue.md", "owner-lane-matrix.json", "owner-lane-matrix.md", "lane-completion-receipt.template.json", "lane-completion-receipt.template.md", "lane-completion-receipt.coverage.json", "lane-completion-receipt.coverage.md", "evidence-closure-board.json", "evidence-closure-board.md", "evidence-closure-board.csv", "lane-receipt-fragments.json", "lane-receipt-fragments.md", "lane-receipt-draft.json", "lane-receipt-draft.md", "owner-evidence-intake.json", "owner-evidence-intake.md", "lane-completion-submission-plan.json", "lane-completion-submission-plan.md", "lane-completion-submission-check.json", "lane-completion-submission-check.md", "next-action.template.env", "next-action-env-receipt.sample.json", "next-action-env-receipt.sample.md", "next-action-verification-plan.json", "next-action-verification-plan.md", "release-env-plan.json", "release-env-plan.md", "release-env-owner-matrix.json", "release-env-owner-matrix.md", "release-env-next-owner.template.env", "release-env-merge-plan.json", "release-env-merge-plan.md", "release-env-submission-plan.json", "release-env-submission-plan.md", "docker-image-plan.json", "docker-image-plan.md", "docker-image-submission-plan.json", "docker-image-submission-plan.md", "runtime-business-plan.json", "runtime-business-plan.md", "runtime-smoke-plan.json", "runtime-smoke-plan.md", "runtime-business-submission-plan.json", "runtime-business-submission-plan.md", "data-safety-plan.json", "data-safety-plan.md", "data-safety-owner-plan.json", "data-safety-owner-plan.md", "data-safety-submission-plan.json", "data-safety-submission-plan.md", "cutover-rehearsal-plan.json", "cutover-rehearsal-plan.md", "evidence-gaps.json", "evidence-runbook.json", "evidence-runbook.md", "evidence-acceptance.json", "evidence-acceptance.md", "evidence-artifact-gaps.json", "evidence-artifact-gaps.md", "explain-artifact-plan.json", "explain-artifact-plan.md", "blocking-inputs.json", "blocking-inputs.md", "blocking-inputs.template.env", "release-evidence-dispatch-plan.json", "release-evidence-dispatch-plan.md", "release-evidence-dispatch-inputs.json", "release-evidence-dispatch-command.sh", "evidence-env.template.env", "commands.txt", "owner-dispatch.json", "manifest.json"]) {
     assert.equal(fs.existsSync(path.join(handoffBundleDir, file)), true, `handoff bundle should write ${file}`);
   }
   const bundleOwnerPacketDir = path.join(handoffBundleDir, "owner-packets");
@@ -2152,6 +2155,7 @@ try {
   assert.match(bundleReadme, /final-review\.json/);
   assert.match(bundleReadme, /release-owner-closeout\.json/);
   assert.match(bundleReadme, /production-closeout-status\.json/);
+  assert.match(bundleReadme, /production-unblock-plan\.json/);
   assert.match(bundleReadme, /production-cutover-audit\.json/);
   assert.match(bundleReadme, /operator-progress\.json/);
   assert.match(bundleReadme, /daily-brief\.json/);
@@ -2185,8 +2189,10 @@ try {
   assert.match(bundleReadme, /`## Parallel Next Actions`/);
   assert.match(bundleReadme, /first-wave env, lane receipt, and owner evidence are parallel blockers and none of them waive the others/);
   assert.match(bundleReadme, /production-cutover-audit\.md` before final approval/);
+  assert.match(bundleReadme, /production-unblock-plan\.md` as the focused production unblock checklist/);
   assert.match(bundleReadme, /## Status Views/);
   assert.match(bundleReadme, /`production-closeout-status\.md`: top-level closeout status with ETA band, next owner action, blocked stages, receipt submission readiness, and production preconditions/);
+  assert.match(bundleReadme, /`production-unblock-plan\.md`: paste-ready focused plan for the parallel unblock workstreams and exit criteria/);
   assert.match(bundleReadme, /`production-cutover-audit\.md`: final production cutover audit matrix/);
   assert.match(bundleReadme, /`daily-brief\.md`: release-owner daily triage with `## Lane Routes`/);
   assert.match(bundleReadme, /`operator-progress\.md`: shift handoff view with receipt coverage, missing artifacts, and `## Lane Routes`/);
@@ -2364,6 +2370,30 @@ try {
   assert.match(bundleProductionCloseoutStatusMarkdown, /Initialize or validate lane completion receipt/);
   assert.match(bundleProductionCloseoutStatusMarkdown, /## Next Owner Action/);
   assert.match(bundleProductionCloseoutStatusMarkdown, /## Required Before Production/);
+  const bundleProductionUnblockPlan = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "production-unblock-plan.json"), "utf8"));
+  assert.equal(bundleProductionUnblockPlan.status, "BLOCKED");
+  assert.equal(bundleProductionUnblockPlan.finalRecommendation, "NO_GO_STRICT");
+  assert.equal(bundleProductionUnblockPlan.cutoverAllowed, false);
+  assert.equal(bundleProductionUnblockPlan.blockedAuditItemCount, 5);
+  assert.equal(bundleProductionUnblockPlan.parallelWorkstreamCount, 3);
+  assert(bundleProductionUnblockPlan.parallelWorkstreams.some((workstream) => workstream.id === "first-wave-env" && workstream.command.includes("--next-action-env-check")));
+  assert(bundleProductionUnblockPlan.parallelWorkstreams.some((workstream) => workstream.id === "lane-completion-receipt" && workstream.command.includes("--lane-completion-receipt-init")));
+  assert(bundleProductionUnblockPlan.parallelWorkstreams.some((workstream) => workstream.id === "owner-evidence" && workstream.owner === "platform-owners"));
+  assert(bundleProductionUnblockPlan.parallelWorkstreams.some((workstream) => workstream.id === "first-wave-env" && workstream.verifyCommand.includes("--next-action-env-receipt-contract")));
+  assert(bundleProductionUnblockPlan.parallelWorkstreams.some((workstream) => workstream.id === "lane-completion-receipt" && workstream.verifyCommand.includes("--lane-completion-submission-check")));
+  assert(bundleProductionUnblockPlan.parallelWorkstreams.some((workstream) => workstream.id === "owner-evidence" && workstream.verifyCommand.includes("--owner-evidence-intake-markdown")));
+  assert(bundleProductionUnblockPlan.parallelWorkstreams.every((workstream) => workstream.completionSignal));
+  assert(bundleProductionUnblockPlan.exitCriteria.some((criterion) => criterion.includes("GO_STRICT")));
+  assert(bundleProductionUnblockPlan.verificationCommands.includes("node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown"));
+  const bundleProductionUnblockPlanMarkdown = fs.readFileSync(path.join(handoffBundleDir, "production-unblock-plan.md"), "utf8");
+  assert.match(bundleProductionUnblockPlanMarkdown, /^# DDD Production Unblock Plan/m);
+  assert.match(bundleProductionUnblockPlanMarkdown, /## Parallel Workstreams/);
+  assert.match(bundleProductionUnblockPlanMarkdown, /Validate first-wave secure env file/);
+  assert.match(bundleProductionUnblockPlanMarkdown, /Initialize or validate lane completion receipt/);
+  assert.match(bundleProductionUnblockPlanMarkdown, /verify=`node scripts\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>`/);
+  assert.match(bundleProductionUnblockPlanMarkdown, /verify=`node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`/);
+  assert.match(bundleProductionUnblockPlanMarkdown, /## Exit Criteria/);
+  assert.match(bundleProductionUnblockPlanMarkdown, /GO_STRICT/);
   const bundleProductionCutoverAudit = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "production-cutover-audit.json"), "utf8"));
   assert.equal(bundleProductionCutoverAudit.status, "BLOCKED");
   assert.equal(bundleProductionCutoverAudit.finalRecommendation, "NO_GO_STRICT");
@@ -2887,7 +2917,7 @@ try {
   const brokenAuditFile = path.join(brokenAuditMarkerBundleDir, "production-cutover-audit.md");
   fs.writeFileSync(
     brokenAuditFile,
-    fs.readFileSync(brokenAuditFile, "utf8").replace("## Required Commands", "## Commands Removed"),
+    fs.readFileSync(brokenAuditFile, "utf8").replace("## Parallel Next Actions", "## Parallel Actions Removed"),
   );
   const brokenAuditBundleVerifyResult = spawnSyncWithTimeout("node", ["scripts/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
@@ -2900,7 +2930,47 @@ try {
   assert.notEqual(brokenAuditBundleVerifyResult.status, 0, "handoff bundle verify should fail when required cutover audit markers are missing");
   const brokenAuditBundleVerify = JSON.parse(brokenAuditBundleVerifyResult.stdout);
   assert.equal(brokenAuditBundleVerify.status, "BLOCKED");
-  assert(brokenAuditBundleVerify.issues.some((issue) => issue === "bundle file missing required marker: production-cutover-audit.md: ## Required Commands"));
+  assert(brokenAuditBundleVerify.issues.some((issue) => issue === "bundle file missing required marker: production-cutover-audit.md: ## Parallel Next Actions"));
+
+  const brokenAuditActionsBundleDir = path.join(tmpDir, "broken-audit-actions-staging-handoff-bundle");
+  fs.cpSync(handoffBundleDir, brokenAuditActionsBundleDir, { recursive: true });
+  const brokenAuditActionsFile = path.join(brokenAuditActionsBundleDir, "production-cutover-audit.json");
+  const brokenAuditActions = JSON.parse(fs.readFileSync(brokenAuditActionsFile, "utf8"));
+  brokenAuditActions.parallelNextActions = brokenAuditActions.parallelNextActions.filter((action) => action.id !== "lane-completion-receipt");
+  fs.writeFileSync(brokenAuditActionsFile, `${JSON.stringify(brokenAuditActions, null, 2)}\n`);
+  const brokenAuditActionsBundleVerifyResult = spawnSyncWithTimeout("node", ["scripts/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      DDD_STAGING_HANDOFF_BUNDLE_DIR: brokenAuditActionsBundleDir,
+    },
+  });
+  assert.notEqual(brokenAuditActionsBundleVerifyResult.status, 0, "handoff bundle verify should fail when cutover audit parallel actions drift");
+  const brokenAuditActionsBundleVerify = JSON.parse(brokenAuditActionsBundleVerifyResult.stdout);
+  assert.equal(brokenAuditActionsBundleVerify.status, "BLOCKED");
+  assert(brokenAuditActionsBundleVerify.issues.some((issue) => issue === "production-cutover-audit parallelNextActions missing action: lane-completion-receipt"));
+
+  const brokenUnblockPlanBundleDir = path.join(tmpDir, "broken-unblock-plan-staging-handoff-bundle");
+  fs.cpSync(handoffBundleDir, brokenUnblockPlanBundleDir, { recursive: true });
+  const brokenUnblockPlanFile = path.join(brokenUnblockPlanBundleDir, "production-unblock-plan.json");
+  const brokenUnblockPlan = JSON.parse(fs.readFileSync(brokenUnblockPlanFile, "utf8"));
+  brokenUnblockPlan.parallelWorkstreams = brokenUnblockPlan.parallelWorkstreams.map((workstream) => (
+    workstream.id === "lane-completion-receipt" ? { ...workstream, verifyCommand: "" } : workstream
+  ));
+  fs.writeFileSync(brokenUnblockPlanFile, `${JSON.stringify(brokenUnblockPlan, null, 2)}\n`);
+  const brokenUnblockPlanBundleVerifyResult = spawnSyncWithTimeout("node", ["scripts/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      DDD_STAGING_HANDOFF_BUNDLE_DIR: brokenUnblockPlanBundleDir,
+    },
+  });
+  assert.notEqual(brokenUnblockPlanBundleVerifyResult.status, 0, "handoff bundle verify should fail when production unblock workstreams are incomplete");
+  const brokenUnblockPlanBundleVerify = JSON.parse(brokenUnblockPlanBundleVerifyResult.stdout);
+  assert.equal(brokenUnblockPlanBundleVerify.status, "BLOCKED");
+  assert(brokenUnblockPlanBundleVerify.issues.some((issue) => issue === "production-unblock-plan parallelWorkstream is incomplete: lane-completion-receipt"));
 
   const brokenClosureBoardDir = path.join(tmpDir, "broken-closure-board-staging-handoff-bundle");
   fs.cpSync(handoffBundleDir, brokenClosureBoardDir, { recursive: true });

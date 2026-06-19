@@ -30,7 +30,7 @@ Handoff bundle: PASS
 
 - Directory: `artifacts/ddd/release/staging-handoff-bundle`
 - Manifest: `artifacts/ddd/release/staging-handoff-bundle/manifest.json`
-- Checked files: 108
+- Checked files: 110
 - no bundle integrity issues
 
 Next: `node scripts/ddd-staging-execution-checklist.mjs --commands`

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD final go/no-go gate.
-# Generated at: 2026-06-18T19:37:26.213Z
+# Generated at: 2026-06-19T06:54:03.604Z
 # Default mode prints the decision. Set DDD_FINAL_GO_NO_GO_ENFORCE=1 to fail on NO-GO.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then

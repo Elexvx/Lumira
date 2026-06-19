@@ -35,6 +35,7 @@ const loadCaptchaChallenge = async (captchaType: CaptchaType, options: RequestOp
 };
 
 const originalImage = globalThis.Image;
+const originalFetch = globalThis.fetch;
 
 class FailingImage {
   decoding = 'async';
@@ -49,6 +50,17 @@ class FailingImage {
 }
 
 const run = async () => {
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      location: {
+        origin: 'http://localhost:8000',
+      },
+      setTimeout: globalThis.setTimeout.bind(globalThis),
+      clearTimeout: globalThis.clearTimeout.bind(globalThis),
+    },
+  });
+
   const challenge: CaptchaChallenge = {
     captchaId: 'captcha-1',
     captchaType: 'IMAGE',
@@ -56,6 +68,22 @@ const run = async () => {
   };
 
   globalThis.Image = FailingImage as unknown as typeof Image;
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const requestUrl = new URL(String(input));
+    assert.equal(requestUrl.pathname, '/api/v1/public/captcha/challenge', 'captcha smoke should request captcha challenge');
+    assert.equal(requestUrl.searchParams.get('captchaType'), 'IMAGE', 'captcha smoke should keep captcha type param');
+    return new Response(JSON.stringify({
+      code: '0',
+      message: 'ok',
+      data: challenge,
+      requestId: 'captcha-smoke-request',
+    }), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+      },
+    });
+  }) as typeof fetch;
 
   const loadedChallenge = await loadCaptchaChallenge('IMAGE', {
     autoRedirectOnUnauthorized: false,
@@ -67,10 +95,12 @@ const run = async () => {
   assert.equal(loadedChallenge.imageUrl, challenge.imageUrl, 'preload failure must not drop the challenge');
 
   globalThis.Image = originalImage;
+  globalThis.fetch = originalFetch;
   console.log('captcha-load-smoke: ok');
 };
 
 void run().catch((error) => {
   globalThis.Image = originalImage;
+  globalThis.fetch = originalFetch;
   throw error;
 });

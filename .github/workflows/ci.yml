@@ -255,6 +255,7 @@ jobs:
           node --check scripts/ddd-runtime-readiness-smoke.mjs
           node --check scripts/ddd-runtime-readiness-smoke.test.mjs
           node --check scripts/ddd-runtime-provenance-preflight.test.mjs
+          node --check scripts/lumira-updater-auth.test.mjs
       - name: Release evidence utility tests
         run: node scripts/ddd-release-evidence-utils.test.mjs
       - name: Runtime provenance backfill tests
@@ -545,6 +546,8 @@ jobs:
         run: node scripts/ddd-runtime-readiness-smoke.test.mjs
       - name: Runtime provenance preflight tests
         run: node scripts/ddd-runtime-provenance-preflight.test.mjs
+      - name: Lumira updater auth tests
+        run: node scripts/lumira-updater-auth.test.mjs
       - name: Release readiness summary tests
         run: node scripts/ddd-release-readiness-summary.test.mjs
       - name: DDD readiness contract gate

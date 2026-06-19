@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-18T19:37:26.213Z",
+  "generatedAt": "2026-06-19T06:54:03.604Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -298,13 +298,13 @@
       "strictGateBlocker": {
         "check": "physical-split-readiness-freshness",
         "category": "other",
-        "detail": "generatedAt is 46.7h old; limit=24h"
+        "detail": "generatedAt is 57.7h old; limit=24h"
       },
       "missingArtifacts": [],
       "pendingActionCount": 2,
       "collapsedActionCount": 0,
       "nextAction": "Inspect the strict release gate blocker and attach an owner-specific remediation.",
-      "reason": "strictGate=physical-split-readiness-freshness generatedAt is 46.7h old; limit=24h",
+      "reason": "strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h",
       "commandHint": "Inspect the strict release gate blocker and attach an owner-specific remediation.",
       "executableCommands": [
         "node scripts/ddd-release-evidence-orchestrator.mjs",
@@ -333,13 +333,13 @@
       "strictGateBlocker": {
         "check": "payment-webhook-freshness",
         "category": "business-e2e-freshness",
-        "detail": "finishedAt is 120.6h old; limit=24h"
+        "detail": "finishedAt is 131.6h old; limit=24h"
       },
       "missingArtifacts": [],
       "pendingActionCount": 4,
       "collapsedActionCount": 0,
       "nextAction": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.",
-      "reason": "strictGate=payment-webhook-freshness finishedAt is 120.6h old; limit=24h",
+      "reason": "strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h",
       "commandHint": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.",
       "executableCommands": [
         "node scripts/ddd-release-config-evidence.mjs",
@@ -365,13 +365,13 @@
       "strictGateBlocker": {
         "check": "outbox-replay-dead-letter-freshness",
         "category": "outbox-state-machine",
-        "detail": "generatedAt is 80.6h old; limit=24h"
+        "detail": "generatedAt is 91.7h old; limit=24h"
       },
       "missingArtifacts": [],
       "pendingActionCount": 17,
       "collapsedActionCount": 0,
       "nextAction": "Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.",
-      "reason": "strictGate=outbox-replay-dead-letter-freshness generatedAt is 80.6h old; limit=24h",
+      "reason": "strictGate=outbox-replay-dead-letter-freshness generatedAt is 91.7h old; limit=24h",
       "commandHint": "Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.",
       "executableCommands": [
         "DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs",
@@ -522,13 +522,13 @@
       "strictGateBlocker": {
         "check": "file-processing-freshness",
         "category": "business-e2e-freshness",
-        "detail": "finishedAt is 120.7h old; limit=24h"
+        "detail": "finishedAt is 131.7h old; limit=24h"
       },
       "missingArtifacts": [],
       "pendingActionCount": 2,
       "collapsedActionCount": 0,
       "nextAction": "Regenerate File processing E2E evidence within the release freshness window against the production-equivalent environment.",
-      "reason": "strictGate=file-processing-freshness finishedAt is 120.7h old; limit=24h",
+      "reason": "strictGate=file-processing-freshness finishedAt is 131.7h old; limit=24h",
       "commandHint": "Regenerate File processing E2E evidence within the release freshness window against the production-equivalent environment.",
       "executableCommands": [
         "node scripts/ddd-file-processing-e2e-smoke.mjs"
@@ -556,13 +556,13 @@
       "strictGateBlocker": {
         "check": "job-e2e-freshness",
         "category": "business-e2e-freshness",
-        "detail": "checkedAt is 120.4h old; limit=24h"
+        "detail": "checkedAt is 131.4h old; limit=24h"
       },
       "missingArtifacts": [],
       "pendingActionCount": 2,
       "collapsedActionCount": 0,
       "nextAction": "Regenerate Job E2E evidence within the release freshness window against the production-equivalent environment.",
-      "reason": "strictGate=job-e2e-freshness checkedAt is 120.4h old; limit=24h",
+      "reason": "strictGate=job-e2e-freshness checkedAt is 131.4h old; limit=24h",
       "commandHint": "Regenerate Job E2E evidence within the release freshness window against the production-equivalent environment.",
       "executableCommands": [
         "node scripts/ddd-job-e2e-smoke.mjs"
@@ -589,7 +589,7 @@
       "strictGateBlocker": {
         "check": "migration-evidence-freshness",
         "category": "migration",
-        "detail": "generatedAt is 46.7h old; limit=24h"
+        "detail": "generatedAt is 57.7h old; limit=24h"
       },
       "missingArtifacts": [
         "tmp/ddd-explain/*.json"
@@ -597,7 +597,7 @@
       "pendingActionCount": 9,
       "collapsedActionCount": 0,
       "nextAction": "Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.",
-      "reason": "strictGate=migration-evidence-freshness generatedAt is 46.7h old; limit=24h",
+      "reason": "strictGate=migration-evidence-freshness generatedAt is 57.7h old; limit=24h",
       "commandHint": "Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.",
       "executableCommands": [
         "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD release env readiness gate.
-# Generated at: 2026-06-18T19:37:26.213Z
+# Generated at: 2026-06-19T06:54:03.604Z
 # Default mode prints redacted env readiness. Set DDD_RELEASE_ENV_READINESS_ENFORCE=1 to fail while env blockers remain.
 # Exit codes: 21 means release env values are unresolved; 22 means the redacted readiness packet is invalid.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
