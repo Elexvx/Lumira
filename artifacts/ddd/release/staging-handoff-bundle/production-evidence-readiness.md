@@ -1,0 +1,34 @@
+# DDD Production Evidence Readiness
+
+Status: BLOCKED
+Final recommendation: NO_GO_STRICT
+Cutover allowed: false
+Evidence gates: 0/5 PASS
+Audit items: 2 PASS; 5 blocked
+No auto waivers: true
+
+## Evidence Gates
+
+| Gate | Status | Evidence | Command | Verify | Blocker |
+| --- | --- | --- | --- | --- | --- |
+| First-wave env receipt contract | MISSING | `redacted next-action env receipt file not provided` | `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>` | `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>` | next-action env receipt file not provided |
+| Lane completion receipt dispatch readiness | BLOCKED | `redacted lane completion receipt file not provided` | `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>` | `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>` | lane completion receipt file not provided |
+| Owner evidence intake | BLOCKED | `artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json` | `node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown` | `node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown` | missingArtifacts=2; blockingInputs=57 |
+| Production cutover audit | BLOCKED | `artifacts/ddd/release/staging-handoff-bundle/production-cutover-audit.json` | `node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown` | `node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit` | blockedAuditItems=5 |
+| Strict final go/no-go | BLOCKED | `artifacts/ddd/release/release-final-go-no-go.json` | `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` | `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh` | cutoverAllowed=false; finalRecommendation=NO_GO_STRICT |
+
+## Blocking Evidence
+
+- first-wave-env-receipt: next-action env receipt file not provided; command=`node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>`; verify=`node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>`
+- lane-completion-receipt: lane completion receipt file not provided; command=`node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`; verify=`node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`
+- owner-evidence: missingArtifacts=2; blockingInputs=57; command=`node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown`; verify=`node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown`
+- production-audit: blockedAuditItems=5; command=`node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown`; verify=`node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit`
+- final-go-no-go: cutoverAllowed=false; finalRecommendation=NO_GO_STRICT; command=`node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>`; verify=`DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
+
+## Parallel Workstreams
+
+- first-wave-env: owner=release-infra; command=`node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>`; verify=`node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>`
+- lane-completion-receipt: owner=release-owner; command=`node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`; verify=`node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`
+- owner-evidence: owner=platform-owners; command=`node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown`; verify=`node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown`
+
+Next: `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>`

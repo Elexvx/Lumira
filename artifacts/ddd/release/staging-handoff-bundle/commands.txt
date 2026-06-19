@@ -98,6 +98,8 @@ node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status
 node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown
 node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan
 node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown
+node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness
+node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown
 node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit
 node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown
 node scripts/ddd-staging-execution-checklist.mjs --operator-progress

@@ -1,6 +1,6 @@
 # DDD Staging Handoff Bundle
 
-Generated at: 2026-06-19T06:45:50.594Z
+Generated at: 2026-06-19T06:58:11.752Z
 Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
@@ -20,6 +20,7 @@ Blocked gates: 6/6
 10. Use `lane-receipt-fragments.md` as the 5-lane receipt assembly index before submitting the redacted receipt.
 11. Read `production-cutover-audit.md` before final approval; every audit item must be PASS.
 12. Use `production-unblock-plan.md` as the focused production unblock checklist when the audit is still `NO_GO_STRICT`.
+13. Use `production-evidence-readiness.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go/no-go evidence in one table.
 12. Re-run `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.
 
 ## Status Views
@@ -56,6 +57,8 @@ Blocked gates: 6/6
 - `production-closeout-status.md`: paste-ready production closeout status with remaining production preconditions.
 - `production-unblock-plan.json`: machine-readable focused plan for clearing the remaining production blockers.
 - `production-unblock-plan.md`: paste-ready focused plan for the parallel unblock workstreams and exit criteria.
+- `production-evidence-readiness.json`: machine-readable aggregate readiness for production evidence submission.
+- `production-evidence-readiness.md`: paste-ready aggregate readiness for env, lane receipt, owner evidence, audit, and final go/no-go evidence.
 - `production-cutover-audit.json`: machine-readable final production cutover audit matrix.
 - `production-cutover-audit.md`: paste-ready final production cutover audit matrix.
 - `operator-progress.json`: machine-readable operator progress across env, bundle, verification, and final review.
