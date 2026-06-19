@@ -66,6 +66,7 @@
 - 2026-06-19：前端端到端冒烟测试所需 Chromium 已安装；因 `127.0.0.1:8000`/`127.0.0.1:8080` 未提供运行态，未形成新的 2026-06-19 端到端运行态通过证据。
 - 2026-06-19：主报告补充 21 条详细测评项清单，覆盖 GB/T 22239、GB/T 28449、GB/T 20984、GB/T 30279、OWASP、ATT&CK、NIST 的本地证据、执行结果和未闭环条件。
 - 2026-06-19：再次复核 `node scripts/ddd-staging-execution-checklist.mjs --rollup` 与 `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`；结果仍为 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门阻断。
+- 2026-06-19：主报告补充剩余阻断责任矩阵；`--blocking-inputs-markdown` 显示 32 个阻断输入、5 个阻断 gate，`--production-unblock-plan-markdown` 显示 3 条并行解阻工作流和 5 个阻断审计项。
 - 2026-06-19：脚本门禁复核：
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`：输出“阻断/严格不放行”。
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce`：证据未齐时按设计非零阻断。

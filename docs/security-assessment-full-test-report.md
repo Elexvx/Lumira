@@ -157,7 +157,24 @@
 | 发布证据严格不放行 | 发布前证据门禁 | E-REL-01、E-REL-02 | 补齐第一波环境回执、通道完成回执、责任人证据、生产切换审计、最终放行/不放行结论。 |
 | 前端覆盖率偏低 | 质量/回归充分性 | E-FE-02 | 为登录、请求层、权限、文件、AI/系统关键页面增加测试，提升覆盖率基线。 |
 
-## 10. 全量排查判定
+## 10. 剩余阻断责任矩阵
+
+| 阻断门 | 责任方 | 关键缺口 | 下一条命令 | 完成信号 |
+|---|---|---|---|---|
+| release-env | release-infra | `DDD_RELEASE_ENV_FILE` 指向的生产等价安全环境文件缺失或不安全。 | `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs` | release env lint 无阻断项，第一波环境回执合约通过。 |
+| runtime-business | release-infra、frontend、ai、file-owner、job-owner、payment-owner | `LUMIRA_BASE_URL`、`PLAYWRIGHT_BASE_URL`、部署证据、前端/AI/认证性能部署证据缺失。 | `node scripts/ddd-staging-runtime-check.mjs` | 运行态业务检查通过，接口、前端、AI、文件、任务、支付证据均被接收。 |
+| rollback | bounded-context owners | 缺少回滚演练文件或正式延期文件，以及环境、候选版本、操作者证据。 | `node scripts/ddd-staging-data-safety-check.mjs` | 回滚演练或延期证据通过数据安全检查。 |
+| migration | database | 缺少 fresh/upgrade 数据库迁移验证、证据文件、环境、操作者和完成时间。 | `node scripts/ddd-staging-data-safety-check.mjs` | 迁移验证项全部通过，fresh/upgrade 证据可追溯。 |
+| explain | database | 缺少 `DDD_EXPLAIN_DATABASE`、MySQL 连接信息和 explain 产物。 | `node scripts/ddd-staging-data-safety-check.mjs` | explain 计划与性能证据生成并通过检查。 |
+| first-wave-env-receipt | release-infra | 第一波环境输入文件和脱敏回执缺失。 | `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>` | `--next-action-env-receipt-contract` 通过。 |
+| lane-completion-receipt | release-owner | 5 条 owner lane 的完成回执缺失，当前覆盖率 0/5。 | `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>` | `--lane-completion-submission-check` 显示 dispatchReady=true 且覆盖 5/5。 |
+| owner-evidence | platform-owners | owner evidence intake 仍有 2 个缺失 artifact、54 个阻断输入。 | `node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown` | owner evidence intake 无必需 artifact 缺失。 |
+| production-audit | release-owner | 生产切换审计仍有 5 个阻断审计项。 | `node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit` | production cutover audit 的 blockedAuditItems 为 0。 |
+| final-go-no-go | release-owner | final review 和严格 go/no-go 均未放行。 | `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` | final review 输出 GO_STRICT 且 `cutoverAllowed=true`。 |
+
+当前阻断输入汇总：`node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown` 输出 32 个阻断输入、5 个阻断 gate；`node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown` 输出 3 条并行工作流和 5 个阻断审计项。
+
+## 11. 全量排查判定
 
 可以判定：仓库代码、自动化测试门禁、发布证据门禁、标准映射矩阵和已知安全发现整改的全量排查已完成到本机可验证边界。
 
