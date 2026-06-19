@@ -22,6 +22,7 @@ node scripts/ddd-staging-execution-checklist.mjs --owner-lane-matrix-markdown
 node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template
 node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown
 node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>
+node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>
 node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>
 node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>
 node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>
@@ -58,6 +59,8 @@ node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan
 node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown
 node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan
 node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown
+node scripts/ddd-release-env-fill-checklist.mjs
+node scripts/ddd-release-env-fill-checklist.mjs --markdown
 node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan
 node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown
 node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan

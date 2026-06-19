@@ -35,6 +35,7 @@ Receipt fragments:
 
 Receipt workflow:
 - Init: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`
+- Autofill: `node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>`
 - Edit rule: update only this owner's laneReceipts entries, then leave unrelated owner/lane pairs unchanged
 - Lane keys: none
 - Check: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`
@@ -67,6 +68,7 @@ Receipt fragments:
 
 Receipt workflow:
 - Init: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`
+- Autofill: `node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>`
 - Edit rule: update only this owner's laneReceipts entries, then leave unrelated owner/lane pairs unchanged
 - Lane keys: `platform-owners:p1-p2-data-safety`
 - Check: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`
@@ -130,6 +132,7 @@ Receipt fragments:
 
 Receipt workflow:
 - Init: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`
+- Autofill: `node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>`
 - Edit rule: update only this owner's laneReceipts entries, then leave unrelated owner/lane pairs unchanged
 - Lane keys: `release-infra:p0-release-env`, `release-infra:p0-docker-images`, `release-infra:p1-runtime-business`, `release-infra:final-review`
 - Check: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`
@@ -176,6 +179,7 @@ Receipt fragments:
 
 Receipt workflow:
 - Init: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`
+- Autofill: `node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>`
 - Edit rule: update only this owner's laneReceipts entries, then leave unrelated owner/lane pairs unchanged
 - Lane keys: none
 - Check: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`
@@ -217,6 +221,7 @@ Receipt fragments:
 
 Receipt workflow:
 - Init: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`
+- Autofill: `node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>`
 - Edit rule: update only this owner's laneReceipts entries, then leave unrelated owner/lane pairs unchanged
 - Lane keys: none
 - Check: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`

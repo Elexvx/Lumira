@@ -22,6 +22,7 @@ Decoded path: `artifacts/ddd/release/lane-completion-receipt.submitted.json`
 ## Commands
 
 - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`
+- `node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>`
 - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template`
 - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>`
 - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>`

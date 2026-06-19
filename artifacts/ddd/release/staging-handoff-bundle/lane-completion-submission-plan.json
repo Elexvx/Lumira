@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T09:03:45.762Z",
+  "generatedAt": "2026-06-19T11:38:27.186Z",
   "willWriteFiles": false,
   "redacted": true,
   "laneCount": 5,
@@ -117,6 +117,7 @@
   },
   "commands": [
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+    "node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>",
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template",
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>",

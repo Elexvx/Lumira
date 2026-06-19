@@ -1,6 +1,6 @@
 # DDD Staging Handoff Bundle
 
-Generated at: 2026-06-19T09:03:45.762Z
+Generated at: 2026-06-19T11:38:27.186Z
 Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
@@ -103,6 +103,8 @@ Blocked gates: 5/6
 - `release-env-merge-plan.md`: paste-ready release env merge and validation plan.
 - `release-env-submission-plan.json`: machine-readable release env owner submission and receipt plan.
 - `release-env-submission-plan.md`: paste-ready release env owner submission and receipt plan.
+- `release-env-fill-checklist.json`: machine-readable P0 release env blocker key checklist.
+- `release-env-fill-checklist.md`: paste-ready P0 release env blocker key checklist.
 - `docker-image-plan.json`: machine-readable Docker image build or inspect evidence plan.
 - `docker-image-plan.md`: paste-ready Docker image evidence plan.
 - `docker-image-submission-plan.json`: machine-readable Docker image evidence submission route.
@@ -177,6 +179,7 @@ node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-mark
 node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template
 node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown
 node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown
+node scripts/ddd-release-env-fill-checklist.mjs --markdown
 node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown
 node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown
 node scripts/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown

@@ -1,6 +1,6 @@
 # DDD Staging Owner Packet: platform-owners
 
-Generated at: 2026-06-19T09:03:45.762Z
+Generated at: 2026-06-19T11:38:27.186Z
 Owner: platform-owners
 Blockers: 9
 Placeholders: 9
@@ -30,6 +30,7 @@ Handoff: artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-ow
   - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs`
   - `node scripts/ddd-release-readiness-summary.mjs`
   - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`
+  - `node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>`
   - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown`
   - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`
   - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>`
@@ -122,6 +123,7 @@ Env keys: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, 
 
 Commands:
   - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`
+  - `node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>`
   - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown`
   - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`
   - `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>`
