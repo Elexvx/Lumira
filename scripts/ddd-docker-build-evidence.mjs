@@ -23,6 +23,7 @@ const tagPrefix = process.env.DDD_DOCKER_TAG_PREFIX || "lumira";
 const tagSuffix = process.env.DDD_DOCKER_TAG_SUFFIX || `ddd-evidence-${Date.now()}`;
 const noCache = process.env.DDD_DOCKER_NO_CACHE === "true";
 const buildRetries = Math.max(0, Number.parseInt(process.env.DDD_DOCKER_BUILD_RETRIES || "2", 10) || 0);
+const dockerCommandTimeoutMs = Math.max(0, Number.parseInt(process.env.DDD_DOCKER_COMMAND_TIMEOUT_MS || "900000", 10) || 0);
 const strictEvidence = process.env.DDD_RELEASE_EVIDENCE_STRICT === "true" || process.env.DDD_DOCKER_BUILD_STRICT === "true";
 const sourceEnvironment = process.env.DDD_DOCKER_BUILD_ENVIRONMENT || process.env.DDD_EVIDENCE_ENVIRONMENT || process.env.DDD_RELEASE_ENVIRONMENT || "";
 const releaseCandidate = process.env.DDD_RELEASE_CANDIDATE || process.env.GITHUB_SHA || "";
@@ -89,10 +90,18 @@ if (help) {
 function run(command, args, options = {}) {
   const startedAt = Date.now();
   const useBashForShellScript = process.platform === "win32" && /\.sh$/i.test(command);
-  const result = spawnSync(useBashForShellScript ? "bash" : command, useBashForShellScript ? [windowsPathForBash(command), ...args] : args, {
+  const useCmdForWindowsCommand = process.platform === "win32" && !useBashForShellScript;
+  const resolvedCommand = useBashForShellScript ? "bash" : useCmdForWindowsCommand ? "cmd.exe" : command;
+  const resolvedArgs = useBashForShellScript
+    ? [windowsPathForBash(command), ...args]
+    : useCmdForWindowsCommand
+      ? ["/d", "/s", "/c", [quoteCmdArg(command), ...args.map(quoteCmdArg)].join(" ")]
+      : args;
+  const result = spawnSync(resolvedCommand, resolvedArgs, {
     cwd: repoRoot,
     encoding: "utf8",
     maxBuffer: 1024 * 1024 * 20,
+    timeout: dockerCommandTimeoutMs,
     ...options,
   });
   return {
@@ -115,6 +124,14 @@ function redactOutput(text) {
   return redactLocalPaths(text, { repoRoot, homeDir: os.homedir() });
 }
 
+function quoteCmdArg(value) {
+  const text = String(value);
+  if (!/[\s"&<>|^]/.test(text)) {
+    return text;
+  }
+  return `"${text.replaceAll('"', '\\"')}"`;
+}
+
 function windowsPathForBash(file) {
   const resolved = path.resolve(file);
   const match = /^([A-Za-z]):\\(.*)$/.exec(resolved);
@@ -124,7 +141,7 @@ function windowsPathForBash(file) {
 
 function isTransientDockerBuildFailure(result) {
   const text = `${result?.stdoutTail || ""}\n${result?.stderrTail || ""}\n${result?.error || ""}`;
-  return /failed to fetch anonymous token|i\/o timeout|deadlineexceeded|tls handshake timeout|temporary failure|connection reset|connection refused|network is unreachable|service unavailable|too many requests/i.test(text);
+  return /ETIMEDOUT|failed to fetch anonymous token|i\/o timeout|deadlineexceeded|tls handshake timeout|temporary failure|connection reset|connection refused|network is unreachable|service unavailable|too many requests/i.test(text);
 }
 
 function dockerRemediation(imageReports, blockerList) {
@@ -154,6 +171,7 @@ function dockerRemediation(imageReports, blockerList) {
       owner: "release-infra",
       action: "Rerun Docker evidence with registry-local mirror images and a higher retry budget.",
       envKeys: [
+        "DDD_DOCKER_COMMAND_TIMEOUT_MS",
         "DDD_DOCKER_BUILD_RETRIES",
         "DDD_DOCKER_MAVEN_IMAGE",
         "DDD_DOCKER_JRE_IMAGE",
@@ -162,6 +180,7 @@ function dockerRemediation(imageReports, blockerList) {
       ],
       exampleCommand: [
         "DDD_DOCKER_BUILD_STRICT=true",
+        "DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000",
         "DDD_DOCKER_BUILD_RETRIES=4",
         "DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21",
         "DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre",
@@ -292,7 +311,7 @@ function staticDockerfileEvidence(image) {
 
 function runReadOnlyCheck() {
   const version = run(dockerCommand, ["--version"]);
-  const info = version.status === 0 ? run(dockerCommand, ["info", "--format", "{{json .ServerVersion}}"]) : null;
+  const info = version.status === 0 ? run(dockerCommand, ["info"]) : null;
   const existingImageInputs = images.map((image) => ({
     name: image.name,
     envKey: image.existingImageEnvKey,
@@ -409,7 +428,7 @@ if (strictEvidence) {
 
 const preflight = blockers.length === 0 ? {
   version: run(dockerCommand, ["--version"]),
-  info: run(dockerCommand, ["info", "--format", "{{json .ServerVersion}}"]),
+  info: run(dockerCommand, ["info"]),
 } : {
   version: null,
   info: null,
@@ -446,9 +465,10 @@ if (blockers.length === 0) {
     const inspect = usingExistingImage || build.status === 0 ? inspectImage(inspectTag) : { command: null, image: null };
     const reportBlockers = [];
     if (!usingExistingImage && build.status !== 0) {
+      const buildIssue = build.error || build.stderrTail || `status ${build.status}`;
       reportBlockers.push(build.transientFailure
-        ? `docker build failed after ${build.attemptCount} attempt(s) with transient registry/network error status ${build.status}`
-        : `docker build failed with status ${build.status}`);
+        ? `docker build failed after ${build.attemptCount} attempt(s) with transient registry/network error: ${buildIssue}`
+        : `docker build failed: ${buildIssue}`);
     }
     if (usingExistingImage && inspect.command?.status !== 0) {
       reportBlockers.push(`existing docker image inspect failed for ${image.existingImage}`);

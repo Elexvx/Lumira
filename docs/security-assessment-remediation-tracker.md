@@ -4,7 +4,7 @@
 
 基线提交：`89381581`
 
-已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`
+已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`
 
 当前补充证据：待提交
 
@@ -37,7 +37,7 @@
 |---|---|---|---|
 | DEPLOY-OPS-ADMIN-DEFAULT-001 | 资产：管理员账号；威胁：首个访问者接管；影响：全局控制。 | 可远程利用、影响全系统、默认部署条件下危害高。 | 生产首启流程需现场确认。 |
 | SQL-DATA-001 | 资产：权限与租户数据；威胁：通配权限提升。 | 需认证但影响范围大，可造成越权。 | 需 E2E 验证租户与对象级访问。 |
-| EXT-CALLBACK-001 | 资产：内部工具/API；威胁：AI 工具越权调用。 | 需权限但可扩大访问面。 | 需运行态工具链验证。 |
+| EXT-CALLBACK-001 | 资产：内部工具 API；威胁：AI 工具越权调用。 | 需权限但可扩大访问面。 | 需运行态工具链验证。 |
 | EXT-CALLBACK-002/UPDATE-SOURCE-TRUST-001 | 资产：更新链路；威胁：恶意 manifest/镜像。 | 供应链路径影响部署制品。 | 需真实签名源和镜像仓库验证。 |
 | CAND-PLUGIN-PATH-001/PLUGIN-CLEANUP-BOUNDARY-001 | 资产：插件目录/主机文件；威胁：路径穿越或误删。 | 需插件管理路径但可影响文件系统边界。 | 需恶意样本和运行态插件隔离验证。 |
 | AUTH-IAM-001/AUTH-IAM-002 | 资产：会话与登录入口；威胁：token 重放/验证码绕过。 | 可影响身份鉴别可靠性。 | 需真实浏览器登录链路验证。 |
@@ -51,14 +51,15 @@
 - 2026-06-19：提交现有工作树作为整改基线 `89381581`。
 - 2026-06-19：完成原 11 项报告问题的第一轮代码整改并提交 `f9ff9e3a`。
 - 2026-06-19：补充安全评估证据与生产门禁证据提交 `dc3d17e1`、`72c08f54`。
-- 2026-06-19：使用子代理 `Raman` 完成后端服务与公共库只读复核，新增 3 项发现并完成整改，提交 `d2b31294`。
+- 2026-06-19：使用子代理完成后端服务与公共库只读复核，新增 3 项发现并完成整改，提交 `d2b31294`。
+- 2026-06-19：补充标准逐项矩阵、测试证据索引和中文报告修订，提交 `982576f1`。
 - 2026-06-19：通过后端全量回归：`.\mvnw.cmd clean test`，17 个 Maven 模块全部 `BUILD SUCCESS`，完成时间 2026-06-19 15:18:55。
 - 2026-06-19：通过后端发行包构建：`.\mvnw.cmd -pl services/lumira-server -am -DskipTests package`，16 个模块 `BUILD SUCCESS`，完成时间 2026-06-19 15:29:25。
-- 2026-06-19：通过前端回归：install、lint、typecheck、test、test:smoke 均通过；`test` 为 12 个测试文件、37 个用例通过。
-- 2026-06-19：通过前端 coverage：12 个测试文件、37 个用例通过；语句 34.7%、分支 12.53%、函数 23.46%、行 35.22%，覆盖率偏低，列入质量改进项。
+- 2026-06-19：通过前端回归：install、lint、typecheck、test、test:smoke 均通过；`test` 中 12 个测试文件、87 个用例通过。
+- 2026-06-19：通过前端 coverage：12 个测试文件、87 个用例通过；语句 34.7%、分支 12.53%、函数 23.46%、行 35.22%，覆盖率偏低，列入质量改进项。
 - 2026-06-19：通过前端生产构建：`corepack pnpm --dir frontend run build`，输出 `dist`，87 个 assets。
 - 2026-06-19：通过静态/合约门禁：`ddd-dockerfile-contract.test.mjs`、`ddd-docker-evidence-contract.test.mjs`、`ddd-backend-evidence-contract.test.mjs`、`ddd-frontend-evidence-contract.test.mjs`、`ddd-frontend-smoke-contract.test.mjs`。
-- 2026-06-19：Docker build evidence 记录阻断：`node scripts/ddd-docker-build-evidence.mjs` 写入 `artifacts/ddd/build/docker-image-evidence.json`，状态 `FAIL`，blocker 为 Docker CLI/daemon 不可用。
+- 2026-06-19：Docker build evidence 更新为更准确的阻断结论：`docker --version` 与 `docker info` 成功，Docker 版本 29.5.3；`node scripts/ddd-docker-build-evidence.mjs` 写入 `artifacts/ddd/build/docker-image-evidence.json`，状态 `FAIL`，2 个镜像 build 均失败，阻断为基础镜像层 `unexpected EOF`、`short read`、`ETIMEDOUT`。
 - 2026-06-19：部署运行态检查失败：`node scripts/check-deployment.mjs` 对 `127.0.0.1:8000` 与 `127.0.0.1:8080` 均无 HTTP 响应。
 - 2026-06-19：前端 E2E smoke 安装 Chromium 后执行，因 `127.0.0.1:8000`/`127.0.0.1:8080` 未提供运行态而连接拒绝，未完成。
 - 2026-06-19：脚本门禁复核：
@@ -72,7 +73,7 @@
 
 | 阻断项 | 优先级 | 当前证据 | 完成条件 |
 |---|---|---|---|
-| Docker daemon/CLI 在 Node 子进程中不可用 | P0 | `artifacts/ddd/build/docker-image-evidence.json`：`status=FAIL`，2 个镜像 skipped。 | 启动 Docker daemon 或切换可信 CI Docker 环境，重新生成 PASS 的 build/inspect evidence。 |
+| Docker 镜像构建受 registry/network/build cache 异常阻断 | P0 | `artifacts/ddd/build/docker-image-evidence.json`：`status=FAIL`，Docker preflight 成功，2 个镜像 build 失败，错误包括 `unexpected EOF`、`short read`、`ETIMEDOUT`。 | 使用稳定镜像仓库、本地镜像缓存或可信 CI Docker runner，重新生成 PASS 的 build/inspect evidence。 |
 | 本地 API proxy 与后端未运行 | P0 | `node scripts/check-deployment.mjs` 全部健康检查无 HTTP 响应。 | 启动隔离环境，确保 `127.0.0.1:8000`、`127.0.0.1:8080` 或指定目标可访问。 |
 | Playwright E2E/DAST 未完成 | P0 | E2E smoke 连接拒绝；无 DAST 报告。 | 提供运行态 URL、测试账号、测试数据和授权边界，执行 E2E 与 DAST。 |
 | 生产证据 `NO_GO_STRICT` | P0 | production evidence readiness 输出 5 个阻断证据门。 | 补齐 first-wave env receipt、lane completion receipt、owner evidence、production audit、final go/no-go。 |
