@@ -1,6 +1,6 @@
 # DDD Staging Handoff Bundle
 
-Generated at: 2026-06-19T06:58:11.752Z
+Generated at: 2026-06-19T07:15:06.971Z
 Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
@@ -21,6 +21,7 @@ Blocked gates: 6/6
 11. Read `production-cutover-audit.md` before final approval; every audit item must be PASS.
 12. Use `production-unblock-plan.md` as the focused production unblock checklist when the audit is still `NO_GO_STRICT`.
 13. Use `production-evidence-readiness.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go/no-go evidence in one table.
+14. Run `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` before final go/no-go; it must exit 0.
 12. Re-run `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.
 
 ## Status Views

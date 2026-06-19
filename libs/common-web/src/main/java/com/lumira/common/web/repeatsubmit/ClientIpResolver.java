@@ -8,9 +8,16 @@ import org.springframework.util.StringUtils;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.regex.Pattern;
 
 @Component("repeatSubmitClientIpResolver")
 public class ClientIpResolver {
+
+    private static final Pattern IPV4_LITERAL = Pattern.compile(
+        "^(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)"
+            + "(\\.(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)){3}$"
+    );
+    private static final Pattern IPV6_LITERAL_CHARS = Pattern.compile("^[0-9A-Fa-f:.]+$");
 
     private final WebProperties webProperties;
 
@@ -28,14 +35,16 @@ public class ClientIpResolver {
         }
         String forwardedFor = request.getHeader("X-Forwarded-For");
         if (StringUtils.hasText(forwardedFor)) {
-            return normalizeIp(forwardedFor.split(",")[0]);
+            String clientIp = normalizeIp(forwardedFor.split(",")[0]);
+            return isValidIp(clientIp) ? clientIp : remoteAddr;
         }
         String forwarded = request.getHeader("Forwarded");
         if (StringUtils.hasText(forwarded)) {
             for (String part : forwarded.split(";")) {
                 String trimmed = part.trim();
                 if (trimmed.regionMatches(true, 0, "for=", 0, 4)) {
-                    return normalizeIp(trimmed.substring(4));
+                    String clientIp = normalizeIp(trimmed.substring(4));
+                    return isValidIp(clientIp) ? clientIp : remoteAddr;
                 }
             }
         }
@@ -60,6 +69,23 @@ public class ClientIpResolver {
             trimmed = trimmed.substring(0, trimmed.lastIndexOf(':'));
         }
         return "unknown".equalsIgnoreCase(trimmed) ? "" : trimmed;
+    }
+
+    private boolean isValidIp(String value) {
+        if (!StringUtils.hasText(value)) {
+            return false;
+        }
+        if (IPV4_LITERAL.matcher(value).matches()) {
+            return true;
+        }
+        if (!value.contains(":") || !IPV6_LITERAL_CHARS.matcher(value).matches()) {
+            return false;
+        }
+        try {
+            return InetAddress.getByName(value).getAddress().length == 16;
+        } catch (UnknownHostException ignored) {
+            return false;
+        }
     }
 
     private boolean isTrustedProxy(String remoteAddr, List<String> trustedProxyCidrs) {

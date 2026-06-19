@@ -18,10 +18,15 @@ const handoffBundleDir = path.join(tmpDir, "staging-handoff-bundle");
 const childTimeoutMs = Number(process.env.DDD_STAGING_CHECKLIST_TEST_CHILD_TIMEOUT_MS || 60000);
 
 function spawnSyncWithTimeout(command, args, options = {}) {
-  return spawnSync(command, args, {
+  const result = spawnSync(command, args, {
     timeout: childTimeoutMs,
+    maxBuffer: 16 * 1024 * 1024,
     ...options,
   });
+  if (result.status === -1 || result.status === 4294967295) {
+    console.error(`[spawnSyncWithTimeout] status=${result.status}; signal=${result.signal || "none"}; error=${result.error ? result.error.message : "none"}; command=${command} ${args.join(" ")}`);
+  }
+  return result;
 }
 
 function escapeRegExp(value) {
@@ -145,6 +150,7 @@ try {
   assert.match(checklistHelpResult.stdout, /--production-closeout-status/);
   assert.match(checklistHelpResult.stdout, /--production-unblock-plan/);
   assert.match(checklistHelpResult.stdout, /--production-evidence-readiness/);
+  assert.match(checklistHelpResult.stdout, /--production-evidence-readiness-enforce/);
   assert.match(checklistHelpResult.stdout, /--production-cutover-audit/);
   assert.match(checklistHelpResult.stdout, /--final-review/);
   assert.match(checklistHelpResult.stdout, /--final-review-markdown/);
@@ -410,6 +416,7 @@ try {
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-unblock-plan-markdown$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-evidence-readiness$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-evidence-readiness-markdown$/m);
+  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-evidence-readiness-enforce$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-cutover-audit$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-cutover-audit-markdown$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --final-review$/m);
@@ -2195,6 +2202,7 @@ try {
   assert.match(bundleReadme, /production-cutover-audit\.md` before final approval/);
   assert.match(bundleReadme, /production-unblock-plan\.md` as the focused production unblock checklist/);
   assert.match(bundleReadme, /production-evidence-readiness\.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go\/no-go evidence in one table/);
+  assert.match(bundleReadme, /--production-evidence-readiness-enforce/);
   assert.match(bundleReadme, /## Status Views/);
   assert.match(bundleReadme, /`production-closeout-status\.md`: top-level closeout status with ETA band, next owner action, blocked stages, receipt submission readiness, and production preconditions/);
   assert.match(bundleReadme, /`production-unblock-plan\.md`: paste-ready focused plan for the parallel unblock workstreams and exit criteria/);
@@ -2406,6 +2414,7 @@ try {
   assert.equal(bundleProductionEvidenceReadiness.evidenceGateCount, 5);
   assert.equal(bundleProductionEvidenceReadiness.readyEvidenceCount, 0);
   assert.equal(bundleProductionEvidenceReadiness.blockedAuditItemCount, 5);
+  assert(bundleProductionEvidenceReadiness.verificationCommands.includes("node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce"));
   assert(bundleProductionEvidenceReadiness.evidenceGates.some((gate) => gate.id === "first-wave-env-receipt" && gate.status === "MISSING" && gate.verifyCommand.includes("--next-action-env-receipt-contract")));
   assert(bundleProductionEvidenceReadiness.evidenceGates.some((gate) => gate.id === "lane-completion-receipt" && gate.verifyCommand.includes("--lane-completion-submission-check")));
   assert(bundleProductionEvidenceReadiness.evidenceGates.some((gate) => gate.id === "owner-evidence" && gate.command.includes("--data-safety-submission-plan-markdown")));
@@ -2417,7 +2426,21 @@ try {
   assert.match(bundleProductionEvidenceReadinessMarkdown, /## Evidence Gates/);
   assert.match(bundleProductionEvidenceReadinessMarkdown, /First-wave env receipt contract/);
   assert.match(bundleProductionEvidenceReadinessMarkdown, /## Blocking Evidence/);
+  assert.match(bundleProductionEvidenceReadinessMarkdown, /## Verification Commands/);
+  assert.match(bundleProductionEvidenceReadinessMarkdown, /--production-evidence-readiness-enforce/);
   assert.match(bundleProductionEvidenceReadinessMarkdown, /final-go-no-go/);
+  const productionEvidenceReadinessEnforceResult = spawnSyncWithTimeout("node", ["scripts/ddd-staging-execution-checklist.mjs", "--production-evidence-readiness-enforce"], {
+    cwd: repoRoot,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      DDD_STAGING_HANDOFF_BUNDLE_DIR: handoffBundleDir,
+    },
+  });
+  assert.notEqual(productionEvidenceReadinessEnforceResult.status, 0, "production evidence readiness enforce must block while evidence gates are not all PASS");
+  const productionEvidenceReadinessEnforce = JSON.parse(productionEvidenceReadinessEnforceResult.stdout);
+  assert.equal(productionEvidenceReadinessEnforce.status, "BLOCKED");
+  assert.equal(productionEvidenceReadinessEnforce.readyEvidenceCount, 0);
   const bundleProductionCutoverAudit = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "production-cutover-audit.json"), "utf8"));
   assert.equal(bundleProductionCutoverAudit.status, "BLOCKED");
   assert.equal(bundleProductionCutoverAudit.finalRecommendation, "NO_GO_STRICT");

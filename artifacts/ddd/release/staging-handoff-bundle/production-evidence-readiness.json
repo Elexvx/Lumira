@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T06:58:11.752Z",
+  "generatedAt": "2026-06-19T07:15:06.971Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
@@ -139,6 +139,12 @@
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
       "completionSignal": "owner evidence intake has 0 missing required artifacts"
     }
+  ],
+  "verificationCommands": [
+    "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness",
+    "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce",
+    "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit",
+    "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
   ],
   "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
   "noAutoWaivers": true

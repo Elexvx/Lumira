@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T06:58:11.752Z",
+  "generatedAt": "2026-06-19T07:15:06.971Z",
   "willWriteFiles": false,
   "recommendedMode": "external-runner-required",
   "blocker": "docker CLI is not available: spawnSync docker ENOENT",

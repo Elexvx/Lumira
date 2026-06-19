@@ -12,6 +12,7 @@ import java.lang.reflect.Method;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class PlatformUpdateAppServiceTest {
 
@@ -37,6 +38,36 @@ class PlatformUpdateAppServiceTest {
                 """);
 
         assertThrows(InvocationTargetException.class, () -> method.invoke(service, manifest));
+    }
+
+    @Test
+    void validateManifestSourceUrlShouldRequireHttps() throws Exception {
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                mock(Environment.class),
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                mock(PlatformUpdateTaskMapper.class)
+        );
+        Method method = PlatformUpdateAppService.class.getDeclaredMethod("validateManifestSourceUrl", String.class);
+        method.setAccessible(true);
+
+        assertThrows(InvocationTargetException.class, () -> method.invoke(service, "http://updates.example.com/manifest.json"));
+    }
+
+    @Test
+    void validateManifestSourceUrlShouldRejectHostsOutsideAllowlist() throws Exception {
+        Environment environment = mock(Environment.class);
+        when(environment.getProperty("PLATFORM_UPDATE_ALLOWED_HOSTS")).thenReturn("updates.example.com");
+        PlatformUpdateAppService service = new PlatformUpdateAppService(
+                environment,
+                mockBuildPropertiesProvider(),
+                new ObjectMapper(),
+                mock(PlatformUpdateTaskMapper.class)
+        );
+        Method method = PlatformUpdateAppService.class.getDeclaredMethod("validateManifestSourceUrl", String.class);
+        method.setAccessible(true);
+
+        assertThrows(InvocationTargetException.class, () -> method.invoke(service, "https://evil.example.com/manifest.json"));
     }
 
     @SuppressWarnings("unchecked")

@@ -4,7 +4,9 @@
 
 基线提交：`89381581`
 
-整改提交：`f9ff9e3a`
+已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`
+
+当前补充整改：待提交
 
 ## 范围与依据
 
@@ -23,30 +25,38 @@
 | AUTH-IAM-002 | 身份鉴别/登录防护 | High | 已修复并回归通过 | `AuthAppServiceTest` |
 | DEPLOY-OPS-UPDATER-AUTH-001 | 安全运维/管理接口 | High | 已修复并回归通过 | `node scripts/lumira-updater-auth.test.mjs` |
 | FILE-PLUGIN-FILE-ROOT-001 | 文件存储边界 | Medium-High | 已修复并回归通过 | `FileManagementAppServiceTest` |
+| PLUGIN-CLEANUP-BOUNDARY-001 | 插件存储边界 | Medium-High | 已修复并回归通过 | `PluginArtifactLoaderTest` |
+| UPDATE-SOURCE-TRUST-001 | 安全运维/供应链 | Medium | 已修复并回归通过 | `PlatformUpdateAppServiceTest` |
 | CAND-FORWARDED-IP-001 | 边界防护/审计 | Medium | 已修复并回归通过 | `ClientIpResolverTest` |
 | DEPLOY-OPS-BACKUP-ENV-001 | 备份/机密保护 | Medium | 已修复并静态复核通过 | `deploy/backup-platform.sh`、`.gitignore` |
+| FORWARDED-IP-VALIDATION-001 | 边界防护/审计 | Low-Medium | 已修复并回归通过 | `ClientIpResolverTest` |
 
 ## 运行记录
 
-- 2026-06-19：已提交现有工作树作为整改基线 `89381581`。
-- 2026-06-19：完成 11 项报告问题的第一轮代码整改并提交 `f9ff9e3a`。
-- 2026-06-19：通过针对性 Java 回归测试：
-  - `.\mvnw.cmd "-pl" "services/auth-service,services/system-service,services/ai-service,services/plugin-service,services/file-service,libs/common-web" "-Dtest=AuthAppServiceTest,DefaultAdminPasswordBaselineTest,SystemRoleManagementAppServiceTest,PlatformUpdateAppServiceTest,AiCommandServiceTest,PluginArtifactLoaderTest,FileManagementAppServiceTest,ClientIpResolverTest" test`
-  - 结果：`BUILD SUCCESS`。
-- 2026-06-19：通过 updater 脚本认证回归：
-  - `node scripts/lumira-updater-auth.test.mjs`
-- 2026-06-19：执行仓库级回归验证：
-  - `.\mvnw.cmd clean test`：15 个模块通过，`lumira-server` 清理阶段因历史 Java 进程锁定 `target/lumira-server-0.1.0.jar` 中断。
-  - `.\mvnw.cmd -pl services/lumira-server,services/ai-service -am test`：17 个模块回归通过。
-  - `corepack pnpm --dir frontend install --frozen-lockfile`：通过。
-  - `corepack pnpm --dir frontend run lint`：通过。
-  - `corepack pnpm --dir frontend run typecheck`：通过。
+- 2026-06-19：提交现有工作树作为整改基线 `89381581`。
+- 2026-06-19：完成原 11 项报告问题的第一轮代码整改并提交 `f9ff9e3a`。
+- 2026-06-19：补充安全评估证据与生产门禁证据提交 `dc3d17e1`、`72c08f54`。
+- 2026-06-19：使用子代理 `Raman` 完成后端服务与公共库只读复核，新增 3 项发现并完成整改。
+- 2026-06-19：通过后端全量回归：
+  - `.\mvnw.cmd clean test`
+  - 结果：17 个 Maven 模块全部 `BUILD SUCCESS`，完成时间 2026-06-19 15:18:55，耗时 01:51；`system-service` 有 4 个既有 integration skip。
+- 2026-06-19：通过前端回归：
+  - `corepack pnpm --dir frontend install --frozen-lockfile`
+  - `corepack pnpm --dir frontend run lint`
+  - `corepack pnpm --dir frontend run typecheck`
   - `corepack pnpm --dir frontend run test`：12 个测试文件、37 个用例通过。
-  - `corepack pnpm --dir frontend run test:smoke`：通过。
-  - `scripts/*.test.mjs` 顺序执行：全部通过。
+  - `corepack pnpm --dir frontend run test:smoke`
+- 2026-06-19：前端 E2E smoke 安装 Chromium 后执行，因 `127.0.0.1:8000`/`127.0.0.1:8080` 未提供运行态而连接拒绝，未完成。
+- 2026-06-19：脚本门禁复核：
+  - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`：输出 `BLOCKED/NO_GO_STRICT`。
+  - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce`：证据未齐时按设计非零阻断。
+  - `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify`：通过，检查 112 个文件，`issues=[]`。
+  - `node scripts/ddd-release-artifact-integrity-gate-contract.test.mjs`：通过。
+  - `node scripts/ddd-release-config-sync.test.mjs`：通过。
 
 ## 尚未闭环
 
 - 生产环境渗透测试、真实外部资产扫描、第三方服务现场核验尚未执行，需要明确授权环境、目标资产、时间窗口和测试边界。
-- 真实部署后的代理链、updater 端口暴露、真实更新源签名、备份目录权限、日志留存与告警联动仍需在现场环境复核。
-- 本轮未使用多子代理深度扫描能力；当前会话没有可调用的子代理调度工具，因此结论按主代理全仓库复核与自动化测试证据出具。
+- 真实部署后的代理链、updater 端口暴露、真实更新源签名、备份目录权限、日志留存与告警联动仍需现场复核。
+- Playwright E2E smoke、运行态 DAST 和业务流攻击路径验证仍需可访问的本地或隔离运行环境。
+- 发布证据仍处于 `NO_GO_STRICT`：first-wave env receipt、lane completion receipt、owner evidence、production audit、final go/no-go 证据未齐。

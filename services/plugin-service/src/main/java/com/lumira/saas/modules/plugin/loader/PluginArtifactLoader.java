@@ -170,10 +170,26 @@ public class PluginArtifactLoader {
 
     public void removePath(Path path) {
         try {
-            deleteRecursively(path);
+            deleteRecursively(resolveSafeRemovalPath(path));
         } catch (IOException exception) {
             throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件目录清理失败: " + exception.getMessage());
         }
+    }
+
+    private Path resolveSafeRemovalPath(Path path) {
+        if (path == null) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "invalid plugin cleanup path");
+        }
+        Path target = path.toAbsolutePath().normalize();
+        Path storageRoot = Path.of(pluginProperties.getStorageRoot()).toAbsolutePath().normalize();
+        Path stagingRoot = Path.of(pluginProperties.getStagingRoot()).toAbsolutePath().normalize();
+        if (!target.startsWith(storageRoot) && !target.startsWith(stagingRoot)) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "invalid plugin cleanup path");
+        }
+        if (target.equals(storageRoot) || target.equals(stagingRoot)) {
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "plugin cleanup path cannot be a storage root");
+        }
+        return target;
     }
 
     private void validateMetadata(PluginDTO.PluginPackageMetadata metadata) {

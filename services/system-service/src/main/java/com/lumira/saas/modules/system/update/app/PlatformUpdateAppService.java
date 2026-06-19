@@ -320,6 +320,9 @@ public class PlatformUpdateAppService {
     }
 
     private PlatformUpdateVO.LatestVersionVO fetchLatest(String sourceUrl, boolean manifestSource) throws Exception {
+        if (manifestSource) {
+            validateManifestSourceUrl(sourceUrl);
+        }
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(sourceUrl))
                 .timeout(Duration.ofSeconds(8))
                 .header("Accept", "application/vnd.github+json, application/json")
@@ -333,6 +336,36 @@ public class PlatformUpdateAppService {
         }
         JsonNode root = objectMapper.readTree(response.body());
         return manifestSource ? fromManifest(root) : fromGithubCommit(root);
+    }
+
+    private void validateManifestSourceUrl(String sourceUrl) {
+        URI uri;
+        try {
+            uri = URI.create(sourceUrl);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException("Update manifest URL is invalid", exception);
+        }
+        if (!"https".equalsIgnoreCase(uri.getScheme())) {
+            throw new IllegalStateException("Update manifest URL must use HTTPS");
+        }
+        String host = uri.getHost();
+        if (!StringUtils.hasText(host)) {
+            throw new IllegalStateException("Update manifest URL host is required");
+        }
+        String allowedHosts = firstText(
+                environment.getProperty("PLATFORM_UPDATE_ALLOWED_HOSTS"),
+                environment.getProperty("platform.update.allowed-hosts"),
+                System.getenv("PLATFORM_UPDATE_ALLOWED_HOSTS")
+        );
+        if (!StringUtils.hasText(allowedHosts)) {
+            return;
+        }
+        for (String allowedHost : allowedHosts.split(",")) {
+            if (host.equalsIgnoreCase(allowedHost.trim())) {
+                return;
+            }
+        }
+        throw new IllegalStateException("Update manifest host is not allowed");
     }
 
     private PlatformUpdateVO.LatestVersionVO fromManifest(JsonNode root) {

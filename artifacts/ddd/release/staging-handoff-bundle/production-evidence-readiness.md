@@ -31,4 +31,11 @@ No auto waivers: true
 - lane-completion-receipt: owner=release-owner; command=`node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`; verify=`node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`
 - owner-evidence: owner=platform-owners; command=`node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown`; verify=`node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown`
 
+## Verification Commands
+
+- `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`
+- `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce`
+- `node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit`
+- `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
+
 Next: `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>`

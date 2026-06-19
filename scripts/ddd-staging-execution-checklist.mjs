@@ -109,6 +109,7 @@ const productionUnblockPlanOnly = args.has("--production-unblock-plan");
 const productionUnblockPlanMarkdownOnly = args.has("--production-unblock-plan-markdown");
 const productionEvidenceReadinessOnly = args.has("--production-evidence-readiness");
 const productionEvidenceReadinessMarkdownOnly = args.has("--production-evidence-readiness-markdown");
+const productionEvidenceReadinessEnforce = args.has("--production-evidence-readiness-enforce");
 const productionCutoverAuditOnly = args.has("--production-cutover-audit");
 const productionCutoverAuditMarkdownOnly = args.has("--production-cutover-audit-markdown");
 const operatorProgressOnly = args.has("--operator-progress");
@@ -266,6 +267,7 @@ Options:
   --production-unblock-plan-markdown Print focused production unblock plan as Markdown.
   --production-evidence-readiness Print aggregated production evidence readiness as JSON.
   --production-evidence-readiness-markdown Print aggregated production evidence readiness as Markdown.
+  --production-evidence-readiness-enforce Print aggregated production evidence readiness as JSON and exit non-zero unless every evidence gate is PASS.
   --production-cutover-audit Print final production cutover audit matrix as JSON.
   --production-cutover-audit-markdown Print final production cutover audit matrix as Markdown.
   --lane-completion-receipt-file=<file> Also used by final review to require a passing owner lane completion receipt contract.
@@ -381,6 +383,7 @@ Examples:
   node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown
   node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness
   node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown
+  node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce
   node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit
   node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown
   node scripts/ddd-staging-execution-checklist.mjs --operator-progress
@@ -962,6 +965,7 @@ function verifyHandoffBundleResult() {
     ["production-evidence-readiness.md", "# DDD Production Evidence Readiness"],
     ["production-evidence-readiness.md", "## Evidence Gates"],
     ["production-evidence-readiness.md", "## Blocking Evidence"],
+    ["production-evidence-readiness.md", "## Verification Commands"],
     ["production-cutover-audit.md", "# DDD Production Cutover Audit"],
     ["production-cutover-audit.md", "## Audit Items"],
     ["production-cutover-audit.md", "## Parallel Next Actions"],
@@ -7841,6 +7845,12 @@ function buildProductionEvidenceReadiness({
     evidenceGates,
     blockingEvidence,
     parallelWorkstreams: unblockPlan.parallelWorkstreams,
+    verificationCommands: [
+      "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness",
+      "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce",
+      "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit",
+      "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
+    ],
     nextCommand: blockingEvidence[0]?.command || "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     noAutoWaivers: true,
   };
@@ -7882,13 +7892,17 @@ function renderProductionEvidenceReadinessMarkdown(readiness) {
       ? readiness.parallelWorkstreams.map((workstream) => `- ${workstream.id}: owner=${workstream.owner}; command=\`${workstream.command}\`; verify=\`${workstream.verifyCommand}\``)
       : ["- none"]),
     "",
+    "## Verification Commands",
+    "",
+    ...readiness.verificationCommands.map((command) => `- \`${command}\``),
+    "",
     `Next: \`${readiness.nextCommand}\``,
     "",
   ];
   return lines.join("\n");
 }
 
-function runProductionEvidenceReadiness({ markdown = false } = {}) {
+function runProductionEvidenceReadiness({ markdown = false, enforce = false } = {}) {
   let readiness;
   try {
     readiness = buildProductionEvidenceReadiness();
@@ -7901,7 +7915,7 @@ function runProductionEvidenceReadiness({ markdown = false } = {}) {
   } else {
     console.log(JSON.stringify(readiness, null, 2));
   }
-  process.exit(0);
+  process.exit(enforce && readiness.status !== "PASS" ? 1 : 0);
 }
 
 if (productionEvidenceReadinessOnly) {
@@ -7910,6 +7924,10 @@ if (productionEvidenceReadinessOnly) {
 
 if (productionEvidenceReadinessMarkdownOnly) {
   runProductionEvidenceReadiness({ markdown: true });
+}
+
+if (productionEvidenceReadinessEnforce) {
+  runProductionEvidenceReadiness({ enforce: true });
 }
 
 function buildProductionCutoverAudit({
@@ -8871,6 +8889,7 @@ function renderHandoffBundleReadme(rollup) {
     "11. Read `production-cutover-audit.md` before final approval; every audit item must be PASS.",
     "12. Use `production-unblock-plan.md` as the focused production unblock checklist when the audit is still `NO_GO_STRICT`.",
     "13. Use `production-evidence-readiness.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go/no-go evidence in one table.",
+    "14. Run `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` before final go/no-go; it must exit 0.",
     "12. Re-run `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.",
     "",
     "## Status Views",
@@ -9776,6 +9795,7 @@ function renderCommands() {
     "node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness",
     "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown",
+    "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce",
     "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit",
     "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --operator-progress",
