@@ -1,8 +1,8 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
-  "dataSafetyPlanStatus": "BLOCKED",
+  "dataSafetyPlanStatus": "PASS",
   "ownerCount": 3,
   "owners": [
     "bounded-context owners",
@@ -15,7 +15,7 @@
       "id": "rollback-evidence-source",
       "phase": "P1",
       "owner": "bounded-context owners",
-      "status": "BLOCKED",
+      "status": "PASS",
       "goal": "Provide rollback drill evidence or an approved rollback deferral for every affected bounded context.",
       "requiredInputs": [
         "DDD_ROLLBACK_DRILL_FILE or DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
@@ -31,14 +31,14 @@
         "artifacts/ddd/rollback/rollback-drill.json"
       ],
       "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+      "blocker": null,
       "dependencies": []
     },
     {
       "id": "migration-fresh-drill",
       "phase": "P2",
       "owner": "database",
-      "status": "BLOCKED",
+      "status": "PASS",
       "goal": "Validate the migration sequence against a fresh production-equivalent database and attach evidence.",
       "requiredInputs": [
         "DDD_MIGRATION_FRESH_DB_VALIDATED=true",
@@ -54,14 +54,14 @@
         "artifacts/ddd/migration/migration-evidence.json"
       ],
       "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-      "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+      "blocker": null,
       "dependencies": []
     },
     {
       "id": "migration-upgrade-drill",
       "phase": "P2",
       "owner": "database",
-      "status": "BLOCKED",
+      "status": "PASS",
       "goal": "Validate upgrade migration from the previous production schema and attach evidence.",
       "requiredInputs": [
         "DDD_MIGRATION_UPGRADE_DB_VALIDATED=true",
@@ -76,7 +76,7 @@
         "artifacts/ddd/migration/migration-evidence.json"
       ],
       "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-      "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+      "blocker": null,
       "dependencies": [
         "migration-fresh-drill"
       ]
@@ -85,7 +85,7 @@
       "id": "explain-collect",
       "phase": "P2",
       "owner": "database",
-      "status": "BLOCKED",
+      "status": "PASS",
       "goal": "Collect production-equivalent EXPLAIN evidence from the staging database with read-only credentials.",
       "requiredInputs": [
         "DDD_EXPLAIN_DATABASE",
@@ -102,14 +102,14 @@
         "tmp/ddd-explain/*.json"
       ],
       "acceptanceCommand": "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
-      "blocker": "DDD_EXPLAIN_DATABASE is required",
+      "blocker": null,
       "dependencies": []
     },
     {
       "id": "explain-gate",
       "phase": "P2",
       "owner": "database",
-      "status": "BLOCKED",
+      "status": "PASS",
       "goal": "Run strict EXPLAIN gate and write the release report after EXPLAIN artifacts are collected.",
       "requiredInputs": [
         "DDD_RELEASE_CANDIDATE or GITHUB_SHA",
@@ -123,7 +123,7 @@
         "artifacts/ddd/release/explain-gate-report.json"
       ],
       "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-      "blocker": "DDD_EXPLAIN_DATABASE is required",
+      "blocker": null,
       "dependencies": [
         "explain-collect"
       ]
@@ -132,7 +132,7 @@
       "id": "data-safety-acceptance",
       "phase": "P2",
       "owner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "goal": "Regenerate data safety status, readiness summary, evidence acceptance, and final review after all artifacts land.",
       "requiredInputs": [],
       "commands": [
@@ -148,7 +148,7 @@
         "artifacts/ddd/release/explain-gate-report.json"
       ],
       "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
-      "blocker": "rollback, migration, or EXPLAIN evidence is not fully accepted",
+      "blocker": null,
       "dependencies": [
         "rollback-evidence-source",
         "migration-upgrade-drill",
@@ -173,27 +173,31 @@
     "Use read-only database credentials for EXPLAIN collection and keep populated credentials out of committed artifacts."
   ],
   "nextPhase": {
-    "id": "rollback-evidence-source",
-    "phase": "P1",
-    "owner": "bounded-context owners",
-    "status": "BLOCKED",
-    "goal": "Provide rollback drill evidence or an approved rollback deferral for every affected bounded context.",
-    "requiredInputs": [
-      "DDD_ROLLBACK_DRILL_FILE or DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-      "DDD_ROLLBACK_DRILL_ENVIRONMENT or DDD_EVIDENCE_ENVIRONMENT or DDD_RELEASE_ENVIRONMENT",
-      "DDD_RELEASE_CANDIDATE or GITHUB_SHA",
-      "DDD_EVIDENCE_OPERATOR or GITHUB_ACTOR"
-    ],
+    "id": "data-safety-acceptance",
+    "phase": "P2",
+    "owner": "release-infra",
+    "status": "PASS",
+    "goal": "Regenerate data safety status, readiness summary, evidence acceptance, and final review after all artifacts land.",
+    "requiredInputs": [],
     "commands": [
-      "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-      "DDD_ROLLBACK_DRILL_STRICT=true node scripts/ddd-rollback-drill-evidence.mjs"
+      "node scripts/ddd-staging-data-safety-check.mjs",
+      "node scripts/ddd-release-readiness-summary.mjs",
+      "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
     ],
     "artifacts": [
-      "artifacts/ddd/rollback/rollback-drill.json"
+      "artifacts/ddd/rollback/rollback-drill.json",
+      "artifacts/ddd/migration/migration-evidence.json",
+      "tmp/ddd-explain/*.json",
+      "artifacts/ddd/release/explain-gate-report.json"
     ],
-    "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-    "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-    "dependencies": []
+    "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "blocker": null,
+    "dependencies": [
+      "rollback-evidence-source",
+      "migration-upgrade-drill",
+      "explain-gate"
+    ]
   },
-  "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
 }

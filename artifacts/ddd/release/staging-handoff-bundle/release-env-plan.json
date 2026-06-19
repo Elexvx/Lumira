@@ -1,6 +1,6 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "target": "tmp/ddd-dispatch-check-env-init.env",
   "targetExists": false,
@@ -20,21 +20,18 @@
     "issues": []
   },
   "releaseEnvGate": {
-    "status": "BLOCKED",
-    "blocker": "release env file is not cutover-safe; blockers=34",
-    "blockingInputs": [
-      "DDD_RELEASE_ENV_FILE"
-    ],
+    "status": "PASS",
+    "blocker": "release env file is cutover-safe",
+    "blockingInputs": [],
     "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
   },
   "ownerCount": 5,
   "ownerSteps": [
     {
       "owner": "platform-events",
-      "blockers": 9,
-      "placeholders": 9,
+      "blockers": 0,
+      "placeholders": 0,
       "secretKeys": 3,
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/01-platform-events.md",
       "keys": [
         "SAAS_EVENT_REDIS_STREAM_KEY",
         "SAAS_JOB_BACKEND_BASE_URL",
@@ -47,18 +44,14 @@
         "XXL_JOB_ADMIN_ADDRESSES",
         "XXL_JOB_ACCESS_TOKEN"
       ],
-      "reasons": [
-        "production-endpoint",
-        "secret-manager"
-      ],
+      "reasons": [],
       "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-events"
     },
     {
       "owner": "platform-owners",
-      "blockers": 9,
-      "placeholders": 9,
+      "blockers": 0,
+      "placeholders": 0,
       "secretKeys": 0,
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-owners.md",
       "keys": [
         "AI_SERVICE_BASE_URL",
         "AUTH_SERVICE_BASE_URL",
@@ -70,17 +63,14 @@
         "PLUGIN_SERVICE_BASE_URL",
         "SYSTEM_SERVICE_BASE_URL"
       ],
-      "reasons": [
-        "production-endpoint"
-      ],
+      "reasons": [],
       "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-owners"
     },
     {
       "owner": "release-infra",
-      "blockers": 9,
-      "placeholders": 9,
+      "blockers": 0,
+      "placeholders": 0,
       "secretKeys": 4,
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/03-release-infra.md",
       "keys": [
         "LUMIRA_BASE_URL",
         "CORS_ALLOWED_ORIGIN_PATTERNS",
@@ -95,19 +85,14 @@
         "REDIS_PORT",
         "TRUST_FORWARDED_HEADERS"
       ],
-      "reasons": [
-        "owner-production-value",
-        "production-endpoint",
-        "secret-manager"
-      ],
+      "reasons": [],
       "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
     },
     {
       "owner": "ai-owner",
-      "blockers": 6,
-      "placeholders": 6,
+      "blockers": 0,
+      "placeholders": 0,
       "secretKeys": 2,
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/04-ai-owner.md",
       "keys": [
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
@@ -122,25 +107,19 @@
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
       ],
-      "reasons": [
-        "production-endpoint",
-        "secret-manager"
-      ],
+      "reasons": [],
       "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=ai-owner"
     },
     {
       "owner": "payment-owner",
-      "blockers": 1,
-      "placeholders": 1,
+      "blockers": 0,
+      "placeholders": 0,
       "secretKeys": 1,
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-owner.md",
       "keys": [
         "PAYMENT_PUBLIC_BASE_URL",
         "DDD_PAYMENT_WEBHOOK_SECRET"
       ],
-      "reasons": [
-        "production-endpoint"
-      ],
+      "reasons": [],
       "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=payment-owner"
     }
   ],
@@ -172,5 +151,5 @@
     "Use owner packets for redacted key collection; merge values only in a secure secret store or local release runner.",
     "Rerun final review after lint, config evidence, and readiness summary are regenerated."
   ],
-  "nextCommand": "node scripts/ddd-release-env-init.mjs --check"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
 }

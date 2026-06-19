@@ -1,10 +1,10 @@
 # DDD Runtime Smoke Owner Plan
 
-Status: BLOCKED
-Backend URL: missing
-Frontend URL: missing
+Status: PASS
+Backend URL: `https://saas.elexvx.com`
+Frontend URL: `https://saas.elexvx.com`
 Owners: `release-infra`, `ai`, `release-performance`, `frontend`, `file-owner`, `job-owner`, `payment-owner`
-Next phase: runtime-deployment-evidence
+Next phase: ai-runtime-evidence
 
 ## Phases
 
@@ -41,4 +41,4 @@ Next phase: runtime-deployment-evidence
 - Do not paste secrets into Markdown outputs; use secure env files or CI secret stores for populated values.
 - Regenerate readiness after every owner smoke artifact is refreshed, then run final review enforcement.
 
-Next: `node scripts/ddd-staging-runtime-check.mjs`
+Next: `node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`

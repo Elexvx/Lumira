@@ -15,15 +15,15 @@ Decoded workflow path: `artifacts/ddd/release/lane-completion-receipt.submitted.
 
 - lane completion receipt file not provided
 - DDD_LANE_COMPLETION_RECEIPT_FILE or --lane-completion-receipt-file is required
-- missing lanes=platform-owners:p1-p2-data-safety, release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-runtime-business, release-infra:final-review
+- missing lanes=release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-p2-data-safety, release-infra:final-review, ai-owner:p1-runtime-business
 
 ## Missing Lanes
 
-- `platform-owners:p1-p2-data-safety`
 - `release-infra:p0-release-env`
 - `release-infra:p0-docker-images`
-- `release-infra:p1-runtime-business`
+- `release-infra:p1-p2-data-safety`
 - `release-infra:final-review`
+- `ai-owner:p1-runtime-business`
 
 ## Submission Commands
 

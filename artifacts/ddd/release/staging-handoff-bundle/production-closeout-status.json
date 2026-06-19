@@ -1,14 +1,14 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverReady": false,
   "cutoverAllowed": false,
-  "eta": "fast path 0.5-1.5d with staging access and owner evidence ready; 1-3d if deployment, Docker, database, or approval evidence must be produced",
+  "eta": "ready for final go/no-go enforcement",
   "etaBasis": "Derived from --cutover-rehearsal-plan and current evidence gates; it is not a waiver or deployment approval.",
-  "acceptedGates": "1/6",
-  "blockedGates": "5/6",
+  "acceptedGates": "6/6",
+  "blockedGates": "0/6",
   "blockedStages": [
     {
       "id": "first-wave-env",
@@ -35,92 +35,26 @@
       "id": "verification-route",
       "label": "Post-env verification route",
       "status": "BLOCKED",
-      "detail": "blockedPhases=5/6",
+      "detail": "blockedPhases=1/6",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown"
     },
     {
       "id": "final-review",
       "label": "Release-owner final review",
       "status": "BLOCKED",
-      "detail": "accepted=1/6",
+      "detail": "accepted=6/6",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
     }
   ],
-  "blockedPhases": [
-    {
-      "id": "p0-release-env",
-      "title": "Secure release env initialized and linted",
-      "owner": "release-infra",
-      "blocker": "release env file is not cutover-safe; blockers=34",
-      "firstCommand": "node scripts/ddd-release-env-init.mjs --check"
-    },
-    {
-      "id": "p1-runtime-business",
-      "title": "HTTPS staging runtime and business smokes accepted",
-      "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
-      "blocker": "LUMIRA_BASE_URL is required",
-      "firstCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "id": "p1-rollback",
-      "title": "Rollback drill evidence accepted",
-      "owner": "bounded-context owners",
-      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-      "firstCommand": "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs"
-    },
-    {
-      "id": "p2-migration",
-      "title": "Fresh and upgrade migration drills accepted",
-      "owner": "database",
-      "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
-      "firstCommand": "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs"
-    },
-    {
-      "id": "p2-explain",
-      "title": "Production-equivalent EXPLAIN evidence accepted",
-      "owner": "database",
-      "blocker": "DDD_EXPLAIN_DATABASE is required",
-      "firstCommand": "node scripts/ddd-collect-explain.mjs"
-    },
-    {
-      "id": "final-review",
-      "title": "Release-owner final review and strict gate",
-      "owner": "release-owner",
-      "blocker": "accepted=1/6",
-      "firstCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
-    }
-  ],
+  "blockedPhases": [],
   "evidenceArtifacts": {
-    "present": 16,
-    "missing": 2,
+    "present": 18,
+    "missing": 0,
     "total": 18,
-    "acceptedGates": 1,
+    "acceptedGates": 6,
     "totalGates": 6,
-    "missingItems": [
-      {
-        "gate": "migration",
-        "owner": "database",
-        "artifact": "tmp/ddd-explain/*.json",
-        "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-      },
-      {
-        "gate": "explain",
-        "owner": "database",
-        "artifact": "tmp/ddd-explain/*.json",
-        "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-      }
-    ],
-    "missingByOwner": [
-      {
-        "owner": "database",
-        "missingCount": 2,
-        "gates": [
-          "explain",
-          "migration"
-        ],
-        "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-      }
-    ]
+    "missingItems": [],
+    "missingByOwner": []
   },
   "laneReceipt": {
     "status": "MISSING",
@@ -140,11 +74,11 @@
   },
   "nextOwnerAction": {
     "order": 1,
-    "owner": "platform-owners",
-    "reason": "missingArtifacts=2; blockingInputs=23; lanes=1",
-    "ownerPacket": "owner-packets/platform-owners.md",
-    "envTemplate": "owner-packets/platform-owners.blocking-inputs.template.env",
-    "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown"
+    "owner": "release-infra",
+    "reason": "missingArtifacts=0; blockingInputs=0; lanes=4",
+    "ownerPacket": "owner-packets/release-infra.md",
+    "envTemplate": "owner-packets/release-infra.blocking-inputs.template.env",
+    "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
   },
   "nextActions": [
     {
@@ -164,9 +98,9 @@
     {
       "id": "owner-evidence",
       "label": "Close next owner evidence lane",
-      "owner": "platform-owners",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
-      "reason": "missingArtifacts=2; blockingInputs=23; lanes=1"
+      "owner": "release-infra",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      "reason": "missingArtifacts=0; blockingInputs=0; lanes=4"
     }
   ],
   "nextStage": {

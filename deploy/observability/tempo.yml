@@ -13,7 +13,7 @@ distributor:
 
 storage:
   trace:
-    backend: local
+    lumira-backend: local
     wal:
       path: /var/tempo/wal
     local:

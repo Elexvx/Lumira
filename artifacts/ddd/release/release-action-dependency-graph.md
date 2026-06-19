@@ -1,29 +1,29 @@
 # DDD Release Action Dependency Graph
 
-Generated at: 2026-06-19T06:54:03.604Z
+Generated at: 2026-06-19T13:42:59.865Z
 Status: NOT_READY
 Release gate mode: strict
 Release gate blockers: 94
-Batch count: 29
-Edge count: 253
-Graph density: 0.3116
+Batch count: 24
+Edge count: 159
+Graph density: 0.288
 Compressed edge count: 6
 
 ## Execution Levels
 
-- P0: 10 batches, 10 ready, 0 blocked
+- P0: 4 batches, 4 ready, 0 blocked
 - P1: 15 batches, 0 ready, 15 blocked
 - P2: 1 batches, 0 ready, 1 blocked
-- P3: 3 batches, 0 ready, 3 blocked
+- P3: 4 batches, 0 ready, 4 blocked
 
 ## Compressed Graph
 
 ```mermaid
 flowchart TD
-  p_P0["P0: 10 batches / 10 ready / 0 blocked"]
+  p_P0["P0: 4 batches / 4 ready / 0 blocked"]
   p_P1["P1: 15 batches / 0 ready / 15 blocked"]
   p_P2["P2: 1 batches / 0 ready / 1 blocked"]
-  p_P3["P3: 3 batches / 0 ready / 3 blocked"]
+  p_P3["P3: 4 batches / 0 ready / 4 blocked"]
   p_P0 --> p_P1
   p_P0 --> p_P2
   p_P0 --> p_P3
@@ -36,12 +36,6 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  b_p0_release_env_lint_release_infra["P0 release-env-lint / release-infra"]
-  b_p0_release_config_ai_owner["P0 release-config / ai-owner"]
-  b_p0_release_config_payment_owner["P0 release-config / payment-owner"]
-  b_p0_release_config_platform_events["P0 release-config / platform-events"]
-  b_p0_release_config_platform_owners["P0 release-config / platform-owners"]
-  b_p0_release_config_release_infra["P0 release-config / release-infra"]
   b_p0_docker_release_infra["P0 docker / release-infra"]
   b_p0_runtime_readiness_release_infra["P0 runtime-readiness / release-infra"]
   b_p0_manifest_release_owner["P0 manifest / release-owner"]
@@ -64,163 +58,68 @@ flowchart TD
   b_p2_explain_database["P2 explain / database"]
   b_p3_orchestrator_database["P3 orchestrator / database"]
   b_p3_orchestrator_frontend["P3 orchestrator / frontend"]
+  b_p3_orchestrator_release_infra["P3 orchestrator / release-infra"]
   b_p3_orchestrator_release_owner["P3 orchestrator / release-owner"]
-  b_p0_release_env_lint_release_infra --> b_p1_ai_runtime_ai
-  b_p0_release_config_ai_owner --> b_p1_ai_runtime_ai
-  b_p0_release_config_payment_owner --> b_p1_ai_runtime_ai
-  b_p0_release_config_platform_events --> b_p1_ai_runtime_ai
-  b_p0_release_config_platform_owners --> b_p1_ai_runtime_ai
-  b_p0_release_config_release_infra --> b_p1_ai_runtime_ai
   b_p0_docker_release_infra --> b_p1_ai_runtime_ai
   b_p0_runtime_readiness_release_infra --> b_p1_ai_runtime_ai
   b_p0_manifest_release_owner --> b_p1_ai_runtime_ai
   b_p0_authenticated_performance_release_performance --> b_p1_ai_runtime_ai
-  b_p0_release_env_lint_release_infra --> b_p1_frontend_smoke_frontend
-  b_p0_release_config_ai_owner --> b_p1_frontend_smoke_frontend
-  b_p0_release_config_payment_owner --> b_p1_frontend_smoke_frontend
-  b_p0_release_config_platform_events --> b_p1_frontend_smoke_frontend
-  b_p0_release_config_platform_owners --> b_p1_frontend_smoke_frontend
-  b_p0_release_config_release_infra --> b_p1_frontend_smoke_frontend
   b_p0_docker_release_infra --> b_p1_frontend_smoke_frontend
   b_p0_runtime_readiness_release_infra --> b_p1_frontend_smoke_frontend
   b_p0_manifest_release_owner --> b_p1_frontend_smoke_frontend
   b_p0_authenticated_performance_release_performance --> b_p1_frontend_smoke_frontend
-  b_p0_release_env_lint_release_infra --> b_p1_business_e2e_file_owner
-  b_p0_release_config_ai_owner --> b_p1_business_e2e_file_owner
-  b_p0_release_config_payment_owner --> b_p1_business_e2e_file_owner
-  b_p0_release_config_platform_events --> b_p1_business_e2e_file_owner
-  b_p0_release_config_platform_owners --> b_p1_business_e2e_file_owner
-  b_p0_release_config_release_infra --> b_p1_business_e2e_file_owner
   b_p0_docker_release_infra --> b_p1_business_e2e_file_owner
   b_p0_runtime_readiness_release_infra --> b_p1_business_e2e_file_owner
   b_p0_manifest_release_owner --> b_p1_business_e2e_file_owner
   b_p0_authenticated_performance_release_performance --> b_p1_business_e2e_file_owner
-  b_p0_release_env_lint_release_infra --> b_p1_business_e2e_job_owner
-  b_p0_release_config_ai_owner --> b_p1_business_e2e_job_owner
-  b_p0_release_config_payment_owner --> b_p1_business_e2e_job_owner
-  b_p0_release_config_platform_events --> b_p1_business_e2e_job_owner
-  b_p0_release_config_platform_owners --> b_p1_business_e2e_job_owner
-  b_p0_release_config_release_infra --> b_p1_business_e2e_job_owner
   b_p0_docker_release_infra --> b_p1_business_e2e_job_owner
   b_p0_runtime_readiness_release_infra --> b_p1_business_e2e_job_owner
   b_p0_manifest_release_owner --> b_p1_business_e2e_job_owner
   b_p0_authenticated_performance_release_performance --> b_p1_business_e2e_job_owner
-  b_p0_release_env_lint_release_infra --> b_p1_business_e2e_payment_owner
-  b_p0_release_config_ai_owner --> b_p1_business_e2e_payment_owner
-  b_p0_release_config_payment_owner --> b_p1_business_e2e_payment_owner
-  b_p0_release_config_platform_events --> b_p1_business_e2e_payment_owner
-  b_p0_release_config_platform_owners --> b_p1_business_e2e_payment_owner
-  b_p0_release_config_release_infra --> b_p1_business_e2e_payment_owner
   b_p0_docker_release_infra --> b_p1_business_e2e_payment_owner
   b_p0_runtime_readiness_release_infra --> b_p1_business_e2e_payment_owner
   b_p0_manifest_release_owner --> b_p1_business_e2e_payment_owner
   b_p0_authenticated_performance_release_performance --> b_p1_business_e2e_payment_owner
-  b_p0_release_env_lint_release_infra --> b_p1_rollback_ai_owner
-  b_p0_release_config_ai_owner --> b_p1_rollback_ai_owner
-  b_p0_release_config_payment_owner --> b_p1_rollback_ai_owner
-  b_p0_release_config_platform_events --> b_p1_rollback_ai_owner
-  b_p0_release_config_platform_owners --> b_p1_rollback_ai_owner
-  b_p0_release_config_release_infra --> b_p1_rollback_ai_owner
   b_p0_docker_release_infra --> b_p1_rollback_ai_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_ai_owner
   b_p0_manifest_release_owner --> b_p1_rollback_ai_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_ai_owner
-  b_p0_release_env_lint_release_infra --> b_p1_rollback_auth_owner
-  b_p0_release_config_ai_owner --> b_p1_rollback_auth_owner
-  b_p0_release_config_payment_owner --> b_p1_rollback_auth_owner
-  b_p0_release_config_platform_events --> b_p1_rollback_auth_owner
-  b_p0_release_config_platform_owners --> b_p1_rollback_auth_owner
-  b_p0_release_config_release_infra --> b_p1_rollback_auth_owner
   b_p0_docker_release_infra --> b_p1_rollback_auth_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_auth_owner
   b_p0_manifest_release_owner --> b_p1_rollback_auth_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_auth_owner
-  b_p0_release_env_lint_release_infra --> b_p1_rollback_file_owner
-  b_p0_release_config_ai_owner --> b_p1_rollback_file_owner
-  b_p0_release_config_payment_owner --> b_p1_rollback_file_owner
-  b_p0_release_config_platform_events --> b_p1_rollback_file_owner
-  b_p0_release_config_platform_owners --> b_p1_rollback_file_owner
-  b_p0_release_config_release_infra --> b_p1_rollback_file_owner
   b_p0_docker_release_infra --> b_p1_rollback_file_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_file_owner
   b_p0_manifest_release_owner --> b_p1_rollback_file_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_file_owner
-  b_p0_release_env_lint_release_infra --> b_p1_rollback_iam_owner
-  b_p0_release_config_ai_owner --> b_p1_rollback_iam_owner
-  b_p0_release_config_payment_owner --> b_p1_rollback_iam_owner
-  b_p0_release_config_platform_events --> b_p1_rollback_iam_owner
-  b_p0_release_config_platform_owners --> b_p1_rollback_iam_owner
-  b_p0_release_config_release_infra --> b_p1_rollback_iam_owner
   b_p0_docker_release_infra --> b_p1_rollback_iam_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_iam_owner
   b_p0_manifest_release_owner --> b_p1_rollback_iam_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_iam_owner
-  b_p0_release_env_lint_release_infra --> b_p1_rollback_job_owner
-  b_p0_release_config_ai_owner --> b_p1_rollback_job_owner
-  b_p0_release_config_payment_owner --> b_p1_rollback_job_owner
-  b_p0_release_config_platform_events --> b_p1_rollback_job_owner
-  b_p0_release_config_platform_owners --> b_p1_rollback_job_owner
-  b_p0_release_config_release_infra --> b_p1_rollback_job_owner
   b_p0_docker_release_infra --> b_p1_rollback_job_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_job_owner
   b_p0_manifest_release_owner --> b_p1_rollback_job_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_job_owner
-  b_p0_release_env_lint_release_infra --> b_p1_rollback_localization_owner
-  b_p0_release_config_ai_owner --> b_p1_rollback_localization_owner
-  b_p0_release_config_payment_owner --> b_p1_rollback_localization_owner
-  b_p0_release_config_platform_events --> b_p1_rollback_localization_owner
-  b_p0_release_config_platform_owners --> b_p1_rollback_localization_owner
-  b_p0_release_config_release_infra --> b_p1_rollback_localization_owner
   b_p0_docker_release_infra --> b_p1_rollback_localization_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_localization_owner
   b_p0_manifest_release_owner --> b_p1_rollback_localization_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_localization_owner
-  b_p0_release_env_lint_release_infra --> b_p1_rollback_message_owner
-  b_p0_release_config_ai_owner --> b_p1_rollback_message_owner
-  b_p0_release_config_payment_owner --> b_p1_rollback_message_owner
-  b_p0_release_config_platform_events --> b_p1_rollback_message_owner
-  b_p0_release_config_platform_owners --> b_p1_rollback_message_owner
-  b_p0_release_config_release_infra --> b_p1_rollback_message_owner
   b_p0_docker_release_infra --> b_p1_rollback_message_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_message_owner
   b_p0_manifest_release_owner --> b_p1_rollback_message_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_message_owner
-  b_p0_release_env_lint_release_infra --> b_p1_rollback_payment_owner
-  b_p0_release_config_ai_owner --> b_p1_rollback_payment_owner
-  b_p0_release_config_payment_owner --> b_p1_rollback_payment_owner
-  b_p0_release_config_platform_events --> b_p1_rollback_payment_owner
-  b_p0_release_config_platform_owners --> b_p1_rollback_payment_owner
-  b_p0_release_config_release_infra --> b_p1_rollback_payment_owner
   b_p0_docker_release_infra --> b_p1_rollback_payment_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_payment_owner
   b_p0_manifest_release_owner --> b_p1_rollback_payment_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_payment_owner
-  b_p0_release_env_lint_release_infra --> b_p1_rollback_platform_owner
-  b_p0_release_config_ai_owner --> b_p1_rollback_platform_owner
-  b_p0_release_config_payment_owner --> b_p1_rollback_platform_owner
-  b_p0_release_config_platform_events --> b_p1_rollback_platform_owner
-  b_p0_release_config_platform_owners --> b_p1_rollback_platform_owner
-  b_p0_release_config_release_infra --> b_p1_rollback_platform_owner
   b_p0_docker_release_infra --> b_p1_rollback_platform_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_platform_owner
   b_p0_manifest_release_owner --> b_p1_rollback_platform_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_platform_owner
-  b_p0_release_env_lint_release_infra --> b_p1_rollback_plugin_owner
-  b_p0_release_config_ai_owner --> b_p1_rollback_plugin_owner
-  b_p0_release_config_payment_owner --> b_p1_rollback_plugin_owner
-  b_p0_release_config_platform_events --> b_p1_rollback_plugin_owner
-  b_p0_release_config_platform_owners --> b_p1_rollback_plugin_owner
-  b_p0_release_config_release_infra --> b_p1_rollback_plugin_owner
   b_p0_docker_release_infra --> b_p1_rollback_plugin_owner
   b_p0_runtime_readiness_release_infra --> b_p1_rollback_plugin_owner
   b_p0_manifest_release_owner --> b_p1_rollback_plugin_owner
   b_p0_authenticated_performance_release_performance --> b_p1_rollback_plugin_owner
-  b_p0_release_env_lint_release_infra --> b_p2_explain_database
-  b_p0_release_config_ai_owner --> b_p2_explain_database
-  b_p0_release_config_payment_owner --> b_p2_explain_database
-  b_p0_release_config_platform_events --> b_p2_explain_database
-  b_p0_release_config_platform_owners --> b_p2_explain_database
-  b_p0_release_config_release_infra --> b_p2_explain_database
   b_p0_docker_release_infra --> b_p2_explain_database
   b_p0_runtime_readiness_release_infra --> b_p2_explain_database
   b_p0_manifest_release_owner --> b_p2_explain_database
@@ -240,12 +139,6 @@ flowchart TD
   b_p1_rollback_payment_owner --> b_p2_explain_database
   b_p1_rollback_platform_owner --> b_p2_explain_database
   b_p1_rollback_plugin_owner --> b_p2_explain_database
-  b_p0_release_env_lint_release_infra --> b_p3_orchestrator_database
-  b_p0_release_config_ai_owner --> b_p3_orchestrator_database
-  b_p0_release_config_payment_owner --> b_p3_orchestrator_database
-  b_p0_release_config_platform_events --> b_p3_orchestrator_database
-  b_p0_release_config_platform_owners --> b_p3_orchestrator_database
-  b_p0_release_config_release_infra --> b_p3_orchestrator_database
   b_p0_docker_release_infra --> b_p3_orchestrator_database
   b_p0_runtime_readiness_release_infra --> b_p3_orchestrator_database
   b_p0_manifest_release_owner --> b_p3_orchestrator_database
@@ -266,12 +159,6 @@ flowchart TD
   b_p1_rollback_platform_owner --> b_p3_orchestrator_database
   b_p1_rollback_plugin_owner --> b_p3_orchestrator_database
   b_p2_explain_database --> b_p3_orchestrator_database
-  b_p0_release_env_lint_release_infra --> b_p3_orchestrator_frontend
-  b_p0_release_config_ai_owner --> b_p3_orchestrator_frontend
-  b_p0_release_config_payment_owner --> b_p3_orchestrator_frontend
-  b_p0_release_config_platform_events --> b_p3_orchestrator_frontend
-  b_p0_release_config_platform_owners --> b_p3_orchestrator_frontend
-  b_p0_release_config_release_infra --> b_p3_orchestrator_frontend
   b_p0_docker_release_infra --> b_p3_orchestrator_frontend
   b_p0_runtime_readiness_release_infra --> b_p3_orchestrator_frontend
   b_p0_manifest_release_owner --> b_p3_orchestrator_frontend
@@ -292,12 +179,26 @@ flowchart TD
   b_p1_rollback_platform_owner --> b_p3_orchestrator_frontend
   b_p1_rollback_plugin_owner --> b_p3_orchestrator_frontend
   b_p2_explain_database --> b_p3_orchestrator_frontend
-  b_p0_release_env_lint_release_infra --> b_p3_orchestrator_release_owner
-  b_p0_release_config_ai_owner --> b_p3_orchestrator_release_owner
-  b_p0_release_config_payment_owner --> b_p3_orchestrator_release_owner
-  b_p0_release_config_platform_events --> b_p3_orchestrator_release_owner
-  b_p0_release_config_platform_owners --> b_p3_orchestrator_release_owner
-  b_p0_release_config_release_infra --> b_p3_orchestrator_release_owner
+  b_p0_docker_release_infra --> b_p3_orchestrator_release_infra
+  b_p0_runtime_readiness_release_infra --> b_p3_orchestrator_release_infra
+  b_p0_manifest_release_owner --> b_p3_orchestrator_release_infra
+  b_p0_authenticated_performance_release_performance --> b_p3_orchestrator_release_infra
+  b_p1_ai_runtime_ai --> b_p3_orchestrator_release_infra
+  b_p1_frontend_smoke_frontend --> b_p3_orchestrator_release_infra
+  b_p1_business_e2e_file_owner --> b_p3_orchestrator_release_infra
+  b_p1_business_e2e_job_owner --> b_p3_orchestrator_release_infra
+  b_p1_business_e2e_payment_owner --> b_p3_orchestrator_release_infra
+  b_p1_rollback_ai_owner --> b_p3_orchestrator_release_infra
+  b_p1_rollback_auth_owner --> b_p3_orchestrator_release_infra
+  b_p1_rollback_file_owner --> b_p3_orchestrator_release_infra
+  b_p1_rollback_iam_owner --> b_p3_orchestrator_release_infra
+  b_p1_rollback_job_owner --> b_p3_orchestrator_release_infra
+  b_p1_rollback_localization_owner --> b_p3_orchestrator_release_infra
+  b_p1_rollback_message_owner --> b_p3_orchestrator_release_infra
+  b_p1_rollback_payment_owner --> b_p3_orchestrator_release_infra
+  b_p1_rollback_platform_owner --> b_p3_orchestrator_release_infra
+  b_p1_rollback_plugin_owner --> b_p3_orchestrator_release_infra
+  b_p2_explain_database --> b_p3_orchestrator_release_infra
   b_p0_docker_release_infra --> b_p3_orchestrator_release_owner
   b_p0_runtime_readiness_release_infra --> b_p3_orchestrator_release_owner
   b_p0_manifest_release_owner --> b_p3_orchestrator_release_owner
@@ -322,12 +223,6 @@ flowchart TD
 
 ## Ready Batches
 
-- p0-release-env-lint-release-infra: P0 release-env-lint / release-infra
-- p0-release-config-ai-owner: P0 release-config / ai-owner
-- p0-release-config-payment-owner: P0 release-config / payment-owner
-- p0-release-config-platform-events: P0 release-config / platform-events
-- p0-release-config-platform-owners: P0 release-config / platform-owners
-- p0-release-config-release-infra: P0 release-config / release-infra
 - p0-docker-release-infra: P0 docker / release-infra
 - p0-runtime-readiness-release-infra: P0 runtime-readiness / release-infra
 - p0-manifest-release-owner: P0 manifest / release-owner
@@ -335,22 +230,23 @@ flowchart TD
 
 ## Blocked Batches
 
-- p1-ai-runtime-ai: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-frontend-smoke-frontend: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-business-e2e-file-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-business-e2e-job-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-business-e2e-payment-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-ai-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-auth-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-file-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-iam-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-job-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-localization-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-message-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-payment-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-platform-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p1-rollback-plugin-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- p2-explain-database: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
-- p3-orchestrator-database: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
-- p3-orchestrator-frontend: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
-- p3-orchestrator-release-owner: waits for p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- p1-ai-runtime-ai: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-frontend-smoke-frontend: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-business-e2e-file-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-business-e2e-job-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-business-e2e-payment-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-rollback-ai-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-rollback-auth-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-rollback-file-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-rollback-iam-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-rollback-job-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-rollback-localization-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-rollback-message-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-rollback-payment-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-rollback-platform-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p1-rollback-plugin-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- p2-explain-database: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
+- p3-orchestrator-database: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- p3-orchestrator-frontend: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- p3-orchestrator-release-infra: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- p3-orchestrator-release-owner: waits for p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database

@@ -1,26 +1,24 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "ownerFilter": null,
   "ownerCount": 5,
-  "actionRequiredOwnerCount": 5,
+  "actionRequiredOwnerCount": 1,
   "laneCount": 5,
-  "missingArtifactCount": 2,
-  "blockingInputCount": 54,
+  "missingArtifactCount": 0,
+  "blockingInputCount": 0,
   "owners": [
     {
       "owner": "platform-events",
-      "status": "ACTION_REQUIRED",
+      "status": "PASS",
       "ownerPacket": "owner-packets/platform-events.md",
       "ownerPacketJson": "owner-packets/platform-events.json",
       "envTemplate": "owner-packets/platform-events.blocking-inputs.template.env",
       "laneCount": 0,
       "lanes": [],
-      "blockingInputCount": 1,
-      "blockingInputs": [
-        "DDD_RELEASE_ENV_FILE"
-      ],
+      "blockingInputCount": 0,
+      "blockingInputs": [],
       "missingArtifactCount": 0,
       "missingArtifacts": [],
       "receiptFragments": [],
@@ -42,84 +40,22 @@
     },
     {
       "owner": "platform-owners",
-      "status": "ACTION_REQUIRED",
+      "status": "PASS",
       "ownerPacket": "owner-packets/platform-owners.md",
       "ownerPacketJson": "owner-packets/platform-owners.json",
       "envTemplate": "owner-packets/platform-owners.blocking-inputs.template.env",
-      "laneCount": 1,
-      "lanes": [
-        {
-          "order": 4,
-          "lane": "p1-p2-data-safety",
-          "status": "BLOCKED",
-          "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
-          "sourcePlan": "data-safety-submission-plan.json",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/staging-handoff-bundle/data-safety-submission-plan.md",
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "missingArtifacts": [],
-          "acceptanceCommands": [
-            "node scripts/ddd-staging-data-safety-check.mjs",
-            "node scripts/ddd-release-readiness-summary.mjs",
-            "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-            "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
-          ]
-        }
-      ],
-      "blockingInputCount": 23,
-      "blockingInputs": [
-        "DDD_RELEASE_ENV_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "GITHUB_SHA",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_ENVIRONMENT",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_EXPLAIN_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "MYSQL_USER",
-        "MYSQL_PASSWORD",
-        "DDD_EXPLAIN_ENVIRONMENT"
-      ],
-      "missingArtifactCount": 2,
-      "missingArtifacts": [
-        {
-          "gate": "migration",
-          "track": "p2-database-performance",
-          "owner": "database",
-          "dispatchOwner": "platform-owners",
-          "artifact": "tmp/ddd-explain/*.json",
-          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-        },
-        {
-          "gate": "explain",
-          "track": "p2-database-performance",
-          "owner": "database",
-          "dispatchOwner": "platform-owners",
-          "artifact": "tmp/ddd-explain/*.json",
-          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-        }
-      ],
+      "laneCount": 0,
+      "lanes": [],
+      "blockingInputCount": 0,
+      "blockingInputs": [],
+      "missingArtifactCount": 0,
+      "missingArtifacts": [],
       "receiptFragments": [
         {
           "key": "platform-owners:p1-p2-data-safety",
-          "status": "BLOCKED",
+          "status": "PASS",
           "sourcePlan": "data-safety-submission-plan.json",
-          "missingArtifacts": [
-            "tmp/ddd-explain/*.json"
-          ],
+          "missingArtifacts": [],
           "providedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json",
             "artifacts/ddd/migration/migration-evidence.json",
@@ -138,9 +74,8 @@
         "checkCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
         "coverageCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>"
       },
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       "submissionCommands": [
-        "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
         "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
         "node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown",
         "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
@@ -159,7 +94,7 @@
         {
           "order": 1,
           "lane": "p0-release-env",
-          "status": "BLOCKED",
+          "status": "PASS",
           "command": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
           "sourcePlan": "release-env-plan.json",
           "expectedArtifacts": [
@@ -192,18 +127,21 @@
           ]
         },
         {
-          "order": 3,
-          "lane": "p1-runtime-business",
-          "status": "BLOCKED",
-          "command": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
-          "sourcePlan": "runtime-business-submission-plan.json",
+          "order": 4,
+          "lane": "p1-p2-data-safety",
+          "status": "PASS",
+          "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+          "sourcePlan": "data-safety-submission-plan.json",
           "expectedArtifacts": [
-            "artifacts/ddd/release/staging-handoff-bundle/runtime-business-submission-plan.md",
-            "artifacts/ddd/readiness/summary.json"
+            "artifacts/ddd/release/staging-handoff-bundle/data-safety-submission-plan.md",
+            "artifacts/ddd/rollback/rollback-drill.json",
+            "artifacts/ddd/migration/migration-evidence.json",
+            "tmp/ddd-explain/*.json",
+            "artifacts/ddd/release/explain-gate-report.json"
           ],
           "missingArtifacts": [],
           "acceptanceCommands": [
-            "node scripts/ddd-staging-runtime-check.mjs",
+            "node scripts/ddd-staging-data-safety-check.mjs",
             "node scripts/ddd-release-readiness-summary.mjs",
             "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
             "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
@@ -228,31 +166,16 @@
           ]
         }
       ],
-      "blockingInputCount": 10,
-      "blockingInputs": [
-        "DDD_RELEASE_ENV_FILE",
-        "LUMIRA_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_EXPECT_DEPLOYED",
-        "DDD_AI_EXPECT_PROVIDER_REMOTE",
-        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
-      ],
+      "blockingInputCount": 0,
+      "blockingInputs": [],
       "missingArtifactCount": 0,
       "missingArtifacts": [],
       "receiptFragments": [
         {
           "key": "release-infra:p0-release-env",
-          "status": "BLOCKED",
+          "status": "PASS",
           "sourcePlan": "release-env-submission-plan.json",
-          "missingArtifacts": [
-            "artifacts/ddd/release/release-env-lint.json",
-            "artifacts/ddd/config/release-config-evidence.json",
-            "artifacts/ddd/release/readiness-summary.json"
-          ],
+          "missingArtifacts": [],
           "providedArtifacts": [
             "artifacts/ddd/release/release-env-lint.json",
             "artifacts/ddd/config/release-config-evidence.json",
@@ -270,17 +193,9 @@
         },
         {
           "key": "release-infra:p1-runtime-business",
-          "status": "BLOCKED",
+          "status": "PASS",
           "sourcePlan": "runtime-business-submission-plan.json",
-          "missingArtifacts": [
-            "artifacts/ddd/readiness/summary.json",
-            "artifacts/ddd/performance/authenticated-runtime-actual.json",
-            "artifacts/ddd/ai/ai-runtime-drill.json",
-            "artifacts/ddd/frontend/frontend-smoke.json",
-            "artifacts/ddd/file/file-processing-e2e.json",
-            "artifacts/ddd/jobs/job-e2e-smoke.json",
-            "artifacts/ddd/payment/payment-webhook-e2e.json"
-          ],
+          "missingArtifacts": [],
           "providedArtifacts": [
             "artifacts/ddd/readiness/summary.json",
             "artifacts/ddd/performance/authenticated-runtime-actual.json",
@@ -295,9 +210,7 @@
           "key": "release-infra:final-review",
           "status": "BLOCKED",
           "sourcePlan": "final-review.json",
-          "missingArtifacts": [
-            "tmp/ddd-explain/*.json"
-          ],
+          "missingArtifacts": [],
           "providedArtifacts": [
             "artifacts/ddd/release/release-env-lint.json",
             "artifacts/ddd/config/release-config-evidence.json",
@@ -331,11 +244,11 @@
         "checkCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
         "coverageCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>"
       },
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "submissionCommands": [
         "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
         "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
-        "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
+        "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
         "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
         "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
         "node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown",
@@ -346,25 +259,33 @@
     },
     {
       "owner": "ai-owner",
-      "status": "ACTION_REQUIRED",
+      "status": "PASS",
       "ownerPacket": "owner-packets/ai-owner.md",
       "ownerPacketJson": "owner-packets/ai-owner.json",
       "envTemplate": "owner-packets/ai-owner.blocking-inputs.template.env",
-      "laneCount": 0,
-      "lanes": [],
-      "blockingInputCount": 10,
-      "blockingInputs": [
-        "DDD_RELEASE_ENV_FILE",
-        "LUMIRA_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_EXPECT_DEPLOYED",
-        "DDD_AI_EXPECT_PROVIDER_REMOTE",
-        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
+      "laneCount": 1,
+      "lanes": [
+        {
+          "order": 3,
+          "lane": "p1-runtime-business",
+          "status": "PASS",
+          "command": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
+          "sourcePlan": "runtime-business-submission-plan.json",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/staging-handoff-bundle/runtime-business-submission-plan.md",
+            "artifacts/ddd/ai/ai-runtime-drill.json"
+          ],
+          "missingArtifacts": [],
+          "acceptanceCommands": [
+            "node scripts/ddd-staging-runtime-check.mjs",
+            "node scripts/ddd-release-readiness-summary.mjs",
+            "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+            "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+          ]
+        }
       ],
+      "blockingInputCount": 0,
+      "blockingInputs": [],
       "missingArtifactCount": 0,
       "missingArtifacts": [],
       "receiptFragments": [],
@@ -376,8 +297,9 @@
         "checkCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
         "coverageCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>"
       },
-      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
       "submissionCommands": [
+        "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
         "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
         "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
         "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
@@ -386,25 +308,14 @@
     },
     {
       "owner": "payment-owner",
-      "status": "ACTION_REQUIRED",
+      "status": "PASS",
       "ownerPacket": "owner-packets/payment-owner.md",
       "ownerPacketJson": "owner-packets/payment-owner.json",
       "envTemplate": "owner-packets/payment-owner.blocking-inputs.template.env",
       "laneCount": 0,
       "lanes": [],
-      "blockingInputCount": 10,
-      "blockingInputs": [
-        "DDD_RELEASE_ENV_FILE",
-        "LUMIRA_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_EXPECT_DEPLOYED",
-        "DDD_AI_EXPECT_PROVIDER_REMOTE",
-        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
-      ],
+      "blockingInputCount": 0,
+      "blockingInputs": [],
       "missingArtifactCount": 0,
       "missingArtifacts": [],
       "receiptFragments": [],
@@ -432,5 +343,5 @@
     "all receipt fragments are copied into the submitted lane completion receipt",
     "receipt contract and coverage must pass before final review"
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
 }

@@ -1,10 +1,10 @@
 # DDD Release Env Canonical Fill
 
-Generated at: 2026-06-19T06:54:03.604Z
+Generated at: 2026-06-19T13:42:59.865Z
 Status: NOT_READY
 Env file: .env.release.local
 Canonical fill items: 48
-Unresolved aliases covered: 73
+Unresolved aliases covered: 0
 Owners: 10
 
 Fill the canonical key once, then run alias sync to propagate equivalent keys.
@@ -61,8 +61,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL` (placeholder)
-  - `LUMIRA_AI_OWNER_FILE_BASE_URL` (placeholder)
+  - `LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL` (present)
+  - `LUMIRA_AI_OWNER_FILE_BASE_URL` (present)
 
 ## 5. LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED
 
@@ -88,8 +88,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL` (placeholder)
-  - `LUMIRA_AI_OWNER_IAM_BASE_URL` (placeholder)
+  - `LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL` (present)
+  - `LUMIRA_AI_OWNER_IAM_BASE_URL` (present)
 
 ## 7. LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN
 
@@ -102,9 +102,9 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN` (placeholder)
-  - `LUMIRA_AI_OWNER_INTERNAL_TOKEN` (placeholder)
-  - `SAAS_JOB_INTERNAL_TOKEN` (placeholder)
+  - `LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN` (present)
+  - `LUMIRA_AI_OWNER_INTERNAL_TOKEN` (present)
+  - `SAAS_JOB_INTERNAL_TOKEN` (present)
 
 ## 8. LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED
 
@@ -130,8 +130,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL` (placeholder)
-  - `LUMIRA_AI_OWNER_PLATFORM_BASE_URL` (placeholder)
+  - `LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL` (present)
+  - `LUMIRA_AI_OWNER_PLATFORM_BASE_URL` (present)
 
 ## 10. LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY
 
@@ -144,8 +144,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY` (placeholder)
-  - `LUMIRA_AI_PROVIDER_API_KEY` (placeholder)
+  - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY` (present)
+  - `LUMIRA_AI_PROVIDER_API_KEY` (present)
 
 ## 11. LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL
 
@@ -158,8 +158,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL` (placeholder)
-  - `LUMIRA_AI_PROVIDER_BASE_URL` (placeholder)
+  - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL` (present)
+  - `LUMIRA_AI_PROVIDER_BASE_URL` (present)
 
 ## 12. LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED
 
@@ -226,7 +226,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `PAYMENT_PUBLIC_BASE_URL` (placeholder)
+  - `PAYMENT_PUBLIC_BASE_URL` (present)
 
 ## 17. DDD_PAYMENT_WEBHOOK_SECRET
 
@@ -254,8 +254,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `SAAS_EVENT_REDIS_STREAM_KEY` (placeholder)
-  - `LUMIRA_EVENT_REDIS_STREAM_KEY` (placeholder)
+  - `SAAS_EVENT_REDIS_STREAM_KEY` (present)
+  - `LUMIRA_EVENT_REDIS_STREAM_KEY` (present)
 
 ## 19. SAAS_JOB_BACKEND_BASE_URL
 
@@ -268,8 +268,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `SAAS_JOB_BACKEND_BASE_URL` (placeholder)
-  - `LUMIRA_JOB_BACKEND_BASE_URL` (placeholder)
+  - `SAAS_JOB_BACKEND_BASE_URL` (present)
+  - `LUMIRA_JOB_BACKEND_BASE_URL` (present)
 
 ## 20. SAAS_JOB_FILE_SERVICE_BASE_URL
 
@@ -282,8 +282,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `SAAS_JOB_FILE_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_JOB_FILE_SERVICE_BASE_URL` (placeholder)
+  - `SAAS_JOB_FILE_SERVICE_BASE_URL` (present)
+  - `LUMIRA_JOB_FILE_SERVICE_BASE_URL` (present)
 
 ## 21. SAAS_JOB_INTERNAL_TOKEN
 
@@ -296,9 +296,9 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `SAAS_JOB_INTERNAL_TOKEN` (placeholder)
-  - `DDD_JOB_INTERNAL_TOKEN` (placeholder)
-  - `LUMIRA_JOB_INTERNAL_TOKEN` (placeholder)
+  - `SAAS_JOB_INTERNAL_TOKEN` (present)
+  - `DDD_JOB_INTERNAL_TOKEN` (present)
+  - `LUMIRA_JOB_INTERNAL_TOKEN` (present)
 
 ## 22. SAAS_JOB_MESSAGE_SERVICE_BASE_URL
 
@@ -311,8 +311,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `SAAS_JOB_MESSAGE_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL` (placeholder)
+  - `SAAS_JOB_MESSAGE_SERVICE_BASE_URL` (present)
+  - `LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL` (present)
 
 ## 23. SAAS_JOB_PAYMENT_SERVICE_BASE_URL
 
@@ -325,8 +325,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `SAAS_JOB_PAYMENT_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL` (placeholder)
+  - `SAAS_JOB_PAYMENT_SERVICE_BASE_URL` (present)
+  - `LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL` (present)
 
 ## 24. SAAS_JOB_PLUGIN_SERVICE_BASE_URL
 
@@ -339,8 +339,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `SAAS_JOB_PLUGIN_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL` (placeholder)
+  - `SAAS_JOB_PLUGIN_SERVICE_BASE_URL` (present)
+  - `LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL` (present)
 
 ## 25. SAAS_EVENT_OUTBOX_DISPATCHER
 
@@ -367,8 +367,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `XXL_JOB_ADMIN_ADDRESSES` (placeholder)
-  - `LUMIRA_XXL_JOB_ADMIN_ADDRESSES` (placeholder)
+  - `XXL_JOB_ADMIN_ADDRESSES` (present)
+  - `LUMIRA_XXL_JOB_ADMIN_ADDRESSES` (present)
 
 ## 27. XXL_JOB_ACCESS_TOKEN
 
@@ -381,9 +381,9 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `XXL_JOB_ACCESS_TOKEN` (placeholder)
-  - `XXL_JOB_ADMIN_ACCESS_TOKEN` (placeholder)
-  - `LUMIRA_XXL_JOB_ACCESS_TOKEN` (placeholder)
+  - `XXL_JOB_ACCESS_TOKEN` (present)
+  - `XXL_JOB_ADMIN_ACCESS_TOKEN` (present)
+  - `LUMIRA_XXL_JOB_ACCESS_TOKEN` (present)
 
 ## 28. AI_SERVICE_BASE_URL
 
@@ -396,9 +396,9 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `AI_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_AI_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_AI_BASE_URL` (placeholder)
+  - `AI_SERVICE_BASE_URL` (present)
+  - `LUMIRA_AI_SERVICE_BASE_URL` (present)
+  - `LUMIRA_AI_BASE_URL` (present)
 
 ## 29. AUTH_SERVICE_BASE_URL
 
@@ -411,8 +411,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `AUTH_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_AUTH_SERVICE_BASE_URL` (placeholder)
+  - `AUTH_SERVICE_BASE_URL` (present)
+  - `LUMIRA_AUTH_SERVICE_BASE_URL` (present)
 
 ## 30. FILE_SERVICE_BASE_URL
 
@@ -425,8 +425,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `FILE_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_FILE_SERVICE_BASE_URL` (placeholder)
+  - `FILE_SERVICE_BASE_URL` (present)
+  - `LUMIRA_FILE_SERVICE_BASE_URL` (present)
 
 ## 31. JOB_EXECUTOR_BASE_URL
 
@@ -439,8 +439,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `JOB_EXECUTOR_BASE_URL` (placeholder)
-  - `LUMIRA_JOB_EXECUTOR_BASE_URL` (placeholder)
+  - `JOB_EXECUTOR_BASE_URL` (present)
+  - `LUMIRA_JOB_EXECUTOR_BASE_URL` (present)
 
 ## 32. LOCALIZATION_SERVICE_BASE_URL
 
@@ -453,8 +453,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `LOCALIZATION_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_LOCALIZATION_SERVICE_BASE_URL` (placeholder)
+  - `LOCALIZATION_SERVICE_BASE_URL` (present)
+  - `LUMIRA_LOCALIZATION_SERVICE_BASE_URL` (present)
 
 ## 33. MESSAGE_SERVICE_BASE_URL
 
@@ -467,8 +467,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `MESSAGE_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_MESSAGE_SERVICE_BASE_URL` (placeholder)
+  - `MESSAGE_SERVICE_BASE_URL` (present)
+  - `LUMIRA_MESSAGE_SERVICE_BASE_URL` (present)
 
 ## 34. PAYMENT_SERVICE_BASE_URL
 
@@ -481,8 +481,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `PAYMENT_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_PAYMENT_SERVICE_BASE_URL` (placeholder)
+  - `PAYMENT_SERVICE_BASE_URL` (present)
+  - `LUMIRA_PAYMENT_SERVICE_BASE_URL` (present)
 
 ## 35. PLUGIN_SERVICE_BASE_URL
 
@@ -495,8 +495,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `PLUGIN_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_PLUGIN_SERVICE_BASE_URL` (placeholder)
+  - `PLUGIN_SERVICE_BASE_URL` (present)
+  - `LUMIRA_PLUGIN_SERVICE_BASE_URL` (present)
 
 ## 36. SYSTEM_SERVICE_BASE_URL
 
@@ -509,8 +509,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `SYSTEM_SERVICE_BASE_URL` (placeholder)
-  - `LUMIRA_SYSTEM_SERVICE_BASE_URL` (placeholder)
+  - `SYSTEM_SERVICE_BASE_URL` (present)
+  - `LUMIRA_SYSTEM_SERVICE_BASE_URL` (present)
 
 ## 37. LUMIRA_BASE_URL
 
@@ -523,8 +523,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `LUMIRA_BASE_URL` (placeholder)
-  - `DEPLOY_CHECK_BASE_URL` (placeholder)
+  - `LUMIRA_BASE_URL` (present)
+  - `DEPLOY_CHECK_BASE_URL` (present)
 
 ## 38. CORS_ALLOWED_ORIGIN_PATTERNS
 
@@ -537,8 +537,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `CORS_ALLOWED_ORIGIN_PATTERNS` (placeholder)
-  - `SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS` (placeholder)
+  - `CORS_ALLOWED_ORIGIN_PATTERNS` (present)
+  - `SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS` (present)
 
 ## 39. DB_PASSWORD
 
@@ -551,9 +551,9 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=false, minLength=16, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `DB_PASSWORD` (placeholder)
-  - `SPRING_DATASOURCE_PASSWORD` (placeholder)
-  - `MYSQL_PASSWORD` (placeholder)
+  - `DB_PASSWORD` (present)
+  - `SPRING_DATASOURCE_PASSWORD` (present)
+  - `MYSQL_PASSWORD` (present)
 
 ## 40. DB_URL
 
@@ -566,8 +566,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `DB_URL` (placeholder)
-  - `SPRING_DATASOURCE_URL` (placeholder)
+  - `DB_URL` (present)
+  - `SPRING_DATASOURCE_URL` (present)
 
 ## 41. DB_USERNAME
 
@@ -580,9 +580,9 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `DB_USERNAME` (placeholder)
-  - `SPRING_DATASOURCE_USERNAME` (placeholder)
-  - `MYSQL_USER` (placeholder)
+  - `DB_USERNAME` (present)
+  - `SPRING_DATASOURCE_USERNAME` (present)
+  - `MYSQL_USER` (present)
 
 ## 42. FIELD_SECRET
 
@@ -595,8 +595,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `FIELD_SECRET` (placeholder)
-  - `SAAS_SECURITY_FIELD_SECRET` (placeholder)
+  - `FIELD_SECRET` (present)
+  - `SAAS_SECURITY_FIELD_SECRET` (present)
 
 ## 43. PLAYWRIGHT_BASE_URL
 
@@ -609,8 +609,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `PLAYWRIGHT_BASE_URL` (placeholder)
-  - `FRONTEND_BASE_URL` (placeholder)
+  - `PLAYWRIGHT_BASE_URL` (present)
+  - `FRONTEND_BASE_URL` (present)
 
 ## 44. JWT_SECRET
 
@@ -623,8 +623,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `JWT_SECRET` (placeholder)
-  - `SAAS_SECURITY_JWT_SECRET` (placeholder)
+  - `JWT_SECRET` (present)
+  - `SAAS_SECURITY_JWT_SECRET` (present)
 
 ## 45. REDIS_HOST
 
@@ -637,8 +637,8 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Validation: https=false, nonLocal=true, minLength=none, expectedValues=none
 - Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
 - Aliases:
-  - `REDIS_HOST` (placeholder)
-  - `SPRING_DATA_REDIS_HOST` (placeholder)
+  - `REDIS_HOST` (present)
+  - `SPRING_DATA_REDIS_HOST` (present)
 
 ## 46. REDIS_PASSWORD
 

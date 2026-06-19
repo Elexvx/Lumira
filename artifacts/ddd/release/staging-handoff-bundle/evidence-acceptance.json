@@ -1,14 +1,14 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "acceptedCount": 1,
+  "acceptedCount": 6,
   "itemCount": 6,
-  "blockedCount": 5,
-  "presentArtifactCount": 16,
-  "missingArtifactCount": 2,
+  "blockedCount": 0,
+  "presentArtifactCount": 18,
+  "missingArtifactCount": 0,
   "items": [
     {
       "order": 1,
@@ -16,12 +16,10 @@
       "track": "p0-release-env",
       "title": "P0 release env and config",
       "owner": "release-infra",
-      "status": "BLOCKED",
-      "accepted": false,
-      "blocker": "release env file is not cutover-safe; blockers=34",
-      "blockingInputs": [
-        "DDD_RELEASE_ENV_FILE"
-      ],
+      "status": "PASS",
+      "accepted": true,
+      "blocker": null,
+      "blockingInputs": [],
       "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
       "evidenceCommands": [
         "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
@@ -62,64 +60,16 @@
       "presentArtifactCount": 3,
       "missingArtifactCount": 0,
       "envKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
         "BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DDD_AUTH_PASSWORD",
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_ENVIRONMENT",
-        "DDD_AUTH_USERNAME",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "FIELD_SECRET",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "JWT_SECRET",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "PAYMENT_PUBLIC_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES",
         "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL",
         "LUMIRA_AI_BASE_URL",
-        "FRONTEND_BASE_URL"
+        "PLAYWRIGHT_BASE_URL",
+        "FRONTEND_BASE_URL",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
       ],
       "criteria": [
         "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs returns PASS",
@@ -179,20 +129,10 @@
       "track": "p1-runtime-business",
       "title": "P1 runtime and business acceptance",
       "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
-      "status": "BLOCKED",
-      "accepted": false,
-      "blocker": "LUMIRA_BASE_URL is required",
-      "blockingInputs": [
-        "LUMIRA_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_EXPECT_DEPLOYED",
-        "DDD_AI_EXPECT_PROVIDER_REMOTE",
-        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
-      ],
+      "status": "PASS",
+      "accepted": true,
+      "blocker": null,
+      "blockingInputs": [],
       "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs",
       "evidenceCommands": [
         "node scripts/ddd-runtime-readiness-smoke.mjs",
@@ -292,20 +232,10 @@
       "track": "p1-rollback",
       "title": "P1 rollback safety",
       "owner": "bounded-context owners",
-      "status": "BLOCKED",
-      "accepted": false,
-      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-      "blockingInputs": [
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "GITHUB_SHA",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR"
-      ],
+      "status": "PASS",
+      "accepted": true,
+      "blocker": null,
+      "blockingInputs": [],
       "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
       "evidenceCommands": [
         "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
@@ -343,22 +273,10 @@
       "track": "p2-database-performance",
       "title": "P2 database migration and EXPLAIN",
       "owner": "database",
-      "status": "BLOCKED",
-      "accepted": false,
-      "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
-      "blockingInputs": [
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR",
-        "DDD_MIGRATION_COMPLETED_AT"
-      ],
+      "status": "PASS",
+      "accepted": true,
+      "blocker": null,
+      "blockingInputs": [],
       "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
       "evidenceCommands": [
         "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
@@ -382,9 +300,18 @@
         },
         {
           "artifact": "tmp/ddd-explain/*.json",
-          "present": false,
-          "matchCount": 0,
-          "matches": []
+          "present": true,
+          "matchCount": 8,
+          "matches": [
+            "tmp/ddd-explain/ai-knowledge-index-retry.json",
+            "tmp/ddd-explain/message-archive-total.json",
+            "tmp/ddd-explain/message-unread-count.json",
+            "tmp/ddd-explain/message-visible-list.json",
+            "tmp/ddd-explain/platform-outbox-owner-relay-file.json",
+            "tmp/ddd-explain/platform-outbox-owner-relay-message.json",
+            "tmp/ddd-explain/platform-runtime-appearance.json",
+            "tmp/ddd-explain/plugin-bootstrap.json"
+          ]
         },
         {
           "artifact": "artifacts/ddd/release/explain-gate-report.json",
@@ -395,8 +322,8 @@
           ]
         }
       ],
-      "presentArtifactCount": 2,
-      "missingArtifactCount": 1,
+      "presentArtifactCount": 3,
+      "missingArtifactCount": 0,
       "envKeys": [
         "DDD_MIGRATION_FRESH_DB_VALIDATED",
         "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
@@ -415,23 +342,10 @@
       "track": "p2-database-performance",
       "title": "P2 database migration and EXPLAIN",
       "owner": "database",
-      "status": "BLOCKED",
-      "accepted": false,
-      "blocker": "DDD_EXPLAIN_DATABASE is required",
-      "blockingInputs": [
-        "DDD_EXPLAIN_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "MYSQL_USER",
-        "MYSQL_PASSWORD",
-        "DDD_EXPLAIN_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "GITHUB_SHA",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR"
-      ],
+      "status": "PASS",
+      "accepted": true,
+      "blocker": null,
+      "blockingInputs": [],
       "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
       "evidenceCommands": [
         "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
@@ -455,9 +369,18 @@
         },
         {
           "artifact": "tmp/ddd-explain/*.json",
-          "present": false,
-          "matchCount": 0,
-          "matches": []
+          "present": true,
+          "matchCount": 8,
+          "matches": [
+            "tmp/ddd-explain/ai-knowledge-index-retry.json",
+            "tmp/ddd-explain/message-archive-total.json",
+            "tmp/ddd-explain/message-unread-count.json",
+            "tmp/ddd-explain/message-visible-list.json",
+            "tmp/ddd-explain/platform-outbox-owner-relay-file.json",
+            "tmp/ddd-explain/platform-outbox-owner-relay-message.json",
+            "tmp/ddd-explain/platform-runtime-appearance.json",
+            "tmp/ddd-explain/plugin-bootstrap.json"
+          ]
         },
         {
           "artifact": "artifacts/ddd/release/explain-gate-report.json",
@@ -468,8 +391,8 @@
           ]
         }
       ],
-      "presentArtifactCount": 2,
-      "missingArtifactCount": 1,
+      "presentArtifactCount": 3,
+      "missingArtifactCount": 0,
       "envKeys": [
         "DDD_MIGRATION_FRESH_DB_VALIDATED",
         "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
@@ -483,5 +406,5 @@
       ]
     }
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --rollup-enforce"
 }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -32,10 +32,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.252Z",
-      "generatedAt": "2026-06-17T05:46:16.010Z",
-      "status": "FAIL",
-      "blockers": 156,
+      "modifiedAt": "2026-06-19T13:42:37.440Z",
+      "generatedAt": "2026-06-19T13:42:37.438Z",
+      "status": "PASS",
+      "blockers": 0,
       "warnings": 0
     },
     "releaseConfig": {
@@ -44,10 +44,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.196Z",
-      "generatedAt": "2026-06-17T06:28:34.918Z",
-      "status": "FAIL",
-      "blockers": 63,
+      "modifiedAt": "2026-06-19T13:42:37.550Z",
+      "generatedAt": "2026-06-19T13:42:37.547Z",
+      "status": "PASS",
+      "blockers": 0,
       "warnings": 0
     },
     "docker": {
@@ -56,8 +56,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.195Z",
-      "generatedAt": "2026-06-16T21:45:55.209Z",
+      "modifiedAt": "2026-06-19T08:02:24.849Z",
+      "generatedAt": "2026-06-19T08:02:24.846Z",
       "status": "FAIL",
       "blockers": 2,
       "warnings": null
@@ -248,17 +248,11 @@
     "blockers": 94,
     "warnings": 8
   },
-  "batchCount": 29,
-  "edgeCount": 253,
-  "graphDensity": 0.3116,
+  "batchCount": 24,
+  "edgeCount": 159,
+  "graphDensity": 0.288,
   "compressedEdgeCount": 6,
   "readyBatchIds": [
-    "p0-release-env-lint-release-infra",
-    "p0-release-config-ai-owner",
-    "p0-release-config-payment-owner",
-    "p0-release-config-platform-events",
-    "p0-release-config-platform-owners",
-    "p0-release-config-release-infra",
     "p0-docker-release-infra",
     "p0-runtime-readiness-release-infra",
     "p0-manifest-release-owner",
@@ -283,16 +277,11 @@
     "p2-explain-database",
     "p3-orchestrator-database",
     "p3-orchestrator-frontend",
+    "p3-orchestrator-release-infra",
     "p3-orchestrator-release-owner"
   ],
   "byPriority": {
     "P0": [
-      "p0-release-env-lint-release-infra",
-      "p0-release-config-ai-owner",
-      "p0-release-config-payment-owner",
-      "p0-release-config-platform-events",
-      "p0-release-config-platform-owners",
-      "p0-release-config-release-infra",
       "p0-docker-release-infra",
       "p0-runtime-readiness-release-infra",
       "p0-manifest-release-owner",
@@ -321,6 +310,7 @@
     "P3": [
       "p3-orchestrator-database",
       "p3-orchestrator-frontend",
+      "p3-orchestrator-release-infra",
       "p3-orchestrator-release-owner"
     ]
   },
@@ -328,18 +318,12 @@
     {
       "priority": "P0",
       "batchIds": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
-      "ready": 10,
+      "ready": 4,
       "blocked": 0
     },
     {
@@ -377,1006 +361,17 @@
       "batchIds": [
         "p3-orchestrator-database",
         "p3-orchestrator-frontend",
+        "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ],
       "ready": 0,
-      "blocked": 3
+      "blocked": 4
     }
   ],
   "nodes": [
     {
-      "id": "p0-release-env-lint-release-infra",
-      "order": 1,
-      "priority": "P0",
-      "source": "release-env-lint",
-      "owner": "release-infra",
-      "pendingItems": 2,
-      "canRunImmediately": true,
-      "dependsOn": [],
-      "envKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DDD_AUTH_PASSWORD",
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_ENVIRONMENT",
-        "DDD_AUTH_USERNAME",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "FIELD_SECRET",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "JWT_SECRET",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "PAYMENT_PUBLIC_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "AI_SERVICE_BASE_URL",
-          "keys": [
-            "AI_SERVICE_BASE_URL",
-            "LUMIRA_AI_BASE_URL",
-            "LUMIRA_AI_SERVICE_BASE_URL"
-          ],
-          "spec": "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL"
-        },
-        {
-          "label": "AUTH_SERVICE_BASE_URL",
-          "keys": [
-            "AUTH_SERVICE_BASE_URL",
-            "LUMIRA_AUTH_SERVICE_BASE_URL"
-          ],
-          "spec": "AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL"
-        },
-        {
-          "label": "BASE_URL",
-          "keys": [
-            "BASE_URL"
-          ],
-          "spec": "BASE_URL=BASE_URL"
-        },
-        {
-          "label": "CORS_ALLOWED_ORIGIN_PATTERNS",
-          "keys": [
-            "CORS_ALLOWED_ORIGIN_PATTERNS",
-            "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
-          ],
-          "spec": "CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
-        },
-        {
-          "label": "DB_PASSWORD",
-          "keys": [
-            "DB_PASSWORD",
-            "MYSQL_PASSWORD",
-            "SPRING_DATASOURCE_PASSWORD"
-          ],
-          "spec": "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD"
-        },
-        {
-          "label": "DB_URL",
-          "keys": [
-            "DB_URL",
-            "SPRING_DATASOURCE_URL"
-          ],
-          "spec": "DB_URL=DB_URL|SPRING_DATASOURCE_URL"
-        },
-        {
-          "label": "DB_USERNAME",
-          "keys": [
-            "DB_USERNAME",
-            "MYSQL_USER",
-            "SPRING_DATASOURCE_USERNAME"
-          ],
-          "spec": "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME"
-        },
-        {
-          "label": "DDD_AUTH_PASSWORD",
-          "keys": [
-            "DDD_AUTH_PASSWORD"
-          ],
-          "spec": "DDD_AUTH_PASSWORD=DDD_AUTH_PASSWORD"
-        },
-        {
-          "label": "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-          "keys": [
-            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY"
-          ],
-          "spec": "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY"
-        },
-        {
-          "label": "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-          "keys": [
-            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT"
-          ],
-          "spec": "DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT"
-        },
-        {
-          "label": "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-          "keys": [
-            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT"
-          ],
-          "spec": "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT"
-        },
-        {
-          "label": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-          "keys": [
-            "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE"
-          ],
-          "spec": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE=DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE"
-        },
-        {
-          "label": "DDD_AUTH_PERF_ENVIRONMENT",
-          "keys": [
-            "DDD_AUTH_PERF_ENVIRONMENT"
-          ],
-          "spec": "DDD_AUTH_PERF_ENVIRONMENT=DDD_AUTH_PERF_ENVIRONMENT"
-        },
-        {
-          "label": "DDD_AUTH_USERNAME",
-          "keys": [
-            "DDD_AUTH_USERNAME"
-          ],
-          "spec": "DDD_AUTH_USERNAME=DDD_AUTH_USERNAME"
-        },
-        {
-          "label": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-          "keys": [
-            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
-          ],
-          "spec": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
-        },
-        {
-          "label": "DDD_DEPLOYMENT_EVIDENCE",
-          "keys": [
-            "DDD_DEPLOYMENT_EVIDENCE"
-          ],
-          "spec": "DDD_DEPLOYMENT_EVIDENCE=DDD_DEPLOYMENT_EVIDENCE"
-        },
-        {
-          "label": "DDD_EXPLAIN_DATABASE",
-          "keys": [
-            "DDD_EXPLAIN_DATABASE"
-          ],
-          "spec": "DDD_EXPLAIN_DATABASE=DDD_EXPLAIN_DATABASE"
-        },
-        {
-          "label": "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-          "keys": [
-            "DDD_FRONTEND_DEPLOYMENT_EVIDENCE"
-          ],
-          "spec": "DDD_FRONTEND_DEPLOYMENT_EVIDENCE=DDD_FRONTEND_DEPLOYMENT_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_COMPLETED_AT",
-          "keys": [
-            "DDD_MIGRATION_COMPLETED_AT"
-          ],
-          "spec": "DDD_MIGRATION_COMPLETED_AT=DDD_MIGRATION_COMPLETED_AT"
-        },
-        {
-          "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-          "keys": [
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE"
-          ],
-          "spec": "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_FRESH_DB_VALIDATED",
-          "keys": [
-            "DDD_MIGRATION_FRESH_DB_VALIDATED"
-          ],
-          "spec": "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED"
-        },
-        {
-          "label": "DDD_MIGRATION_OPERATOR",
-          "keys": [
-            "DDD_MIGRATION_OPERATOR"
-          ],
-          "spec": "DDD_MIGRATION_OPERATOR=DDD_MIGRATION_OPERATOR"
-        },
-        {
-          "label": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-          "keys": [
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-          ],
-          "spec": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-          "keys": [
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-          ],
-          "spec": "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-        },
-        {
-          "label": "FIELD_SECRET",
-          "keys": [
-            "FIELD_SECRET",
-            "SAAS_SECURITY_FIELD_SECRET"
-          ],
-          "spec": "FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET"
-        },
-        {
-          "label": "FILE_SERVICE_BASE_URL",
-          "keys": [
-            "FILE_SERVICE_BASE_URL",
-            "LUMIRA_FILE_SERVICE_BASE_URL"
-          ],
-          "spec": "FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "JOB_EXECUTOR_BASE_URL",
-          "keys": [
-            "JOB_EXECUTOR_BASE_URL",
-            "LUMIRA_JOB_EXECUTOR_BASE_URL"
-          ],
-          "spec": "JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL"
-        },
-        {
-          "label": "JWT_SECRET",
-          "keys": [
-            "JWT_SECRET",
-            "SAAS_SECURITY_JWT_SECRET"
-          ],
-          "spec": "JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET"
-        },
-        {
-          "label": "LOCALIZATION_SERVICE_BASE_URL",
-          "keys": [
-            "LOCALIZATION_SERVICE_BASE_URL",
-            "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
-          ],
-          "spec": "LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_FILE_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_IAM_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-          "keys": [
-            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-            "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
-            "SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-            "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-          "keys": [
-            "LUMIRA_AI_PROVIDER_API_KEY",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-          ],
-          "spec": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-        },
-        {
-          "label": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_PROVIDER_BASE_URL",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_BASE_URL",
-          "keys": [
-            "DEPLOY_CHECK_BASE_URL",
-            "LUMIRA_BASE_URL"
-          ],
-          "spec": "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
-        },
-        {
-          "label": "MESSAGE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_MESSAGE_SERVICE_BASE_URL",
-            "MESSAGE_SERVICE_BASE_URL"
-          ],
-          "spec": "MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "MYSQL_DATABASE",
-          "keys": [
-            "MYSQL_DATABASE"
-          ],
-          "spec": "MYSQL_DATABASE=MYSQL_DATABASE"
-        },
-        {
-          "label": "MYSQL_HOST",
-          "keys": [
-            "MYSQL_HOST"
-          ],
-          "spec": "MYSQL_HOST=MYSQL_HOST"
-        },
-        {
-          "label": "MYSQL_PORT",
-          "keys": [
-            "MYSQL_PORT"
-          ],
-          "spec": "MYSQL_PORT=MYSQL_PORT"
-        },
-        {
-          "label": "PAYMENT_PUBLIC_BASE_URL",
-          "keys": [
-            "PAYMENT_PUBLIC_BASE_URL"
-          ],
-          "spec": "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
-        },
-        {
-          "label": "PAYMENT_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_PAYMENT_SERVICE_BASE_URL",
-            "PAYMENT_SERVICE_BASE_URL"
-          ],
-          "spec": "PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "label": "PLAYWRIGHT_BASE_URL",
-          "keys": [
-            "FRONTEND_BASE_URL",
-            "PLAYWRIGHT_BASE_URL"
-          ],
-          "spec": "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
-        },
-        {
-          "label": "PLUGIN_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_PLUGIN_SERVICE_BASE_URL",
-            "PLUGIN_SERVICE_BASE_URL"
-          ],
-          "spec": "PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "label": "REDIS_HOST",
-          "keys": [
-            "REDIS_HOST",
-            "SPRING_DATA_REDIS_HOST"
-          ],
-          "spec": "REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST"
-        },
-        {
-          "label": "SAAS_EVENT_REDIS_STREAM_KEY",
-          "keys": [
-            "LUMIRA_EVENT_REDIS_STREAM_KEY",
-            "SAAS_EVENT_REDIS_STREAM_KEY"
-          ],
-          "spec": "SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY"
-        },
-        {
-          "label": "SAAS_JOB_BACKEND_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_BACKEND_BASE_URL",
-            "SAAS_JOB_BACKEND_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_FILE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
-            "SAAS_JOB_FILE_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_INTERNAL_TOKEN",
-          "keys": [
-            "DDD_JOB_INTERNAL_TOKEN",
-            "LUMIRA_JOB_INTERNAL_TOKEN",
-            "SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "spec": "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "label": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
-            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
-            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
-            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SYSTEM_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_SYSTEM_SERVICE_BASE_URL",
-            "SYSTEM_SERVICE_BASE_URL"
-          ],
-          "spec": "SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL"
-        },
-        {
-          "label": "XXL_JOB_ACCESS_TOKEN",
-          "keys": [
-            "LUMIRA_XXL_JOB_ACCESS_TOKEN",
-            "XXL_JOB_ACCESS_TOKEN",
-            "XXL_JOB_ADMIN_ACCESS_TOKEN"
-          ],
-          "spec": "XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN"
-        },
-        {
-          "label": "XXL_JOB_ADMIN_ADDRESSES",
-          "keys": [
-            "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
-            "XXL_JOB_ADMIN_ADDRESSES"
-          ],
-          "spec": "XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES"
-        }
-      ],
-      "commands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-        "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "id": "p0-release-config-ai-owner",
-      "order": 2,
-      "priority": "P0",
-      "source": "release-config",
-      "owner": "ai-owner",
-      "pendingItems": 12,
-      "canRunImmediately": true,
-      "dependsOn": [],
-      "envKeys": [
-        "LUMIRA_AI_OWNER_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_API_KEY",
-        "LUMIRA_AI_PROVIDER_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_FILE_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_IAM_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-          "keys": [
-            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-            "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
-            "SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-            "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-          "keys": [
-            "LUMIRA_AI_PROVIDER_API_KEY",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-          ],
-          "spec": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-        },
-        {
-          "label": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_PROVIDER_BASE_URL",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_INTERNAL_TOKEN",
-          "keys": [
-            "DDD_JOB_INTERNAL_TOKEN",
-            "LUMIRA_JOB_INTERNAL_TOKEN",
-            "SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "spec": "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-        }
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "id": "p0-release-config-payment-owner",
-      "order": 3,
-      "priority": "P0",
-      "source": "release-config",
-      "owner": "payment-owner",
-      "pendingItems": 2,
-      "canRunImmediately": true,
-      "dependsOn": [],
-      "envKeys": [
-        "PAYMENT_PUBLIC_BASE_URL"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "PAYMENT_PUBLIC_BASE_URL",
-          "keys": [
-            "PAYMENT_PUBLIC_BASE_URL"
-          ],
-          "spec": "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
-        }
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "id": "p0-release-config-platform-events",
-      "order": 4,
-      "priority": "P0",
-      "source": "release-config",
-      "owner": "platform-events",
-      "pendingItems": 17,
-      "canRunImmediately": true,
-      "dependsOn": [],
-      "envKeys": [
-        "DDD_JOB_INTERNAL_TOKEN",
-        "LUMIRA_EVENT_REDIS_STREAM_KEY",
-        "LUMIRA_JOB_BACKEND_BASE_URL",
-        "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
-        "LUMIRA_JOB_INTERNAL_TOKEN",
-        "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
-        "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
-        "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
-        "LUMIRA_XXL_JOB_ACCESS_TOKEN",
-        "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "SAAS_JOB_INTERNAL_TOKEN",
-          "keys": [
-            "DDD_JOB_INTERNAL_TOKEN",
-            "LUMIRA_JOB_INTERNAL_TOKEN",
-            "SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "spec": "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "label": "SAAS_EVENT_REDIS_STREAM_KEY",
-          "keys": [
-            "LUMIRA_EVENT_REDIS_STREAM_KEY",
-            "SAAS_EVENT_REDIS_STREAM_KEY"
-          ],
-          "spec": "SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY"
-        },
-        {
-          "label": "SAAS_JOB_BACKEND_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_BACKEND_BASE_URL",
-            "SAAS_JOB_BACKEND_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_FILE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
-            "SAAS_JOB_FILE_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
-            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
-            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
-            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "label": "XXL_JOB_ACCESS_TOKEN",
-          "keys": [
-            "LUMIRA_XXL_JOB_ACCESS_TOKEN",
-            "XXL_JOB_ACCESS_TOKEN",
-            "XXL_JOB_ADMIN_ACCESS_TOKEN"
-          ],
-          "spec": "XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN"
-        },
-        {
-          "label": "XXL_JOB_ADMIN_ADDRESSES",
-          "keys": [
-            "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
-            "XXL_JOB_ADMIN_ADDRESSES"
-          ],
-          "spec": "XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES"
-        }
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "id": "p0-release-config-platform-owners",
-      "order": 5,
-      "priority": "P0",
-      "source": "release-config",
-      "owner": "platform-owners",
-      "pendingItems": 18,
-      "canRunImmediately": true,
-      "dependsOn": [],
-      "envKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_BASE_URL",
-        "LUMIRA_AI_SERVICE_BASE_URL",
-        "LUMIRA_AUTH_SERVICE_BASE_URL",
-        "LUMIRA_FILE_SERVICE_BASE_URL",
-        "LUMIRA_JOB_EXECUTOR_BASE_URL",
-        "LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_MESSAGE_SERVICE_BASE_URL",
-        "LUMIRA_PAYMENT_SERVICE_BASE_URL",
-        "LUMIRA_PLUGIN_SERVICE_BASE_URL",
-        "LUMIRA_SYSTEM_SERVICE_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "AI_SERVICE_BASE_URL",
-          "keys": [
-            "AI_SERVICE_BASE_URL",
-            "LUMIRA_AI_BASE_URL",
-            "LUMIRA_AI_SERVICE_BASE_URL"
-          ],
-          "spec": "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL"
-        },
-        {
-          "label": "AUTH_SERVICE_BASE_URL",
-          "keys": [
-            "AUTH_SERVICE_BASE_URL",
-            "LUMIRA_AUTH_SERVICE_BASE_URL"
-          ],
-          "spec": "AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL"
-        },
-        {
-          "label": "FILE_SERVICE_BASE_URL",
-          "keys": [
-            "FILE_SERVICE_BASE_URL",
-            "LUMIRA_FILE_SERVICE_BASE_URL"
-          ],
-          "spec": "FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "JOB_EXECUTOR_BASE_URL",
-          "keys": [
-            "JOB_EXECUTOR_BASE_URL",
-            "LUMIRA_JOB_EXECUTOR_BASE_URL"
-          ],
-          "spec": "JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL"
-        },
-        {
-          "label": "LOCALIZATION_SERVICE_BASE_URL",
-          "keys": [
-            "LOCALIZATION_SERVICE_BASE_URL",
-            "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
-          ],
-          "spec": "LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
-        },
-        {
-          "label": "MESSAGE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_MESSAGE_SERVICE_BASE_URL",
-            "MESSAGE_SERVICE_BASE_URL"
-          ],
-          "spec": "MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "PAYMENT_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_PAYMENT_SERVICE_BASE_URL",
-            "PAYMENT_SERVICE_BASE_URL"
-          ],
-          "spec": "PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "label": "PLUGIN_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_PLUGIN_SERVICE_BASE_URL",
-            "PLUGIN_SERVICE_BASE_URL"
-          ],
-          "spec": "PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SYSTEM_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_SYSTEM_SERVICE_BASE_URL",
-            "SYSTEM_SERVICE_BASE_URL"
-          ],
-          "spec": "SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL"
-        }
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
-      "id": "p0-release-config-release-infra",
-      "order": 6,
-      "priority": "P0",
-      "source": "release-config",
-      "owner": "release-infra",
-      "pendingItems": 14,
-      "canRunImmediately": true,
-      "dependsOn": [],
-      "envKeys": [
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DEPLOY_CHECK_BASE_URL",
-        "FIELD_SECRET",
-        "FRONTEND_BASE_URL",
-        "JWT_SECRET",
-        "LUMIRA_BASE_URL",
-        "MYSQL_PASSWORD",
-        "MYSQL_USER",
-        "PLAYWRIGHT_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_SECURITY_FIELD_SECRET",
-        "SAAS_SECURITY_JWT_SECRET",
-        "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
-        "SPRING_DATASOURCE_PASSWORD",
-        "SPRING_DATASOURCE_URL",
-        "SPRING_DATASOURCE_USERNAME",
-        "SPRING_DATA_REDIS_HOST"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "CORS_ALLOWED_ORIGIN_PATTERNS",
-          "keys": [
-            "CORS_ALLOWED_ORIGIN_PATTERNS",
-            "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
-          ],
-          "spec": "CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
-        },
-        {
-          "label": "DB_PASSWORD",
-          "keys": [
-            "DB_PASSWORD",
-            "MYSQL_PASSWORD",
-            "SPRING_DATASOURCE_PASSWORD"
-          ],
-          "spec": "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD"
-        },
-        {
-          "label": "DB_URL",
-          "keys": [
-            "DB_URL",
-            "SPRING_DATASOURCE_URL"
-          ],
-          "spec": "DB_URL=DB_URL|SPRING_DATASOURCE_URL"
-        },
-        {
-          "label": "DB_USERNAME",
-          "keys": [
-            "DB_USERNAME",
-            "MYSQL_USER",
-            "SPRING_DATASOURCE_USERNAME"
-          ],
-          "spec": "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME"
-        },
-        {
-          "label": "LUMIRA_BASE_URL",
-          "keys": [
-            "DEPLOY_CHECK_BASE_URL",
-            "LUMIRA_BASE_URL"
-          ],
-          "spec": "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
-        },
-        {
-          "label": "FIELD_SECRET",
-          "keys": [
-            "FIELD_SECRET",
-            "SAAS_SECURITY_FIELD_SECRET"
-          ],
-          "spec": "FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET"
-        },
-        {
-          "label": "PLAYWRIGHT_BASE_URL",
-          "keys": [
-            "FRONTEND_BASE_URL",
-            "PLAYWRIGHT_BASE_URL"
-          ],
-          "spec": "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
-        },
-        {
-          "label": "JWT_SECRET",
-          "keys": [
-            "JWT_SECRET",
-            "SAAS_SECURITY_JWT_SECRET"
-          ],
-          "spec": "JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET"
-        },
-        {
-          "label": "REDIS_HOST",
-          "keys": [
-            "REDIS_HOST",
-            "SPRING_DATA_REDIS_HOST"
-          ],
-          "spec": "REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST"
-        }
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ]
-    },
-    {
       "id": "p0-docker-release-infra",
-      "order": 7,
+      "order": 1,
       "priority": "P0",
       "source": "docker",
       "owner": "release-infra",
@@ -1418,7 +413,7 @@
     },
     {
       "id": "p0-runtime-readiness-release-infra",
-      "order": 8,
+      "order": 2,
       "priority": "P0",
       "source": "runtime-readiness",
       "owner": "release-infra",
@@ -1476,7 +471,7 @@
     },
     {
       "id": "p0-manifest-release-owner",
-      "order": 9,
+      "order": 3,
       "priority": "P0",
       "source": "manifest",
       "owner": "release-owner",
@@ -1534,7 +529,7 @@
     },
     {
       "id": "p0-authenticated-performance-release-performance",
-      "order": 10,
+      "order": 4,
       "priority": "P0",
       "source": "authenticated-performance",
       "owner": "release-performance",
@@ -1594,19 +589,13 @@
     },
     {
       "id": "p1-ai-runtime-ai",
-      "order": 11,
+      "order": 5,
       "priority": "P1",
       "source": "ai-runtime",
       "owner": "ai",
       "pendingItems": 3,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1726,19 +715,13 @@
     },
     {
       "id": "p1-frontend-smoke-frontend",
-      "order": 12,
+      "order": 6,
       "priority": "P1",
       "source": "frontend-smoke",
       "owner": "frontend",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1771,19 +754,13 @@
     },
     {
       "id": "p1-business-e2e-file-owner",
-      "order": 13,
+      "order": 7,
       "priority": "P1",
       "source": "business-e2e",
       "owner": "file-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1851,19 +828,13 @@
     },
     {
       "id": "p1-business-e2e-job-owner",
-      "order": 14,
+      "order": 8,
       "priority": "P1",
       "source": "business-e2e",
       "owner": "job-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1922,19 +893,13 @@
     },
     {
       "id": "p1-business-e2e-payment-owner",
-      "order": 15,
+      "order": 9,
       "priority": "P1",
       "source": "business-e2e",
       "owner": "payment-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1991,19 +956,13 @@
     },
     {
       "id": "p1-rollback-ai-owner",
-      "order": 16,
+      "order": 10,
       "priority": "P1",
       "source": "rollback",
       "owner": "ai-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2091,19 +1050,13 @@
     },
     {
       "id": "p1-rollback-auth-owner",
-      "order": 17,
+      "order": 11,
       "priority": "P1",
       "source": "rollback",
       "owner": "auth-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2191,19 +1144,13 @@
     },
     {
       "id": "p1-rollback-file-owner",
-      "order": 18,
+      "order": 12,
       "priority": "P1",
       "source": "rollback",
       "owner": "file-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2291,19 +1238,13 @@
     },
     {
       "id": "p1-rollback-iam-owner",
-      "order": 19,
+      "order": 13,
       "priority": "P1",
       "source": "rollback",
       "owner": "iam-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2391,19 +1332,13 @@
     },
     {
       "id": "p1-rollback-job-owner",
-      "order": 20,
+      "order": 14,
       "priority": "P1",
       "source": "rollback",
       "owner": "job-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2491,19 +1426,13 @@
     },
     {
       "id": "p1-rollback-localization-owner",
-      "order": 21,
+      "order": 15,
       "priority": "P1",
       "source": "rollback",
       "owner": "localization-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2591,19 +1520,13 @@
     },
     {
       "id": "p1-rollback-message-owner",
-      "order": 22,
+      "order": 16,
       "priority": "P1",
       "source": "rollback",
       "owner": "message-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2691,19 +1614,13 @@
     },
     {
       "id": "p1-rollback-payment-owner",
-      "order": 23,
+      "order": 17,
       "priority": "P1",
       "source": "rollback",
       "owner": "payment-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2791,19 +1708,13 @@
     },
     {
       "id": "p1-rollback-platform-owner",
-      "order": 24,
+      "order": 18,
       "priority": "P1",
       "source": "rollback",
       "owner": "platform-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2891,19 +1802,13 @@
     },
     {
       "id": "p1-rollback-plugin-owner",
-      "order": 25,
+      "order": 19,
       "priority": "P1",
       "source": "rollback",
       "owner": "plugin-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2991,19 +1896,13 @@
     },
     {
       "id": "p2-explain-database",
-      "order": 26,
+      "order": 20,
       "priority": "P2",
       "source": "explain",
       "owner": "database",
       "pendingItems": 8,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3143,19 +2042,13 @@
     },
     {
       "id": "p3-orchestrator-database",
-      "order": 27,
+      "order": 21,
       "priority": "P3",
       "source": "orchestrator",
       "owner": "database",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3230,19 +2123,13 @@
     },
     {
       "id": "p3-orchestrator-frontend",
-      "order": 28,
+      "order": 22,
       "priority": "P3",
       "source": "orchestrator",
       "owner": "frontend",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3294,20 +2181,81 @@
       ]
     },
     {
+      "id": "p3-orchestrator-release-infra",
+      "order": 23,
+      "priority": "P3",
+      "source": "orchestrator",
+      "owner": "release-infra",
+      "pendingItems": 1,
+      "canRunImmediately": false,
+      "dependsOn": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
+        "p1-ai-runtime-ai",
+        "p1-frontend-smoke-frontend",
+        "p1-business-e2e-file-owner",
+        "p1-business-e2e-job-owner",
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-ai-owner",
+        "p1-rollback-auth-owner",
+        "p1-rollback-file-owner",
+        "p1-rollback-iam-owner",
+        "p1-rollback-job-owner",
+        "p1-rollback-localization-owner",
+        "p1-rollback-message-owner",
+        "p1-rollback-payment-owner",
+        "p1-rollback-platform-owner",
+        "p1-rollback-plugin-owner",
+        "p2-explain-database"
+      ],
+      "envKeys": [
+        "BASE_URL",
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL"
+      ],
+      "envCheckGroups": [
+        {
+          "label": "BASE_URL",
+          "keys": [
+            "BASE_URL"
+          ],
+          "spec": "BASE_URL=BASE_URL"
+        },
+        {
+          "label": "LUMIRA_BASE_URL",
+          "keys": [
+            "DEPLOY_CHECK_BASE_URL",
+            "LUMIRA_BASE_URL"
+          ],
+          "spec": "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+        }
+      ],
+      "commands": [
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/release-evidence-gate.json",
+        "artifacts/ddd/release/readiness-summary.json"
+      ],
+      "exitCriteria": [
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Final strict release gate and readiness summary report zero blockers.",
+        "Run only after all prerequisite evidence batches are clean."
+      ]
+    },
+    {
       "id": "p3-orchestrator-release-owner",
-      "order": 29,
+      "order": 24,
       "priority": "P3",
       "source": "orchestrator",
       "owner": "release-owner",
       "pendingItems": 1,
       "canRunImmediately": false,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3359,30 +2307,6 @@
   ],
   "edges": [
     {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-ai-runtime-ai"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-ai-runtime-ai"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-ai-runtime-ai"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-ai-runtime-ai"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-ai-runtime-ai"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-ai-runtime-ai"
-    },
-    {
       "from": "p0-docker-release-infra",
       "to": "p1-ai-runtime-ai"
     },
@@ -3397,30 +2321,6 @@
     {
       "from": "p0-authenticated-performance-release-performance",
       "to": "p1-ai-runtime-ai"
-    },
-    {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-frontend-smoke-frontend"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-frontend-smoke-frontend"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-frontend-smoke-frontend"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-frontend-smoke-frontend"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-frontend-smoke-frontend"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-frontend-smoke-frontend"
     },
     {
       "from": "p0-docker-release-infra",
@@ -3439,30 +2339,6 @@
       "to": "p1-frontend-smoke-frontend"
     },
     {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-business-e2e-file-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-business-e2e-file-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-business-e2e-file-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-business-e2e-file-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-business-e2e-file-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-business-e2e-file-owner"
-    },
-    {
       "from": "p0-docker-release-infra",
       "to": "p1-business-e2e-file-owner"
     },
@@ -3477,30 +2353,6 @@
     {
       "from": "p0-authenticated-performance-release-performance",
       "to": "p1-business-e2e-file-owner"
-    },
-    {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-business-e2e-job-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-business-e2e-job-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-business-e2e-job-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-business-e2e-job-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-business-e2e-job-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-business-e2e-job-owner"
     },
     {
       "from": "p0-docker-release-infra",
@@ -3519,30 +2371,6 @@
       "to": "p1-business-e2e-job-owner"
     },
     {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-business-e2e-payment-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-business-e2e-payment-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-business-e2e-payment-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-business-e2e-payment-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-business-e2e-payment-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-business-e2e-payment-owner"
-    },
-    {
       "from": "p0-docker-release-infra",
       "to": "p1-business-e2e-payment-owner"
     },
@@ -3557,30 +2385,6 @@
     {
       "from": "p0-authenticated-performance-release-performance",
       "to": "p1-business-e2e-payment-owner"
-    },
-    {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-rollback-ai-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-rollback-ai-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-rollback-ai-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-rollback-ai-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-rollback-ai-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-rollback-ai-owner"
     },
     {
       "from": "p0-docker-release-infra",
@@ -3599,30 +2403,6 @@
       "to": "p1-rollback-ai-owner"
     },
     {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-rollback-auth-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-rollback-auth-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-rollback-auth-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-rollback-auth-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-rollback-auth-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-rollback-auth-owner"
-    },
-    {
       "from": "p0-docker-release-infra",
       "to": "p1-rollback-auth-owner"
     },
@@ -3637,30 +2417,6 @@
     {
       "from": "p0-authenticated-performance-release-performance",
       "to": "p1-rollback-auth-owner"
-    },
-    {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-rollback-file-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-rollback-file-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-rollback-file-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-rollback-file-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-rollback-file-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-rollback-file-owner"
     },
     {
       "from": "p0-docker-release-infra",
@@ -3679,30 +2435,6 @@
       "to": "p1-rollback-file-owner"
     },
     {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-rollback-iam-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-rollback-iam-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-rollback-iam-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-rollback-iam-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-rollback-iam-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-rollback-iam-owner"
-    },
-    {
       "from": "p0-docker-release-infra",
       "to": "p1-rollback-iam-owner"
     },
@@ -3717,30 +2449,6 @@
     {
       "from": "p0-authenticated-performance-release-performance",
       "to": "p1-rollback-iam-owner"
-    },
-    {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-rollback-job-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-rollback-job-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-rollback-job-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-rollback-job-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-rollback-job-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-rollback-job-owner"
     },
     {
       "from": "p0-docker-release-infra",
@@ -3759,30 +2467,6 @@
       "to": "p1-rollback-job-owner"
     },
     {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-rollback-localization-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-rollback-localization-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-rollback-localization-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-rollback-localization-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-rollback-localization-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-rollback-localization-owner"
-    },
-    {
       "from": "p0-docker-release-infra",
       "to": "p1-rollback-localization-owner"
     },
@@ -3797,30 +2481,6 @@
     {
       "from": "p0-authenticated-performance-release-performance",
       "to": "p1-rollback-localization-owner"
-    },
-    {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-rollback-message-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-rollback-message-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-rollback-message-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-rollback-message-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-rollback-message-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-rollback-message-owner"
     },
     {
       "from": "p0-docker-release-infra",
@@ -3839,30 +2499,6 @@
       "to": "p1-rollback-message-owner"
     },
     {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-rollback-payment-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-rollback-payment-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-rollback-payment-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-rollback-payment-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-rollback-payment-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-rollback-payment-owner"
-    },
-    {
       "from": "p0-docker-release-infra",
       "to": "p1-rollback-payment-owner"
     },
@@ -3877,30 +2513,6 @@
     {
       "from": "p0-authenticated-performance-release-performance",
       "to": "p1-rollback-payment-owner"
-    },
-    {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-rollback-platform-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-rollback-platform-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-rollback-platform-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-rollback-platform-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-rollback-platform-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-rollback-platform-owner"
     },
     {
       "from": "p0-docker-release-infra",
@@ -3919,30 +2531,6 @@
       "to": "p1-rollback-platform-owner"
     },
     {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p1-rollback-plugin-owner"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p1-rollback-plugin-owner"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p1-rollback-plugin-owner"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p1-rollback-plugin-owner"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p1-rollback-plugin-owner"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p1-rollback-plugin-owner"
-    },
-    {
       "from": "p0-docker-release-infra",
       "to": "p1-rollback-plugin-owner"
     },
@@ -3957,30 +2545,6 @@
     {
       "from": "p0-authenticated-performance-release-performance",
       "to": "p1-rollback-plugin-owner"
-    },
-    {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p2-explain-database"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p2-explain-database"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p2-explain-database"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p2-explain-database"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p2-explain-database"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p2-explain-database"
     },
     {
       "from": "p0-docker-release-infra",
@@ -4057,30 +2621,6 @@
     {
       "from": "p1-rollback-plugin-owner",
       "to": "p2-explain-database"
-    },
-    {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p3-orchestrator-database"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p3-orchestrator-database"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p3-orchestrator-database"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p3-orchestrator-database"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p3-orchestrator-database"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p3-orchestrator-database"
     },
     {
       "from": "p0-docker-release-infra",
@@ -4163,30 +2703,6 @@
       "to": "p3-orchestrator-database"
     },
     {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p3-orchestrator-frontend"
-    },
-    {
-      "from": "p0-release-config-ai-owner",
-      "to": "p3-orchestrator-frontend"
-    },
-    {
-      "from": "p0-release-config-payment-owner",
-      "to": "p3-orchestrator-frontend"
-    },
-    {
-      "from": "p0-release-config-platform-events",
-      "to": "p3-orchestrator-frontend"
-    },
-    {
-      "from": "p0-release-config-platform-owners",
-      "to": "p3-orchestrator-frontend"
-    },
-    {
-      "from": "p0-release-config-release-infra",
-      "to": "p3-orchestrator-frontend"
-    },
-    {
       "from": "p0-docker-release-infra",
       "to": "p3-orchestrator-frontend"
     },
@@ -4267,28 +2783,84 @@
       "to": "p3-orchestrator-frontend"
     },
     {
-      "from": "p0-release-env-lint-release-infra",
-      "to": "p3-orchestrator-release-owner"
+      "from": "p0-docker-release-infra",
+      "to": "p3-orchestrator-release-infra"
     },
     {
-      "from": "p0-release-config-ai-owner",
-      "to": "p3-orchestrator-release-owner"
+      "from": "p0-runtime-readiness-release-infra",
+      "to": "p3-orchestrator-release-infra"
     },
     {
-      "from": "p0-release-config-payment-owner",
-      "to": "p3-orchestrator-release-owner"
+      "from": "p0-manifest-release-owner",
+      "to": "p3-orchestrator-release-infra"
     },
     {
-      "from": "p0-release-config-platform-events",
-      "to": "p3-orchestrator-release-owner"
+      "from": "p0-authenticated-performance-release-performance",
+      "to": "p3-orchestrator-release-infra"
     },
     {
-      "from": "p0-release-config-platform-owners",
-      "to": "p3-orchestrator-release-owner"
+      "from": "p1-ai-runtime-ai",
+      "to": "p3-orchestrator-release-infra"
     },
     {
-      "from": "p0-release-config-release-infra",
-      "to": "p3-orchestrator-release-owner"
+      "from": "p1-frontend-smoke-frontend",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-business-e2e-file-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-business-e2e-job-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-business-e2e-payment-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-rollback-ai-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-rollback-auth-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-rollback-file-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-rollback-iam-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-rollback-job-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-rollback-localization-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-rollback-message-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-rollback-payment-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-rollback-platform-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p1-rollback-plugin-owner",
+      "to": "p3-orchestrator-release-infra"
+    },
+    {
+      "from": "p2-explain-database",
+      "to": "p3-orchestrator-release-infra"
     },
     {
       "from": "p0-docker-release-infra",

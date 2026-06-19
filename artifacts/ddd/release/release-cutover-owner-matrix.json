@@ -1,62 +1,29 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "releaseEnvFileCutoverSafe": false,
   "safetySignals": {
     "releaseEnvFile": {
-      "ready": false,
-      "status": "FAIL",
+      "ready": true,
+      "status": "PASS",
       "inputKind": "release-env-file",
       "envFile": "<release-env-file>",
       "envFilePresent": true,
       "generatedMissingTemplate": false,
       "securityChecked": true,
       "permissionSafe": true,
-      "permissionCheckSkipped": false,
-      "modeOctal": "600",
+      "permissionCheckSkipped": true,
+      "modeOctal": "666",
       "reason": "env-file",
       "requiredMode": "600",
-      "pendingActionIds": [
-        "release-env-lint-status",
-        "release-env-lint-placeholders"
-      ],
+      "pendingActionIds": [],
       "blockingSafeDefaultAvailable": 0,
-      "blockingRequiresOwnerInput": 34,
+      "blockingRequiresOwnerInput": 0,
       "safeDefaultsExhausted": true,
-      "ownerInputReasonCounts": {
-        "production-endpoint": 24,
-        "secret-manager": 8,
-        "owner-production-value": 2
-      },
-      "ownerInputOwners": [
-        {
-          "owner": "platform-events",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "platform-owners",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "release-infra",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "ai-owner",
-          "requiresOwnerInput": 6,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "payment-owner",
-          "requiresOwnerInput": 1,
-          "safeDefaultAvailable": 0
-        }
-      ]
+      "ownerInputReasonCounts": {},
+      "ownerInputOwners": []
     }
   },
   "gate": {
@@ -65,152 +32,28 @@
     "warnings": 8
   },
   "summary": {
-    "ownerCount": 18,
-    "blockedOwnerCount": 18,
+    "ownerCount": 16,
+    "blockedOwnerCount": 16,
     "cutoverChecklistItems": 9,
-    "blockedCutoverItems": 8,
-    "totalOwnerItems": 29
+    "blockedCutoverItems": 7,
+    "totalOwnerItems": 26
   },
   "owners": [
-    {
-      "owner": "payment-owner",
-      "blockedItems": 3,
-      "totalItems": 3,
-      "readyBatchIds": [
-        "p0-release-config-payment-owner"
-      ],
-      "blockedBatchIds": [
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-payment-owner"
-      ],
-      "batchIds": [
-        "p0-release-config-payment-owner",
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-payment-owner"
-      ],
-      "items": [
-        {
-          "checklistId": "release-environment",
-          "title": "Completed release env file and config matrix are valid.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 65,
-          "lanes": [
-            "environment"
-          ],
-          "batchIds": [
-            "p0-release-config-payment-owner"
-          ],
-          "readyBatchIds": [
-            "p0-release-config-payment-owner"
-          ],
-          "blockedBatchIds": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "envCheckGroups": [
-            "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "Clear this batch before running downstream runtime-heavy evidence.",
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-          ]
-        },
-        {
-          "checklistId": "rollback-safety",
-          "title": "Every bounded context has rollback PASS or approved unexpired DEFERRED risk acceptance.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 10,
-          "lanes": [
-            "rollback-safety"
-          ],
-          "batchIds": [
-            "p1-rollback-payment-owner"
-          ],
-          "readyBatchIds": [],
-          "blockedBatchIds": [
-            "p1-rollback-payment-owner"
-          ],
-          "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
-          ],
-          "envCheckGroups": [
-            "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
-            "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=DDD_ROLLBACK_DRILL_CHECK_ENV",
-            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE=DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-            "DDD_ROLLBACK_DRILL_FILE=DDD_ROLLBACK_DRILL_FILE",
-            "DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-            "DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "checklistId": "runtime-business-acceptance",
-          "title": "AI, frontend, file, job, and payment acceptance evidence is complete.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 7,
-          "lanes": [
-            "runtime-acceptance",
-            "frontend-acceptance",
-            "business-acceptance"
-          ],
-          "batchIds": [
-            "p1-business-e2e-payment-owner"
-          ],
-          "readyBatchIds": [],
-          "blockedBatchIds": [
-            "p1-business-e2e-payment-owner"
-          ],
-          "commands": [
-            "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
-          ],
-          "envCheckGroups": [
-            "BASE_URL=BASE_URL",
-            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-            "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL",
-            "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/payment/payment-webhook-e2e.json"
-          ],
-          "exitCriteria": [
-            "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
-            "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
-          ]
-        }
-      ]
-    },
     {
       "owner": "release-infra",
       "blockedItems": 3,
       "totalItems": 3,
       "readyBatchIds": [
         "p0-docker-release-infra",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
-      "blockedBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-infra"
+      ],
       "batchIds": [
         "p0-docker-release-infra",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
-        "p0-runtime-readiness-release-infra"
+        "p0-runtime-readiness-release-infra",
+        "p3-orchestrator-release-infra"
       ],
       "items": [
         {
@@ -247,6 +90,42 @@
           ]
         },
         {
+          "checklistId": "evidence-integrity",
+          "title": "Evidence manifest and final orchestrator strict rerun are clean.",
+          "required": true,
+          "status": "BLOCKED",
+          "pendingItems": 5,
+          "lanes": [
+            "evidence-integrity",
+            "final-verification"
+          ],
+          "batchIds": [
+            "p3-orchestrator-release-infra"
+          ],
+          "readyBatchIds": [],
+          "blockedBatchIds": [
+            "p3-orchestrator-release-infra"
+          ],
+          "commands": [
+            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict",
+            "node scripts/ddd-release-evidence-orchestrator.mjs"
+          ],
+          "envCheckGroups": [
+            "BASE_URL=BASE_URL",
+            "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/release/orchestrator-report.json",
+            "artifacts/ddd/release/readiness-summary.json",
+            "artifacts/ddd/release/release-evidence-gate.json"
+          ],
+          "exitCriteria": [
+            "Final strict release gate and readiness summary report zero blockers.",
+            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+            "Run only after all prerequisite evidence batches are clean."
+          ]
+        },
+        {
           "checklistId": "production-equivalence",
           "title": "Runtime and performance evidence use HTTPS non-local production-equivalent endpoints.",
           "required": true,
@@ -279,189 +158,6 @@
             "All 30 owner readiness/health/metrics checks pass.",
             "Clear this batch before running downstream runtime-heavy evidence.",
             "Runtime readiness is generated from an HTTPS non-local backend base URL."
-          ]
-        },
-        {
-          "checklistId": "release-environment",
-          "title": "Completed release env file and config matrix are valid.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 65,
-          "lanes": [
-            "environment"
-          ],
-          "batchIds": [
-            "p0-release-env-lint-release-infra",
-            "p0-release-config-release-infra"
-          ],
-          "readyBatchIds": [
-            "p0-release-env-lint-release-infra",
-            "p0-release-config-release-infra"
-          ],
-          "blockedBatchIds": [],
-          "commands": [
-            "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "envCheckGroups": [
-            "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL",
-            "AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL",
-            "BASE_URL=BASE_URL",
-            "CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
-            "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD",
-            "DB_URL=DB_URL|SPRING_DATASOURCE_URL",
-            "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME",
-            "DDD_AUTH_PASSWORD=DDD_AUTH_PASSWORD",
-            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-            "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE=DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-            "DDD_AUTH_PERF_ENVIRONMENT=DDD_AUTH_PERF_ENVIRONMENT",
-            "DDD_AUTH_USERNAME=DDD_AUTH_USERNAME",
-            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-            "DDD_DEPLOYMENT_EVIDENCE=DDD_DEPLOYMENT_EVIDENCE",
-            "DDD_EXPLAIN_DATABASE=DDD_EXPLAIN_DATABASE",
-            "DDD_FRONTEND_DEPLOYMENT_EVIDENCE=DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-            "DDD_MIGRATION_COMPLETED_AT=DDD_MIGRATION_COMPLETED_AT",
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE",
-            "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED",
-            "DDD_MIGRATION_OPERATOR=DDD_MIGRATION_OPERATOR",
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-            "FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET",
-            "FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL",
-            "JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL",
-            "JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET",
-            "LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-            "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL",
-            "MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL",
-            "MYSQL_DATABASE=MYSQL_DATABASE",
-            "MYSQL_HOST=MYSQL_HOST",
-            "MYSQL_PORT=MYSQL_PORT",
-            "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL",
-            "PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL",
-            "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL",
-            "PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL",
-            "REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST",
-            "SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY",
-            "SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL",
-            "SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL",
-            "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
-            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-            "SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL",
-            "XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN",
-            "XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json",
-            "artifacts/ddd/release/release-env-lint.json"
-          ],
-          "exitCriteria": [
-            "Clear this batch before running downstream runtime-heavy evidence.",
-            "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-            "release-config-evidence status is PASS with no contract issues.",
-            "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-          ]
-        }
-      ]
-    },
-    {
-      "owner": "ai-owner",
-      "blockedItems": 2,
-      "totalItems": 2,
-      "readyBatchIds": [
-        "p0-release-config-ai-owner"
-      ],
-      "blockedBatchIds": [
-        "p1-rollback-ai-owner"
-      ],
-      "batchIds": [
-        "p0-release-config-ai-owner",
-        "p1-rollback-ai-owner"
-      ],
-      "items": [
-        {
-          "checklistId": "release-environment",
-          "title": "Completed release env file and config matrix are valid.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 65,
-          "lanes": [
-            "environment"
-          ],
-          "batchIds": [
-            "p0-release-config-ai-owner"
-          ],
-          "readyBatchIds": [
-            "p0-release-config-ai-owner"
-          ],
-          "blockedBatchIds": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "envCheckGroups": [
-            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-            "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "Clear this batch before running downstream runtime-heavy evidence.",
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-          ]
-        },
-        {
-          "checklistId": "rollback-safety",
-          "title": "Every bounded context has rollback PASS or approved unexpired DEFERRED risk acceptance.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 10,
-          "lanes": [
-            "rollback-safety"
-          ],
-          "batchIds": [
-            "p1-rollback-ai-owner"
-          ],
-          "readyBatchIds": [],
-          "blockedBatchIds": [
-            "p1-rollback-ai-owner"
-          ],
-          "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
-          ],
-          "envCheckGroups": [
-            "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
-            "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=DDD_ROLLBACK_DRILL_CHECK_ENV",
-            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE=DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-            "DDD_ROLLBACK_DRILL_FILE=DDD_ROLLBACK_DRILL_FILE",
-            "DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-            "DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
           ]
         }
       ]
@@ -528,7 +224,7 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 4,
+          "pendingItems": 5,
           "lanes": [
             "evidence-integrity",
             "final-verification"
@@ -672,7 +368,7 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 4,
+          "pendingItems": 5,
           "lanes": [
             "evidence-integrity",
             "final-verification"
@@ -828,9 +524,98 @@
       ]
     },
     {
+      "owner": "payment-owner",
+      "blockedItems": 2,
+      "totalItems": 2,
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ],
+      "batchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ],
+      "items": [
+        {
+          "checklistId": "rollback-safety",
+          "title": "Every bounded context has rollback PASS or approved unexpired DEFERRED risk acceptance.",
+          "required": true,
+          "status": "BLOCKED",
+          "pendingItems": 10,
+          "lanes": [
+            "rollback-safety"
+          ],
+          "batchIds": [
+            "p1-rollback-payment-owner"
+          ],
+          "readyBatchIds": [],
+          "blockedBatchIds": [
+            "p1-rollback-payment-owner"
+          ],
+          "commands": [
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
+            "node scripts/ddd-rollback-deferral-template.mjs",
+            "node scripts/ddd-rollback-drill-evidence.mjs"
+          ],
+          "envCheckGroups": [
+            "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
+            "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE=DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_FILE=DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/rollback/rollback-drill.json"
+          ],
+          "exitCriteria": [
+            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+          ]
+        },
+        {
+          "checklistId": "runtime-business-acceptance",
+          "title": "AI, frontend, file, job, and payment acceptance evidence is complete.",
+          "required": true,
+          "status": "BLOCKED",
+          "pendingItems": 7,
+          "lanes": [
+            "runtime-acceptance",
+            "frontend-acceptance",
+            "business-acceptance"
+          ],
+          "batchIds": [
+            "p1-business-e2e-payment-owner"
+          ],
+          "readyBatchIds": [],
+          "blockedBatchIds": [
+            "p1-business-e2e-payment-owner"
+          ],
+          "commands": [
+            "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+          ],
+          "envCheckGroups": [
+            "BASE_URL=BASE_URL",
+            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+            "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL",
+            "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/payment/payment-webhook-e2e.json"
+          ],
+          "exitCriteria": [
+            "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
+            "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
+          ]
+        }
+      ]
+    },
+    {
       "owner": "release-owner",
       "blockedItems": 2,
-      "totalItems": 3,
+      "totalItems": 4,
       "readyBatchIds": [
         "p0-manifest-release-owner"
       ],
@@ -847,7 +632,7 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 4,
+          "pendingItems": 5,
           "lanes": [
             "evidence-integrity",
             "final-verification"
@@ -921,6 +706,23 @@
           "envCheckGroups": [],
           "expectedArtifacts": [],
           "exitCriteria": []
+        },
+        {
+          "checklistId": "release-environment",
+          "title": "Completed release env file and config matrix are valid.",
+          "required": true,
+          "status": "PASS",
+          "pendingItems": 0,
+          "lanes": [
+            "environment"
+          ],
+          "batchIds": [],
+          "readyBatchIds": [],
+          "blockedBatchIds": [],
+          "commands": [],
+          "envCheckGroups": [],
+          "expectedArtifacts": [],
+          "exitCriteria": []
         }
       ]
     },
@@ -976,6 +778,58 @@
           "exitCriteria": [
             "AI runtime drill uses HTTPS non-local base URL with remote provider and owner gateway expectations enabled.",
             "Provider is not local fallback and owner gateway has configured owner integrations."
+          ]
+        }
+      ]
+    },
+    {
+      "owner": "ai-owner",
+      "blockedItems": 1,
+      "totalItems": 1,
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-ai-owner"
+      ],
+      "batchIds": [
+        "p1-rollback-ai-owner"
+      ],
+      "items": [
+        {
+          "checklistId": "rollback-safety",
+          "title": "Every bounded context has rollback PASS or approved unexpired DEFERRED risk acceptance.",
+          "required": true,
+          "status": "BLOCKED",
+          "pendingItems": 10,
+          "lanes": [
+            "rollback-safety"
+          ],
+          "batchIds": [
+            "p1-rollback-ai-owner"
+          ],
+          "readyBatchIds": [],
+          "blockedBatchIds": [
+            "p1-rollback-ai-owner"
+          ],
+          "commands": [
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
+            "node scripts/ddd-rollback-deferral-template.mjs",
+            "node scripts/ddd-rollback-drill-evidence.mjs"
+          ],
+          "envCheckGroups": [
+            "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
+            "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE=DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_FILE=DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/rollback/rollback-drill.json"
+          ],
+          "exitCriteria": [
+            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
           ]
         }
       ]
@@ -1189,59 +1043,6 @@
       ]
     },
     {
-      "owner": "platform-events",
-      "blockedItems": 1,
-      "totalItems": 1,
-      "readyBatchIds": [
-        "p0-release-config-platform-events"
-      ],
-      "blockedBatchIds": [],
-      "batchIds": [
-        "p0-release-config-platform-events"
-      ],
-      "items": [
-        {
-          "checklistId": "release-environment",
-          "title": "Completed release env file and config matrix are valid.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 65,
-          "lanes": [
-            "environment"
-          ],
-          "batchIds": [
-            "p0-release-config-platform-events"
-          ],
-          "readyBatchIds": [
-            "p0-release-config-platform-events"
-          ],
-          "blockedBatchIds": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "envCheckGroups": [
-            "SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY",
-            "SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL",
-            "SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL",
-            "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
-            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-            "XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN",
-            "XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "Clear this batch before running downstream runtime-heavy evidence.",
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-          ]
-        }
-      ]
-    },
-    {
       "owner": "platform-owner",
       "blockedItems": 1,
       "totalItems": 1,
@@ -1289,59 +1090,6 @@
           ],
           "exitCriteria": [
             "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        }
-      ]
-    },
-    {
-      "owner": "platform-owners",
-      "blockedItems": 1,
-      "totalItems": 1,
-      "readyBatchIds": [
-        "p0-release-config-platform-owners"
-      ],
-      "blockedBatchIds": [],
-      "batchIds": [
-        "p0-release-config-platform-owners"
-      ],
-      "items": [
-        {
-          "checklistId": "release-environment",
-          "title": "Completed release env file and config matrix are valid.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 65,
-          "lanes": [
-            "environment"
-          ],
-          "batchIds": [
-            "p0-release-config-platform-owners"
-          ],
-          "readyBatchIds": [
-            "p0-release-config-platform-owners"
-          ],
-          "blockedBatchIds": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "envCheckGroups": [
-            "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL",
-            "AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL",
-            "FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL",
-            "JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL",
-            "LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-            "MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL",
-            "PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL",
-            "PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL",
-            "SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "Clear this batch before running downstream runtime-heavy evidence.",
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
           ]
         }
       ]

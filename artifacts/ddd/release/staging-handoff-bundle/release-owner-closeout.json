@@ -1,13 +1,13 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverReady": false,
   "cutoverAllowed": false,
   "handoffBundleStatus": "PASS",
-  "acceptedGates": "1/6",
-  "blockedGates": "5/6",
+  "acceptedGates": "6/6",
+  "blockedGates": "0/6",
   "laneReceipt": {
     "status": "MISSING",
     "coverage": "0/5",
@@ -17,48 +17,17 @@
     "status": "BLOCKED",
     "closed": "0/5",
     "nextLane": {
-      "key": "platform-owners:p1-p2-data-safety",
-      "sourcePlan": "data-safety-submission-plan.json",
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown"
+      "key": "release-infra:p0-release-env",
+      "sourcePlan": "release-env-plan.json",
+      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template"
     }
   },
-  "blockers": [
-    {
-      "gate": "release-env",
-      "owner": "release-infra",
-      "firstBlocker": "release env file is not cutover-safe; blockers=34",
-      "nextCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
-    },
-    {
-      "gate": "runtime-business",
-      "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
-      "firstBlocker": "LUMIRA_BASE_URL is required",
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "gate": "rollback",
-      "owner": "bounded-context owners",
-      "firstBlocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    },
-    {
-      "gate": "migration",
-      "owner": "database",
-      "firstBlocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    },
-    {
-      "gate": "explain",
-      "owner": "database",
-      "firstBlocker": "DDD_EXPLAIN_DATABASE is required",
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    }
-  ],
+  "blockers": [],
   "requiredCommandSequence": [
     "node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
     "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
     "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template"
 }

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD final go/no-go gate.
-# Generated at: 2026-06-19T06:54:03.604Z
+# Generated at: 2026-06-19T13:42:59.865Z
 # Default mode prints the decision. Set DDD_FINAL_GO_NO_GO_ENFORCE=1 to fail on NO-GO.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
@@ -154,4 +154,4 @@ if [[ "${DDD_FINAL_GO_NO_GO_STATUS}" == "10" ]]; then
 fi
 exit "${DDD_FINAL_GO_NO_GO_STATUS}"
 
-# Generated packet is currently NO-GO with 13 stop reasons.
+# Generated packet is currently NO-GO with 12 stop reasons.

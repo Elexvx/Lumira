@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -9,15 +9,14 @@
     "cutoverAllowed": false,
     "releaseEnvFileCutoverSafe": false,
     "gateBlockers": 94,
-    "blockedCutoverItems": 8,
-    "stopReasonCount": 9,
+    "blockedCutoverItems": 7,
+    "stopReasonCount": 8,
     "stopReasonCoverage": "catalog-snapshot",
     "stopReasons": [
       "cutover checklist blocked: database-performance",
       "cutover checklist blocked: deployable-images",
       "cutover checklist blocked: evidence-integrity",
       "cutover checklist blocked: production-equivalence",
-      "cutover checklist blocked: release-environment",
       "cutover checklist blocked: rollback-safety",
       "cutover checklist blocked: runtime-business-acceptance",
       "cutover checklist blocked: strict-release-gate",
@@ -30,73 +29,40 @@
   },
   "safetySignals": {
     "releaseEnvFile": {
-      "ready": false,
-      "status": "FAIL",
+      "ready": true,
+      "status": "PASS",
       "inputKind": "release-env-file",
       "envFile": "<release-env-file>",
       "envFilePresent": true,
       "generatedMissingTemplate": false,
       "securityChecked": true,
       "permissionSafe": true,
-      "permissionCheckSkipped": false,
-      "modeOctal": "600",
+      "permissionCheckSkipped": true,
+      "modeOctal": "666",
       "reason": "env-file",
       "requiredMode": "600",
-      "pendingActionIds": [
-        "release-env-lint-status",
-        "release-env-lint-placeholders"
-      ],
+      "pendingActionIds": [],
       "blockingSafeDefaultAvailable": 0,
-      "blockingRequiresOwnerInput": 34,
+      "blockingRequiresOwnerInput": 0,
       "safeDefaultsExhausted": true,
-      "ownerInputReasonCounts": {
-        "production-endpoint": 24,
-        "secret-manager": 8,
-        "owner-production-value": 2
-      },
-      "ownerInputOwners": [
-        {
-          "owner": "platform-events",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "platform-owners",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "release-infra",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "ai-owner",
-          "requiresOwnerInput": 6,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "payment-owner",
-          "requiresOwnerInput": 1,
-          "safeDefaultAvailable": 0
-        }
-      ]
+      "ownerInputReasonCounts": {},
+      "ownerInputOwners": []
     }
   },
   "releaseEnvFileCutoverSafe": false,
   "summary": {
-    "itemCount": 18,
-    "runNowCount": 7,
-    "waitingCount": 11,
+    "itemCount": 16,
+    "runNowCount": 3,
+    "waitingCount": 13,
     "artifactMissingCount": 1,
-    "contentBlockedCount": 17,
+    "contentBlockedCount": 15,
     "readyForStrictGateRerunCount": 0,
-    "strictGateBlockerOwnerCount": 10,
+    "strictGateBlockerOwnerCount": 9,
     "ownerInputReceiptStatus": "PENDING_OWNER_INPUT",
     "ownerInputReceiptCutoverReady": false,
-    "ownerInputReceiptRequiredOwnerInputs": 34,
-    "ownerInputReceiptPendingOwnerCount": 5,
-    "ownerInputReceiptMissingCriteriaCount": 3
+    "ownerInputReceiptRequiredOwnerInputs": 0,
+    "ownerInputReceiptPendingOwnerCount": 0,
+    "ownerInputReceiptMissingCriteriaCount": 1
   },
   "ownerInputReceipt": {
     "artifact": "artifacts/ddd/release/release-owner-input-receipt.json",
@@ -106,62 +72,14 @@
     "markdown": "artifacts/ddd/release/release-owner-input-receipt.md",
     "status": "PENDING_OWNER_INPUT",
     "cutoverReady": false,
-    "requiredOwnerInputs": 34,
-    "ownerCount": 5,
+    "requiredOwnerInputs": 0,
+    "ownerCount": 0,
     "readyOwnerCount": 0,
-    "pendingOwnerCount": 5,
+    "pendingOwnerCount": 0,
     "missingCriteria": [
-      "releaseEnvReadinessBlockers",
-      "releaseEnvReadinessPlaceholders",
       "releaseEnvReadinessStatus"
     ],
-    "pendingOwners": [
-      {
-        "owner": "platform-events",
-        "requiredOwnerInputs": 9,
-        "remainingPlaceholders": 9,
-        "remainingMissing": 0,
-        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/01-platform-events.json",
-        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/01-platform-events.md",
-        "itemChecklistPath": "artifacts/ddd/release/release-owner-input-receipt-items/01-platform-events.md"
-      },
-      {
-        "owner": "platform-owners",
-        "requiredOwnerInputs": 9,
-        "remainingPlaceholders": 9,
-        "remainingMissing": 0,
-        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.json",
-        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-owners.md",
-        "itemChecklistPath": "artifacts/ddd/release/release-owner-input-receipt-items/02-platform-owners.md"
-      },
-      {
-        "owner": "release-infra",
-        "requiredOwnerInputs": 9,
-        "remainingPlaceholders": 9,
-        "remainingMissing": 0,
-        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/03-release-infra.json",
-        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/03-release-infra.md",
-        "itemChecklistPath": "artifacts/ddd/release/release-owner-input-receipt-items/03-release-infra.md"
-      },
-      {
-        "owner": "ai-owner",
-        "requiredOwnerInputs": 6,
-        "remainingPlaceholders": 6,
-        "remainingMissing": 0,
-        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/04-ai-owner.json",
-        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/04-ai-owner.md",
-        "itemChecklistPath": "artifacts/ddd/release/release-owner-input-receipt-items/04-ai-owner.md"
-      },
-      {
-        "owner": "payment-owner",
-        "requiredOwnerInputs": 1,
-        "remainingPlaceholders": 1,
-        "remainingMissing": 0,
-        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/05-payment-owner.json",
-        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-owner.md",
-        "itemChecklistPath": "artifacts/ddd/release/release-owner-input-receipt-items/05-payment-owner.md"
-      }
-    ]
+    "pendingOwners": []
   },
   "items": [
     {
@@ -171,11 +89,11 @@
       "receiptStatus": "CONTENT_BLOCKED",
       "readyBatchIds": [
         "p0-docker-release-infra",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
-      "blockedBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-infra"
+      ],
       "strictGateBlockerCount": 21,
       "strictGateBlocker": {
         "check": "runtime-readiness-summary",
@@ -183,73 +101,22 @@
         "detail": "runtime readiness productionEquivalence.strict must be true for strict release evidence"
       },
       "missingArtifacts": [],
-      "pendingActionCount": 24,
-      "collapsedActionCount": 1,
+      "pendingActionCount": 9,
+      "collapsedActionCount": 0,
       "nextAction": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.",
       "reason": "strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence",
       "commandHint": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.",
       "executableCommands": [
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
       ],
       "envKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
         "BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DDD_AUTH_PASSWORD",
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_ENVIRONMENT",
-        "DDD_AUTH_USERNAME",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "FIELD_SECRET",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "JWT_SECRET",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "PAYMENT_PUBLIC_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL"
       ]
     },
     {
@@ -319,136 +186,6 @@
     },
     {
       "order": 4,
-      "owner": "payment-owner",
-      "queueStatus": "RUN_NOW",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "readyBatchIds": [
-        "p0-release-config-payment-owner"
-      ],
-      "blockedBatchIds": [
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-payment-owner"
-      ],
-      "strictGateBlockerCount": 7,
-      "strictGateBlocker": {
-        "check": "payment-webhook-freshness",
-        "category": "business-e2e-freshness",
-        "detail": "finishedAt is 131.6h old; limit=24h"
-      },
-      "missingArtifacts": [],
-      "pendingActionCount": 4,
-      "collapsedActionCount": 0,
-      "nextAction": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.",
-      "reason": "strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h",
-      "commandHint": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.",
-      "executableCommands": [
-        "node scripts/ddd-release-config-evidence.mjs",
-        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      ],
-      "envKeys": [
-        "PAYMENT_PUBLIC_BASE_URL"
-      ]
-    },
-    {
-      "order": 5,
-      "owner": "platform-events",
-      "queueStatus": "RUN_NOW",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "readyBatchIds": [
-        "p0-release-config-platform-events"
-      ],
-      "blockedBatchIds": [],
-      "strictGateBlockerCount": 1,
-      "strictGateBlocker": {
-        "check": "outbox-replay-dead-letter-freshness",
-        "category": "outbox-state-machine",
-        "detail": "generatedAt is 91.7h old; limit=24h"
-      },
-      "missingArtifacts": [],
-      "pendingActionCount": 17,
-      "collapsedActionCount": 0,
-      "nextAction": "Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.",
-      "reason": "strictGate=outbox-replay-dead-letter-freshness generatedAt is 91.7h old; limit=24h",
-      "commandHint": "Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.",
-      "executableCommands": [
-        "DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
-        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      ],
-      "envKeys": [
-        "LUMIRA_EVENT_REDIS_STREAM_KEY",
-        "SAAS_EVENT_REDIS_STREAM_KEY"
-      ]
-    },
-    {
-      "order": 6,
-      "owner": "platform-owners",
-      "queueStatus": "RUN_NOW",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "readyBatchIds": [
-        "p0-release-config-platform-owners"
-      ],
-      "blockedBatchIds": [],
-      "strictGateBlockerCount": 0,
-      "strictGateBlocker": null,
-      "missingArtifacts": [],
-      "pendingActionCount": 18,
-      "collapsedActionCount": 0,
-      "nextAction": "Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
-      "reason": "release-config:ai service placeholder value is not allowed",
-      "commandHint": "Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
-      "executableCommands": [
-        "node scripts/ddd-release-config-evidence.mjs",
-        "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      ],
-      "envKeys": [
-        "AI_SERVICE_BASE_URL",
-        "LUMIRA_AI_BASE_URL",
-        "LUMIRA_AI_SERVICE_BASE_URL"
-      ]
-    },
-    {
-      "order": 7,
-      "owner": "ai-owner",
-      "queueStatus": "RUN_NOW",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "readyBatchIds": [
-        "p0-release-config-ai-owner"
-      ],
-      "blockedBatchIds": [
-        "p1-rollback-ai-owner"
-      ],
-      "strictGateBlockerCount": 0,
-      "strictGateBlocker": null,
-      "missingArtifacts": [],
-      "pendingActionCount": 13,
-      "collapsedActionCount": 0,
-      "nextAction": "Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
-      "reason": "release-config:file owner url placeholder value is not allowed",
-      "commandHint": "Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.",
-      "executableCommands": [
-        "node scripts/ddd-release-config-evidence.mjs",
-        "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      ],
-      "envKeys": [
-        "LUMIRA_AI_OWNER_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-      ]
-    },
-    {
-      "order": 8,
       "owner": "frontend",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -478,7 +215,7 @@
       ]
     },
     {
-      "order": 9,
+      "order": 5,
       "owner": "ai",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -509,7 +246,7 @@
       ]
     },
     {
-      "order": 10,
+      "order": 6,
       "owner": "file-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -543,7 +280,7 @@
       ]
     },
     {
-      "order": 11,
+      "order": 7,
       "owner": "job-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -576,7 +313,40 @@
       ]
     },
     {
-      "order": 12,
+      "order": 8,
+      "owner": "payment-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ],
+      "strictGateBlockerCount": 7,
+      "strictGateBlocker": {
+        "check": "payment-webhook-freshness",
+        "category": "business-e2e-freshness",
+        "detail": "finishedAt is 131.6h old; limit=24h"
+      },
+      "missingArtifacts": [],
+      "pendingActionCount": 2,
+      "collapsedActionCount": 0,
+      "nextAction": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.",
+      "reason": "strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h",
+      "commandHint": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.",
+      "executableCommands": [
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+      ],
+      "envKeys": [
+        "BASE_URL",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "PAYMENT_PUBLIC_BASE_URL"
+      ]
+    },
+    {
+      "order": 9,
       "owner": "database",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "ARTIFACT_MISSING",
@@ -618,7 +388,39 @@
       ]
     },
     {
-      "order": 13,
+      "order": 10,
+      "owner": "ai-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-ai-owner"
+      ],
+      "strictGateBlockerCount": 0,
+      "strictGateBlocker": null,
+      "missingArtifacts": [],
+      "pendingActionCount": 1,
+      "collapsedActionCount": 0,
+      "nextAction": "Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "reason": "rollback:AI AI rollback drill is DEFERRED with approved deferral evidence",
+      "commandHint": "Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [
+        "node scripts/ddd-rollback-deferral-template.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ]
+    },
+    {
+      "order": 11,
       "owner": "auth-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -650,7 +452,7 @@
       ]
     },
     {
-      "order": 14,
+      "order": 12,
       "owner": "iam-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -682,7 +484,7 @@
       ]
     },
     {
-      "order": 15,
+      "order": 13,
       "owner": "localization-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -714,7 +516,7 @@
       ]
     },
     {
-      "order": 16,
+      "order": 14,
       "owner": "message-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -746,7 +548,7 @@
       ]
     },
     {
-      "order": 17,
+      "order": 15,
       "owner": "platform-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -778,7 +580,7 @@
       ]
     },
     {
-      "order": 18,
+      "order": 16,
       "owner": "plugin-owner",
       "queueStatus": "WAIT_FOR_DEPENDENCIES",
       "receiptStatus": "CONTENT_BLOCKED",

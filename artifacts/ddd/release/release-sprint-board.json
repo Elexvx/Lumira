@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -9,73 +9,51 @@
     "warnings": 8
   },
   "summary": {
-    "batchCount": 29,
-    "readyBatchCount": 10,
-    "blockedBatchCount": 19,
-    "pendingItems": 111,
+    "batchCount": 24,
+    "readyBatchCount": 4,
+    "blockedBatchCount": 20,
+    "pendingItems": 47,
     "priorityCount": 4,
-    "ownerCount": 18,
-    "blockedCutoverItems": 8
+    "ownerCount": 16,
+    "blockedCutoverItems": 7
   },
   "nextWave": {
     "priority": "P0",
     "batchIds": [
-      "p0-release-config-ai-owner",
-      "p0-release-config-payment-owner",
-      "p0-release-config-platform-events",
-      "p0-release-config-platform-owners",
       "p0-docker-release-infra",
-      "p0-release-config-release-infra",
-      "p0-release-env-lint-release-infra",
       "p0-runtime-readiness-release-infra",
       "p0-manifest-release-owner",
       "p0-authenticated-performance-release-performance"
     ],
     "owners": [
-      "ai-owner",
-      "payment-owner",
-      "platform-events",
-      "platform-owners",
       "release-infra",
       "release-owner",
       "release-performance"
     ],
-    "commandCount": 15,
+    "commandCount": 8,
     "expectedArtifacts": [
       "artifacts/ddd/build/docker-image-evidence.json",
-      "artifacts/ddd/config/release-config-evidence.json",
       "artifacts/ddd/performance/authenticated-runtime-actual.json",
       "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
       "artifacts/ddd/performance/authenticated-runtime-baseline.json",
       "artifacts/ddd/readiness/summary.json",
-      "artifacts/ddd/release/evidence-manifest.json",
-      "artifacts/ddd/release/release-env-lint.json"
+      "artifacts/ddd/release/evidence-manifest.json"
     ]
   },
   "priorities": [
     {
       "priority": "P0",
-      "batchCount": 10,
-      "readyBatchCount": 10,
+      "batchCount": 4,
+      "readyBatchCount": 4,
       "blockedBatchCount": 0,
-      "pendingItems": 83,
+      "pendingItems": 18,
       "owners": [
-        "ai-owner",
-        "payment-owner",
-        "platform-events",
-        "platform-owners",
         "release-infra",
         "release-owner",
         "release-performance"
       ],
       "readyBatchIds": [
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
         "p0-docker-release-infra",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
@@ -137,19 +115,21 @@
     },
     {
       "priority": "P3",
-      "batchCount": 3,
+      "batchCount": 4,
       "readyBatchCount": 0,
-      "blockedBatchCount": 3,
-      "pendingItems": 3,
+      "blockedBatchCount": 4,
+      "pendingItems": 4,
       "owners": [
         "database",
         "frontend",
+        "release-infra",
         "release-owner"
       ],
       "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-database",
         "p3-orchestrator-frontend",
+        "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ]
     }
@@ -157,64 +137,20 @@
   "owners": [
     {
       "owner": "release-infra",
-      "batchCount": 4,
-      "readyBatchCount": 4,
-      "blockedBatchCount": 0,
-      "pendingItems": 24,
+      "batchCount": 3,
+      "readyBatchCount": 2,
+      "blockedBatchCount": 1,
+      "pendingItems": 9,
       "priorities": [
-        "P0"
+        "P0",
+        "P3"
       ],
       "nextReadyBatchIds": [
         "p0-docker-release-infra",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
-      "blockedBatchIds": []
-    },
-    {
-      "owner": "platform-owners",
-      "batchCount": 1,
-      "readyBatchCount": 1,
-      "blockedBatchCount": 0,
-      "pendingItems": 18,
-      "priorities": [
-        "P0"
-      ],
-      "nextReadyBatchIds": [
-        "p0-release-config-platform-owners"
-      ],
-      "blockedBatchIds": []
-    },
-    {
-      "owner": "platform-events",
-      "batchCount": 1,
-      "readyBatchCount": 1,
-      "blockedBatchCount": 0,
-      "pendingItems": 17,
-      "priorities": [
-        "P0"
-      ],
-      "nextReadyBatchIds": [
-        "p0-release-config-platform-events"
-      ],
-      "blockedBatchIds": []
-    },
-    {
-      "owner": "ai-owner",
-      "batchCount": 2,
-      "readyBatchCount": 1,
-      "blockedBatchCount": 1,
-      "pendingItems": 13,
-      "priorities": [
-        "P0",
-        "P1"
-      ],
-      "nextReadyBatchIds": [
-        "p0-release-config-ai-owner"
-      ],
       "blockedBatchIds": [
-        "p1-rollback-ai-owner"
+        "p3-orchestrator-release-infra"
       ]
     },
     {
@@ -230,24 +166,6 @@
         "p0-authenticated-performance-release-performance"
       ],
       "blockedBatchIds": []
-    },
-    {
-      "owner": "payment-owner",
-      "batchCount": 3,
-      "readyBatchCount": 1,
-      "blockedBatchCount": 2,
-      "pendingItems": 4,
-      "priorities": [
-        "P0",
-        "P1"
-      ],
-      "nextReadyBatchIds": [
-        "p0-release-config-payment-owner"
-      ],
-      "blockedBatchIds": [
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-payment-owner"
-      ]
     },
     {
       "owner": "release-owner",
@@ -343,6 +261,35 @@
       ]
     },
     {
+      "owner": "payment-owner",
+      "batchCount": 2,
+      "readyBatchCount": 0,
+      "blockedBatchCount": 2,
+      "pendingItems": 2,
+      "priorities": [
+        "P1"
+      ],
+      "nextReadyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ]
+    },
+    {
+      "owner": "ai-owner",
+      "batchCount": 1,
+      "readyBatchCount": 0,
+      "blockedBatchCount": 1,
+      "pendingItems": 1,
+      "priorities": [
+        "P1"
+      ],
+      "nextReadyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-ai-owner"
+      ]
+    },
+    {
       "owner": "auth-owner",
       "batchCount": 1,
       "readyBatchCount": 0,
@@ -429,205 +376,6 @@
   ],
   "batchCards": [
     {
-      "id": "p0-release-config-ai-owner",
-      "priority": "P0",
-      "status": "READY",
-      "source": "release-config",
-      "owner": "ai-owner",
-      "pendingItems": 12,
-      "dependsOn": [],
-      "unmetDependencies": [],
-      "lanes": [
-        "environment"
-      ],
-      "cutoverChecklistIds": [
-        "release-environment"
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "envCheckGroups": [
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "file owner url",
-        "file owner url",
-        "iam owner url",
-        "iam owner url",
-        "owner internal token",
-        "owner internal token",
-        "platform owner url",
-        "platform owner url",
-        "provider api key",
-        "provider api key",
-        "provider base url",
-        "provider base url"
-      ]
-    },
-    {
-      "id": "p0-release-config-payment-owner",
-      "priority": "P0",
-      "status": "READY",
-      "source": "release-config",
-      "owner": "payment-owner",
-      "pendingItems": 2,
-      "dependsOn": [],
-      "unmetDependencies": [],
-      "lanes": [
-        "environment"
-      ],
-      "cutoverChecklistIds": [
-        "release-environment"
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "envCheckGroups": [
-        "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "payment public url",
-        "payment public url"
-      ]
-    },
-    {
-      "id": "p0-release-config-platform-events",
-      "priority": "P0",
-      "status": "READY",
-      "source": "release-config",
-      "owner": "platform-events",
-      "pendingItems": 17,
-      "dependsOn": [],
-      "unmetDependencies": [],
-      "lanes": [
-        "environment"
-      ],
-      "cutoverChecklistIds": [
-        "release-environment"
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "envCheckGroups": [
-        "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "event stream key",
-        "job backend url",
-        "job backend url",
-        "job file url",
-        "job file url",
-        "job internal token",
-        "job internal token",
-        "job message url",
-        "job message url",
-        "job payment url",
-        "job payment url",
-        "job plugin url",
-        "job plugin url",
-        "xxl job admin",
-        "xxl job admin",
-        "xxl job token",
-        "xxl job token"
-      ]
-    },
-    {
-      "id": "p0-release-config-platform-owners",
-      "priority": "P0",
-      "status": "READY",
-      "source": "release-config",
-      "owner": "platform-owners",
-      "pendingItems": 18,
-      "dependsOn": [],
-      "unmetDependencies": [],
-      "lanes": [
-        "environment"
-      ],
-      "cutoverChecklistIds": [
-        "release-environment"
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "envCheckGroups": [
-        "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL",
-        "FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL",
-        "LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "ai service",
-        "ai service",
-        "auth service",
-        "auth service",
-        "file service",
-        "file service",
-        "job executor",
-        "job executor",
-        "localization service",
-        "localization service",
-        "message service",
-        "message service",
-        "payment service",
-        "payment service",
-        "plugin service",
-        "plugin service",
-        "system service",
-        "system service"
-      ]
-    },
-    {
       "id": "p0-docker-release-infra",
       "priority": "P0",
       "status": "READY",
@@ -663,150 +411,6 @@
         "docker-blocker-2",
         "docker-image-frontend-failed",
         "docker-image-lumira-server-failed"
-      ]
-    },
-    {
-      "id": "p0-release-config-release-infra",
-      "priority": "P0",
-      "status": "READY",
-      "source": "release-config",
-      "owner": "release-infra",
-      "pendingItems": 14,
-      "dependsOn": [],
-      "unmetDependencies": [],
-      "lanes": [
-        "environment"
-      ],
-      "cutoverChecklistIds": [
-        "release-environment"
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "envCheckGroups": [
-        "CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD",
-        "DB_URL=DB_URL|SPRING_DATASOURCE_URL",
-        "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME",
-        "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL",
-        "FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET",
-        "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL",
-        "JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET",
-        "REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "backend base url",
-        "backend base url",
-        "cors origins",
-        "database password",
-        "database password",
-        "database url",
-        "database username",
-        "field secret",
-        "field secret",
-        "frontend base url",
-        "frontend base url",
-        "jwt secret",
-        "jwt secret",
-        "redis host"
-      ]
-    },
-    {
-      "id": "p0-release-env-lint-release-infra",
-      "priority": "P0",
-      "status": "READY",
-      "source": "release-env-lint",
-      "owner": "release-infra",
-      "pendingItems": 2,
-      "dependsOn": [],
-      "unmetDependencies": [],
-      "lanes": [
-        "environment"
-      ],
-      "cutoverChecklistIds": [
-        "release-environment"
-      ],
-      "commands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "envCheckGroups": [
-        "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL",
-        "BASE_URL=BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD",
-        "DB_URL=DB_URL|SPRING_DATASOURCE_URL",
-        "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME",
-        "DDD_AUTH_PASSWORD=DDD_AUTH_PASSWORD",
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE=DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_ENVIRONMENT=DDD_AUTH_PERF_ENVIRONMENT",
-        "DDD_AUTH_USERNAME=DDD_AUTH_USERNAME",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_DEPLOYMENT_EVIDENCE=DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_EXPLAIN_DATABASE=DDD_EXPLAIN_DATABASE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE=DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_MIGRATION_COMPLETED_AT=DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_OPERATOR=DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET",
-        "FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL",
-        "JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET",
-        "LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL",
-        "MYSQL_DATABASE=MYSQL_DATABASE",
-        "MYSQL_HOST=MYSQL_HOST",
-        "MYSQL_PORT=MYSQL_PORT",
-        "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL",
-        "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL",
-        "REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST",
-        "SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-        "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "release-env-lint-placeholders",
-        "release-env-lint-status"
       ]
     },
     {
@@ -940,12 +544,6 @@
       "owner": "ai",
       "pendingItems": 3,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -995,12 +593,6 @@
       "owner": "ai-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1046,12 +638,6 @@
       "owner": "auth-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1097,12 +683,6 @@
       "owner": "file-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1144,12 +724,6 @@
       "owner": "file-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1195,12 +769,6 @@
       "owner": "frontend",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1240,12 +808,6 @@
       "owner": "iam-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1291,12 +853,6 @@
       "owner": "job-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1337,12 +893,6 @@
       "owner": "job-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1388,12 +938,6 @@
       "owner": "localization-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1439,12 +983,6 @@
       "owner": "message-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1490,12 +1028,6 @@
       "owner": "payment-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1536,12 +1068,6 @@
       "owner": "payment-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1587,12 +1113,6 @@
       "owner": "platform-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1638,12 +1158,6 @@
       "owner": "plugin-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1689,12 +1203,6 @@
       "owner": "database",
       "pendingItems": 8,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1783,12 +1291,6 @@
       "owner": "database",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1866,12 +1368,6 @@
       "owner": "frontend",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -1939,6 +1435,81 @@
       ]
     },
     {
+      "id": "p3-orchestrator-release-infra",
+      "priority": "P3",
+      "status": "BLOCKED",
+      "source": "orchestrator",
+      "owner": "release-infra",
+      "pendingItems": 1,
+      "dependsOn": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
+        "p1-ai-runtime-ai",
+        "p1-frontend-smoke-frontend",
+        "p1-business-e2e-file-owner",
+        "p1-business-e2e-job-owner",
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-ai-owner",
+        "p1-rollback-auth-owner",
+        "p1-rollback-file-owner",
+        "p1-rollback-iam-owner",
+        "p1-rollback-job-owner",
+        "p1-rollback-localization-owner",
+        "p1-rollback-message-owner",
+        "p1-rollback-payment-owner",
+        "p1-rollback-platform-owner",
+        "p1-rollback-plugin-owner",
+        "p2-explain-database"
+      ],
+      "unmetDependencies": [
+        "p1-ai-runtime-ai",
+        "p1-frontend-smoke-frontend",
+        "p1-business-e2e-file-owner",
+        "p1-business-e2e-job-owner",
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-ai-owner",
+        "p1-rollback-auth-owner",
+        "p1-rollback-file-owner",
+        "p1-rollback-iam-owner",
+        "p1-rollback-job-owner",
+        "p1-rollback-localization-owner",
+        "p1-rollback-message-owner",
+        "p1-rollback-payment-owner",
+        "p1-rollback-platform-owner",
+        "p1-rollback-plugin-owner",
+        "p2-explain-database"
+      ],
+      "lanes": [
+        "final-verification"
+      ],
+      "cutoverChecklistIds": [
+        "evidence-integrity"
+      ],
+      "commands": [
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+      ],
+      "envCheckGroups": [
+        "BASE_URL=BASE_URL",
+        "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/release-evidence-gate.json",
+        "artifacts/ddd/release/readiness-summary.json"
+      ],
+      "exitCriteria": [
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Final strict release gate and readiness summary report zero blockers.",
+        "Run only after all prerequisite evidence batches are clean."
+      ],
+      "itemIds": [
+        "orchestrator-preflight-backend-runtime-base-url"
+      ]
+    },
+    {
       "id": "p3-orchestrator-release-owner",
       "priority": "P3",
       "status": "BLOCKED",
@@ -1946,12 +1517,6 @@
       "owner": "release-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",

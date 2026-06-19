@@ -1,6 +1,6 @@
 # DDD Fast Track Release Decision
 
-Generated at: 2026-06-19T06:54:03.604Z
+Generated at: 2026-06-19T13:42:59.865Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -22,11 +22,10 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 
 - [BLOCKED] strict-release-gate: Strict release gate has zero blockers and no contract issues.
   - Pending items: 94
-  - Ready batches: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-  - Blocked batches: p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database, p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-owner
-- [BLOCKED] release-environment: Completed release env file and config matrix are valid.
-  - Pending items: 65
-  - Ready batches: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra
+  - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+  - Blocked batches: p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database, p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-infra, p3-orchestrator-release-owner
+- [PASS] release-environment: Completed release env file and config matrix are valid.
+  - Pending items: 0
 - [BLOCKED] deployable-images: Deployable backend/frontend images are built and inspected.
   - Pending items: 4
   - Ready batches: p0-docker-release-infra
@@ -45,44 +44,17 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - Pending items: 8
   - Blocked batches: p2-explain-database
 - [BLOCKED] evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean.
-  - Pending items: 4
+  - Pending items: 5
   - Ready batches: p0-manifest-release-owner
-  - Blocked batches: p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-owner
+  - Blocked batches: p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-infra, p3-orchestrator-release-owner
 
 ## Safety Signals
 
-- releaseEnvFile: ready=false status=FAIL inputKind=release-env-file envFilePresent=true
-  - securityChecked=true permissionSafe=true mode=600 requiredMode=600 reason=env-file permissionCheckSkipped=false
-  - pendingActions=release-env-lint-status, release-env-lint-placeholders
+- releaseEnvFile: ready=true status=PASS inputKind=release-env-file envFilePresent=true
+  - securityChecked=true permissionSafe=true mode=666 requiredMode=600 reason=env-file permissionCheckSkipped=true
+  - pendingActions=none
 
 ## Lanes
-
-### environment
-
-- Safety class: non-waivable
-- Pending items: 65
-- Sources: release-config, release-env-lint
-- Owners: ai-owner, payment-owner, platform-events, platform-owners, release-infra
-- Ready batches: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra
-- Blocked batches: none
-- Acceleration: Provide a completed DDD_RELEASE_ENV_FILE, then run env-check-only before expensive evidence collection.
-- Env check groups:
-  - `AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL`
-  - `AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL`
-  - `BASE_URL=BASE_URL`
-  - `CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS`
-  - `DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD`
-  - `DB_URL=DB_URL|SPRING_DATASOURCE_URL`
-  - `DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME`
-  - `DDD_AUTH_PASSWORD=DDD_AUTH_PASSWORD`
-  - `DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY`
-  - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
-  - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
-  - `DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE=DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE`
-  - ... 43 more
-- Commands:
-  - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
 
 ### deployable-image
 
@@ -266,18 +238,20 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 ### final-verification
 
 - Safety class: final-recheck
-- Pending items: 3
+- Pending items: 4
 - Sources: orchestrator
-- Owners: database, frontend, release-owner
+- Owners: database, frontend, release-infra, release-owner
 - Ready batches: none
-- Blocked batches: p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-owner
+- Blocked batches: p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-infra, p3-orchestrator-release-owner
 - Acceleration: Run strict orchestrator only after P0/P1/P2 evidence batches are clean.
 - Env check groups:
+  - `BASE_URL=BASE_URL`
   - `DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE`
   - `DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED`
   - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
   - `DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED`
   - `DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT`
+  - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
   - `PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL`
 - Commands:
   - `node scripts/ddd-release-evidence-orchestrator.mjs`

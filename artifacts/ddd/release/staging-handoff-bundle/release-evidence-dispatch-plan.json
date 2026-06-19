@@ -1,12 +1,12 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "workflow": ".github/workflows/ddd-release-evidence.yml",
   "workflowDispatch": true,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "blockedInputCount": 6,
+  "blockedInputCount": 2,
   "inputs": [
     {
       "input": "mode",
@@ -53,7 +53,7 @@
       "required": true,
       "suggestedValue": "__REQUIRED_HTTPS__",
       "source": "LUMIRA_BASE_URL",
-      "status": "BLOCKED",
+      "status": "READY",
       "notes": [
         "Maps to LUMIRA_BASE_URL for runtime and backend evidence."
       ]
@@ -63,7 +63,7 @@
       "required": true,
       "suggestedValue": "__REQUIRED_HTTPS__",
       "source": "PLAYWRIGHT_BASE_URL",
-      "status": "BLOCKED",
+      "status": "READY",
       "notes": [
         "Maps to PLAYWRIGHT_BASE_URL and CORS_ALLOWED_ORIGIN_PATTERNS."
       ]
@@ -93,7 +93,7 @@
       "required": true,
       "suggestedValue": true,
       "source": "DDD_AI_EXPECT_PROVIDER_REMOTE, DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
-      "status": "BLOCKED",
+      "status": "READY",
       "notes": [
         "Keep true for production-equivalent remote AI evidence."
       ]
@@ -103,7 +103,7 @@
       "required": true,
       "suggestedValue": true,
       "source": "DDD_FRONTEND_EXPECT_DEPLOYED",
-      "status": "BLOCKED",
+      "status": "READY",
       "notes": [
         "Keep true for deployed frontend smoke evidence."
       ]

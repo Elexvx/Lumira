@@ -1,10 +1,10 @@
 # DDD Release Env Owner Handoff Redacted
 
-Generated at: 2026-06-19T06:54:03.604Z
+Generated at: 2026-06-19T13:42:59.865Z
 Status: NOT_READY
 Value policy: No concrete environment values are emitted; only key names, ownership, validation metadata, and redacted fill status.
 Owner count: 6
-Owners with blockers: 5
+Owners with blockers: 0
 Directory: artifacts/ddd/release/release-env-owner-handoff-redacted
 
 ## Fast Path
@@ -38,9 +38,9 @@ Directory: artifacts/ddd/release/release-env-owner-handoff-redacted
 
 ## Owners
 
-- platform-events: blockers=9, placeholders=9, secretKeys=3, file=artifacts/ddd/release/release-env-owner-handoff-redacted/01-platform-events.md
-- platform-owners: blockers=9, placeholders=9, secretKeys=0, file=artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-owners.md
-- release-infra: blockers=9, placeholders=9, secretKeys=4, file=artifacts/ddd/release/release-env-owner-handoff-redacted/03-release-infra.md
-- ai-owner: blockers=6, placeholders=6, secretKeys=2, file=artifacts/ddd/release/release-env-owner-handoff-redacted/04-ai-owner.md
-- payment-owner: blockers=1, placeholders=1, secretKeys=1, file=artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-owner.md
-- file-owner: blockers=0, placeholders=0, secretKeys=0, file=artifacts/ddd/release/release-env-owner-handoff-redacted/06-file-owner.md
+- ai-owner: blockers=0, placeholders=0, secretKeys=2, file=artifacts/ddd/release/release-env-owner-handoff-redacted/01-ai-owner.md
+- file-owner: blockers=0, placeholders=0, secretKeys=0, file=artifacts/ddd/release/release-env-owner-handoff-redacted/02-file-owner.md
+- payment-owner: blockers=0, placeholders=0, secretKeys=1, file=artifacts/ddd/release/release-env-owner-handoff-redacted/03-payment-owner.md
+- platform-events: blockers=0, placeholders=0, secretKeys=3, file=artifacts/ddd/release/release-env-owner-handoff-redacted/04-platform-events.md
+- platform-owners: blockers=0, placeholders=0, secretKeys=0, file=artifacts/ddd/release/release-env-owner-handoff-redacted/05-platform-owners.md
+- release-infra: blockers=0, placeholders=0, secretKeys=4, file=artifacts/ddd/release/release-env-owner-handoff-redacted/06-release-infra.md

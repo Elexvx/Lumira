@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -32,10 +32,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.252Z",
-      "generatedAt": "2026-06-17T05:46:16.010Z",
-      "status": "FAIL",
-      "blockers": 156,
+      "modifiedAt": "2026-06-19T13:42:37.440Z",
+      "generatedAt": "2026-06-19T13:42:37.438Z",
+      "status": "PASS",
+      "blockers": 0,
       "warnings": 0
     },
     "releaseConfig": {
@@ -44,10 +44,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.196Z",
-      "generatedAt": "2026-06-17T06:28:34.918Z",
-      "status": "FAIL",
-      "blockers": 63,
+      "modifiedAt": "2026-06-19T13:42:37.550Z",
+      "generatedAt": "2026-06-19T13:42:37.547Z",
+      "status": "PASS",
+      "blockers": 0,
       "warnings": 0
     },
     "docker": {
@@ -56,8 +56,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.195Z",
-      "generatedAt": "2026-06-16T21:45:55.209Z",
+      "modifiedAt": "2026-06-19T08:02:24.849Z",
+      "generatedAt": "2026-06-19T08:02:24.846Z",
       "status": "FAIL",
       "blockers": 2,
       "warnings": null
@@ -245,7 +245,7 @@
   },
   "envFile": ".env.release.local",
   "canonicalFillItemCount": 48,
-  "unresolvedAliasCount": 73,
+  "unresolvedAliasCount": 0,
   "ownerCount": 10,
   "items": [
     {
@@ -347,8 +347,7 @@
       "owner": "ai-owner",
       "owners": [
         "ai",
-        "ai-owner",
-        "release-infra"
+        "ai-owner"
       ],
       "group": "ai",
       "requirement": "file owner url",
@@ -362,11 +361,8 @@
         "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
         "LUMIRA_AI_OWNER_FILE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_FILE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -415,8 +411,7 @@
       "owner": "ai-owner",
       "owners": [
         "ai",
-        "ai-owner",
-        "release-infra"
+        "ai-owner"
       ],
       "group": "ai",
       "requirement": "iam owner url",
@@ -430,11 +425,8 @@
         "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
         "LUMIRA_AI_OWNER_IAM_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_IAM_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -452,9 +444,7 @@
       "owners": [
         "ai-owner",
         "file-owner",
-        "job-owner",
-        "platform-events",
-        "release-infra"
+        "job-owner"
       ],
       "group": "ai",
       "requirement": "owner internal token",
@@ -469,12 +459,8 @@
         "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
         "SAAS_JOB_INTERNAL_TOKEN"
       ],
-      "unresolvedAliasCount": 3,
-      "unresolvedAliases": [
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
-        "SAAS_JOB_INTERNAL_TOKEN"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -523,8 +509,7 @@
       "owner": "ai-owner",
       "owners": [
         "ai",
-        "ai-owner",
-        "release-infra"
+        "ai-owner"
       ],
       "group": "ai",
       "requirement": "platform owner url",
@@ -538,11 +523,8 @@
         "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
         "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -559,8 +541,7 @@
       "owner": "ai-owner",
       "owners": [
         "ai",
-        "ai-owner",
-        "release-infra"
+        "ai-owner"
       ],
       "group": "ai",
       "requirement": "provider api key",
@@ -574,11 +555,8 @@
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
         "LUMIRA_AI_PROVIDER_API_KEY"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_API_KEY"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -595,8 +573,7 @@
       "owner": "ai-owner",
       "owners": [
         "ai",
-        "ai-owner",
-        "release-infra"
+        "ai-owner"
       ],
       "group": "ai",
       "requirement": "provider base url",
@@ -610,11 +587,8 @@
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
         "LUMIRA_AI_PROVIDER_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_AI_PROVIDER_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -754,8 +728,7 @@
       "fillOrder": 16,
       "owner": "payment-owner",
       "owners": [
-        "payment-owner",
-        "release-infra"
+        "payment-owner"
       ],
       "group": "payment",
       "requirement": "payment public url",
@@ -768,10 +741,8 @@
       "aliases": [
         "PAYMENT_PUBLIC_BASE_URL"
       ],
-      "unresolvedAliasCount": 1,
-      "unresolvedAliases": [
-        "PAYMENT_PUBLIC_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -819,8 +790,7 @@
       "fillOrder": 18,
       "owner": "platform-events",
       "owners": [
-        "platform-events",
-        "release-infra"
+        "platform-events"
       ],
       "group": "jobs-and-events",
       "requirement": "event stream key",
@@ -834,11 +804,8 @@
         "SAAS_EVENT_REDIS_STREAM_KEY",
         "LUMIRA_EVENT_REDIS_STREAM_KEY"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "LUMIRA_EVENT_REDIS_STREAM_KEY"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -854,8 +821,7 @@
       "fillOrder": 19,
       "owner": "platform-events",
       "owners": [
-        "platform-events",
-        "release-infra"
+        "platform-events"
       ],
       "group": "jobs-and-events",
       "requirement": "job backend url",
@@ -869,11 +835,8 @@
         "SAAS_JOB_BACKEND_BASE_URL",
         "LUMIRA_JOB_BACKEND_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "LUMIRA_JOB_BACKEND_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -889,8 +852,7 @@
       "fillOrder": 20,
       "owner": "platform-events",
       "owners": [
-        "platform-events",
-        "release-infra"
+        "platform-events"
       ],
       "group": "jobs-and-events",
       "requirement": "job file url",
@@ -904,11 +866,8 @@
         "SAAS_JOB_FILE_SERVICE_BASE_URL",
         "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "LUMIRA_JOB_FILE_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -924,11 +883,9 @@
       "fillOrder": 21,
       "owner": "platform-events",
       "owners": [
-        "ai-owner",
         "file-owner",
         "job-owner",
-        "platform-events",
-        "release-infra"
+        "platform-events"
       ],
       "group": "jobs-and-events",
       "requirement": "job internal token",
@@ -943,12 +900,8 @@
         "DDD_JOB_INTERNAL_TOKEN",
         "LUMIRA_JOB_INTERNAL_TOKEN"
       ],
-      "unresolvedAliasCount": 3,
-      "unresolvedAliases": [
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "DDD_JOB_INTERNAL_TOKEN",
-        "LUMIRA_JOB_INTERNAL_TOKEN"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -964,8 +917,7 @@
       "fillOrder": 22,
       "owner": "platform-events",
       "owners": [
-        "platform-events",
-        "release-infra"
+        "platform-events"
       ],
       "group": "jobs-and-events",
       "requirement": "job message url",
@@ -979,11 +931,8 @@
         "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
         "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -999,8 +948,7 @@
       "fillOrder": 23,
       "owner": "platform-events",
       "owners": [
-        "platform-events",
-        "release-infra"
+        "platform-events"
       ],
       "group": "jobs-and-events",
       "requirement": "job payment url",
@@ -1014,11 +962,8 @@
         "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
         "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1034,8 +979,7 @@
       "fillOrder": 24,
       "owner": "platform-events",
       "owners": [
-        "platform-events",
-        "release-infra"
+        "platform-events"
       ],
       "group": "jobs-and-events",
       "requirement": "job plugin url",
@@ -1049,11 +993,8 @@
         "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
         "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1100,8 +1041,7 @@
       "fillOrder": 26,
       "owner": "platform-events",
       "owners": [
-        "platform-events",
-        "release-infra"
+        "platform-events"
       ],
       "group": "jobs-and-events",
       "requirement": "xxl job admin",
@@ -1115,11 +1055,8 @@
         "XXL_JOB_ADMIN_ADDRESSES",
         "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "XXL_JOB_ADMIN_ADDRESSES",
-        "LUMIRA_XXL_JOB_ADMIN_ADDRESSES"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1135,8 +1072,7 @@
       "fillOrder": 27,
       "owner": "platform-events",
       "owners": [
-        "platform-events",
-        "release-infra"
+        "platform-events"
       ],
       "group": "jobs-and-events",
       "requirement": "xxl job token",
@@ -1151,12 +1087,8 @@
         "XXL_JOB_ADMIN_ACCESS_TOKEN",
         "LUMIRA_XXL_JOB_ACCESS_TOKEN"
       ],
-      "unresolvedAliasCount": 3,
-      "unresolvedAliases": [
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ACCESS_TOKEN",
-        "LUMIRA_XXL_JOB_ACCESS_TOKEN"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -1173,8 +1105,7 @@
       "owner": "platform-owners",
       "owners": [
         "ai",
-        "platform-owners",
-        "release-infra"
+        "platform-owners"
       ],
       "group": "owner-services",
       "requirement": "ai service",
@@ -1189,12 +1120,8 @@
         "LUMIRA_AI_SERVICE_BASE_URL",
         "LUMIRA_AI_BASE_URL"
       ],
-      "unresolvedAliasCount": 3,
-      "unresolvedAliases": [
-        "AI_SERVICE_BASE_URL",
-        "LUMIRA_AI_SERVICE_BASE_URL",
-        "LUMIRA_AI_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1210,8 +1137,7 @@
       "fillOrder": 29,
       "owner": "platform-owners",
       "owners": [
-        "platform-owners",
-        "release-infra"
+        "platform-owners"
       ],
       "group": "owner-services",
       "requirement": "auth service",
@@ -1225,11 +1151,8 @@
         "AUTH_SERVICE_BASE_URL",
         "LUMIRA_AUTH_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "AUTH_SERVICE_BASE_URL",
-        "LUMIRA_AUTH_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1245,8 +1168,7 @@
       "fillOrder": 30,
       "owner": "platform-owners",
       "owners": [
-        "platform-owners",
-        "release-infra"
+        "platform-owners"
       ],
       "group": "owner-services",
       "requirement": "file service",
@@ -1260,11 +1182,8 @@
         "FILE_SERVICE_BASE_URL",
         "LUMIRA_FILE_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "FILE_SERVICE_BASE_URL",
-        "LUMIRA_FILE_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1280,8 +1199,7 @@
       "fillOrder": 31,
       "owner": "platform-owners",
       "owners": [
-        "platform-owners",
-        "release-infra"
+        "platform-owners"
       ],
       "group": "owner-services",
       "requirement": "job executor",
@@ -1295,11 +1213,8 @@
         "JOB_EXECUTOR_BASE_URL",
         "LUMIRA_JOB_EXECUTOR_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "JOB_EXECUTOR_BASE_URL",
-        "LUMIRA_JOB_EXECUTOR_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1315,8 +1230,7 @@
       "fillOrder": 32,
       "owner": "platform-owners",
       "owners": [
-        "platform-owners",
-        "release-infra"
+        "platform-owners"
       ],
       "group": "owner-services",
       "requirement": "localization service",
@@ -1330,11 +1244,8 @@
         "LOCALIZATION_SERVICE_BASE_URL",
         "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1350,8 +1261,7 @@
       "fillOrder": 33,
       "owner": "platform-owners",
       "owners": [
-        "platform-owners",
-        "release-infra"
+        "platform-owners"
       ],
       "group": "owner-services",
       "requirement": "message service",
@@ -1365,11 +1275,8 @@
         "MESSAGE_SERVICE_BASE_URL",
         "LUMIRA_MESSAGE_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "MESSAGE_SERVICE_BASE_URL",
-        "LUMIRA_MESSAGE_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1385,8 +1292,7 @@
       "fillOrder": 34,
       "owner": "platform-owners",
       "owners": [
-        "platform-owners",
-        "release-infra"
+        "platform-owners"
       ],
       "group": "owner-services",
       "requirement": "payment service",
@@ -1400,11 +1306,8 @@
         "PAYMENT_SERVICE_BASE_URL",
         "LUMIRA_PAYMENT_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "PAYMENT_SERVICE_BASE_URL",
-        "LUMIRA_PAYMENT_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1420,8 +1323,7 @@
       "fillOrder": 35,
       "owner": "platform-owners",
       "owners": [
-        "platform-owners",
-        "release-infra"
+        "platform-owners"
       ],
       "group": "owner-services",
       "requirement": "plugin service",
@@ -1435,11 +1337,8 @@
         "PLUGIN_SERVICE_BASE_URL",
         "LUMIRA_PLUGIN_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "PLUGIN_SERVICE_BASE_URL",
-        "LUMIRA_PLUGIN_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1455,8 +1354,7 @@
       "fillOrder": 36,
       "owner": "platform-owners",
       "owners": [
-        "platform-owners",
-        "release-infra"
+        "platform-owners"
       ],
       "group": "owner-services",
       "requirement": "system service",
@@ -1470,11 +1368,8 @@
         "SYSTEM_SERVICE_BASE_URL",
         "LUMIRA_SYSTEM_SERVICE_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "SYSTEM_SERVICE_BASE_URL",
-        "LUMIRA_SYSTEM_SERVICE_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1508,11 +1403,8 @@
         "LUMIRA_BASE_URL",
         "DEPLOY_CHECK_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "LUMIRA_BASE_URL",
-        "DEPLOY_CHECK_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1542,11 +1434,8 @@
         "CORS_ALLOWED_ORIGIN_PATTERNS",
         "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -1578,12 +1467,8 @@
         "SPRING_DATASOURCE_PASSWORD",
         "MYSQL_PASSWORD"
       ],
-      "unresolvedAliasCount": 3,
-      "unresolvedAliases": [
-        "DB_PASSWORD",
-        "SPRING_DATASOURCE_PASSWORD",
-        "MYSQL_PASSWORD"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -1617,11 +1502,8 @@
         "DB_URL",
         "SPRING_DATASOURCE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "DB_URL",
-        "SPRING_DATASOURCE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -1653,12 +1535,8 @@
         "SPRING_DATASOURCE_USERNAME",
         "MYSQL_USER"
       ],
-      "unresolvedAliasCount": 3,
-      "unresolvedAliases": [
-        "DB_USERNAME",
-        "SPRING_DATASOURCE_USERNAME",
-        "MYSQL_USER"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -1688,11 +1566,8 @@
         "FIELD_SECRET",
         "SAAS_SECURITY_FIELD_SECRET"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "FIELD_SECRET",
-        "SAAS_SECURITY_FIELD_SECRET"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -1723,11 +1598,8 @@
         "PLAYWRIGHT_BASE_URL",
         "FRONTEND_BASE_URL"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "PLAYWRIGHT_BASE_URL",
-        "FRONTEND_BASE_URL"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": true,
@@ -1757,11 +1629,8 @@
         "JWT_SECRET",
         "SAAS_SECURITY_JWT_SECRET"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "JWT_SECRET",
-        "SAAS_SECURITY_JWT_SECRET"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,
@@ -1791,11 +1660,8 @@
         "REDIS_HOST",
         "SPRING_DATA_REDIS_HOST"
       ],
-      "unresolvedAliasCount": 2,
-      "unresolvedAliases": [
-        "REDIS_HOST",
-        "SPRING_DATA_REDIS_HOST"
-      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
       "required": true,
       "validation": {
         "https": false,

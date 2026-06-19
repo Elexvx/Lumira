@@ -1,872 +1,767 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "redacted": true,
   "algorithm": "sha256",
   "selfExcluded": true,
-  "artifactCount": 123,
-  "totalBytes": 5675022,
+  "artifactCount": 108,
+  "totalBytes": 3877835,
   "entries": [
     {
       "name": "ownerRollupCsv",
       "path": "artifacts/ddd/release/owner-action-rollup.csv",
-      "bytes": 52089,
+      "bytes": 36575,
       "executable": false,
-      "sha256": "152dc3ca5b2d385c581c116deea83a5ca22604da4532e21cb4f6d9df8ade6743"
+      "sha256": "10810a54258bc54e30c422fc22abf2e7dd8c41ff31c24bf53c4527400bc758de"
     },
     {
       "name": "ownerRollup",
       "path": "artifacts/ddd/release/owner-action-rollup.json",
-      "bytes": 121195,
+      "bytes": 87119,
       "executable": false,
-      "sha256": "bbbf35908ff5fc6fa6e1fed3fead2b84bcbbdd6ea8cdd8e2a3a5c5189a8a2704"
+      "sha256": "8fdce6bdec9cd0e5eaf2dd52fa5b778bff4fa11b6d14f17bb0a33fd6c17080e9"
     },
     {
       "name": "ownerRollupMarkdown",
       "path": "artifacts/ddd/release/owner-action-rollup.md",
-      "bytes": 65181,
+      "bytes": 44018,
       "executable": false,
-      "sha256": "530902b789dae0c887de3dbbb74230fafee81fcee207c152e0b8ed71754d9037"
+      "sha256": "ea2645535ed32f22da9819217390b4bb0233e94ac7589471df1fbf8fc59a98b7"
     },
     {
       "name": "json",
       "path": "artifacts/ddd/release/readiness-summary.json",
-      "bytes": 1005470,
+      "bytes": 721575,
       "executable": false,
-      "sha256": "5dae885e1ffe1843d0db0fa786e871343efabb7d2eccd5716bf5b896f1ae54e7"
+      "sha256": "756402232d08e0b98198bbfb034f98232d0225c438a43d9631845835376d0e09"
     },
     {
       "name": "markdown",
       "path": "artifacts/ddd/release/readiness-summary.md",
-      "bytes": 137509,
+      "bytes": 115699,
       "executable": false,
-      "sha256": "bea918ad723919782f38a682c6320e2571f496363db24a9feea28a866f90f178"
+      "sha256": "de55c4a784d1f81ef2e722e9b6d5f767bb987e88d43599cdd7be716f1dd35dc8"
     },
     {
       "name": "releaseActionBatchesCsv",
       "path": "artifacts/ddd/release/release-action-batches.csv",
-      "bytes": 43917,
+      "bytes": 27671,
       "executable": false,
-      "sha256": "268075bea6a97dafc7a1943dce423ee7ef4c9c65e391d6233a6902da3d1c08b9"
+      "sha256": "bbc91e88bc12084273960c7f24ba0b22646b8162f042f3e793445dfff17cd3c0"
     },
     {
       "name": "releaseActionBatches",
       "path": "artifacts/ddd/release/release-action-batches.json",
-      "bytes": 198950,
+      "bytes": 137517,
       "executable": false,
-      "sha256": "8dfe8e3e8fafb67dd5470a19b80fdf6aacc94e87d79bed888f96d2a91ed566c5"
+      "sha256": "0e8b24b60c408e05c60790a7dacf7c9829ec534d5fda1bddf21a7362b0291d29"
     },
     {
       "name": "releaseActionBatchesMarkdown",
       "path": "artifacts/ddd/release/release-action-batches.md",
-      "bytes": 57914,
+      "bytes": 47823,
       "executable": false,
-      "sha256": "eb9eb7a448727c4399bfa54bbb063e47218ce11db4962ea9d0dd770133325e2f"
+      "sha256": "08e12018c90572c3e166961343a976d86294efc7b15fff3b5aeab68f1cd6e7e4"
     },
     {
       "name": "releaseActionDependencyGraph",
       "path": "artifacts/ddd/release/release-action-dependency-graph.json",
-      "bytes": 137173,
+      "bytes": 89756,
       "executable": false,
-      "sha256": "10cb4344d27a78a7bbd854051e1fdf4e2b2fd489b94b13529bbcc003dbe6fe1a"
+      "sha256": "bac47df9a0961a5fa6b1f8ad6ffa39f1e06f0483db97a0b38e555ef0d9b07d16"
     },
     {
       "name": "releaseActionDependencyGraphMarkdown",
       "path": "artifacts/ddd/release/release-action-dependency-graph.md",
-      "bytes": 28704,
+      "bytes": 18402,
       "executable": false,
-      "sha256": "1725560c4c1a7867e7b8a015c3847aec30476db16587bdda05827c137f445f4c"
+      "sha256": "10e19c49c07a6af9528a506a975ed9d092d333e06012ae2d3132e1fd32f9ce40"
     },
     {
       "name": "releaseActionPriorityCsv",
       "path": "artifacts/ddd/release/release-action-priority.csv",
-      "bytes": 60599,
+      "bytes": 51883,
       "executable": false,
-      "sha256": "8401cbdb535332f1fcee53001c095736e088ad07dc190f0d0bb08b95e9d61bfb"
+      "sha256": "23774ebfa59528b87ef3c62895929348d275be5ca0ac7861a8f9daf39c815e3b"
     },
     {
       "name": "releaseActionPriority",
       "path": "artifacts/ddd/release/release-action-priority.json",
-      "bytes": 101333,
+      "bytes": 75550,
       "executable": false,
-      "sha256": "f4be84abd340564945d7acc98acb97b43ea09a4e8f4eab995881336f3046a6b6"
+      "sha256": "55088899bafee012eac0ba39e08216dbd4534355872897e4f42e83599428f8ba"
     },
     {
       "name": "releaseActionPriorityMarkdown",
       "path": "artifacts/ddd/release/release-action-priority.md",
-      "bytes": 70862,
+      "bytes": 56677,
       "executable": false,
-      "sha256": "76f5a7ab7f7888fd8607b446d824ef69f256d429d9b2b5c3e97deb138a90a9d1"
+      "sha256": "ca2e57b836c3a5fa36a2557262142812bc02d1f5905a266ae4cfd4095b4c2f68"
     },
     {
       "name": "releaseArtifactIntegrityGate",
       "path": "artifacts/ddd/release/release-artifact-integrity-gate.sh",
       "bytes": 3640,
       "executable": true,
-      "sha256": "04cbc34921e6f5b0284b1dbdd94ecc8f76972d5ddb4420eaa763d0d903fbba59"
+      "sha256": "f7b5cb77d0e441482f76d318847b40e2adf18b421d49940a4670dd821f39941a"
     },
     {
       "name": "releaseBlockerClosureCommands",
       "path": "artifacts/ddd/release/release-blocker-closure-commands.sh",
-      "bytes": 147721,
+      "bytes": 64386,
       "executable": true,
-      "sha256": "960c0fdcb09f044a1f14d5dface43bbe6bf8ecbd43939a9d8a4f61c5409673b4"
+      "sha256": "fd2f8383b4cba2271528bb04916d6a5078826f9c55d52d89438ba74c30c059f1"
     },
     {
       "name": "releaseBlockerClosurePlanCsv",
       "path": "artifacts/ddd/release/release-blocker-closure-plan.csv",
-      "bytes": 87962,
+      "bytes": 57379,
       "executable": false,
-      "sha256": "104e9f9a3906b065b71ed2961e5bd7536f9c01e82f60608fe1a4f87a8e0c5211"
+      "sha256": "94919176ad2727374c218adcae0038ad2af1d671f5a8322980bec5043e7c9ad3"
     },
     {
       "name": "releaseBlockerClosurePlan",
       "path": "artifacts/ddd/release/release-blocker-closure-plan.json",
-      "bytes": 191136,
+      "bytes": 100891,
       "executable": false,
-      "sha256": "cc1b13b0d92e4d35eb921cf666cbf4e64cd76c043ed18c739bb2eab3435cd4d7"
+      "sha256": "fffeff33a5bdde8bcdc96e2871b21dd10eccf0a9e8855811c432d137afb31146"
     },
     {
       "name": "releaseBlockerClosurePlanMarkdown",
       "path": "artifacts/ddd/release/release-blocker-closure-plan.md",
-      "bytes": 116614,
+      "bytes": 68469,
       "executable": false,
-      "sha256": "bc6f569d4be40107159520c4dcb09e622005e81e54f0d5943b5428eccc800200"
+      "sha256": "f686248d84de7c4a9c2a27f672c1b052ea309fecf3585566ee67338e7c553d09"
     },
     {
       "name": "releaseBlockerMapCsv",
       "path": "artifacts/ddd/release/release-blocker-map.csv",
-      "bytes": 10063,
+      "bytes": 9843,
       "executable": false,
-      "sha256": "9e970d44ed752d76b1ad4d3bdbb2bad79966cfce55d2735e56229cf1eda96f3c"
+      "sha256": "0c0c744982cd74cff0a3023c3ea7205f5b5e9a7d34919addd4a781642fbd9270"
     },
     {
       "name": "releaseBlockerMap",
       "path": "artifacts/ddd/release/release-blocker-map.json",
-      "bytes": 188301,
+      "bytes": 180957,
       "executable": false,
-      "sha256": "f5a2fdf7cd7dd64007eb0fb96516595b927a5f0e2e864b110c0d8ff7b44b854e"
+      "sha256": "1865ffd11a51aeafaf2722022ec8860c3345547c63e7cd050d18f9f86f02d4e7"
     },
     {
       "name": "releaseBlockerMapMarkdown",
       "path": "artifacts/ddd/release/release-blocker-map.md",
-      "bytes": 30574,
+      "bytes": 30099,
       "executable": false,
-      "sha256": "512449beae17750e5a616c6aac22c751989275794871536d53a5621937a973ed"
+      "sha256": "793205dcb296b8e5be3aa8fa68a827f0374dc10133d1ce4b02645f5d3df0bfbd"
     },
     {
       "name": "releaseClosureWaveBlockerMapCsv",
       "path": "artifacts/ddd/release/release-closure-wave-blocker-map.csv",
-      "bytes": 4842,
+      "bytes": 2425,
       "executable": false,
-      "sha256": "2143ebcfe1ba95b3c999723fe94a3917bfaedfe1edd0df067abb8acdb2602902"
+      "sha256": "b0444161a1eb296b014d6514619b82997cad8db6c8fde2687745cc76a278af77"
     },
     {
       "name": "releaseClosureWaveBlockerMap",
       "path": "artifacts/ddd/release/release-closure-wave-blocker-map.json",
-      "bytes": 50966,
+      "bytes": 35264,
       "executable": false,
-      "sha256": "4a02aba22d595324deb10de0d9cbd303cb1f0e99e7f6ceb720da6aed3503837b"
+      "sha256": "d3364bf2f2bdf30c66970a2ca4d68085ee07680297527c0402908fad8c430bab"
     },
     {
       "name": "releaseClosureWaveBlockerMapMarkdown",
       "path": "artifacts/ddd/release/release-closure-wave-blocker-map.md",
-      "bytes": 8838,
+      "bytes": 5456,
       "executable": false,
-      "sha256": "8cbebec56002268cc2ce163487e88e760307d12227100cf665b4efd4e8a7ab7a"
+      "sha256": "244186d2be1d047e66289f7805ed91307b4265cd6a6daa7cb5c73671d3cf04b3"
     },
     {
       "name": "releaseClosureWaveEnvMatrixCsv",
       "path": "artifacts/ddd/release/release-closure-wave-env-matrix.csv",
-      "bytes": 7762,
+      "bytes": 2371,
       "executable": false,
-      "sha256": "cd0b99d7dbb87152bd27a39f3b5007b47159b0ef97c761c5d2cbbf9064d296d0"
+      "sha256": "3295e61707e039a970a09372b994aa7c0e0746146428f764cf2d5355f0752f72"
     },
     {
       "name": "releaseClosureWaveEnvMatrix",
       "path": "artifacts/ddd/release/release-closure-wave-env-matrix.json",
-      "bytes": 20379,
+      "bytes": 5865,
       "executable": false,
-      "sha256": "5786d2cbb5ec633fb536692cc6f8350618e8999edec3866c46842333004a9120"
+      "sha256": "a6351dfc3080669f2fee7577982e40b31f094116661095d61b62dda2a0da5c2d"
     },
     {
       "name": "releaseClosureWaveEnvMatrixMarkdown",
       "path": "artifacts/ddd/release/release-closure-wave-env-matrix.md",
-      "bytes": 9589,
+      "bytes": 2878,
       "executable": false,
-      "sha256": "a2983ee35ad7bc229476a8238c6ec66b9ae1bbe0176766c7fb5d1c7f3b1df1cc"
+      "sha256": "67aaea5bfefc034b5c286e1a7e593ca4aca35e283bb43247cfc58a2428919bd3"
     },
     {
       "name": "releaseClosureWaveEnvTemplate",
       "path": "artifacts/ddd/release/release-closure-wave-env.template.env",
-      "bytes": 10350,
+      "bytes": 2767,
       "executable": false,
-      "sha256": "d28a6cef36fa1090d087287bca51c82a537df5a3e8ecd690b6c5013b10df5476"
+      "sha256": "489a08188c5d9e8d7e843e4158b1fb6473ebb61ad24e5c05d30da08ed0522c25"
     },
     {
       "name": "releaseClosureWaveReceiptsCsv",
       "path": "artifacts/ddd/release/release-closure-wave-receipts.csv",
-      "bytes": 3463,
+      "bytes": 1589,
       "executable": false,
-      "sha256": "6ab8f2a7ea41c4a07d16c2c1070cfbe581d29896c373cd4888e62719e1baa22b"
+      "sha256": "85575983c3aa918f95cb17212e405f4c6b992eb38d04d8ad09f68b1250938a11"
     },
     {
       "name": "releaseClosureWaveReceipts",
       "path": "artifacts/ddd/release/release-closure-wave-receipts.json",
-      "bytes": 15067,
+      "bytes": 6423,
       "executable": false,
-      "sha256": "ccc907f384a6b0d546fd0b5f4fc30458d3eea20610ea661a8b08ce72dea1abe6"
+      "sha256": "4d712c297fb081afd568baf0111a4beed327b72d8b8137963c38250b5c8152ab"
     },
     {
       "name": "releaseClosureWaveReceiptsMarkdown",
       "path": "artifacts/ddd/release/release-closure-wave-receipts.md",
-      "bytes": 4421,
+      "bytes": 1996,
       "executable": false,
-      "sha256": "589fd6c28b959b8c17dc06081e6324b425560b5eebfaa250b407158aeb001e99"
+      "sha256": "60758be78eb87966fe549c1ad20221782365e055a4aa6101366cae364a53585b"
     },
     {
       "name": "releaseCommandCatalogCsv",
       "path": "artifacts/ddd/release/release-command-catalog.csv",
-      "bytes": 12466,
+      "bytes": 5649,
       "executable": false,
-      "sha256": "9b45b913c48e99ba3648fc2b3f57e6e09fefdb338b9015ef992b8e22b13f9a87"
+      "sha256": "72ca1b453dee1e2a66166518b822866c401af72dda7b67524f3ca02fdb6ea4ea"
     },
     {
       "name": "releaseCommandCatalog",
       "path": "artifacts/ddd/release/release-command-catalog.json",
-      "bytes": 18773,
+      "bytes": 9059,
       "executable": false,
-      "sha256": "83f6cc2398ca7700905e43844bf2c5198598b8344656692db58ef615d13278d4"
+      "sha256": "a54bcbc1108e6a2c05bac875bd89c223df87e7645828561c666e8f676a0aedd9"
     },
     {
       "name": "releaseCommandCatalogMarkdown",
       "path": "artifacts/ddd/release/release-command-catalog.md",
-      "bytes": 15075,
+      "bytes": 7468,
       "executable": false,
-      "sha256": "c1caa008046b64791d97294d2efa2836da04caa4ac4aac9c5d507a0fb1572347"
+      "sha256": "c0389804fab5cbf3f1268917f4bc5905525912b37f76a7966198b839c036c99c"
     },
     {
       "name": "releaseConfigOwnerInputReconciliation",
       "path": "artifacts/ddd/release/release-config-owner-input-reconciliation.json",
-      "bytes": 9254,
+      "bytes": 750,
       "executable": false,
-      "sha256": "9d33a0756057908050f70df58614435cb5f51ee97fbc5268ab990c6fe47fa450"
+      "sha256": "b7d39037cd19cdd7b9c84a8eebcffaa4c1bbee5d5463fb184f04679df7e66993"
     },
     {
       "name": "releaseCutoverChecklistCsv",
       "path": "artifacts/ddd/release/release-cutover-checklist.csv",
-      "bytes": 3863,
+      "bytes": 3368,
       "executable": false,
-      "sha256": "2b23176b7b95554f609daad80c7a5af1c232bb8c803d401ed3a9b5a07e72ea33"
+      "sha256": "9c6304c635baf53d1314f50c1e47225bade5fd7f6556037af54f2f689359558e"
     },
     {
       "name": "releaseCutoverOwnerMatrixCsv",
       "path": "artifacts/ddd/release/release-cutover-owner-matrix.csv",
-      "bytes": 28710,
+      "bytes": 20496,
       "executable": false,
-      "sha256": "f8f88aedc30b088093ebcd9416c415e32a9dfce383dab68b105db43272a82f24"
+      "sha256": "a505d3dd17f1ab413c5f99a265aaeef8e35f02a2ad693bb82fb72e1813125e11"
     },
     {
       "name": "releaseCutoverOwnerMatrix",
       "path": "artifacts/ddd/release/release-cutover-owner-matrix.json",
-      "bytes": 57337,
+      "bytes": 44300,
       "executable": false,
-      "sha256": "c29fc2cdde706f1cbf3f4520ff02ade1bb0a2f40b7971df2df6d39086f20d9b1"
+      "sha256": "179fa8e8ed91a043b189f54e64a513de0e15002acc2763604a5bfdad015e092f"
     },
     {
       "name": "releaseCutoverOwnerMatrixMarkdown",
       "path": "artifacts/ddd/release/release-cutover-owner-matrix.md",
-      "bytes": 25926,
+      "bytes": 18243,
       "executable": false,
-      "sha256": "7c7a1db0c138b8d3c631a8c01c0196713000a1e1d155b288a3d0fc9a1b7ba01b"
+      "sha256": "28a6dd104b3bc0deb0deb01c35b0d4e2fc92a4ea402be880d734148ea8653f61"
     },
     {
       "name": "releaseEnvBootstrap",
       "path": "artifacts/ddd/release/release-env-bootstrap.sh",
       "bytes": 8196,
       "executable": true,
-      "sha256": "49800fbed39fecc5d37b9fdd6637405f5375a4da8024c7ceb3c87baa21fbc711"
+      "sha256": "d0b566d99d1062ad5162dab059ef1e361bf6251943c5f3d5b68c091fea5e301e"
     },
     {
       "name": "releaseEnvCanonicalFillCsv",
       "path": "artifacts/ddd/release/release-env-canonical-fill.csv",
-      "bytes": 19546,
+      "bytes": 17127,
       "executable": false,
-      "sha256": "7da522b747c94fd34044fa6029d80c695c03815d74e58b8979a000694ef61615"
+      "sha256": "661ca881a8242e71b3e458b99da46e8d7fd0e5b1e0062f5b9332892fac9e6129"
     },
     {
       "name": "releaseEnvCanonicalFill",
       "path": "artifacts/ddd/release/release-env-canonical-fill.json",
-      "bytes": 57551,
+      "bytes": 53890,
       "executable": false,
-      "sha256": "41e5ee7c33a543c266a357c7e6b3892122166fde993852274e2d4847551d8b34"
+      "sha256": "e1d1038f47b321be0bf17ce3a464d4faa93c4996b14f7418f32abee895c9a8dd"
     },
     {
       "name": "releaseEnvCanonicalFillMarkdown",
       "path": "artifacts/ddd/release/release-env-canonical-fill.md",
-      "bytes": 27138,
+      "bytes": 26845,
       "executable": false,
-      "sha256": "e6bf2df5f68cf156a955d64d0818cc98c5a4dcbc05c5166c577fe558154f2c62"
+      "sha256": "2fb79f64f43a3aacab9d6d0f0339b72a68f3d8c585843d0e7f48db6ffb6f7d83"
     },
     {
       "name": "releaseEnvCanonicalFillTemplate",
       "path": "artifacts/ddd/release/release-env-canonical-fill.template.env",
-      "bytes": 19100,
+      "bytes": 19092,
       "executable": false,
-      "sha256": "84c7cd8029717140e5ef3cb98fcc8e9756e0b0923d2c73f45cb0f76ae3ba9024"
+      "sha256": "578a491bc15f617c49872f989058d56232686f96a01b41d1d348974f1ed8348a"
     },
     {
       "name": "releaseEnvFillPriorityCsv",
       "path": "artifacts/ddd/release/release-env-fill-priority.csv",
-      "bytes": 22674,
+      "bytes": 13682,
       "executable": false,
-      "sha256": "1d7916aa0d5da3a60563bcc48437cbe4c577b51c7c66eb9a7acc71704e86bb99"
+      "sha256": "9aeb69a82dc080e88e8027186800fa53c66ece07a35143f66fb75902e33b136a"
     },
     {
       "name": "releaseEnvFillPriority",
       "path": "artifacts/ddd/release/release-env-fill-priority.json",
-      "bytes": 55050,
+      "bytes": 37778,
       "executable": false,
-      "sha256": "968d953707168e616706866cd28e08f967b26e91e2534e0625eeafbd97e6c884"
+      "sha256": "98ad9205cc44d98f1c2137fc7c56f9d605a2fe6aa04519e9fed84c7aae0ddc15"
     },
     {
       "name": "releaseEnvFillPriorityMarkdown",
       "path": "artifacts/ddd/release/release-env-fill-priority.md",
-      "bytes": 14692,
+      "bytes": 10042,
       "executable": false,
-      "sha256": "41a45b1d0cf3e2f8cff562e2f36bc33947fdf97fe15b6bc66bd2e2e08c72511f"
+      "sha256": "541119011bbc189afec41ef1abd25233ff45deb4bae5f786edc03f25fe6713ea"
     },
     {
       "name": "releaseMissingEnv",
       "path": "artifacts/ddd/release/release-env-missing.json",
-      "bytes": 138541,
+      "bytes": 85076,
       "executable": false,
-      "sha256": "bd454befb3d0a897f73a3439f0a73870d674735c90daa766060e3ce0845e8e21"
+      "sha256": "f6c83013a7e1b8f7b9ccf0b71b19e472befd36a3c7eef6e17dd67d0200d1dbe6"
     },
     {
       "name": "releaseMissingEnvTemplate",
       "path": "artifacts/ddd/release/release-env-missing.template.env",
-      "bytes": 13653,
+      "bytes": 15530,
       "executable": false,
-      "sha256": "64e3c69f2095602f462f8d1fa188cb35a028a5973c2a3af3b46a472730c08f08"
+      "sha256": "9f9ead875eccd5e2c7e761f9c8ac3ed7ca94f5080bc009393e2f48097cd62dd2"
     },
     {
       "name": "releaseEnvOwnerHandoffRedactedCsv",
       "path": "artifacts/ddd/release/release-env-owner-handoff-redacted.csv",
-      "bytes": 20875,
+      "bytes": 19167,
       "executable": false,
-      "sha256": "a8da36362e2f0b1d4dc35f9cc6b329f5d8230d90dfb2d78f8351960235903d61"
+      "sha256": "c2b678d5e0fd7062eb8a6967f603b3ef218565bce7d9f46900b706f52287c7ec"
     },
     {
       "name": "releaseEnvOwnerHandoffRedacted",
       "path": "artifacts/ddd/release/release-env-owner-handoff-redacted.json",
-      "bytes": 15675,
+      "bytes": 15378,
       "executable": false,
-      "sha256": "aafe46e657d6e3ff9e5e21d81d5fcbfb1d2997c29c564e893b200044c018b23d"
+      "sha256": "8e780edf735343c18803ec7428aaec07cdbac02a5a01e976d98bb00750728394"
     },
     {
       "name": "releaseEnvOwnerHandoffRedactedMarkdown",
       "path": "artifacts/ddd/release/release-env-owner-handoff-redacted.md",
       "bytes": 3689,
       "executable": false,
-      "sha256": "3bea022b1b1f518b539153ac4c0d93fe6f0e53c08389b539de156cd552219122"
+      "sha256": "83582dbdd4253bfb18e448fdfa8a5b99c0703e6a58e46a1ffe1ac74b122482ec"
     },
     {
       "name": "releaseEnvOwnerHandoffCsv",
       "path": "artifacts/ddd/release/release-env-owner-handoff.csv",
-      "bytes": 11603,
+      "bytes": 11437,
       "executable": false,
-      "sha256": "50bbadcdc769521508a03e0459a9d6c1f022568d286f8942d3e8c6dc75e38875"
+      "sha256": "6fe2df7a5ad350569bcb9427f4a2952e8736d994ff27928e893137dbd6a28341"
     },
     {
       "name": "releaseEnvOwnerHandoff",
       "path": "artifacts/ddd/release/release-env-owner-handoff.json",
-      "bytes": 75605,
+      "bytes": 71023,
       "executable": false,
-      "sha256": "1516085db6273a8d772bcc50120a3a3a99616b3031a34996af76645a7ade1bcb"
+      "sha256": "68e9faa9886702129615f7574a3d1b095bd2868cb371c42b084bbf9407ed19ac"
     },
     {
       "name": "releaseEnvOwnerHandoffMarkdown",
       "path": "artifacts/ddd/release/release-env-owner-handoff.md",
-      "bytes": 18808,
+      "bytes": 18663,
       "executable": false,
-      "sha256": "30418d449500a8fb262628caeaa85d315e49d8b0397e69d9fe414645a341d1b4"
+      "sha256": "51b0890d33039f95f69712979b25109d0ef98f5bb9eb410ebbfbe2b06605698a"
     },
     {
       "name": "releaseEnvOwnerInputPacketCsv",
       "path": "artifacts/ddd/release/release-env-owner-input-packet.csv",
-      "bytes": 10359,
+      "bytes": 227,
       "executable": false,
-      "sha256": "f07b331728057cc1df48449fb222a9eb671e815e69fabc77f65f34d1125cc68b"
+      "sha256": "acfdcee41f1c31874f141a96a0ec97cc838f4cc89b58eea0637d69d1ca0e7b30"
     },
     {
       "name": "releaseEnvOwnerInputPacket",
       "path": "artifacts/ddd/release/release-env-owner-input-packet.json",
-      "bytes": 44695,
+      "bytes": 3074,
       "executable": false,
-      "sha256": "8a579437a46e45e6af4c7389982460f516c416487689247112150c3445954510"
+      "sha256": "65fa4179636925cb13e2206bb488136c273a163210809dc31dc9117a0426a506"
     },
     {
       "name": "releaseEnvOwnerInputPacketMarkdown",
       "path": "artifacts/ddd/release/release-env-owner-input-packet.md",
-      "bytes": 16979,
+      "bytes": 2741,
       "executable": false,
-      "sha256": "199bf62660f3aa428e05f13d040a77fe9d73b766311c3ce90b8fc482f93b43ca"
-    },
-    {
-      "name": "releaseEnvOwnerInputPacketOwner01Json",
-      "path": "artifacts/ddd/release/release-env-owner-input-packet/01-platform-events.json",
-      "bytes": 13640,
-      "executable": false,
-      "sha256": "6cbfb733b50cd8def44b4f3a42f945da5f52b7bf748eb115b981e9e5b920fa8a"
-    },
-    {
-      "name": "releaseEnvOwnerInputPacketOwner01Markdown",
-      "path": "artifacts/ddd/release/release-env-owner-input-packet/01-platform-events.md",
-      "bytes": 6281,
-      "executable": false,
-      "sha256": "1f68ee33b3075f556fb6a8162c577ea3013e5bf7088406f2b850dcbdda84a5a3"
-    },
-    {
-      "name": "releaseEnvOwnerInputPacketOwner02Json",
-      "path": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.json",
-      "bytes": 13365,
-      "executable": false,
-      "sha256": "6bb439b3e83d9cf8eafaae1b3a8fef2999b3dac62fccc1c244e1f2632e8581ef"
-    },
-    {
-      "name": "releaseEnvOwnerInputPacketOwner02Markdown",
-      "path": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.md",
-      "bytes": 6052,
-      "executable": false,
-      "sha256": "e1fcf11d9dbd369d4cd25263d50dcb9646c095253c98ad8585bfafef1522de00"
-    },
-    {
-      "name": "releaseEnvOwnerInputPacketOwner03Json",
-      "path": "artifacts/ddd/release/release-env-owner-input-packet/03-release-infra.json",
-      "bytes": 12846,
-      "executable": false,
-      "sha256": "48f55b25becad8e450f316f179ad68c2e1374bce4248fe89944f317f472f4ec1"
-    },
-    {
-      "name": "releaseEnvOwnerInputPacketOwner03Markdown",
-      "path": "artifacts/ddd/release/release-env-owner-input-packet/03-release-infra.md",
-      "bytes": 5856,
-      "executable": false,
-      "sha256": "ca13beaeda5ca2df34126ba54ce1fa8102d37dd8dd8840582c05140af2462f80"
-    },
-    {
-      "name": "releaseEnvOwnerInputPacketOwner04Json",
-      "path": "artifacts/ddd/release/release-env-owner-input-packet/04-ai-owner.json",
-      "bytes": 10347,
-      "executable": false,
-      "sha256": "9cc102ed7bb0b55e7488262ff7915f087da8dd738d16bc6bbc31ca6ea4954f58"
-    },
-    {
-      "name": "releaseEnvOwnerInputPacketOwner04Markdown",
-      "path": "artifacts/ddd/release/release-env-owner-input-packet/04-ai-owner.md",
-      "bytes": 5068,
-      "executable": false,
-      "sha256": "1f209e6a1644b8ee35a1c4f2adb891f7716d55d54b7070d689c334db44e1423c"
-    },
-    {
-      "name": "releaseEnvOwnerInputPacketOwner05Json",
-      "path": "artifacts/ddd/release/release-env-owner-input-packet/05-payment-owner.json",
-      "bytes": 4273,
-      "executable": false,
-      "sha256": "2ab3843e3d455fd8cadcaf9b62ce3186a92a9305d634070079017a78a7636968"
-    },
-    {
-      "name": "releaseEnvOwnerInputPacketOwner05Markdown",
-      "path": "artifacts/ddd/release/release-env-owner-input-packet/05-payment-owner.md",
-      "bytes": 2721,
-      "executable": false,
-      "sha256": "ade60fd3c5d6fdbb5fe49faab47f6d4ea3835b0fbea16651a8c386c70b685438"
+      "sha256": "fcf830e71f2180672a0cf2648c355f42f766c6b0b8e8ebb4bb3b57559107cabd"
     },
     {
       "name": "releaseEnvOwnerMatrixCsv",
       "path": "artifacts/ddd/release/release-env-owner-matrix.csv",
-      "bytes": 24407,
+      "bytes": 16399,
       "executable": false,
-      "sha256": "474dc6ef7910f4a1d9f3ea1712e41a9f80448480ce35963a3367d04a2b99ccef"
+      "sha256": "44d05cf5aeab355c1170c011b96afb034d9ec17ec36787c8e4129e0cecfea3c0"
     },
     {
       "name": "releaseEnvOwnerMatrix",
       "path": "artifacts/ddd/release/release-env-owner-matrix.json",
-      "bytes": 184698,
+      "bytes": 118654,
       "executable": false,
-      "sha256": "d914c616cb41a7c014d8a8aa15ba912c4e1b13f1f9128b0847f5f62df18daff9"
+      "sha256": "5fcd593b01aadb45c41b1c228f54ccb6927fb2abb9298afc24959dc907ded36b"
     },
     {
       "name": "releaseEnvOwnerMatrixMarkdown",
       "path": "artifacts/ddd/release/release-env-owner-matrix.md",
-      "bytes": 20945,
+      "bytes": 12545,
       "executable": false,
-      "sha256": "ee49dad6241f4c7d9abbf8e078468a08aef0b95dfb69715592bb91d340e721c8"
+      "sha256": "026631fd485d57e3c21a6d2e8967b42443c5a0ebb7d406de2123348fa39d573b"
     },
     {
       "name": "releaseEnvOwnerTemplates",
       "path": "artifacts/ddd/release/release-env-owner-templates.json",
-      "bytes": 13780,
+      "bytes": 13800,
       "executable": false,
-      "sha256": "e227f81c5e289769c0b0845d5d4a0535fc86daafbf9bb024543774f2665a7993"
+      "sha256": "e8972a7b495b690e0d980049767f0c5ca04bd92169a3279b3f8dbcac92e6b65c"
     },
     {
       "name": "releaseEnvOwnerTemplatesMarkdown",
       "path": "artifacts/ddd/release/release-env-owner-templates.md",
-      "bytes": 10838,
+      "bytes": 10848,
       "executable": false,
-      "sha256": "db0a1f1f3a35a52888ec7892c05fcaf3e68cbdc4e9abf30cf8d5e56df6e7cf87"
+      "sha256": "087b11e0f9ffd31182d8f67b2bc31f9114f51f7200027e39264f38248c5323ff"
     },
     {
       "name": "releaseEnvReadinessGate",
       "path": "artifacts/ddd/release/release-env-readiness-gate.sh",
       "bytes": 6773,
       "executable": true,
-      "sha256": "be2f7672195e33d5691df4e2e738fd365158a34734c5cd15e44ee1895673388c"
+      "sha256": "4b8678c388e0eff32fd447d877054e710452b614b789cec73257756114a43821"
     },
     {
       "name": "releaseEnvReadinessRedactedCsv",
       "path": "artifacts/ddd/release/release-env-readiness-redacted.csv",
-      "bytes": 15523,
+      "bytes": 15115,
       "executable": false,
-      "sha256": "5e3f35c15d88ea1ce01dc34e92a3198feed831baf7b7e8279b5ab755de9f7795"
+      "sha256": "ae27329a656367b11e75ac0e732696ec66646ffabc3de858afd47a8f4729b6b0"
     },
     {
       "name": "releaseEnvReadinessRedacted",
       "path": "artifacts/ddd/release/release-env-readiness-redacted.json",
-      "bytes": 47452,
+      "bytes": 46682,
       "executable": false,
-      "sha256": "118c610b150fda95ee20cba5f0fbc3b1ec9c5554d84285c098201f028be307ba"
+      "sha256": "cfcb362178f2ed0645e051061ef531d8e9172f2fbcff08fee62ca8a2fad215d3"
     },
     {
       "name": "releaseEnvReadinessRedactedMarkdown",
       "path": "artifacts/ddd/release/release-env-readiness-redacted.md",
-      "bytes": 7267,
+      "bytes": 1471,
       "executable": false,
-      "sha256": "ce030986f9085516347bb68b508dc6ae2378137aca4d037087e0a9a57b030b16"
+      "sha256": "b02591acb3e143f0c4472d44dc7af2957635d241bd3ca69e6caa154d9735df6a"
     },
     {
       "name": "releaseExecutionCommands",
       "path": "artifacts/ddd/release/release-execution-commands.sh",
-      "bytes": 38576,
+      "bytes": 19414,
       "executable": true,
-      "sha256": "43e748885490fd3c17a1bd43ab0e2b97256f9768550b479802c987b1aebe485a"
+      "sha256": "3d3883f807fcfd6140839691abef2e3b8c61199b1a5b1d356d747441961aa7aa"
     },
     {
       "name": "releaseExecutionQueueCsv",
       "path": "artifacts/ddd/release/release-execution-queue.csv",
-      "bytes": 25027,
+      "bytes": 9160,
       "executable": false,
-      "sha256": "24810fbf238eb636c3cc29e86f8d4767bf1b30fd7c5a056425b470e851e777c2"
+      "sha256": "7c0c587c725d840621ac165ddbe4b6b0455ece19dc68494b31163ed9ef9efd5c"
     },
     {
       "name": "releaseExecutionQueue",
       "path": "artifacts/ddd/release/release-execution-queue.json",
-      "bytes": 244710,
+      "bytes": 151640,
       "executable": false,
-      "sha256": "37420095551dc323631de6b791b4eb49b59e36d27c759c92aeac013db71bbc98"
+      "sha256": "fccd32fe5f4596c413f3a595deb89ccc0c1546d9f8c02edf0a738ed5a37dba0d"
     },
     {
       "name": "releaseExecutionQueueMarkdown",
       "path": "artifacts/ddd/release/release-execution-queue.md",
-      "bytes": 29283,
+      "bytes": 11785,
       "executable": false,
-      "sha256": "5306c25ffafa074a49c53c722f72847d460cdd6361582cd600d63ee33d682cb1"
+      "sha256": "aa143d0fd62eff5590d4b6252b595eb5263d0326a0ed882aff02126c8ac818e4"
     },
     {
       "name": "releaseFastTrack",
       "path": "artifacts/ddd/release/release-fast-track.json",
-      "bytes": 36853,
+      "bytes": 29530,
       "executable": false,
-      "sha256": "fa428bc0602f23040c1968a27974554bea883c3d3c2955ff0295b68e980b5fee"
+      "sha256": "af56242a72cef7af007395e8b1dc6684574920d4caa5d2a2a158b494e3be5b8c"
     },
     {
       "name": "releaseFastTrackMarkdown",
       "path": "artifacts/ddd/release/release-fast-track.md",
-      "bytes": 14553,
+      "bytes": 12701,
       "executable": false,
-      "sha256": "37fd517b4fa17d35a9a0ad06fa9342e7f146d7f557c7b06924fa3283bbdd77df"
+      "sha256": "3eb99464672fe4a10cef5a7e8fe6385d8ad22b3b18ec4f68fa384c80f006a111"
     },
     {
       "name": "releaseFinalGoNoGoGate",
       "path": "artifacts/ddd/release/release-final-go-no-go-gate.sh",
       "bytes": 14278,
       "executable": true,
-      "sha256": "7e814e625d0c6926cb09d1a4034e16d3c4f6c7bac85596ee2cb6dbbf69304bc2"
+      "sha256": "2b6b2944e201a70bd3d0cfd24167388693281121b14bd1d7afc3546ea65855a4"
     },
     {
       "name": "releaseFinalGoNoGoCsv",
       "path": "artifacts/ddd/release/release-final-go-no-go.csv",
-      "bytes": 7587,
+      "bytes": 5236,
       "executable": false,
-      "sha256": "87815160b69eaa924d252585ba1578c9ce8661991a703c4ac41f55b9285ae79d"
+      "sha256": "3cd5dd16056e030288bcdb492d33516d4bc6f1a63c7ca25bf30f88605b6b1f83"
     },
     {
       "name": "releaseFinalGoNoGo",
       "path": "artifacts/ddd/release/release-final-go-no-go.json",
-      "bytes": 38261,
+      "bytes": 27005,
       "executable": false,
-      "sha256": "fba50e7fdebf54b6156aa7362b9bbf7d52ed2e9a0f545c4723cf3d4a196d6ace"
+      "sha256": "76b18bc6cb92ef24e20e31adb353e268d91f2992b282f9a87fce064ba78f4de9"
     },
     {
       "name": "releaseFinalGoNoGoMarkdown",
       "path": "artifacts/ddd/release/release-final-go-no-go.md",
-      "bytes": 15551,
+      "bytes": 11592,
       "executable": false,
-      "sha256": "97521ba96fc50aeffcff9e6f7b40b90baa72017fa1f21107460c34a06d653389"
+      "sha256": "c46c0bfe90897303f52237d9c556072b05946846592ce9524b101f426f222c47"
     },
     {
       "name": "releaseFinalOwnerQueueCommands",
       "path": "artifacts/ddd/release/release-final-owner-queue-commands.sh",
-      "bytes": 69810,
+      "bytes": 56071,
       "executable": true,
-      "sha256": "b55f6e4910360b16062d7a215c2b634d3a406732f39ab5f23dafe589b826975f"
+      "sha256": "7e7580cd854d6cf7a39e3ee03011f45bbdf01407473fe2c5aa580289bf1bbdb4"
     },
     {
       "name": "releaseFinalOwnerQueueEnvInit",
       "path": "artifacts/ddd/release/release-final-owner-queue-env-init.sh",
       "bytes": 9554,
       "executable": true,
-      "sha256": "d0d3b4416fb5f79f91de9643abea2ef457561bc508df8c6cd4a68d84db635cf4"
+      "sha256": "66a1b3cd95229034227f362d1568d0382ef747751e6145d244b82e6a9ed960d1"
     },
     {
       "name": "releaseFinalOwnerQueueEnvTemplate",
       "path": "artifacts/ddd/release/release-final-owner-queue-env.template.env",
-      "bytes": 21762,
+      "bytes": 14983,
       "executable": false,
-      "sha256": "bf8bc78fe80b5a50ff751fd1d4c184734b8864037a47626938d6f4bc7e221614"
+      "sha256": "e1b39745ab0d2ed6891eb8241c5dde3e861157e55524cbb9685d37955933d911"
     },
     {
       "name": "releaseFinalOwnerQueueCsv",
       "path": "artifacts/ddd/release/release-final-owner-queue.csv",
-      "bytes": 21039,
+      "bytes": 16207,
       "executable": false,
-      "sha256": "1b9f8d59558c4c925b7b2510b79fc5f71f6545df7e5d946372ddab024c394d8a"
+      "sha256": "d16fd2013fccecc3d99e272ad956bd013612144a88f13885df6e4adef8c553ef"
     },
     {
       "name": "releaseFinalOwnerQueue",
       "path": "artifacts/ddd/release/release-final-owner-queue.json",
-      "bytes": 50458,
+      "bytes": 38209,
       "executable": false,
-      "sha256": "22ebe32ba6dcd932a8b6a7b1c5344c18cbfff84f42d4a98f14b4c2a097ff4d05"
+      "sha256": "48973259fea38c3bb9d215150171c3f929f30e781da6ddca92bfa66b07dc19d8"
     },
     {
       "name": "releaseFinalOwnerQueueMarkdown",
       "path": "artifacts/ddd/release/release-final-owner-queue.md",
-      "bytes": 29837,
+      "bytes": 21990,
       "executable": false,
-      "sha256": "d16daf60ef28a572f03237faa9c4ad5296db5fc334b273d49db65ba805296a83"
+      "sha256": "f83c24742be8766c4494fb9e9b56a14dcdfe7ba5e2de9f9fa8ae1051124f4a88"
     },
     {
       "name": "releaseNextActionCommands",
       "path": "artifacts/ddd/release/release-next-action-commands.sh",
-      "bytes": 42575,
+      "bytes": 23803,
       "executable": true,
-      "sha256": "ce424b08baebd3a6fee118eaf10d41807fec25fcaf9e3a0ad7a60c493f8552aa"
+      "sha256": "d1c933e87396235ddec584eb952d3067b2704300e35b683fa92c845c0529e7ea"
     },
     {
       "name": "releaseNextActionQueueCsv",
       "path": "artifacts/ddd/release/release-next-action-queue.csv",
-      "bytes": 23305,
+      "bytes": 19209,
       "executable": false,
-      "sha256": "14eae8434986f8a5e0d0a5ce9af0df3d45859d50d71dc3bd1eb67d4644073868"
+      "sha256": "b0776cc399a5e3ed86d05dafbbb150dc464092e96ccd808e461b38a7b61dc2fe"
     },
     {
       "name": "releaseNextActionQueue",
       "path": "artifacts/ddd/release/release-next-action-queue.json",
-      "bytes": 40973,
+      "bytes": 31840,
       "executable": false,
-      "sha256": "ec75a4c9d8adafd6ef5eea0afb7d74c66597768729dd43ac46276e404ce109b7"
+      "sha256": "53c35b7d44a204b0e97443957b3f3ec4a31bbd7dbdb96fb8715ed41f33c42b83"
     },
     {
       "name": "releaseNextActionQueueMarkdown",
       "path": "artifacts/ddd/release/release-next-action-queue.md",
-      "bytes": 23764,
+      "bytes": 17715,
       "executable": false,
-      "sha256": "7b0d3d44b1757ef489cb321209c077efc8cdcf20287113cecca9afe9400d6e2c"
+      "sha256": "88227283fa4cf8216727a6ba4a30faabebc230f15b8a7743dff317ff9d68675d"
     },
     {
       "name": "releaseOwnerHandoffCsv",
       "path": "artifacts/ddd/release/release-owner-handoff.csv",
-      "bytes": 23304,
+      "bytes": 15885,
       "executable": false,
-      "sha256": "119bab84cfb0d003d3e6f8a19596ad3ff5d561a81c35ae54096c3e02e3f1922d"
+      "sha256": "651af1f93e22b83945011e9332a1544049470c1da2350e8448d69ef5df491dd5"
     },
     {
       "name": "releaseOwnerHandoff",
       "path": "artifacts/ddd/release/release-owner-handoff.json",
-      "bytes": 49741,
+      "bytes": 35132,
       "executable": false,
-      "sha256": "717654e4af01eeb5a32470b056636e5d0ffcb28426f4ef3606e083141d715567"
+      "sha256": "d389ddd2c8f7b8147deb13a3a2653fca73badc534c7b823dbb453db40c12ad68"
     },
     {
       "name": "releaseOwnerHandoffMarkdown",
       "path": "artifacts/ddd/release/release-owner-handoff.md",
-      "bytes": 25882,
+      "bytes": 19142,
       "executable": false,
-      "sha256": "2f0a4f68af186e12c0c4f86c0932bd2beb3d83107899704613e4ccf803d1519b"
+      "sha256": "8d37e4103eef68fc8acc44b7e5c521841e169d02cfd51aa667ece6bb93bc48d3"
     },
     {
       "name": "releaseOwnerInputReceiptItemsCsv",
       "path": "artifacts/ddd/release/release-owner-input-receipt-items.csv",
-      "bytes": 16001,
+      "bytes": 251,
       "executable": false,
-      "sha256": "ffb17dc4d49f744fcc229734e2c3e46309de9b253f9ded59a848c67c9e1e417b"
+      "sha256": "3f3fd18683eaaac617dc5c18072c0b1352413a260cfbe32a1e5fa28e04f9c066"
     },
     {
       "name": "releaseOwnerInputReceiptItemsMarkdown",
       "path": "artifacts/ddd/release/release-owner-input-receipt-items.md",
-      "bytes": 17686,
+      "bytes": 245,
       "executable": false,
-      "sha256": "d4bad386936e23b8201ef912c89c9513d773f6fdca4993e364fed2687e98d5e2"
-    },
-    {
-      "name": "releaseOwnerInputReceiptItemOwner01Markdown",
-      "path": "artifacts/ddd/release/release-owner-input-receipt-items/01-platform-events.md",
-      "bytes": 4817,
-      "executable": false,
-      "sha256": "4dd15d9ac665f3dc6f3656a52b96ee77a2662f7c86b3126dbe1a1138863a7cc8"
-    },
-    {
-      "name": "releaseOwnerInputReceiptItemOwner02Markdown",
-      "path": "artifacts/ddd/release/release-owner-input-receipt-items/02-platform-owners.md",
-      "bytes": 4619,
-      "executable": false,
-      "sha256": "46cf8bb45f83a2530e1b094bf19dc7e495c5dc65d20b5c1a2dfbf0bceaeed651"
-    },
-    {
-      "name": "releaseOwnerInputReceiptItemOwner03Markdown",
-      "path": "artifacts/ddd/release/release-owner-input-receipt-items/03-release-infra.md",
-      "bytes": 4418,
-      "executable": false,
-      "sha256": "a05a302f3e452306db75ecf5c9cb440378e6129c45ee0b9993c768acd2938b7f"
-    },
-    {
-      "name": "releaseOwnerInputReceiptItemOwner04Markdown",
-      "path": "artifacts/ddd/release/release-owner-input-receipt-items/04-ai-owner.md",
-      "bytes": 3371,
-      "executable": false,
-      "sha256": "f90e66e23df1fff75c775dbeac036fb21394c567bf415053f22f3b4306e45b00"
-    },
-    {
-      "name": "releaseOwnerInputReceiptItemOwner05Markdown",
-      "path": "artifacts/ddd/release/release-owner-input-receipt-items/05-payment-owner.md",
-      "bytes": 688,
-      "executable": false,
-      "sha256": "d95b3dffbde744834c8d70389cca1f556b46c3e4ac1dd84e8921b699867e6a9c"
+      "sha256": "95a7f203e27d0be27cc4e7ec11cdf261072ca19743a0c0a7f6ff6aa70550d8ce"
     },
     {
       "name": "releaseOwnerInputReceiptCsv",
       "path": "artifacts/ddd/release/release-owner-input-receipt.csv",
-      "bytes": 1689,
+      "bytes": 202,
       "executable": false,
-      "sha256": "0f5494f7531962596e711808378ef30e3b89b259946d046b171185892ee86b07"
+      "sha256": "a636c2ac2b74ac2a19e29c0b8e925c93ebf9d64e342f42588e06107d053d1c14"
     },
     {
       "name": "releaseOwnerInputReceipt",
       "path": "artifacts/ddd/release/release-owner-input-receipt.json",
-      "bytes": 38891,
+      "bytes": 2910,
       "executable": false,
-      "sha256": "28242057dfa356f7b5f6ae3d0575d16f3942368da6ce849d36cc434c5dc42ab5"
+      "sha256": "7f44a6a05e44a97185733a16eda743937ec9d56f95fed2bd83b0b9b7094c373f"
     },
     {
       "name": "releaseOwnerInputReceiptMarkdown",
       "path": "artifacts/ddd/release/release-owner-input-receipt.md",
-      "bytes": 2500,
+      "bytes": 1752,
       "executable": false,
-      "sha256": "bb91ecc6ededb2098b99c020d07a7e55d41e88b06cf303e56ddae601680abdaa"
+      "sha256": "b9a5244ac69d945f1be69a72aa313569391dd99de47ac3365e137b1801d04cdc"
     },
     {
       "name": "releaseOwnerReceiptsCsv",
       "path": "artifacts/ddd/release/release-owner-receipts.csv",
-      "bytes": 9149,
+      "bytes": 6592,
       "executable": false,
-      "sha256": "ebf0bbe117f794c51c4fa9527fb9c216b207de31aa6646a5dca52b0c3a377721"
+      "sha256": "83ac4213c6c69d27cd0b9fe6c9bb55120efa270af609c17be75f127e2ddb116c"
     },
     {
       "name": "releaseOwnerReceipts",
       "path": "artifacts/ddd/release/release-owner-receipts.json",
-      "bytes": 97574,
+      "bytes": 66182,
       "executable": false,
-      "sha256": "30d4a6e96935bec2fc4ca1a51b462c5b2e7b9f15f9c72c53569c404f792903c0"
+      "sha256": "301c63fdef6ab782d488daef458155522d56137b45fb53c088a2cdd4e6f13be0"
     },
     {
       "name": "releaseOwnerReceiptsMarkdown",
       "path": "artifacts/ddd/release/release-owner-receipts.md",
-      "bytes": 10590,
+      "bytes": 19313,
       "executable": false,
-      "sha256": "2af6efa2d1b850839e646e9e5660cde97d5da47546d4c8a1239314494de0067b"
+      "sha256": "0737181df31cbd1a6fe081fe8398a7594e31852b00dfeaa0c11f97699f2cc1c7"
     },
     {
       "name": "releasePerformanceBaselineClosure",
       "path": "artifacts/ddd/release/release-performance-baseline-closure.json",
-      "bytes": 11673,
+      "bytes": 11672,
       "executable": false,
-      "sha256": "93a68e8716ce3ae13cd22372f01b622923caebea8bae820cead1f3521ddf8fba"
+      "sha256": "75b4a9142c9f10e1bc43a98eef756027f837bbb73406e7ff97bb2a4f3c5d50b3"
     },
     {
       "name": "releasePerformanceBaselineClosureMarkdown",
       "path": "artifacts/ddd/release/release-performance-baseline-closure.md",
       "bytes": 6914,
       "executable": false,
-      "sha256": "4253da9dd1b82c7530acb671c3dd3ca279ea69e1d6f8cab67a5e15c4fe1bc758"
+      "sha256": "f3221a86f723a527ab2d2bee37cc22f60981e9909b3d3d4f1a4cec5c0115e423"
     },
     {
       "name": "releasePerformanceBaselineCommands",
       "path": "artifacts/ddd/release/release-performance-baseline-commands.sh",
       "bytes": 9605,
       "executable": true,
-      "sha256": "83c6ec65e19905fe36cc8ca1c4df05157bed71ec8622585d846f9a60f88d20f3"
+      "sha256": "8329a3803b935d4900cea63ba0c2c7553a2dcf24c285843509d0f6bcf220f71d"
     },
     {
       "name": "releasePreflightGate",
       "path": "artifacts/ddd/release/release-preflight-gate.sh",
       "bytes": 12209,
       "executable": true,
-      "sha256": "a4d5a49b78fd050a3d33ccd1afdf8b5012388f61eab84350fafd21a7bf207175"
+      "sha256": "a8db0fd03b0c1f17464e349479398304c158f5b1068accc160c0ad9502a3ece6"
     },
     {
       "name": "releaseSprintBoardCsv",
       "path": "artifacts/ddd/release/release-sprint-board.csv",
-      "bytes": 40036,
+      "bytes": 27326,
       "executable": false,
-      "sha256": "2d882332a413f367ed3ba075346c3b277ca4fc3aca070b4918bca32e043d4f68"
+      "sha256": "76ae3b7ad6885411ceb6dec7d150aa62125f3e3098b42d328c1edcd2dd2358bb"
     },
     {
       "name": "releaseSprintBoard",
       "path": "artifacts/ddd/release/release-sprint-board.json",
-      "bytes": 70613,
+      "bytes": 51611,
       "executable": false,
-      "sha256": "7b1f775402032fbacf54fe4b120664b5041c7c01d52c483d10c30eba78fc5793"
+      "sha256": "531ce060f8af0a7b77f63782723ea8df4415a76735a90fd0148c64eee7841787"
     },
     {
       "name": "releaseSprintBoardMarkdown",
       "path": "artifacts/ddd/release/release-sprint-board.md",
-      "bytes": 20777,
+      "bytes": 15358,
       "executable": false,
-      "sha256": "a6b2f6ce93aa5cda0d9a751b051d9e5250ee07927107bcd34bb2f9defaeffe6e"
+      "sha256": "621017c76282cba71c1e3b2880309005b6a5fdf57f9469a437d72f66db3d73c6"
     },
     {
       "name": "sourceRollupCsv",
       "path": "artifacts/ddd/release/source-action-rollup.csv",
-      "bytes": 52090,
+      "bytes": 36585,
       "executable": false,
-      "sha256": "b0c48bd68ca763df6e90bc6733a248b9499844f0dc9b53339f6f4398d58a8a33"
+      "sha256": "6a4972801caa5e30d37399e16d3b732822c69c04b62e56b1760407fc93e8f9c4"
     },
     {
       "name": "sourceRollup",
       "path": "artifacts/ddd/release/source-action-rollup.json",
-      "bytes": 110206,
+      "bytes": 79016,
       "executable": false,
-      "sha256": "794f002bcb749ac77c282cf5d751e078f2200d30a0bfc336cb31f16cc6975ded"
+      "sha256": "19584ff5c33e7d2da6d3785fc2a576fd74e00612e32eb26d038d38c044a918d9"
     },
     {
       "name": "sourceRollupMarkdown",
       "path": "artifacts/ddd/release/source-action-rollup.md",
-      "bytes": 61674,
+      "bytes": 40771,
       "executable": false,
-      "sha256": "2e4f13a8f71f76347e4208f53982e425fda257083d586c380746074c80b5edc2"
+      "sha256": "30e8d1360cfaad4eb2072ecea120d1a103ef562dfd84d47dbec43277d76ececf"
     }
   ]
 }

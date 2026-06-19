@@ -1,6 +1,6 @@
 # DDD Release Readiness Summary
 
-Generated at: 2026-06-19T06:54:03.604Z
+Generated at: 2026-06-19T13:42:59.865Z
 Status: NOT_READY
 Release gate mode: strict
 Release gate blockers: 94
@@ -23,19 +23,7 @@ Release gate warnings: 8
   - ownerAction: source=ai-runtime; id=ai-provider-runtime; reason=provider status=CONFIGURED remoteConfigured=false; envKeys=DDD_AI_EXPECT_PROVIDER_REMOTE,LUMIRA_AI_PROVIDER,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY; action=Configure and verify a remote AI provider runtime; strict release must not rely on local fallback.
   - ownerAction: source=ai-runtime; id=ai-runtime-base-url; reason=missing production-equivalent AI base URL; envKeys=LUMIRA_AI_BASE_URL,LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL; action=Run AI runtime drill against an HTTPS non-local AI runtime base URL.
   - ownerActionCollapsed: source=orchestrator; id=orchestrator-preflight-ai-runtime-base-url; coveredBy=ai-runtime:ai-runtime-base-url; reason=missing AI runtime base URL; envKeys=LUMIRA_AI_BASE_URL,LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL
-- owner=ai-owner pendingItems=13 collapsedItems=0 sources=release-config=12,rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT,LUMIRA_AI_OWNER_FILE_BASE_URL,LUMIRA_AI_OWNER_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_OWNER_INTERNAL_TOKEN,LUMIRA_AI_OWNER_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_API_KEY,LUMIRA_AI_PROVIDER_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN
-  - ownerAction: source=release-config; id=file owner url; reason=placeholder value is not allowed; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_FILE_BASE_URL; action=Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=file owner url; reason=must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_FILE_BASE_URL; action=Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=iam owner url; reason=placeholder value is not allowed; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_IAM_BASE_URL; action=Set LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL or LUMIRA_AI_OWNER_IAM_BASE_URL for iam owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=iam owner url; reason=must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_IAM_BASE_URL; action=Set LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL or LUMIRA_AI_OWNER_IAM_BASE_URL for iam owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=owner internal token; reason=placeholder value is not allowed; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTERNAL_TOKEN,SAAS_JOB_INTERNAL_TOKEN; action=Set LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN or LUMIRA_AI_OWNER_INTERNAL_TOKEN or SAAS_JOB_INTERNAL_TOKEN for owner internal token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=owner internal token; reason=must be at least 32 characters; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTERNAL_TOKEN,SAAS_JOB_INTERNAL_TOKEN; action=Set LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN or LUMIRA_AI_OWNER_INTERNAL_TOKEN or SAAS_JOB_INTERNAL_TOKEN for owner internal token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=platform owner url; reason=placeholder value is not allowed; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_OWNER_PLATFORM_BASE_URL; action=Set LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL or LUMIRA_AI_OWNER_PLATFORM_BASE_URL for platform owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=platform owner url; reason=must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_OWNER_PLATFORM_BASE_URL; action=Set LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL or LUMIRA_AI_OWNER_PLATFORM_BASE_URL for platform owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=provider api key; reason=placeholder value is not allowed; envKeys=LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_API_KEY; action=Set LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY or LUMIRA_AI_PROVIDER_API_KEY for provider api key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=provider api key; reason=must be at least 32 characters; envKeys=LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_API_KEY; action=Set LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY or LUMIRA_AI_PROVIDER_API_KEY for provider api key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=provider base url; reason=placeholder value is not allowed; envKeys=LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_AI_PROVIDER_BASE_URL; action=Set LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL or LUMIRA_AI_PROVIDER_BASE_URL for provider base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=provider base url; reason=must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_AI_PROVIDER_BASE_URL; action=Set LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL or LUMIRA_AI_PROVIDER_BASE_URL for provider base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
+- owner=ai-owner pendingItems=1 collapsedItems=0 sources=rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT
   - ownerAction: source=rollback; id=AI; reason=AI rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
 - owner=auth-owner pendingItems=1 collapsedItems=0 sources=rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT
   - ownerAction: source=rollback; id=Auth; reason=Auth rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
@@ -64,78 +52,179 @@ Release gate warnings: 8
   - ownerAction: source=rollback; id=Localization; reason=Localization rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
 - owner=message-owner pendingItems=1 collapsedItems=0 sources=rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT
   - ownerAction: source=rollback; id=Message; reason=Message rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
-- owner=payment-owner pendingItems=4 collapsedItems=0 sources=business-e2e=1,release-config=2,rollback=1 collapsedSources=none envKeys=BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT,DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL,PAYMENT_PUBLIC_BASE_URL
+- owner=payment-owner pendingItems=2 collapsedItems=0 sources=business-e2e=1,rollback=1 collapsedSources=none envKeys=BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT,DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL,PAYMENT_PUBLIC_BASE_URL
   - ownerAction: source=business-e2e; id=payment-webhook-production-equivalence; reason=strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL,PAYMENT_PUBLIC_BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE; action=Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node scripts/ddd-payment-webhook-e2e-smoke.mjs`.
-  - ownerAction: source=release-config; id=payment public url; reason=placeholder value is not allowed; envKeys=PAYMENT_PUBLIC_BASE_URL; action=Set PAYMENT_PUBLIC_BASE_URL for payment public url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=payment public url; reason=must use HTTPS for production-equivalent evidence; envKeys=PAYMENT_PUBLIC_BASE_URL; action=Set PAYMENT_PUBLIC_BASE_URL for payment public url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
   - ownerAction: source=rollback; id=Payment; reason=Payment rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise payment webhook route fallback and idempotent event replay; attach provider routing, webhook metrics, and order trace evidence. Required evidence: payment provider route fallback configuration evidence; webhook idempotent replay result; order status trace before and after replay; webhook metrics or audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
-- owner=platform-events pendingItems=17 collapsedItems=0 sources=release-config=17 collapsedSources=none envKeys=DDD_JOB_INTERNAL_TOKEN,LUMIRA_EVENT_REDIS_STREAM_KEY,LUMIRA_JOB_BACKEND_BASE_URL,LUMIRA_JOB_FILE_SERVICE_BASE_URL,LUMIRA_JOB_INTERNAL_TOKEN,LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL,LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL,LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL,LUMIRA_XXL_JOB_ACCESS_TOKEN,LUMIRA_XXL_JOB_ADMIN_ADDRESSES,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES
-  - ownerAction: source=release-config; id=event stream key; reason=placeholder value is not allowed; envKeys=SAAS_EVENT_REDIS_STREAM_KEY,LUMIRA_EVENT_REDIS_STREAM_KEY; action=Set SAAS_EVENT_REDIS_STREAM_KEY or LUMIRA_EVENT_REDIS_STREAM_KEY for event stream key in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job backend url; reason=placeholder value is not allowed; envKeys=SAAS_JOB_BACKEND_BASE_URL,LUMIRA_JOB_BACKEND_BASE_URL; action=Set SAAS_JOB_BACKEND_BASE_URL or LUMIRA_JOB_BACKEND_BASE_URL for job backend url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job backend url; reason=must use HTTPS for production-equivalent evidence; envKeys=SAAS_JOB_BACKEND_BASE_URL,LUMIRA_JOB_BACKEND_BASE_URL; action=Set SAAS_JOB_BACKEND_BASE_URL or LUMIRA_JOB_BACKEND_BASE_URL for job backend url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job file url; reason=placeholder value is not allowed; envKeys=SAAS_JOB_FILE_SERVICE_BASE_URL,LUMIRA_JOB_FILE_SERVICE_BASE_URL; action=Set SAAS_JOB_FILE_SERVICE_BASE_URL or LUMIRA_JOB_FILE_SERVICE_BASE_URL for job file url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job file url; reason=must use HTTPS for production-equivalent evidence; envKeys=SAAS_JOB_FILE_SERVICE_BASE_URL,LUMIRA_JOB_FILE_SERVICE_BASE_URL; action=Set SAAS_JOB_FILE_SERVICE_BASE_URL or LUMIRA_JOB_FILE_SERVICE_BASE_URL for job file url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job internal token; reason=placeholder value is not allowed; envKeys=SAAS_JOB_INTERNAL_TOKEN,DDD_JOB_INTERNAL_TOKEN,LUMIRA_JOB_INTERNAL_TOKEN; action=Set SAAS_JOB_INTERNAL_TOKEN or DDD_JOB_INTERNAL_TOKEN or LUMIRA_JOB_INTERNAL_TOKEN for job internal token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job internal token; reason=must be at least 32 characters; envKeys=SAAS_JOB_INTERNAL_TOKEN,DDD_JOB_INTERNAL_TOKEN,LUMIRA_JOB_INTERNAL_TOKEN; action=Set SAAS_JOB_INTERNAL_TOKEN or DDD_JOB_INTERNAL_TOKEN or LUMIRA_JOB_INTERNAL_TOKEN for job internal token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job message url; reason=placeholder value is not allowed; envKeys=SAAS_JOB_MESSAGE_SERVICE_BASE_URL,LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL; action=Set SAAS_JOB_MESSAGE_SERVICE_BASE_URL or LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL for job message url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job message url; reason=must use HTTPS for production-equivalent evidence; envKeys=SAAS_JOB_MESSAGE_SERVICE_BASE_URL,LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL; action=Set SAAS_JOB_MESSAGE_SERVICE_BASE_URL or LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL for job message url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job payment url; reason=placeholder value is not allowed; envKeys=SAAS_JOB_PAYMENT_SERVICE_BASE_URL,LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL; action=Set SAAS_JOB_PAYMENT_SERVICE_BASE_URL or LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL for job payment url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job payment url; reason=must use HTTPS for production-equivalent evidence; envKeys=SAAS_JOB_PAYMENT_SERVICE_BASE_URL,LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL; action=Set SAAS_JOB_PAYMENT_SERVICE_BASE_URL or LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL for job payment url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job plugin url; reason=placeholder value is not allowed; envKeys=SAAS_JOB_PLUGIN_SERVICE_BASE_URL,LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL; action=Set SAAS_JOB_PLUGIN_SERVICE_BASE_URL or LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL for job plugin url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job plugin url; reason=must use HTTPS for production-equivalent evidence; envKeys=SAAS_JOB_PLUGIN_SERVICE_BASE_URL,LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL; action=Set SAAS_JOB_PLUGIN_SERVICE_BASE_URL or LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL for job plugin url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=xxl job admin; reason=placeholder value is not allowed; envKeys=XXL_JOB_ADMIN_ADDRESSES,LUMIRA_XXL_JOB_ADMIN_ADDRESSES; action=Set XXL_JOB_ADMIN_ADDRESSES or LUMIRA_XXL_JOB_ADMIN_ADDRESSES for xxl job admin in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=xxl job admin; reason=must use HTTPS for production-equivalent evidence; envKeys=XXL_JOB_ADMIN_ADDRESSES,LUMIRA_XXL_JOB_ADMIN_ADDRESSES; action=Set XXL_JOB_ADMIN_ADDRESSES or LUMIRA_XXL_JOB_ADMIN_ADDRESSES for xxl job admin in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=xxl job token; reason=placeholder value is not allowed; envKeys=XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ACCESS_TOKEN,LUMIRA_XXL_JOB_ACCESS_TOKEN; action=Set XXL_JOB_ACCESS_TOKEN or XXL_JOB_ADMIN_ACCESS_TOKEN or LUMIRA_XXL_JOB_ACCESS_TOKEN for xxl job token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=xxl job token; reason=must be at least 32 characters; envKeys=XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ACCESS_TOKEN,LUMIRA_XXL_JOB_ACCESS_TOKEN; action=Set XXL_JOB_ACCESS_TOKEN or XXL_JOB_ADMIN_ACCESS_TOKEN or LUMIRA_XXL_JOB_ACCESS_TOKEN for xxl job token in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
 - owner=platform-owner pendingItems=1 collapsedItems=0 sources=rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT
   - ownerAction: source=rollback; id=Platform; reason=Platform rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
-- owner=platform-owners pendingItems=18 collapsedItems=0 sources=release-config=18 collapsedSources=none envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,FILE_SERVICE_BASE_URL,JOB_EXECUTOR_BASE_URL,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_BASE_URL,LUMIRA_AI_SERVICE_BASE_URL,LUMIRA_AUTH_SERVICE_BASE_URL,LUMIRA_FILE_SERVICE_BASE_URL,LUMIRA_JOB_EXECUTOR_BASE_URL,LUMIRA_LOCALIZATION_SERVICE_BASE_URL,LUMIRA_MESSAGE_SERVICE_BASE_URL,LUMIRA_PAYMENT_SERVICE_BASE_URL,LUMIRA_PLUGIN_SERVICE_BASE_URL,LUMIRA_SYSTEM_SERVICE_BASE_URL,MESSAGE_SERVICE_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLUGIN_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL
-  - ownerAction: source=release-config; id=ai service; reason=placeholder value is not allowed; envKeys=AI_SERVICE_BASE_URL,LUMIRA_AI_SERVICE_BASE_URL,LUMIRA_AI_BASE_URL; action=Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=ai service; reason=must use HTTPS for production-equivalent evidence; envKeys=AI_SERVICE_BASE_URL,LUMIRA_AI_SERVICE_BASE_URL,LUMIRA_AI_BASE_URL; action=Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=auth service; reason=placeholder value is not allowed; envKeys=AUTH_SERVICE_BASE_URL,LUMIRA_AUTH_SERVICE_BASE_URL; action=Set AUTH_SERVICE_BASE_URL or LUMIRA_AUTH_SERVICE_BASE_URL for auth service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=auth service; reason=must use HTTPS for production-equivalent evidence; envKeys=AUTH_SERVICE_BASE_URL,LUMIRA_AUTH_SERVICE_BASE_URL; action=Set AUTH_SERVICE_BASE_URL or LUMIRA_AUTH_SERVICE_BASE_URL for auth service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=file service; reason=placeholder value is not allowed; envKeys=FILE_SERVICE_BASE_URL,LUMIRA_FILE_SERVICE_BASE_URL; action=Set FILE_SERVICE_BASE_URL or LUMIRA_FILE_SERVICE_BASE_URL for file service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=file service; reason=must use HTTPS for production-equivalent evidence; envKeys=FILE_SERVICE_BASE_URL,LUMIRA_FILE_SERVICE_BASE_URL; action=Set FILE_SERVICE_BASE_URL or LUMIRA_FILE_SERVICE_BASE_URL for file service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job executor; reason=placeholder value is not allowed; envKeys=JOB_EXECUTOR_BASE_URL,LUMIRA_JOB_EXECUTOR_BASE_URL; action=Set JOB_EXECUTOR_BASE_URL or LUMIRA_JOB_EXECUTOR_BASE_URL for job executor in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=job executor; reason=must use HTTPS for production-equivalent evidence; envKeys=JOB_EXECUTOR_BASE_URL,LUMIRA_JOB_EXECUTOR_BASE_URL; action=Set JOB_EXECUTOR_BASE_URL or LUMIRA_JOB_EXECUTOR_BASE_URL for job executor in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=localization service; reason=placeholder value is not allowed; envKeys=LOCALIZATION_SERVICE_BASE_URL,LUMIRA_LOCALIZATION_SERVICE_BASE_URL; action=Set LOCALIZATION_SERVICE_BASE_URL or LUMIRA_LOCALIZATION_SERVICE_BASE_URL for localization service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=localization service; reason=must use HTTPS for production-equivalent evidence; envKeys=LOCALIZATION_SERVICE_BASE_URL,LUMIRA_LOCALIZATION_SERVICE_BASE_URL; action=Set LOCALIZATION_SERVICE_BASE_URL or LUMIRA_LOCALIZATION_SERVICE_BASE_URL for localization service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=message service; reason=placeholder value is not allowed; envKeys=MESSAGE_SERVICE_BASE_URL,LUMIRA_MESSAGE_SERVICE_BASE_URL; action=Set MESSAGE_SERVICE_BASE_URL or LUMIRA_MESSAGE_SERVICE_BASE_URL for message service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=message service; reason=must use HTTPS for production-equivalent evidence; envKeys=MESSAGE_SERVICE_BASE_URL,LUMIRA_MESSAGE_SERVICE_BASE_URL; action=Set MESSAGE_SERVICE_BASE_URL or LUMIRA_MESSAGE_SERVICE_BASE_URL for message service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=payment service; reason=placeholder value is not allowed; envKeys=PAYMENT_SERVICE_BASE_URL,LUMIRA_PAYMENT_SERVICE_BASE_URL; action=Set PAYMENT_SERVICE_BASE_URL or LUMIRA_PAYMENT_SERVICE_BASE_URL for payment service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=payment service; reason=must use HTTPS for production-equivalent evidence; envKeys=PAYMENT_SERVICE_BASE_URL,LUMIRA_PAYMENT_SERVICE_BASE_URL; action=Set PAYMENT_SERVICE_BASE_URL or LUMIRA_PAYMENT_SERVICE_BASE_URL for payment service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=plugin service; reason=placeholder value is not allowed; envKeys=PLUGIN_SERVICE_BASE_URL,LUMIRA_PLUGIN_SERVICE_BASE_URL; action=Set PLUGIN_SERVICE_BASE_URL or LUMIRA_PLUGIN_SERVICE_BASE_URL for plugin service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=plugin service; reason=must use HTTPS for production-equivalent evidence; envKeys=PLUGIN_SERVICE_BASE_URL,LUMIRA_PLUGIN_SERVICE_BASE_URL; action=Set PLUGIN_SERVICE_BASE_URL or LUMIRA_PLUGIN_SERVICE_BASE_URL for plugin service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=system service; reason=placeholder value is not allowed; envKeys=SYSTEM_SERVICE_BASE_URL,LUMIRA_SYSTEM_SERVICE_BASE_URL; action=Set SYSTEM_SERVICE_BASE_URL or LUMIRA_SYSTEM_SERVICE_BASE_URL for system service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=system service; reason=must use HTTPS for production-equivalent evidence; envKeys=SYSTEM_SERVICE_BASE_URL,LUMIRA_SYSTEM_SERVICE_BASE_URL; action=Set SYSTEM_SERVICE_BASE_URL or LUMIRA_SYSTEM_SERVICE_BASE_URL for system service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
 - owner=plugin-owner pendingItems=1 collapsedItems=0 sources=rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT
   - ownerAction: source=rollback; id=Plugin; reason=Plugin rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.
-- owner=release-infra pendingItems=24 collapsedItems=1 sources=docker=4,release-config=14,release-env-lint=2,runtime-readiness=4 collapsedSources=orchestrator=1 envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,BASE_URL,CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME,DDD_AUTH_PASSWORD,DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE,DDD_AUTH_PERF_ENVIRONMENT,DDD_AUTH_USERNAME,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_DEPLOYMENT_EVIDENCE,DDD_DOCKER_BUILD_STRICT,DDD_DOCKER_COMMAND,DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_EXPLAIN_DATABASE,DDD_FRONTEND_DEPLOYMENT_EVIDENCE,DDD_MIGRATION_COMPLETED_AT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_OPERATOR,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,DDD_RELEASE_CANDIDATE,DEPLOY_CHECK_BASE_URL,FIELD_SECRET,FILE_SERVICE_BASE_URL,FRONTEND_BASE_URL,JOB_EXECUTOR_BASE_URL,JWT_SECRET,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_BASE_URL,MESSAGE_SERVICE_BASE_URL,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PASSWORD,MYSQL_PORT,MYSQL_USER,PAYMENT_PUBLIC_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLAYWRIGHT_BASE_URL,PLUGIN_SERVICE_BASE_URL,REDIS_HOST,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,SAAS_SECURITY_FIELD_SECRET,SAAS_SECURITY_JWT_SECRET,SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS,SPRING_DATASOURCE_PASSWORD,SPRING_DATASOURCE_URL,SPRING_DATASOURCE_USERNAME,SPRING_DATA_REDIS_HOST,SYSTEM_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES
-  - ownerAction: source=docker; id=docker-blocker-1; reason=lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
-  - ownerAction: source=docker; id=docker-blocker-2; reason=frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
-  - ownerAction: source=docker; id=docker-image-frontend-failed; reason=docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
-  - ownerAction: source=docker; id=docker-image-lumira-server-failed; reason=docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
-  - ownerAction: source=release-config; id=backend base url; reason=placeholder value is not allowed; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL; action=Set LUMIRA_BASE_URL or DEPLOY_CHECK_BASE_URL for backend base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=backend base url; reason=must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL; action=Set LUMIRA_BASE_URL or DEPLOY_CHECK_BASE_URL for backend base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=cors origins; reason=placeholder value is not allowed; envKeys=CORS_ALLOWED_ORIGIN_PATTERNS,SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS; action=Set CORS_ALLOWED_ORIGIN_PATTERNS or SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS for cors origins in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=database password; reason=placeholder value is not allowed; envKeys=DB_PASSWORD,SPRING_DATASOURCE_PASSWORD,MYSQL_PASSWORD; action=Set DB_PASSWORD or SPRING_DATASOURCE_PASSWORD or MYSQL_PASSWORD for database password in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=database password; reason=must be at least 16 characters; envKeys=DB_PASSWORD,SPRING_DATASOURCE_PASSWORD,MYSQL_PASSWORD; action=Set DB_PASSWORD or SPRING_DATASOURCE_PASSWORD or MYSQL_PASSWORD for database password in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=database url; reason=placeholder value is not allowed; envKeys=DB_URL,SPRING_DATASOURCE_URL; action=Set DB_URL or SPRING_DATASOURCE_URL for database url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=database username; reason=placeholder value is not allowed; envKeys=DB_USERNAME,SPRING_DATASOURCE_USERNAME,MYSQL_USER; action=Set DB_USERNAME or SPRING_DATASOURCE_USERNAME or MYSQL_USER for database username in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=field secret; reason=placeholder value is not allowed; envKeys=FIELD_SECRET,SAAS_SECURITY_FIELD_SECRET; action=Set FIELD_SECRET or SAAS_SECURITY_FIELD_SECRET for field secret in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=field secret; reason=must be at least 32 characters; envKeys=FIELD_SECRET,SAAS_SECURITY_FIELD_SECRET; action=Set FIELD_SECRET or SAAS_SECURITY_FIELD_SECRET for field secret in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=frontend base url; reason=placeholder value is not allowed; envKeys=PLAYWRIGHT_BASE_URL,FRONTEND_BASE_URL; action=Set PLAYWRIGHT_BASE_URL or FRONTEND_BASE_URL for frontend base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=frontend base url; reason=must use HTTPS for production-equivalent evidence; envKeys=PLAYWRIGHT_BASE_URL,FRONTEND_BASE_URL; action=Set PLAYWRIGHT_BASE_URL or FRONTEND_BASE_URL for frontend base url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=jwt secret; reason=placeholder value is not allowed; envKeys=JWT_SECRET,SAAS_SECURITY_JWT_SECRET; action=Set JWT_SECRET or SAAS_SECURITY_JWT_SECRET for jwt secret in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=jwt secret; reason=must be at least 32 characters; envKeys=JWT_SECRET,SAAS_SECURITY_JWT_SECRET; action=Set JWT_SECRET or SAAS_SECURITY_JWT_SECRET for jwt secret in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-config; id=redis host; reason=placeholder value is not allowed; envKeys=REDIS_HOST,SPRING_DATA_REDIS_HOST; action=Set REDIS_HOST or SPRING_DATA_REDIS_HOST for redis host in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.
-  - ownerAction: source=release-env-lint; id=release-env-lint-placeholders; reason=unresolvedTemplateKeys=93; envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,BASE_URL,CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME,DDD_AUTH_PASSWORD,DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE,DDD_AUTH_PERF_ENVIRONMENT,DDD_AUTH_USERNAME,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_DEPLOYMENT_EVIDENCE,DDD_EXPLAIN_DATABASE,DDD_FRONTEND_DEPLOYMENT_EVIDENCE,DDD_MIGRATION_COMPLETED_AT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_OPERATOR,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,FIELD_SECRET,FILE_SERVICE_BASE_URL,JOB_EXECUTOR_BASE_URL,JWT_SECRET,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_BASE_URL,MESSAGE_SERVICE_BASE_URL,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PORT,PAYMENT_PUBLIC_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLAYWRIGHT_BASE_URL,PLUGIN_SERVICE_BASE_URL,REDIS_HOST,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES; action=Replace every placeholder-like value (`<placeholder>`, `replace-with-*`, TODO/TBD, example domains) in `DDD_RELEASE_ENV_FILE` before running release evidence.
-  - ownerAction: source=release-env-lint; id=release-env-lint-status; reason=status=FAIL primaryBlockers=55; envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,BASE_URL,CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME,DDD_AUTH_PASSWORD,DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE,DDD_AUTH_PERF_ENVIRONMENT,DDD_AUTH_USERNAME,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_DEPLOYMENT_EVIDENCE,DDD_EXPLAIN_DATABASE,DDD_FRONTEND_DEPLOYMENT_EVIDENCE,DDD_MIGRATION_COMPLETED_AT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_OPERATOR,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,FIELD_SECRET,FILE_SERVICE_BASE_URL,JOB_EXECUTOR_BASE_URL,JWT_SECRET,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_BASE_URL,MESSAGE_SERVICE_BASE_URL,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PORT,PAYMENT_PUBLIC_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLAYWRIGHT_BASE_URL,PLUGIN_SERVICE_BASE_URL,REDIS_HOST,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES; action=Replace placeholders and invalid values in `DDD_RELEASE_ENV_FILE`, then rerun `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`.
+- owner=release-infra pendingItems=9 collapsedItems=0 sources=docker=4,orchestrator=1,runtime-readiness=4 collapsedSources=none envKeys=BASE_URL,DDD_DOCKER_BUILD_STRICT,DDD_DOCKER_COMMAND,DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL
+  - ownerAction: source=docker; id=docker-blocker-1; reason=lumira-server: docker build failed: #5 DONE 0.3s
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#4 DONE 0.8s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 309B 0.0s done
+#6 DONE 0.1s
+
+#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603
+#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done
+#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done
+#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done
+#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done
+#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done
+#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done
+#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done
+#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done
+#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done
+#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done
+#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done
+#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done
+#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done
+#7 DONE 14.7s
+
+#8 [stage-1 2/5] WORKDIR /app
+#8 DONE 0.3s
+
+#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data
+#9 DONE 3.3s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done
+#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done
+#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done
+#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done
+#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done
+#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done
+#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done
+#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done
+#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 20.64MB 10.0s
+#11 ...
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 338.84MB 18.4s done
+#11 DONE 18.4s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s
+#10 DONE 145.1s
+
+#12 [builder  2/21] WORKDIR /workspace
+#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF
+------
+ > [builder  2/21] WORKDIR /workspace:
+------
+ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
+  - ownerAction: source=docker; id=docker-blocker-2; reason=frontend: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
+  - ownerAction: source=docker; id=docker-image-frontend-failed; reason=docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
+  - ownerAction: source=docker; id=docker-image-lumira-server-failed; reason=docker build failed: #5 DONE 0.3s
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#4 DONE 0.8s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 309B 0.0s done
+#6 DONE 0.1s
+
+#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603
+#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done
+#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done
+#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done
+#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done
+#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done
+#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done
+#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done
+#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done
+#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done
+#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done
+#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done
+#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done
+#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done
+#7 DONE 14.7s
+
+#8 [stage-1 2/5] WORKDIR /app
+#8 DONE 0.3s
+
+#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data
+#9 DONE 3.3s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done
+#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done
+#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done
+#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done
+#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done
+#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done
+#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done
+#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done
+#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 20.64MB 10.0s
+#11 ...
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 338.84MB 18.4s done
+#11 DONE 18.4s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s
+#10 DONE 145.1s
+
+#12 [builder  2/21] WORKDIR /workspace
+#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF
+------
+ > [builder  2/21] WORKDIR /workspace:
+------
+ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
+  - ownerAction: source=orchestrator; id=orchestrator-preflight-backend-runtime-base-url; reason=missing backend runtime base URL; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL; action=Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.
   - ownerAction: source=runtime-readiness; id=runtime-readiness-contract-1; reason=runtime readiness productionEquivalence.strict must be true for strict release evidence; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
   - ownerAction: source=runtime-readiness; id=runtime-readiness-contract-2; reason=runtime readiness productionEquivalence.https must be true for strict release evidence; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
   - ownerAction: source=runtime-readiness; id=runtime-readiness-contract-3; reason=runtime readiness productionEquivalence.localOnly must be false for strict release evidence; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
   - ownerAction: source=runtime-readiness; id=runtime-readiness-contract-4; reason=runtime readiness productionEquivalence.deploymentEvidence is required; envKeys=LUMIRA_BASE_URL,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.
-  - ownerActionCollapsed: source=orchestrator; id=orchestrator-preflight-backend-runtime-base-url; coveredBy=release-config:backend base url; reason=missing backend runtime base URL; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL
 - owner=release-owner pendingItems=2 collapsedItems=0 sources=manifest=1,orchestrator=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_RELEASE_EVIDENCE_STRICT,DDD_RELEASE_MANIFEST_STRICT
   - ownerAction: source=manifest; id=manifest-missing-no-explain-json-files-in-tmp-ddd-explain; reason=no explain JSON files in tmp\ddd-explain; envKeys=DDD_RELEASE_MANIFEST_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Regenerate the missing evidence artifact, then rerun `node scripts/ddd-release-evidence-manifest.mjs`.
   - ownerAction: source=orchestrator; id=orchestrator-run-mode; reason=strict release requires run mode report, got plan; envKeys=DDD_RELEASE_EVIDENCE_STRICT; action=Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.
@@ -269,115 +358,21 @@ Release gate warnings: 8
 
 ## Release Env Lint
 
-- status: FAIL inputKind=release-env-file envFile=.env.release.local keys=132 blockers=156 primaryBlockers=55
-- envFileSecurity: checked=true mode=600 permissionSafe=true permissionCheckSkipped=false reason=env-file requiredMode=600
-- unresolvedTemplateKeys: 93
-- releaseConfigBlockers: 63
-- releaseConfigBlockersFromPlaceholders: 63
+- status: PASS inputKind=release-env-file envFile=.env.release.local keys=80 blockers=0 primaryBlockers=0
+- envFileSecurity: checked=true mode=666 permissionSafe=true permissionCheckSkipped=true reason=env-file requiredMode=600
+- unresolvedTemplateKeys: 0
+- releaseConfigBlockers: 0
+- releaseConfigBlockersFromPlaceholders: 0
 - releaseConfigBlockersAfterPlaceholders: 0
-- actionPlan: owner=release-infra pendingItems=2 envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,BASE_URL,CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME,DDD_AUTH_PASSWORD,DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE,DDD_AUTH_PERF_ENVIRONMENT,DDD_AUTH_USERNAME,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_DEPLOYMENT_EVIDENCE,DDD_EXPLAIN_DATABASE,DDD_FRONTEND_DEPLOYMENT_EVIDENCE,DDD_MIGRATION_COMPLETED_AT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_OPERATOR,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,FIELD_SECRET,FILE_SERVICE_BASE_URL,JOB_EXECUTOR_BASE_URL,JWT_SECRET,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_BASE_URL,MESSAGE_SERVICE_BASE_URL,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PORT,PAYMENT_PUBLIC_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLAYWRIGHT_BASE_URL,PLUGIN_SERVICE_BASE_URL,REDIS_HOST,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES
-- envLintAction: release-env-lint-status; owner=release-infra; reason=status=FAIL primaryBlockers=55; envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,BASE_URL,CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME,DDD_AUTH_PASSWORD,DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE,DDD_AUTH_PERF_ENVIRONMENT,DDD_AUTH_USERNAME,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_DEPLOYMENT_EVIDENCE,DDD_EXPLAIN_DATABASE,DDD_FRONTEND_DEPLOYMENT_EVIDENCE,DDD_MIGRATION_COMPLETED_AT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_OPERATOR,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,FIELD_SECRET,FILE_SERVICE_BASE_URL,JOB_EXECUTOR_BASE_URL,JWT_SECRET,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_BASE_URL,MESSAGE_SERVICE_BASE_URL,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PORT,PAYMENT_PUBLIC_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLAYWRIGHT_BASE_URL,PLUGIN_SERVICE_BASE_URL,REDIS_HOST,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES; action=Replace placeholders and invalid values in `DDD_RELEASE_ENV_FILE`, then rerun `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`.
-- envLintAction: release-env-lint-placeholders; owner=release-infra; reason=unresolvedTemplateKeys=93; envKeys=AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,BASE_URL,CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME,DDD_AUTH_PASSWORD,DDD_AUTH_PERF_BASELINE_ACCEPTED_BY,DDD_AUTH_PERF_BASELINE_ENVIRONMENT,DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT,DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE,DDD_AUTH_PERF_ENVIRONMENT,DDD_AUTH_USERNAME,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_DEPLOYMENT_EVIDENCE,DDD_EXPLAIN_DATABASE,DDD_FRONTEND_DEPLOYMENT_EVIDENCE,DDD_MIGRATION_COMPLETED_AT,DDD_MIGRATION_FRESH_DB_EVIDENCE,DDD_MIGRATION_FRESH_DB_VALIDATED,DDD_MIGRATION_OPERATOR,DDD_MIGRATION_UPGRADE_DB_EVIDENCE,DDD_MIGRATION_UPGRADE_DB_VALIDATED,FIELD_SECRET,FILE_SERVICE_BASE_URL,JOB_EXECUTOR_BASE_URL,JWT_SECRET,LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL,LUMIRA_BASE_URL,MESSAGE_SERVICE_BASE_URL,MYSQL_DATABASE,MYSQL_HOST,MYSQL_PORT,PAYMENT_PUBLIC_BASE_URL,PAYMENT_SERVICE_BASE_URL,PLAYWRIGHT_BASE_URL,PLUGIN_SERVICE_BASE_URL,REDIS_HOST,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES; action=Replace every placeholder-like value (`<placeholder>`, `replace-with-*`, TODO/TBD, example domains) in `DDD_RELEASE_ENV_FILE` before running release evidence.
+- actionPlan: owner=release-infra pendingItems=0 envKeys=none
 
 ## Release Config Blockers
 
-- status: FAIL inputKind=release-env-file envFile=/Users/johntao/Documents/GitHub/Lumira/.env.release.local envFileExists=true
-- blockerSummary: blockers=63 primaryBlockers=0 fromPlaceholders=63 afterPlaceholders=0
+- status: PASS inputKind=release-env-file envFile=.env.release.local envFileExists=true
+- blockerSummary: blockers=0 primaryBlockers=0 fromPlaceholders=0 afterPlaceholders=0
 - coverage: required=46 runtimePresent=46 envFile=46 template=46 workflow=46
 - missingRuntimeRequiredChecks: 0
-- owners: ai-owner=12, payment-owner=2, platform-events=17, platform-owners=18, release-infra=14
-- groups: ai=12, jobs-and-events=17, owner-services=18, payment=2, runtime=14
-- ownerPlan: ai-owner missingChecks=12; envKeys=13 keys
-  - envKeys: 13 keys
-    - LUMIRA_AI_OWNER_FILE_BASE_URL,LUMIRA_AI_OWNER_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL
-    - LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_OWNER_INTERNAL_TOKEN,LUMIRA_AI_OWNER_PLATFORM_BASE_URL
-    - LUMIRA_AI_PROVIDER_API_KEY,LUMIRA_AI_PROVIDER_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL
-    - SAAS_JOB_INTERNAL_TOKEN
-- ownerPlan: payment-owner missingChecks=2; envKeys=PAYMENT_PUBLIC_BASE_URL
-- ownerPlan: platform-events missingChecks=17; envKeys=20 keys
-  - envKeys: 20 keys
-    - DDD_JOB_INTERNAL_TOKEN,LUMIRA_EVENT_REDIS_STREAM_KEY,LUMIRA_JOB_BACKEND_BASE_URL,LUMIRA_JOB_FILE_SERVICE_BASE_URL
-    - LUMIRA_JOB_INTERNAL_TOKEN,LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL,LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL,LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL
-    - LUMIRA_XXL_JOB_ACCESS_TOKEN,LUMIRA_XXL_JOB_ADMIN_ADDRESSES,SAAS_EVENT_REDIS_STREAM_KEY,SAAS_JOB_BACKEND_BASE_URL
-    - SAAS_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_INTERNAL_TOKEN,SAAS_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL
-    - SAAS_JOB_PLUGIN_SERVICE_BASE_URL,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ACCESS_TOKEN,XXL_JOB_ADMIN_ADDRESSES
-- ownerPlan: platform-owners missingChecks=18; envKeys=19 keys
-  - envKeys: 19 keys
-    - AI_SERVICE_BASE_URL,AUTH_SERVICE_BASE_URL,FILE_SERVICE_BASE_URL,JOB_EXECUTOR_BASE_URL
-    - LOCALIZATION_SERVICE_BASE_URL,LUMIRA_AI_BASE_URL,LUMIRA_AI_SERVICE_BASE_URL,LUMIRA_AUTH_SERVICE_BASE_URL
-    - LUMIRA_FILE_SERVICE_BASE_URL,LUMIRA_JOB_EXECUTOR_BASE_URL,LUMIRA_LOCALIZATION_SERVICE_BASE_URL,LUMIRA_MESSAGE_SERVICE_BASE_URL
-    - LUMIRA_PAYMENT_SERVICE_BASE_URL,LUMIRA_PLUGIN_SERVICE_BASE_URL,LUMIRA_SYSTEM_SERVICE_BASE_URL,MESSAGE_SERVICE_BASE_URL
-    - PAYMENT_SERVICE_BASE_URL,PLUGIN_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL
-- ownerPlan: release-infra missingChecks=14; envKeys=20 keys
-  - envKeys: 20 keys
-    - CORS_ALLOWED_ORIGIN_PATTERNS,DB_PASSWORD,DB_URL,DB_USERNAME
-    - DEPLOY_CHECK_BASE_URL,FIELD_SECRET,FRONTEND_BASE_URL,JWT_SECRET
-    - LUMIRA_BASE_URL,MYSQL_PASSWORD,MYSQL_USER,PLAYWRIGHT_BASE_URL
-    - REDIS_HOST,SAAS_SECURITY_FIELD_SECRET,SAAS_SECURITY_JWT_SECRET,SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS
-    - SPRING_DATASOURCE_PASSWORD,SPRING_DATASOURCE_URL,SPRING_DATASOURCE_USERNAME,SPRING_DATA_REDIS_HOST
-- [release-infra][runtime] backend base url: placeholder value is not allowed; envKeys=DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL
-- [release-infra][runtime] backend base url: must use HTTPS for production-equivalent evidence; envKeys=DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL
-- [release-infra][runtime] frontend base url: placeholder value is not allowed; envKeys=FRONTEND_BASE_URL,PLAYWRIGHT_BASE_URL
-- [release-infra][runtime] frontend base url: must use HTTPS for production-equivalent evidence; envKeys=FRONTEND_BASE_URL,PLAYWRIGHT_BASE_URL
-- [release-infra][runtime] database url: placeholder value is not allowed; envKeys=DB_URL,SPRING_DATASOURCE_URL
-- [release-infra][runtime] database username: placeholder value is not allowed; envKeys=DB_USERNAME,MYSQL_USER,SPRING_DATASOURCE_USERNAME
-- [release-infra][runtime] database password: placeholder value is not allowed; envKeys=DB_PASSWORD,MYSQL_PASSWORD,SPRING_DATASOURCE_PASSWORD
-- [release-infra][runtime] database password: must be at least 16 characters; envKeys=DB_PASSWORD,MYSQL_PASSWORD,SPRING_DATASOURCE_PASSWORD
-- [release-infra][runtime] redis host: placeholder value is not allowed; envKeys=REDIS_HOST,SPRING_DATA_REDIS_HOST
-- [release-infra][runtime] jwt secret: placeholder value is not allowed; envKeys=JWT_SECRET,SAAS_SECURITY_JWT_SECRET
-- [release-infra][runtime] jwt secret: must be at least 32 characters; envKeys=JWT_SECRET,SAAS_SECURITY_JWT_SECRET
-- [release-infra][runtime] field secret: placeholder value is not allowed; envKeys=FIELD_SECRET,SAAS_SECURITY_FIELD_SECRET
-- [release-infra][runtime] field secret: must be at least 32 characters; envKeys=FIELD_SECRET,SAAS_SECURITY_FIELD_SECRET
-- [release-infra][runtime] cors origins: placeholder value is not allowed; envKeys=CORS_ALLOWED_ORIGIN_PATTERNS,SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS
-- [platform-owners][owner-services] system service: placeholder value is not allowed; envKeys=LUMIRA_SYSTEM_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL
-- [platform-owners][owner-services] system service: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_SYSTEM_SERVICE_BASE_URL,SYSTEM_SERVICE_BASE_URL
-- [platform-owners][owner-services] auth service: placeholder value is not allowed; envKeys=AUTH_SERVICE_BASE_URL,LUMIRA_AUTH_SERVICE_BASE_URL
-- [platform-owners][owner-services] auth service: must use HTTPS for production-equivalent evidence; envKeys=AUTH_SERVICE_BASE_URL,LUMIRA_AUTH_SERVICE_BASE_URL
-- [platform-owners][owner-services] file service: placeholder value is not allowed; envKeys=FILE_SERVICE_BASE_URL,LUMIRA_FILE_SERVICE_BASE_URL
-- [platform-owners][owner-services] file service: must use HTTPS for production-equivalent evidence; envKeys=FILE_SERVICE_BASE_URL,LUMIRA_FILE_SERVICE_BASE_URL
-- [platform-owners][owner-services] message service: placeholder value is not allowed; envKeys=LUMIRA_MESSAGE_SERVICE_BASE_URL,MESSAGE_SERVICE_BASE_URL
-- [platform-owners][owner-services] message service: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_MESSAGE_SERVICE_BASE_URL,MESSAGE_SERVICE_BASE_URL
-- [platform-owners][owner-services] plugin service: placeholder value is not allowed; envKeys=LUMIRA_PLUGIN_SERVICE_BASE_URL,PLUGIN_SERVICE_BASE_URL
-- [platform-owners][owner-services] plugin service: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_PLUGIN_SERVICE_BASE_URL,PLUGIN_SERVICE_BASE_URL
-- [platform-owners][owner-services] localization service: placeholder value is not allowed; envKeys=LOCALIZATION_SERVICE_BASE_URL,LUMIRA_LOCALIZATION_SERVICE_BASE_URL
-- [platform-owners][owner-services] localization service: must use HTTPS for production-equivalent evidence; envKeys=LOCALIZATION_SERVICE_BASE_URL,LUMIRA_LOCALIZATION_SERVICE_BASE_URL
-- [platform-owners][owner-services] payment service: placeholder value is not allowed; envKeys=LUMIRA_PAYMENT_SERVICE_BASE_URL,PAYMENT_SERVICE_BASE_URL
-- [platform-owners][owner-services] payment service: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_PAYMENT_SERVICE_BASE_URL,PAYMENT_SERVICE_BASE_URL
-- [platform-owners][owner-services] ai service: placeholder value is not allowed; envKeys=AI_SERVICE_BASE_URL,LUMIRA_AI_BASE_URL,LUMIRA_AI_SERVICE_BASE_URL
-- [platform-owners][owner-services] ai service: must use HTTPS for production-equivalent evidence; envKeys=AI_SERVICE_BASE_URL,LUMIRA_AI_BASE_URL,LUMIRA_AI_SERVICE_BASE_URL
-- [platform-owners][owner-services] job executor: placeholder value is not allowed; envKeys=JOB_EXECUTOR_BASE_URL,LUMIRA_JOB_EXECUTOR_BASE_URL
-- [platform-owners][owner-services] job executor: must use HTTPS for production-equivalent evidence; envKeys=JOB_EXECUTOR_BASE_URL,LUMIRA_JOB_EXECUTOR_BASE_URL
-- [platform-events][jobs-and-events] job internal token: placeholder value is not allowed; envKeys=DDD_JOB_INTERNAL_TOKEN,LUMIRA_JOB_INTERNAL_TOKEN,SAAS_JOB_INTERNAL_TOKEN
-- [platform-events][jobs-and-events] job internal token: must be at least 32 characters; envKeys=DDD_JOB_INTERNAL_TOKEN,LUMIRA_JOB_INTERNAL_TOKEN,SAAS_JOB_INTERNAL_TOKEN
-- [platform-events][jobs-and-events] job backend url: placeholder value is not allowed; envKeys=LUMIRA_JOB_BACKEND_BASE_URL,SAAS_JOB_BACKEND_BASE_URL
-- [platform-events][jobs-and-events] job backend url: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_JOB_BACKEND_BASE_URL,SAAS_JOB_BACKEND_BASE_URL
-- [platform-events][jobs-and-events] job message url: placeholder value is not allowed; envKeys=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_MESSAGE_SERVICE_BASE_URL
-- [platform-events][jobs-and-events] job message url: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL,SAAS_JOB_MESSAGE_SERVICE_BASE_URL
-- [platform-events][jobs-and-events] job file url: placeholder value is not allowed; envKeys=LUMIRA_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL
-- [platform-events][jobs-and-events] job file url: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_JOB_FILE_SERVICE_BASE_URL,SAAS_JOB_FILE_SERVICE_BASE_URL
-- [platform-events][jobs-and-events] job payment url: placeholder value is not allowed; envKeys=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL
-- [platform-events][jobs-and-events] job payment url: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL,SAAS_JOB_PAYMENT_SERVICE_BASE_URL
-- [platform-events][jobs-and-events] job plugin url: placeholder value is not allowed; envKeys=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL
-- [platform-events][jobs-and-events] job plugin url: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL,SAAS_JOB_PLUGIN_SERVICE_BASE_URL
-- [platform-events][jobs-and-events] xxl job admin: placeholder value is not allowed; envKeys=LUMIRA_XXL_JOB_ADMIN_ADDRESSES,XXL_JOB_ADMIN_ADDRESSES
-- [platform-events][jobs-and-events] xxl job admin: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_XXL_JOB_ADMIN_ADDRESSES,XXL_JOB_ADMIN_ADDRESSES
-- [platform-events][jobs-and-events] xxl job token: placeholder value is not allowed; envKeys=LUMIRA_XXL_JOB_ACCESS_TOKEN,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ACCESS_TOKEN
-- [platform-events][jobs-and-events] xxl job token: must be at least 32 characters; envKeys=LUMIRA_XXL_JOB_ACCESS_TOKEN,XXL_JOB_ACCESS_TOKEN,XXL_JOB_ADMIN_ACCESS_TOKEN
-- [platform-events][jobs-and-events] event stream key: placeholder value is not allowed; envKeys=LUMIRA_EVENT_REDIS_STREAM_KEY,SAAS_EVENT_REDIS_STREAM_KEY
-- [payment-owner][payment] payment public url: placeholder value is not allowed; envKeys=PAYMENT_PUBLIC_BASE_URL
-- [payment-owner][payment] payment public url: must use HTTPS for production-equivalent evidence; envKeys=PAYMENT_PUBLIC_BASE_URL
-- [ai-owner][ai] provider base url: placeholder value is not allowed; envKeys=LUMIRA_AI_PROVIDER_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL
-- [ai-owner][ai] provider base url: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_AI_PROVIDER_BASE_URL,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL
-- [ai-owner][ai] provider api key: placeholder value is not allowed; envKeys=LUMIRA_AI_PROVIDER_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY
-- [ai-owner][ai] provider api key: must be at least 32 characters; envKeys=LUMIRA_AI_PROVIDER_API_KEY,LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY
-- [ai-owner][ai] owner internal token: placeholder value is not allowed; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTERNAL_TOKEN,SAAS_JOB_INTERNAL_TOKEN
-- [ai-owner][ai] owner internal token: must be at least 32 characters; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN,LUMIRA_AI_OWNER_INTERNAL_TOKEN,SAAS_JOB_INTERNAL_TOKEN
-- [ai-owner][ai] iam owner url: placeholder value is not allowed; envKeys=LUMIRA_AI_OWNER_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL
-- [ai-owner][ai] iam owner url: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_AI_OWNER_IAM_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL
-- [ai-owner][ai] platform owner url: placeholder value is not allowed; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_OWNER_PLATFORM_BASE_URL
-- [ai-owner][ai] platform owner url: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL,LUMIRA_AI_OWNER_PLATFORM_BASE_URL
-- [ai-owner][ai] file owner url: placeholder value is not allowed; envKeys=LUMIRA_AI_OWNER_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL
-- [ai-owner][ai] file owner url: must use HTTPS for production-equivalent evidence; envKeys=LUMIRA_AI_OWNER_FILE_BASE_URL,LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL
+- None
 
 ## Authenticated Performance Diagnostics
 
@@ -474,26 +469,260 @@ Release gate warnings: 8
 - status: FAIL
 - command: docker
 - cliStatus: 0
-- cliVersion: Docker version 29.4.1, build 055a478
+- cliVersion: Docker version 29.5.3, build d1c06ef
 - daemonStatus: 0
 - images: passed=0 failed=2 skipped=0
-- image lumira-server: status=FAIL dockerfile=deploy/docker/service.Dockerfile tag=lumira/lumira-server:ddd-evidence-1781646165231 expectedPort=8080/tcp nonRoot=true
-  staticDockerfile: status=PASS exists=true sha256=42f80e8a1460738aafc392fb1c38544b6551ba5cba2cd2d0e8cba5af0e407258
-  blockers: docker build failed after 3 attempt(s) with transient registry/network error status 1
+- image lumira-server: status=FAIL dockerfile=deploy/docker/service.Dockerfile tag=lumira/lumira-server:ddd-evidence-1781855618086 expectedPort=8080/tcp nonRoot=true
+  staticDockerfile: status=PASS exists=true sha256=b028411f0ed5fb4bdb8a45a40d1764b118d25069179b14150dd6b6dc38494fe4
+  blockers: docker build failed: #5 DONE 0.3s
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#4 DONE 0.8s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 309B 0.0s done
+#6 DONE 0.1s
+
+#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603
+#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done
+#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done
+#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done
+#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done
+#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done
+#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done
+#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done
+#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done
+#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done
+#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done
+#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done
+#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done
+#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done
+#7 DONE 14.7s
+
+#8 [stage-1 2/5] WORKDIR /app
+#8 DONE 0.3s
+
+#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data
+#9 DONE 3.3s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done
+#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done
+#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done
+#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done
+#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done
+#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done
+#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done
+#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done
+#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 20.64MB 10.0s
+#11 ...
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 338.84MB 18.4s done
+#11 DONE 18.4s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s
+#10 DONE 145.1s
+
+#12 [builder  2/21] WORKDIR /workspace
+#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF
+------
+ > [builder  2/21] WORKDIR /workspace:
+------
+ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF
   action: Inspect Docker build blockers and rebuild the image evidence artifact.
-- image frontend: status=FAIL dockerfile=deploy/docker/frontend.Dockerfile tag=lumira/frontend:ddd-evidence-1781646165231 expectedPort=80/tcp nonRoot=false
-  staticDockerfile: status=PASS exists=true sha256=d496bb904425c77402b04078c552d961e3491e3aba933804c7006dbf0fdd8ccc
-  blockers: docker build failed after 3 attempt(s) with transient registry/network error status 1
+- image frontend: status=FAIL dockerfile=deploy/docker/frontend.Dockerfile tag=lumira/frontend:ddd-evidence-1781855618086 expectedPort=80/tcp nonRoot=false
+  staticDockerfile: status=PASS exists=true sha256=43dc2013cd3f3595bbbba2b76c74e873fdd7bec13826e30fbc4a3a2fd01f1f78
+  blockers: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT
   action: Inspect Docker build blockers and rebuild the image evidence artifact.
 - actionPlan: owner=release-infra pendingItems=4 envKeys=DDD_DOCKER_BUILD_STRICT,DDD_DOCKER_COMMAND
-- dockerAction: docker-blocker-1; owner=release-infra; reason=lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
-- dockerAction: docker-blocker-2; owner=release-infra; reason=frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
-- dockerAction: docker-image-frontend-failed; owner=release-infra; reason=docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; image=frontend; dockerfile=deploy/docker/frontend.Dockerfile; action=Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
-- dockerAction: docker-image-lumira-server-failed; owner=release-infra; reason=docker build failed after 3 attempt(s) with transient registry/network error status 1; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; image=lumira-server; dockerfile=deploy/docker/service.Dockerfile; action=Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
+- dockerAction: docker-blocker-1; owner=release-infra; reason=lumira-server: docker build failed: #5 DONE 0.3s
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#4 DONE 0.8s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 309B 0.0s done
+#6 DONE 0.1s
+
+#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603
+#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done
+#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done
+#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done
+#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done
+#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done
+#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done
+#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done
+#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done
+#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done
+#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done
+#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done
+#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done
+#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done
+#7 DONE 14.7s
+
+#8 [stage-1 2/5] WORKDIR /app
+#8 DONE 0.3s
+
+#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data
+#9 DONE 3.3s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done
+#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done
+#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done
+#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done
+#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done
+#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done
+#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done
+#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done
+#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 20.64MB 10.0s
+#11 ...
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 338.84MB 18.4s done
+#11 DONE 18.4s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s
+#10 DONE 145.1s
+
+#12 [builder  2/21] WORKDIR /workspace
+#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF
+------
+ > [builder  2/21] WORKDIR /workspace:
+------
+ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
+- dockerAction: docker-blocker-2; owner=release-infra; reason=frontend: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; action=Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
+- dockerAction: docker-image-frontend-failed; owner=release-infra; reason=docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; image=frontend; dockerfile=deploy/docker/frontend.Dockerfile; action=Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
+- dockerAction: docker-image-lumira-server-failed; owner=release-infra; reason=docker build failed: #5 DONE 0.3s
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#4 DONE 0.8s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 309B 0.0s done
+#6 DONE 0.1s
+
+#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603
+#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done
+#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done
+#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done
+#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done
+#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done
+#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done
+#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done
+#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done
+#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done
+#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done
+#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done
+#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done
+#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done
+#7 DONE 14.7s
+
+#8 [stage-1 2/5] WORKDIR /app
+#8 DONE 0.3s
+
+#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data
+#9 DONE 3.3s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done
+#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done
+#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done
+#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done
+#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done
+#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done
+#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done
+#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done
+#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 20.64MB 10.0s
+#11 ...
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 338.84MB 18.4s done
+#11 DONE 18.4s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s
+#10 DONE 145.1s
+
+#12 [builder  2/21] WORKDIR /workspace
+#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF
+------
+ > [builder  2/21] WORKDIR /workspace:
+------
+ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF; envKeys=DDD_DOCKER_COMMAND,DDD_DOCKER_BUILD_STRICT; image=lumira-server; dockerfile=deploy/docker/service.Dockerfile; action=Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.
 - remediation: transientRegistryFailure=true dockerUnavailable=false
-- dockerTransientImage: lumira-server; attempts=3; retries=2; dockerfile=deploy/docker/service.Dockerfile
 - dockerTransientImage: frontend; attempts=3; retries=2; dockerfile=deploy/docker/frontend.Dockerfile
-- dockerRemediationAction: docker-registry-mirror-retry; owner=release-infra; envKeys=DDD_DOCKER_BUILD_RETRIES,DDD_DOCKER_MAVEN_IMAGE,DDD_DOCKER_JRE_IMAGE,DDD_DOCKER_NODE_IMAGE,DDD_DOCKER_NGINX_IMAGE; action=Rerun Docker evidence with registry-local mirror images and a higher retry budget.; exampleCommand=DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs
+- dockerRemediationAction: docker-registry-mirror-retry; owner=release-infra; envKeys=DDD_DOCKER_COMMAND_TIMEOUT_MS,DDD_DOCKER_BUILD_RETRIES,DDD_DOCKER_MAVEN_IMAGE,DDD_DOCKER_JRE_IMAGE,DDD_DOCKER_NODE_IMAGE,DDD_DOCKER_NGINX_IMAGE; action=Rerun Docker evidence with registry-local mirror images and a higher retry budget.; exampleCommand=DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs
+- dockerRemediationAction: docker-existing-image-inspect; owner=release-infra; envKeys=DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE,DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE,DDD_DOCKER_EXISTING_FRONTEND_IMAGE; action=If CI already built and pushed the release candidate images, pull them and rerun Docker evidence in explicit inspect-only mode.; exampleCommand=DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs
 - None
 
 ## Frontend Smoke Missing Flows

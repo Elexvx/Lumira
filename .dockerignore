@@ -6,14 +6,15 @@
 
 **/target
 **/node_modules
-frontend/dist
-frontend/.turbopack
-frontend/src/.umi
-frontend/src/.umi-production
-frontend/playwright-report
-frontend/test-results
+lumira-ui/dist
+lumira-ui/.turbopack
+lumira-ui/src/.umi
+lumira-ui/src/.umi-production
+lumira-ui/playwright-report
+lumira-ui/test-results
 
-services/*/storage
+lumira-backend/services/*/storage
+lumira-backend/storage
 output
 *.log
 *.tmp

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "envFile": ".env.release.local",
   "ownerCount": 6,
@@ -51,18 +51,18 @@
         "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
         "node scripts/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-        "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
         "node scripts/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ]
     },
     {
       "owner": "ai-owner",
-      "queueOrder": 2,
-      "queueStatus": "ACTIONABLE",
-      "canExecute": true,
-      "templatePath": "artifacts/ddd/release/release-env-owner-templates/02-ai-owner.env",
-      "fileName": "02-ai-owner.env",
+      "queueOrder": 5,
+      "queueStatus": "WAITING",
+      "canExecute": false,
+      "templatePath": "artifacts/ddd/release/release-env-owner-templates/05-ai-owner.env",
+      "fileName": "05-ai-owner.env",
       "canonicalFillItemCount": 12,
       "secretCanonicalKeyCount": 2,
       "safeToPreFillCanonicalKeyCount": 6,
@@ -102,17 +102,54 @@
         "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
         "node scripts/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+        "node scripts/ddd-rollback-deferral-template.mjs",
+        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+      ]
+    },
+    {
+      "owner": "file-owner",
+      "queueOrder": 8,
+      "queueStatus": "WAITING",
+      "canExecute": false,
+      "templatePath": "artifacts/ddd/release/release-env-owner-templates/08-file-owner.env",
+      "fileName": "08-file-owner.env",
+      "canonicalFillItemCount": 3,
+      "secretCanonicalKeyCount": 0,
+      "safeToPreFillCanonicalKeyCount": 3,
+      "canonicalKeys": [
+        "LUMIRA_FILE_OCR_MODE",
+        "LUMIRA_FILE_SECURITY_SCAN_MODE",
+        "UPLOAD_STORAGE_ROOT"
+      ],
+      "secretCanonicalKeys": [],
+      "safeToPreFillCanonicalKeys": [
+        "LUMIRA_FILE_OCR_MODE",
+        "LUMIRA_FILE_SECURITY_SCAN_MODE",
+        "UPLOAD_STORAGE_ROOT"
+      ],
+      "postFillCommands": [
+        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+        "node scripts/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+        "node scripts/ddd-file-processing-e2e-smoke.mjs",
         "node scripts/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ]
     },
     {
       "owner": "payment-owner",
-      "queueOrder": 3,
-      "queueStatus": "ACTIONABLE",
-      "canExecute": true,
-      "templatePath": "artifacts/ddd/release/release-env-owner-templates/03-payment-owner.env",
-      "fileName": "03-payment-owner.env",
+      "queueOrder": 14,
+      "queueStatus": "WAITING",
+      "canExecute": false,
+      "templatePath": "artifacts/ddd/release/release-env-owner-templates/14-payment-owner.env",
+      "fileName": "14-payment-owner.env",
       "canonicalFillItemCount": 2,
       "secretCanonicalKeyCount": 1,
       "safeToPreFillCanonicalKeyCount": 0,
@@ -134,17 +171,18 @@
         "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
         "node scripts/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
         "node scripts/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ]
     },
     {
       "owner": "platform-events",
-      "queueOrder": 4,
-      "queueStatus": "ACTIONABLE",
-      "canExecute": true,
-      "templatePath": "artifacts/ddd/release/release-env-owner-templates/04-platform-events.env",
-      "fileName": "04-platform-events.env",
+      "queueOrder": 0,
+      "queueStatus": "WAITING",
+      "canExecute": false,
+      "templatePath": "artifacts/ddd/release/release-env-owner-templates/00-platform-events.env",
+      "fileName": "00-platform-events.env",
       "canonicalFillItemCount": 10,
       "secretCanonicalKeyCount": 3,
       "safeToPreFillCanonicalKeyCount": 1,
@@ -184,11 +222,11 @@
     },
     {
       "owner": "platform-owners",
-      "queueOrder": 5,
-      "queueStatus": "ACTIONABLE",
-      "canExecute": true,
-      "templatePath": "artifacts/ddd/release/release-env-owner-templates/05-platform-owners.env",
-      "fileName": "05-platform-owners.env",
+      "queueOrder": 0,
+      "queueStatus": "WAITING",
+      "canExecute": false,
+      "templatePath": "artifacts/ddd/release/release-env-owner-templates/00-platform-owners.env",
+      "fileName": "00-platform-owners.env",
       "canonicalFillItemCount": 9,
       "secretCanonicalKeyCount": 0,
       "safeToPreFillCanonicalKeyCount": 0,
@@ -215,42 +253,6 @@
         "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
         "node scripts/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-        "node scripts/ddd-release-readiness-summary.mjs",
-        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
-      ]
-    },
-    {
-      "owner": "file-owner",
-      "queueOrder": 11,
-      "queueStatus": "WAITING",
-      "canExecute": false,
-      "templatePath": "artifacts/ddd/release/release-env-owner-templates/11-file-owner.env",
-      "fileName": "11-file-owner.env",
-      "canonicalFillItemCount": 3,
-      "secretCanonicalKeyCount": 0,
-      "safeToPreFillCanonicalKeyCount": 3,
-      "canonicalKeys": [
-        "LUMIRA_FILE_OCR_MODE",
-        "LUMIRA_FILE_SECURITY_SCAN_MODE",
-        "UPLOAD_STORAGE_ROOT"
-      ],
-      "secretCanonicalKeys": [],
-      "safeToPreFillCanonicalKeys": [
-        "LUMIRA_FILE_OCR_MODE",
-        "LUMIRA_FILE_SECURITY_SCAN_MODE",
-        "UPLOAD_STORAGE_ROOT"
-      ],
-      "postFillCommands": [
-        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
-        "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-        "node scripts/ddd-file-processing-e2e-smoke.mjs",
         "node scripts/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ]

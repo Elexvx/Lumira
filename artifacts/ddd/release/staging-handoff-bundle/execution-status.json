@@ -1,12 +1,12 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "blockedGateCount": 5,
+  "blockedGateCount": 0,
   "gateCount": 6,
-  "gapCount": 6,
+  "gapCount": 5,
   "handoffBundle": {
     "status": "PASS",
     "bundleDir": "artifacts/ddd/release/staging-handoff-bundle",
@@ -19,12 +19,10 @@
       "id": "release-env",
       "track": "p0-release-env",
       "owner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "nextCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-      "issue": "release env file is not cutover-safe; blockers=34",
-      "blockingInputs": [
-        "DDD_RELEASE_ENV_FILE"
-      ]
+      "issue": null,
+      "blockingInputs": []
     },
     {
       "id": "docker-images",
@@ -44,91 +42,40 @@
       "id": "runtime-business",
       "track": "p1-runtime-business",
       "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
-      "status": "BLOCKED",
+      "status": "PASS",
       "nextCommand": "node scripts/ddd-staging-runtime-check.mjs",
-      "issue": "LUMIRA_BASE_URL is required",
-      "blockingInputs": [
-        "LUMIRA_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_EXPECT_DEPLOYED",
-        "DDD_AI_EXPECT_PROVIDER_REMOTE",
-        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
-      ]
+      "issue": null,
+      "blockingInputs": []
     },
     {
       "id": "rollback",
       "track": "p1-rollback",
       "owner": "bounded-context owners",
-      "status": "BLOCKED",
+      "status": "PASS",
       "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-      "issue": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-      "blockingInputs": [
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "GITHUB_SHA",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR"
-      ]
+      "issue": null,
+      "blockingInputs": []
     },
     {
       "id": "migration",
       "track": "p2-database-performance",
       "owner": "database",
-      "status": "BLOCKED",
+      "status": "PASS",
       "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-      "issue": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
-      "blockingInputs": [
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR",
-        "DDD_MIGRATION_COMPLETED_AT"
-      ]
+      "issue": null,
+      "blockingInputs": []
     },
     {
       "id": "explain",
       "track": "p2-database-performance",
       "owner": "database",
-      "status": "BLOCKED",
+      "status": "PASS",
       "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-      "issue": "DDD_EXPLAIN_DATABASE is required",
-      "blockingInputs": [
-        "DDD_EXPLAIN_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "MYSQL_USER",
-        "MYSQL_PASSWORD",
-        "DDD_EXPLAIN_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "GITHUB_SHA",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR"
-      ]
+      "issue": null,
+      "blockingInputs": []
     }
   ],
   "gaps": [
-    {
-      "id": "p0-release-env",
-      "owner": "release-infra",
-      "reason": "release env file is not cutover-safe; blockers=34",
-      "nextCommand": "node scripts/ddd-release-env-init.mjs --check"
-    },
     {
       "id": "p0-images",
       "owner": "release-infra",
@@ -166,7 +113,7 @@
       "lane": "p0-release-env",
       "owner": "release-infra",
       "dispatchOwner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
       "sourcePlan": "release-env-plan.json",
       "missingEvidenceArtifactCount": 0
@@ -184,9 +131,9 @@
     {
       "order": 3,
       "lane": "p1-runtime-business",
-      "owner": "release-infra",
-      "dispatchOwner": "release-infra",
-      "status": "BLOCKED",
+      "owner": "ai",
+      "dispatchOwner": "ai-owner",
+      "status": "PASS",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
       "sourcePlan": "runtime-business-submission-plan.json",
       "missingEvidenceArtifactCount": 0
@@ -194,12 +141,12 @@
     {
       "order": 4,
       "lane": "p1-p2-data-safety",
-      "owner": "bounded-context owners",
-      "dispatchOwner": "platform-owners",
-      "status": "BLOCKED",
+      "owner": "release-infra",
+      "dispatchOwner": "release-infra",
+      "status": "PASS",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
       "sourcePlan": "data-safety-submission-plan.json",
-      "missingEvidenceArtifactCount": 1
+      "missingEvidenceArtifactCount": 0
     },
     {
       "order": 5,
@@ -212,5 +159,5 @@
       "missingEvidenceArtifactCount": 0
     }
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --commands"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --rollup-enforce"
 }

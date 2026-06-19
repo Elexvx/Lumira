@@ -27,11 +27,11 @@ on:
         default: staging
         type: string
       backend_base_url:
-        description: "Deployed backend base URL"
+        description: "Deployed lumira-backend base URL"
         required: true
         type: string
       frontend_base_url:
-        description: "Deployed frontend base URL"
+        description: "Deployed lumira-ui base URL"
         required: true
         type: string
       ai_base_url:
@@ -204,7 +204,7 @@ jobs:
           };
           process.stdout.write(`${JSON.stringify({ payload }, null, 2)}\n`);
           NODE
-          node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file="$dispatch_inputs_file"
+          node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file="$dispatch_inputs_file"
 
       - name: Prepare release evidence environment file
         shell: bash
@@ -251,20 +251,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract
-          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage
+          node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract
+          node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage
 
       - name: Preflight release configuration evidence
         if: inputs.mode == 'run' && inputs.strict == true
-        run: DDD_RELEASE_CONFIG_STRICT=true node scripts/ddd-release-config-evidence.mjs
+        run: DDD_RELEASE_CONFIG_STRICT=true node bin/ddd-release-config-evidence.mjs
 
-      - name: Install frontend dependencies
+      - name: Install lumira-ui dependencies
         if: inputs.mode == 'run'
-        run: corepack pnpm --dir frontend install --frozen-lockfile
+        run: corepack pnpm --dir lumira-ui install --frozen-lockfile
 
       - name: Install Playwright Chromium
         if: inputs.mode == 'run'
-        run: corepack pnpm --dir frontend exec playwright install --with-deps chromium
+        run: corepack pnpm --dir lumira-ui exec playwright install --with-deps chromium
 
       - uses: docker/setup-buildx-action@v3
         if: inputs.mode == 'run'
@@ -281,7 +281,7 @@ jobs:
           if [[ "${{ inputs.strict }}" == "true" ]]; then
             args+=(--strict)
           fi
-          node scripts/ddd-release-evidence-orchestrator.mjs "${args[@]}"
+          node bin/ddd-release-evidence-orchestrator.mjs "${args[@]}"
           status=$?
           echo "status=${status}" >> "$GITHUB_OUTPUT"
           exit 0
@@ -292,18 +292,18 @@ jobs:
         run: |
           set +e
           if [[ "${{ inputs.mode }}" == "run" && "${{ inputs.strict }}" == "true" ]]; then
-            DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-gate.mjs
+            DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-gate.mjs
           fi
-          node scripts/ddd-release-readiness-summary.mjs
+          node bin/ddd-release-readiness-summary.mjs
           exit 0
 
       - name: Generate release unblock brief
         if: always()
-        run: node scripts/ddd-release-unblock-brief.mjs
+        run: node bin/ddd-release-unblock-brief.mjs
 
       - name: Validate release unblock brief contract
         if: always()
-        run: node scripts/ddd-release-unblock-brief-contract.mjs
+        run: node bin/ddd-release-unblock-brief-contract.mjs
 
       - name: Validate final owner queue run report
         if: always()
@@ -311,7 +311,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -f artifacts/ddd/release/release-final-owner-queue-run-report.json ]]; then
-            node scripts/ddd-final-owner-queue-run-report-contract.mjs
+            node bin/ddd-final-owner-queue-run-report-contract.mjs
           else
             echo "No final owner queue run report was generated."
           fi
@@ -322,134 +322,134 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -f artifacts/ddd/release/release-execution-run-report.json ]]; then
-            node scripts/ddd-release-execution-run-report-contract.mjs
+            node bin/ddd-release-execution-run-report-contract.mjs
           else
             echo "No release execution run report was generated."
           fi
 
       - name: Validate release artifact integrity contract
         if: always()
-        run: node scripts/ddd-release-artifact-integrity-contract.mjs
+        run: node bin/ddd-release-artifact-integrity-contract.mjs
 
       - name: Validate release artifact integrity gate contract
         if: always()
-        run: node scripts/ddd-release-artifact-integrity-gate-contract.mjs
+        run: node bin/ddd-release-artifact-integrity-gate-contract.mjs
 
       - name: Validate release artifact path leak contract
         if: always()
-        run: node scripts/ddd-release-artifact-path-leak-contract.mjs
+        run: node bin/ddd-release-artifact-path-leak-contract.mjs
 
       - name: Validate release config owner input reconciliation
         if: always()
-        run: node scripts/ddd-release-config-owner-input-reconciliation.mjs
+        run: node bin/ddd-release-config-owner-input-reconciliation.mjs
 
       - name: Generate release owner input receipt
         if: always()
-        run: node scripts/ddd-release-owner-input-receipt.mjs
+        run: node bin/ddd-release-owner-input-receipt.mjs
 
       - name: Validate release owner input receipt contract
         if: always()
-        run: node scripts/ddd-release-owner-input-receipt-contract.mjs
+        run: node bin/ddd-release-owner-input-receipt-contract.mjs
 
       - name: Validate release artifact path leak contract after owner receipt
         if: always()
-        run: node scripts/ddd-release-artifact-path-leak-contract.mjs
+        run: node bin/ddd-release-artifact-path-leak-contract.mjs
 
       - name: Validate release cutover contract
         if: always()
-        run: node scripts/ddd-release-cutover-contract.mjs
+        run: node bin/ddd-release-cutover-contract.mjs
 
       - name: Validate release final go no-go gate contract
         if: always()
-        run: node scripts/ddd-release-final-go-no-go-gate-contract.mjs
+        run: node bin/ddd-release-final-go-no-go-gate-contract.mjs
 
       - name: Validate release preflight gate contract
         if: always()
-        run: node scripts/ddd-release-preflight-gate-contract.mjs
+        run: node bin/ddd-release-preflight-gate-contract.mjs
 
       - name: Validate release final owner queue contract
         if: always()
-        run: node scripts/ddd-release-final-owner-queue-contract.mjs
+        run: node bin/ddd-release-final-owner-queue-contract.mjs
 
       - name: Validate release closure wave receipts contract
         if: always()
-        run: node scripts/ddd-release-closure-wave-receipts-contract.mjs
+        run: node bin/ddd-release-closure-wave-receipts-contract.mjs
 
       - name: Validate release next action queue contract
         if: always()
-        run: node scripts/ddd-release-next-action-queue-contract.mjs
+        run: node bin/ddd-release-next-action-queue-contract.mjs
 
       - name: Validate release execution queue contract
         if: always()
-        run: node scripts/ddd-release-execution-queue-contract.mjs
+        run: node bin/ddd-release-execution-queue-contract.mjs
 
       - name: Validate release command catalog contract
         if: always()
-        run: node scripts/ddd-release-command-catalog-contract.mjs
+        run: node bin/ddd-release-command-catalog-contract.mjs
 
       - name: Validate release owner handoff contract
         if: always()
-        run: node scripts/ddd-release-owner-handoff-contract.mjs
+        run: node bin/ddd-release-owner-handoff-contract.mjs
 
       - name: Validate release env owner matrix contract
         if: always()
-        run: node scripts/ddd-release-env-owner-matrix-contract.mjs
+        run: node bin/ddd-release-env-owner-matrix-contract.mjs
 
       - name: Validate release env fill priority contract
         if: always()
-        run: node scripts/ddd-release-env-fill-priority-contract.mjs
+        run: node bin/ddd-release-env-fill-priority-contract.mjs
 
       - name: Validate release env canonical fill contract
         if: always()
-        run: node scripts/ddd-release-env-canonical-fill-contract.mjs
+        run: node bin/ddd-release-env-canonical-fill-contract.mjs
 
       - name: Validate release env readiness redacted contract
         if: always()
-        run: node scripts/ddd-release-env-readiness-redacted-contract.mjs
+        run: node bin/ddd-release-env-readiness-redacted-contract.mjs
 
       - name: Validate release env owner handoff redacted contract
         if: always()
-        run: node scripts/ddd-release-env-owner-handoff-redacted-contract.mjs
+        run: node bin/ddd-release-env-owner-handoff-redacted-contract.mjs
 
       - name: Validate release env owner input packet contract
         if: always()
-        run: node scripts/ddd-release-env-owner-input-packet-contract.mjs
+        run: node bin/ddd-release-env-owner-input-packet-contract.mjs
 
       - name: Validate release env owner templates contract
         if: always()
-        run: node scripts/ddd-release-env-owner-templates-contract.mjs
+        run: node bin/ddd-release-env-owner-templates-contract.mjs
 
       - name: Validate release env owner templates merge contract
         if: always()
-        run: node scripts/ddd-release-env-owner-templates-merge-contract.mjs
+        run: node bin/ddd-release-env-owner-templates-merge-contract.mjs
 
       - name: Validate release env bootstrap contract
         if: always()
-        run: node scripts/ddd-release-env-bootstrap-contract.mjs
+        run: node bin/ddd-release-env-bootstrap-contract.mjs
 
       - name: Validate release env readiness gate contract
         if: always()
-        run: node scripts/ddd-release-env-readiness-gate-contract.mjs
+        run: node bin/ddd-release-env-readiness-gate-contract.mjs
 
       - name: Validate release env alias sync contract
         if: always()
-        run: node scripts/ddd-release-env-alias-sync-contract.mjs
+        run: node bin/ddd-release-env-alias-sync-contract.mjs
 
       - name: Validate release env canonical lint contract
         if: always()
-        run: node scripts/ddd-release-env-canonical-lint-contract.mjs
+        run: node bin/ddd-release-env-canonical-lint-contract.mjs
 
       - name: Validate release env canonical merge contract
         if: always()
-        run: node scripts/ddd-release-env-canonical-merge-contract.mjs
+        run: node bin/ddd-release-env-canonical-merge-contract.mjs
 
       - name: Validate release env file lint contract
         if: always()
-        run: node scripts/ddd-release-env-file-lint-contract.mjs
+        run: node bin/ddd-release-env-file-lint-contract.mjs
 
       - name: Validate release evidence gate contract
         if: always()
-        run: node scripts/ddd-release-evidence-gate-contract.mjs
+        run: node bin/ddd-release-evidence-gate-contract.mjs
 
       - name: Validate EXPLAIN gate report
         if: always()
@@ -457,7 +457,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -f artifacts/ddd/release/explain-gate-report.json ]]; then
-            node scripts/ddd-explain-gate-report-contract.mjs
+            node bin/ddd-explain-gate-report-contract.mjs
           else
             echo "No EXPLAIN gate report was generated."
           fi
@@ -482,9 +482,9 @@ jobs:
             echo "No release preflight gate was generated." > artifacts/ddd/release/release-preflight-strict-output.txt
             echo "127" > artifacts/ddd/release/release-preflight-strict-status.txt
           fi
-          node scripts/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-output.txt > artifacts/ddd/release/release-preflight-output.redacted.tmp
+          node bin/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-output.txt > artifacts/ddd/release/release-preflight-output.redacted.tmp
           mv artifacts/ddd/release/release-preflight-output.redacted.tmp artifacts/ddd/release/release-preflight-output.txt
-          node scripts/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-strict-output.txt > artifacts/ddd/release/release-preflight-strict-output.redacted.tmp
+          node bin/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-strict-output.txt > artifacts/ddd/release/release-preflight-strict-output.redacted.tmp
           mv artifacts/ddd/release/release-preflight-strict-output.redacted.tmp artifacts/ddd/release/release-preflight-strict-output.txt
 
       - name: Validate release preflight capture
@@ -492,16 +492,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ddd-release-preflight-capture-contract.mjs
+          node bin/ddd-release-preflight-capture-contract.mjs
 
       - name: Generate staging handoff bundle
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle
-          node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify
-          node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json
+          node bin/ddd-staging-execution-checklist.mjs --handoff-bundle
+          node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify
+          node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json
 
       - name: Refresh release manifest after preflight capture
         if: always()
@@ -509,13 +509,13 @@ jobs:
         run: |
           set +e
           DDD_RELEASE_MANIFEST_CHECK_ENV=true \
-            node scripts/ddd-release-evidence-manifest.mjs
+            node bin/ddd-release-evidence-manifest.mjs
           DDD_RELEASE_MANIFEST_STRICT="${{ inputs.strict }}" \
             DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false \
-            node scripts/ddd-release-evidence-manifest.mjs
-          node scripts/ddd-release-readiness-summary.mjs
-          node scripts/ddd-release-unblock-brief.mjs
-          node scripts/ddd-release-unblock-brief-contract.mjs
+            node bin/ddd-release-evidence-manifest.mjs
+          node bin/ddd-release-readiness-summary.mjs
+          node bin/ddd-release-unblock-brief.mjs
+          node bin/ddd-release-unblock-brief-contract.mjs
           exit 0
 
       - name: Upload release evidence artifacts
@@ -528,8 +528,8 @@ jobs:
           path: |
             artifacts/ddd/**
             tmp/ddd-explain/**
-            frontend/playwright-report/**
-            frontend/test-results/**
+            lumira-ui/playwright-report/**
+            lumira-ui/test-results/**
 
       - name: Append release readiness summary
         if: always()
@@ -566,7 +566,7 @@ jobs:
           fi
           if [[ -f artifacts/ddd/release/release-preflight-output.txt ]]; then
             printf '\n\n### Release Preflight Output\n\n```text\n' >> "$GITHUB_STEP_SUMMARY"
-            node scripts/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-output.txt >> "$GITHUB_STEP_SUMMARY"
+            node bin/ddd-release-redact-output.mjs < artifacts/ddd/release/release-preflight-output.txt >> "$GITHUB_STEP_SUMMARY"
             printf '\n```\n' >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No release preflight output was generated." >> "$GITHUB_STEP_SUMMARY"
@@ -578,59 +578,59 @@ jobs:
             echo "No release artifact integrity packet was generated." >> "$GITHUB_STEP_SUMMARY"
           fi
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-final-owner-queue-run-report-summary.mjs
+          node bin/ddd-final-owner-queue-run-report-summary.mjs
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-release-execution-run-report-summary.mjs
+          node bin/ddd-release-execution-run-report-summary.mjs
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-release-next-action-run-report-summary.mjs
+          node bin/ddd-release-next-action-run-report-summary.mjs
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> "$GITHUB_STEP_SUMMARY" || true
+          node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> "$GITHUB_STEP_SUMMARY" || true
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
           {
             printf '## DDD Release Evidence Dispatch Command\n\n```sh\n'
-            node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command
+            node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command
             printf '\n```\n'
           } >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --final-review-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --final-review-markdown >> "$GITHUB_STEP_SUMMARY"
 
       - name: Enforce release evidence result
         if: always()
@@ -647,7 +647,7 @@ jobs:
             exit "$status"
           fi
           if [[ "${{ inputs.mode }}" == "run" && "${{ inputs.strict }}" == "true" ]]; then
-            DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-gate.mjs
-            node scripts/ddd-release-readiness-summary.mjs
+            DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-gate.mjs
+            node bin/ddd-release-readiness-summary.mjs
             DDD_RELEASE_PREFLIGHT_ENFORCE=1 bash artifacts/ddd/release/release-preflight-gate.sh
           fi

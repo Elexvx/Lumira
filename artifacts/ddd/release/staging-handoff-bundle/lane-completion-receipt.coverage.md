@@ -16,11 +16,11 @@ PASS lanes missing audit fields: none
 
 ## Missing Lanes
 
-- `platform-owners:p1-p2-data-safety`
 - `release-infra:p0-release-env`
 - `release-infra:p0-docker-images`
-- `release-infra:p1-runtime-business`
+- `release-infra:p1-p2-data-safety`
 - `release-infra:final-review`
+- `ai-owner:p1-runtime-business`
 
 ## Unexpected Lanes
 
@@ -29,4 +29,4 @@ PASS lanes missing audit fields: none
 ## Issues
 
 - DDD_LANE_COMPLETION_RECEIPT_FILE or --lane-completion-receipt-file is required
-- missing lanes=platform-owners:p1-p2-data-safety, release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-runtime-business, release-infra:final-review
+- missing lanes=release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-p2-data-safety, release-infra:final-review, ai-owner:p1-runtime-business

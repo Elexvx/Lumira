@@ -1,11 +1,11 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "missingArtifact": "tmp/ddd-explain/*.json",
-  "artifactPresent": false,
+  "missingArtifact": null,
+  "artifactPresent": true,
   "dispatchOwners": [
     "platform-owners"
   ],
@@ -60,5 +60,5 @@
     "`node scripts/ddd-staging-data-safety-check.mjs` accepts rollback, migration, and EXPLAIN evidence.",
     "`node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report` shows no missing EXPLAIN artifact."
   ],
-  "nextCommand": "node scripts/ddd-collect-explain.mjs"
+  "nextCommand": "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
 }

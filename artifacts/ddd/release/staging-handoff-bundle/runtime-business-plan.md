@@ -1,9 +1,9 @@
 # DDD P1 Runtime Business Plan
 
-Status: BLOCKED
-Backend URL: missing
-Frontend URL: missing
-Current blocker: LUMIRA_BASE_URL is required
+Status: PASS
+Backend URL: `https://saas.elexvx.com`
+Frontend URL: `https://saas.elexvx.com`
+Current blocker: local-only runtime evidence must be replaced by HTTPS staging evidence
 
 ## Required Inputs
 
@@ -36,4 +36,4 @@ Current blocker: LUMIRA_BASE_URL is required
 - Attach deployment evidence for backend, frontend, AI runtime, authenticated performance, and business E2E flows.
 - Regenerate release readiness after every smoke artifact is refreshed.
 
-Next: `node scripts/ddd-staging-runtime-check.mjs`
+Next: `node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`

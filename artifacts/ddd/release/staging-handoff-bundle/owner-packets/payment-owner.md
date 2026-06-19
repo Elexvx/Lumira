@@ -1,11 +1,11 @@
 # DDD Staging Owner Packet: payment-owner
 
-Generated at: 2026-06-19T11:57:07.693Z
+Generated at: 2026-06-19T14:23:18.022Z
 Owner: payment-owner
-Blockers: 1
-Placeholders: 1
+Blockers: 0
+Placeholders: 0
 Secret keys: 1
-Handoff: artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-owner.md
+Handoff: undefined
 
 ## Required Keys
 
@@ -14,7 +14,7 @@ Handoff: artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-own
 
 ## Input Reasons
 
-- production-endpoint
+- none
 
 ## Post-Fill Validation
 
@@ -42,28 +42,9 @@ Handoff: artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-own
 
 ## Current Blocking Inputs
 
-### release-env
-
-Status: BLOCKED
-First blocker: release env file is not cutover-safe; blockers=34
-Next command: `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-Blocking inputs: DDD_RELEASE_ENV_FILE
-
-### runtime-business
-
-Status: BLOCKED
-First blocker: LUMIRA_BASE_URL is required
-Next command: `node scripts/ddd-staging-runtime-check.mjs`
-Blocking inputs: LUMIRA_BASE_URL, PLAYWRIGHT_BASE_URL, DDD_DEPLOYMENT_EVIDENCE, DDD_FRONTEND_DEPLOYMENT_EVIDENCE, DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE, DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE, DDD_FRONTEND_EXPECT_DEPLOYED, DDD_AI_EXPECT_PROVIDER_REMOTE, DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE
+- none
 
 ## Staging Evidence Gaps
-
-### p0-release-env: P0 release env and config
-
-Reason: release env file is not cutover-safe; blockers=34
-Next command: `node scripts/ddd-release-env-init.mjs --check`
-Artifacts: artifacts/ddd/release/release-env-lint.json, artifacts/ddd/config/release-config-evidence.json, artifacts/ddd/release/readiness-summary.json
-Env keys: AI_SERVICE_BASE_URL, AUTH_SERVICE_BASE_URL, BASE_URL, CORS_ALLOWED_ORIGIN_PATTERNS, DB_PASSWORD, DB_URL, DB_USERNAME, DDD_AUTH_PASSWORD, DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE, DDD_AUTH_PERF_ENVIRONMENT, DDD_AUTH_USERNAME, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DDD_DEPLOYMENT_EVIDENCE, DDD_EXPLAIN_DATABASE, DDD_FRONTEND_DEPLOYMENT_EVIDENCE, DDD_MIGRATION_COMPLETED_AT, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_OPERATOR, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED, FIELD_SECRET, FILE_SERVICE_BASE_URL, JOB_EXECUTOR_BASE_URL, JWT_SECRET, LOCALIZATION_SERVICE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN, LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL, LUMIRA_BASE_URL, MESSAGE_SERVICE_BASE_URL, MYSQL_DATABASE, MYSQL_HOST, MYSQL_PORT, PAYMENT_PUBLIC_BASE_URL, PAYMENT_SERVICE_BASE_URL, PLAYWRIGHT_BASE_URL, PLUGIN_SERVICE_BASE_URL, REDIS_HOST, SAAS_EVENT_REDIS_STREAM_KEY, SAAS_JOB_BACKEND_BASE_URL, SAAS_JOB_FILE_SERVICE_BASE_URL, SAAS_JOB_INTERNAL_TOKEN, SAAS_JOB_MESSAGE_SERVICE_BASE_URL, SAAS_JOB_PAYMENT_SERVICE_BASE_URL, SAAS_JOB_PLUGIN_SERVICE_BASE_URL, SYSTEM_SERVICE_BASE_URL, XXL_JOB_ACCESS_TOKEN, XXL_JOB_ADMIN_ADDRESSES, DEPLOY_CHECK_BASE_URL, LUMIRA_AI_BASE_URL, FRONTEND_BASE_URL
 
 ### p1-runtime-business: P1 runtime and business acceptance
 

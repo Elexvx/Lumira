@@ -6,11 +6,11 @@ Lane receipts: 5
 
 | Lane | Owner | Status | Provided artifacts | Missing artifacts | Completed at | Completed by | Acceptance commands |
 | --- | --- | --- | ---: | ---: | --- | --- | --- |
-| `p1-p2-data-safety` | platform-owners | BLOCKED | 0 | 1 | required when PASS | required when PASS | `node scripts/ddd-staging-data-safety-check.mjs` |
 | `p0-release-env` | release-infra | BLOCKED | 0 | 0 | required when PASS | required when PASS | `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs` |
 | `p0-docker-images` | release-infra | BLOCKED | 0 | 0 | required when PASS | required when PASS | `node scripts/ddd-docker-build-evidence.mjs --check` |
-| `p1-runtime-business` | release-infra | BLOCKED | 0 | 0 | required when PASS | required when PASS | `node scripts/ddd-staging-runtime-check.mjs` |
-| `final-review` | release-infra | BLOCKED | 0 | 1 | required when PASS | required when PASS | `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`<br>`node scripts/ddd-docker-build-evidence.mjs --check`<br>`node scripts/ddd-staging-runtime-check.mjs`<br>`node scripts/ddd-staging-data-safety-check.mjs` |
+| `p1-p2-data-safety` | release-infra | BLOCKED | 0 | 0 | required when PASS | required when PASS | `node scripts/ddd-staging-data-safety-check.mjs` |
+| `final-review` | release-infra | BLOCKED | 0 | 0 | required when PASS | required when PASS | `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`<br>`node scripts/ddd-docker-build-evidence.mjs --check`<br>`node scripts/ddd-staging-runtime-check.mjs`<br>`node scripts/ddd-staging-data-safety-check.mjs` |
+| `p1-runtime-business` | ai-owner | BLOCKED | 0 | 0 | required when PASS | required when PASS | `node scripts/ddd-staging-runtime-check.mjs` |
 
 ## Fill Rules
 
@@ -29,19 +29,13 @@ Lane receipts: 5
 
 | Lane key | JSON row | Fields to update before PASS | Keep BLOCKED while |
 | --- | ---: | --- | --- |
-| `platform-owners:p1-p2-data-safety` | laneReceipts[0] | `status`, `providedArtifacts`, `missingArtifacts`, `completedAt`, `completedBy` | `tmp/ddd-explain/*.json` |
-| `release-infra:p0-release-env` | laneReceipts[1] | `status`, `providedArtifacts`, `missingArtifacts`, `completedAt`, `completedBy` | acceptance commands have not passed |
-| `release-infra:p0-docker-images` | laneReceipts[2] | `status`, `providedArtifacts`, `missingArtifacts`, `completedAt`, `completedBy` | acceptance commands have not passed |
-| `release-infra:p1-runtime-business` | laneReceipts[3] | `status`, `providedArtifacts`, `missingArtifacts`, `completedAt`, `completedBy` | acceptance commands have not passed |
-| `release-infra:final-review` | laneReceipts[4] | `status`, `providedArtifacts`, `missingArtifacts`, `completedAt`, `completedBy` | `tmp/ddd-explain/*.json` |
+| `release-infra:p0-release-env` | laneReceipts[0] | `status`, `providedArtifacts`, `missingArtifacts`, `completedAt`, `completedBy` | acceptance commands have not passed |
+| `release-infra:p0-docker-images` | laneReceipts[1] | `status`, `providedArtifacts`, `missingArtifacts`, `completedAt`, `completedBy` | acceptance commands have not passed |
+| `release-infra:p1-p2-data-safety` | laneReceipts[2] | `status`, `providedArtifacts`, `missingArtifacts`, `completedAt`, `completedBy` | acceptance commands have not passed |
+| `release-infra:final-review` | laneReceipts[3] | `status`, `providedArtifacts`, `missingArtifacts`, `completedAt`, `completedBy` | acceptance commands have not passed |
+| `ai-owner:p1-runtime-business` | laneReceipts[4] | `status`, `providedArtifacts`, `missingArtifacts`, `completedAt`, `completedBy` | acceptance commands have not passed |
 
 ## Lane Details
-
-### platform-owners:p1-p2-data-safety
-
-Acceptance commands: `node scripts/ddd-staging-data-safety-check.mjs`
-Expected artifacts: `artifacts/ddd/rollback/rollback-drill.json`, `artifacts/ddd/migration/migration-evidence.json`, `tmp/ddd-explain/*.json`, `artifacts/ddd/release/explain-gate-report.json`
-Currently missing artifacts: `tmp/ddd-explain/*.json`
 
 ### release-infra:p0-release-env
 
@@ -55,17 +49,23 @@ Acceptance commands: `node scripts/ddd-docker-build-evidence.mjs --check`
 Expected artifacts: `artifacts/ddd/build/docker-image-evidence.json`
 Currently missing artifacts: none
 
-### release-infra:p1-runtime-business
+### release-infra:p1-p2-data-safety
 
-Acceptance commands: `node scripts/ddd-staging-runtime-check.mjs`
-Expected artifacts: `artifacts/ddd/readiness/summary.json`, `artifacts/ddd/performance/authenticated-runtime-actual.json`, `artifacts/ddd/ai/ai-runtime-drill.json`, `artifacts/ddd/frontend/frontend-smoke.json`, `artifacts/ddd/file/file-processing-e2e.json`, `artifacts/ddd/jobs/job-e2e-smoke.json`, `artifacts/ddd/payment/payment-webhook-e2e.json`
+Acceptance commands: `node scripts/ddd-staging-data-safety-check.mjs`
+Expected artifacts: `artifacts/ddd/rollback/rollback-drill.json`, `artifacts/ddd/migration/migration-evidence.json`, `tmp/ddd-explain/*.json`, `artifacts/ddd/release/explain-gate-report.json`
 Currently missing artifacts: none
 
 ### release-infra:final-review
 
 Acceptance commands: `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`, `node scripts/ddd-docker-build-evidence.mjs --check`, `node scripts/ddd-staging-runtime-check.mjs`, `node scripts/ddd-staging-data-safety-check.mjs`
 Expected artifacts: `artifacts/ddd/release/release-env-lint.json`, `artifacts/ddd/config/release-config-evidence.json`, `artifacts/ddd/release/readiness-summary.json`, `artifacts/ddd/build/docker-image-evidence.json`, `artifacts/ddd/readiness/summary.json`, `artifacts/ddd/performance/authenticated-runtime-actual.json`, `artifacts/ddd/ai/ai-runtime-drill.json`, `artifacts/ddd/frontend/frontend-smoke.json`, `artifacts/ddd/file/file-processing-e2e.json`, `artifacts/ddd/jobs/job-e2e-smoke.json`, `artifacts/ddd/payment/payment-webhook-e2e.json`, `artifacts/ddd/rollback/rollback-drill.json`, `artifacts/ddd/migration/migration-evidence.json`, `tmp/ddd-explain/*.json`, `artifacts/ddd/release/explain-gate-report.json`
-Currently missing artifacts: `tmp/ddd-explain/*.json`
+Currently missing artifacts: none
+
+### ai-owner:p1-runtime-business
+
+Acceptance commands: `node scripts/ddd-staging-runtime-check.mjs`
+Expected artifacts: `artifacts/ddd/readiness/summary.json`, `artifacts/ddd/performance/authenticated-runtime-actual.json`, `artifacts/ddd/ai/ai-runtime-drill.json`, `artifacts/ddd/frontend/frontend-smoke.json`, `artifacts/ddd/file/file-processing-e2e.json`, `artifacts/ddd/jobs/job-e2e-smoke.json`, `artifacts/ddd/payment/payment-webhook-e2e.json`
+Currently missing artifacts: none
 
 
 ## Pass Criteria

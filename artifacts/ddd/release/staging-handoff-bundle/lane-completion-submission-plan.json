@@ -1,29 +1,10 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "redacted": true,
   "laneCount": 5,
   "lanes": [
-    {
-      "key": "platform-owners:p1-p2-data-safety",
-      "lane": "p1-p2-data-safety",
-      "owner": "platform-owners",
-      "rawOwner": "bounded-context owners",
-      "status": "BLOCKED",
-      "acceptanceCommands": [
-        "node scripts/ddd-staging-data-safety-check.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json",
-        "artifacts/ddd/migration/migration-evidence.json",
-        "tmp/ddd-explain/*.json",
-        "artifacts/ddd/release/explain-gate-report.json"
-      ],
-      "missingArtifacts": [
-        "tmp/ddd-explain/*.json"
-      ]
-    },
     {
       "key": "release-infra:p0-release-env",
       "lane": "p0-release-env",
@@ -55,22 +36,19 @@
       "missingArtifacts": []
     },
     {
-      "key": "release-infra:p1-runtime-business",
-      "lane": "p1-runtime-business",
+      "key": "release-infra:p1-p2-data-safety",
+      "lane": "p1-p2-data-safety",
       "owner": "release-infra",
       "rawOwner": "release-infra",
       "status": "BLOCKED",
       "acceptanceCommands": [
-        "node scripts/ddd-staging-runtime-check.mjs"
+        "node scripts/ddd-staging-data-safety-check.mjs"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/readiness/summary.json",
-        "artifacts/ddd/performance/authenticated-runtime-actual.json",
-        "artifacts/ddd/ai/ai-runtime-drill.json",
-        "artifacts/ddd/frontend/frontend-smoke.json",
-        "artifacts/ddd/file/file-processing-e2e.json",
-        "artifacts/ddd/jobs/job-e2e-smoke.json",
-        "artifacts/ddd/payment/payment-webhook-e2e.json"
+        "artifacts/ddd/rollback/rollback-drill.json",
+        "artifacts/ddd/migration/migration-evidence.json",
+        "tmp/ddd-explain/*.json",
+        "artifacts/ddd/release/explain-gate-report.json"
       ],
       "missingArtifacts": []
     },
@@ -103,9 +81,27 @@
         "tmp/ddd-explain/*.json",
         "artifacts/ddd/release/explain-gate-report.json"
       ],
-      "missingArtifacts": [
-        "tmp/ddd-explain/*.json"
-      ]
+      "missingArtifacts": []
+    },
+    {
+      "key": "ai-owner:p1-runtime-business",
+      "lane": "p1-runtime-business",
+      "owner": "ai-owner",
+      "rawOwner": "ai",
+      "status": "BLOCKED",
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-runtime-check.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json",
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/ai/ai-runtime-drill.json",
+        "artifacts/ddd/frontend/frontend-smoke.json",
+        "artifacts/ddd/file/file-processing-e2e.json",
+        "artifacts/ddd/jobs/job-e2e-smoke.json",
+        "artifacts/ddd/payment/payment-webhook-e2e.json"
+      ],
+      "missingArtifacts": []
     }
   ],
   "workflowInput": {
@@ -143,11 +139,6 @@
     "expectedLaneCount": 5,
     "missingLanes": [
       {
-        "key": "platform-owners:p1-p2-data-safety",
-        "owner": "platform-owners",
-        "lane": "p1-p2-data-safety"
-      },
-      {
         "key": "release-infra:p0-release-env",
         "owner": "release-infra",
         "lane": "p0-release-env"
@@ -158,19 +149,24 @@
         "lane": "p0-docker-images"
       },
       {
-        "key": "release-infra:p1-runtime-business",
+        "key": "release-infra:p1-p2-data-safety",
         "owner": "release-infra",
-        "lane": "p1-runtime-business"
+        "lane": "p1-p2-data-safety"
       },
       {
         "key": "release-infra:final-review",
         "owner": "release-infra",
         "lane": "final-review"
+      },
+      {
+        "key": "ai-owner:p1-runtime-business",
+        "owner": "ai-owner",
+        "lane": "p1-runtime-business"
       }
     ],
     "issues": [
       "DDD_LANE_COMPLETION_RECEIPT_FILE or --lane-completion-receipt-file is required",
-      "missing lanes=platform-owners:p1-p2-data-safety, release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-runtime-business, release-infra:final-review"
+      "missing lanes=release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-p2-data-safety, release-infra:final-review, ai-owner:p1-runtime-business"
     ]
   },
   "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"

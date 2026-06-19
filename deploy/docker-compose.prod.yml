@@ -153,15 +153,15 @@ services:
     - ./nginx/api.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
     - lumira-server
-  frontend:
+  lumira-ui:
     build:
       context: ..
-      dockerfile: deploy/docker/frontend.Dockerfile
+      dockerfile: deploy/docker/lumira-ui.Dockerfile
       args:
         NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
         NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.29-alpine}
-    image: ${LUMIRA_FRONTEND_IMAGE:-lumira/frontend:0.1.0}
-    container_name: lumira-frontend
+    image: ${LUMIRA_FRONTEND_IMAGE:-lumira/lumira-ui:0.1.0}
+    container_name: lumira-ui
     restart: unless-stopped
     logging: *id001
     mem_limit: ${FRONTEND_MEM_LIMIT:-128m}
@@ -187,7 +187,7 @@ services:
     - ./data/tls:/etc/nginx/certs:ro
     depends_on:
     - api-proxy
-    - frontend
+    - lumira-ui
   prometheus:
     profiles:
     - observability
@@ -292,8 +292,8 @@ services:
         MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.11-eclipse-temurin-21}
         JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
         OTEL_JAVAAGENT_URL: ${OTEL_JAVAAGENT_URL:-}
-        SERVICE_DIR: services/lumira-server
-        SERVICE_MODULE: services/lumira-server
+        SERVICE_DIR: services/lumira-admin
+        SERVICE_MODULE: services/lumira-admin
     image: ${LUMIRA_SERVER_IMAGE:-lumira/lumira-server:0.1.0}
     container_name: lumira-server
     restart: unless-stopped

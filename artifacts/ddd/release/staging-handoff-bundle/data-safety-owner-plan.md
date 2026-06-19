@@ -1,8 +1,8 @@
 # DDD Data Safety Owner Plan
 
-Status: BLOCKED
+Status: PASS
 Owners: `bounded-context owners`, `database`, `release-infra`
-Next phase: rollback-evidence-source
+Next phase: data-safety-acceptance
 
 ## Phases
 
@@ -34,4 +34,4 @@ Next phase: rollback-evidence-source
 - Run migration and EXPLAIN evidence against production-equivalent staging data, never a developer-local database.
 - Use read-only database credentials for EXPLAIN collection and keep populated credentials out of committed artifacts.
 
-Next: `node scripts/ddd-staging-data-safety-check.mjs`
+Next: `node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`

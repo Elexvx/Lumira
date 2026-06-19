@@ -1,6 +1,6 @@
 # DDD Release Blocker Map
 
-Generated at: 2026-06-19T06:54:03.604Z
+Generated at: 2026-06-19T13:42:59.865Z
 Status: NOT_READY
 Release gate mode: strict
 Release gate blockers: 94
@@ -14,19 +14,20 @@ Total blockers: 94
 
 - Blockers: 21
 - Categories: configuration=6, docker=3, production-equivalent-runtime=11, runtime-freshness=1
-- Ready batches: p0-release-env-lint-release-infra, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra
-- Blocked batches: none
+- Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
+- Blocked batches: p3-orchestrator-release-infra
 - Commands:
-  - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-runtime-readiness-smoke.mjs`
+  - `node scripts/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/release-env-lint.json`
-  - `artifacts/ddd/config/release-config-evidence.json`
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
+  - `artifacts/ddd/release/orchestrator-report.json`
+  - `artifacts/ddd/release/release-evidence-gate.json`
+  - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
   - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.strict must be true for strict release evidence
   - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.https must be true for strict release evidence
@@ -165,16 +166,14 @@ Total blockers: 94
 
 - Blockers: 7
 - Categories: business-e2e-freshness=1, production-equivalent-runtime=6
-- Ready batches: p0-release-config-payment-owner
+- Ready batches: none
 - Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
 - Commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
   - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
   - `node scripts/ddd-rollback-deferral-template.mjs`
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
   - `node scripts/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
-  - `artifacts/ddd/config/release-config-evidence.json`
   - `artifacts/ddd/payment/payment-webhook-e2e.json`
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Sample blockers:
@@ -210,12 +209,8 @@ Total blockers: 94
 
 - Blockers: 1
 - Categories: outbox-state-machine=1
-- Ready batches: p0-release-config-platform-events
+- Ready batches: none
 - Blocked batches: none
-- Commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
-- Expected artifacts:
-  - `artifacts/ddd/config/release-config-evidence.json`
 - Sample blockers:
   - [outbox-state-machine] outbox-replay-dead-letter-freshness: generatedAt is 91.7h old; limit=24h
 
@@ -225,11 +220,9 @@ Total blockers: 94
 
 - Blockers: 34
 - Owners: file-owner=6, job-owner=6, payment-owner=6, release-infra=11, release-performance=5
-- Ready batches: p0-release-env-lint-release-infra, p0-release-config-payment-owner, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-authenticated-performance-release-performance
-- Blocked batches: p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-file-owner, p1-rollback-job-owner, p1-rollback-payment-owner
+- Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-authenticated-performance-release-performance
+- Blocked batches: p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-file-owner, p1-rollback-job-owner, p1-rollback-payment-owner, p3-orchestrator-release-infra
 - Commands:
-  - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-runtime-readiness-smoke.mjs`
@@ -241,9 +234,9 @@ Total blockers: 94
   - `node scripts/ddd-rollback-deferral-template.mjs`
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
   - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node scripts/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/release-env-lint.json`
-  - `artifacts/ddd/config/release-config-evidence.json`
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
   - `artifacts/ddd/performance/authenticated-runtime-actual.json`
@@ -253,6 +246,9 @@ Total blockers: 94
   - `artifacts/ddd/jobs/job-e2e-smoke.json`
   - `artifacts/ddd/payment/payment-webhook-e2e.json`
   - `artifacts/ddd/rollback/rollback-drill.json`
+  - `artifacts/ddd/release/orchestrator-report.json`
+  - `artifacts/ddd/release/release-evidence-gate.json`
+  - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
   - [release-infra] runtime-readiness-summary: runtime readiness productionEquivalence.strict must be true for strict release evidence
   - [release-infra] runtime-readiness-summary: runtime readiness productionEquivalence.https must be true for strict release evidence
@@ -325,19 +321,20 @@ Total blockers: 94
 
 - Blockers: 6
 - Owners: release-infra=6
-- Ready batches: p0-release-env-lint-release-infra, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra
-- Blocked batches: none
+- Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
+- Blocked batches: p3-orchestrator-release-infra
 - Commands:
-  - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-runtime-readiness-smoke.mjs`
+  - `node scripts/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/release-env-lint.json`
-  - `artifacts/ddd/config/release-config-evidence.json`
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
+  - `artifacts/ddd/release/orchestrator-report.json`
+  - `artifacts/ddd/release/release-evidence-gate.json`
+  - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
   - [release-infra] release-env-lint-freshness: generatedAt is 48.9h old; limit=24h
   - [release-infra] release-env-lint: status=FAIL, blockers=156
@@ -373,10 +370,9 @@ Total blockers: 94
 
 - Blockers: 3
 - Owners: file-owner=1, job-owner=1, payment-owner=1
-- Ready batches: p0-release-config-payment-owner
+- Ready batches: none
 - Blocked batches: p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-file-owner, p1-rollback-job-owner, p1-rollback-payment-owner
 - Commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
   - `node scripts/ddd-file-processing-e2e-smoke.mjs`
   - `node scripts/ddd-job-e2e-smoke.mjs`
   - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
@@ -384,7 +380,6 @@ Total blockers: 94
   - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
   - `node scripts/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
-  - `artifacts/ddd/config/release-config-evidence.json`
   - `artifacts/ddd/file/file-processing-e2e.json`
   - `artifacts/ddd/jobs/job-e2e-smoke.json`
   - `artifacts/ddd/payment/payment-webhook-e2e.json`
@@ -398,19 +393,20 @@ Total blockers: 94
 
 - Blockers: 3
 - Owners: release-infra=3
-- Ready batches: p0-release-env-lint-release-infra, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra
-- Blocked batches: none
+- Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
+- Blocked batches: p3-orchestrator-release-infra
 - Commands:
-  - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-runtime-readiness-smoke.mjs`
+  - `node scripts/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/release-env-lint.json`
-  - `artifacts/ddd/config/release-config-evidence.json`
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
+  - `artifacts/ddd/release/orchestrator-report.json`
+  - `artifacts/ddd/release/release-evidence-gate.json`
+  - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
   - [release-infra] docker-build-evidence-freshness: generatedAt is 56.9h old; limit=24h
   - [release-infra] docker-build-evidence: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1
@@ -525,12 +521,8 @@ Total blockers: 94
 
 - Blockers: 1
 - Owners: platform-events=1
-- Ready batches: p0-release-config-platform-events
+- Ready batches: none
 - Blocked batches: none
-- Commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
-- Expected artifacts:
-  - `artifacts/ddd/config/release-config-evidence.json`
 - Sample blockers:
   - [platform-events] outbox-replay-dead-letter-freshness: generatedAt is 91.7h old; limit=24h
 
@@ -574,19 +566,20 @@ Total blockers: 94
 
 - Blockers: 1
 - Owners: release-infra=1
-- Ready batches: p0-release-env-lint-release-infra, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra
-- Blocked batches: none
+- Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
+- Blocked batches: p3-orchestrator-release-infra
 - Commands:
-  - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-docker-build-evidence.mjs`
   - `node scripts/ddd-runtime-readiness-smoke.mjs`
+  - `node scripts/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/release-env-lint.json`
-  - `artifacts/ddd/config/release-config-evidence.json`
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
+  - `artifacts/ddd/release/orchestrator-report.json`
+  - `artifacts/ddd/release/release-evidence-gate.json`
+  - `artifacts/ddd/release/readiness-summary.json`
 - Sample blockers:
   - [release-infra] runtime-readiness-freshness: checkedAt is 72.3h old; limit=24h
 

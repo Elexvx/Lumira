@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -32,10 +32,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.252Z",
-      "generatedAt": "2026-06-17T05:46:16.010Z",
-      "status": "FAIL",
-      "blockers": 156,
+      "modifiedAt": "2026-06-19T13:42:37.440Z",
+      "generatedAt": "2026-06-19T13:42:37.438Z",
+      "status": "PASS",
+      "blockers": 0,
       "warnings": 0
     },
     "releaseConfig": {
@@ -44,10 +44,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.196Z",
-      "generatedAt": "2026-06-17T06:28:34.918Z",
-      "status": "FAIL",
-      "blockers": 63,
+      "modifiedAt": "2026-06-19T13:42:37.550Z",
+      "generatedAt": "2026-06-19T13:42:37.547Z",
+      "status": "PASS",
+      "blockers": 0,
       "warnings": 0
     },
     "docker": {
@@ -56,8 +56,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.195Z",
-      "generatedAt": "2026-06-16T21:45:55.209Z",
+      "modifiedAt": "2026-06-19T08:02:24.849Z",
+      "generatedAt": "2026-06-19T08:02:24.846Z",
       "status": "FAIL",
       "blockers": 2,
       "warnings": null
@@ -248,31 +248,20 @@
     "blockers": 94,
     "warnings": 8
   },
-  "uniqueEnvKeyCount": 114,
-  "templateEnvKeyCount": 76,
+  "uniqueEnvKeyCount": 48,
+  "templateEnvKeyCount": 46,
   "templateControlKeys": [
     "DDD_RELEASE_ENV_FILE"
   ],
-  "groupCount": 29,
+  "groupCount": 24,
   "uniqueEnvKeys": [
-    "AI_SERVICE_BASE_URL",
-    "AUTH_SERVICE_BASE_URL",
     "BASE_URL",
-    "CORS_ALLOWED_ORIGIN_PATTERNS",
-    "DB_PASSWORD",
-    "DB_URL",
-    "DB_USERNAME",
     "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
     "DDD_AI_EXPECT_PROVIDER_REMOTE",
-    "DDD_AUTH_PASSWORD",
     "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
     "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
     "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-    "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-    "DDD_AUTH_PERF_ENVIRONMENT",
-    "DDD_AUTH_USERNAME",
     "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-    "DDD_DEPLOYMENT_EVIDENCE",
     "DDD_DOCKER_BUILD_STRICT",
     "DDD_DOCKER_COMMAND",
     "DDD_EVIDENCE_ENVIRONMENT",
@@ -281,13 +270,9 @@
     "DDD_EXPLAIN_DIR",
     "DDD_EXPLAIN_ENVIRONMENT",
     "DDD_EXPLAIN_STRICT",
-    "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
     "DDD_FRONTEND_EXPECT_DEPLOYED",
-    "DDD_JOB_INTERNAL_TOKEN",
-    "DDD_MIGRATION_COMPLETED_AT",
     "DDD_MIGRATION_FRESH_DB_EVIDENCE",
     "DDD_MIGRATION_FRESH_DB_VALIDATED",
-    "DDD_MIGRATION_OPERATOR",
     "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
     "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
     "DDD_RELEASE_CANDIDATE",
@@ -299,47 +284,17 @@
     "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
     "DDD_ROLLBACK_DRILL_STRICT",
     "DEPLOY_CHECK_BASE_URL",
-    "FIELD_SECRET",
-    "FILE_SERVICE_BASE_URL",
     "FRONTEND_BASE_URL",
-    "JOB_EXECUTOR_BASE_URL",
-    "JWT_SECRET",
-    "LOCALIZATION_SERVICE_BASE_URL",
     "LUMIRA_AI_BASE_URL",
     "LUMIRA_AI_OWNER_FILE_BASE_URL",
     "LUMIRA_AI_OWNER_IAM_BASE_URL",
-    "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-    "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-    "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-    "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-    "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
     "LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
     "LUMIRA_AI_PROVIDER",
-    "LUMIRA_AI_PROVIDER_API_KEY",
-    "LUMIRA_AI_PROVIDER_BASE_URL",
     "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
     "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-    "LUMIRA_AI_SERVICE_BASE_URL",
-    "LUMIRA_AUTH_SERVICE_BASE_URL",
     "LUMIRA_BASE_URL",
-    "LUMIRA_EVENT_REDIS_STREAM_KEY",
-    "LUMIRA_FILE_SERVICE_BASE_URL",
-    "LUMIRA_JOB_BACKEND_BASE_URL",
-    "LUMIRA_JOB_EXECUTOR_BASE_URL",
-    "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
     "LUMIRA_JOB_INTERNAL_TOKEN",
-    "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
-    "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
-    "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
-    "LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-    "LUMIRA_MESSAGE_SERVICE_BASE_URL",
-    "LUMIRA_PAYMENT_SERVICE_BASE_URL",
-    "LUMIRA_PLUGIN_SERVICE_BASE_URL",
-    "LUMIRA_SYSTEM_SERVICE_BASE_URL",
     "LUMIRA_UPLOAD_STORAGE_ROOT",
-    "LUMIRA_XXL_JOB_ACCESS_TOKEN",
-    "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
-    "MESSAGE_SERVICE_BASE_URL",
     "MYSQL_CLI",
     "MYSQL_DATABASE",
     "MYSQL_HOST",
@@ -347,48 +302,19 @@
     "MYSQL_PORT",
     "MYSQL_USER",
     "PAYMENT_PUBLIC_BASE_URL",
-    "PAYMENT_SERVICE_BASE_URL",
-    "PLAYWRIGHT_BASE_URL",
-    "PLUGIN_SERVICE_BASE_URL",
-    "REDIS_HOST",
-    "SAAS_EVENT_REDIS_STREAM_KEY",
-    "SAAS_JOB_BACKEND_BASE_URL",
-    "SAAS_JOB_FILE_SERVICE_BASE_URL",
-    "SAAS_JOB_INTERNAL_TOKEN",
-    "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-    "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-    "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-    "SAAS_SECURITY_FIELD_SECRET",
-    "SAAS_SECURITY_JWT_SECRET",
-    "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
-    "SPRING_DATASOURCE_PASSWORD",
-    "SPRING_DATASOURCE_URL",
-    "SPRING_DATASOURCE_USERNAME",
-    "SPRING_DATA_REDIS_HOST",
-    "SYSTEM_SERVICE_BASE_URL",
-    "XXL_JOB_ACCESS_TOKEN",
-    "XXL_JOB_ADMIN_ACCESS_TOKEN",
-    "XXL_JOB_ADMIN_ADDRESSES"
+    "PLAYWRIGHT_BASE_URL"
   ],
   "templateEnvKeys": [
     "AI_SERVICE_BASE_URL",
-    "AUTH_SERVICE_BASE_URL",
     "BASE_URL",
-    "CORS_ALLOWED_ORIGIN_PATTERNS",
     "DB_PASSWORD",
-    "DB_URL",
     "DB_USERNAME",
     "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
     "DDD_AI_EXPECT_PROVIDER_REMOTE",
-    "DDD_AUTH_PASSWORD",
     "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
     "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
     "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-    "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-    "DDD_AUTH_PERF_ENVIRONMENT",
-    "DDD_AUTH_USERNAME",
     "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-    "DDD_DEPLOYMENT_EVIDENCE",
     "DDD_DOCKER_BUILD_STRICT",
     "DDD_DOCKER_COMMAND",
     "DDD_EVIDENCE_ENVIRONMENT",
@@ -397,12 +323,9 @@
     "DDD_EXPLAIN_DIR",
     "DDD_EXPLAIN_ENVIRONMENT",
     "DDD_EXPLAIN_STRICT",
-    "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
     "DDD_FRONTEND_EXPECT_DEPLOYED",
-    "DDD_MIGRATION_COMPLETED_AT",
     "DDD_MIGRATION_FRESH_DB_EVIDENCE",
     "DDD_MIGRATION_FRESH_DB_VALIDATED",
-    "DDD_MIGRATION_OPERATOR",
     "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
     "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
     "DDD_RELEASE_CANDIDATE",
@@ -413,40 +336,21 @@
     "DDD_ROLLBACK_DRILL_FILE",
     "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
     "DDD_ROLLBACK_DRILL_STRICT",
-    "FIELD_SECRET",
-    "FILE_SERVICE_BASE_URL",
-    "JOB_EXECUTOR_BASE_URL",
-    "JWT_SECRET",
-    "LOCALIZATION_SERVICE_BASE_URL",
     "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
     "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-    "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
     "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
     "LUMIRA_AI_PROVIDER",
     "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
     "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
     "LUMIRA_BASE_URL",
-    "MESSAGE_SERVICE_BASE_URL",
     "MYSQL_CLI",
     "MYSQL_DATABASE",
     "MYSQL_HOST",
     "MYSQL_PORT",
     "PAYMENT_PUBLIC_BASE_URL",
-    "PAYMENT_SERVICE_BASE_URL",
     "PLAYWRIGHT_BASE_URL",
-    "PLUGIN_SERVICE_BASE_URL",
-    "REDIS_HOST",
-    "SAAS_EVENT_REDIS_STREAM_KEY",
-    "SAAS_JOB_BACKEND_BASE_URL",
-    "SAAS_JOB_FILE_SERVICE_BASE_URL",
     "SAAS_JOB_INTERNAL_TOKEN",
-    "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-    "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-    "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-    "SYSTEM_SERVICE_BASE_URL",
-    "UPLOAD_STORAGE_ROOT",
-    "XXL_JOB_ACCESS_TOKEN",
-    "XXL_JOB_ADMIN_ADDRESSES"
+    "UPLOAD_STORAGE_ROOT"
   ],
   "templateAliasMappings": [
     {
@@ -454,56 +358,12 @@
       "canonical": "AI_SERVICE_BASE_URL"
     },
     {
-      "alias": "LUMIRA_AI_SERVICE_BASE_URL",
-      "canonical": "AI_SERVICE_BASE_URL"
-    },
-    {
-      "alias": "LUMIRA_AUTH_SERVICE_BASE_URL",
-      "canonical": "AUTH_SERVICE_BASE_URL"
-    },
-    {
-      "alias": "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
-      "canonical": "CORS_ALLOWED_ORIGIN_PATTERNS"
-    },
-    {
       "alias": "MYSQL_PASSWORD",
       "canonical": "DB_PASSWORD"
     },
     {
-      "alias": "SPRING_DATASOURCE_PASSWORD",
-      "canonical": "DB_PASSWORD"
-    },
-    {
-      "alias": "SPRING_DATASOURCE_URL",
-      "canonical": "DB_URL"
-    },
-    {
       "alias": "MYSQL_USER",
       "canonical": "DB_USERNAME"
-    },
-    {
-      "alias": "SPRING_DATASOURCE_USERNAME",
-      "canonical": "DB_USERNAME"
-    },
-    {
-      "alias": "SAAS_SECURITY_FIELD_SECRET",
-      "canonical": "FIELD_SECRET"
-    },
-    {
-      "alias": "LUMIRA_FILE_SERVICE_BASE_URL",
-      "canonical": "FILE_SERVICE_BASE_URL"
-    },
-    {
-      "alias": "LUMIRA_JOB_EXECUTOR_BASE_URL",
-      "canonical": "JOB_EXECUTOR_BASE_URL"
-    },
-    {
-      "alias": "SAAS_SECURITY_JWT_SECRET",
-      "canonical": "JWT_SECRET"
-    },
-    {
-      "alias": "LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-      "canonical": "LOCALIZATION_SERVICE_BASE_URL"
     },
     {
       "alias": "LUMIRA_AI_OWNER_FILE_BASE_URL",
@@ -514,1424 +374,27 @@
       "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
     },
     {
-      "alias": "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
-      "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN"
-    },
-    {
       "alias": "LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
       "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL"
-    },
-    {
-      "alias": "LUMIRA_AI_PROVIDER_API_KEY",
-      "canonical": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-    },
-    {
-      "alias": "LUMIRA_AI_PROVIDER_BASE_URL",
-      "canonical": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
     },
     {
       "alias": "DEPLOY_CHECK_BASE_URL",
       "canonical": "LUMIRA_BASE_URL"
     },
     {
-      "alias": "LUMIRA_MESSAGE_SERVICE_BASE_URL",
-      "canonical": "MESSAGE_SERVICE_BASE_URL"
-    },
-    {
-      "alias": "LUMIRA_PAYMENT_SERVICE_BASE_URL",
-      "canonical": "PAYMENT_SERVICE_BASE_URL"
-    },
-    {
       "alias": "FRONTEND_BASE_URL",
       "canonical": "PLAYWRIGHT_BASE_URL"
-    },
-    {
-      "alias": "LUMIRA_PLUGIN_SERVICE_BASE_URL",
-      "canonical": "PLUGIN_SERVICE_BASE_URL"
-    },
-    {
-      "alias": "SPRING_DATA_REDIS_HOST",
-      "canonical": "REDIS_HOST"
-    },
-    {
-      "alias": "LUMIRA_EVENT_REDIS_STREAM_KEY",
-      "canonical": "SAAS_EVENT_REDIS_STREAM_KEY"
-    },
-    {
-      "alias": "LUMIRA_JOB_BACKEND_BASE_URL",
-      "canonical": "SAAS_JOB_BACKEND_BASE_URL"
-    },
-    {
-      "alias": "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
-      "canonical": "SAAS_JOB_FILE_SERVICE_BASE_URL"
-    },
-    {
-      "alias": "DDD_JOB_INTERNAL_TOKEN",
-      "canonical": "SAAS_JOB_INTERNAL_TOKEN"
     },
     {
       "alias": "LUMIRA_JOB_INTERNAL_TOKEN",
       "canonical": "SAAS_JOB_INTERNAL_TOKEN"
     },
     {
-      "alias": "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
-      "canonical": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-    },
-    {
-      "alias": "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
-      "canonical": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-    },
-    {
-      "alias": "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
-      "canonical": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-    },
-    {
-      "alias": "LUMIRA_SYSTEM_SERVICE_BASE_URL",
-      "canonical": "SYSTEM_SERVICE_BASE_URL"
-    },
-    {
       "alias": "LUMIRA_UPLOAD_STORAGE_ROOT",
       "canonical": "UPLOAD_STORAGE_ROOT"
-    },
-    {
-      "alias": "LUMIRA_XXL_JOB_ACCESS_TOKEN",
-      "canonical": "XXL_JOB_ACCESS_TOKEN"
-    },
-    {
-      "alias": "XXL_JOB_ADMIN_ACCESS_TOKEN",
-      "canonical": "XXL_JOB_ACCESS_TOKEN"
-    },
-    {
-      "alias": "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
-      "canonical": "XXL_JOB_ADMIN_ADDRESSES"
     }
   ],
   "groups": [
-    {
-      "batchId": "p0-release-env-lint-release-infra",
-      "priority": "P0",
-      "source": "release-env-lint",
-      "owner": "release-infra",
-      "pendingItems": 2,
-      "dependsOn": [],
-      "canRunImmediately": true,
-      "envKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DDD_AUTH_PASSWORD",
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_ENVIRONMENT",
-        "DDD_AUTH_USERNAME",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "FIELD_SECRET",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "JWT_SECRET",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "PAYMENT_PUBLIC_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "AI_SERVICE_BASE_URL",
-          "keys": [
-            "AI_SERVICE_BASE_URL",
-            "LUMIRA_AI_BASE_URL",
-            "LUMIRA_AI_SERVICE_BASE_URL"
-          ],
-          "spec": "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL"
-        },
-        {
-          "label": "AUTH_SERVICE_BASE_URL",
-          "keys": [
-            "AUTH_SERVICE_BASE_URL",
-            "LUMIRA_AUTH_SERVICE_BASE_URL"
-          ],
-          "spec": "AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL"
-        },
-        {
-          "label": "BASE_URL",
-          "keys": [
-            "BASE_URL"
-          ],
-          "spec": "BASE_URL=BASE_URL"
-        },
-        {
-          "label": "CORS_ALLOWED_ORIGIN_PATTERNS",
-          "keys": [
-            "CORS_ALLOWED_ORIGIN_PATTERNS",
-            "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
-          ],
-          "spec": "CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
-        },
-        {
-          "label": "DB_PASSWORD",
-          "keys": [
-            "DB_PASSWORD",
-            "MYSQL_PASSWORD",
-            "SPRING_DATASOURCE_PASSWORD"
-          ],
-          "spec": "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD"
-        },
-        {
-          "label": "DB_URL",
-          "keys": [
-            "DB_URL",
-            "SPRING_DATASOURCE_URL"
-          ],
-          "spec": "DB_URL=DB_URL|SPRING_DATASOURCE_URL"
-        },
-        {
-          "label": "DB_USERNAME",
-          "keys": [
-            "DB_USERNAME",
-            "MYSQL_USER",
-            "SPRING_DATASOURCE_USERNAME"
-          ],
-          "spec": "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME"
-        },
-        {
-          "label": "DDD_AUTH_PASSWORD",
-          "keys": [
-            "DDD_AUTH_PASSWORD"
-          ],
-          "spec": "DDD_AUTH_PASSWORD=DDD_AUTH_PASSWORD"
-        },
-        {
-          "label": "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-          "keys": [
-            "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY"
-          ],
-          "spec": "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY"
-        },
-        {
-          "label": "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-          "keys": [
-            "DDD_AUTH_PERF_BASELINE_ENVIRONMENT"
-          ],
-          "spec": "DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT"
-        },
-        {
-          "label": "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-          "keys": [
-            "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT"
-          ],
-          "spec": "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT"
-        },
-        {
-          "label": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-          "keys": [
-            "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE"
-          ],
-          "spec": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE=DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE"
-        },
-        {
-          "label": "DDD_AUTH_PERF_ENVIRONMENT",
-          "keys": [
-            "DDD_AUTH_PERF_ENVIRONMENT"
-          ],
-          "spec": "DDD_AUTH_PERF_ENVIRONMENT=DDD_AUTH_PERF_ENVIRONMENT"
-        },
-        {
-          "label": "DDD_AUTH_USERNAME",
-          "keys": [
-            "DDD_AUTH_USERNAME"
-          ],
-          "spec": "DDD_AUTH_USERNAME=DDD_AUTH_USERNAME"
-        },
-        {
-          "label": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-          "keys": [
-            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
-          ],
-          "spec": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
-        },
-        {
-          "label": "DDD_DEPLOYMENT_EVIDENCE",
-          "keys": [
-            "DDD_DEPLOYMENT_EVIDENCE"
-          ],
-          "spec": "DDD_DEPLOYMENT_EVIDENCE=DDD_DEPLOYMENT_EVIDENCE"
-        },
-        {
-          "label": "DDD_EXPLAIN_DATABASE",
-          "keys": [
-            "DDD_EXPLAIN_DATABASE"
-          ],
-          "spec": "DDD_EXPLAIN_DATABASE=DDD_EXPLAIN_DATABASE"
-        },
-        {
-          "label": "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-          "keys": [
-            "DDD_FRONTEND_DEPLOYMENT_EVIDENCE"
-          ],
-          "spec": "DDD_FRONTEND_DEPLOYMENT_EVIDENCE=DDD_FRONTEND_DEPLOYMENT_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_COMPLETED_AT",
-          "keys": [
-            "DDD_MIGRATION_COMPLETED_AT"
-          ],
-          "spec": "DDD_MIGRATION_COMPLETED_AT=DDD_MIGRATION_COMPLETED_AT"
-        },
-        {
-          "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-          "keys": [
-            "DDD_MIGRATION_FRESH_DB_EVIDENCE"
-          ],
-          "spec": "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_FRESH_DB_VALIDATED",
-          "keys": [
-            "DDD_MIGRATION_FRESH_DB_VALIDATED"
-          ],
-          "spec": "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED"
-        },
-        {
-          "label": "DDD_MIGRATION_OPERATOR",
-          "keys": [
-            "DDD_MIGRATION_OPERATOR"
-          ],
-          "spec": "DDD_MIGRATION_OPERATOR=DDD_MIGRATION_OPERATOR"
-        },
-        {
-          "label": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-          "keys": [
-            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-          ],
-          "spec": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
-        },
-        {
-          "label": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-          "keys": [
-            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-          ],
-          "spec": "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
-        },
-        {
-          "label": "FIELD_SECRET",
-          "keys": [
-            "FIELD_SECRET",
-            "SAAS_SECURITY_FIELD_SECRET"
-          ],
-          "spec": "FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET"
-        },
-        {
-          "label": "FILE_SERVICE_BASE_URL",
-          "keys": [
-            "FILE_SERVICE_BASE_URL",
-            "LUMIRA_FILE_SERVICE_BASE_URL"
-          ],
-          "spec": "FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "JOB_EXECUTOR_BASE_URL",
-          "keys": [
-            "JOB_EXECUTOR_BASE_URL",
-            "LUMIRA_JOB_EXECUTOR_BASE_URL"
-          ],
-          "spec": "JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL"
-        },
-        {
-          "label": "JWT_SECRET",
-          "keys": [
-            "JWT_SECRET",
-            "SAAS_SECURITY_JWT_SECRET"
-          ],
-          "spec": "JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET"
-        },
-        {
-          "label": "LOCALIZATION_SERVICE_BASE_URL",
-          "keys": [
-            "LOCALIZATION_SERVICE_BASE_URL",
-            "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
-          ],
-          "spec": "LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_FILE_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_IAM_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-          "keys": [
-            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-            "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
-            "SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-            "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-          "keys": [
-            "LUMIRA_AI_PROVIDER_API_KEY",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-          ],
-          "spec": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-        },
-        {
-          "label": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_PROVIDER_BASE_URL",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_BASE_URL",
-          "keys": [
-            "DEPLOY_CHECK_BASE_URL",
-            "LUMIRA_BASE_URL"
-          ],
-          "spec": "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
-        },
-        {
-          "label": "MESSAGE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_MESSAGE_SERVICE_BASE_URL",
-            "MESSAGE_SERVICE_BASE_URL"
-          ],
-          "spec": "MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "MYSQL_DATABASE",
-          "keys": [
-            "MYSQL_DATABASE"
-          ],
-          "spec": "MYSQL_DATABASE=MYSQL_DATABASE"
-        },
-        {
-          "label": "MYSQL_HOST",
-          "keys": [
-            "MYSQL_HOST"
-          ],
-          "spec": "MYSQL_HOST=MYSQL_HOST"
-        },
-        {
-          "label": "MYSQL_PORT",
-          "keys": [
-            "MYSQL_PORT"
-          ],
-          "spec": "MYSQL_PORT=MYSQL_PORT"
-        },
-        {
-          "label": "PAYMENT_PUBLIC_BASE_URL",
-          "keys": [
-            "PAYMENT_PUBLIC_BASE_URL"
-          ],
-          "spec": "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
-        },
-        {
-          "label": "PAYMENT_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_PAYMENT_SERVICE_BASE_URL",
-            "PAYMENT_SERVICE_BASE_URL"
-          ],
-          "spec": "PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "label": "PLAYWRIGHT_BASE_URL",
-          "keys": [
-            "FRONTEND_BASE_URL",
-            "PLAYWRIGHT_BASE_URL"
-          ],
-          "spec": "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
-        },
-        {
-          "label": "PLUGIN_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_PLUGIN_SERVICE_BASE_URL",
-            "PLUGIN_SERVICE_BASE_URL"
-          ],
-          "spec": "PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "label": "REDIS_HOST",
-          "keys": [
-            "REDIS_HOST",
-            "SPRING_DATA_REDIS_HOST"
-          ],
-          "spec": "REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST"
-        },
-        {
-          "label": "SAAS_EVENT_REDIS_STREAM_KEY",
-          "keys": [
-            "LUMIRA_EVENT_REDIS_STREAM_KEY",
-            "SAAS_EVENT_REDIS_STREAM_KEY"
-          ],
-          "spec": "SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY"
-        },
-        {
-          "label": "SAAS_JOB_BACKEND_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_BACKEND_BASE_URL",
-            "SAAS_JOB_BACKEND_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_FILE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
-            "SAAS_JOB_FILE_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_INTERNAL_TOKEN",
-          "keys": [
-            "DDD_JOB_INTERNAL_TOKEN",
-            "LUMIRA_JOB_INTERNAL_TOKEN",
-            "SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "spec": "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "label": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
-            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
-            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
-            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SYSTEM_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_SYSTEM_SERVICE_BASE_URL",
-            "SYSTEM_SERVICE_BASE_URL"
-          ],
-          "spec": "SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL"
-        },
-        {
-          "label": "XXL_JOB_ACCESS_TOKEN",
-          "keys": [
-            "LUMIRA_XXL_JOB_ACCESS_TOKEN",
-            "XXL_JOB_ACCESS_TOKEN",
-            "XXL_JOB_ADMIN_ACCESS_TOKEN"
-          ],
-          "spec": "XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN"
-        },
-        {
-          "label": "XXL_JOB_ADMIN_ADDRESSES",
-          "keys": [
-            "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
-            "XXL_JOB_ADMIN_ADDRESSES"
-          ],
-          "spec": "XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES"
-        }
-      ],
-      "templateEnvKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DDD_AUTH_PASSWORD",
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_ENVIRONMENT",
-        "DDD_AUTH_USERNAME",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "FIELD_SECRET",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "JWT_SECRET",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "PAYMENT_PUBLIC_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "aliasMappings": [],
-      "commands": [
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-        "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "release-env-lint-placeholders",
-        "release-env-lint-status"
-      ]
-    },
-    {
-      "batchId": "p0-release-config-ai-owner",
-      "priority": "P0",
-      "source": "release-config",
-      "owner": "ai-owner",
-      "pendingItems": 12,
-      "dependsOn": [],
-      "canRunImmediately": true,
-      "envKeys": [
-        "LUMIRA_AI_OWNER_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_API_KEY",
-        "LUMIRA_AI_PROVIDER_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_FILE_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_IAM_BASE_URL",
-            "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-          "keys": [
-            "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-            "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
-            "SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "label": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-            "LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL"
-        },
-        {
-          "label": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-          "keys": [
-            "LUMIRA_AI_PROVIDER_API_KEY",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-          ],
-          "spec": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-        },
-        {
-          "label": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-          "keys": [
-            "LUMIRA_AI_PROVIDER_BASE_URL",
-            "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
-          ],
-          "spec": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_INTERNAL_TOKEN",
-          "keys": [
-            "DDD_JOB_INTERNAL_TOKEN",
-            "LUMIRA_JOB_INTERNAL_TOKEN",
-            "SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "spec": "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-        }
-      ],
-      "templateEnvKeys": [
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "LUMIRA_AI_OWNER_FILE_BASE_URL",
-          "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_AI_OWNER_IAM_BASE_URL",
-          "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
-          "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN"
-        },
-        {
-          "alias": "LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
-          "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_AI_PROVIDER_API_KEY",
-          "canonical": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-        },
-        {
-          "alias": "LUMIRA_AI_PROVIDER_BASE_URL",
-          "canonical": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
-        }
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "file owner url",
-        "file owner url",
-        "iam owner url",
-        "iam owner url",
-        "owner internal token",
-        "owner internal token",
-        "platform owner url",
-        "platform owner url",
-        "provider api key",
-        "provider api key",
-        "provider base url",
-        "provider base url"
-      ]
-    },
-    {
-      "batchId": "p0-release-config-payment-owner",
-      "priority": "P0",
-      "source": "release-config",
-      "owner": "payment-owner",
-      "pendingItems": 2,
-      "dependsOn": [],
-      "canRunImmediately": true,
-      "envKeys": [
-        "PAYMENT_PUBLIC_BASE_URL"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "PAYMENT_PUBLIC_BASE_URL",
-          "keys": [
-            "PAYMENT_PUBLIC_BASE_URL"
-          ],
-          "spec": "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
-        }
-      ],
-      "templateEnvKeys": [
-        "PAYMENT_PUBLIC_BASE_URL"
-      ],
-      "aliasMappings": [],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "payment public url",
-        "payment public url"
-      ]
-    },
-    {
-      "batchId": "p0-release-config-platform-events",
-      "priority": "P0",
-      "source": "release-config",
-      "owner": "platform-events",
-      "pendingItems": 17,
-      "dependsOn": [],
-      "canRunImmediately": true,
-      "envKeys": [
-        "DDD_JOB_INTERNAL_TOKEN",
-        "LUMIRA_EVENT_REDIS_STREAM_KEY",
-        "LUMIRA_JOB_BACKEND_BASE_URL",
-        "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
-        "LUMIRA_JOB_INTERNAL_TOKEN",
-        "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
-        "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
-        "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
-        "LUMIRA_XXL_JOB_ACCESS_TOKEN",
-        "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "SAAS_JOB_INTERNAL_TOKEN",
-          "keys": [
-            "DDD_JOB_INTERNAL_TOKEN",
-            "LUMIRA_JOB_INTERNAL_TOKEN",
-            "SAAS_JOB_INTERNAL_TOKEN"
-          ],
-          "spec": "SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "label": "SAAS_EVENT_REDIS_STREAM_KEY",
-          "keys": [
-            "LUMIRA_EVENT_REDIS_STREAM_KEY",
-            "SAAS_EVENT_REDIS_STREAM_KEY"
-          ],
-          "spec": "SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY"
-        },
-        {
-          "label": "SAAS_JOB_BACKEND_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_BACKEND_BASE_URL",
-            "SAAS_JOB_BACKEND_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_FILE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
-            "SAAS_JOB_FILE_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
-            "SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
-            "SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
-            "SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-          ],
-          "spec": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "label": "XXL_JOB_ACCESS_TOKEN",
-          "keys": [
-            "LUMIRA_XXL_JOB_ACCESS_TOKEN",
-            "XXL_JOB_ACCESS_TOKEN",
-            "XXL_JOB_ADMIN_ACCESS_TOKEN"
-          ],
-          "spec": "XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN"
-        },
-        {
-          "label": "XXL_JOB_ADMIN_ADDRESSES",
-          "keys": [
-            "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
-            "XXL_JOB_ADMIN_ADDRESSES"
-          ],
-          "spec": "XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES"
-        }
-      ],
-      "templateEnvKeys": [
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "LUMIRA_EVENT_REDIS_STREAM_KEY",
-          "canonical": "SAAS_EVENT_REDIS_STREAM_KEY"
-        },
-        {
-          "alias": "LUMIRA_JOB_BACKEND_BASE_URL",
-          "canonical": "SAAS_JOB_BACKEND_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
-          "canonical": "SAAS_JOB_FILE_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "DDD_JOB_INTERNAL_TOKEN",
-          "canonical": "SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "alias": "LUMIRA_JOB_INTERNAL_TOKEN",
-          "canonical": "SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "alias": "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
-          "canonical": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
-          "canonical": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
-          "canonical": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_XXL_JOB_ACCESS_TOKEN",
-          "canonical": "XXL_JOB_ACCESS_TOKEN"
-        },
-        {
-          "alias": "XXL_JOB_ADMIN_ACCESS_TOKEN",
-          "canonical": "XXL_JOB_ACCESS_TOKEN"
-        },
-        {
-          "alias": "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
-          "canonical": "XXL_JOB_ADMIN_ADDRESSES"
-        }
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "event stream key",
-        "job backend url",
-        "job backend url",
-        "job file url",
-        "job file url",
-        "job internal token",
-        "job internal token",
-        "job message url",
-        "job message url",
-        "job payment url",
-        "job payment url",
-        "job plugin url",
-        "job plugin url",
-        "xxl job admin",
-        "xxl job admin",
-        "xxl job token",
-        "xxl job token"
-      ]
-    },
-    {
-      "batchId": "p0-release-config-platform-owners",
-      "priority": "P0",
-      "source": "release-config",
-      "owner": "platform-owners",
-      "pendingItems": 18,
-      "dependsOn": [],
-      "canRunImmediately": true,
-      "envKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_BASE_URL",
-        "LUMIRA_AI_SERVICE_BASE_URL",
-        "LUMIRA_AUTH_SERVICE_BASE_URL",
-        "LUMIRA_FILE_SERVICE_BASE_URL",
-        "LUMIRA_JOB_EXECUTOR_BASE_URL",
-        "LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_MESSAGE_SERVICE_BASE_URL",
-        "LUMIRA_PAYMENT_SERVICE_BASE_URL",
-        "LUMIRA_PLUGIN_SERVICE_BASE_URL",
-        "LUMIRA_SYSTEM_SERVICE_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "AI_SERVICE_BASE_URL",
-          "keys": [
-            "AI_SERVICE_BASE_URL",
-            "LUMIRA_AI_BASE_URL",
-            "LUMIRA_AI_SERVICE_BASE_URL"
-          ],
-          "spec": "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL"
-        },
-        {
-          "label": "AUTH_SERVICE_BASE_URL",
-          "keys": [
-            "AUTH_SERVICE_BASE_URL",
-            "LUMIRA_AUTH_SERVICE_BASE_URL"
-          ],
-          "spec": "AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL"
-        },
-        {
-          "label": "FILE_SERVICE_BASE_URL",
-          "keys": [
-            "FILE_SERVICE_BASE_URL",
-            "LUMIRA_FILE_SERVICE_BASE_URL"
-          ],
-          "spec": "FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "JOB_EXECUTOR_BASE_URL",
-          "keys": [
-            "JOB_EXECUTOR_BASE_URL",
-            "LUMIRA_JOB_EXECUTOR_BASE_URL"
-          ],
-          "spec": "JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL"
-        },
-        {
-          "label": "LOCALIZATION_SERVICE_BASE_URL",
-          "keys": [
-            "LOCALIZATION_SERVICE_BASE_URL",
-            "LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
-          ],
-          "spec": "LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL"
-        },
-        {
-          "label": "MESSAGE_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_MESSAGE_SERVICE_BASE_URL",
-            "MESSAGE_SERVICE_BASE_URL"
-          ],
-          "spec": "MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "label": "PAYMENT_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_PAYMENT_SERVICE_BASE_URL",
-            "PAYMENT_SERVICE_BASE_URL"
-          ],
-          "spec": "PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "label": "PLUGIN_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_PLUGIN_SERVICE_BASE_URL",
-            "PLUGIN_SERVICE_BASE_URL"
-          ],
-          "spec": "PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "label": "SYSTEM_SERVICE_BASE_URL",
-          "keys": [
-            "LUMIRA_SYSTEM_SERVICE_BASE_URL",
-            "SYSTEM_SERVICE_BASE_URL"
-          ],
-          "spec": "SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL"
-        }
-      ],
-      "templateEnvKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "LUMIRA_AI_BASE_URL",
-          "canonical": "AI_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_AI_SERVICE_BASE_URL",
-          "canonical": "AI_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_AUTH_SERVICE_BASE_URL",
-          "canonical": "AUTH_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_FILE_SERVICE_BASE_URL",
-          "canonical": "FILE_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_JOB_EXECUTOR_BASE_URL",
-          "canonical": "JOB_EXECUTOR_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-          "canonical": "LOCALIZATION_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_MESSAGE_SERVICE_BASE_URL",
-          "canonical": "MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_PAYMENT_SERVICE_BASE_URL",
-          "canonical": "PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_PLUGIN_SERVICE_BASE_URL",
-          "canonical": "PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_SYSTEM_SERVICE_BASE_URL",
-          "canonical": "SYSTEM_SERVICE_BASE_URL"
-        }
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "ai service",
-        "ai service",
-        "auth service",
-        "auth service",
-        "file service",
-        "file service",
-        "job executor",
-        "job executor",
-        "localization service",
-        "localization service",
-        "message service",
-        "message service",
-        "payment service",
-        "payment service",
-        "plugin service",
-        "plugin service",
-        "system service",
-        "system service"
-      ]
-    },
-    {
-      "batchId": "p0-release-config-release-infra",
-      "priority": "P0",
-      "source": "release-config",
-      "owner": "release-infra",
-      "pendingItems": 14,
-      "dependsOn": [],
-      "canRunImmediately": true,
-      "envKeys": [
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DEPLOY_CHECK_BASE_URL",
-        "FIELD_SECRET",
-        "FRONTEND_BASE_URL",
-        "JWT_SECRET",
-        "LUMIRA_BASE_URL",
-        "MYSQL_PASSWORD",
-        "MYSQL_USER",
-        "PLAYWRIGHT_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_SECURITY_FIELD_SECRET",
-        "SAAS_SECURITY_JWT_SECRET",
-        "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
-        "SPRING_DATASOURCE_PASSWORD",
-        "SPRING_DATASOURCE_URL",
-        "SPRING_DATASOURCE_USERNAME",
-        "SPRING_DATA_REDIS_HOST"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "CORS_ALLOWED_ORIGIN_PATTERNS",
-          "keys": [
-            "CORS_ALLOWED_ORIGIN_PATTERNS",
-            "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
-          ],
-          "spec": "CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS"
-        },
-        {
-          "label": "DB_PASSWORD",
-          "keys": [
-            "DB_PASSWORD",
-            "MYSQL_PASSWORD",
-            "SPRING_DATASOURCE_PASSWORD"
-          ],
-          "spec": "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD"
-        },
-        {
-          "label": "DB_URL",
-          "keys": [
-            "DB_URL",
-            "SPRING_DATASOURCE_URL"
-          ],
-          "spec": "DB_URL=DB_URL|SPRING_DATASOURCE_URL"
-        },
-        {
-          "label": "DB_USERNAME",
-          "keys": [
-            "DB_USERNAME",
-            "MYSQL_USER",
-            "SPRING_DATASOURCE_USERNAME"
-          ],
-          "spec": "DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME"
-        },
-        {
-          "label": "LUMIRA_BASE_URL",
-          "keys": [
-            "DEPLOY_CHECK_BASE_URL",
-            "LUMIRA_BASE_URL"
-          ],
-          "spec": "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
-        },
-        {
-          "label": "FIELD_SECRET",
-          "keys": [
-            "FIELD_SECRET",
-            "SAAS_SECURITY_FIELD_SECRET"
-          ],
-          "spec": "FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET"
-        },
-        {
-          "label": "PLAYWRIGHT_BASE_URL",
-          "keys": [
-            "FRONTEND_BASE_URL",
-            "PLAYWRIGHT_BASE_URL"
-          ],
-          "spec": "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
-        },
-        {
-          "label": "JWT_SECRET",
-          "keys": [
-            "JWT_SECRET",
-            "SAAS_SECURITY_JWT_SECRET"
-          ],
-          "spec": "JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET"
-        },
-        {
-          "label": "REDIS_HOST",
-          "keys": [
-            "REDIS_HOST",
-            "SPRING_DATA_REDIS_HOST"
-          ],
-          "spec": "REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST"
-        }
-      ],
-      "templateEnvKeys": [
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "FIELD_SECRET",
-        "JWT_SECRET",
-        "LUMIRA_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "REDIS_HOST"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
-          "canonical": "CORS_ALLOWED_ORIGIN_PATTERNS"
-        },
-        {
-          "alias": "MYSQL_PASSWORD",
-          "canonical": "DB_PASSWORD"
-        },
-        {
-          "alias": "SPRING_DATASOURCE_PASSWORD",
-          "canonical": "DB_PASSWORD"
-        },
-        {
-          "alias": "SPRING_DATASOURCE_URL",
-          "canonical": "DB_URL"
-        },
-        {
-          "alias": "MYSQL_USER",
-          "canonical": "DB_USERNAME"
-        },
-        {
-          "alias": "SPRING_DATASOURCE_USERNAME",
-          "canonical": "DB_USERNAME"
-        },
-        {
-          "alias": "SAAS_SECURITY_FIELD_SECRET",
-          "canonical": "FIELD_SECRET"
-        },
-        {
-          "alias": "SAAS_SECURITY_JWT_SECRET",
-          "canonical": "JWT_SECRET"
-        },
-        {
-          "alias": "DEPLOY_CHECK_BASE_URL",
-          "canonical": "LUMIRA_BASE_URL"
-        },
-        {
-          "alias": "FRONTEND_BASE_URL",
-          "canonical": "PLAYWRIGHT_BASE_URL"
-        },
-        {
-          "alias": "SPRING_DATA_REDIS_HOST",
-          "canonical": "REDIS_HOST"
-        }
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "backend base url",
-        "backend base url",
-        "cors origins",
-        "database password",
-        "database password",
-        "database url",
-        "database username",
-        "field secret",
-        "field secret",
-        "frontend base url",
-        "frontend base url",
-        "jwt secret",
-        "jwt secret",
-        "redis host"
-      ]
-    },
     {
       "batchId": "p0-docker-release-infra",
       "priority": "P0",
@@ -2205,12 +668,6 @@
       "owner": "ai",
       "pendingItems": 3,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2376,12 +833,6 @@
       "owner": "frontend",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2427,12 +878,6 @@
       "owner": "file-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2530,12 +975,6 @@
       "owner": "job-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2619,12 +1058,6 @@
       "owner": "payment-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2702,12 +1135,6 @@
       "owner": "ai-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2815,12 +1242,6 @@
       "owner": "auth-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -2928,12 +1349,6 @@
       "owner": "file-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3041,12 +1456,6 @@
       "owner": "iam-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3154,12 +1563,6 @@
       "owner": "job-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3267,12 +1670,6 @@
       "owner": "localization-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3380,12 +1777,6 @@
       "owner": "message-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3493,12 +1884,6 @@
       "owner": "payment-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3606,12 +1991,6 @@
       "owner": "platform-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3719,12 +2098,6 @@
       "owner": "plugin-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -3832,12 +2205,6 @@
       "owner": "database",
       "pendingItems": 8,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -4017,12 +2384,6 @@
       "owner": "database",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -4113,12 +2474,6 @@
       "owner": "frontend",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",
@@ -4183,18 +2538,91 @@
       ]
     },
     {
+      "batchId": "p3-orchestrator-release-infra",
+      "priority": "P3",
+      "source": "orchestrator",
+      "owner": "release-infra",
+      "pendingItems": 1,
+      "dependsOn": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance",
+        "p1-ai-runtime-ai",
+        "p1-frontend-smoke-frontend",
+        "p1-business-e2e-file-owner",
+        "p1-business-e2e-job-owner",
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-ai-owner",
+        "p1-rollback-auth-owner",
+        "p1-rollback-file-owner",
+        "p1-rollback-iam-owner",
+        "p1-rollback-job-owner",
+        "p1-rollback-localization-owner",
+        "p1-rollback-message-owner",
+        "p1-rollback-payment-owner",
+        "p1-rollback-platform-owner",
+        "p1-rollback-plugin-owner",
+        "p2-explain-database"
+      ],
+      "canRunImmediately": false,
+      "envKeys": [
+        "BASE_URL",
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL"
+      ],
+      "envCheckGroups": [
+        {
+          "label": "BASE_URL",
+          "keys": [
+            "BASE_URL"
+          ],
+          "spec": "BASE_URL=BASE_URL"
+        },
+        {
+          "label": "LUMIRA_BASE_URL",
+          "keys": [
+            "DEPLOY_CHECK_BASE_URL",
+            "LUMIRA_BASE_URL"
+          ],
+          "spec": "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+        }
+      ],
+      "templateEnvKeys": [
+        "BASE_URL",
+        "LUMIRA_BASE_URL"
+      ],
+      "aliasMappings": [
+        {
+          "alias": "DEPLOY_CHECK_BASE_URL",
+          "canonical": "LUMIRA_BASE_URL"
+        }
+      ],
+      "commands": [
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/release-evidence-gate.json",
+        "artifacts/ddd/release/readiness-summary.json"
+      ],
+      "exitCriteria": [
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Final strict release gate and readiness summary report zero blockers.",
+        "Run only after all prerequisite evidence batches are clean."
+      ],
+      "itemIds": [
+        "orchestrator-preflight-backend-runtime-base-url"
+      ]
+    },
+    {
       "batchId": "p3-orchestrator-release-owner",
       "priority": "P3",
       "source": "orchestrator",
       "owner": "release-owner",
       "pendingItems": 1,
       "dependsOn": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-manifest-release-owner",

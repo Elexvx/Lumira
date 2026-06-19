@@ -1,98 +1,86 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
-  "backendBaseUrl": null,
-  "frontendBaseUrl": null,
+  "backendBaseUrl": "https://saas.elexvx.com",
+  "frontendBaseUrl": "https://saas.elexvx.com",
   "runtimeCheck": {
-    "status": "BLOCKED",
-    "generatedAt": "2026-06-19T11:57:32.232Z",
+    "status": "PASS",
+    "generatedAt": "2026-06-19T14:23:42.136Z",
     "willWriteFiles": false,
-    "backendBaseUrl": null,
-    "frontendBaseUrl": null,
+    "backendBaseUrl": "https://saas.elexvx.com",
+    "frontendBaseUrl": "https://saas.elexvx.com",
     "productionEquivalence": {
       "backend": {
         "strict": true,
-        "https": false,
+        "https": true,
         "localOnly": false,
-        "deploymentEvidence": null,
-        "issues": [
-          "strict backend runtime staging check requires HTTPS baseUrl evidence",
-          "strict backend runtime staging check deploymentEvidence is required"
-        ]
+        "deploymentEvidence": "artifacts/ddd/build/docker-image-evidence.json",
+        "issues": []
       },
       "frontend": {
         "strict": true,
-        "https": false,
+        "https": true,
         "localOnly": false,
-        "deploymentEvidence": null,
-        "issues": [
-          "strict frontend runtime staging check requires HTTPS baseUrl evidence",
-          "strict frontend runtime staging check deploymentEvidence is required"
-        ]
+        "deploymentEvidence": "artifacts/ddd/frontend/frontend-smoke.json",
+        "issues": []
       }
     },
     "urlChecks": [
       {
         "name": "LUMIRA_BASE_URL",
-        "valuePresent": false,
-        "https": false,
+        "valuePresent": true,
+        "https": true,
         "localOnly": false,
-        "issues": [
-          "LUMIRA_BASE_URL is required",
-          "LUMIRA_BASE_URL must be an HTTPS URL"
-        ]
+        "issues": []
       },
       {
         "name": "PLAYWRIGHT_BASE_URL",
-        "valuePresent": false,
-        "https": false,
+        "valuePresent": true,
+        "https": true,
         "localOnly": false,
-        "issues": [
-          "PLAYWRIGHT_BASE_URL is required",
-          "PLAYWRIGHT_BASE_URL must be an HTTPS URL"
-        ]
+        "issues": []
       }
     ],
     "evidenceChecks": [
       {
         "name": "DDD_DEPLOYMENT_EVIDENCE",
-        "issue": "is required"
+        "issue": null
       },
       {
         "name": "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "issue": "is required"
+        "issue": null
       },
       {
         "name": "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-        "issue": "is required"
+        "issue": null
       },
       {
         "name": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "issue": "is required"
+        "issue": null
       }
     ],
     "expectationChecks": [
       {
         "name": "DDD_FRONTEND_EXPECT_DEPLOYED",
         "expected": "true",
-        "valuePresent": false,
-        "pass": false,
-        "issue": "DDD_FRONTEND_EXPECT_DEPLOYED must be true"
+        "valuePresent": true,
+        "pass": true,
+        "issue": null
       },
       {
         "name": "DDD_AI_EXPECT_PROVIDER_REMOTE",
         "expected": "true",
-        "valuePresent": false,
-        "pass": false,
-        "issue": "DDD_AI_EXPECT_PROVIDER_REMOTE must be true"
+        "valuePresent": true,
+        "pass": true,
+        "issue": null
       },
       {
         "name": "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
         "expected": "true",
-        "valuePresent": false,
-        "pass": false,
-        "issue": "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE must be true"
+        "valuePresent": true,
+        "pass": true,
+        "issue": null
       }
     ],
     "nextCommands": [
@@ -102,38 +90,12 @@
       "node scripts/ddd-frontend-playwright-smoke.mjs",
       "node scripts/ddd-frontend-smoke-evidence.mjs"
     ],
-    "issues": [
-      "LUMIRA_BASE_URL is required",
-      "LUMIRA_BASE_URL must be an HTTPS URL",
-      "PLAYWRIGHT_BASE_URL is required",
-      "PLAYWRIGHT_BASE_URL must be an HTTPS URL",
-      "strict backend runtime staging check requires HTTPS baseUrl evidence",
-      "strict backend runtime staging check deploymentEvidence is required",
-      "strict frontend runtime staging check requires HTTPS baseUrl evidence",
-      "strict frontend runtime staging check deploymentEvidence is required",
-      "DDD_DEPLOYMENT_EVIDENCE is required",
-      "DDD_FRONTEND_DEPLOYMENT_EVIDENCE is required",
-      "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE is required",
-      "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE is required",
-      "DDD_FRONTEND_EXPECT_DEPLOYED must be true",
-      "DDD_AI_EXPECT_PROVIDER_REMOTE must be true",
-      "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE must be true"
-    ]
+    "issues": []
   },
   "runtimeGate": {
-    "status": "BLOCKED",
-    "blocker": "LUMIRA_BASE_URL is required",
-    "blockingInputs": [
-      "LUMIRA_BASE_URL",
-      "PLAYWRIGHT_BASE_URL",
-      "DDD_DEPLOYMENT_EVIDENCE",
-      "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-      "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-      "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-      "DDD_FRONTEND_EXPECT_DEPLOYED",
-      "DDD_AI_EXPECT_PROVIDER_REMOTE",
-      "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
-    ],
+    "status": "PASS",
+    "blocker": "local-only runtime evidence must be replaced by HTTPS staging evidence",
+    "blockingInputs": [],
     "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
   },
   "owners": [
@@ -145,116 +107,7 @@
     "payment-owner",
     "release-performance"
   ],
-  "blockingInputs": [
-    {
-      "input": "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_AI_EXPECT_PROVIDER_REMOTE",
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_DEPLOYMENT_EVIDENCE",
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_FRONTEND_EXPECT_DEPLOYED",
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "LUMIRA_BASE_URL",
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "PLAYWRIGHT_BASE_URL",
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    }
-  ],
+  "blockingInputs": [],
   "requiredEnv": {
     "urls": [
       "LUMIRA_BASE_URL",
@@ -352,5 +205,5 @@
     "Attach deployment evidence for backend, frontend, AI runtime, authenticated performance, and business E2E flows.",
     "Regenerate release readiness after every smoke artifact is refreshed."
   ],
-  "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
 }

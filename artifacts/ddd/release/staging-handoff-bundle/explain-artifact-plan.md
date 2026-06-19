@@ -1,9 +1,9 @@
 # DDD EXPLAIN Artifact Plan
 
-Status: BLOCKED
+Status: PASS
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
-Missing artifact: `tmp/ddd-explain/*.json`
+Missing artifact: none
 Dispatch owners: platform-owners
 Source owners: database
 Dependent gates: explain, migration
@@ -56,4 +56,4 @@ DDD_EVIDENCE_OPERATOR=__REQUIRED__
 - `node scripts/ddd-staging-data-safety-check.mjs` accepts rollback, migration, and EXPLAIN evidence.
 - `node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report` shows no missing EXPLAIN artifact.
 
-Next: `node scripts/ddd-collect-explain.mjs`
+Next: `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`

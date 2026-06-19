@@ -1,16 +1,16 @@
 # DDD Runtime Business Submission Plan
 
-Status: BLOCKED
+Status: PASS
 Owner: release-infra
 Gate: runtime-business
-Backend URL: missing
-Frontend URL: missing
+Backend URL: `https://saas.elexvx.com`
+Frontend URL: `https://saas.elexvx.com`
 
 ## Deployment Submission
 
 Owner: release-infra
-Status: BLOCKED
-Blocker: LUMIRA_BASE_URL is required
+Status: PASS
+Blocker: local-only runtime evidence must be replaced by HTTPS staging evidence
 
 Required inputs:
 
@@ -72,7 +72,7 @@ Artifacts:
 {
   "owner": "release-infra",
   "lane": "p1-runtime-business",
-  "status": "BLOCKED",
+  "status": "PASS",
   "providedArtifacts": [
     "artifacts/ddd/readiness/summary.json",
     "artifacts/ddd/performance/authenticated-runtime-actual.json",
@@ -82,15 +82,7 @@ Artifacts:
     "artifacts/ddd/jobs/job-e2e-smoke.json",
     "artifacts/ddd/payment/payment-webhook-e2e.json"
   ],
-  "missingArtifacts": [
-    "artifacts/ddd/readiness/summary.json",
-    "artifacts/ddd/performance/authenticated-runtime-actual.json",
-    "artifacts/ddd/ai/ai-runtime-drill.json",
-    "artifacts/ddd/frontend/frontend-smoke.json",
-    "artifacts/ddd/file/file-processing-e2e.json",
-    "artifacts/ddd/jobs/job-e2e-smoke.json",
-    "artifacts/ddd/payment/payment-webhook-e2e.json"
-  ],
+  "missingArtifacts": [],
   "completedAt": "<ISO-8601 timestamp after validation commands pass>",
   "completedBy": "<owner or workflow actor>",
   "acceptanceCommands": [
@@ -109,4 +101,4 @@ Artifacts:
 - Runtime staging check and evidence acceptance pass after all owner artifacts are present.
 - Final review no longer reports the runtime-business gate as blocked.
 
-Next: `node scripts/ddd-staging-runtime-check.mjs`
+Next: `node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`

@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  backend:
+  lumira-backend:
     name: Backend Maven Tests
     runs-on: ubuntu-latest
     steps:
@@ -17,8 +17,8 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Run backend tests
-        run: mvn clean test
+      - name: Run lumira-backend tests
+        run: mvn -f lumira-backend/pom.xml clean test
 
   ddd-gates:
     name: DDD Architecture Performance Gates
@@ -34,444 +34,444 @@ jobs:
         with:
           node-version: 24
       - name: Shared security contract tests
-        run: mvn -pl libs/common-security,libs/common-web -am -Dtest=InternalServiceTokenAuthFilterTest,JwtTokenParserTest,FieldCryptoServiceTest,DataPermissionResolverTest,TraceIdFilterTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -f lumira-backend/pom.xml -pl libs/lumira-common-security,libs/lumira-common-web -am -Dtest=InternalServiceTokenAuthFilterTest,JwtTokenParserTest,FieldCryptoServiceTest,DataPermissionResolverTest,TraceIdFilterTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Architecture boundary tests
-        run: mvn -pl services/system-service -am -Dtest=DddArchitectureBoundaryTest,DddArchitectureCatalogControllerTest,OwnerReadModelMetricsServiceTest,IamV2ControllerTest,IamReadinessV2ControllerTest,PlatformReadinessV2ControllerTest,PlatformV2ControllerTest,AiReadinessV2ControllerTest,AiOwnerMetricsServiceTest,AiKnowledgeBaseAppServiceTest,AiKnowledgeVectorServiceTest,RuntimeSecurityPropertiesValidatorTest,DefaultAdminPasswordBaselineTest,RedisStreamPlatformEventDispatcherTest,PlatformEventPublisherTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -f lumira-backend/pom.xml -pl services/lumira-system -am -Dtest=DddArchitectureBoundaryTest,DddArchitectureCatalogControllerTest,OwnerReadModelMetricsServiceTest,IamV2ControllerTest,IamReadinessV2ControllerTest,PlatformReadinessV2ControllerTest,PlatformV2ControllerTest,AiReadinessV2ControllerTest,AiOwnerMetricsServiceTest,AiKnowledgeBaseAppServiceTest,AiKnowledgeVectorServiceTest,RuntimeSecurityPropertiesValidatorTest,DefaultAdminPasswordBaselineTest,RedisStreamPlatformEventDispatcherTest,PlatformEventPublisherTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Auth owner readiness contract tests
-        run: mvn -pl services/auth-service -am -Dtest=AuthReadinessV2ControllerTest,AuthV2ControllerTest,AuthSessionStoreTest,AuthDomainModelsTest,AuthAppServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -f lumira-backend/pom.xml -pl services/lumira-auth -am -Dtest=AuthReadinessV2ControllerTest,AuthV2ControllerTest,AuthSessionStoreTest,AuthDomainModelsTest,AuthAppServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: File owner readiness contract tests
-        run: mvn -pl services/file-service -am -Dtest=FileReadinessV2ControllerTest,FileV2ControllerTest,FileUploadMetricsTest,InternalJobControllerTest,FileSecurityScanProcessorTest,FileSecurityScanMetricsTest,InlineFileSecurityScanEngineTest,ClamAvFileSecurityScanEngineTest,FileSecurityScanEngineSelectorTest,FileOcrProcessorTest,FileOcrEngineSelectorTest,FileStorageMetricsTest,DocumentUploadServiceTest,ImageUploadServiceTest,FileThumbnailProcessorTest,FileTextExtractionProcessorTest,FileAiParseProcessorTest,FileProcessingTaskServiceTest,FileProcessingMetricsTest,FileOutboxMetricsServiceTest,PlatformEventOutboxRelayServiceTest,FileOutboxRelayTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -f lumira-backend/pom.xml -pl services/lumira-file -am -Dtest=FileReadinessV2ControllerTest,FileV2ControllerTest,FileUploadMetricsTest,InternalJobControllerTest,FileSecurityScanProcessorTest,FileSecurityScanMetricsTest,InlineFileSecurityScanEngineTest,ClamAvFileSecurityScanEngineTest,FileSecurityScanEngineSelectorTest,FileOcrProcessorTest,FileOcrEngineSelectorTest,FileStorageMetricsTest,DocumentUploadServiceTest,ImageUploadServiceTest,FileThumbnailProcessorTest,FileTextExtractionProcessorTest,FileAiParseProcessorTest,FileProcessingTaskServiceTest,FileProcessingMetricsTest,FileOutboxMetricsServiceTest,PlatformEventOutboxRelayServiceTest,FileOutboxRelayTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Message owner readiness contract tests
-        run: mvn -pl services/message-service -am -Dtest=MessageReadinessV2ControllerTest,MessageV2ControllerTest,MessageDomainModelsTest,MessageAppServiceTest,PlatformEventOutboxServiceTest,MessageNoticeMapperHotPathSqlTest,MessageEventFactoryTest,MessageEventDeliveryServiceTest,MessageWebSocketTicketServiceTest,MessageSessionHandshakeInterceptorTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -f lumira-backend/pom.xml -pl services/lumira-message -am -Dtest=MessageReadinessV2ControllerTest,MessageV2ControllerTest,MessageDomainModelsTest,MessageAppServiceTest,PlatformEventOutboxServiceTest,MessageNoticeMapperHotPathSqlTest,MessageEventFactoryTest,MessageEventDeliveryServiceTest,MessageWebSocketTicketServiceTest,MessageSessionHandshakeInterceptorTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Plugin owner readiness contract tests
-        run: mvn -pl services/plugin-service -am -Dtest=PluginReadinessV2ControllerTest,PluginV2ControllerTest,PluginDomainModelsTest,PluginOutboxServiceTest,PluginManagementAppServiceTest,PluginArchitectureContractTest,PluginRuntimeSecurityPolicyTest,PluginPersistenceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -f lumira-backend/pom.xml -pl services/lumira-plugin -am -Dtest=PluginReadinessV2ControllerTest,PluginV2ControllerTest,PluginDomainModelsTest,PluginOutboxServiceTest,PluginManagementAppServiceTest,PluginArchitectureContractTest,PluginRuntimeSecurityPolicyTest,PluginPersistenceServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Payment owner readiness contract tests
-        run: mvn -pl services/payment-service -am -Dtest=PaymentReadinessV2ControllerTest,PaymentV2ControllerTest,PaymentDomainModelsTest,PaymentOutboxServiceTest,PaymentOutboxRelayTest,InternalJobControllerTest,PaymentWebhookServiceTest,PaymentManagementAppServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -f lumira-backend/pom.xml -pl services/lumira-payment -am -Dtest=PaymentReadinessV2ControllerTest,PaymentV2ControllerTest,PaymentDomainModelsTest,PaymentOutboxServiceTest,PaymentOutboxRelayTest,InternalJobControllerTest,PaymentWebhookServiceTest,PaymentManagementAppServiceTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: AI owner standalone contract tests
-        run: mvn -pl services/ai-service -am -Dtest=AiReadinessV2ControllerTest,AiV2ControllerTest,AiReadQueryServiceTest,AiCommandServiceTest,RemoteAiOwnerToolGatewayTest,DefaultAiProviderRuntimeTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -f lumira-backend/pom.xml -pl services/lumira-ai -am -Dtest=AiReadinessV2ControllerTest,AiV2ControllerTest,AiReadQueryServiceTest,AiCommandServiceTest,RemoteAiOwnerToolGatewayTest,DefaultAiProviderRuntimeTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Localization owner readiness contract tests
-        run: mvn -pl services/localization-service -am -Dtest=LocalizationReadinessV2ControllerTest,LocalizationV2ControllerTest,LocalizationRuntimeBundleCacheTest,LocalizationDomainModelsTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -f lumira-backend/pom.xml -pl services/lumira-localization -am -Dtest=LocalizationReadinessV2ControllerTest,LocalizationV2ControllerTest,LocalizationRuntimeBundleCacheTest,LocalizationDomainModelsTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Job relay adapter tests
-        run: mvn -pl services/job-executor -am -Dtest=JobReadinessV2ControllerTest,FileOutboxRelayJobHandlerTest,FileProcessingTaskJobHandlerTest,JobDomainModelsTest,XxlJobExecutorConfigTest -Dsurefire.failIfNoSpecifiedTests=false test
+        run: mvn -f lumira-backend/pom.xml -pl services/lumira-quartz -am -Dtest=JobReadinessV2ControllerTest,FileOutboxRelayJobHandlerTest,FileProcessingTaskJobHandlerTest,JobDomainModelsTest,XxlJobExecutorConfigTest -Dsurefire.failIfNoSpecifiedTests=false test
       - name: Performance smoke script syntax
         run: |
-          node --check scripts/ddd-release-evidence-utils.mjs
-          node --check scripts/ddd-release-evidence-utils.test.mjs
-          node --check scripts/ddd-backfill-runtime-provenance.mjs
-          node --check scripts/ddd-backfill-runtime-provenance.test.mjs
-          node --check scripts/ddd-backend-evidence-contract.mjs
-          node --check scripts/ddd-backend-evidence-contract.test.mjs
-          node --check scripts/ddd-performance-smoke.mjs
-          node --check scripts/ddd-performance-evidence-contract.mjs
-          node --check scripts/ddd-performance-evidence-contract.test.mjs
-          node --check scripts/ddd-performance-baseline-example.test.mjs
-          node --check scripts/ddd-authenticated-performance-smoke.mjs
-          node --check scripts/ddd-business-e2e-evidence-contract.mjs
-          node --check scripts/ddd-business-e2e-evidence-contract.test.mjs
-          node --check scripts/ddd-business-e2e-smoke-status.test.mjs
-          node --check scripts/ddd-file-processing-e2e-smoke.mjs
-          node --check scripts/ddd-outbox-replay-dead-letter-smoke.mjs
-          node --check scripts/ddd-outbox-job-evidence-contract.mjs
-          node --check scripts/ddd-outbox-job-evidence-contract.test.mjs
-          node --check scripts/ddd-outbox-ownership-repair.mjs
-          node --check scripts/ddd-payment-webhook-e2e-smoke.mjs
-          node --check scripts/ddd-ai-runtime-contract.mjs
-          node --check scripts/ddd-ai-runtime-contract.test.mjs
-          node --check scripts/ddd-ai-runtime-drill.mjs
-          node --check scripts/ddd-ai-runtime-drill.test.mjs
-          node --check scripts/ddd-backend-build-evidence.mjs
-          node --check scripts/ddd-backend-test-evidence.mjs
-          node --check scripts/ddd-docker-build-evidence.mjs
-          node --check scripts/ddd-docker-build-evidence.test.mjs
-          node --check scripts/ddd-docker-evidence-contract.mjs
-          node --check scripts/ddd-docker-evidence-contract.test.mjs
-          node --check scripts/ddd-dockerfile-contract.test.mjs
-          node --check scripts/ddd-migration-evidence-contract.mjs
-          node --check scripts/ddd-migration-evidence-contract.test.mjs
-          node --check scripts/ddd-migration-evidence-sync.test.mjs
-          node --check scripts/ddd-migration-evidence-downgrade.test.mjs
-          node --check scripts/ddd-migration-evidence.mjs
-          node --check scripts/ddd-promote-performance-baseline.mjs
-          node --check scripts/ddd-promote-performance-baseline.test.mjs
-          node --check scripts/ddd-frontend-build-evidence.mjs
-          node --check scripts/ddd-frontend-static-evidence.mjs
-          node --check scripts/ddd-frontend-evidence-contract.mjs
-          node --check scripts/ddd-frontend-evidence-contract.test.mjs
-          node --check scripts/ddd-frontend-playwright-smoke.mjs
-          node --check scripts/ddd-frontend-smoke-contract.mjs
-          node --check scripts/ddd-frontend-smoke-contract.test.mjs
-          node --check scripts/ddd-frontend-smoke-flow-sync.test.mjs
-          node --check scripts/ddd-frontend-smoke-evidence.mjs
-          node --check scripts/ddd-frontend-smoke-evidence.test.mjs
-          node --check scripts/ddd-explain-evidence-contract.mjs
-          node --check scripts/ddd-explain-evidence-contract.test.mjs
-          node --check scripts/ddd-explain-gate.mjs
-          node --check scripts/ddd-explain-gate.test.mjs
-          node --check scripts/ddd-explain-gate-report-contract.mjs
-          node --check scripts/ddd-explain-gate-report-contract.test.mjs
-          node --check scripts/ddd-normalize-explain-artifacts.mjs
-          node --check scripts/ddd-normalize-explain-artifacts.test.mjs
-          node --check scripts/ddd-release-config-contract.mjs
-          node --check scripts/ddd-release-config-contract.test.mjs
-          node --check scripts/ddd-release-config-evidence.mjs
-          node --check scripts/ddd-release-config-evidence.test.mjs
-          node --check scripts/ddd-release-config-owner-input-reconciliation.mjs
-          node --check scripts/ddd-release-config-owner-input-reconciliation.test.mjs
-          node --check scripts/ddd-release-owner-input-receipt.mjs
-          node --check scripts/ddd-release-owner-input-receipt-contract.mjs
-          node --check scripts/ddd-release-owner-input-receipt.test.mjs
-          node --check scripts/ddd-release-env-file-lint.mjs
-          node --check scripts/ddd-release-env-file-lint.test.mjs
-          node --check scripts/ddd-release-env-file-lint-contract.mjs
-          node --check scripts/ddd-release-env-file-lint-contract.test.mjs
-          node --check scripts/ddd-release-env-safe-defaults.mjs
-          node --check scripts/ddd-release-env-safe-defaults.test.mjs
-          node --check scripts/ddd-release-provenance-defaults.mjs
-          node --check scripts/ddd-release-provenance-defaults.test.mjs
-          node --check scripts/ddd-release-env-owner-templates-merge.mjs
-          node --check scripts/ddd-release-env-owner-templates-merge.test.mjs
-          node --check scripts/ddd-release-env-alias-sync.mjs
-          node --check scripts/ddd-release-env-alias-sync.test.mjs
-          node --check scripts/ddd-release-env-canonical-lint.mjs
-          node --check scripts/ddd-release-env-canonical-lint.test.mjs
-          node --check scripts/ddd-release-env-canonical-merge.mjs
-          node --check scripts/ddd-release-env-canonical-merge.test.mjs
-          node --check scripts/ddd-release-config-sync.test.mjs
-          node --check scripts/ddd-release-workflow-structure.test.mjs
-          node --check scripts/security-assessment-report-contract.test.mjs
-          node --check scripts/ddd-release-config-template.test.mjs
-          node --check scripts/ddd-release-evidence-manifest.mjs
-          node --check scripts/ddd-release-evidence-manifest.test.mjs
-          node --check scripts/ddd-release-evidence-manifest-contract.mjs
-          node --check scripts/ddd-release-evidence-manifest-contract.test.mjs
-          node --check scripts/ddd-release-evidence-manifest-sync.test.mjs
-          node --check scripts/ddd-release-evidence-gate.mjs
-          node --check scripts/ddd-release-evidence-gate.test.mjs
-          node --check scripts/ddd-release-gate-contract.mjs
-          node --check scripts/ddd-release-gate-contract.test.mjs
-          node --check scripts/ddd-release-evidence-gate-contract.mjs
-          node --check scripts/ddd-release-evidence-gate-contract.test.mjs
-          node --check scripts/ddd-release-evidence-orchestrator.mjs
-          node --check scripts/ddd-release-evidence-orchestrator.test.mjs
-          node --check scripts/ddd-release-orchestrator-contract.mjs
-          node --check scripts/ddd-release-orchestrator-contract.test.mjs
-          node --check scripts/ddd-release-orchestrator-sync.test.mjs
-          node --check scripts/ddd-rollback-drill-contract.mjs
-          node --check scripts/ddd-rollback-drill-contract.test.mjs
-          node --check scripts/ddd-rollback-deferral-template.mjs
-          node --check scripts/ddd-rollback-deferral-template.test.mjs
-          node --check scripts/ddd-rollback-drill-sync.test.mjs
-          node --check scripts/ddd-rollback-drill-evidence.test.mjs
-          node --check scripts/ddd-release-artifact-integrity-contract.mjs
-          node --check scripts/ddd-release-artifact-integrity-contract.test.mjs
-          node --check scripts/ddd-release-artifact-integrity-gate-contract.mjs
-          node --check scripts/ddd-release-artifact-integrity-gate-contract.test.mjs
-          node --check scripts/ddd-release-artifact-path-leak-contract.mjs
-          node --check scripts/ddd-release-artifact-path-leak-contract.test.mjs
-          node --check scripts/ddd-release-cutover-contract.mjs
-          node --check scripts/ddd-release-cutover-contract.test.mjs
-          node --check scripts/ddd-release-final-go-no-go-gate-contract.mjs
-          node --check scripts/ddd-release-final-go-no-go-gate-contract.test.mjs
-          node --check scripts/ddd-release-preflight-gate-contract.mjs
-          node --check scripts/ddd-release-preflight-gate-contract.test.mjs
-          node --check scripts/ddd-release-final-owner-queue-contract.mjs
-          node --check scripts/ddd-release-final-owner-queue-contract.test.mjs
-          node --check scripts/ddd-release-env-init.mjs
-          node --check scripts/ddd-production-readiness-preflight.mjs
-          node --check scripts/ddd-staging-data-safety-check.mjs
-          node --check scripts/ddd-staging-data-safety-check.test.mjs
-          node --check scripts/ddd-staging-runtime-check.mjs
-          node --check scripts/ddd-staging-runtime-check.test.mjs
-          node --check scripts/ddd-staging-execution-checklist.mjs
-          node --check scripts/ddd-staging-execution-checklist.test.mjs
-          node --check scripts/ddd-production-evidence-readiness.test.mjs
-          node --check scripts/ddd-lane-completion-receipt-autofill.mjs
-          node --check scripts/ddd-lane-completion-receipt-autofill.test.mjs
-          node --check scripts/ddd-release-env-fill-checklist.mjs
-          node --check scripts/ddd-release-env-fill-checklist.test.mjs
-          node --check scripts/ddd-release-closure-wave-receipts-contract.mjs
-          node --check scripts/ddd-release-closure-wave-receipts-contract.test.mjs
-          node --check scripts/ddd-release-next-action-queue-contract.mjs
-          node --check scripts/ddd-release-next-action-queue-contract.test.mjs
-          node --check scripts/ddd-release-next-action-run-report-contract.mjs
-          node --check scripts/ddd-release-next-action-run-report-contract.test.mjs
-          node --check scripts/ddd-release-next-action-run-report-summary.mjs
-          node --check scripts/ddd-release-next-action-run-report-summary.test.mjs
-          node --check scripts/ddd-release-execution-run-report-contract.mjs
-          node --check scripts/ddd-release-execution-run-report-contract.test.mjs
-          node --check scripts/ddd-release-execution-run-report-summary.mjs
-          node --check scripts/ddd-release-execution-run-report-summary.test.mjs
-          node --check scripts/ddd-release-redact-output.mjs
-          node --check scripts/ddd-release-redact-output.test.mjs
-          node --check scripts/ddd-release-execution-queue-contract.mjs
-          node --check scripts/ddd-release-execution-queue-contract.test.mjs
-          node --check scripts/ddd-release-command-catalog-contract.mjs
-          node --check scripts/ddd-release-command-catalog-contract.test.mjs
-          node --check scripts/ddd-release-owner-handoff-contract.mjs
-          node --check scripts/ddd-release-owner-handoff-contract.test.mjs
-          node --check scripts/ddd-release-env-owner-matrix-contract.mjs
-          node --check scripts/ddd-release-env-owner-matrix-contract.test.mjs
-          node --check scripts/ddd-release-env-fill-priority-contract.mjs
-          node --check scripts/ddd-release-env-fill-priority-contract.test.mjs
-          node --check scripts/ddd-release-env-canonical-fill-contract.mjs
-          node --check scripts/ddd-release-env-canonical-fill-contract.test.mjs
-          node --check scripts/ddd-release-env-readiness-redacted-contract.mjs
-          node --check scripts/ddd-release-env-readiness-redacted-contract.test.mjs
-          node --check scripts/ddd-release-env-owner-handoff-redacted-contract.mjs
-          node --check scripts/ddd-release-env-owner-handoff-redacted-contract.test.mjs
-          node --check scripts/ddd-release-env-owner-input-packet-contract.mjs
-          node --check scripts/ddd-release-env-owner-input-packet-contract.test.mjs
-          node --check scripts/ddd-release-env-owner-templates-contract.mjs
-          node --check scripts/ddd-release-env-owner-templates-contract.test.mjs
-          node --check scripts/ddd-release-env-owner-templates-merge-contract.mjs
-          node --check scripts/ddd-release-env-owner-templates-merge-contract.test.mjs
-          node --check scripts/ddd-release-env-bootstrap-contract.mjs
-          node --check scripts/ddd-release-env-bootstrap-contract.test.mjs
-          node --check scripts/ddd-release-env-readiness-gate-contract.mjs
-          node --check scripts/ddd-release-env-readiness-gate-contract.test.mjs
-          node --check scripts/ddd-release-env-alias-sync-contract.mjs
-          node --check scripts/ddd-release-env-alias-sync-contract.test.mjs
-          node --check scripts/ddd-release-env-canonical-lint-contract.mjs
-          node --check scripts/ddd-release-env-canonical-lint-contract.test.mjs
-          node --check scripts/ddd-release-env-canonical-merge-contract.mjs
-          node --check scripts/ddd-release-env-canonical-merge-contract.test.mjs
-          node --check scripts/ddd-release-preflight-capture-contract.mjs
-          node --check scripts/ddd-release-preflight-capture-contract.test.mjs
-          node --check scripts/ddd-release-readiness-summary.mjs
-          node --check scripts/ddd-release-readiness-summary.test.mjs
-          node --check scripts/ddd-release-unblock-brief.mjs
-          node --check scripts/ddd-release-unblock-brief.test.mjs
-          node --check scripts/ddd-release-unblock-brief-contract.mjs
-          node --check scripts/ddd-release-unblock-brief-contract.test.mjs
-          node --check scripts/ddd-init-rollback-drill.mjs
-          node --check scripts/ddd-rollback-drill-evidence.mjs
-          node --check scripts/ddd-final-owner-queue-run-report-contract.mjs
-          node --check scripts/ddd-final-owner-queue-run-report-contract.test.mjs
-          node --check scripts/ddd-final-owner-queue-run-report-summary.mjs
-          node --check scripts/ddd-final-owner-queue-run-report-summary.test.mjs
-          node --check scripts/ddd-collect-explain.mjs
-          node --check scripts/ddd-collect-explain.test.mjs
-          node --check scripts/ddd-physical-split-contract.test.mjs
-          node --check scripts/ddd-physical-split-gate.mjs
-          node --check scripts/ddd-physical-split-gate.test.mjs
-          node --check scripts/ddd-job-e2e-smoke.mjs
-          node --check scripts/ddd-readiness-gate.mjs
-          node --check scripts/ddd-runtime-readiness-contract.mjs
-          node --check scripts/ddd-runtime-readiness-contract.test.mjs
-          node --check scripts/ddd-runtime-readiness-smoke.mjs
-          node --check scripts/ddd-runtime-readiness-smoke.test.mjs
-          node --check scripts/ddd-runtime-provenance-preflight.test.mjs
-          node --check scripts/lumira-updater-auth.test.mjs
+          node --check bin/ddd-release-evidence-utils.mjs
+          node --check bin/ddd-release-evidence-utils.test.mjs
+          node --check bin/ddd-backfill-runtime-provenance.mjs
+          node --check bin/ddd-backfill-runtime-provenance.test.mjs
+          node --check bin/ddd-backend-evidence-contract.mjs
+          node --check bin/ddd-backend-evidence-contract.test.mjs
+          node --check bin/ddd-performance-smoke.mjs
+          node --check bin/ddd-performance-evidence-contract.mjs
+          node --check bin/ddd-performance-evidence-contract.test.mjs
+          node --check bin/ddd-performance-baseline-example.test.mjs
+          node --check bin/ddd-authenticated-performance-smoke.mjs
+          node --check bin/ddd-business-e2e-evidence-contract.mjs
+          node --check bin/ddd-business-e2e-evidence-contract.test.mjs
+          node --check bin/ddd-business-e2e-smoke-status.test.mjs
+          node --check bin/ddd-file-processing-e2e-smoke.mjs
+          node --check bin/ddd-outbox-replay-dead-letter-smoke.mjs
+          node --check bin/ddd-outbox-job-evidence-contract.mjs
+          node --check bin/ddd-outbox-job-evidence-contract.test.mjs
+          node --check bin/ddd-outbox-ownership-repair.mjs
+          node --check bin/ddd-payment-webhook-e2e-smoke.mjs
+          node --check bin/ddd-ai-runtime-contract.mjs
+          node --check bin/ddd-ai-runtime-contract.test.mjs
+          node --check bin/ddd-ai-runtime-drill.mjs
+          node --check bin/ddd-ai-runtime-drill.test.mjs
+          node --check bin/ddd-backend-build-evidence.mjs
+          node --check bin/ddd-backend-test-evidence.mjs
+          node --check bin/ddd-docker-build-evidence.mjs
+          node --check bin/ddd-docker-build-evidence.test.mjs
+          node --check bin/ddd-docker-evidence-contract.mjs
+          node --check bin/ddd-docker-evidence-contract.test.mjs
+          node --check bin/ddd-dockerfile-contract.test.mjs
+          node --check bin/ddd-migration-evidence-contract.mjs
+          node --check bin/ddd-migration-evidence-contract.test.mjs
+          node --check bin/ddd-migration-evidence-sync.test.mjs
+          node --check bin/ddd-migration-evidence-downgrade.test.mjs
+          node --check bin/ddd-migration-evidence.mjs
+          node --check bin/ddd-promote-performance-baseline.mjs
+          node --check bin/ddd-promote-performance-baseline.test.mjs
+          node --check bin/ddd-frontend-build-evidence.mjs
+          node --check bin/ddd-frontend-static-evidence.mjs
+          node --check bin/ddd-frontend-evidence-contract.mjs
+          node --check bin/ddd-frontend-evidence-contract.test.mjs
+          node --check bin/ddd-frontend-playwright-smoke.mjs
+          node --check bin/ddd-frontend-smoke-contract.mjs
+          node --check bin/ddd-frontend-smoke-contract.test.mjs
+          node --check bin/ddd-frontend-smoke-flow-sync.test.mjs
+          node --check bin/ddd-frontend-smoke-evidence.mjs
+          node --check bin/ddd-frontend-smoke-evidence.test.mjs
+          node --check bin/ddd-explain-evidence-contract.mjs
+          node --check bin/ddd-explain-evidence-contract.test.mjs
+          node --check bin/ddd-explain-gate.mjs
+          node --check bin/ddd-explain-gate.test.mjs
+          node --check bin/ddd-explain-gate-report-contract.mjs
+          node --check bin/ddd-explain-gate-report-contract.test.mjs
+          node --check bin/ddd-normalize-explain-artifacts.mjs
+          node --check bin/ddd-normalize-explain-artifacts.test.mjs
+          node --check bin/ddd-release-config-contract.mjs
+          node --check bin/ddd-release-config-contract.test.mjs
+          node --check bin/ddd-release-config-evidence.mjs
+          node --check bin/ddd-release-config-evidence.test.mjs
+          node --check bin/ddd-release-config-owner-input-reconciliation.mjs
+          node --check bin/ddd-release-config-owner-input-reconciliation.test.mjs
+          node --check bin/ddd-release-owner-input-receipt.mjs
+          node --check bin/ddd-release-owner-input-receipt-contract.mjs
+          node --check bin/ddd-release-owner-input-receipt.test.mjs
+          node --check bin/ddd-release-env-file-lint.mjs
+          node --check bin/ddd-release-env-file-lint.test.mjs
+          node --check bin/ddd-release-env-file-lint-contract.mjs
+          node --check bin/ddd-release-env-file-lint-contract.test.mjs
+          node --check bin/ddd-release-env-safe-defaults.mjs
+          node --check bin/ddd-release-env-safe-defaults.test.mjs
+          node --check bin/ddd-release-provenance-defaults.mjs
+          node --check bin/ddd-release-provenance-defaults.test.mjs
+          node --check bin/ddd-release-env-owner-templates-merge.mjs
+          node --check bin/ddd-release-env-owner-templates-merge.test.mjs
+          node --check bin/ddd-release-env-alias-sync.mjs
+          node --check bin/ddd-release-env-alias-sync.test.mjs
+          node --check bin/ddd-release-env-canonical-lint.mjs
+          node --check bin/ddd-release-env-canonical-lint.test.mjs
+          node --check bin/ddd-release-env-canonical-merge.mjs
+          node --check bin/ddd-release-env-canonical-merge.test.mjs
+          node --check bin/ddd-release-config-sync.test.mjs
+          node --check bin/ddd-release-workflow-structure.test.mjs
+          node --check bin/security-assessment-report-contract.test.mjs
+          node --check bin/ddd-release-config-template.test.mjs
+          node --check bin/ddd-release-evidence-manifest.mjs
+          node --check bin/ddd-release-evidence-manifest.test.mjs
+          node --check bin/ddd-release-evidence-manifest-contract.mjs
+          node --check bin/ddd-release-evidence-manifest-contract.test.mjs
+          node --check bin/ddd-release-evidence-manifest-sync.test.mjs
+          node --check bin/ddd-release-evidence-gate.mjs
+          node --check bin/ddd-release-evidence-gate.test.mjs
+          node --check bin/ddd-release-gate-contract.mjs
+          node --check bin/ddd-release-gate-contract.test.mjs
+          node --check bin/ddd-release-evidence-gate-contract.mjs
+          node --check bin/ddd-release-evidence-gate-contract.test.mjs
+          node --check bin/ddd-release-evidence-orchestrator.mjs
+          node --check bin/ddd-release-evidence-orchestrator.test.mjs
+          node --check bin/ddd-release-orchestrator-contract.mjs
+          node --check bin/ddd-release-orchestrator-contract.test.mjs
+          node --check bin/ddd-release-orchestrator-sync.test.mjs
+          node --check bin/ddd-rollback-drill-contract.mjs
+          node --check bin/ddd-rollback-drill-contract.test.mjs
+          node --check bin/ddd-rollback-deferral-template.mjs
+          node --check bin/ddd-rollback-deferral-template.test.mjs
+          node --check bin/ddd-rollback-drill-sync.test.mjs
+          node --check bin/ddd-rollback-drill-evidence.test.mjs
+          node --check bin/ddd-release-artifact-integrity-contract.mjs
+          node --check bin/ddd-release-artifact-integrity-contract.test.mjs
+          node --check bin/ddd-release-artifact-integrity-gate-contract.mjs
+          node --check bin/ddd-release-artifact-integrity-gate-contract.test.mjs
+          node --check bin/ddd-release-artifact-path-leak-contract.mjs
+          node --check bin/ddd-release-artifact-path-leak-contract.test.mjs
+          node --check bin/ddd-release-cutover-contract.mjs
+          node --check bin/ddd-release-cutover-contract.test.mjs
+          node --check bin/ddd-release-final-go-no-go-gate-contract.mjs
+          node --check bin/ddd-release-final-go-no-go-gate-contract.test.mjs
+          node --check bin/ddd-release-preflight-gate-contract.mjs
+          node --check bin/ddd-release-preflight-gate-contract.test.mjs
+          node --check bin/ddd-release-final-owner-queue-contract.mjs
+          node --check bin/ddd-release-final-owner-queue-contract.test.mjs
+          node --check bin/ddd-release-env-init.mjs
+          node --check bin/ddd-production-readiness-preflight.mjs
+          node --check bin/ddd-staging-data-safety-check.mjs
+          node --check bin/ddd-staging-data-safety-check.test.mjs
+          node --check bin/ddd-staging-runtime-check.mjs
+          node --check bin/ddd-staging-runtime-check.test.mjs
+          node --check bin/ddd-staging-execution-checklist.mjs
+          node --check bin/ddd-staging-execution-checklist.test.mjs
+          node --check bin/ddd-production-evidence-readiness.test.mjs
+          node --check bin/ddd-lane-completion-receipt-autofill.mjs
+          node --check bin/ddd-lane-completion-receipt-autofill.test.mjs
+          node --check bin/ddd-release-env-fill-checklist.mjs
+          node --check bin/ddd-release-env-fill-checklist.test.mjs
+          node --check bin/ddd-release-closure-wave-receipts-contract.mjs
+          node --check bin/ddd-release-closure-wave-receipts-contract.test.mjs
+          node --check bin/ddd-release-next-action-queue-contract.mjs
+          node --check bin/ddd-release-next-action-queue-contract.test.mjs
+          node --check bin/ddd-release-next-action-run-report-contract.mjs
+          node --check bin/ddd-release-next-action-run-report-contract.test.mjs
+          node --check bin/ddd-release-next-action-run-report-summary.mjs
+          node --check bin/ddd-release-next-action-run-report-summary.test.mjs
+          node --check bin/ddd-release-execution-run-report-contract.mjs
+          node --check bin/ddd-release-execution-run-report-contract.test.mjs
+          node --check bin/ddd-release-execution-run-report-summary.mjs
+          node --check bin/ddd-release-execution-run-report-summary.test.mjs
+          node --check bin/ddd-release-redact-output.mjs
+          node --check bin/ddd-release-redact-output.test.mjs
+          node --check bin/ddd-release-execution-queue-contract.mjs
+          node --check bin/ddd-release-execution-queue-contract.test.mjs
+          node --check bin/ddd-release-command-catalog-contract.mjs
+          node --check bin/ddd-release-command-catalog-contract.test.mjs
+          node --check bin/ddd-release-owner-handoff-contract.mjs
+          node --check bin/ddd-release-owner-handoff-contract.test.mjs
+          node --check bin/ddd-release-env-owner-matrix-contract.mjs
+          node --check bin/ddd-release-env-owner-matrix-contract.test.mjs
+          node --check bin/ddd-release-env-fill-priority-contract.mjs
+          node --check bin/ddd-release-env-fill-priority-contract.test.mjs
+          node --check bin/ddd-release-env-canonical-fill-contract.mjs
+          node --check bin/ddd-release-env-canonical-fill-contract.test.mjs
+          node --check bin/ddd-release-env-readiness-redacted-contract.mjs
+          node --check bin/ddd-release-env-readiness-redacted-contract.test.mjs
+          node --check bin/ddd-release-env-owner-handoff-redacted-contract.mjs
+          node --check bin/ddd-release-env-owner-handoff-redacted-contract.test.mjs
+          node --check bin/ddd-release-env-owner-input-packet-contract.mjs
+          node --check bin/ddd-release-env-owner-input-packet-contract.test.mjs
+          node --check bin/ddd-release-env-owner-templates-contract.mjs
+          node --check bin/ddd-release-env-owner-templates-contract.test.mjs
+          node --check bin/ddd-release-env-owner-templates-merge-contract.mjs
+          node --check bin/ddd-release-env-owner-templates-merge-contract.test.mjs
+          node --check bin/ddd-release-env-bootstrap-contract.mjs
+          node --check bin/ddd-release-env-bootstrap-contract.test.mjs
+          node --check bin/ddd-release-env-readiness-gate-contract.mjs
+          node --check bin/ddd-release-env-readiness-gate-contract.test.mjs
+          node --check bin/ddd-release-env-alias-sync-contract.mjs
+          node --check bin/ddd-release-env-alias-sync-contract.test.mjs
+          node --check bin/ddd-release-env-canonical-lint-contract.mjs
+          node --check bin/ddd-release-env-canonical-lint-contract.test.mjs
+          node --check bin/ddd-release-env-canonical-merge-contract.mjs
+          node --check bin/ddd-release-env-canonical-merge-contract.test.mjs
+          node --check bin/ddd-release-preflight-capture-contract.mjs
+          node --check bin/ddd-release-preflight-capture-contract.test.mjs
+          node --check bin/ddd-release-readiness-summary.mjs
+          node --check bin/ddd-release-readiness-summary.test.mjs
+          node --check bin/ddd-release-unblock-brief.mjs
+          node --check bin/ddd-release-unblock-brief.test.mjs
+          node --check bin/ddd-release-unblock-brief-contract.mjs
+          node --check bin/ddd-release-unblock-brief-contract.test.mjs
+          node --check bin/ddd-init-rollback-drill.mjs
+          node --check bin/ddd-rollback-drill-evidence.mjs
+          node --check bin/ddd-final-owner-queue-run-report-contract.mjs
+          node --check bin/ddd-final-owner-queue-run-report-contract.test.mjs
+          node --check bin/ddd-final-owner-queue-run-report-summary.mjs
+          node --check bin/ddd-final-owner-queue-run-report-summary.test.mjs
+          node --check bin/ddd-collect-explain.mjs
+          node --check bin/ddd-collect-explain.test.mjs
+          node --check bin/ddd-physical-split-contract.test.mjs
+          node --check bin/ddd-physical-split-gate.mjs
+          node --check bin/ddd-physical-split-gate.test.mjs
+          node --check bin/ddd-job-e2e-smoke.mjs
+          node --check bin/ddd-readiness-gate.mjs
+          node --check bin/ddd-runtime-readiness-contract.mjs
+          node --check bin/ddd-runtime-readiness-contract.test.mjs
+          node --check bin/ddd-runtime-readiness-smoke.mjs
+          node --check bin/ddd-runtime-readiness-smoke.test.mjs
+          node --check bin/ddd-runtime-provenance-preflight.test.mjs
+          node --check bin/lumira-updater-auth.test.mjs
       - name: Release evidence utility tests
-        run: node scripts/ddd-release-evidence-utils.test.mjs
+        run: node bin/ddd-release-evidence-utils.test.mjs
       - name: Runtime provenance backfill tests
-        run: node scripts/ddd-backfill-runtime-provenance.test.mjs
+        run: node bin/ddd-backfill-runtime-provenance.test.mjs
       - name: Release evidence manifest contract tests
-        run: node scripts/ddd-release-evidence-manifest-contract.test.mjs
+        run: node bin/ddd-release-evidence-manifest-contract.test.mjs
       - name: Release evidence manifest tests
-        run: node scripts/ddd-release-evidence-manifest.test.mjs
+        run: node bin/ddd-release-evidence-manifest.test.mjs
       - name: Release evidence manifest sync tests
-        run: node scripts/ddd-release-evidence-manifest-sync.test.mjs
+        run: node bin/ddd-release-evidence-manifest-sync.test.mjs
       - name: Release gate contract tests
-        run: node scripts/ddd-release-gate-contract.test.mjs
+        run: node bin/ddd-release-gate-contract.test.mjs
       - name: Release evidence gate tests
-        run: node scripts/ddd-release-evidence-gate.test.mjs
+        run: node bin/ddd-release-evidence-gate.test.mjs
       - name: Release evidence gate contract tests
-        run: node scripts/ddd-release-evidence-gate-contract.test.mjs
+        run: node bin/ddd-release-evidence-gate-contract.test.mjs
       - name: Business E2E evidence contract tests
-        run: node scripts/ddd-business-e2e-evidence-contract.test.mjs
+        run: node bin/ddd-business-e2e-evidence-contract.test.mjs
       - name: Business E2E smoke status tests
-        run: node scripts/ddd-business-e2e-smoke-status.test.mjs
+        run: node bin/ddd-business-e2e-smoke-status.test.mjs
       - name: Outbox and Job evidence contract tests
-        run: node scripts/ddd-outbox-job-evidence-contract.test.mjs
+        run: node bin/ddd-outbox-job-evidence-contract.test.mjs
       - name: Backend evidence contract tests
-        run: node scripts/ddd-backend-evidence-contract.test.mjs
+        run: node bin/ddd-backend-evidence-contract.test.mjs
       - name: Docker evidence contract tests
-        run: node scripts/ddd-docker-evidence-contract.test.mjs
+        run: node bin/ddd-docker-evidence-contract.test.mjs
       - name: Docker build evidence tests
-        run: node scripts/ddd-docker-build-evidence.test.mjs
+        run: node bin/ddd-docker-build-evidence.test.mjs
       - name: Dockerfile static contract tests
-        run: node scripts/ddd-dockerfile-contract.test.mjs
+        run: node bin/ddd-dockerfile-contract.test.mjs
       - name: Production readiness static preflight
-        run: node scripts/ddd-production-readiness-preflight.mjs --static-only --no-report
+        run: node bin/ddd-production-readiness-preflight.mjs --static-only --no-report
       - name: Performance evidence contract tests
-        run: node scripts/ddd-performance-evidence-contract.test.mjs
+        run: node bin/ddd-performance-evidence-contract.test.mjs
       - name: Performance baseline example tests
-        run: node scripts/ddd-performance-baseline-example.test.mjs
+        run: node bin/ddd-performance-baseline-example.test.mjs
       - name: Performance baseline promotion tests
-        run: node scripts/ddd-promote-performance-baseline.test.mjs
+        run: node bin/ddd-promote-performance-baseline.test.mjs
       - name: Frontend smoke contract tests
-        run: node scripts/ddd-frontend-smoke-contract.test.mjs
+        run: node bin/ddd-frontend-smoke-contract.test.mjs
       - name: Frontend smoke flow sync tests
-        run: node scripts/ddd-frontend-smoke-flow-sync.test.mjs
+        run: node bin/ddd-frontend-smoke-flow-sync.test.mjs
       - name: Frontend smoke evidence tests
-        run: node scripts/ddd-frontend-smoke-evidence.test.mjs
+        run: node bin/ddd-frontend-smoke-evidence.test.mjs
       - name: AI runtime contract tests
-        run: node scripts/ddd-ai-runtime-contract.test.mjs
+        run: node bin/ddd-ai-runtime-contract.test.mjs
       - name: AI runtime drill tests
-        run: node scripts/ddd-ai-runtime-drill.test.mjs
+        run: node bin/ddd-ai-runtime-drill.test.mjs
       - name: Frontend build/static evidence contract tests
-        run: node scripts/ddd-frontend-evidence-contract.test.mjs
+        run: node bin/ddd-frontend-evidence-contract.test.mjs
       - name: Explain evidence contract tests
-        run: node scripts/ddd-explain-evidence-contract.test.mjs
+        run: node bin/ddd-explain-evidence-contract.test.mjs
       - name: Explain collection contract tests
-        run: node scripts/ddd-collect-explain.test.mjs
+        run: node bin/ddd-collect-explain.test.mjs
       - name: Explain gate tests
-        run: node scripts/ddd-explain-gate.test.mjs
+        run: node bin/ddd-explain-gate.test.mjs
       - name: Explain gate report contract tests
-        run: node scripts/ddd-explain-gate-report-contract.test.mjs
+        run: node bin/ddd-explain-gate-report-contract.test.mjs
       - name: Explain artifact normalization tests
-        run: node scripts/ddd-normalize-explain-artifacts.test.mjs
+        run: node bin/ddd-normalize-explain-artifacts.test.mjs
       - name: Release evidence orchestrator contract tests
-        run: node scripts/ddd-release-evidence-orchestrator.test.mjs
+        run: node bin/ddd-release-evidence-orchestrator.test.mjs
       - name: Release orchestrator gate contract tests
-        run: node scripts/ddd-release-orchestrator-contract.test.mjs
+        run: node bin/ddd-release-orchestrator-contract.test.mjs
       - name: Release orchestrator sync tests
-        run: node scripts/ddd-release-orchestrator-sync.test.mjs
+        run: node bin/ddd-release-orchestrator-sync.test.mjs
       - name: Rollback drill contract tests
-        run: node scripts/ddd-rollback-drill-contract.test.mjs
+        run: node bin/ddd-rollback-drill-contract.test.mjs
       - name: Rollback drill sync tests
-        run: node scripts/ddd-rollback-drill-sync.test.mjs
+        run: node bin/ddd-rollback-drill-sync.test.mjs
       - name: Rollback deferral template tests
-        run: node scripts/ddd-rollback-deferral-template.test.mjs
+        run: node bin/ddd-rollback-deferral-template.test.mjs
       - name: Rollback drill evidence tests
-        run: node scripts/ddd-rollback-drill-evidence.test.mjs
+        run: node bin/ddd-rollback-drill-evidence.test.mjs
       - name: Release artifact integrity contract tests
-        run: node scripts/ddd-release-artifact-integrity-contract.test.mjs
+        run: node bin/ddd-release-artifact-integrity-contract.test.mjs
       - name: Release artifact integrity gate contract tests
-        run: node scripts/ddd-release-artifact-integrity-gate-contract.test.mjs
+        run: node bin/ddd-release-artifact-integrity-gate-contract.test.mjs
       - name: Release artifact path leak contract tests
-        run: node scripts/ddd-release-artifact-path-leak-contract.test.mjs
+        run: node bin/ddd-release-artifact-path-leak-contract.test.mjs
       - name: Release config owner input reconciliation tests
-        run: node scripts/ddd-release-config-owner-input-reconciliation.test.mjs
+        run: node bin/ddd-release-config-owner-input-reconciliation.test.mjs
       - name: Release owner input receipt tests
-        run: node scripts/ddd-release-owner-input-receipt.test.mjs
+        run: node bin/ddd-release-owner-input-receipt.test.mjs
       - name: Release cutover contract tests
-        run: node scripts/ddd-release-cutover-contract.test.mjs
+        run: node bin/ddd-release-cutover-contract.test.mjs
       - name: Release final go no-go gate contract tests
-        run: node scripts/ddd-release-final-go-no-go-gate-contract.test.mjs
+        run: node bin/ddd-release-final-go-no-go-gate-contract.test.mjs
       - name: Release preflight gate contract tests
-        run: node scripts/ddd-release-preflight-gate-contract.test.mjs
+        run: node bin/ddd-release-preflight-gate-contract.test.mjs
       - name: Release final owner queue contract tests
-        run: node scripts/ddd-release-final-owner-queue-contract.test.mjs
+        run: node bin/ddd-release-final-owner-queue-contract.test.mjs
       - name: Staging execution checklist contract tests
         timeout-minutes: 15
         env:
           DDD_STAGING_CHECKLIST_TEST_CHILD_TIMEOUT_MS: "60000"
-        run: node scripts/ddd-staging-execution-checklist.test.mjs
+        run: node bin/ddd-staging-execution-checklist.test.mjs
       - name: Production evidence readiness contract tests
         timeout-minutes: 10
-        run: node scripts/ddd-production-evidence-readiness.test.mjs
+        run: node bin/ddd-production-evidence-readiness.test.mjs
       - name: Lane completion receipt autofill tests
-        run: node scripts/ddd-lane-completion-receipt-autofill.test.mjs
+        run: node bin/ddd-lane-completion-receipt-autofill.test.mjs
       - name: Release env fill checklist tests
-        run: node scripts/ddd-release-env-fill-checklist.test.mjs
+        run: node bin/ddd-release-env-fill-checklist.test.mjs
       - name: Security assessment report contract tests
-        run: node scripts/security-assessment-report-contract.test.mjs
+        run: node bin/security-assessment-report-contract.test.mjs
       - name: Staging runtime check contract tests
-        run: node scripts/ddd-staging-runtime-check.test.mjs
+        run: node bin/ddd-staging-runtime-check.test.mjs
       - name: Staging data safety check contract tests
-        run: node scripts/ddd-staging-data-safety-check.test.mjs
+        run: node bin/ddd-staging-data-safety-check.test.mjs
       - name: Generate staging handoff bundle
         run: |
-          node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle
-          node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify
-          node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json
+          node bin/ddd-staging-execution-checklist.mjs --handoff-bundle
+          node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify
+          node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=artifacts/ddd/release/staging-handoff-bundle/next-action-env-receipt.sample.json
       - name: Append staging handoff summary
         run: |
-          node scripts/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --handoff-summary-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
           cat artifacts/ddd/release/staging-handoff-bundle/production-unblock-quickstart.md >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --closure-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --closure-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --next-action-queue-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --next-action-queue-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
           {
             printf '## DDD Next Action Env Template\n\n```env\n'
-            node scripts/ddd-staging-execution-checklist.mjs --next-action-env-template
+            node bin/ddd-staging-execution-checklist.mjs --next-action-env-template
             printf '\n```\n'
           } >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown >> "$GITHUB_STEP_SUMMARY" || true
+          node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown >> "$GITHUB_STEP_SUMMARY" || true
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> "$GITHUB_STEP_SUMMARY" || true
+          node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown >> "$GITHUB_STEP_SUMMARY" || true
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --lane-receipt-fragments-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --lane-receipt-draft-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
           {
             printf '## DDD Release Evidence Dispatch Command\n\n```sh\n'
-            node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command
+            node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command
             printf '\n```\n'
           } >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-env-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-env-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-release-env-fill-checklist.mjs --markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-release-env-fill-checklist.mjs --markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
           {
             printf '## P0 Release Env Fill Template\n\n```env\n'
-            node scripts/ddd-release-env-fill-checklist.mjs --env-template
+            node bin/ddd-release-env-fill-checklist.mjs --env-template
             printf '\n```\n'
           } >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown >> "$GITHUB_STEP_SUMMARY"
           printf '\n\n' >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ddd-staging-execution-checklist.mjs --final-review-markdown >> "$GITHUB_STEP_SUMMARY"
+          node bin/ddd-staging-execution-checklist.mjs --final-review-markdown >> "$GITHUB_STEP_SUMMARY"
       - name: Upload staging handoff bundle
         uses: actions/upload-artifact@v4
         with:
@@ -480,122 +480,122 @@ jobs:
           if-no-files-found: error
           retention-days: 14
       - name: Release closure wave receipts contract tests
-        run: node scripts/ddd-release-closure-wave-receipts-contract.test.mjs
+        run: node bin/ddd-release-closure-wave-receipts-contract.test.mjs
       - name: Release next action queue contract tests
-        run: node scripts/ddd-release-next-action-queue-contract.test.mjs
+        run: node bin/ddd-release-next-action-queue-contract.test.mjs
       - name: Release next action run report contract tests
-        run: node scripts/ddd-release-next-action-run-report-contract.test.mjs
+        run: node bin/ddd-release-next-action-run-report-contract.test.mjs
       - name: Release next action run report summary tests
-        run: node scripts/ddd-release-next-action-run-report-summary.test.mjs
+        run: node bin/ddd-release-next-action-run-report-summary.test.mjs
       - name: Release execution run report contract tests
-        run: node scripts/ddd-release-execution-run-report-contract.test.mjs
+        run: node bin/ddd-release-execution-run-report-contract.test.mjs
       - name: Release execution run report summary tests
-        run: node scripts/ddd-release-execution-run-report-summary.test.mjs
+        run: node bin/ddd-release-execution-run-report-summary.test.mjs
       - name: Release output redaction tests
-        run: node scripts/ddd-release-redact-output.test.mjs
+        run: node bin/ddd-release-redact-output.test.mjs
       - name: Release execution queue contract tests
-        run: node scripts/ddd-release-execution-queue-contract.test.mjs
+        run: node bin/ddd-release-execution-queue-contract.test.mjs
       - name: Release command catalog contract tests
-        run: node scripts/ddd-release-command-catalog-contract.test.mjs
+        run: node bin/ddd-release-command-catalog-contract.test.mjs
       - name: Release owner handoff contract tests
-        run: node scripts/ddd-release-owner-handoff-contract.test.mjs
+        run: node bin/ddd-release-owner-handoff-contract.test.mjs
       - name: Release env owner matrix contract tests
-        run: node scripts/ddd-release-env-owner-matrix-contract.test.mjs
+        run: node bin/ddd-release-env-owner-matrix-contract.test.mjs
       - name: Release env fill priority contract tests
-        run: node scripts/ddd-release-env-fill-priority-contract.test.mjs
+        run: node bin/ddd-release-env-fill-priority-contract.test.mjs
       - name: Release env canonical fill contract tests
-        run: node scripts/ddd-release-env-canonical-fill-contract.test.mjs
+        run: node bin/ddd-release-env-canonical-fill-contract.test.mjs
       - name: Release env readiness redacted contract tests
-        run: node scripts/ddd-release-env-readiness-redacted-contract.test.mjs
+        run: node bin/ddd-release-env-readiness-redacted-contract.test.mjs
       - name: Release env owner handoff redacted contract tests
-        run: node scripts/ddd-release-env-owner-handoff-redacted-contract.test.mjs
+        run: node bin/ddd-release-env-owner-handoff-redacted-contract.test.mjs
       - name: Release env owner input packet contract tests
-        run: node scripts/ddd-release-env-owner-input-packet-contract.test.mjs
+        run: node bin/ddd-release-env-owner-input-packet-contract.test.mjs
       - name: Release env owner templates contract tests
-        run: node scripts/ddd-release-env-owner-templates-contract.test.mjs
+        run: node bin/ddd-release-env-owner-templates-contract.test.mjs
       - name: Release env owner templates merge contract tests
-        run: node scripts/ddd-release-env-owner-templates-merge-contract.test.mjs
+        run: node bin/ddd-release-env-owner-templates-merge-contract.test.mjs
       - name: Release env bootstrap contract tests
-        run: node scripts/ddd-release-env-bootstrap-contract.test.mjs
+        run: node bin/ddd-release-env-bootstrap-contract.test.mjs
       - name: Release env readiness gate contract tests
-        run: node scripts/ddd-release-env-readiness-gate-contract.test.mjs
+        run: node bin/ddd-release-env-readiness-gate-contract.test.mjs
       - name: Release env alias sync contract tests
-        run: node scripts/ddd-release-env-alias-sync-contract.test.mjs
+        run: node bin/ddd-release-env-alias-sync-contract.test.mjs
       - name: Release env canonical lint contract tests
-        run: node scripts/ddd-release-env-canonical-lint-contract.test.mjs
+        run: node bin/ddd-release-env-canonical-lint-contract.test.mjs
       - name: Release env canonical merge contract tests
-        run: node scripts/ddd-release-env-canonical-merge-contract.test.mjs
+        run: node bin/ddd-release-env-canonical-merge-contract.test.mjs
       - name: Migration evidence contract tests
-        run: node scripts/ddd-migration-evidence-contract.test.mjs
+        run: node bin/ddd-migration-evidence-contract.test.mjs
       - name: Migration evidence sync tests
-        run: node scripts/ddd-migration-evidence-sync.test.mjs
+        run: node bin/ddd-migration-evidence-sync.test.mjs
       - name: Migration evidence readiness tests
-        run: node scripts/ddd-migration-evidence.test.mjs
+        run: node bin/ddd-migration-evidence.test.mjs
       - name: Migration evidence downgrade protection tests
-        run: node scripts/ddd-migration-evidence-downgrade.test.mjs
+        run: node bin/ddd-migration-evidence-downgrade.test.mjs
       - name: Release config contract tests
-        run: node scripts/ddd-release-config-contract.test.mjs
+        run: node bin/ddd-release-config-contract.test.mjs
       - name: Release config evidence tests
-        run: node scripts/ddd-release-config-evidence.test.mjs
+        run: node bin/ddd-release-config-evidence.test.mjs
       - name: Release env file lint tests
-        run: node scripts/ddd-release-env-file-lint.test.mjs
+        run: node bin/ddd-release-env-file-lint.test.mjs
       - name: Release env file lint contract tests
-        run: node scripts/ddd-release-env-file-lint-contract.test.mjs
+        run: node bin/ddd-release-env-file-lint-contract.test.mjs
       - name: Release env safe defaults tests
-        run: node scripts/ddd-release-env-safe-defaults.test.mjs
+        run: node bin/ddd-release-env-safe-defaults.test.mjs
       - name: Release provenance defaults tests
-        run: node scripts/ddd-release-provenance-defaults.test.mjs
+        run: node bin/ddd-release-provenance-defaults.test.mjs
       - name: Release env owner template merge tests
-        run: node scripts/ddd-release-env-owner-templates-merge.test.mjs
+        run: node bin/ddd-release-env-owner-templates-merge.test.mjs
       - name: Release env alias sync tests
-        run: node scripts/ddd-release-env-alias-sync.test.mjs
+        run: node bin/ddd-release-env-alias-sync.test.mjs
       - name: Release env canonical lint tests
-        run: node scripts/ddd-release-env-canonical-lint.test.mjs
+        run: node bin/ddd-release-env-canonical-lint.test.mjs
       - name: Release env canonical merge tests
-        run: node scripts/ddd-release-env-canonical-merge.test.mjs
+        run: node bin/ddd-release-env-canonical-merge.test.mjs
       - name: Release config workflow sync tests
-        run: node scripts/ddd-release-config-sync.test.mjs
+        run: node bin/ddd-release-config-sync.test.mjs
       - name: Release workflow structure tests
-        run: node scripts/ddd-release-workflow-structure.test.mjs
+        run: node bin/ddd-release-workflow-structure.test.mjs
       - name: Release config template tests
-        run: node scripts/ddd-release-config-template.test.mjs
+        run: node bin/ddd-release-config-template.test.mjs
       - name: Release preflight capture contract tests
-        run: node scripts/ddd-release-preflight-capture-contract.test.mjs
+        run: node bin/ddd-release-preflight-capture-contract.test.mjs
       - name: Release unblock brief tests
-        run: node scripts/ddd-release-unblock-brief.test.mjs
+        run: node bin/ddd-release-unblock-brief.test.mjs
       - name: Release unblock brief contract tests
-        run: node scripts/ddd-release-unblock-brief-contract.test.mjs
+        run: node bin/ddd-release-unblock-brief-contract.test.mjs
       - name: Final owner queue run report contract tests
-        run: node scripts/ddd-final-owner-queue-run-report-contract.test.mjs
+        run: node bin/ddd-final-owner-queue-run-report-contract.test.mjs
       - name: Final owner queue run report summary tests
-        run: node scripts/ddd-final-owner-queue-run-report-summary.test.mjs
+        run: node bin/ddd-final-owner-queue-run-report-summary.test.mjs
       - name: Runtime readiness contract tests
-        run: node scripts/ddd-runtime-readiness-contract.test.mjs
+        run: node bin/ddd-runtime-readiness-contract.test.mjs
       - name: Runtime readiness smoke tests
-        run: node scripts/ddd-runtime-readiness-smoke.test.mjs
+        run: node bin/ddd-runtime-readiness-smoke.test.mjs
       - name: Runtime provenance preflight tests
-        run: node scripts/ddd-runtime-provenance-preflight.test.mjs
+        run: node bin/ddd-runtime-provenance-preflight.test.mjs
       - name: Lumira updater auth tests
-        run: node scripts/lumira-updater-auth.test.mjs
+        run: node bin/lumira-updater-auth.test.mjs
       - name: Release readiness summary tests
-        run: node scripts/ddd-release-readiness-summary.test.mjs
+        run: node bin/ddd-release-readiness-summary.test.mjs
       - name: DDD readiness contract gate
-        run: node scripts/ddd-readiness-gate.mjs
+        run: node bin/ddd-readiness-gate.mjs
       - name: DDD physical split contract tests
-        run: node scripts/ddd-physical-split-contract.test.mjs
+        run: node bin/ddd-physical-split-contract.test.mjs
       - name: DDD physical split gate tests
-        run: node scripts/ddd-physical-split-gate.test.mjs
+        run: node bin/ddd-physical-split-gate.test.mjs
       - name: DDD physical split advisory gate
-        run: node scripts/ddd-physical-split-gate.mjs
+        run: node bin/ddd-physical-split-gate.mjs
       - name: Hot path explain gate
-        run: node scripts/ddd-explain-gate.mjs
+        run: node bin/ddd-explain-gate.mjs
 
-  frontend:
+  lumira-ui:
     name: Frontend Lint Typecheck Tests
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: lumira-ui
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -605,7 +605,7 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: frontend/pnpm-lock.yaml
+          cache-dependency-path: lumira-ui/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Lint
@@ -619,9 +619,9 @@ jobs:
     name: Docker Images
     runs-on: ubuntu-latest
     needs:
-      - backend
+      - lumira-backend
       - ddd-gates
-      - frontend
+      - lumira-ui
     permissions:
       contents: read
       packages: write
@@ -636,7 +636,7 @@ jobs:
           owner="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
           short_sha="${GITHUB_SHA::12}"
           echo "lumira_server=${REGISTRY}/${owner}/lumira/lumira-server" >> "$GITHUB_OUTPUT"
-          echo "frontend=${REGISTRY}/${owner}/lumira/frontend" >> "$GITHUB_OUTPUT"
+          echo "lumira_ui=${REGISTRY}/${owner}/lumira/lumira-ui" >> "$GITHUB_OUTPUT"
           echo "short_sha=${short_sha}" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v3
       - name: Login to GitHub Container Registry
@@ -652,34 +652,34 @@ jobs:
           context: .
           file: deploy/docker/service.Dockerfile
           build-args: |
-            SERVICE_DIR=services/lumira-server
-            SERVICE_MODULE=services/lumira-server
+            SERVICE_DIR=services/lumira-admin
+            SERVICE_MODULE=services/lumira-admin
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
             ${{ steps.images.outputs.lumira_server }}:main
             ${{ steps.images.outputs.lumira_server }}:sha-${{ steps.images.outputs.short_sha }}
           cache-from: type=gha,scope=lumira-server
           cache-to: type=gha,mode=max,scope=lumira-server
-      - name: Build frontend image
+      - name: Build lumira-ui image
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: deploy/docker/frontend.Dockerfile
+          file: deploy/docker/lumira-ui.Dockerfile
           push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
           tags: |
-            ${{ steps.images.outputs.frontend }}:main
-            ${{ steps.images.outputs.frontend }}:sha-${{ steps.images.outputs.short_sha }}
-          cache-from: type=gha,scope=frontend
-          cache-to: type=gha,mode=max,scope=frontend
+            ${{ steps.images.outputs.lumira_ui }}:main
+            ${{ steps.images.outputs.lumira_ui }}:sha-${{ steps.images.outputs.short_sha }}
+          cache-from: type=gha,scope=lumira-ui
+          cache-to: type=gha,mode=max,scope=lumira-ui
       - name: Generate release manifest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GIT_COMMIT: ${{ github.sha }}
           APP_VERSION: main
           LUMIRA_SERVER_IMAGE: ${{ steps.images.outputs.lumira_server }}:sha-${{ steps.images.outputs.short_sha }}
-          LUMIRA_FRONTEND_IMAGE: ${{ steps.images.outputs.frontend }}:sha-${{ steps.images.outputs.short_sha }}
+          LUMIRA_FRONTEND_IMAGE: ${{ steps.images.outputs.lumira_ui }}:sha-${{ steps.images.outputs.short_sha }}
           LUMIRA_RELEASE_NOTES: Lumira main build ${{ steps.images.outputs.short_sha }}
-        run: node scripts/generate-release-manifest.mjs
+        run: node bin/generate-release-manifest.mjs
       - name: Upload release manifest
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4

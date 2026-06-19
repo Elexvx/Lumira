@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -9,15 +9,14 @@
     "cutoverAllowed": false,
     "releaseEnvFileCutoverSafe": false,
     "gateBlockers": 94,
-    "blockedCutoverItems": 8,
-    "stopReasonCount": 9,
+    "blockedCutoverItems": 7,
+    "stopReasonCount": 8,
     "stopReasonCoverage": "catalog-snapshot",
     "stopReasons": [
       "cutover checklist blocked: database-performance",
       "cutover checklist blocked: deployable-images",
       "cutover checklist blocked: evidence-integrity",
       "cutover checklist blocked: production-equivalence",
-      "cutover checklist blocked: release-environment",
       "cutover checklist blocked: rollback-safety",
       "cutover checklist blocked: runtime-business-acceptance",
       "cutover checklist blocked: strict-release-gate",
@@ -30,57 +29,24 @@
   },
   "safetySignals": {
     "releaseEnvFile": {
-      "ready": false,
-      "status": "FAIL",
+      "ready": true,
+      "status": "PASS",
       "inputKind": "release-env-file",
       "envFile": "<release-env-file>",
       "envFilePresent": true,
       "generatedMissingTemplate": false,
       "securityChecked": true,
       "permissionSafe": true,
-      "permissionCheckSkipped": false,
-      "modeOctal": "600",
+      "permissionCheckSkipped": true,
+      "modeOctal": "666",
       "reason": "env-file",
       "requiredMode": "600",
-      "pendingActionIds": [
-        "release-env-lint-status",
-        "release-env-lint-placeholders"
-      ],
+      "pendingActionIds": [],
       "blockingSafeDefaultAvailable": 0,
-      "blockingRequiresOwnerInput": 34,
+      "blockingRequiresOwnerInput": 0,
       "safeDefaultsExhausted": true,
-      "ownerInputReasonCounts": {
-        "production-endpoint": 24,
-        "secret-manager": 8,
-        "owner-production-value": 2
-      },
-      "ownerInputOwners": [
-        {
-          "owner": "platform-events",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "platform-owners",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "release-infra",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "ai-owner",
-          "requiresOwnerInput": 6,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "payment-owner",
-          "requiresOwnerInput": 1,
-          "safeDefaultAvailable": 0
-        }
-      ]
+      "ownerInputReasonCounts": {},
+      "ownerInputOwners": []
     }
   },
   "releaseEnvFileCutoverSafe": false,
@@ -90,35 +56,52 @@
     "warnings": 8
   },
   "summary": {
-    "ownerCount": 18,
-    "readyOwnerCount": 7,
-    "blockedOwnerCount": 11,
-    "readyBatchCount": 10,
-    "blockedBatchCount": 19,
-    "templateEnvKeyCount": 76
+    "ownerCount": 16,
+    "readyOwnerCount": 3,
+    "blockedOwnerCount": 13,
+    "readyBatchCount": 4,
+    "blockedBatchCount": 20,
+    "templateEnvKeyCount": 46
   },
   "owners": [
     {
       "owner": "release-infra",
       "status": "READY",
-      "pendingItems": 24,
+      "pendingItems": 9,
       "priorities": [
-        "P0"
+        "P0",
+        "P3"
       ],
       "batchIds": [
         "p0-docker-release-infra",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
-        "p0-runtime-readiness-release-infra"
+        "p0-runtime-readiness-release-infra",
+        "p3-orchestrator-release-infra"
       ],
       "readyBatchIds": [
         "p0-docker-release-infra",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
-      "blockedBatchIds": [],
-      "blockedByBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-infra"
+      ],
+      "blockedByBatchIds": [
+        "p1-ai-runtime-ai",
+        "p1-business-e2e-file-owner",
+        "p1-business-e2e-job-owner",
+        "p1-business-e2e-payment-owner",
+        "p1-frontend-smoke-frontend",
+        "p1-rollback-ai-owner",
+        "p1-rollback-auth-owner",
+        "p1-rollback-file-owner",
+        "p1-rollback-iam-owner",
+        "p1-rollback-job-owner",
+        "p1-rollback-localization-owner",
+        "p1-rollback-message-owner",
+        "p1-rollback-payment-owner",
+        "p1-rollback-platform-owner",
+        "p1-rollback-plugin-owner",
+        "p2-explain-database"
+      ],
       "commandSet": {
         "list": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "envCheck": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
@@ -126,406 +109,37 @@
         "execute": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
       },
       "templateEnvKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
         "BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DDD_AUTH_PASSWORD",
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_ENVIRONMENT",
-        "DDD_AUTH_USERNAME",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_DEPLOYMENT_EVIDENCE",
         "DDD_DOCKER_BUILD_STRICT",
         "DDD_DOCKER_COMMAND",
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
         "DDD_RELEASE_CANDIDATE",
-        "FIELD_SECRET",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "JWT_SECRET",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "PAYMENT_PUBLIC_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
+        "LUMIRA_BASE_URL"
       ],
       "aliasMappings": [
         {
-          "alias": "SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS",
-          "canonical": "CORS_ALLOWED_ORIGIN_PATTERNS"
-        },
-        {
-          "alias": "MYSQL_PASSWORD",
-          "canonical": "DB_PASSWORD"
-        },
-        {
-          "alias": "SPRING_DATASOURCE_PASSWORD",
-          "canonical": "DB_PASSWORD"
-        },
-        {
-          "alias": "SPRING_DATASOURCE_URL",
-          "canonical": "DB_URL"
-        },
-        {
-          "alias": "MYSQL_USER",
-          "canonical": "DB_USERNAME"
-        },
-        {
-          "alias": "SPRING_DATASOURCE_USERNAME",
-          "canonical": "DB_USERNAME"
-        },
-        {
-          "alias": "SAAS_SECURITY_FIELD_SECRET",
-          "canonical": "FIELD_SECRET"
-        },
-        {
-          "alias": "SAAS_SECURITY_JWT_SECRET",
-          "canonical": "JWT_SECRET"
-        },
-        {
           "alias": "DEPLOY_CHECK_BASE_URL",
           "canonical": "LUMIRA_BASE_URL"
-        },
-        {
-          "alias": "FRONTEND_BASE_URL",
-          "canonical": "PLAYWRIGHT_BASE_URL"
-        },
-        {
-          "alias": "SPRING_DATA_REDIS_HOST",
-          "canonical": "REDIS_HOST"
         }
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json",
-        "artifacts/ddd/config/release-config-evidence.json",
         "artifacts/ddd/readiness/summary.json",
-        "artifacts/ddd/release/release-env-lint.json"
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/readiness-summary.json",
+        "artifacts/ddd/release/release-evidence-gate.json"
       ],
       "exitCriteria": [
         "All 30 owner readiness/health/metrics checks pass.",
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
+        "Final strict release gate and readiness summary report zero blockers.",
         "Required lumira-server and frontend images are built, inspected, and not skipped.",
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
         "Rerun strict release gate and readiness summary after evidence is refreshed.",
-        "Runtime readiness is generated from an HTTPS non-local backend base URL.",
-        "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-        "release-config-evidence status is PASS with no contract issues.",
-        "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-      ],
-      "handoffChecklist": [
-        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
-        "Run the owner env-check command before collecting evidence.",
-        "Run the owner dry-run command to confirm batch scope.",
-        "Run the owner execute command in the production-equivalent release environment.",
-        "Archive or refresh every expected artifact listed for this owner.",
-        "Confirm every exit criterion before the next dependent batch starts."
-      ]
-    },
-    {
-      "owner": "platform-owners",
-      "status": "READY",
-      "pendingItems": 18,
-      "priorities": [
-        "P0"
-      ],
-      "batchIds": [
-        "p0-release-config-platform-owners"
-      ],
-      "readyBatchIds": [
-        "p0-release-config-platform-owners"
-      ],
-      "blockedBatchIds": [],
-      "blockedByBatchIds": [],
-      "commandSet": {
-        "list": "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "envCheck": "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "dryRun": "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "execute": "DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      },
-      "templateEnvKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "LUMIRA_AI_BASE_URL",
-          "canonical": "AI_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_AI_SERVICE_BASE_URL",
-          "canonical": "AI_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_AUTH_SERVICE_BASE_URL",
-          "canonical": "AUTH_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_FILE_SERVICE_BASE_URL",
-          "canonical": "FILE_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_JOB_EXECUTOR_BASE_URL",
-          "canonical": "JOB_EXECUTOR_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_LOCALIZATION_SERVICE_BASE_URL",
-          "canonical": "LOCALIZATION_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_MESSAGE_SERVICE_BASE_URL",
-          "canonical": "MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_PAYMENT_SERVICE_BASE_URL",
-          "canonical": "PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_PLUGIN_SERVICE_BASE_URL",
-          "canonical": "PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_SYSTEM_SERVICE_BASE_URL",
-          "canonical": "SYSTEM_SERVICE_BASE_URL"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Rerun strict release gate and readiness summary after evidence is refreshed.",
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-      ],
-      "handoffChecklist": [
-        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
-        "Run the owner env-check command before collecting evidence.",
-        "Run the owner dry-run command to confirm batch scope.",
-        "Run the owner execute command in the production-equivalent release environment.",
-        "Archive or refresh every expected artifact listed for this owner.",
-        "Confirm every exit criterion before the next dependent batch starts."
-      ]
-    },
-    {
-      "owner": "platform-events",
-      "status": "READY",
-      "pendingItems": 17,
-      "priorities": [
-        "P0"
-      ],
-      "batchIds": [
-        "p0-release-config-platform-events"
-      ],
-      "readyBatchIds": [
-        "p0-release-config-platform-events"
-      ],
-      "blockedBatchIds": [],
-      "blockedByBatchIds": [],
-      "commandSet": {
-        "list": "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "envCheck": "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "dryRun": "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "execute": "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      },
-      "templateEnvKeys": [
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "LUMIRA_EVENT_REDIS_STREAM_KEY",
-          "canonical": "SAAS_EVENT_REDIS_STREAM_KEY"
-        },
-        {
-          "alias": "LUMIRA_JOB_BACKEND_BASE_URL",
-          "canonical": "SAAS_JOB_BACKEND_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_JOB_FILE_SERVICE_BASE_URL",
-          "canonical": "SAAS_JOB_FILE_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "DDD_JOB_INTERNAL_TOKEN",
-          "canonical": "SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "alias": "LUMIRA_JOB_INTERNAL_TOKEN",
-          "canonical": "SAAS_JOB_INTERNAL_TOKEN"
-        },
-        {
-          "alias": "LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL",
-          "canonical": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL",
-          "canonical": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL",
-          "canonical": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_XXL_JOB_ACCESS_TOKEN",
-          "canonical": "XXL_JOB_ACCESS_TOKEN"
-        },
-        {
-          "alias": "XXL_JOB_ADMIN_ACCESS_TOKEN",
-          "canonical": "XXL_JOB_ACCESS_TOKEN"
-        },
-        {
-          "alias": "LUMIRA_XXL_JOB_ADMIN_ADDRESSES",
-          "canonical": "XXL_JOB_ADMIN_ADDRESSES"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "exitCriteria": [
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Rerun strict release gate and readiness summary after evidence is refreshed.",
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-      ],
-      "handoffChecklist": [
-        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
-        "Run the owner env-check command before collecting evidence.",
-        "Run the owner dry-run command to confirm batch scope.",
-        "Run the owner execute command in the production-equivalent release environment.",
-        "Archive or refresh every expected artifact listed for this owner.",
-        "Confirm every exit criterion before the next dependent batch starts."
-      ]
-    },
-    {
-      "owner": "ai-owner",
-      "status": "READY",
-      "pendingItems": 13,
-      "priorities": [
-        "P0",
-        "P1"
-      ],
-      "batchIds": [
-        "p0-release-config-ai-owner",
-        "p1-rollback-ai-owner"
-      ],
-      "readyBatchIds": [
-        "p0-release-config-ai-owner"
-      ],
-      "blockedBatchIds": [
-        "p1-rollback-ai-owner"
-      ],
-      "blockedByBatchIds": [],
-      "commandSet": {
-        "list": "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "envCheck": "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "dryRun": "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "execute": "DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      },
-      "templateEnvKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "LUMIRA_AI_OWNER_FILE_BASE_URL",
-          "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_AI_OWNER_IAM_BASE_URL",
-          "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_AI_OWNER_INTERNAL_TOKEN",
-          "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN"
-        },
-        {
-          "alias": "LUMIRA_AI_OWNER_PLATFORM_BASE_URL",
-          "canonical": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL"
-        },
-        {
-          "alias": "LUMIRA_AI_PROVIDER_API_KEY",
-          "canonical": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY"
-        },
-        {
-          "alias": "LUMIRA_AI_PROVIDER_BASE_URL",
-          "canonical": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json",
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "exitCriteria": [
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
-        "Rerun strict release gate and readiness summary after evidence is refreshed.",
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+        "Run only after all prerequisite evidence batches are clean.",
+        "Runtime readiness is generated from an HTTPS non-local backend base URL."
       ],
       "handoffChecklist": [
         "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
@@ -574,76 +188,6 @@
         "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Rerun strict release gate and readiness summary after evidence is refreshed."
-      ],
-      "handoffChecklist": [
-        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
-        "Run the owner env-check command before collecting evidence.",
-        "Run the owner dry-run command to confirm batch scope.",
-        "Run the owner execute command in the production-equivalent release environment.",
-        "Archive or refresh every expected artifact listed for this owner.",
-        "Confirm every exit criterion before the next dependent batch starts."
-      ]
-    },
-    {
-      "owner": "payment-owner",
-      "status": "READY",
-      "pendingItems": 4,
-      "priorities": [
-        "P0",
-        "P1"
-      ],
-      "batchIds": [
-        "p0-release-config-payment-owner",
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-payment-owner"
-      ],
-      "readyBatchIds": [
-        "p0-release-config-payment-owner"
-      ],
-      "blockedBatchIds": [
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-payment-owner"
-      ],
-      "blockedByBatchIds": [],
-      "commandSet": {
-        "list": "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "envCheck": "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "dryRun": "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "execute": "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      },
-      "templateEnvKeys": [
-        "BASE_URL",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT",
-        "LUMIRA_BASE_URL",
-        "PAYMENT_PUBLIC_BASE_URL"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "DEPLOY_CHECK_BASE_URL",
-          "canonical": "LUMIRA_BASE_URL"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json",
-        "artifacts/ddd/payment/payment-webhook-e2e.json",
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "exitCriteria": [
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
-        "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
-        "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata.",
-        "Rerun strict release gate and readiness summary after evidence is refreshed.",
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
       ],
       "handoffChecklist": [
         "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
@@ -1057,6 +601,100 @@
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
         "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
         "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata.",
+        "Rerun strict release gate and readiness summary after evidence is refreshed."
+      ],
+      "handoffChecklist": [
+        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
+        "Archive or refresh every expected artifact listed for this owner.",
+        "Confirm every exit criterion before the next dependent batch starts."
+      ]
+    },
+    {
+      "owner": "payment-owner",
+      "status": "BLOCKED",
+      "pendingItems": 2,
+      "priorities": [
+        "P1"
+      ],
+      "batchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ],
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ],
+      "blockedByBatchIds": [],
+      "commandSet": null,
+      "templateEnvKeys": [
+        "BASE_URL",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT",
+        "LUMIRA_BASE_URL",
+        "PAYMENT_PUBLIC_BASE_URL"
+      ],
+      "aliasMappings": [
+        {
+          "alias": "DEPLOY_CHECK_BASE_URL",
+          "canonical": "LUMIRA_BASE_URL"
+        }
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/payment/payment-webhook-e2e.json",
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
+        "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
+        "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata.",
+        "Rerun strict release gate and readiness summary after evidence is refreshed."
+      ],
+      "handoffChecklist": [
+        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
+        "Archive or refresh every expected artifact listed for this owner.",
+        "Confirm every exit criterion before the next dependent batch starts."
+      ]
+    },
+    {
+      "owner": "ai-owner",
+      "status": "BLOCKED",
+      "pendingItems": 1,
+      "priorities": [
+        "P1"
+      ],
+      "batchIds": [
+        "p1-rollback-ai-owner"
+      ],
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-ai-owner"
+      ],
+      "blockedByBatchIds": [],
+      "commandSet": null,
+      "templateEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "aliasMappings": [],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
         "Rerun strict release gate and readiness summary after evidence is refreshed."
       ],
       "handoffChecklist": [

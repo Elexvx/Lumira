@@ -1,13 +1,13 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T13:47:18.561Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:43:23.117Z",
   "willWriteFiles": false,
   "redacted": true,
   "envFile": ".env.release.local",
-  "envFileSha256": "e9198c92d83b959a67db31c895f3124b6e9811e44dadc5c68699dcb66d7fae5f",
-  "keyCount": 80,
+  "envFileSha256": "20df17c742800fb8a5e9f5ab0b91c9f685527e02a5159e9820921e4ceb550137",
+  "keyCount": 83,
   "duplicateKeys": [],
-  "requiredSelectedKeyCount": 8,
+  "requiredSelectedKeyCount": 9,
   "requiredSelectedKeys": [
     "DDD_DEPLOYMENT_EVIDENCE",
     "DDD_EVIDENCE_ENVIRONMENT",
@@ -15,6 +15,7 @@
     "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
     "DDD_FRONTEND_EXPECT_DEPLOYED",
     "DDD_RELEASE_CANDIDATE",
+    "DDD_ROLLBACK_DRILL_FILE",
     "LUMIRA_BASE_URL",
     "PLAYWRIGHT_BASE_URL"
   ],
@@ -41,24 +42,22 @@
       "lane": "p1-p2-data-safety",
       "owner": "bounded-context owners",
       "sourcePlan": "data-safety-submission-plan.json",
-      "status": "BLOCKED",
+      "status": "PASS",
       "inputCount": 4,
-      "passedInputCount": 3,
+      "passedInputCount": 4,
       "selectedKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_FILE"
       ],
       "candidateKeyCount": 9,
-      "issueCount": 2,
-      "firstIssue": "DDD_ROLLBACK_DRILL_FILE is required"
+      "issueCount": 0,
+      "firstIssue": null
     }
   ],
-  "issueCount": 2,
-  "issues": [
-    "p1-p2-data-safety: DDD_ROLLBACK_DRILL_FILE is required",
-    "p1-p2-data-safety: DDD_ROLLBACK_DRILL_DEFERRAL_FILE is required"
-  ],
+  "issueCount": 0,
+  "issues": [],
   "passCriteria": [
     "status must be PASS",
     "duplicateKeys must be empty",
@@ -66,5 +65,5 @@
     "envFileSha256 must be present for the validated file",
     "receipt must not include env values"
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-template"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown"
 }

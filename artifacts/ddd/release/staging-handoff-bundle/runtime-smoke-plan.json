@@ -1,10 +1,10 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
-  "runtimeBusinessPlanStatus": "BLOCKED",
-  "backendBaseUrl": null,
-  "frontendBaseUrl": null,
+  "runtimeBusinessPlanStatus": "PASS",
+  "backendBaseUrl": "https://saas.elexvx.com",
+  "frontendBaseUrl": "https://saas.elexvx.com",
   "ownerCount": 7,
   "owners": [
     "release-infra",
@@ -21,7 +21,7 @@
       "id": "runtime-deployment-evidence",
       "phase": "P1",
       "owner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "goal": "Publish HTTPS backend/frontend staging URLs and attach deployment evidence for strict runtime checks.",
       "requiredInputs": [
         "LUMIRA_BASE_URL",
@@ -38,7 +38,7 @@
         "artifacts/ddd/readiness/summary.json"
       ],
       "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs",
-      "blocker": "LUMIRA_BASE_URL is required",
+      "blocker": "local-only runtime evidence must be replaced by HTTPS staging evidence",
       "dependencies": []
     },
     {
@@ -175,7 +175,7 @@
       "id": "runtime-acceptance",
       "phase": "P1",
       "owner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "goal": "Regenerate readiness and enforce evidence acceptance after all smoke artifacts are refreshed.",
       "requiredInputs": [],
       "commands": [
@@ -194,7 +194,7 @@
         "artifacts/ddd/payment/payment-webhook-e2e.json"
       ],
       "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
-      "blocker": "runtime/business evidence is not fully accepted",
+      "blocker": null,
       "dependencies": [
         "ai-runtime-evidence",
         "auth-performance-evidence",
@@ -225,28 +225,27 @@
     "Regenerate readiness after every owner smoke artifact is refreshed, then run final review enforcement."
   ],
   "nextPhase": {
-    "id": "runtime-deployment-evidence",
+    "id": "ai-runtime-evidence",
     "phase": "P1",
-    "owner": "release-infra",
+    "owner": "ai",
     "status": "BLOCKED",
-    "goal": "Publish HTTPS backend/frontend staging URLs and attach deployment evidence for strict runtime checks.",
+    "goal": "Prove AI provider and owner gateway are remote in staging, not localhost or test doubles.",
     "requiredInputs": [
-      "LUMIRA_BASE_URL",
-      "PLAYWRIGHT_BASE_URL",
-      "DDD_DEPLOYMENT_EVIDENCE",
-      "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-      "DDD_FRONTEND_EXPECT_DEPLOYED=true"
+      "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
+      "DDD_AI_EXPECT_PROVIDER_REMOTE=true",
+      "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true"
     ],
     "commands": [
-      "node scripts/ddd-staging-runtime-check.mjs",
-      "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
+      "node scripts/ddd-ai-runtime-drill.mjs"
     ],
     "artifacts": [
-      "artifacts/ddd/readiness/summary.json"
+      "artifacts/ddd/ai/ai-runtime-drill.json"
     ],
-    "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs",
-    "blocker": "LUMIRA_BASE_URL is required",
-    "dependencies": []
+    "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "blocker": "missing AI runtime deployment evidence or remote expectation flags",
+    "dependencies": [
+      "runtime-deployment-evidence"
+    ]
   },
-  "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
 }

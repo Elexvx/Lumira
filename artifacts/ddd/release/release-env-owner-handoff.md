@@ -1,11 +1,11 @@
 # DDD Release Env Owner Handoff
 
-Generated at: 2026-06-19T06:54:03.604Z
+Generated at: 2026-06-19T13:42:59.865Z
 Status: NOT_READY
 Env file: .env.release.local
 Owners: 6
 Canonical fill items: 48
-Unresolved aliases covered: 73
+Unresolved aliases covered: 0
 
 ## Fast Path
 
@@ -32,9 +32,9 @@ Unresolved aliases covered: 73
 - Canonical fill items: 12
 - Secret canonical keys: 4
 - Safe-to-prefill canonical keys: 1
-- Unresolved aliases covered: 20
-- Ready batches: p0-docker-release-infra, p0-release-config-release-infra, p0-release-env-lint-release-infra, p0-runtime-readiness-release-infra
-- Blocked batches: none
+- Unresolved aliases covered: 0
+- Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
+- Blocked batches: p3-orchestrator-release-infra
 - Fill canonical keys:
   - `LUMIRA_BASE_URL` (runtime.backend base url; class=url; secret=false; aliases=LUMIRA_BASE_URL|DEPLOY_CHECK_BASE_URL)
   - `CORS_ALLOWED_ORIGIN_PATTERNS` (runtime.cors origins; class=identifier; secret=false; aliases=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS)
@@ -58,19 +58,19 @@ Unresolved aliases covered: 73
   - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
   - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `node scripts/ddd-release-evidence-orchestrator.mjs`
   - `node scripts/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## ai-owner
 
-- Queue: ACTIONABLE; canExecute=true
+- Queue: WAITING; canExecute=false
 - Next command: `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
 - Canonical fill items: 12
 - Secret canonical keys: 2
 - Safe-to-prefill canonical keys: 6
-- Unresolved aliases covered: 13
-- Ready batches: p0-release-config-ai-owner
+- Unresolved aliases covered: 0
+- Ready batches: none
 - Blocked batches: p1-rollback-ai-owner
 - Fill canonical keys:
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL` (ai.chat model; class=runtime-setting; secret=false; aliases=LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL|LUMIRA_AI_CHAT_MODEL)
@@ -95,99 +95,7 @@ Unresolved aliases covered: 73
   - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
   - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-release-readiness-summary.mjs`
-  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
-
-## payment-owner
-
-- Queue: ACTIONABLE; canExecute=true
-- Next command: `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-- Canonical fill items: 2
-- Secret canonical keys: 1
-- Safe-to-prefill canonical keys: 0
-- Unresolved aliases covered: 1
-- Ready batches: p0-release-config-payment-owner
-- Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
-- Fill canonical keys:
-  - `PAYMENT_PUBLIC_BASE_URL` (payment.payment public url; class=url; secret=false; aliases=PAYMENT_PUBLIC_BASE_URL)
-  - `DDD_PAYMENT_WEBHOOK_SECRET` (payment.payment webhook secret; class=secret; secret=true; aliases=DDD_PAYMENT_WEBHOOK_SECRET|PAYMENT_WEBHOOK_SECRET|LUMIRA_PAYMENT_WEBHOOK_SECRET)
-- Run after fill:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
-  - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-release-readiness-summary.mjs`
-  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
-
-## platform-events
-
-- Queue: ACTIONABLE; canExecute=true
-- Next command: `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-- Canonical fill items: 10
-- Secret canonical keys: 3
-- Safe-to-prefill canonical keys: 1
-- Unresolved aliases covered: 20
-- Ready batches: p0-release-config-platform-events
-- Blocked batches: none
-- Fill canonical keys:
-  - `SAAS_EVENT_REDIS_STREAM_KEY` (jobs-and-events.event stream key; class=secret; secret=true; aliases=SAAS_EVENT_REDIS_STREAM_KEY|LUMIRA_EVENT_REDIS_STREAM_KEY)
-  - `SAAS_JOB_BACKEND_BASE_URL` (jobs-and-events.job backend url; class=url; secret=false; aliases=SAAS_JOB_BACKEND_BASE_URL|LUMIRA_JOB_BACKEND_BASE_URL)
-  - `SAAS_JOB_FILE_SERVICE_BASE_URL` (jobs-and-events.job file url; class=url; secret=false; aliases=SAAS_JOB_FILE_SERVICE_BASE_URL|LUMIRA_JOB_FILE_SERVICE_BASE_URL)
-  - `SAAS_JOB_INTERNAL_TOKEN` (jobs-and-events.job internal token; class=secret; secret=true; aliases=SAAS_JOB_INTERNAL_TOKEN|DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN)
-  - `SAAS_JOB_MESSAGE_SERVICE_BASE_URL` (jobs-and-events.job message url; class=url; secret=false; aliases=SAAS_JOB_MESSAGE_SERVICE_BASE_URL|LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL)
-  - `SAAS_JOB_PAYMENT_SERVICE_BASE_URL` (jobs-and-events.job payment url; class=url; secret=false; aliases=SAAS_JOB_PAYMENT_SERVICE_BASE_URL|LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL)
-  - `SAAS_JOB_PLUGIN_SERVICE_BASE_URL` (jobs-and-events.job plugin url; class=url; secret=false; aliases=SAAS_JOB_PLUGIN_SERVICE_BASE_URL|LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL)
-  - `SAAS_EVENT_OUTBOX_DISPATCHER` (jobs-and-events.outbox dispatcher; class=runtime-setting; secret=false; aliases=SAAS_EVENT_OUTBOX_DISPATCHER|LUMIRA_EVENT_OUTBOX_DISPATCHER)
-  - `XXL_JOB_ADMIN_ADDRESSES` (jobs-and-events.xxl job admin; class=url; secret=false; aliases=XXL_JOB_ADMIN_ADDRESSES|LUMIRA_XXL_JOB_ADMIN_ADDRESSES)
-  - `XXL_JOB_ACCESS_TOKEN` (jobs-and-events.xxl job token; class=secret; secret=true; aliases=XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN|LUMIRA_XXL_JOB_ACCESS_TOKEN)
-- Run after fill:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
-  - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-release-readiness-summary.mjs`
-  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
-
-## platform-owners
-
-- Queue: ACTIONABLE; canExecute=true
-- Next command: `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-- Canonical fill items: 9
-- Secret canonical keys: 0
-- Safe-to-prefill canonical keys: 0
-- Unresolved aliases covered: 19
-- Ready batches: p0-release-config-platform-owners
-- Blocked batches: none
-- Fill canonical keys:
-  - `AI_SERVICE_BASE_URL` (owner-services.ai service; class=url; secret=false; aliases=AI_SERVICE_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL)
-  - `AUTH_SERVICE_BASE_URL` (owner-services.auth service; class=url; secret=false; aliases=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL)
-  - `FILE_SERVICE_BASE_URL` (owner-services.file service; class=url; secret=false; aliases=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL)
-  - `JOB_EXECUTOR_BASE_URL` (owner-services.job executor; class=url; secret=false; aliases=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL)
-  - `LOCALIZATION_SERVICE_BASE_URL` (owner-services.localization service; class=url; secret=false; aliases=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL)
-  - `MESSAGE_SERVICE_BASE_URL` (owner-services.message service; class=url; secret=false; aliases=MESSAGE_SERVICE_BASE_URL|LUMIRA_MESSAGE_SERVICE_BASE_URL)
-  - `PAYMENT_SERVICE_BASE_URL` (owner-services.payment service; class=url; secret=false; aliases=PAYMENT_SERVICE_BASE_URL|LUMIRA_PAYMENT_SERVICE_BASE_URL)
-  - `PLUGIN_SERVICE_BASE_URL` (owner-services.plugin service; class=url; secret=false; aliases=PLUGIN_SERVICE_BASE_URL|LUMIRA_PLUGIN_SERVICE_BASE_URL)
-  - `SYSTEM_SERVICE_BASE_URL` (owner-services.system service; class=url; secret=false; aliases=SYSTEM_SERVICE_BASE_URL|LUMIRA_SYSTEM_SERVICE_BASE_URL)
-- Run after fill:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
-  - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
+  - `node scripts/ddd-rollback-deferral-template.mjs`
   - `node scripts/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
@@ -216,6 +124,100 @@ Unresolved aliases covered: 73
   - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
   - `node scripts/ddd-file-processing-e2e-smoke.mjs`
+  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
+
+## payment-owner
+
+- Queue: WAITING; canExecute=false
+- Next command: `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
+- Canonical fill items: 2
+- Secret canonical keys: 1
+- Safe-to-prefill canonical keys: 0
+- Unresolved aliases covered: 0
+- Ready batches: none
+- Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
+- Fill canonical keys:
+  - `PAYMENT_PUBLIC_BASE_URL` (payment.payment public url; class=url; secret=false; aliases=PAYMENT_PUBLIC_BASE_URL)
+  - `DDD_PAYMENT_WEBHOOK_SECRET` (payment.payment webhook secret; class=secret; secret=true; aliases=DDD_PAYMENT_WEBHOOK_SECRET|PAYMENT_WEBHOOK_SECRET|LUMIRA_PAYMENT_WEBHOOK_SECRET)
+- Run after fill:
+  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
+  - `node scripts/ddd-release-config-evidence.mjs`
+  - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
+  - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
+  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
+
+## platform-events
+
+- Queue: WAITING; canExecute=false
+- Next command: `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
+- Canonical fill items: 10
+- Secret canonical keys: 3
+- Safe-to-prefill canonical keys: 1
+- Unresolved aliases covered: 0
+- Ready batches: none
+- Blocked batches: none
+- Fill canonical keys:
+  - `SAAS_EVENT_REDIS_STREAM_KEY` (jobs-and-events.event stream key; class=secret; secret=true; aliases=SAAS_EVENT_REDIS_STREAM_KEY|LUMIRA_EVENT_REDIS_STREAM_KEY)
+  - `SAAS_JOB_BACKEND_BASE_URL` (jobs-and-events.job backend url; class=url; secret=false; aliases=SAAS_JOB_BACKEND_BASE_URL|LUMIRA_JOB_BACKEND_BASE_URL)
+  - `SAAS_JOB_FILE_SERVICE_BASE_URL` (jobs-and-events.job file url; class=url; secret=false; aliases=SAAS_JOB_FILE_SERVICE_BASE_URL|LUMIRA_JOB_FILE_SERVICE_BASE_URL)
+  - `SAAS_JOB_INTERNAL_TOKEN` (jobs-and-events.job internal token; class=secret; secret=true; aliases=SAAS_JOB_INTERNAL_TOKEN|DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN)
+  - `SAAS_JOB_MESSAGE_SERVICE_BASE_URL` (jobs-and-events.job message url; class=url; secret=false; aliases=SAAS_JOB_MESSAGE_SERVICE_BASE_URL|LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL)
+  - `SAAS_JOB_PAYMENT_SERVICE_BASE_URL` (jobs-and-events.job payment url; class=url; secret=false; aliases=SAAS_JOB_PAYMENT_SERVICE_BASE_URL|LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL)
+  - `SAAS_JOB_PLUGIN_SERVICE_BASE_URL` (jobs-and-events.job plugin url; class=url; secret=false; aliases=SAAS_JOB_PLUGIN_SERVICE_BASE_URL|LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL)
+  - `SAAS_EVENT_OUTBOX_DISPATCHER` (jobs-and-events.outbox dispatcher; class=runtime-setting; secret=false; aliases=SAAS_EVENT_OUTBOX_DISPATCHER|LUMIRA_EVENT_OUTBOX_DISPATCHER)
+  - `XXL_JOB_ADMIN_ADDRESSES` (jobs-and-events.xxl job admin; class=url; secret=false; aliases=XXL_JOB_ADMIN_ADDRESSES|LUMIRA_XXL_JOB_ADMIN_ADDRESSES)
+  - `XXL_JOB_ACCESS_TOKEN` (jobs-and-events.xxl job token; class=secret; secret=true; aliases=XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN|LUMIRA_XXL_JOB_ACCESS_TOKEN)
+- Run after fill:
+  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
+  - `node scripts/ddd-release-config-evidence.mjs`
+  - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
+  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
+
+## platform-owners
+
+- Queue: WAITING; canExecute=false
+- Next command: `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
+- Canonical fill items: 9
+- Secret canonical keys: 0
+- Safe-to-prefill canonical keys: 0
+- Unresolved aliases covered: 0
+- Ready batches: none
+- Blocked batches: none
+- Fill canonical keys:
+  - `AI_SERVICE_BASE_URL` (owner-services.ai service; class=url; secret=false; aliases=AI_SERVICE_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL)
+  - `AUTH_SERVICE_BASE_URL` (owner-services.auth service; class=url; secret=false; aliases=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL)
+  - `FILE_SERVICE_BASE_URL` (owner-services.file service; class=url; secret=false; aliases=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL)
+  - `JOB_EXECUTOR_BASE_URL` (owner-services.job executor; class=url; secret=false; aliases=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL)
+  - `LOCALIZATION_SERVICE_BASE_URL` (owner-services.localization service; class=url; secret=false; aliases=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL)
+  - `MESSAGE_SERVICE_BASE_URL` (owner-services.message service; class=url; secret=false; aliases=MESSAGE_SERVICE_BASE_URL|LUMIRA_MESSAGE_SERVICE_BASE_URL)
+  - `PAYMENT_SERVICE_BASE_URL` (owner-services.payment service; class=url; secret=false; aliases=PAYMENT_SERVICE_BASE_URL|LUMIRA_PAYMENT_SERVICE_BASE_URL)
+  - `PLUGIN_SERVICE_BASE_URL` (owner-services.plugin service; class=url; secret=false; aliases=PLUGIN_SERVICE_BASE_URL|LUMIRA_PLUGIN_SERVICE_BASE_URL)
+  - `SYSTEM_SERVICE_BASE_URL` (owner-services.system service; class=url; secret=false; aliases=SYSTEM_SERVICE_BASE_URL|LUMIRA_SYSTEM_SERVICE_BASE_URL)
+- Run after fill:
+  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
+  - `node scripts/ddd-release-config-evidence.mjs`
+  - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
   - `node scripts/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 

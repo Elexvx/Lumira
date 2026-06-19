@@ -1,11 +1,11 @@
 # DDD Release Action Batches
 
-Generated at: 2026-06-19T06:54:03.604Z
+Generated at: 2026-06-19T13:42:59.865Z
 Status: NOT_READY
 Release gate mode: strict
 Release gate blockers: 94
-Batch count: 29
-Total pending items: 111
+Batch count: 24
+Total pending items: 47
 
 ## Execution Notes
 
@@ -17,305 +17,7 @@ Total pending items: 111
 
 ## Batches
 
-### 1. P0 release-env-lint -> release-infra
-
-- Batch id: p0-release-env-lint-release-infra
-- Depends on: none
-- Can run immediately: true
-- Pending items: 2
-- Env keys: 55 keys
-  - AI_SERVICE_BASE_URL, AUTH_SERVICE_BASE_URL, BASE_URL, CORS_ALLOWED_ORIGIN_PATTERNS
-  - DB_PASSWORD, DB_URL, DB_USERNAME, DDD_AUTH_PASSWORD
-  - DDD_AUTH_PERF_BASELINE_ACCEPTED_BY, DDD_AUTH_PERF_BASELINE_ENVIRONMENT, DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT, DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE
-  - DDD_AUTH_PERF_ENVIRONMENT, DDD_AUTH_USERNAME, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DDD_DEPLOYMENT_EVIDENCE
-  - DDD_EXPLAIN_DATABASE, DDD_FRONTEND_DEPLOYMENT_EVIDENCE, DDD_MIGRATION_COMPLETED_AT, DDD_MIGRATION_FRESH_DB_EVIDENCE
-  - DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_OPERATOR, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED
-  - FIELD_SECRET, FILE_SERVICE_BASE_URL, JOB_EXECUTOR_BASE_URL, JWT_SECRET
-  - LOCALIZATION_SERVICE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN
-  - LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL, LUMIRA_BASE_URL
-  - MESSAGE_SERVICE_BASE_URL, MYSQL_DATABASE, MYSQL_HOST, MYSQL_PORT
-  - PAYMENT_PUBLIC_BASE_URL, PAYMENT_SERVICE_BASE_URL, PLAYWRIGHT_BASE_URL, PLUGIN_SERVICE_BASE_URL
-  - REDIS_HOST, SAAS_EVENT_REDIS_STREAM_KEY, SAAS_JOB_BACKEND_BASE_URL, SAAS_JOB_FILE_SERVICE_BASE_URL
-  - SAAS_JOB_INTERNAL_TOKEN, SAAS_JOB_MESSAGE_SERVICE_BASE_URL, SAAS_JOB_PAYMENT_SERVICE_BASE_URL, SAAS_JOB_PLUGIN_SERVICE_BASE_URL
-  - SYSTEM_SERVICE_BASE_URL, XXL_JOB_ACCESS_TOKEN, XXL_JOB_ADMIN_ADDRESSES
-- Env check groups: 55 groups
-  - `AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL`
-  - `AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL`
-  - `BASE_URL=BASE_URL`
-  - `CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS`
-  - `DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD`
-  - `DB_URL=DB_URL|SPRING_DATASOURCE_URL`
-  - `DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME`
-  - `DDD_AUTH_PASSWORD=DDD_AUTH_PASSWORD`
-  - `DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY`
-  - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT=DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
-  - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
-  - `DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE=DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE`
-  - `DDD_AUTH_PERF_ENVIRONMENT=DDD_AUTH_PERF_ENVIRONMENT`
-  - `DDD_AUTH_USERNAME=DDD_AUTH_USERNAME`
-  - `DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE`
-  - `DDD_DEPLOYMENT_EVIDENCE=DDD_DEPLOYMENT_EVIDENCE`
-  - `DDD_EXPLAIN_DATABASE=DDD_EXPLAIN_DATABASE`
-  - `DDD_FRONTEND_DEPLOYMENT_EVIDENCE=DDD_FRONTEND_DEPLOYMENT_EVIDENCE`
-  - `DDD_MIGRATION_COMPLETED_AT=DDD_MIGRATION_COMPLETED_AT`
-  - `DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE`
-  - `DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED`
-  - `DDD_MIGRATION_OPERATOR=DDD_MIGRATION_OPERATOR`
-  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
-  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED`
-  - `FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET`
-  - `FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL`
-  - `JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL`
-  - `JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET`
-  - `LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL`
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL`
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL`
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN`
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL`
-  - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY`
-  - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL`
-  - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
-  - `MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL`
-  - `MYSQL_DATABASE=MYSQL_DATABASE`
-  - `MYSQL_HOST=MYSQL_HOST`
-  - `MYSQL_PORT=MYSQL_PORT`
-  - `PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL`
-  - `PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL`
-  - `PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL`
-  - `PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL`
-  - `REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST`
-  - `SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY`
-  - `SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL`
-  - `SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL`
-  - `SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN`
-  - `SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL`
-  - `SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL`
-  - `SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL`
-  - `SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL`
-  - `XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN`
-  - `XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES`
-- Commands:
-  - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
-- Expected artifacts:
-  - `artifacts/ddd/release/release-env-lint.json`
-  - `artifacts/ddd/config/release-config-evidence.json`
-- Exit criteria:
-  - Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.
-  - release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.
-  - Clear this batch before running downstream runtime-heavy evidence.
-
-- release-env-lint-placeholders: unresolvedTemplateKeys=93
-- release-env-lint-status: status=FAIL primaryBlockers=55
-
-### 2. P0 release-config -> ai-owner
-
-- Batch id: p0-release-config-ai-owner
-- Depends on: none
-- Can run immediately: true
-- Pending items: 12
-- Env keys: 13 keys
-  - LUMIRA_AI_OWNER_FILE_BASE_URL, LUMIRA_AI_OWNER_IAM_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL
-  - LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN, LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL, LUMIRA_AI_OWNER_INTERNAL_TOKEN, LUMIRA_AI_OWNER_PLATFORM_BASE_URL
-  - LUMIRA_AI_PROVIDER_API_KEY, LUMIRA_AI_PROVIDER_BASE_URL, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL
-  - SAAS_JOB_INTERNAL_TOKEN
-- Env check groups: 7 groups
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL=LUMIRA_AI_OWNER_FILE_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL`
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL=LUMIRA_AI_OWNER_IAM_BASE_URL|LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL`
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN=LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN|LUMIRA_AI_OWNER_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN`
-  - `LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL=LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL|LUMIRA_AI_OWNER_PLATFORM_BASE_URL`
-  - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY`
-  - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL`
-  - `SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN`
-- Commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
-- Expected artifacts:
-  - `artifacts/ddd/config/release-config-evidence.json`
-- Exit criteria:
-  - release-config-evidence status is PASS with no contract issues.
-  - releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.
-  - Clear this batch before running downstream runtime-heavy evidence.
-
-- file owner url: placeholder value is not allowed
-- file owner url: must use HTTPS for production-equivalent evidence
-- iam owner url: placeholder value is not allowed
-- iam owner url: must use HTTPS for production-equivalent evidence
-- owner internal token: placeholder value is not allowed
-- owner internal token: must be at least 32 characters
-- platform owner url: placeholder value is not allowed
-- platform owner url: must use HTTPS for production-equivalent evidence
-- provider api key: placeholder value is not allowed
-- provider api key: must be at least 32 characters
-- provider base url: placeholder value is not allowed
-- provider base url: must use HTTPS for production-equivalent evidence
-
-### 3. P0 release-config -> payment-owner
-
-- Batch id: p0-release-config-payment-owner
-- Depends on: none
-- Can run immediately: true
-- Pending items: 2
-- Env keys: PAYMENT_PUBLIC_BASE_URL
-- Env check groups:
-  - `PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL`
-- Commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
-- Expected artifacts:
-  - `artifacts/ddd/config/release-config-evidence.json`
-- Exit criteria:
-  - release-config-evidence status is PASS with no contract issues.
-  - releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.
-  - Clear this batch before running downstream runtime-heavy evidence.
-
-- payment public url: placeholder value is not allowed
-- payment public url: must use HTTPS for production-equivalent evidence
-
-### 4. P0 release-config -> platform-events
-
-- Batch id: p0-release-config-platform-events
-- Depends on: none
-- Can run immediately: true
-- Pending items: 17
-- Env keys: 20 keys
-  - DDD_JOB_INTERNAL_TOKEN, LUMIRA_EVENT_REDIS_STREAM_KEY, LUMIRA_JOB_BACKEND_BASE_URL, LUMIRA_JOB_FILE_SERVICE_BASE_URL
-  - LUMIRA_JOB_INTERNAL_TOKEN, LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL, LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL, LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL
-  - LUMIRA_XXL_JOB_ACCESS_TOKEN, LUMIRA_XXL_JOB_ADMIN_ADDRESSES, SAAS_EVENT_REDIS_STREAM_KEY, SAAS_JOB_BACKEND_BASE_URL
-  - SAAS_JOB_FILE_SERVICE_BASE_URL, SAAS_JOB_INTERNAL_TOKEN, SAAS_JOB_MESSAGE_SERVICE_BASE_URL, SAAS_JOB_PAYMENT_SERVICE_BASE_URL
-  - SAAS_JOB_PLUGIN_SERVICE_BASE_URL, XXL_JOB_ACCESS_TOKEN, XXL_JOB_ADMIN_ACCESS_TOKEN, XXL_JOB_ADMIN_ADDRESSES
-- Env check groups: 9 groups
-  - `SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN`
-  - `SAAS_EVENT_REDIS_STREAM_KEY=LUMIRA_EVENT_REDIS_STREAM_KEY|SAAS_EVENT_REDIS_STREAM_KEY`
-  - `SAAS_JOB_BACKEND_BASE_URL=LUMIRA_JOB_BACKEND_BASE_URL|SAAS_JOB_BACKEND_BASE_URL`
-  - `SAAS_JOB_FILE_SERVICE_BASE_URL=LUMIRA_JOB_FILE_SERVICE_BASE_URL|SAAS_JOB_FILE_SERVICE_BASE_URL`
-  - `SAAS_JOB_MESSAGE_SERVICE_BASE_URL=LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL|SAAS_JOB_MESSAGE_SERVICE_BASE_URL`
-  - `SAAS_JOB_PAYMENT_SERVICE_BASE_URL=LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL|SAAS_JOB_PAYMENT_SERVICE_BASE_URL`
-  - `SAAS_JOB_PLUGIN_SERVICE_BASE_URL=LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL|SAAS_JOB_PLUGIN_SERVICE_BASE_URL`
-  - `XXL_JOB_ACCESS_TOKEN=LUMIRA_XXL_JOB_ACCESS_TOKEN|XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN`
-  - `XXL_JOB_ADMIN_ADDRESSES=LUMIRA_XXL_JOB_ADMIN_ADDRESSES|XXL_JOB_ADMIN_ADDRESSES`
-- Commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
-- Expected artifacts:
-  - `artifacts/ddd/config/release-config-evidence.json`
-- Exit criteria:
-  - release-config-evidence status is PASS with no contract issues.
-  - releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.
-  - Clear this batch before running downstream runtime-heavy evidence.
-
-- event stream key: placeholder value is not allowed
-- job backend url: placeholder value is not allowed
-- job backend url: must use HTTPS for production-equivalent evidence
-- job file url: placeholder value is not allowed
-- job file url: must use HTTPS for production-equivalent evidence
-- job internal token: placeholder value is not allowed
-- job internal token: must be at least 32 characters
-- job message url: placeholder value is not allowed
-- job message url: must use HTTPS for production-equivalent evidence
-- job payment url: placeholder value is not allowed
-- job payment url: must use HTTPS for production-equivalent evidence
-- job plugin url: placeholder value is not allowed
-- job plugin url: must use HTTPS for production-equivalent evidence
-- xxl job admin: placeholder value is not allowed
-- xxl job admin: must use HTTPS for production-equivalent evidence
-- xxl job token: placeholder value is not allowed
-- xxl job token: must be at least 32 characters
-
-### 5. P0 release-config -> platform-owners
-
-- Batch id: p0-release-config-platform-owners
-- Depends on: none
-- Can run immediately: true
-- Pending items: 18
-- Env keys: 19 keys
-  - AI_SERVICE_BASE_URL, AUTH_SERVICE_BASE_URL, FILE_SERVICE_BASE_URL, JOB_EXECUTOR_BASE_URL
-  - LOCALIZATION_SERVICE_BASE_URL, LUMIRA_AI_BASE_URL, LUMIRA_AI_SERVICE_BASE_URL, LUMIRA_AUTH_SERVICE_BASE_URL
-  - LUMIRA_FILE_SERVICE_BASE_URL, LUMIRA_JOB_EXECUTOR_BASE_URL, LUMIRA_LOCALIZATION_SERVICE_BASE_URL, LUMIRA_MESSAGE_SERVICE_BASE_URL
-  - LUMIRA_PAYMENT_SERVICE_BASE_URL, LUMIRA_PLUGIN_SERVICE_BASE_URL, LUMIRA_SYSTEM_SERVICE_BASE_URL, MESSAGE_SERVICE_BASE_URL
-  - PAYMENT_SERVICE_BASE_URL, PLUGIN_SERVICE_BASE_URL, SYSTEM_SERVICE_BASE_URL
-- Env check groups: 9 groups
-  - `AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL`
-  - `AUTH_SERVICE_BASE_URL=AUTH_SERVICE_BASE_URL|LUMIRA_AUTH_SERVICE_BASE_URL`
-  - `FILE_SERVICE_BASE_URL=FILE_SERVICE_BASE_URL|LUMIRA_FILE_SERVICE_BASE_URL`
-  - `JOB_EXECUTOR_BASE_URL=JOB_EXECUTOR_BASE_URL|LUMIRA_JOB_EXECUTOR_BASE_URL`
-  - `LOCALIZATION_SERVICE_BASE_URL=LOCALIZATION_SERVICE_BASE_URL|LUMIRA_LOCALIZATION_SERVICE_BASE_URL`
-  - `MESSAGE_SERVICE_BASE_URL=LUMIRA_MESSAGE_SERVICE_BASE_URL|MESSAGE_SERVICE_BASE_URL`
-  - `PAYMENT_SERVICE_BASE_URL=LUMIRA_PAYMENT_SERVICE_BASE_URL|PAYMENT_SERVICE_BASE_URL`
-  - `PLUGIN_SERVICE_BASE_URL=LUMIRA_PLUGIN_SERVICE_BASE_URL|PLUGIN_SERVICE_BASE_URL`
-  - `SYSTEM_SERVICE_BASE_URL=LUMIRA_SYSTEM_SERVICE_BASE_URL|SYSTEM_SERVICE_BASE_URL`
-- Commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
-- Expected artifacts:
-  - `artifacts/ddd/config/release-config-evidence.json`
-- Exit criteria:
-  - release-config-evidence status is PASS with no contract issues.
-  - releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.
-  - Clear this batch before running downstream runtime-heavy evidence.
-
-- ai service: placeholder value is not allowed
-- ai service: must use HTTPS for production-equivalent evidence
-- auth service: placeholder value is not allowed
-- auth service: must use HTTPS for production-equivalent evidence
-- file service: placeholder value is not allowed
-- file service: must use HTTPS for production-equivalent evidence
-- job executor: placeholder value is not allowed
-- job executor: must use HTTPS for production-equivalent evidence
-- localization service: placeholder value is not allowed
-- localization service: must use HTTPS for production-equivalent evidence
-- message service: placeholder value is not allowed
-- message service: must use HTTPS for production-equivalent evidence
-- payment service: placeholder value is not allowed
-- payment service: must use HTTPS for production-equivalent evidence
-- plugin service: placeholder value is not allowed
-- plugin service: must use HTTPS for production-equivalent evidence
-- system service: placeholder value is not allowed
-- system service: must use HTTPS for production-equivalent evidence
-
-### 6. P0 release-config -> release-infra
-
-- Batch id: p0-release-config-release-infra
-- Depends on: none
-- Can run immediately: true
-- Pending items: 14
-- Env keys: 20 keys
-  - CORS_ALLOWED_ORIGIN_PATTERNS, DB_PASSWORD, DB_URL, DB_USERNAME
-  - DEPLOY_CHECK_BASE_URL, FIELD_SECRET, FRONTEND_BASE_URL, JWT_SECRET
-  - LUMIRA_BASE_URL, MYSQL_PASSWORD, MYSQL_USER, PLAYWRIGHT_BASE_URL
-  - REDIS_HOST, SAAS_SECURITY_FIELD_SECRET, SAAS_SECURITY_JWT_SECRET, SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS
-  - SPRING_DATASOURCE_PASSWORD, SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATA_REDIS_HOST
-- Env check groups: 9 groups
-  - `CORS_ALLOWED_ORIGIN_PATTERNS=CORS_ALLOWED_ORIGIN_PATTERNS|SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS`
-  - `DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD`
-  - `DB_URL=DB_URL|SPRING_DATASOURCE_URL`
-  - `DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME`
-  - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
-  - `FIELD_SECRET=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET`
-  - `PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL`
-  - `JWT_SECRET=JWT_SECRET|SAAS_SECURITY_JWT_SECRET`
-  - `REDIS_HOST=REDIS_HOST|SPRING_DATA_REDIS_HOST`
-- Commands:
-  - `node scripts/ddd-release-config-evidence.mjs`
-- Expected artifacts:
-  - `artifacts/ddd/config/release-config-evidence.json`
-- Exit criteria:
-  - release-config-evidence status is PASS with no contract issues.
-  - releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.
-  - Clear this batch before running downstream runtime-heavy evidence.
-
-- backend base url: placeholder value is not allowed
-- backend base url: must use HTTPS for production-equivalent evidence
-- cors origins: placeholder value is not allowed
-- database password: placeholder value is not allowed
-- database password: must be at least 16 characters
-- database url: placeholder value is not allowed
-- database username: placeholder value is not allowed
-- field secret: placeholder value is not allowed
-- field secret: must be at least 32 characters
-- frontend base url: placeholder value is not allowed
-- frontend base url: must use HTTPS for production-equivalent evidence
-- jwt secret: placeholder value is not allowed
-- jwt secret: must be at least 32 characters
-- redis host: placeholder value is not allowed
-
-### 7. P0 docker -> release-infra
+### 1. P0 docker -> release-infra
 
 - Batch id: p0-docker-release-infra
 - Depends on: none
@@ -335,12 +37,168 @@ Total pending items: 111
   - Required lumira-server and frontend images are built, inspected, and not skipped.
   - Clear this batch before running downstream runtime-heavy evidence.
 
-- docker-blocker-1: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1
-- docker-blocker-2: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1
-- docker-image-frontend-failed: docker build failed after 3 attempt(s) with transient registry/network error status 1
-- docker-image-lumira-server-failed: docker build failed after 3 attempt(s) with transient registry/network error status 1
+- docker-blocker-1: lumira-server: docker build failed: #5 DONE 0.3s
 
-### 8. P0 runtime-readiness -> release-infra
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#4 DONE 0.8s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 309B 0.0s done
+#6 DONE 0.1s
+
+#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603
+#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done
+#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done
+#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done
+#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done
+#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done
+#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done
+#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done
+#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done
+#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done
+#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done
+#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done
+#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done
+#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done
+#7 DONE 14.7s
+
+#8 [stage-1 2/5] WORKDIR /app
+#8 DONE 0.3s
+
+#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data
+#9 DONE 3.3s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done
+#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done
+#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done
+#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done
+#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done
+#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done
+#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done
+#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done
+#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 20.64MB 10.0s
+#11 ...
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 338.84MB 18.4s done
+#11 DONE 18.4s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s
+#10 DONE 145.1s
+
+#12 [builder  2/21] WORKDIR /workspace
+#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF
+------
+ > [builder  2/21] WORKDIR /workspace:
+------
+ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF
+- docker-blocker-2: frontend: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT
+- docker-image-frontend-failed: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT
+- docker-image-lumira-server-failed: docker build failed: #5 DONE 0.3s
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#4 DONE 0.8s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 309B 0.0s done
+#6 DONE 0.1s
+
+#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603
+#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done
+#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done
+#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done
+#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done
+#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done
+#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done
+#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done
+#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done
+#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done
+#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done
+#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done
+#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done
+#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done
+#7 DONE 14.7s
+
+#8 [stage-1 2/5] WORKDIR /app
+#8 DONE 0.3s
+
+#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data
+#9 DONE 3.3s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done
+#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done
+#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done
+#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done
+#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done
+#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done
+#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done
+#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done
+#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 20.64MB 10.0s
+#11 ...
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 338.84MB 18.4s done
+#11 DONE 18.4s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s
+#10 DONE 145.1s
+
+#12 [builder  2/21] WORKDIR /workspace
+#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF
+------
+ > [builder  2/21] WORKDIR /workspace:
+------
+ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF
+
+### 2. P0 runtime-readiness -> release-infra
 
 - Batch id: p0-runtime-readiness-release-infra
 - Depends on: none
@@ -366,7 +224,7 @@ Total pending items: 111
 - runtime-readiness-contract-3: runtime readiness productionEquivalence.localOnly must be false for strict release evidence
 - runtime-readiness-contract-4: runtime readiness productionEquivalence.deploymentEvidence is required
 
-### 9. P0 manifest -> release-owner
+### 3. P0 manifest -> release-owner
 
 - Batch id: p0-manifest-release-owner
 - Depends on: none
@@ -390,7 +248,7 @@ Total pending items: 111
 
 - manifest-missing-no-explain-json-files-in-tmp-ddd-explain: no explain JSON files in tmp\ddd-explain
 
-### 10. P0 authenticated-performance -> release-performance
+### 4. P0 authenticated-performance -> release-performance
 
 - Batch id: p0-authenticated-performance-release-performance
 - Depends on: none
@@ -424,10 +282,10 @@ Total pending items: 111
 - performance-baseline-metadata-8: sourceArtifact is required
 - performance-baseline-metadata-9: sourceSha256 must be a SHA-256 hex digest
 
-### 11. P1 ai-runtime -> ai
+### 5. P1 ai-runtime -> ai
 
 - Batch id: p1-ai-runtime-ai
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 3
 - Env keys: 12 keys
@@ -458,10 +316,10 @@ Total pending items: 111
 - ai-provider-runtime: provider status=CONFIGURED remoteConfigured=false
 - ai-runtime-base-url: missing production-equivalent AI base URL
 
-### 12. P1 frontend-smoke -> frontend
+### 6. P1 frontend-smoke -> frontend
 
 - Batch id: p1-frontend-smoke-frontend
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_FRONTEND_EXPECT_DEPLOYED
@@ -479,10 +337,10 @@ Total pending items: 111
 
 - frontend-deployed-expectation: strict release requires deployed frontend smoke expectation
 
-### 13. P1 business-e2e -> file-owner
+### 7. P1 business-e2e -> file-owner
 
 - Batch id: p1-business-e2e-file-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN, LUMIRA_UPLOAD_STORAGE_ROOT
@@ -502,10 +360,10 @@ Total pending items: 111
 
 - file-processing-production-equivalence: strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080
 
-### 14. P1 business-e2e -> job-owner
+### 8. P1 business-e2e -> job-owner
 
 - Batch id: p1-business-e2e-job-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN
@@ -524,10 +382,10 @@ Total pending items: 111
 
 - job-e2e-production-equivalence: strict job E2E requires HTTPS baseUrl evidence; strict job E2E requires non-local baseUrl, got http://127.0.0.1:8080
 
-### 15. P1 business-e2e -> payment-owner
+### 9. P1 business-e2e -> payment-owner
 
 - Batch id: p1-business-e2e-payment-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
@@ -546,10 +404,10 @@ Total pending items: 111
 
 - payment-webhook-production-equivalence: strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080
 
-### 16. P1 rollback -> ai-owner
+### 10. P1 rollback -> ai-owner
 
 - Batch id: p1-rollback-ai-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -573,10 +431,10 @@ Total pending items: 111
 
 - AI: AI rollback drill is DEFERRED with approved deferral evidence
 
-### 17. P1 rollback -> auth-owner
+### 11. P1 rollback -> auth-owner
 
 - Batch id: p1-rollback-auth-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -600,10 +458,10 @@ Total pending items: 111
 
 - Auth: Auth rollback drill is DEFERRED with approved deferral evidence
 
-### 18. P1 rollback -> file-owner
+### 12. P1 rollback -> file-owner
 
 - Batch id: p1-rollback-file-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -627,10 +485,10 @@ Total pending items: 111
 
 - File: File rollback drill is DEFERRED with approved deferral evidence
 
-### 19. P1 rollback -> iam-owner
+### 13. P1 rollback -> iam-owner
 
 - Batch id: p1-rollback-iam-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -654,10 +512,10 @@ Total pending items: 111
 
 - IAM: IAM rollback drill is DEFERRED with approved deferral evidence
 
-### 20. P1 rollback -> job-owner
+### 14. P1 rollback -> job-owner
 
 - Batch id: p1-rollback-job-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -681,10 +539,10 @@ Total pending items: 111
 
 - Job: Job rollback drill is DEFERRED with approved deferral evidence
 
-### 21. P1 rollback -> localization-owner
+### 15. P1 rollback -> localization-owner
 
 - Batch id: p1-rollback-localization-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -708,10 +566,10 @@ Total pending items: 111
 
 - Localization: Localization rollback drill is DEFERRED with approved deferral evidence
 
-### 22. P1 rollback -> message-owner
+### 16. P1 rollback -> message-owner
 
 - Batch id: p1-rollback-message-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -735,10 +593,10 @@ Total pending items: 111
 
 - Message: Message rollback drill is DEFERRED with approved deferral evidence
 
-### 23. P1 rollback -> payment-owner
+### 17. P1 rollback -> payment-owner
 
 - Batch id: p1-rollback-payment-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -762,10 +620,10 @@ Total pending items: 111
 
 - Payment: Payment rollback drill is DEFERRED with approved deferral evidence
 
-### 24. P1 rollback -> platform-owner
+### 18. P1 rollback -> platform-owner
 
 - Batch id: p1-rollback-platform-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -789,10 +647,10 @@ Total pending items: 111
 
 - Platform: Platform rollback drill is DEFERRED with approved deferral evidence
 
-### 25. P1 rollback -> plugin-owner
+### 19. P1 rollback -> plugin-owner
 
 - Batch id: p1-rollback-plugin-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -816,10 +674,10 @@ Total pending items: 111
 
 - Plugin: Plugin rollback drill is DEFERRED with approved deferral evidence
 
-### 26. P2 explain -> database
+### 20. P2 explain -> database
 
 - Batch id: p2-explain-database
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
 - Can run immediately: false
 - Pending items: 8
 - Env keys: 12 keys
@@ -858,10 +716,10 @@ Total pending items: 111
 - platform-runtime-appearance.json: missing required EXPLAIN artifact
 - plugin-bootstrap.json: missing required EXPLAIN artifact
 
-### 27. P3 orchestrator -> database
+### 21. P3 orchestrator -> database
 
 - Batch id: p3-orchestrator-database
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED
@@ -884,10 +742,10 @@ Total pending items: 111
 
 - orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
 
-### 28. P3 orchestrator -> frontend
+### 22. P3 orchestrator -> frontend
 
 - Batch id: p3-orchestrator-frontend
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Can run immediately: false
 - Pending items: 1
 - Env keys: FRONTEND_BASE_URL, PLAYWRIGHT_BASE_URL
@@ -907,10 +765,34 @@ Total pending items: 111
 
 - orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
 
-### 29. P3 orchestrator -> release-owner
+### 23. P3 orchestrator -> release-infra
+
+- Batch id: p3-orchestrator-release-infra
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Can run immediately: false
+- Pending items: 1
+- Env keys: BASE_URL, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL
+- Env check groups:
+  - `BASE_URL=BASE_URL`
+  - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
+- Commands:
+  - `node scripts/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+- Expected artifacts:
+  - `artifacts/ddd/release/orchestrator-report.json`
+  - `artifacts/ddd/release/release-evidence-gate.json`
+  - `artifacts/ddd/release/readiness-summary.json`
+- Exit criteria:
+  - Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.
+  - Final strict release gate and readiness summary report zero blockers.
+  - Run only after all prerequisite evidence batches are clean.
+
+- orchestrator-preflight-backend-runtime-base-url: missing backend runtime base URL
+
+### 24. P3 orchestrator -> release-owner
 
 - Batch id: p3-orchestrator-release-owner
-- Depends on: p0-release-env-lint-release-infra, p0-release-config-ai-owner, p0-release-config-payment-owner, p0-release-config-platform-events, p0-release-config-platform-owners, p0-release-config-release-infra, p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_RELEASE_EVIDENCE_STRICT

@@ -16,23 +16,24 @@ RUN set -eux; \
       : > /workspace/opentelemetry-javaagent.jar; \
     fi
 
-COPY pom.xml ./
-COPY services/system-service/pom.xml services/system-service/pom.xml
-COPY libs/common-core/pom.xml libs/common-core/pom.xml
-COPY libs/common-domain/pom.xml libs/common-domain/pom.xml
-COPY libs/common-security/pom.xml libs/common-security/pom.xml
-COPY libs/common-web/pom.xml libs/common-web/pom.xml
-COPY libs/lumira-api/pom.xml libs/lumira-api/pom.xml
-COPY libs/plugin-api/pom.xml libs/plugin-api/pom.xml
-COPY services/auth-service/pom.xml services/auth-service/pom.xml
-COPY services/file-service/pom.xml services/file-service/pom.xml
-COPY services/message-service/pom.xml services/message-service/pom.xml
-COPY services/plugin-service/pom.xml services/plugin-service/pom.xml
-COPY services/localization-service/pom.xml services/localization-service/pom.xml
-COPY services/job-executor/pom.xml services/job-executor/pom.xml
-COPY services/lumira-server/pom.xml services/lumira-server/pom.xml
+COPY lumira-backend/pom.xml ./
+COPY lumira-backend/services/lumira-system/pom.xml services/lumira-system/pom.xml
+COPY lumira-backend/libs/lumira-common-core/pom.xml libs/lumira-common-core/pom.xml
+COPY lumira-backend/libs/lumira-common-domain/pom.xml libs/lumira-common-domain/pom.xml
+COPY lumira-backend/libs/lumira-common-security/pom.xml libs/lumira-common-security/pom.xml
+COPY lumira-backend/libs/lumira-common-web/pom.xml libs/lumira-common-web/pom.xml
+COPY lumira-backend/libs/lumira-common-api/pom.xml libs/lumira-common-api/pom.xml
+COPY lumira-backend/libs/lumira-plugin-api/pom.xml libs/lumira-plugin-api/pom.xml
+COPY lumira-backend/services/lumira-auth/pom.xml services/lumira-auth/pom.xml
+COPY lumira-backend/services/lumira-file/pom.xml services/lumira-file/pom.xml
+COPY lumira-backend/services/lumira-message/pom.xml services/lumira-message/pom.xml
+COPY lumira-backend/services/lumira-plugin/pom.xml services/lumira-plugin/pom.xml
+COPY lumira-backend/services/lumira-localization/pom.xml services/lumira-localization/pom.xml
+COPY lumira-backend/services/lumira-quartz/pom.xml services/lumira-quartz/pom.xml
+COPY lumira-backend/services/lumira-admin/pom.xml services/lumira-admin/pom.xml
 
-COPY . .
+COPY lumira-backend/services services
+COPY lumira-backend/libs libs
 
 ARG SERVICE_MODULE
 RUN --mount=type=cache,target=/root/.m2,sharing=locked \

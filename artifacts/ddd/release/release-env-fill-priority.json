@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -32,10 +32,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.252Z",
-      "generatedAt": "2026-06-17T05:46:16.010Z",
-      "status": "FAIL",
-      "blockers": 156,
+      "modifiedAt": "2026-06-19T13:42:37.440Z",
+      "generatedAt": "2026-06-19T13:42:37.438Z",
+      "status": "PASS",
+      "blockers": 0,
       "warnings": 0
     },
     "releaseConfig": {
@@ -44,10 +44,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.196Z",
-      "generatedAt": "2026-06-17T06:28:34.918Z",
-      "status": "FAIL",
-      "blockers": 63,
+      "modifiedAt": "2026-06-19T13:42:37.550Z",
+      "generatedAt": "2026-06-19T13:42:37.547Z",
+      "status": "PASS",
+      "blockers": 0,
       "warnings": 0
     },
     "docker": {
@@ -56,8 +56,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.195Z",
-      "generatedAt": "2026-06-16T21:45:55.209Z",
+      "modifiedAt": "2026-06-19T08:02:24.849Z",
+      "generatedAt": "2026-06-19T08:02:24.846Z",
       "status": "FAIL",
       "blockers": 2,
       "warnings": null
@@ -248,745 +248,85 @@
     "blockers": 94,
     "warnings": 8
   },
-  "ownerCount": 18,
-  "runNowOwnerCount": 7,
-  "waitingOwnerCount": 11,
-  "uniqueUnresolvedTemplateKeyCount": 59,
-  "unresolvedOwnerAssignmentCount": 143,
-  "filledOwnerAssignmentCount": 29,
-  "placeholderOwnerAssignmentCount": 114,
-  "missingOwnerAssignmentCount": 0,
+  "ownerCount": 16,
+  "runNowOwnerCount": 3,
+  "waitingOwnerCount": 13,
+  "uniqueUnresolvedTemplateKeyCount": 29,
+  "unresolvedOwnerAssignmentCount": 65,
+  "filledOwnerAssignmentCount": 64,
+  "placeholderOwnerAssignmentCount": 0,
+  "missingOwnerAssignmentCount": 1,
   "owners": [
     {
       "owner": "release-infra",
       "fillOrder": 1,
       "priority": "RUN_NOW",
-      "readyGroupCount": 4,
-      "blockedGroupCount": 0,
-      "unresolvedTemplateKeyCount": 57,
+      "readyGroupCount": 2,
+      "blockedGroupCount": 1,
+      "unresolvedTemplateKeyCount": 4,
       "unresolvedTemplateKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
         "BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DDD_AUTH_PASSWORD",
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_ENVIRONMENT",
-        "DDD_AUTH_USERNAME",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_DEPLOYMENT_EVIDENCE",
         "DDD_EVIDENCE_OPERATOR",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
         "DDD_RELEASE_CANDIDATE",
-        "FIELD_SECRET",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "JWT_SECRET",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "PAYMENT_PUBLIC_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
+        "LUMIRA_BASE_URL"
       ],
-      "filledTemplateKeyCount": 2,
-      "placeholderTemplateKeyCount": 55,
+      "filledTemplateKeyCount": 4,
+      "placeholderTemplateKeyCount": 0,
       "missingTemplateKeyCount": 0,
       "filledTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
-      ],
-      "placeholderTemplateKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
         "BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DDD_AUTH_PASSWORD",
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_ENVIRONMENT",
-        "DDD_AUTH_USERNAME",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "FIELD_SECRET",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "JWT_SECRET",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "PAYMENT_PUBLIC_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL"
       ],
+      "placeholderTemplateKeys": [],
       "missingTemplateKeys": [],
       "fillStatusByKey": [
         {
-          "envKey": "AI_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "AUTH_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
           "envKey": "BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "CORS_ALLOWED_ORIGIN_PATTERNS",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DB_PASSWORD",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DB_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DB_USERNAME",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_AUTH_PASSWORD",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_AUTH_PERF_ENVIRONMENT",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_AUTH_USERNAME",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_DEPLOYMENT_EVIDENCE",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_EVIDENCE_OPERATOR",
           "status": "filled"
         },
         {
-          "envKey": "DDD_EXPLAIN_DATABASE",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_MIGRATION_COMPLETED_AT",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_MIGRATION_FRESH_DB_VALIDATED",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_MIGRATION_OPERATOR",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-          "status": "placeholder"
-        },
-        {
           "envKey": "DDD_RELEASE_CANDIDATE",
           "status": "filled"
         },
         {
-          "envKey": "FIELD_SECRET",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "FILE_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "JOB_EXECUTOR_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "JWT_SECRET",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LOCALIZATION_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
           "envKey": "LUMIRA_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "MESSAGE_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "MYSQL_DATABASE",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "MYSQL_HOST",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "MYSQL_PORT",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "PAYMENT_PUBLIC_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "PAYMENT_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "PLAYWRIGHT_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "PLUGIN_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "REDIS_HOST",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_EVENT_REDIS_STREAM_KEY",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_BACKEND_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_FILE_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_INTERNAL_TOKEN",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SYSTEM_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "XXL_JOB_ACCESS_TOKEN",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "XXL_JOB_ADMIN_ADDRESSES",
-          "status": "placeholder"
+          "status": "filled"
         }
       ],
       "readyBatchIds": [
         "p0-docker-release-infra",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
-      "blockedBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-infra"
+      ],
       "commands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
         "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
         "node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node scripts/ddd-runtime-readiness-smoke.mjs",
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "exitCriteria": [
         "All 30 owner readiness/health/metrics checks pass.",
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
+        "Final strict release gate and readiness summary report zero blockers.",
         "Required lumira-server and frontend images are built, inspected, and not skipped.",
-        "Runtime readiness is generated from an HTTPS non-local backend base URL.",
-        "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-        "release-config-evidence status is PASS with no contract issues.",
-        "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-      ]
-    },
-    {
-      "owner": "ai-owner",
-      "fillOrder": 2,
-      "priority": "RUN_NOW",
-      "readyGroupCount": 1,
-      "blockedGroupCount": 1,
-      "unresolvedTemplateKeyCount": 9,
-      "unresolvedTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN"
-      ],
-      "filledTemplateKeyCount": 2,
-      "placeholderTemplateKeyCount": 7,
-      "missingTemplateKeyCount": 0,
-      "filledTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
-      ],
-      "placeholderTemplateKeys": [
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN"
-      ],
-      "missingTemplateKeys": [],
-      "fillStatusByKey": [
-        {
-          "envKey": "DDD_EVIDENCE_OPERATOR",
-          "status": "filled"
-        },
-        {
-          "envKey": "DDD_RELEASE_CANDIDATE",
-          "status": "filled"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_INTERNAL_TOKEN",
-          "status": "placeholder"
-        }
-      ],
-      "readyBatchIds": [
-        "p0-release-config-ai-owner"
-      ],
-      "blockedBatchIds": [
-        "p1-rollback-ai-owner"
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs",
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
-      ],
-      "exitCriteria": [
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-      ]
-    },
-    {
-      "owner": "platform-events",
-      "fillOrder": 3,
-      "priority": "RUN_NOW",
-      "readyGroupCount": 1,
-      "blockedGroupCount": 0,
-      "unresolvedTemplateKeyCount": 9,
-      "unresolvedTemplateKeys": [
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "filledTemplateKeyCount": 0,
-      "placeholderTemplateKeyCount": 9,
-      "missingTemplateKeyCount": 0,
-      "filledTemplateKeys": [],
-      "placeholderTemplateKeys": [
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
-      ],
-      "missingTemplateKeys": [],
-      "fillStatusByKey": [
-        {
-          "envKey": "SAAS_EVENT_REDIS_STREAM_KEY",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_BACKEND_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_FILE_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_INTERNAL_TOKEN",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "XXL_JOB_ACCESS_TOKEN",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "XXL_JOB_ADMIN_ADDRESSES",
-          "status": "placeholder"
-        }
-      ],
-      "readyBatchIds": [
-        "p0-release-config-platform-events"
-      ],
-      "blockedBatchIds": [],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "exitCriteria": [
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-      ]
-    },
-    {
-      "owner": "platform-owners",
-      "fillOrder": 4,
-      "priority": "RUN_NOW",
-      "readyGroupCount": 1,
-      "blockedGroupCount": 0,
-      "unresolvedTemplateKeyCount": 9,
-      "unresolvedTemplateKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL"
-      ],
-      "filledTemplateKeyCount": 0,
-      "placeholderTemplateKeyCount": 9,
-      "missingTemplateKeyCount": 0,
-      "filledTemplateKeys": [],
-      "placeholderTemplateKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL"
-      ],
-      "missingTemplateKeys": [],
-      "fillStatusByKey": [
-        {
-          "envKey": "AI_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "AUTH_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "FILE_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "JOB_EXECUTOR_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LOCALIZATION_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "MESSAGE_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "PAYMENT_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "PLUGIN_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "SYSTEM_SERVICE_BASE_URL",
-          "status": "placeholder"
-        }
-      ],
-      "readyBatchIds": [
-        "p0-release-config-platform-owners"
-      ],
-      "blockedBatchIds": [],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "exitCriteria": [
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
-      ]
-    },
-    {
-      "owner": "payment-owner",
-      "fillOrder": 5,
-      "priority": "RUN_NOW",
-      "readyGroupCount": 1,
-      "blockedGroupCount": 2,
-      "unresolvedTemplateKeyCount": 6,
-      "unresolvedTemplateKeys": [
-        "BASE_URL",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "LUMIRA_BASE_URL",
-        "PAYMENT_PUBLIC_BASE_URL"
-      ],
-      "filledTemplateKeyCount": 2,
-      "placeholderTemplateKeyCount": 4,
-      "missingTemplateKeyCount": 0,
-      "filledTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
-      ],
-      "placeholderTemplateKeys": [
-        "BASE_URL",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "LUMIRA_BASE_URL",
-        "PAYMENT_PUBLIC_BASE_URL"
-      ],
-      "missingTemplateKeys": [],
-      "fillStatusByKey": [
-        {
-          "envKey": "BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "DDD_EVIDENCE_OPERATOR",
-          "status": "filled"
-        },
-        {
-          "envKey": "DDD_RELEASE_CANDIDATE",
-          "status": "filled"
-        },
-        {
-          "envKey": "LUMIRA_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "PAYMENT_PUBLIC_BASE_URL",
-          "status": "placeholder"
-        }
-      ],
-      "readyBatchIds": [
-        "p0-release-config-payment-owner"
-      ],
-      "blockedBatchIds": [
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-payment-owner"
-      ],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs",
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
-      ],
-      "exitCriteria": [
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
-        "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
-        "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata.",
-        "release-config-evidence status is PASS with no contract issues.",
-        "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced."
+        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+        "Run only after all prerequisite evidence batches are clean.",
+        "Runtime readiness is generated from an HTTPS non-local backend base URL."
       ]
     },
     {
       "owner": "release-performance",
-      "fillOrder": 6,
+      "fillOrder": 2,
       "priority": "RUN_NOW",
       "readyGroupCount": 1,
       "blockedGroupCount": 0,
@@ -997,30 +337,29 @@
         "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
         "DDD_RELEASE_CANDIDATE"
       ],
-      "filledTemplateKeyCount": 1,
-      "placeholderTemplateKeyCount": 3,
+      "filledTemplateKeyCount": 4,
+      "placeholderTemplateKeyCount": 0,
       "missingTemplateKeyCount": 0,
       "filledTemplateKeys": [
-        "DDD_RELEASE_CANDIDATE"
-      ],
-      "placeholderTemplateKeys": [
         "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
         "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT"
+        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
+        "DDD_RELEASE_CANDIDATE"
       ],
+      "placeholderTemplateKeys": [],
       "missingTemplateKeys": [],
       "fillStatusByKey": [
         {
           "envKey": "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_RELEASE_CANDIDATE",
@@ -1043,7 +382,7 @@
     },
     {
       "owner": "release-owner",
-      "fillOrder": 7,
+      "fillOrder": 3,
       "priority": "RUN_NOW",
       "readyGroupCount": 1,
       "blockedGroupCount": 1,
@@ -1094,7 +433,7 @@
     },
     {
       "owner": "database",
-      "fillOrder": 8,
+      "fillOrder": 4,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,
@@ -1113,34 +452,33 @@
         "MYSQL_HOST",
         "MYSQL_PORT"
       ],
-      "filledTemplateKeyCount": 2,
-      "placeholderTemplateKeyCount": 10,
+      "filledTemplateKeyCount": 12,
+      "placeholderTemplateKeyCount": 0,
       "missingTemplateKeyCount": 0,
       "filledTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
-      ],
-      "placeholderTemplateKeys": [
         "DB_PASSWORD",
         "DB_USERNAME",
+        "DDD_EVIDENCE_OPERATOR",
         "DDD_EXPLAIN_DATABASE",
         "DDD_MIGRATION_FRESH_DB_EVIDENCE",
         "DDD_MIGRATION_FRESH_DB_VALIDATED",
         "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
         "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_RELEASE_CANDIDATE",
         "MYSQL_DATABASE",
         "MYSQL_HOST",
         "MYSQL_PORT"
       ],
+      "placeholderTemplateKeys": [],
       "missingTemplateKeys": [],
       "fillStatusByKey": [
         {
           "envKey": "DB_PASSWORD",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DB_USERNAME",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_EVIDENCE_OPERATOR",
@@ -1148,23 +486,23 @@
         },
         {
           "envKey": "DDD_EXPLAIN_DATABASE",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_MIGRATION_FRESH_DB_VALIDATED",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_RELEASE_CANDIDATE",
@@ -1172,15 +510,15 @@
         },
         {
           "envKey": "MYSQL_DATABASE",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "MYSQL_HOST",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "MYSQL_PORT",
-          "status": "placeholder"
+          "status": "filled"
         }
       ],
       "readyBatchIds": [],
@@ -1204,7 +542,7 @@
     },
     {
       "owner": "ai",
-      "fillOrder": 9,
+      "fillOrder": 5,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1220,13 +558,10 @@
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
         "LUMIRA_BASE_URL"
       ],
-      "filledTemplateKeyCount": 1,
-      "placeholderTemplateKeyCount": 8,
-      "missingTemplateKeyCount": 0,
+      "filledTemplateKeyCount": 8,
+      "placeholderTemplateKeyCount": 0,
+      "missingTemplateKeyCount": 1,
       "filledTemplateKeys": [
-        "LUMIRA_AI_PROVIDER"
-      ],
-      "placeholderTemplateKeys": [
         "AI_SERVICE_BASE_URL",
         "BASE_URL",
         "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
@@ -1236,43 +571,46 @@
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
         "LUMIRA_BASE_URL"
       ],
-      "missingTemplateKeys": [],
+      "placeholderTemplateKeys": [],
+      "missingTemplateKeys": [
+        "LUMIRA_AI_PROVIDER"
+      ],
       "fillStatusByKey": [
         {
           "envKey": "AI_SERVICE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-          "status": "placeholder"
-        },
-        {
-          "envKey": "LUMIRA_AI_PROVIDER",
           "status": "filled"
         },
         {
+          "envKey": "BASE_URL",
+          "status": "filled"
+        },
+        {
+          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
+          "status": "filled"
+        },
+        {
+          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
+          "status": "filled"
+        },
+        {
+          "envKey": "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
+          "status": "filled"
+        },
+        {
+          "envKey": "LUMIRA_AI_PROVIDER",
+          "status": "missing"
+        },
+        {
           "envKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "LUMIRA_BASE_URL",
-          "status": "placeholder"
+          "status": "filled"
         }
       ],
       "readyBatchIds": [],
@@ -1289,7 +627,7 @@
     },
     {
       "owner": "file-owner",
-      "fillOrder": 10,
+      "fillOrder": 6,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,
@@ -1303,29 +641,28 @@
         "SAAS_JOB_INTERNAL_TOKEN",
         "UPLOAD_STORAGE_ROOT"
       ],
-      "filledTemplateKeyCount": 3,
-      "placeholderTemplateKeyCount": 4,
+      "filledTemplateKeyCount": 7,
+      "placeholderTemplateKeyCount": 0,
       "missingTemplateKeyCount": 0,
       "filledTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "UPLOAD_STORAGE_ROOT"
-      ],
-      "placeholderTemplateKeys": [
         "BASE_URL",
         "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
         "LUMIRA_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN"
+        "SAAS_JOB_INTERNAL_TOKEN",
+        "UPLOAD_STORAGE_ROOT"
       ],
+      "placeholderTemplateKeys": [],
       "missingTemplateKeys": [],
       "fillStatusByKey": [
         {
           "envKey": "BASE_URL",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_EVIDENCE_OPERATOR",
@@ -1337,11 +674,11 @@
         },
         {
           "envKey": "LUMIRA_BASE_URL",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "SAAS_JOB_INTERNAL_TOKEN",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "UPLOAD_STORAGE_ROOT",
@@ -1367,7 +704,7 @@
     },
     {
       "owner": "job-owner",
-      "fillOrder": 11,
+      "fillOrder": 7,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,
@@ -1380,28 +717,27 @@
         "LUMIRA_BASE_URL",
         "SAAS_JOB_INTERNAL_TOKEN"
       ],
-      "filledTemplateKeyCount": 2,
-      "placeholderTemplateKeyCount": 4,
+      "filledTemplateKeyCount": 6,
+      "placeholderTemplateKeyCount": 0,
       "missingTemplateKeyCount": 0,
       "filledTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
-      ],
-      "placeholderTemplateKeys": [
         "BASE_URL",
         "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
         "LUMIRA_BASE_URL",
         "SAAS_JOB_INTERNAL_TOKEN"
       ],
+      "placeholderTemplateKeys": [],
       "missingTemplateKeys": [],
       "fillStatusByKey": [
         {
           "envKey": "BASE_URL",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "DDD_EVIDENCE_OPERATOR",
@@ -1413,11 +749,11 @@
         },
         {
           "envKey": "LUMIRA_BASE_URL",
-          "status": "placeholder"
+          "status": "filled"
         },
         {
           "envKey": "SAAS_JOB_INTERNAL_TOKEN",
-          "status": "placeholder"
+          "status": "filled"
         }
       ],
       "readyBatchIds": [],
@@ -1438,8 +774,122 @@
       ]
     },
     {
+      "owner": "payment-owner",
+      "fillOrder": 8,
+      "priority": "WAITING",
+      "readyGroupCount": 0,
+      "blockedGroupCount": 2,
+      "unresolvedTemplateKeyCount": 6,
+      "unresolvedTemplateKeys": [
+        "BASE_URL",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL",
+        "PAYMENT_PUBLIC_BASE_URL"
+      ],
+      "filledTemplateKeyCount": 6,
+      "placeholderTemplateKeyCount": 0,
+      "missingTemplateKeyCount": 0,
+      "filledTemplateKeys": [
+        "BASE_URL",
+        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL",
+        "PAYMENT_PUBLIC_BASE_URL"
+      ],
+      "placeholderTemplateKeys": [],
+      "missingTemplateKeys": [],
+      "fillStatusByKey": [
+        {
+          "envKey": "BASE_URL",
+          "status": "filled"
+        },
+        {
+          "envKey": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
+          "status": "filled"
+        },
+        {
+          "envKey": "DDD_EVIDENCE_OPERATOR",
+          "status": "filled"
+        },
+        {
+          "envKey": "DDD_RELEASE_CANDIDATE",
+          "status": "filled"
+        },
+        {
+          "envKey": "LUMIRA_BASE_URL",
+          "status": "filled"
+        },
+        {
+          "envKey": "PAYMENT_PUBLIC_BASE_URL",
+          "status": "filled"
+        }
+      ],
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ],
+      "commands": [
+        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+        "node scripts/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
+        "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
+        "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
+      ]
+    },
+    {
+      "owner": "ai-owner",
+      "fillOrder": 9,
+      "priority": "WAITING",
+      "readyGroupCount": 0,
+      "blockedGroupCount": 1,
+      "unresolvedTemplateKeyCount": 2,
+      "unresolvedTemplateKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "filledTemplateKeyCount": 2,
+      "placeholderTemplateKeyCount": 0,
+      "missingTemplateKeyCount": 0,
+      "filledTemplateKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE"
+      ],
+      "placeholderTemplateKeys": [],
+      "missingTemplateKeys": [],
+      "fillStatusByKey": [
+        {
+          "envKey": "DDD_EVIDENCE_OPERATOR",
+          "status": "filled"
+        },
+        {
+          "envKey": "DDD_RELEASE_CANDIDATE",
+          "status": "filled"
+        }
+      ],
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-rollback-ai-owner"
+      ],
+      "commands": [
+        "node scripts/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
+        "node scripts/ddd-rollback-drill-evidence.mjs"
+      ],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ]
+    },
+    {
       "owner": "auth-owner",
-      "fillOrder": 12,
+      "fillOrder": 10,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1482,7 +932,7 @@
     },
     {
       "owner": "iam-owner",
-      "fillOrder": 13,
+      "fillOrder": 11,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1525,7 +975,7 @@
     },
     {
       "owner": "localization-owner",
-      "fillOrder": 14,
+      "fillOrder": 12,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1568,7 +1018,7 @@
     },
     {
       "owner": "message-owner",
-      "fillOrder": 15,
+      "fillOrder": 13,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1611,7 +1061,7 @@
     },
     {
       "owner": "platform-owner",
-      "fillOrder": 16,
+      "fillOrder": 14,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1654,7 +1104,7 @@
     },
     {
       "owner": "plugin-owner",
-      "fillOrder": 17,
+      "fillOrder": 15,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 1,
@@ -1697,7 +1147,7 @@
     },
     {
       "owner": "frontend",
-      "fillOrder": 18,
+      "fillOrder": 16,
       "priority": "WAITING",
       "readyGroupCount": 0,
       "blockedGroupCount": 2,
@@ -1705,18 +1155,18 @@
       "unresolvedTemplateKeys": [
         "PLAYWRIGHT_BASE_URL"
       ],
-      "filledTemplateKeyCount": 0,
-      "placeholderTemplateKeyCount": 1,
+      "filledTemplateKeyCount": 1,
+      "placeholderTemplateKeyCount": 0,
       "missingTemplateKeyCount": 0,
-      "filledTemplateKeys": [],
-      "placeholderTemplateKeys": [
+      "filledTemplateKeys": [
         "PLAYWRIGHT_BASE_URL"
       ],
+      "placeholderTemplateKeys": [],
       "missingTemplateKeys": [],
       "fillStatusByKey": [
         {
           "envKey": "PLAYWRIGHT_BASE_URL",
-          "status": "placeholder"
+          "status": "filled"
         }
       ],
       "readyBatchIds": [],

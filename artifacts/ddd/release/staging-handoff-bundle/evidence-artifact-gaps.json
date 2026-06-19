@@ -1,56 +1,13 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
   "artifactCount": 15,
-  "presentArtifactCount": 14,
-  "missingArtifactCount": 1,
-  "missingArtifacts": [
-    {
-      "artifact": "tmp/ddd-explain/*.json",
-      "present": false,
-      "matches": [],
-      "matchCount": 0,
-      "gateCount": 2,
-      "gates": [
-        {
-          "gate": "explain",
-          "track": "p2-database-performance",
-          "owner": "database",
-          "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_EXPLAIN_DATABASE is required",
-          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-        },
-        {
-          "gate": "migration",
-          "track": "p2-database-performance",
-          "owner": "database",
-          "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
-          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-        }
-      ],
-      "owners": [
-        "database"
-      ],
-      "dispatchOwners": [
-        "platform-owners"
-      ],
-      "acceptanceCommands": [
-        "node scripts/ddd-staging-data-safety-check.mjs"
-      ],
-      "evidenceCommands": [
-        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
-        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
-        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
-        "node scripts/ddd-collect-explain.mjs"
-      ]
-    }
-  ],
+  "presentArtifactCount": 15,
+  "missingArtifactCount": 0,
+  "missingArtifacts": [],
   "presentArtifacts": [
     {
       "artifact": "artifacts/ddd/ai/ai-runtime-drill.json",
@@ -66,8 +23,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -138,8 +95,8 @@
           "track": "p0-release-env",
           "owner": "release-infra",
           "dispatchOwner": "release-infra",
-          "accepted": false,
-          "blocker": "release env file is not cutover-safe; blockers=34",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
         }
       ],
@@ -172,8 +129,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -211,8 +168,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -250,8 +207,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -289,8 +246,8 @@
           "track": "p2-database-performance",
           "owner": "database",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         },
         {
@@ -298,8 +255,8 @@
           "track": "p2-database-performance",
           "owner": "database",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         }
       ],
@@ -333,8 +290,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -372,8 +329,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -411,8 +368,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -450,8 +407,8 @@
           "track": "p2-database-performance",
           "owner": "database",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         },
         {
@@ -459,8 +416,8 @@
           "track": "p2-database-performance",
           "owner": "database",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         }
       ],
@@ -494,8 +451,8 @@
           "track": "p0-release-env",
           "owner": "release-infra",
           "dispatchOwner": "release-infra",
-          "accepted": false,
-          "blocker": "release env file is not cutover-safe; blockers=34",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
         }
       ],
@@ -528,8 +485,8 @@
           "track": "p0-release-env",
           "owner": "release-infra",
           "dispatchOwner": "release-infra",
-          "accepted": false,
-          "blocker": "release env file is not cutover-safe; blockers=34",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
         }
       ],
@@ -562,8 +519,8 @@
           "track": "p1-rollback",
           "owner": "bounded-context owners",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         }
       ],
@@ -580,14 +537,21 @@
         "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
         "node scripts/ddd-rollback-drill-evidence.mjs"
       ]
-    }
-  ],
-  "artifacts": [
+    },
     {
       "artifact": "tmp/ddd-explain/*.json",
-      "present": false,
-      "matches": [],
-      "matchCount": 0,
+      "present": true,
+      "matches": [
+        "tmp/ddd-explain/ai-knowledge-index-retry.json",
+        "tmp/ddd-explain/message-archive-total.json",
+        "tmp/ddd-explain/message-unread-count.json",
+        "tmp/ddd-explain/message-visible-list.json",
+        "tmp/ddd-explain/platform-outbox-owner-relay-file.json",
+        "tmp/ddd-explain/platform-outbox-owner-relay-message.json",
+        "tmp/ddd-explain/platform-runtime-appearance.json",
+        "tmp/ddd-explain/plugin-bootstrap.json"
+      ],
+      "matchCount": 8,
       "gateCount": 2,
       "gates": [
         {
@@ -595,8 +559,8 @@
           "track": "p2-database-performance",
           "owner": "database",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         },
         {
@@ -604,8 +568,8 @@
           "track": "p2-database-performance",
           "owner": "database",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         }
       ],
@@ -624,7 +588,9 @@
         "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
         "node scripts/ddd-collect-explain.mjs"
       ]
-    },
+    }
+  ],
+  "artifacts": [
     {
       "artifact": "artifacts/ddd/ai/ai-runtime-drill.json",
       "present": true,
@@ -639,8 +605,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -711,8 +677,8 @@
           "track": "p0-release-env",
           "owner": "release-infra",
           "dispatchOwner": "release-infra",
-          "accepted": false,
-          "blocker": "release env file is not cutover-safe; blockers=34",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
         }
       ],
@@ -745,8 +711,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -784,8 +750,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -823,8 +789,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -862,8 +828,8 @@
           "track": "p2-database-performance",
           "owner": "database",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         },
         {
@@ -871,8 +837,8 @@
           "track": "p2-database-performance",
           "owner": "database",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         }
       ],
@@ -906,8 +872,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -945,8 +911,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -984,8 +950,8 @@
           "track": "p1-runtime-business",
           "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
           "dispatchOwner": "ai-owner",
-          "accepted": false,
-          "blocker": "LUMIRA_BASE_URL is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
         }
       ],
@@ -1023,8 +989,8 @@
           "track": "p2-database-performance",
           "owner": "database",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_EXPLAIN_DATABASE is required",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         },
         {
@@ -1032,8 +998,8 @@
           "track": "p2-database-performance",
           "owner": "database",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         }
       ],
@@ -1067,8 +1033,8 @@
           "track": "p0-release-env",
           "owner": "release-infra",
           "dispatchOwner": "release-infra",
-          "accepted": false,
-          "blocker": "release env file is not cutover-safe; blockers=34",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
         }
       ],
@@ -1101,8 +1067,8 @@
           "track": "p0-release-env",
           "owner": "release-infra",
           "dispatchOwner": "release-infra",
-          "accepted": false,
-          "blocker": "release env file is not cutover-safe; blockers=34",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
         }
       ],
@@ -1135,8 +1101,8 @@
           "track": "p1-rollback",
           "owner": "bounded-context owners",
           "dispatchOwner": "platform-owners",
-          "accepted": false,
-          "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "accepted": true,
+          "blocker": null,
           "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
         }
       ],
@@ -1153,7 +1119,58 @@
         "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
         "node scripts/ddd-rollback-drill-evidence.mjs"
       ]
+    },
+    {
+      "artifact": "tmp/ddd-explain/*.json",
+      "present": true,
+      "matches": [
+        "tmp/ddd-explain/ai-knowledge-index-retry.json",
+        "tmp/ddd-explain/message-archive-total.json",
+        "tmp/ddd-explain/message-unread-count.json",
+        "tmp/ddd-explain/message-visible-list.json",
+        "tmp/ddd-explain/platform-outbox-owner-relay-file.json",
+        "tmp/ddd-explain/platform-outbox-owner-relay-message.json",
+        "tmp/ddd-explain/platform-runtime-appearance.json",
+        "tmp/ddd-explain/plugin-bootstrap.json"
+      ],
+      "matchCount": 8,
+      "gateCount": 2,
+      "gates": [
+        {
+          "gate": "explain",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": true,
+          "blocker": null,
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        },
+        {
+          "gate": "migration",
+          "track": "p2-database-performance",
+          "owner": "database",
+          "dispatchOwner": "platform-owners",
+          "accepted": true,
+          "blocker": null,
+          "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+        }
+      ],
+      "owners": [
+        "database"
+      ],
+      "dispatchOwners": [
+        "platform-owners"
+      ],
+      "acceptanceCommands": [
+        "node scripts/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
+        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
+        "node scripts/ddd-collect-explain.mjs"
+      ]
     }
   ],
-  "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
 }

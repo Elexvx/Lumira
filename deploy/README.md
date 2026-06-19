@@ -41,32 +41,32 @@ saas.elexvx.com / HTTPS / CDN / WAF
 - api-proxy：Nginx 后端统一入口
 - lumira-server：单体微服务后端入口，聚合系统、认证、文件、消息、插件、本地化和任务模块
 
-`frontend` 容器只作为本地备用预览，默认不随生产部署启动。正式前端由 Vercel 托管。
+`lumira-ui` 容器只作为本地备用预览，默认不随生产部署启动。正式前端由 Vercel 托管。
 
 ## 一键部署后端完整平台
 
 平台安装和环境检测统一由一个脚本分步执行。只检测服务器环境时运行：
 
 ```bash
-node scripts/install-platform.mjs --check-only
+node bin/install-platform.mjs --check-only
 ```
 
 严格模式会把警告也视为失败，适合 CI 或正式交付前检查：
 
 ```bash
-node scripts/install-platform.mjs --check-only --strict
+node bin/install-platform.mjs --check-only --strict
 ```
 
 需要给自动化平台读取时输出纯 JSON：
 
 ```bash
-node scripts/install-platform.mjs --check-only --json
+node bin/install-platform.mjs --check-only --json
 ```
 
 首次安装或服务器换规格时，推荐先运行交互式安装器：
 
 ```bash
-node scripts/install-platform.mjs
+node bin/install-platform.mjs
 ```
 
 安装器会分步完成：
@@ -82,22 +82,22 @@ node scripts/install-platform.mjs
 无人值守安装：
 
 ```bash
-node scripts/install-platform.mjs --yes
+node bin/install-platform.mjs --yes
 ```
 
 常用参数：
 
 ```bash
-node scripts/install-platform.mjs \
+node bin/install-platform.mjs \
   --api-domain=saas.elexvx.com \
-  --frontend-origin=https://saas.elexvx.com \
+  --lumira-ui-origin=https://saas.elexvx.com \
   --yes
 ```
 
 如果需要完全本机化演示，可启用内置 MySQL、Nacos 和前端容器：
 
 ```bash
-node scripts/install-platform.mjs --local-mysql --nacos --frontend
+node bin/install-platform.mjs --local-mysql --nacos --lumira-ui
 ```
 
 日常已有环境更新推荐直接拉取 CI 产物：
@@ -105,27 +105,27 @@ node scripts/install-platform.mjs --local-mysql --nacos --frontend
 从仓库根目录运行：
 
 ```bash
-node scripts/deploy-container.mjs --pull
+node bin/deploy-container.mjs --pull
 ```
 
 `main` 分支 CI 会在后端 Maven 测试、前端 lint/typecheck/test 都通过后，自动构建并发布镜像：
 
 - `ghcr.io/elexvx/lumira/lumira-server:main`
-- `ghcr.io/elexvx/lumira/frontend:main`
+- `ghcr.io/elexvx/lumira/lumira-ui:main`
 - `ghcr.io/elexvx/lumira/lumira-server:sha-<12位提交>`
-- `ghcr.io/elexvx/lumira/frontend:sha-<12位提交>`
+- `ghcr.io/elexvx/lumira/lumira-ui:sha-<12位提交>`
 
 服务器使用 `deploy/.env` 中的 `LUMIRA_SERVER_IMAGE` 和 `LUMIRA_FRONTEND_IMAGE` 决定要部署哪个镜像。追求可回滚和可复现时，建议把 `main` 改成对应的 `sha-<提交>` tag。如果需要在服务器本机重新编译镜像，可继续使用：
 
 ```bash
-node scripts/deploy-container.mjs --rebuild
+node bin/deploy-container.mjs --rebuild
 ```
 
 默认镜像构建不会下载 OpenTelemetry Java agent，避免默认关闭的观测能力阻塞发布构建。生产环境需要启用 `OTEL_JAVAAGENT_ENABLED=true` 时，先在构建环境设置可信制品地址：
 
 ```bash
 OTEL_JAVAAGENT_URL=https://your-artifact-repository/opentelemetry-javaagent.jar \
-node scripts/deploy-container.mjs --rebuild
+node bin/deploy-container.mjs --rebuild
 ```
 
 如果运行时开启了 agent 但镜像内没有非空 agent 文件，`lumira-server` 会启动失败并输出明确错误，避免静默丢失 trace。
@@ -137,20 +137,20 @@ MAVEN_IMAGE=registry.example.com/maven:3.9.11-eclipse-temurin-21 \
 JRE_IMAGE=registry.example.com/eclipse-temurin:21-jre \
 NODE_IMAGE=registry.example.com/node:22-bookworm-slim \
 NGINX_IMAGE=registry.example.com/nginx:1.29-alpine \
-node scripts/deploy-container.mjs --rebuild
+node bin/deploy-container.mjs --rebuild
 ```
 
 如果 CI 已经构建并推送了本次发布候选镜像，发布 runner 也可以先拉取镜像，再生成 inspect-only Docker evidence，避免重复 build 受上游 registry 抖动影响：
 
 ```bash
 docker pull registry.example.com/lumira-server:2026.06.14-rc1
-docker pull registry.example.com/frontend:2026.06.14-rc1
+docker pull registry.example.com/lumira-ui:2026.06.14-rc1
 
 DDD_DOCKER_BUILD_STRICT=true \
 DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=gh-run-12345-artifacts/docker-build-provenance.json \
 DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=registry.example.com/lumira-server:2026.06.14-rc1 \
-DDD_DOCKER_EXISTING_FRONTEND_IMAGE=registry.example.com/frontend:2026.06.14-rc1 \
-node scripts/ddd-docker-build-evidence.mjs
+DDD_DOCKER_EXISTING_FRONTEND_IMAGE=registry.example.com/lumira-ui:2026.06.14-rc1 \
+node bin/ddd-docker-build-evidence.mjs
 ```
 
 这条路径仍会校验当前 Dockerfile 静态合同、镜像端口、运行用户、entrypoint/cmd 和 `docker image inspect` 元数据，并要求 `DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE` 指向可信 CI 构建日志、制品清单或镜像 provenance，不能替代真实发布候选镜像。
@@ -164,8 +164,8 @@ node scripts/ddd-docker-build-evidence.mjs
 如果需要在测试环境彻底重装数据库，先确认数据可以删除，再执行：
 
 ```bash
-node scripts/deploy-container.mjs --reset
-node scripts/deploy-container.mjs --rebuild
+node bin/deploy-container.mjs --reset
+node bin/deploy-container.mjs --rebuild
 ```
 
 `--reset` 会删除数据库、上传文件、插件文件和任务日志数据，不能用于需要保留业务数据的环境。脚本会要求在交互终端输入 `DELETE_LEGENDARY_DATA`；CI 或自动化环境必须显式设置 `DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA`，否则拒绝执行。
@@ -209,7 +209,7 @@ OCR 同样由 File owner 的异步处理任务执行；抽取到文本时会写�
 
 ```bash
 PLATFORM_UPDATE_AGENT_TOKEN=replace-with-strong-local-token \
-node scripts/lumira-updater.mjs
+node bin/lumira-updater.mjs
 ```
 
 `deploy/.env` 中保持同一个 token：
@@ -223,7 +223,7 @@ PLATFORM_UPDATE_AGENT_TOKEN=replace-with-strong-local-token
 演练 updater 流程但不改写 `.env`、不执行部署命令时：
 
 ```bash
-LUMIRA_UPDATER_DRY_RUN=true node scripts/lumira-updater.mjs --dry-run
+LUMIRA_UPDATER_DRY_RUN=true node bin/lumira-updater.mjs --dry-run
 ```
 - lumira-server 健康检查：`http://127.0.0.1:8080/actuator/health`
 - 公开登录配置接口：`https://saas.elexvx.com/api/v1/public/login-capabilities`
@@ -233,7 +233,7 @@ LUMIRA_UPDATER_DRY_RUN=true node scripts/lumira-updater.mjs --dry-run
 默认部署不启动观测栈。需要 Prometheus 指标、OpenTelemetry trace、Loki 日志、Tempo trace 存储和 Grafana 看板时运行：
 
 ```bash
-node scripts/deploy-container.mjs --rebuild --observability
+node bin/deploy-container.mjs --rebuild --observability
 ```
 
 观测端口默认只绑定本机：
@@ -251,8 +251,8 @@ Grafana 会自动 provision Prometheus、Loki、Tempo 数据源和 `Lumira Obser
 ## 4C4G 稳定运行建议
 
 - 默认使用外部或 1Panel MySQL；本仓库内置 MySQL 仅用于 `local-mysql` profile。
-- 默认不启动 Nacos；当前单体微服务模式不依赖服务发现。确实要演练未来拆分时，可运行 `node scripts/deploy-container.mjs --rebuild --nacos`。
-- 默认不启动 `frontend` 容器，正式前端走 Vercel；服务器只承担后端和 API proxy。
+- 默认不启动 Nacos；当前单体微服务模式不依赖服务发现。确实要演练未来拆分时，可运行 `node bin/deploy-container.mjs --rebuild --nacos`。
+- 默认不启动 `lumira-ui` 容器，正式前端走 Vercel；服务器只承担后端和 API proxy。
 - `deploy/.env` 里的 `*_MEM_LIMIT`、`SERVER_TOMCAT_THREADS_MAX`、`SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE` 和 `SAAS_TRAFFIC_*_QPS` 是小机器容量闸门。先压测观察，再逐步调大。
 - API proxy 对单 IP 做基础限流和连接数限制；业务层 Sentinel 继续保护登录、公开配置、验证码和后端路由。
 - Redis 默认 `maxmemory=256mb` 且使用 `allkeys-lru`，避免缓存或会话峰值把宿主机内存拖垮。
@@ -265,7 +265,7 @@ LOAD_SMOKE_BASE_URL=https://saas.elexvx.com \
 LOAD_SMOKE_DURATION_MS=30000 \
 LOAD_SMOKE_CONCURRENCY=24 \
 LOAD_SMOKE_RPS=48 \
-node scripts/load-smoke.mjs
+node bin/load-smoke.mjs
 ```
 
 如果需要验证登录后的首屏接口，准备一个不需要二次验证和强制改密的测试账号后运行：
@@ -277,7 +277,7 @@ AUTH_LOAD_PASSWORD='replace-with-test-password' \
 AUTH_LOAD_DURATION_MS=30000 \
 AUTH_LOAD_CONCURRENCY=16 \
 AUTH_LOAD_RPS=32 \
-node scripts/auth-load-smoke.mjs
+node bin/auth-load-smoke.mjs
 ```
 
 公网域名检查：
@@ -287,12 +287,12 @@ LOAD_SMOKE_BASE_URL=https://saas.elexvx.com \
 LOAD_SMOKE_DURATION_MS=30000 \
 LOAD_SMOKE_CONCURRENCY=24 \
 LOAD_SMOKE_RPS=48 \
-node scripts/load-smoke.mjs
+node bin/load-smoke.mjs
 ```
 
 ## Vercel 前端配置
 
-当前 `frontend/vercel.json` 已将前端请求转发到后端域名：
+当前 `lumira-ui/vercel.json` 已将前端请求转发到后端域名：
 
 ```json
 {
@@ -324,7 +324,7 @@ https://saas.elexvx.com -> http://127.0.0.1:80
 演示前可以单独运行：
 
 ```bash
-node scripts/check-deployment.mjs
+node bin/check-deployment.mjs
 ```
 
 ## 备份与恢复
@@ -366,7 +366,7 @@ DRY_RUN=1 bash deploy/restore-platform.sh backups/20260520-120000
 ```bash
 DEPLOY_CHECK_BASE_URL=https://saas.elexvx.com \
 DEPLOY_CHECK_BACKEND_URL=http://127.0.0.1:8080 \
-node scripts/check-deployment.mjs
+node bin/check-deployment.mjs
 ```
 
 ## 常用命令
@@ -374,25 +374,25 @@ node scripts/check-deployment.mjs
 查看容器状态：
 
 ```bash
-node scripts/deploy-container.mjs --ps
+node bin/deploy-container.mjs --ps
 ```
 
 查看日志：
 
 ```bash
-node scripts/deploy-container.mjs --logs
+node bin/deploy-container.mjs --logs
 ```
 
 停止完整后端部署：
 
 ```bash
-node scripts/deploy-container.mjs --stop
+node bin/deploy-container.mjs --stop
 ```
 
 停止并删除数据卷：
 
 ```bash
-DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node scripts/deploy-container.mjs --reset
+DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node bin/deploy-container.mjs --reset
 ```
 
 `--reset` 会删除数据库、上传文件、插件文件和任务日志数据，只能在确认不需要保留数据时使用。不要把 `DEPLOY_RESET_CONFIRM` 写入 `deploy/.env`、CI 默认变量或公开脚本里，只在确实需要清库的那一次命令前临时传入。

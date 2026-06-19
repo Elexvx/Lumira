@@ -9,7 +9,7 @@ script = ""
 name = "运行"
 icon = "run"
 command = '''
-cd frontend/
+cd lumira-ui/
 
 npm run dev
 '''

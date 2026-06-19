@@ -3,7 +3,7 @@
 Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
-Blocked audit items: 5
+Blocked audit items: 4
 
 ## Fast Path
 
@@ -23,7 +23,7 @@ DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-config-evidence
 
 - first-wave-env: owner=release-infra; command=`node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>`; verify=`node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>`; done=next-action env receipt contract passes
 - lane-completion-receipt: owner=release-owner; command=`node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`; verify=`node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`; done=lane completion submission check reports dispatchReady=true
-- owner-evidence: owner=platform-owners; command=`node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown`; verify=`node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown`; done=owner evidence intake has 0 missing required artifacts
+- owner-evidence: owner=release-infra; command=`node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce`; verify=`node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown`; done=owner evidence intake has 0 missing required artifacts
 
 ## Final Gate
 

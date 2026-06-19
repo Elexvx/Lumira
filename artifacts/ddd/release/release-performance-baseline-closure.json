@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "BLOCKED",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -241,7 +241,7 @@
   ],
   "waves": [
     {
-      "wave": 10,
+      "wave": 4,
       "batchId": "p0-authenticated-performance-release-performance",
       "owner": "release-performance",
       "priority": "P0",
@@ -250,15 +250,15 @@
         "RUN_NOW_WITH_REAL_ENV"
       ],
       "itemOrders": [
-        75,
-        76,
-        77,
-        78,
-        79,
-        80,
-        81,
-        82,
-        83
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
       ],
       "itemIds": [
         "performance-actual-shape-1",

@@ -1,17 +1,17 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "target": "tmp/ddd-dispatch-check-env-init.env",
   "ownerCount": 5,
-  "blockers": 34,
-  "placeholders": 34,
+  "blockers": 0,
+  "placeholders": 0,
   "secretKeys": 10,
   "ownerSubmissions": [
     {
       "owner": "platform-events",
-      "blockers": 9,
-      "placeholders": 9,
+      "blockers": 0,
+      "placeholders": 0,
       "secretKeys": 3,
       "keyCount": 10,
       "keys": [
@@ -27,12 +27,12 @@
         "XXL_JOB_ACCESS_TOKEN"
       ],
       "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-events",
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/01-platform-events.md"
+      "handoffPath": null
     },
     {
       "owner": "platform-owners",
-      "blockers": 9,
-      "placeholders": 9,
+      "blockers": 0,
+      "placeholders": 0,
       "secretKeys": 0,
       "keyCount": 9,
       "keys": [
@@ -47,12 +47,12 @@
         "SYSTEM_SERVICE_BASE_URL"
       ],
       "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-owners",
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-owners.md"
+      "handoffPath": null
     },
     {
       "owner": "release-infra",
-      "blockers": 9,
-      "placeholders": 9,
+      "blockers": 0,
+      "placeholders": 0,
       "secretKeys": 4,
       "keyCount": 12,
       "keys": [
@@ -70,12 +70,12 @@
         "TRUST_FORWARDED_HEADERS"
       ],
       "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra",
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/03-release-infra.md"
+      "handoffPath": null
     },
     {
       "owner": "ai-owner",
-      "blockers": 6,
-      "placeholders": 6,
+      "blockers": 0,
+      "placeholders": 0,
       "secretKeys": 2,
       "keyCount": 12,
       "keys": [
@@ -93,12 +93,12 @@
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
       ],
       "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=ai-owner",
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/04-ai-owner.md"
+      "handoffPath": null
     },
     {
       "owner": "payment-owner",
-      "blockers": 1,
-      "placeholders": 1,
+      "blockers": 0,
+      "placeholders": 0,
       "secretKeys": 1,
       "keyCount": 2,
       "keys": [
@@ -106,7 +106,7 @@
         "DDD_PAYMENT_WEBHOOK_SECRET"
       ],
       "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=payment-owner",
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-owner.md"
+      "handoffPath": null
     }
   ],
   "mergePlan": {
@@ -174,17 +174,13 @@
   "laneReceiptFragment": {
     "owner": "release-infra",
     "lane": "p0-release-env",
-    "status": "BLOCKED",
+    "status": "PASS",
     "providedArtifacts": [
       "artifacts/ddd/release/release-env-lint.json",
       "artifacts/ddd/config/release-config-evidence.json",
       "artifacts/ddd/release/readiness-summary.json"
     ],
-    "missingArtifacts": [
-      "artifacts/ddd/release/release-env-lint.json",
-      "artifacts/ddd/config/release-config-evidence.json",
-      "artifacts/ddd/release/readiness-summary.json"
-    ],
+    "missingArtifacts": [],
     "completedAt": "<ISO-8601 timestamp after validation commands pass>",
     "completedBy": "<owner or workflow actor>",
     "acceptanceCommands": [

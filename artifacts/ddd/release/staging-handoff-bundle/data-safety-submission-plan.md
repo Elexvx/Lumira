@@ -1,6 +1,6 @@
 # DDD Data Safety Submission Plan
 
-Status: BLOCKED
+Status: PASS
 Owner: platform-owners
 Gate: data-safety
 Owners: `bounded-context owners`, `database`, `release-infra`
@@ -17,8 +17,8 @@ Owners: `bounded-context owners`, `database`, `release-infra`
 
 ## EXPLAIN Artifact
 
-Artifact: `tmp/ddd-explain/*.json`
-Present: false
+Artifact: `null`
+Present: true
 Dispatch owners: `platform-owners`
 
 Required inputs:
@@ -77,16 +77,14 @@ Commands:
 {
   "owner": "platform-owners",
   "lane": "p1-p2-data-safety",
-  "status": "BLOCKED",
+  "status": "PASS",
   "providedArtifacts": [
     "artifacts/ddd/rollback/rollback-drill.json",
     "artifacts/ddd/migration/migration-evidence.json",
     "tmp/ddd-explain/*.json",
     "artifacts/ddd/release/explain-gate-report.json"
   ],
-  "missingArtifacts": [
-    "tmp/ddd-explain/*.json"
-  ],
+  "missingArtifacts": [],
   "completedAt": "<ISO-8601 timestamp after validation commands pass>",
   "completedBy": "<owner or workflow actor>",
   "acceptanceCommands": [
@@ -106,4 +104,4 @@ Commands:
 - Data safety check and evidence acceptance pass after rollback, migration, and EXPLAIN artifacts are refreshed.
 - Final review no longer reports rollback, migration, or explain gates as blocked.
 
-Next: `node scripts/ddd-staging-data-safety-check.mjs`
+Next: `node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`

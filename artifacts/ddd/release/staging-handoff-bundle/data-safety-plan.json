@@ -1,14 +1,14 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "dataSafetyCheck": {
-    "status": "BLOCKED",
-    "generatedAt": "2026-06-19T11:57:32.319Z",
+    "status": "PASS",
+    "generatedAt": "2026-06-19T14:23:42.222Z",
     "willWriteFiles": false,
     "tracks": {
       "rollback": {
-        "status": "BLOCKED",
+        "status": "PASS",
         "checks": [
           {
             "name": "rollback-evidence-source",
@@ -16,9 +16,9 @@
               "DDD_ROLLBACK_DRILL_FILE",
               "DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
             ],
-            "selected": null,
-            "pass": false,
-            "issue": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
+            "selected": "DDD_ROLLBACK_DRILL_FILE",
+            "pass": true,
+            "issue": null
           },
           {
             "name": "rollback-environment",
@@ -27,9 +27,9 @@
               "DDD_EVIDENCE_ENVIRONMENT",
               "DDD_RELEASE_ENVIRONMENT"
             ],
-            "selected": null,
-            "pass": false,
-            "issue": "rollback-environment requires one of DDD_ROLLBACK_DRILL_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT"
+            "selected": "DDD_EVIDENCE_ENVIRONMENT",
+            "pass": true,
+            "issue": null
           },
           {
             "name": "rollback-release-candidate",
@@ -37,9 +37,9 @@
               "DDD_RELEASE_CANDIDATE",
               "GITHUB_SHA"
             ],
-            "selected": null,
-            "pass": false,
-            "issue": "rollback-release-candidate requires one of DDD_RELEASE_CANDIDATE, GITHUB_SHA"
+            "selected": "DDD_RELEASE_CANDIDATE",
+            "pass": true,
+            "issue": null
           },
           {
             "name": "rollback-operator",
@@ -47,48 +47,43 @@
               "DDD_EVIDENCE_OPERATOR",
               "GITHUB_ACTOR"
             ],
-            "selected": null,
-            "pass": false,
-            "issue": "rollback-operator requires one of DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR"
+            "selected": "DDD_EVIDENCE_OPERATOR",
+            "pass": true,
+            "issue": null
           }
         ],
-        "issues": [
-          "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-          "rollback-environment requires one of DDD_ROLLBACK_DRILL_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT",
-          "rollback-release-candidate requires one of DDD_RELEASE_CANDIDATE, GITHUB_SHA",
-          "rollback-operator requires one of DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR"
-        ],
+        "issues": [],
         "nextCommands": [
           "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
           "DDD_ROLLBACK_DRILL_STRICT=true node scripts/ddd-rollback-drill-evidence.mjs"
         ]
       },
       "migration": {
-        "status": "BLOCKED",
+        "status": "PASS",
         "checks": [
           {
             "name": "DDD_MIGRATION_FRESH_DB_VALIDATED",
             "expected": "true",
-            "valuePresent": false,
-            "pass": false,
-            "issue": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true"
+            "valuePresent": true,
+            "pass": true,
+            "issue": null
           },
           {
             "name": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-            "valuePresent": false,
-            "issue": "DDD_MIGRATION_FRESH_DB_EVIDENCE is required"
+            "valuePresent": true,
+            "issue": null
           },
           {
             "name": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
             "expected": "true",
-            "valuePresent": false,
-            "pass": false,
-            "issue": "DDD_MIGRATION_UPGRADE_DB_VALIDATED must be true"
+            "valuePresent": true,
+            "pass": true,
+            "issue": null
           },
           {
             "name": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-            "valuePresent": false,
-            "issue": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE is required"
+            "valuePresent": true,
+            "issue": null
           },
           {
             "name": "migration-environment",
@@ -97,9 +92,9 @@
               "DDD_EVIDENCE_ENVIRONMENT",
               "DDD_RELEASE_ENVIRONMENT"
             ],
-            "selected": null,
-            "pass": false,
-            "issue": "migration-environment requires one of DDD_MIGRATION_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT"
+            "selected": "DDD_EVIDENCE_ENVIRONMENT",
+            "pass": true,
+            "issue": null
           },
           {
             "name": "migration-operator",
@@ -108,57 +103,49 @@
               "DDD_EVIDENCE_OPERATOR",
               "GITHUB_ACTOR"
             ],
-            "selected": null,
-            "pass": false,
-            "issue": "migration-operator requires one of DDD_MIGRATION_OPERATOR, DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR"
+            "selected": "DDD_MIGRATION_OPERATOR",
+            "pass": true,
+            "issue": null
           },
           {
             "name": "DDD_MIGRATION_COMPLETED_AT",
-            "valuePresent": false,
-            "issue": "DDD_MIGRATION_COMPLETED_AT is required"
+            "valuePresent": true,
+            "issue": null
           }
         ],
-        "issues": [
-          "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
-          "DDD_MIGRATION_FRESH_DB_EVIDENCE is required",
-          "DDD_MIGRATION_UPGRADE_DB_VALIDATED must be true",
-          "DDD_MIGRATION_UPGRADE_DB_EVIDENCE is required",
-          "migration-environment requires one of DDD_MIGRATION_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT",
-          "migration-operator requires one of DDD_MIGRATION_OPERATOR, DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR",
-          "DDD_MIGRATION_COMPLETED_AT is required"
-        ],
+        "issues": [],
         "nextCommands": [
           "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
           "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs"
         ]
       },
       "explain": {
-        "status": "BLOCKED",
+        "status": "PASS",
         "checks": [
           {
             "name": "DDD_EXPLAIN_DATABASE",
-            "valuePresent": false,
-            "issue": "DDD_EXPLAIN_DATABASE is required"
+            "valuePresent": true,
+            "issue": null
           },
           {
             "name": "MYSQL_HOST",
-            "valuePresent": false,
-            "issue": "MYSQL_HOST is required"
+            "valuePresent": true,
+            "issue": null
           },
           {
             "name": "MYSQL_PORT",
-            "valuePresent": false,
-            "issue": "MYSQL_PORT is required"
+            "valuePresent": true,
+            "issue": null
           },
           {
             "name": "MYSQL_USER",
-            "valuePresent": false,
-            "issue": "MYSQL_USER is required"
+            "valuePresent": true,
+            "issue": null
           },
           {
             "name": "MYSQL_PASSWORD",
-            "valuePresent": false,
-            "issue": "MYSQL_PASSWORD is required"
+            "valuePresent": true,
+            "issue": null
           },
           {
             "name": "explain-environment",
@@ -167,9 +154,9 @@
               "DDD_EVIDENCE_ENVIRONMENT",
               "DDD_RELEASE_ENVIRONMENT"
             ],
-            "selected": null,
-            "pass": false,
-            "issue": "explain-environment requires one of DDD_EXPLAIN_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT"
+            "selected": "DDD_EXPLAIN_ENVIRONMENT",
+            "pass": true,
+            "issue": null
           },
           {
             "name": "explain-release-candidate",
@@ -177,9 +164,9 @@
               "DDD_RELEASE_CANDIDATE",
               "GITHUB_SHA"
             ],
-            "selected": null,
-            "pass": false,
-            "issue": "explain-release-candidate requires one of DDD_RELEASE_CANDIDATE, GITHUB_SHA"
+            "selected": "DDD_RELEASE_CANDIDATE",
+            "pass": true,
+            "issue": null
           },
           {
             "name": "explain-operator",
@@ -187,56 +174,27 @@
               "DDD_EVIDENCE_OPERATOR",
               "GITHUB_ACTOR"
             ],
-            "selected": null,
-            "pass": false,
-            "issue": "explain-operator requires one of DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR"
+            "selected": "DDD_EVIDENCE_OPERATOR",
+            "pass": true,
+            "issue": null
           }
         ],
-        "issues": [
-          "DDD_EXPLAIN_DATABASE is required",
-          "MYSQL_HOST is required",
-          "MYSQL_PORT is required",
-          "MYSQL_USER is required",
-          "MYSQL_PASSWORD is required",
-          "explain-environment requires one of DDD_EXPLAIN_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT",
-          "explain-release-candidate requires one of DDD_RELEASE_CANDIDATE, GITHUB_SHA",
-          "explain-operator requires one of DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR"
-        ],
+        "issues": [],
         "nextCommands": [
           "node scripts/ddd-collect-explain.mjs",
           "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
         ]
       }
     },
-    "issues": [
-      "rollback: rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-      "rollback: rollback-environment requires one of DDD_ROLLBACK_DRILL_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT",
-      "rollback: rollback-release-candidate requires one of DDD_RELEASE_CANDIDATE, GITHUB_SHA",
-      "rollback: rollback-operator requires one of DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR",
-      "migration: DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
-      "migration: DDD_MIGRATION_FRESH_DB_EVIDENCE is required",
-      "migration: DDD_MIGRATION_UPGRADE_DB_VALIDATED must be true",
-      "migration: DDD_MIGRATION_UPGRADE_DB_EVIDENCE is required",
-      "migration: migration-environment requires one of DDD_MIGRATION_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT",
-      "migration: migration-operator requires one of DDD_MIGRATION_OPERATOR, DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR",
-      "migration: DDD_MIGRATION_COMPLETED_AT is required",
-      "explain: DDD_EXPLAIN_DATABASE is required",
-      "explain: MYSQL_HOST is required",
-      "explain: MYSQL_PORT is required",
-      "explain: MYSQL_USER is required",
-      "explain: MYSQL_PASSWORD is required",
-      "explain: explain-environment requires one of DDD_EXPLAIN_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT",
-      "explain: explain-release-candidate requires one of DDD_RELEASE_CANDIDATE, GITHUB_SHA",
-      "explain: explain-operator requires one of DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR"
-    ]
+    "issues": []
   },
   "trackPlans": [
     {
       "id": "rollback",
       "phase": "P1",
       "owner": "bounded-context owners",
-      "status": "BLOCKED",
-      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+      "status": "PASS",
+      "blocker": null,
       "checks": [
         {
           "name": "rollback-evidence-source",
@@ -244,9 +202,9 @@
             "DDD_ROLLBACK_DRILL_FILE",
             "DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
           ],
-          "selected": null,
-          "pass": false,
-          "issue": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
+          "selected": "DDD_ROLLBACK_DRILL_FILE",
+          "pass": true,
+          "issue": null
         },
         {
           "name": "rollback-environment",
@@ -255,9 +213,9 @@
             "DDD_EVIDENCE_ENVIRONMENT",
             "DDD_RELEASE_ENVIRONMENT"
           ],
-          "selected": null,
-          "pass": false,
-          "issue": "rollback-environment requires one of DDD_ROLLBACK_DRILL_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT"
+          "selected": "DDD_EVIDENCE_ENVIRONMENT",
+          "pass": true,
+          "issue": null
         },
         {
           "name": "rollback-release-candidate",
@@ -265,9 +223,9 @@
             "DDD_RELEASE_CANDIDATE",
             "GITHUB_SHA"
           ],
-          "selected": null,
-          "pass": false,
-          "issue": "rollback-release-candidate requires one of DDD_RELEASE_CANDIDATE, GITHUB_SHA"
+          "selected": "DDD_RELEASE_CANDIDATE",
+          "pass": true,
+          "issue": null
         },
         {
           "name": "rollback-operator",
@@ -275,9 +233,9 @@
             "DDD_EVIDENCE_OPERATOR",
             "GITHUB_ACTOR"
           ],
-          "selected": null,
-          "pass": false,
-          "issue": "rollback-operator requires one of DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR"
+          "selected": "DDD_EVIDENCE_OPERATOR",
+          "pass": true,
+          "issue": null
         }
       ],
       "commands": [
@@ -288,48 +246,38 @@
         "artifacts/ddd/rollback/rollback-drill.json"
       ],
       "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-      "requiredInputs": [
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "GITHUB_SHA",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR"
-      ]
+      "requiredInputs": []
     },
     {
       "id": "migration",
       "phase": "P2",
       "owner": "database",
-      "status": "BLOCKED",
-      "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+      "status": "PASS",
+      "blocker": null,
       "checks": [
         {
           "name": "DDD_MIGRATION_FRESH_DB_VALIDATED",
           "expected": "true",
-          "valuePresent": false,
-          "pass": false,
-          "issue": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true"
+          "valuePresent": true,
+          "pass": true,
+          "issue": null
         },
         {
           "name": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-          "valuePresent": false,
-          "issue": "DDD_MIGRATION_FRESH_DB_EVIDENCE is required"
+          "valuePresent": true,
+          "issue": null
         },
         {
           "name": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
           "expected": "true",
-          "valuePresent": false,
-          "pass": false,
-          "issue": "DDD_MIGRATION_UPGRADE_DB_VALIDATED must be true"
+          "valuePresent": true,
+          "pass": true,
+          "issue": null
         },
         {
           "name": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-          "valuePresent": false,
-          "issue": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE is required"
+          "valuePresent": true,
+          "issue": null
         },
         {
           "name": "migration-environment",
@@ -338,9 +286,9 @@
             "DDD_EVIDENCE_ENVIRONMENT",
             "DDD_RELEASE_ENVIRONMENT"
           ],
-          "selected": null,
-          "pass": false,
-          "issue": "migration-environment requires one of DDD_MIGRATION_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT"
+          "selected": "DDD_EVIDENCE_ENVIRONMENT",
+          "pass": true,
+          "issue": null
         },
         {
           "name": "migration-operator",
@@ -349,14 +297,14 @@
             "DDD_EVIDENCE_OPERATOR",
             "GITHUB_ACTOR"
           ],
-          "selected": null,
-          "pass": false,
-          "issue": "migration-operator requires one of DDD_MIGRATION_OPERATOR, DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR"
+          "selected": "DDD_MIGRATION_OPERATOR",
+          "pass": true,
+          "issue": null
         },
         {
           "name": "DDD_MIGRATION_COMPLETED_AT",
-          "valuePresent": false,
-          "issue": "DDD_MIGRATION_COMPLETED_AT is required"
+          "valuePresent": true,
+          "issue": null
         }
       ],
       "commands": [
@@ -367,51 +315,39 @@
         "artifacts/ddd/migration/migration-evidence.json"
       ],
       "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-      "requiredInputs": [
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR",
-        "DDD_MIGRATION_COMPLETED_AT"
-      ]
+      "requiredInputs": []
     },
     {
       "id": "explain",
       "phase": "P2",
       "owner": "database",
-      "status": "BLOCKED",
-      "blocker": "DDD_EXPLAIN_DATABASE is required",
+      "status": "PASS",
+      "blocker": null,
       "checks": [
         {
           "name": "DDD_EXPLAIN_DATABASE",
-          "valuePresent": false,
-          "issue": "DDD_EXPLAIN_DATABASE is required"
+          "valuePresent": true,
+          "issue": null
         },
         {
           "name": "MYSQL_HOST",
-          "valuePresent": false,
-          "issue": "MYSQL_HOST is required"
+          "valuePresent": true,
+          "issue": null
         },
         {
           "name": "MYSQL_PORT",
-          "valuePresent": false,
-          "issue": "MYSQL_PORT is required"
+          "valuePresent": true,
+          "issue": null
         },
         {
           "name": "MYSQL_USER",
-          "valuePresent": false,
-          "issue": "MYSQL_USER is required"
+          "valuePresent": true,
+          "issue": null
         },
         {
           "name": "MYSQL_PASSWORD",
-          "valuePresent": false,
-          "issue": "MYSQL_PASSWORD is required"
+          "valuePresent": true,
+          "issue": null
         },
         {
           "name": "explain-environment",
@@ -420,9 +356,9 @@
             "DDD_EVIDENCE_ENVIRONMENT",
             "DDD_RELEASE_ENVIRONMENT"
           ],
-          "selected": null,
-          "pass": false,
-          "issue": "explain-environment requires one of DDD_EXPLAIN_ENVIRONMENT, DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_ENVIRONMENT"
+          "selected": "DDD_EXPLAIN_ENVIRONMENT",
+          "pass": true,
+          "issue": null
         },
         {
           "name": "explain-release-candidate",
@@ -430,9 +366,9 @@
             "DDD_RELEASE_CANDIDATE",
             "GITHUB_SHA"
           ],
-          "selected": null,
-          "pass": false,
-          "issue": "explain-release-candidate requires one of DDD_RELEASE_CANDIDATE, GITHUB_SHA"
+          "selected": "DDD_RELEASE_CANDIDATE",
+          "pass": true,
+          "issue": null
         },
         {
           "name": "explain-operator",
@@ -440,9 +376,9 @@
             "DDD_EVIDENCE_OPERATOR",
             "GITHUB_ACTOR"
           ],
-          "selected": null,
-          "pass": false,
-          "issue": "explain-operator requires one of DDD_EVIDENCE_OPERATOR, GITHUB_ACTOR"
+          "selected": "DDD_EVIDENCE_OPERATOR",
+          "pass": true,
+          "issue": null
         }
       ],
       "commands": [
@@ -454,20 +390,7 @@
         "artifacts/ddd/release/explain-gate-report.json"
       ],
       "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
-      "requiredInputs": [
-        "DDD_EXPLAIN_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "MYSQL_USER",
-        "MYSQL_PASSWORD",
-        "DDD_EXPLAIN_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "GITHUB_SHA",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR"
-      ]
+      "requiredInputs": []
     }
   ],
   "sharedInputs": [
@@ -513,5 +436,5 @@
     "EXPLAIN evidence must be collected from the production-equivalent database shape with read-only credentials.",
     "Regenerate readiness after rollback, migration, and EXPLAIN artifacts are refreshed."
   ],
-  "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
 }

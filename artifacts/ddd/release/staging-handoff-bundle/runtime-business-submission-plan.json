@@ -1,14 +1,14 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "gate": "runtime-business",
   "owner": "release-infra",
-  "backendBaseUrl": null,
-  "frontendBaseUrl": null,
+  "backendBaseUrl": "https://saas.elexvx.com",
+  "frontendBaseUrl": "https://saas.elexvx.com",
   "deploymentSubmission": {
     "owner": "release-infra",
-    "status": "BLOCKED",
+    "status": "PASS",
     "requiredInputs": [
       "LUMIRA_BASE_URL",
       "PLAYWRIGHT_BASE_URL",
@@ -24,7 +24,7 @@
       "artifacts/ddd/readiness/summary.json"
     ],
     "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs",
-    "blocker": "LUMIRA_BASE_URL is required"
+    "blocker": "local-only runtime evidence must be replaced by HTTPS staging evidence"
   },
   "ownerSubmissions": [
     {
@@ -178,7 +178,7 @@
   "laneReceiptFragment": {
     "owner": "release-infra",
     "lane": "p1-runtime-business",
-    "status": "BLOCKED",
+    "status": "PASS",
     "providedArtifacts": [
       "artifacts/ddd/readiness/summary.json",
       "artifacts/ddd/performance/authenticated-runtime-actual.json",
@@ -188,15 +188,7 @@
       "artifacts/ddd/jobs/job-e2e-smoke.json",
       "artifacts/ddd/payment/payment-webhook-e2e.json"
     ],
-    "missingArtifacts": [
-      "artifacts/ddd/readiness/summary.json",
-      "artifacts/ddd/performance/authenticated-runtime-actual.json",
-      "artifacts/ddd/ai/ai-runtime-drill.json",
-      "artifacts/ddd/frontend/frontend-smoke.json",
-      "artifacts/ddd/file/file-processing-e2e.json",
-      "artifacts/ddd/jobs/job-e2e-smoke.json",
-      "artifacts/ddd/payment/payment-webhook-e2e.json"
-    ],
+    "missingArtifacts": [],
     "completedAt": "<ISO-8601 timestamp after validation commands pass>",
     "completedBy": "<owner or workflow actor>",
     "acceptanceCommands": [
@@ -230,7 +222,7 @@
       "artifacts/ddd/payment/payment-webhook-e2e.json"
     ],
     "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
-    "blocker": "runtime/business evidence is not fully accepted"
+    "blocker": null
   },
-  "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
 }

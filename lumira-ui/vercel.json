@@ -1,0 +1,56 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "corepack pnpm install --frozen-lockfile",
+  "buildCommand": "corepack pnpm build",
+  "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/dashboard/home",
+      "permanent": false
+    },
+    {
+      "source": "/login",
+      "destination": "/user/login",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://saas.elexvx.com/api/:path*"
+    },
+    {
+      "source": "/ws/:path*",
+      "destination": "https://saas.elexvx.com/ws/:path*"
+    },
+    {
+      "source": "/api-doc/:path*",
+      "destination": "https://saas.elexvx.com/api-doc/:path*"
+    },
+    {
+      "source": "/api-docs",
+      "destination": "https://saas.elexvx.com/api-docs"
+    },
+    {
+      "source": "/swagger-ui.html",
+      "destination": "https://saas.elexvx.com/swagger-ui.html"
+    },
+    {
+      "source": "/swagger-ui/:path*",
+      "destination": "https://saas.elexvx.com/swagger-ui/:path*"
+    },
+    {
+      "source": "/webjars/:path*",
+      "destination": "https://saas.elexvx.com/webjars/:path*"
+    },
+    {
+      "source": "/api/uploads/:path*",
+      "destination": "https://saas.elexvx.com/api/uploads/:path*"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
+  ]
+}

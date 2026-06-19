@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD release preflight gate.
-# Generated at: 2026-06-19T06:54:03.604Z
+# Generated at: 2026-06-19T13:42:59.865Z
 # Default mode reports every gate without failing on NO-GO. Set DDD_RELEASE_PREFLIGHT_ENFORCE=1 for CI blocking behavior.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
@@ -48,7 +48,7 @@ failed_step=""
 write_preflight_report() {
   local status="$1"
   mkdir -p "$(dirname "${DDD_RELEASE_PREFLIGHT_REPORT}")"
-  node --input-type=module - "${DDD_RELEASE_PREFLIGHT_REPORT}" "${DDD_RELEASE_PREFLIGHT_ENFORCE:-}" "${status}" "${failed_step}" "${artifact_integrity_status}" "${manifest_preflight_status}" "${path_leak_status}" "${unblock_brief_status}" "${env_owner_handoff_status}" "${env_owner_input_packet_status}" "${config_owner_input_reconciliation_status}" "${owner_input_receipt_status}" "${env_readiness_status}" "${final_go_no_go_status}" "NO_GO_STRICT" "false" "false" "94" "13" <<'NODE'
+  node --input-type=module - "${DDD_RELEASE_PREFLIGHT_REPORT}" "${DDD_RELEASE_PREFLIGHT_ENFORCE:-}" "${status}" "${failed_step}" "${artifact_integrity_status}" "${manifest_preflight_status}" "${path_leak_status}" "${unblock_brief_status}" "${env_owner_handoff_status}" "${env_owner_input_packet_status}" "${config_owner_input_reconciliation_status}" "${owner_input_receipt_status}" "${env_readiness_status}" "${final_go_no_go_status}" "NO_GO_STRICT" "false" "false" "94" "12" <<'NODE'
 import fs from 'node:fs';
 const [reportPath, enforceValue, status, failedStep, artifactIntegrityStatus, manifestPreflightStatus, pathLeakStatus, unblockBriefStatus, envOwnerHandoffStatus, envOwnerInputPacketStatus, configOwnerInputReconciliationStatus, ownerInputReceiptStatus, envReadinessStatus, finalGoNoGoStatus, finalRecommendation, cutoverAllowedValue, releaseEnvFileCutoverSafeValue, gateBlockersValue, stopReasonCountValue] = process.argv.slice(2);
 const toNumber = (value) => Number.isFinite(Number(value)) ? Number(value) : -1;

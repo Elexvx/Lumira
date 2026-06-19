@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "redacted": false,
   "receiptFile": null,
@@ -23,11 +23,6 @@
     "expectedLaneCount": 5,
     "missingLanes": [
       {
-        "key": "platform-owners:p1-p2-data-safety",
-        "owner": "platform-owners",
-        "lane": "p1-p2-data-safety"
-      },
-      {
         "key": "release-infra:p0-release-env",
         "owner": "release-infra",
         "lane": "p0-release-env"
@@ -38,14 +33,19 @@
         "lane": "p0-docker-images"
       },
       {
-        "key": "release-infra:p1-runtime-business",
+        "key": "release-infra:p1-p2-data-safety",
         "owner": "release-infra",
-        "lane": "p1-runtime-business"
+        "lane": "p1-p2-data-safety"
       },
       {
         "key": "release-infra:final-review",
         "owner": "release-infra",
         "lane": "final-review"
+      },
+      {
+        "key": "ai-owner:p1-runtime-business",
+        "owner": "ai-owner",
+        "lane": "p1-runtime-business"
       }
     ]
   },
@@ -65,7 +65,7 @@
   "issues": [
     "lane completion receipt file not provided",
     "DDD_LANE_COMPLETION_RECEIPT_FILE or --lane-completion-receipt-file is required",
-    "missing lanes=platform-owners:p1-p2-data-safety, release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-runtime-business, release-infra:final-review"
+    "missing lanes=release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-p2-data-safety, release-infra:final-review, ai-owner:p1-runtime-business"
   ],
   "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"
 }

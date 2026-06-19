@@ -1,6 +1,6 @@
 # DDD Release Env Owner Templates
 
-Generated at: 2026-06-19T06:54:03.604Z
+Generated at: 2026-06-19T13:42:59.865Z
 Status: NOT_READY
 Env file: .env.release.local
 Template dir: artifacts/ddd/release/release-env-owner-templates
@@ -29,14 +29,14 @@ Each owner template is intentionally scoped to one owner so release values can b
   - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
   - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `node scripts/ddd-release-evidence-orchestrator.mjs`
   - `node scripts/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## ai-owner
 
-- Template: `artifacts/ddd/release/release-env-owner-templates/02-ai-owner.env`
-- Queue: ACTIONABLE; canExecute=true
+- Template: `artifacts/ddd/release/release-env-owner-templates/05-ai-owner.env`
+- Queue: WAITING; canExecute=false
 - Canonical fill items: 12
 - Secret canonical keys: 2
 - Safe-to-prefill canonical keys: 6
@@ -51,13 +51,36 @@ Each owner template is intentionally scoped to one owner so release values can b
   - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
   - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
+  - `node scripts/ddd-rollback-deferral-template.mjs`
+  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
+
+## file-owner
+
+- Template: `artifacts/ddd/release/release-env-owner-templates/08-file-owner.env`
+- Queue: WAITING; canExecute=false
+- Canonical fill items: 3
+- Secret canonical keys: 0
+- Safe-to-prefill canonical keys: 3
+- Keys: LUMIRA_FILE_OCR_MODE, LUMIRA_FILE_SECURITY_SCAN_MODE, UPLOAD_STORAGE_ROOT
+- Run after merging owner values into the canonical fill template:
+  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
+  - `node scripts/ddd-release-config-evidence.mjs`
+  - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
+  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
   - `node scripts/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## payment-owner
 
-- Template: `artifacts/ddd/release/release-env-owner-templates/03-payment-owner.env`
-- Queue: ACTIONABLE; canExecute=true
+- Template: `artifacts/ddd/release/release-env-owner-templates/14-payment-owner.env`
+- Queue: WAITING; canExecute=false
 - Canonical fill items: 2
 - Secret canonical keys: 1
 - Safe-to-prefill canonical keys: 0
@@ -72,13 +95,14 @@ Each owner template is intentionally scoped to one owner so release values can b
   - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
   - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
+  - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
   - `node scripts/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## platform-events
 
-- Template: `artifacts/ddd/release/release-env-owner-templates/04-platform-events.env`
-- Queue: ACTIONABLE; canExecute=true
+- Template: `artifacts/ddd/release/release-env-owner-templates/00-platform-events.env`
+- Queue: WAITING; canExecute=false
 - Canonical fill items: 10
 - Secret canonical keys: 3
 - Safe-to-prefill canonical keys: 1
@@ -98,8 +122,8 @@ Each owner template is intentionally scoped to one owner so release values can b
 
 ## platform-owners
 
-- Template: `artifacts/ddd/release/release-env-owner-templates/05-platform-owners.env`
-- Queue: ACTIONABLE; canExecute=true
+- Template: `artifacts/ddd/release/release-env-owner-templates/00-platform-owners.env`
+- Queue: WAITING; canExecute=false
 - Canonical fill items: 9
 - Secret canonical keys: 0
 - Safe-to-prefill canonical keys: 0
@@ -114,28 +138,6 @@ Each owner template is intentionally scoped to one owner so release values can b
   - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
   - `node scripts/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-release-readiness-summary.mjs`
-  - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
-
-## file-owner
-
-- Template: `artifacts/ddd/release/release-env-owner-templates/11-file-owner.env`
-- Queue: WAITING; canExecute=false
-- Canonical fill items: 3
-- Secret canonical keys: 0
-- Safe-to-prefill canonical keys: 3
-- Keys: LUMIRA_FILE_OCR_MODE, LUMIRA_FILE_SECURITY_SCAN_MODE, UPLOAD_STORAGE_ROOT
-- Run after merging owner values into the canonical fill template:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
-  - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
   - `node scripts/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 

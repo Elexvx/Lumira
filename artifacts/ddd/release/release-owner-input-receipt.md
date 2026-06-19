@@ -1,28 +1,23 @@
 # DDD Release Owner Input Receipt
 
-Generated at: 2026-06-18T19:29:09.638Z
+Generated at: 2026-06-19T13:43:03.359Z
 Status: PENDING_OWNER_INPUT
 Cutover ready: false
-Required owner inputs: 34
-Owners: 5
-Missing criteria: 3
+Required owner inputs: 0
+Owners: 0
+Missing criteria: 1
 
 ## Criteria
 
 - releaseEnvReadinessStatus: expected=PASS; actual=NOT_READY; met=false
-- releaseEnvReadinessBlockers: expected=0; actual=34; met=false
-- releaseEnvReadinessPlaceholders: expected=0; actual=34; met=false
+- releaseEnvReadinessBlockers: expected=0; actual=0; met=true
+- releaseEnvReadinessPlaceholders: expected=0; actual=0; met=true
 - releaseEnvReadinessMissing: expected=0; actual=0; met=true
 - configOwnerInputReconciliationStatus: expected=PASS; actual=PASS; met=true
 - configOwnerInputReconciliationUnmappedKeys: expected=0; actual=0; met=true
 
 ## Owners
 
-- platform-events: ready=false; inputs=9; placeholders=9; missing=0; packet=artifacts/ddd/release/release-env-owner-input-packet/01-platform-events.json
-- platform-owners: ready=false; inputs=9; placeholders=9; missing=0; packet=artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.json
-- release-infra: ready=false; inputs=9; placeholders=9; missing=0; packet=artifacts/ddd/release/release-env-owner-input-packet/03-release-infra.json
-- ai-owner: ready=false; inputs=6; placeholders=6; missing=0; packet=artifacts/ddd/release/release-env-owner-input-packet/04-ai-owner.json
-- payment-owner: ready=false; inputs=1; placeholders=1; missing=0; packet=artifacts/ddd/release/release-env-owner-input-packet/05-payment-owner.json
 
 ## Validation Commands
 

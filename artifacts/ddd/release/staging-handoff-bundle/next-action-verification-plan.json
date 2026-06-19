@@ -1,13 +1,13 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
   "queueStatus": "BLOCKED",
   "envFile": "<env-file>",
   "phaseCount": 6,
-  "blockedPhaseCount": 5,
+  "blockedPhaseCount": 1,
   "phases": [
     {
       "id": "verify-first-wave-env",
@@ -30,7 +30,7 @@
     {
       "id": "verify-release-env",
       "owner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "command": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
       "expectedStatus": "PASS",
       "sourcePlan": "release-env-plan.json",
@@ -59,7 +59,7 @@
     {
       "id": "verify-runtime",
       "owner": "release-infra, frontend, ai",
-      "status": "BLOCKED",
+      "status": "PASS",
       "command": "node scripts/ddd-staging-runtime-check.mjs",
       "expectedStatus": "PASS",
       "sourcePlan": "runtime-smoke-plan.json",
@@ -75,7 +75,7 @@
     {
       "id": "verify-data-safety",
       "owner": "bounded-context owners, database",
-      "status": "BLOCKED",
+      "status": "PASS",
       "command": "node scripts/ddd-staging-data-safety-check.mjs",
       "expectedStatus": "PASS",
       "sourcePlan": "data-safety-owner-plan.json",
@@ -91,7 +91,7 @@
     {
       "id": "verify-final-acceptance",
       "owner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "expectedStatus": "PASS",
       "sourcePlan": "final-review.json",

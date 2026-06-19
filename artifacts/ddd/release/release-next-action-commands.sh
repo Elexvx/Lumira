@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD release next-action commands.
-# Generated at: 2026-06-19T06:54:03.604Z
+# Generated at: 2026-06-19T13:42:59.865Z
 # Status: NOT_READY
 # Release gate blockers: 94
 # Default mode lists RUN_NOW items. Set DDD_RELEASE_NEXT_ACTION_EXECUTE=1 to execute commands.
@@ -165,22 +165,6 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_LIST}" == "1" || "${DDD_RELEASE_NEXT_ACTION_LIS
     echo '3 owner=release-owner receiptStatus=CONTENT_BLOCKED next=Inspect the strict release gate blocker and attach an owner-specific remediation.'
     DDD_RELEASE_NEXT_ACTION_LIST_MATCHED=1
   fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '4' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'payment-owner' ) ]]; then
-    echo '4 owner=payment-owner receiptStatus=CONTENT_BLOCKED next=Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.'
-    DDD_RELEASE_NEXT_ACTION_LIST_MATCHED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '5' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'platform-events' ) ]]; then
-    echo '5 owner=platform-events receiptStatus=CONTENT_BLOCKED next=Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.'
-    DDD_RELEASE_NEXT_ACTION_LIST_MATCHED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '6' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'platform-owners' ) ]]; then
-    echo '6 owner=platform-owners receiptStatus=CONTENT_BLOCKED next=Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.'
-    DDD_RELEASE_NEXT_ACTION_LIST_MATCHED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '7' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'ai-owner' ) ]]; then
-    echo '7 owner=ai-owner receiptStatus=CONTENT_BLOCKED next=Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.'
-    DDD_RELEASE_NEXT_ACTION_LIST_MATCHED=1
-  fi
   if [[ "${DDD_RELEASE_NEXT_ACTION_LIST_MATCHED}" != "1" ]]; then
     echo "No RUN_NOW next action matched DDD_RELEASE_NEXT_ACTION_ORDER=${DDD_RELEASE_NEXT_ACTION_ORDER} DDD_RELEASE_NEXT_ACTION_OWNER=${DDD_RELEASE_NEXT_ACTION_OWNER}" >&2
     exit 1
@@ -197,11 +181,12 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL}" == "1" || "${DDD_RELEASE_NEXT_ACTION_D
     echo 'receiptStatus=CONTENT_BLOCKED'
     echo 'next=Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.'
     echo 'reason=strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence'
-    echo 'readyBatches=p0-docker-release-infra;p0-release-config-release-infra;p0-release-env-lint-release-infra;p0-runtime-readiness-release-infra'
-    echo 'blockedBatches=none'
+    echo 'readyBatches=p0-docker-release-infra;p0-runtime-readiness-release-infra'
+    echo 'blockedBatches=p3-orchestrator-release-infra'
     echo 'missingArtifacts=none'
-    echo 'envKeys=AI_SERVICE_BASE_URL;AUTH_SERVICE_BASE_URL;BASE_URL;CORS_ALLOWED_ORIGIN_PATTERNS;DB_PASSWORD;DB_URL;DB_USERNAME;DDD_AUTH_PASSWORD;DDD_AUTH_PERF_BASELINE_ACCEPTED_BY;DDD_AUTH_PERF_BASELINE_ENVIRONMENT;DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT;DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE;DDD_AUTH_PERF_ENVIRONMENT;DDD_AUTH_USERNAME;DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE;DDD_DEPLOYMENT_EVIDENCE;DDD_EXPLAIN_DATABASE;DDD_FRONTEND_DEPLOYMENT_EVIDENCE;DDD_MIGRATION_COMPLETED_AT;DDD_MIGRATION_FRESH_DB_EVIDENCE;DDD_MIGRATION_FRESH_DB_VALIDATED;DDD_MIGRATION_OPERATOR;DDD_MIGRATION_UPGRADE_DB_EVIDENCE;DDD_MIGRATION_UPGRADE_DB_VALIDATED;FIELD_SECRET;FILE_SERVICE_BASE_URL;JOB_EXECUTOR_BASE_URL;JWT_SECRET;LOCALIZATION_SERVICE_BASE_URL;LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL;LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL;LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN;LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL;LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY;LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL;LUMIRA_BASE_URL;MESSAGE_SERVICE_BASE_URL;MYSQL_DATABASE;MYSQL_HOST;MYSQL_PORT;PAYMENT_PUBLIC_BASE_URL;PAYMENT_SERVICE_BASE_URL;PLAYWRIGHT_BASE_URL;PLUGIN_SERVICE_BASE_URL;REDIS_HOST;SAAS_EVENT_REDIS_STREAM_KEY;SAAS_JOB_BACKEND_BASE_URL;SAAS_JOB_FILE_SERVICE_BASE_URL;SAAS_JOB_INTERNAL_TOKEN;SAAS_JOB_MESSAGE_SERVICE_BASE_URL;SAAS_JOB_PAYMENT_SERVICE_BASE_URL;SAAS_JOB_PLUGIN_SERVICE_BASE_URL;SYSTEM_SERVICE_BASE_URL;XXL_JOB_ACCESS_TOKEN;XXL_JOB_ADMIN_ADDRESSES'
+    echo 'envKeys=BASE_URL;DEPLOY_CHECK_BASE_URL;LUMIRA_BASE_URL'
     echo "commands:"
+    echo '- node scripts/ddd-release-evidence-orchestrator.mjs'
     echo '- DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
@@ -244,79 +229,6 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL}" == "1" || "${DDD_RELEASE_NEXT_ACTION_D
     echo '- DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
   fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '4' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'payment-owner' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_DETAIL_MATCHED=1
-    echo 'order=4'
-    echo 'owner=payment-owner'
-    echo 'receiptStatus=CONTENT_BLOCKED'
-    echo 'next=Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.'
-    echo 'reason=strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h'
-    echo 'readyBatches=p0-release-config-payment-owner'
-    echo 'blockedBatches=p1-business-e2e-payment-owner;p1-rollback-payment-owner'
-    echo 'missingArtifacts=none'
-    echo 'envKeys=PAYMENT_PUBLIC_BASE_URL'
-    echo "commands:"
-    echo '- node scripts/ddd-release-config-evidence.mjs'
-    echo '- DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '5' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'platform-events' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_DETAIL_MATCHED=1
-    echo 'order=5'
-    echo 'owner=platform-events'
-    echo 'receiptStatus=CONTENT_BLOCKED'
-    echo 'next=Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.'
-    echo 'reason=strictGate=outbox-replay-dead-letter-freshness generatedAt is 91.7h old; limit=24h'
-    echo 'readyBatches=p0-release-config-platform-events'
-    echo 'blockedBatches=none'
-    echo 'missingArtifacts=none'
-    echo 'envKeys=LUMIRA_EVENT_REDIS_STREAM_KEY;SAAS_EVENT_REDIS_STREAM_KEY'
-    echo "commands:"
-    echo '- DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs'
-    echo '- node scripts/ddd-release-config-evidence.mjs'
-    echo '- DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '6' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'platform-owners' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_DETAIL_MATCHED=1
-    echo 'order=6'
-    echo 'owner=platform-owners'
-    echo 'receiptStatus=CONTENT_BLOCKED'
-    echo 'next=Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.'
-    echo 'reason=release-config:ai service placeholder value is not allowed'
-    echo 'readyBatches=p0-release-config-platform-owners'
-    echo 'blockedBatches=none'
-    echo 'missingArtifacts=none'
-    echo 'envKeys=AI_SERVICE_BASE_URL;LUMIRA_AI_BASE_URL;LUMIRA_AI_SERVICE_BASE_URL'
-    echo "commands:"
-    echo '- node scripts/ddd-release-config-evidence.mjs'
-    echo '- DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '7' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'ai-owner' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_DETAIL_MATCHED=1
-    echo 'order=7'
-    echo 'owner=ai-owner'
-    echo 'receiptStatus=CONTENT_BLOCKED'
-    echo 'next=Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.'
-    echo 'reason=release-config:file owner url placeholder value is not allowed'
-    echo 'readyBatches=p0-release-config-ai-owner'
-    echo 'blockedBatches=p1-rollback-ai-owner'
-    echo 'missingArtifacts=none'
-    echo 'envKeys=LUMIRA_AI_OWNER_FILE_BASE_URL;LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL'
-    echo "commands:"
-    echo '- node scripts/ddd-release-config-evidence.mjs'
-    echo '- DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-    echo '- DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-  fi
   if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL_MATCHED}" != "1" ]]; then
     echo "No RUN_NOW next action matched DDD_RELEASE_NEXT_ACTION_ORDER=${DDD_RELEASE_NEXT_ACTION_ORDER} DDD_RELEASE_NEXT_ACTION_OWNER=${DDD_RELEASE_NEXT_ACTION_OWNER}" >&2
     exit 1
@@ -329,7 +241,7 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_CHECK_ENV}" == "1" || "${DDD_RELEASE_NEXT_ACTIO
   DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=0
   if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '1' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-infra' ) ]]; then
     DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
-    check_next_action_env '1' 'release-infra' 'AI_SERVICE_BASE_URL' 'AUTH_SERVICE_BASE_URL' 'BASE_URL' 'CORS_ALLOWED_ORIGIN_PATTERNS' 'DB_PASSWORD' 'DB_URL' 'DB_USERNAME' 'DDD_AUTH_PASSWORD' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE' 'DDD_AUTH_PERF_ENVIRONMENT' 'DDD_AUTH_USERNAME' 'DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE' 'DDD_DEPLOYMENT_EVIDENCE' 'DDD_EXPLAIN_DATABASE' 'DDD_FRONTEND_DEPLOYMENT_EVIDENCE' 'DDD_MIGRATION_COMPLETED_AT' 'DDD_MIGRATION_FRESH_DB_EVIDENCE' 'DDD_MIGRATION_FRESH_DB_VALIDATED' 'DDD_MIGRATION_OPERATOR' 'DDD_MIGRATION_UPGRADE_DB_EVIDENCE' 'DDD_MIGRATION_UPGRADE_DB_VALIDATED' 'FIELD_SECRET' 'FILE_SERVICE_BASE_URL' 'JOB_EXECUTOR_BASE_URL' 'JWT_SECRET' 'LOCALIZATION_SERVICE_BASE_URL' 'LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL' 'LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL' 'LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN' 'LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL' 'LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY' 'LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL' 'LUMIRA_BASE_URL' 'MESSAGE_SERVICE_BASE_URL' 'MYSQL_DATABASE' 'MYSQL_HOST' 'MYSQL_PORT' 'PAYMENT_PUBLIC_BASE_URL' 'PAYMENT_SERVICE_BASE_URL' 'PLAYWRIGHT_BASE_URL' 'PLUGIN_SERVICE_BASE_URL' 'REDIS_HOST' 'SAAS_EVENT_REDIS_STREAM_KEY' 'SAAS_JOB_BACKEND_BASE_URL' 'SAAS_JOB_FILE_SERVICE_BASE_URL' 'SAAS_JOB_INTERNAL_TOKEN' 'SAAS_JOB_MESSAGE_SERVICE_BASE_URL' 'SAAS_JOB_PAYMENT_SERVICE_BASE_URL' 'SAAS_JOB_PLUGIN_SERVICE_BASE_URL' 'SYSTEM_SERVICE_BASE_URL' 'XXL_JOB_ACCESS_TOKEN' 'XXL_JOB_ADMIN_ADDRESSES' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
+    check_next_action_env '1' 'release-infra' 'BASE_URL' 'DEPLOY_CHECK_BASE_URL' 'LUMIRA_BASE_URL' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
   fi
   if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '2' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-performance' ) ]]; then
     DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
@@ -338,22 +250,6 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_CHECK_ENV}" == "1" || "${DDD_RELEASE_NEXT_ACTIO
   if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-owner' ) ]]; then
     DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
     check_next_action_env '3' 'release-owner' 'DDD_RELEASE_EVIDENCE_STRICT' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '4' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'payment-owner' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
-    check_next_action_env '4' 'payment-owner' 'PAYMENT_PUBLIC_BASE_URL' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '5' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'platform-events' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
-    check_next_action_env '5' 'platform-events' 'LUMIRA_EVENT_REDIS_STREAM_KEY' 'SAAS_EVENT_REDIS_STREAM_KEY' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '6' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'platform-owners' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
-    check_next_action_env '6' 'platform-owners' 'AI_SERVICE_BASE_URL' 'LUMIRA_AI_BASE_URL' 'LUMIRA_AI_SERVICE_BASE_URL' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
-  fi
-  if [[ ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '7' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'ai-owner' ) ]]; then
-    DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED=1
-    check_next_action_env '7' 'ai-owner' 'LUMIRA_AI_OWNER_FILE_BASE_URL' 'LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL' || DDD_RELEASE_NEXT_ACTION_ENV_CHECK_FAILED=1
   fi
   if [[ "${DDD_RELEASE_NEXT_ACTION_ENV_CHECK_MATCHED}" != "1" ]]; then
     echo "No RUN_NOW next action matched DDD_RELEASE_NEXT_ACTION_ORDER=${DDD_RELEASE_NEXT_ACTION_ORDER} DDD_RELEASE_NEXT_ACTION_OWNER=${DDD_RELEASE_NEXT_ACTION_OWNER}" >&2
@@ -369,6 +265,7 @@ maybe_run_next_action '1' 'release-infra' 'CONTENT_BLOCKED' 'Regenerate runtime 
 if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '1' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-infra' ) ]]; then
 # -----
 # Reason: strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence
+  run_next_action_command '1' 'release-infra' 'CONTENT_BLOCKED' 'node scripts/ddd-release-evidence-orchestrator.mjs'
   run_next_action_command '1' 'release-infra' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
   run_next_action_command '1' 'release-infra' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
   run_next_action_command '1' 'release-infra' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
@@ -396,51 +293,6 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_AC
   run_next_action_command '3' 'release-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
   run_next_action_command '3' 'release-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
   run_next_action_command '3' 'release-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-fi
-
-maybe_run_next_action '4' 'payment-owner' 'CONTENT_BLOCKED' 'Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.'
-if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '4' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'payment-owner' ) ]]; then
-# -----
-# Reason: strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h
-  run_next_action_command '4' 'payment-owner' 'CONTENT_BLOCKED' 'node scripts/ddd-release-config-evidence.mjs'
-  run_next_action_command '4' 'payment-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '4' 'payment-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '4' 'payment-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '4' 'payment-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-fi
-
-maybe_run_next_action '5' 'platform-events' 'CONTENT_BLOCKED' 'Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.'
-if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '5' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'platform-events' ) ]]; then
-# -----
-# Reason: strictGate=outbox-replay-dead-letter-freshness generatedAt is 91.7h old; limit=24h
-  run_next_action_command '5' 'platform-events' 'CONTENT_BLOCKED' 'DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs'
-  run_next_action_command '5' 'platform-events' 'CONTENT_BLOCKED' 'node scripts/ddd-release-config-evidence.mjs'
-  run_next_action_command '5' 'platform-events' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '5' 'platform-events' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '5' 'platform-events' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '5' 'platform-events' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-fi
-
-maybe_run_next_action '6' 'platform-owners' 'CONTENT_BLOCKED' 'Set AI_SERVICE_BASE_URL or LUMIRA_AI_SERVICE_BASE_URL or LUMIRA_AI_BASE_URL for ai service in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.'
-if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '6' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'platform-owners' ) ]]; then
-# -----
-# Reason: release-config:ai service placeholder value is not allowed
-  run_next_action_command '6' 'platform-owners' 'CONTENT_BLOCKED' 'node scripts/ddd-release-config-evidence.mjs'
-  run_next_action_command '6' 'platform-owners' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '6' 'platform-owners' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '6' 'platform-owners' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '6' 'platform-owners' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=platform-owners DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
-fi
-
-maybe_run_next_action '7' 'ai-owner' 'CONTENT_BLOCKED' 'Set LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL or LUMIRA_AI_OWNER_FILE_BASE_URL for file owner url in DDD_RELEASE_ENV_FILE or the production-equivalent runtime environment, then rerun `node scripts/ddd-release-config-evidence.mjs`.'
-if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '7' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'ai-owner' ) ]]; then
-# -----
-# Reason: release-config:file owner url placeholder value is not allowed
-  run_next_action_command '7' 'ai-owner' 'CONTENT_BLOCKED' 'node scripts/ddd-release-config-evidence.mjs'
-  run_next_action_command '7' 'ai-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '7' 'ai-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '7' 'ai-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  run_next_action_command '7' 'ai-owner' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=ai-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh'
 fi
 
 if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" != "1" ]]; then

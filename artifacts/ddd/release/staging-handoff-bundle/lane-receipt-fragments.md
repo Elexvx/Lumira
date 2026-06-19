@@ -3,18 +3,18 @@
 Status: BLOCKED
 Redacted: true
 Lanes: 5
-PASS lanes: 1
-BLOCKED lanes: 4
+PASS lanes: 4
+BLOCKED lanes: 1
 
 ## Fragments
 
 | Key | Status | Source | Provided artifacts | Missing artifacts |
 | --- | --- | --- | --- | --- |
-| `release-infra:p0-release-env` | BLOCKED | `release-env-submission-plan.json` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json` |
+| `release-infra:p0-release-env` | PASS | `release-env-submission-plan.json` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json` | none |
 | `release-infra:p0-docker-images` | PASS | `docker-image-submission-plan.json` | `artifacts/ddd/build/docker-image-evidence.json` | none |
-| `release-infra:p1-runtime-business` | BLOCKED | `runtime-business-submission-plan.json` | `artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json` | `artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json` |
-| `platform-owners:p1-p2-data-safety` | BLOCKED | `data-safety-submission-plan.json` | `artifacts/ddd/rollback/rollback-drill.json`<br>`artifacts/ddd/migration/migration-evidence.json`<br>`tmp/ddd-explain/*.json`<br>`artifacts/ddd/release/explain-gate-report.json` | `tmp/ddd-explain/*.json` |
-| `release-infra:final-review` | BLOCKED | `final-review.json` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json`<br>`artifacts/ddd/build/docker-image-evidence.json`<br>`artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json`<br>`artifacts/ddd/rollback/rollback-drill.json`<br>`artifacts/ddd/migration/migration-evidence.json`<br>`tmp/ddd-explain/*.json`<br>`artifacts/ddd/release/explain-gate-report.json`<br>`artifacts/ddd/release/staging-handoff-bundle/final-review.json` | `tmp/ddd-explain/*.json` |
+| `release-infra:p1-runtime-business` | PASS | `runtime-business-submission-plan.json` | `artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json` | none |
+| `platform-owners:p1-p2-data-safety` | PASS | `data-safety-submission-plan.json` | `artifacts/ddd/rollback/rollback-drill.json`<br>`artifacts/ddd/migration/migration-evidence.json`<br>`tmp/ddd-explain/*.json`<br>`artifacts/ddd/release/explain-gate-report.json` | none |
+| `release-infra:final-review` | BLOCKED | `final-review.json` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json`<br>`artifacts/ddd/build/docker-image-evidence.json`<br>`artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json`<br>`artifacts/ddd/rollback/rollback-drill.json`<br>`artifacts/ddd/migration/migration-evidence.json`<br>`tmp/ddd-explain/*.json`<br>`artifacts/ddd/release/explain-gate-report.json`<br>`artifacts/ddd/release/staging-handoff-bundle/final-review.json` | none |
 
 ## Receipt JSON Skeleton
 
@@ -26,17 +26,13 @@ BLOCKED lanes: 4
     {
       "owner": "release-infra",
       "lane": "p0-release-env",
-      "status": "BLOCKED",
+      "status": "PASS",
       "providedArtifacts": [
         "artifacts/ddd/release/release-env-lint.json",
         "artifacts/ddd/config/release-config-evidence.json",
         "artifacts/ddd/release/readiness-summary.json"
       ],
-      "missingArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json",
-        "artifacts/ddd/release/readiness-summary.json"
-      ],
+      "missingArtifacts": [],
       "completedAt": "<ISO-8601 timestamp after validation commands pass>",
       "completedBy": "<owner or workflow actor>"
     },
@@ -54,7 +50,7 @@ BLOCKED lanes: 4
     {
       "owner": "release-infra",
       "lane": "p1-runtime-business",
-      "status": "BLOCKED",
+      "status": "PASS",
       "providedArtifacts": [
         "artifacts/ddd/readiness/summary.json",
         "artifacts/ddd/performance/authenticated-runtime-actual.json",
@@ -64,31 +60,21 @@ BLOCKED lanes: 4
         "artifacts/ddd/jobs/job-e2e-smoke.json",
         "artifacts/ddd/payment/payment-webhook-e2e.json"
       ],
-      "missingArtifacts": [
-        "artifacts/ddd/readiness/summary.json",
-        "artifacts/ddd/performance/authenticated-runtime-actual.json",
-        "artifacts/ddd/ai/ai-runtime-drill.json",
-        "artifacts/ddd/frontend/frontend-smoke.json",
-        "artifacts/ddd/file/file-processing-e2e.json",
-        "artifacts/ddd/jobs/job-e2e-smoke.json",
-        "artifacts/ddd/payment/payment-webhook-e2e.json"
-      ],
+      "missingArtifacts": [],
       "completedAt": "<ISO-8601 timestamp after validation commands pass>",
       "completedBy": "<owner or workflow actor>"
     },
     {
       "owner": "platform-owners",
       "lane": "p1-p2-data-safety",
-      "status": "BLOCKED",
+      "status": "PASS",
       "providedArtifacts": [
         "artifacts/ddd/rollback/rollback-drill.json",
         "artifacts/ddd/migration/migration-evidence.json",
         "tmp/ddd-explain/*.json",
         "artifacts/ddd/release/explain-gate-report.json"
       ],
-      "missingArtifacts": [
-        "tmp/ddd-explain/*.json"
-      ],
+      "missingArtifacts": [],
       "completedAt": "<ISO-8601 timestamp after validation commands pass>",
       "completedBy": "<owner or workflow actor>"
     },
@@ -114,9 +100,7 @@ BLOCKED lanes: 4
         "artifacts/ddd/release/explain-gate-report.json",
         "artifacts/ddd/release/staging-handoff-bundle/final-review.json"
       ],
-      "missingArtifacts": [
-        "tmp/ddd-explain/*.json"
-      ],
+      "missingArtifacts": [],
       "completedAt": "<ISO-8601 timestamp after final review enforce passes>",
       "completedBy": "<owner or workflow actor>"
     }
@@ -135,17 +119,13 @@ Source command: `node scripts/ddd-staging-execution-checklist.mjs --release-env-
 {
   "owner": "release-infra",
   "lane": "p0-release-env",
-  "status": "BLOCKED",
+  "status": "PASS",
   "providedArtifacts": [
     "artifacts/ddd/release/release-env-lint.json",
     "artifacts/ddd/config/release-config-evidence.json",
     "artifacts/ddd/release/readiness-summary.json"
   ],
-  "missingArtifacts": [
-    "artifacts/ddd/release/release-env-lint.json",
-    "artifacts/ddd/config/release-config-evidence.json",
-    "artifacts/ddd/release/readiness-summary.json"
-  ],
+  "missingArtifacts": [],
   "completedAt": "<ISO-8601 timestamp after validation commands pass>",
   "completedBy": "<owner or workflow actor>",
   "acceptanceCommands": [
@@ -185,7 +165,7 @@ Source command: `node scripts/ddd-staging-execution-checklist.mjs --runtime-busi
 {
   "owner": "release-infra",
   "lane": "p1-runtime-business",
-  "status": "BLOCKED",
+  "status": "PASS",
   "providedArtifacts": [
     "artifacts/ddd/readiness/summary.json",
     "artifacts/ddd/performance/authenticated-runtime-actual.json",
@@ -195,15 +175,7 @@ Source command: `node scripts/ddd-staging-execution-checklist.mjs --runtime-busi
     "artifacts/ddd/jobs/job-e2e-smoke.json",
     "artifacts/ddd/payment/payment-webhook-e2e.json"
   ],
-  "missingArtifacts": [
-    "artifacts/ddd/readiness/summary.json",
-    "artifacts/ddd/performance/authenticated-runtime-actual.json",
-    "artifacts/ddd/ai/ai-runtime-drill.json",
-    "artifacts/ddd/frontend/frontend-smoke.json",
-    "artifacts/ddd/file/file-processing-e2e.json",
-    "artifacts/ddd/jobs/job-e2e-smoke.json",
-    "artifacts/ddd/payment/payment-webhook-e2e.json"
-  ],
+  "missingArtifacts": [],
   "completedAt": "<ISO-8601 timestamp after validation commands pass>",
   "completedBy": "<owner or workflow actor>",
   "acceptanceCommands": [
@@ -224,16 +196,14 @@ Source command: `node scripts/ddd-staging-execution-checklist.mjs --data-safety-
 {
   "owner": "platform-owners",
   "lane": "p1-p2-data-safety",
-  "status": "BLOCKED",
+  "status": "PASS",
   "providedArtifacts": [
     "artifacts/ddd/rollback/rollback-drill.json",
     "artifacts/ddd/migration/migration-evidence.json",
     "tmp/ddd-explain/*.json",
     "artifacts/ddd/release/explain-gate-report.json"
   ],
-  "missingArtifacts": [
-    "tmp/ddd-explain/*.json"
-  ],
+  "missingArtifacts": [],
   "completedAt": "<ISO-8601 timestamp after validation commands pass>",
   "completedBy": "<owner or workflow actor>",
   "acceptanceCommands": [
@@ -273,9 +243,7 @@ Source command: `node scripts/ddd-staging-execution-checklist.mjs --final-review
     "artifacts/ddd/release/explain-gate-report.json",
     "artifacts/ddd/release/staging-handoff-bundle/final-review.json"
   ],
-  "missingArtifacts": [
-    "tmp/ddd-explain/*.json"
-  ],
+  "missingArtifacts": [],
   "completedAt": "<ISO-8601 timestamp after final review enforce passes>",
   "completedBy": "<owner or workflow actor>",
   "acceptanceCommands": [

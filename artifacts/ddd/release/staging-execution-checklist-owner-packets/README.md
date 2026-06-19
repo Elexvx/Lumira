@@ -1,6 +1,6 @@
 # DDD Staging Owner Packets
 
-Generated at: 2026-06-19T05:07:31.963Z
+Generated at: 2026-06-19T14:05:35.779Z
 Status: STAGING_REQUIRED
 Final recommendation: NO_GO_STRICT
 
@@ -8,7 +8,11 @@ Final recommendation: NO_GO_STRICT
 
 | Owner | Blockers | Secret keys | Missing artifacts | Markdown | JSON | Env template |
 | --- | ---: | ---: | ---: | --- | --- | --- |
-| platform-owners | 9 | 0 | 2 | [platform-owners.md](platform-owners.md) | [platform-owners.json](platform-owners.json) | [platform-owners.blocking-inputs.template.env](platform-owners.blocking-inputs.template.env) |
+| platform-events | 0 | 3 | 0 | [platform-events.md](platform-events.md) | [platform-events.json](platform-events.json) | [platform-events.blocking-inputs.template.env](platform-events.blocking-inputs.template.env) |
+| platform-owners | 0 | 0 | 2 | [platform-owners.md](platform-owners.md) | [platform-owners.json](platform-owners.json) | [platform-owners.blocking-inputs.template.env](platform-owners.blocking-inputs.template.env) |
+| release-infra | 0 | 4 | 0 | [release-infra.md](release-infra.md) | [release-infra.json](release-infra.json) | [release-infra.blocking-inputs.template.env](release-infra.blocking-inputs.template.env) |
+| ai-owner | 0 | 2 | 0 | [ai-owner.md](ai-owner.md) | [ai-owner.json](ai-owner.json) | [ai-owner.blocking-inputs.template.env](ai-owner.blocking-inputs.template.env) |
+| payment-owner | 0 | 1 | 0 | [payment-owner.md](payment-owner.md) | [payment-owner.json](payment-owner.json) | [payment-owner.blocking-inputs.template.env](payment-owner.blocking-inputs.template.env) |
 
 ## Packet Contents
 

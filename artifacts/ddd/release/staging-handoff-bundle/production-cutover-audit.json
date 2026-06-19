@@ -1,14 +1,14 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverReady": false,
   "cutoverAllowed": false,
-  "eta": "fast path 0.5-1.5d with staging access and owner evidence ready; 1-3d if deployment, Docker, database, or approval evidence must be produced",
+  "eta": "ready for final go/no-go enforcement",
   "auditItemCount": 7,
-  "passedAuditItemCount": 2,
-  "blockedAuditItemCount": 5,
+  "passedAuditItemCount": 3,
+  "blockedAuditItemCount": 4,
   "auditItems": [
     {
       "id": "handoff-bundle-integrity",
@@ -37,10 +37,10 @@
     {
       "id": "staging-evidence-accepted",
       "label": "Every staging evidence gate is accepted",
-      "status": "BLOCKED",
+      "status": "PASS",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/evidence-acceptance.json",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-      "blocker": "accepted=1/6"
+      "blocker": null
     },
     {
       "id": "critical-path-clear",
@@ -48,7 +48,7 @@
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/operator-progress.json",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
-      "blocker": "blocked=5/6"
+      "blocker": "blocked=1/6"
     },
     {
       "id": "final-review-enforced",
@@ -77,20 +77,12 @@
       "blocker": "coverage=0/5; receipt=MISSING"
     },
     {
-      "id": "staging-evidence-accepted",
-      "label": "Every staging evidence gate is accepted",
-      "status": "BLOCKED",
-      "evidence": "artifacts/ddd/release/staging-handoff-bundle/evidence-acceptance.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-      "blocker": "accepted=1/6"
-    },
-    {
       "id": "critical-path-clear",
       "label": "Critical path phases are all clear",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/operator-progress.json",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
-      "blocker": "blocked=5/6"
+      "blocker": "blocked=1/6"
     },
     {
       "id": "final-review-enforced",
@@ -127,9 +119,9 @@
     {
       "id": "owner-evidence",
       "label": "Close next owner evidence lane",
-      "owner": "platform-owners",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
-      "reason": "missingArtifacts=2; blockingInputs=23; lanes=1"
+      "owner": "release-infra",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      "reason": "missingArtifacts=0; blockingInputs=0; lanes=4"
     }
   ],
   "requiredCommands": [

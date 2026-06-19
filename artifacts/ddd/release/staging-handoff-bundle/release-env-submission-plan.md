@@ -1,9 +1,9 @@
 # DDD Release Env Submission Plan
 
-Status: BLOCKED
+Status: PASS
 Owners: 5
-Blockers: 34
-Placeholders: 34
+Blockers: 0
+Placeholders: 0
 Secret keys: 10
 Target: `tmp/ddd-dispatch-check-env-init.env`
 Release env file: `<release-env-file>`
@@ -13,11 +13,11 @@ Receipt file: `<receipt-file>`
 
 | Owner | Blockers | Secret keys | Keys | Template command |
 | --- | ---: | ---: | ---: | --- |
-| platform-events | 9 | 3 | 10 | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-events` |
-| platform-owners | 9 | 0 | 9 | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-owners` |
-| release-infra | 9 | 4 | 12 | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra` |
-| ai-owner | 6 | 2 | 12 | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=ai-owner` |
-| payment-owner | 1 | 1 | 2 | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=payment-owner` |
+| platform-events | 0 | 3 | 10 | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-events` |
+| platform-owners | 0 | 0 | 9 | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-owners` |
+| release-infra | 0 | 4 | 12 | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra` |
+| ai-owner | 0 | 2 | 12 | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=ai-owner` |
+| payment-owner | 0 | 1 | 2 | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=payment-owner` |
 
 ## Merge And Validate
 
@@ -62,17 +62,13 @@ Owner: release-infra
 {
   "owner": "release-infra",
   "lane": "p0-release-env",
-  "status": "BLOCKED",
+  "status": "PASS",
   "providedArtifacts": [
     "artifacts/ddd/release/release-env-lint.json",
     "artifacts/ddd/config/release-config-evidence.json",
     "artifacts/ddd/release/readiness-summary.json"
   ],
-  "missingArtifacts": [
-    "artifacts/ddd/release/release-env-lint.json",
-    "artifacts/ddd/config/release-config-evidence.json",
-    "artifacts/ddd/release/readiness-summary.json"
-  ],
+  "missingArtifacts": [],
   "completedAt": "<ISO-8601 timestamp after validation commands pass>",
   "completedBy": "<owner or workflow actor>",
   "acceptanceCommands": [

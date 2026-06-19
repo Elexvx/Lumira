@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "redacted": true,
   "envFile": null,
@@ -9,62 +9,10 @@
   "duplicateKeys": [],
   "requiredSelectedKeyCount": 0,
   "requiredSelectedKeys": [],
-  "laneReceipts": [
-    {
-      "lane": "p0-release-env",
-      "owner": "release-infra",
-      "sourcePlan": "release-env-plan.json",
-      "status": "BLOCKED",
-      "inputCount": 1,
-      "passedInputCount": 0,
-      "selectedKeys": [],
-      "candidateKeyCount": 1,
-      "issueCount": 1,
-      "firstIssue": "DDD_RELEASE_ENV_FILE is required"
-    },
-    {
-      "lane": "p1-runtime-business",
-      "owner": "release-infra",
-      "sourcePlan": "runtime-business-submission-plan.json",
-      "status": "BLOCKED",
-      "inputCount": 5,
-      "passedInputCount": 0,
-      "selectedKeys": [],
-      "candidateKeyCount": 5,
-      "issueCount": 5,
-      "firstIssue": "LUMIRA_BASE_URL is required"
-    },
-    {
-      "lane": "p1-p2-data-safety",
-      "owner": "bounded-context owners",
-      "sourcePlan": "data-safety-submission-plan.json",
-      "status": "BLOCKED",
-      "inputCount": 4,
-      "passedInputCount": 0,
-      "selectedKeys": [],
-      "candidateKeyCount": 9,
-      "issueCount": 9,
-      "firstIssue": "DDD_ROLLBACK_DRILL_FILE is required"
-    }
-  ],
-  "issueCount": 16,
+  "laneReceipts": [],
+  "issueCount": 1,
   "issues": [
-    "DDD_NEXT_ACTION_ENV_FILE or --next-action-env-file is required",
-    "p0-release-env: DDD_RELEASE_ENV_FILE is required",
-    "p1-runtime-business: LUMIRA_BASE_URL is required",
-    "p1-runtime-business: PLAYWRIGHT_BASE_URL is required",
-    "p1-runtime-business: DDD_DEPLOYMENT_EVIDENCE is required",
-    "p1-runtime-business: DDD_FRONTEND_DEPLOYMENT_EVIDENCE is required",
-    "p1-runtime-business: DDD_FRONTEND_EXPECT_DEPLOYED is required",
-    "p1-p2-data-safety: DDD_ROLLBACK_DRILL_FILE is required",
-    "p1-p2-data-safety: DDD_ROLLBACK_DRILL_DEFERRAL_FILE is required",
-    "p1-p2-data-safety: DDD_ROLLBACK_DRILL_ENVIRONMENT is required",
-    "p1-p2-data-safety: DDD_EVIDENCE_ENVIRONMENT is required",
-    "p1-p2-data-safety: DDD_RELEASE_ENVIRONMENT is required",
-    "p1-p2-data-safety: DDD_RELEASE_CANDIDATE is required",
-    "p1-p2-data-safety: GITHUB_SHA is required",
-    "p1-p2-data-safety: DDD_EVIDENCE_OPERATOR is required",
-    "p1-p2-data-safety: GITHUB_ACTOR is required"
+    "DDD_NEXT_ACTION_ENV_FILE or --next-action-env-file is required"
   ],
   "passCriteria": [
     "status must be PASS",

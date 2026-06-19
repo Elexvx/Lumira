@@ -72,7 +72,7 @@ groups:
         execErrState: Error
         for: 2m
         annotations:
-          summary: "The backend service target is down."
+          summary: "The lumira-backend service target is down."
           description: "Prometheus reports the lumira-server target as unavailable."
         labels:
           severity: critical
@@ -150,7 +150,7 @@ groups:
         for: 5m
         annotations:
           summary: "5xx error ratio is above 5%."
-          description: "A backend service has elevated server-side errors over the last 5 minutes."
+          description: "A lumira-backend service has elevated server-side errors over the last 5 minutes."
         labels:
           severity: warning
           service_namespace: lumira
@@ -226,7 +226,7 @@ groups:
         for: 5m
         annotations:
           summary: "P95 latency is above 1 second."
-          description: "A backend service has sustained high request latency."
+          description: "A lumira-backend service has sustained high request latency."
         labels:
           severity: warning
           service_namespace: lumira
@@ -303,7 +303,7 @@ groups:
         for: 10m
         annotations:
           summary: "JVM heap usage is above 85%."
-          description: "A backend JVM heap has stayed above the configured usage threshold."
+          description: "A lumira-backend JVM heap has stayed above the configured usage threshold."
         labels:
           severity: warning
           service_namespace: lumira
@@ -375,7 +375,7 @@ groups:
         for: 3m
         annotations:
           summary: "Service availability is flapping."
-          description: "Prometheus observed repeated UP/DOWN transitions for a backend service."
+          description: "Prometheus observed repeated UP/DOWN transitions for a lumira-backend service."
         labels:
           severity: warning
           service_namespace: lumira

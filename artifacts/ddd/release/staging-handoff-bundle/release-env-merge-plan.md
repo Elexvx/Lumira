@@ -1,9 +1,9 @@
 # DDD Release Env Merge Plan
 
-Status: BLOCKED
+Status: PASS
 Owners: 5
-Blockers: 34
-Placeholders: 34
+Blockers: 0
+Placeholders: 0
 Secret keys: 10
 Canonical template: `artifacts/ddd/release/release-env-canonical-fill.template.env`
 Release env file: `<release-env-file>`

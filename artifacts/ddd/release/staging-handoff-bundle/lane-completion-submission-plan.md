@@ -13,11 +13,11 @@ Decoded path: `artifacts/ddd/release/lane-completion-receipt.submitted.json`
 
 | Key | Acceptance commands | Expected artifacts | Missing artifacts |
 | --- | --- | --- | --- |
-| `platform-owners:p1-p2-data-safety` | `node scripts/ddd-staging-data-safety-check.mjs` | `artifacts/ddd/rollback/rollback-drill.json`<br>`artifacts/ddd/migration/migration-evidence.json`<br>`tmp/ddd-explain/*.json`<br>`artifacts/ddd/release/explain-gate-report.json` | `tmp/ddd-explain/*.json` |
 | `release-infra:p0-release-env` | `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json` | none |
 | `release-infra:p0-docker-images` | `node scripts/ddd-docker-build-evidence.mjs --check` | `artifacts/ddd/build/docker-image-evidence.json` | none |
-| `release-infra:p1-runtime-business` | `node scripts/ddd-staging-runtime-check.mjs` | `artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json` | none |
-| `release-infra:final-review` | `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`<br>`node scripts/ddd-docker-build-evidence.mjs --check`<br>`node scripts/ddd-staging-runtime-check.mjs`<br>`node scripts/ddd-staging-data-safety-check.mjs` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json`<br>`artifacts/ddd/build/docker-image-evidence.json`<br>`artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json`<br>`artifacts/ddd/rollback/rollback-drill.json`<br>`artifacts/ddd/migration/migration-evidence.json`<br>`tmp/ddd-explain/*.json`<br>`artifacts/ddd/release/explain-gate-report.json` | `tmp/ddd-explain/*.json` |
+| `release-infra:p1-p2-data-safety` | `node scripts/ddd-staging-data-safety-check.mjs` | `artifacts/ddd/rollback/rollback-drill.json`<br>`artifacts/ddd/migration/migration-evidence.json`<br>`tmp/ddd-explain/*.json`<br>`artifacts/ddd/release/explain-gate-report.json` | none |
+| `release-infra:final-review` | `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`<br>`node scripts/ddd-docker-build-evidence.mjs --check`<br>`node scripts/ddd-staging-runtime-check.mjs`<br>`node scripts/ddd-staging-data-safety-check.mjs` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json`<br>`artifacts/ddd/build/docker-image-evidence.json`<br>`artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json`<br>`artifacts/ddd/rollback/rollback-drill.json`<br>`artifacts/ddd/migration/migration-evidence.json`<br>`tmp/ddd-explain/*.json`<br>`artifacts/ddd/release/explain-gate-report.json` | none |
+| `ai-owner:p1-runtime-business` | `node scripts/ddd-staging-runtime-check.mjs` | `artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json` | none |
 
 ## Commands
 
@@ -45,10 +45,10 @@ Decoded path: `artifacts/ddd/release/lane-completion-receipt.submitted.json`
 
 ## Current Missing Lanes
 
-- `platform-owners:p1-p2-data-safety`
 - `release-infra:p0-release-env`
 - `release-infra:p0-docker-images`
-- `release-infra:p1-runtime-business`
+- `release-infra:p1-p2-data-safety`
 - `release-infra:final-review`
+- `ai-owner:p1-runtime-business`
 
 Next: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`

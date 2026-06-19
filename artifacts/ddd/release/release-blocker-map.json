@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T06:54:03.604Z",
+  "generatedAt": "2026-06-19T13:42:59.865Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -32,10 +32,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.252Z",
-      "generatedAt": "2026-06-17T05:46:16.010Z",
-      "status": "FAIL",
-      "blockers": 156,
+      "modifiedAt": "2026-06-19T13:42:37.440Z",
+      "generatedAt": "2026-06-19T13:42:37.438Z",
+      "status": "PASS",
+      "blockers": 0,
       "warnings": 0
     },
     "releaseConfig": {
@@ -44,10 +44,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.196Z",
-      "generatedAt": "2026-06-17T06:28:34.918Z",
-      "status": "FAIL",
-      "blockers": 63,
+      "modifiedAt": "2026-06-19T13:42:37.550Z",
+      "generatedAt": "2026-06-19T13:42:37.547Z",
+      "status": "PASS",
+      "blockers": 0,
       "warnings": 0
     },
     "docker": {
@@ -56,8 +56,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.195Z",
-      "generatedAt": "2026-06-16T21:45:55.209Z",
+      "modifiedAt": "2026-06-19T08:02:24.849Z",
+      "generatedAt": "2026-06-19T08:02:24.846Z",
       "status": "FAIL",
       "blockers": 2,
       "warnings": null
@@ -432,64 +432,27 @@
         }
       ],
       "readyBatchIds": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
-      "blockedBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-infra"
+      ],
       "commands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
         "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
         "node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node scripts/ddd-runtime-readiness-smoke.mjs",
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json",
         "artifacts/ddd/build/docker-image-evidence.json",
-        "artifacts/ddd/readiness/summary.json"
+        "artifacts/ddd/readiness/summary.json",
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/release-evidence-gate.json",
+        "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-release-env-lint-release-infra",
-          "priority": "P0",
-          "source": "release-env-lint",
-          "owner": "release-infra",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/release-env-lint.json",
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-            "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-release-config-release-infra",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "release-infra",
-          "canRunImmediately": true,
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p0-docker-release-infra",
           "priority": "P0",
@@ -525,6 +488,27 @@
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
             "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p3-orchestrator-release-infra",
+          "priority": "P3",
+          "source": "orchestrator",
+          "owner": "release-infra",
+          "canRunImmediately": false,
+          "commands": [
+            "node scripts/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/release/orchestrator-report.json",
+            "artifacts/ddd/release/release-evidence-gate.json",
+            "artifacts/ddd/release/readiness-summary.json"
+          ],
+          "exitCriteria": [
+            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+            "Final strict release gate and readiness summary report zero blockers.",
+            "Run only after all prerequisite evidence batches are clean."
           ]
         }
       ]
@@ -1442,44 +1426,22 @@
           "action": "Regenerate Payment webhook E2E smoke against an HTTPS non-local production-equivalent webhook URL with provider sandbox or deployment evidence."
         }
       ],
-      "readyBatchIds": [
-        "p0-release-config-payment-owner"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p1-business-e2e-payment-owner",
         "p1-rollback-payment-owner"
       ],
       "commands": [
-        "node scripts/ddd-release-config-evidence.mjs",
         "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
         "node scripts/ddd-rollback-deferral-template.mjs",
         "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
         "node scripts/ddd-rollback-drill-evidence.mjs"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json",
         "artifacts/ddd/payment/payment-webhook-e2e.json",
         "artifacts/ddd/rollback/rollback-drill.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-release-config-payment-owner",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "payment-owner",
-          "canRunImmediately": true,
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p1-business-e2e-payment-owner",
           "priority": "P1",
@@ -1627,36 +1589,11 @@
           "action": "Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors."
         }
       ],
-      "readyBatchIds": [
-        "p0-release-config-platform-events"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "candidateBatches": [
-        {
-          "id": "p0-release-config-platform-events",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "platform-events",
-          "canRunImmediately": true,
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        }
-      ]
+      "commands": [],
+      "expectedArtifacts": [],
+      "candidateBatches": []
     }
   ],
   "categories": [
@@ -1945,9 +1882,6 @@
         }
       ],
       "readyBatchIds": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-payment-owner",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
         "p0-authenticated-performance-release-performance"
@@ -1958,11 +1892,10 @@
         "p1-business-e2e-payment-owner",
         "p1-rollback-file-owner",
         "p1-rollback-job-owner",
-        "p1-rollback-payment-owner"
+        "p1-rollback-payment-owner",
+        "p3-orchestrator-release-infra"
       ],
       "commands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
         "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
         "node scripts/ddd-docker-build-evidence.mjs",
         "node scripts/ddd-runtime-readiness-smoke.mjs",
@@ -1973,11 +1906,11 @@
         "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
         "node scripts/ddd-rollback-deferral-template.mjs",
         "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node scripts/ddd-rollback-drill-evidence.mjs",
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json",
         "artifacts/ddd/build/docker-image-evidence.json",
         "artifacts/ddd/readiness/summary.json",
         "artifacts/ddd/performance/authenticated-runtime-actual.json",
@@ -1986,65 +1919,12 @@
         "artifacts/ddd/file/file-processing-e2e.json",
         "artifacts/ddd/jobs/job-e2e-smoke.json",
         "artifacts/ddd/payment/payment-webhook-e2e.json",
-        "artifacts/ddd/rollback/rollback-drill.json"
+        "artifacts/ddd/rollback/rollback-drill.json",
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/release-evidence-gate.json",
+        "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-release-env-lint-release-infra",
-          "priority": "P0",
-          "source": "release-env-lint",
-          "owner": "release-infra",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/release-env-lint.json",
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-            "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-release-config-payment-owner",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "payment-owner",
-          "canRunImmediately": true,
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-release-config-release-infra",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "release-infra",
-          "canRunImmediately": true,
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p0-docker-release-infra",
           "priority": "P0",
@@ -2206,6 +2086,27 @@
           ],
           "exitCriteria": [
             "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+          ]
+        },
+        {
+          "id": "p3-orchestrator-release-infra",
+          "priority": "P3",
+          "source": "orchestrator",
+          "owner": "release-infra",
+          "canRunImmediately": false,
+          "commands": [
+            "node scripts/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/release/orchestrator-report.json",
+            "artifacts/ddd/release/release-evidence-gate.json",
+            "artifacts/ddd/release/readiness-summary.json"
+          ],
+          "exitCriteria": [
+            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+            "Final strict release gate and readiness summary report zero blockers.",
+            "Run only after all prerequisite evidence batches are clean."
           ]
         }
       ]
@@ -2651,64 +2552,27 @@
         }
       ],
       "readyBatchIds": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
-      "blockedBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-infra"
+      ],
       "commands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
         "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
         "node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node scripts/ddd-runtime-readiness-smoke.mjs",
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json",
         "artifacts/ddd/build/docker-image-evidence.json",
-        "artifacts/ddd/readiness/summary.json"
+        "artifacts/ddd/readiness/summary.json",
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/release-evidence-gate.json",
+        "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-release-env-lint-release-infra",
-          "priority": "P0",
-          "source": "release-env-lint",
-          "owner": "release-infra",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/release-env-lint.json",
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-            "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-release-config-release-infra",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "release-infra",
-          "canRunImmediately": true,
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p0-docker-release-infra",
           "priority": "P0",
@@ -2744,6 +2608,27 @@
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
             "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p3-orchestrator-release-infra",
+          "priority": "P3",
+          "source": "orchestrator",
+          "owner": "release-infra",
+          "canRunImmediately": false,
+          "commands": [
+            "node scripts/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/release/orchestrator-report.json",
+            "artifacts/ddd/release/release-evidence-gate.json",
+            "artifacts/ddd/release/readiness-summary.json"
+          ],
+          "exitCriteria": [
+            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+            "Final strict release gate and readiness summary report zero blockers.",
+            "Run only after all prerequisite evidence batches are clean."
           ]
         }
       ]
@@ -2892,9 +2777,7 @@
           "action": "Regenerate Job E2E evidence within the release freshness window against the production-equivalent environment."
         }
       ],
-      "readyBatchIds": [
-        "p0-release-config-payment-owner"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
@@ -2904,7 +2787,6 @@
         "p1-rollback-payment-owner"
       ],
       "commands": [
-        "node scripts/ddd-release-config-evidence.mjs",
         "node scripts/ddd-file-processing-e2e-smoke.mjs",
         "node scripts/ddd-job-e2e-smoke.mjs",
         "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
@@ -2913,31 +2795,12 @@
         "node scripts/ddd-rollback-drill-evidence.mjs"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json",
         "artifacts/ddd/file/file-processing-e2e.json",
         "artifacts/ddd/jobs/job-e2e-smoke.json",
         "artifacts/ddd/payment/payment-webhook-e2e.json",
         "artifacts/ddd/rollback/rollback-drill.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-release-config-payment-owner",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "payment-owner",
-          "canRunImmediately": true,
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p1-business-e2e-file-owner",
           "priority": "P1",
@@ -3078,64 +2941,27 @@
         }
       ],
       "readyBatchIds": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
-      "blockedBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-infra"
+      ],
       "commands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
         "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
         "node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node scripts/ddd-runtime-readiness-smoke.mjs",
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json",
         "artifacts/ddd/build/docker-image-evidence.json",
-        "artifacts/ddd/readiness/summary.json"
+        "artifacts/ddd/readiness/summary.json",
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/release-evidence-gate.json",
+        "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-release-env-lint-release-infra",
-          "priority": "P0",
-          "source": "release-env-lint",
-          "owner": "release-infra",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/release-env-lint.json",
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-            "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-release-config-release-infra",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "release-infra",
-          "canRunImmediately": true,
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p0-docker-release-infra",
           "priority": "P0",
@@ -3171,6 +2997,27 @@
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
             "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p3-orchestrator-release-infra",
+          "priority": "P3",
+          "source": "orchestrator",
+          "owner": "release-infra",
+          "canRunImmediately": false,
+          "commands": [
+            "node scripts/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/release/orchestrator-report.json",
+            "artifacts/ddd/release/release-evidence-gate.json",
+            "artifacts/ddd/release/readiness-summary.json"
+          ],
+          "exitCriteria": [
+            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+            "Final strict release gate and readiness summary report zero blockers.",
+            "Run only after all prerequisite evidence batches are clean."
           ]
         }
       ]
@@ -3619,36 +3466,11 @@
           "action": "Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors."
         }
       ],
-      "readyBatchIds": [
-        "p0-release-config-platform-events"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [],
-      "commands": [
-        "node scripts/ddd-release-config-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/config/release-config-evidence.json"
-      ],
-      "candidateBatches": [
-        {
-          "id": "p0-release-config-platform-events",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "platform-events",
-          "canRunImmediately": true,
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        }
-      ]
+      "commands": [],
+      "expectedArtifacts": [],
+      "candidateBatches": []
     },
     {
       "category": "performance-freshness",
@@ -3798,64 +3620,27 @@
         }
       ],
       "readyBatchIds": [
-        "p0-release-env-lint-release-infra",
-        "p0-release-config-release-infra",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
-      "blockedBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-infra"
+      ],
       "commands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
         "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
         "node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node scripts/ddd-runtime-readiness-smoke.mjs",
+        "node scripts/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json",
         "artifacts/ddd/build/docker-image-evidence.json",
-        "artifacts/ddd/readiness/summary.json"
+        "artifacts/ddd/readiness/summary.json",
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/release-evidence-gate.json",
+        "artifacts/ddd/release/readiness-summary.json"
       ],
       "candidateBatches": [
-        {
-          "id": "p0-release-env-lint-release-infra",
-          "priority": "P0",
-          "source": "release-env-lint",
-          "owner": "release-infra",
-          "canRunImmediately": true,
-          "commands": [
-            "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/release-env-lint.json",
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "Use a completed DDD_RELEASE_ENV_FILE, not release-env-missing.template.env.",
-            "release-env-lint summary primaryBlockers is 0 before expensive runtime evidence is rerun.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-release-config-release-infra",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "release-infra",
-          "canRunImmediately": true,
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ],
-          "exitCriteria": [
-            "release-config-evidence status is PASS with no contract issues.",
-            "releaseConfigBlockersAfterPlaceholders is 0 after placeholders are replaced.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
         {
           "id": "p0-docker-release-infra",
           "priority": "P0",
@@ -3891,6 +3676,27 @@
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
             "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p3-orchestrator-release-infra",
+          "priority": "P3",
+          "source": "orchestrator",
+          "owner": "release-infra",
+          "canRunImmediately": false,
+          "commands": [
+            "node scripts/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/release/orchestrator-report.json",
+            "artifacts/ddd/release/release-evidence-gate.json",
+            "artifacts/ddd/release/readiness-summary.json"
+          ],
+          "exitCriteria": [
+            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
+            "Final strict release gate and readiness summary report zero blockers.",
+            "Run only after all prerequisite evidence batches are clean."
           ]
         }
       ]

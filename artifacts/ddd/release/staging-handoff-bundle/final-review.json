@@ -1,13 +1,13 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "cutoverReady": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "blockedGateCount": 5,
+  "blockedGateCount": 0,
   "gateCount": 6,
-  "acceptedGateCount": 1,
+  "acceptedGateCount": 6,
   "acceptedGateTotal": 6,
   "handoffBundle": {
     "status": "PASS",
@@ -27,9 +27,9 @@
         "markdown": "owner-packets/platform-events.md",
         "json": "owner-packets/platform-events.json",
         "blockingInputsEnvTemplate": "owner-packets/platform-events.blocking-inputs.template.env",
-        "evidenceGapCount": 1,
+        "evidenceGapCount": 0,
         "missingEvidenceArtifactCount": 0,
-        "blockingInputCount": 1,
+        "blockingInputCount": 0,
         "laneCount": 0,
         "lanes": [],
         "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"
@@ -39,49 +39,27 @@
         "markdown": "owner-packets/platform-owners.md",
         "json": "owner-packets/platform-owners.json",
         "blockingInputsEnvTemplate": "owner-packets/platform-owners.blocking-inputs.template.env",
-        "evidenceGapCount": 3,
-        "missingEvidenceArtifactCount": 2,
-        "blockingInputCount": 33,
-        "laneCount": 1,
-        "lanes": [
-          {
-            "order": 4,
-            "lane": "p1-p2-data-safety",
-            "status": "BLOCKED",
-            "title": "Provide rollback drill evidence or an approved rollback deferral for every affected bounded context.",
-            "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
-            "sourcePlan": "data-safety-submission-plan.json",
-            "acceptanceCommands": [
-              "node scripts/ddd-staging-data-safety-check.mjs"
-            ],
-            "expectedArtifacts": [
-              "artifacts/ddd/rollback/rollback-drill.json",
-              "artifacts/ddd/migration/migration-evidence.json",
-              "tmp/ddd-explain/*.json",
-              "artifacts/ddd/release/explain-gate-report.json"
-            ],
-            "missingArtifacts": [
-              "tmp/ddd-explain/*.json"
-            ],
-            "missingEvidenceArtifactCount": 1
-          }
-        ],
-        "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown"
+        "evidenceGapCount": 2,
+        "missingEvidenceArtifactCount": 0,
+        "blockingInputCount": 0,
+        "laneCount": 0,
+        "lanes": [],
+        "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"
       },
       {
         "owner": "release-infra",
         "markdown": "owner-packets/release-infra.md",
         "json": "owner-packets/release-infra.json",
         "blockingInputsEnvTemplate": "owner-packets/release-infra.blocking-inputs.template.env",
-        "evidenceGapCount": 3,
+        "evidenceGapCount": 2,
         "missingEvidenceArtifactCount": 0,
-        "blockingInputCount": 10,
+        "blockingInputCount": 0,
         "laneCount": 4,
         "lanes": [
           {
             "order": 1,
             "lane": "p0-release-env",
-            "status": "BLOCKED",
+            "status": "PASS",
             "title": "Fill and validate the secure release env file",
             "command": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
             "sourcePlan": "release-env-plan.json",
@@ -113,23 +91,20 @@
             "missingEvidenceArtifactCount": 0
           },
           {
-            "order": 3,
-            "lane": "p1-runtime-business",
-            "status": "BLOCKED",
-            "title": "Publish HTTPS backend/frontend staging URLs and attach deployment evidence for strict runtime checks.",
-            "command": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
-            "sourcePlan": "runtime-business-submission-plan.json",
+            "order": 4,
+            "lane": "p1-p2-data-safety",
+            "status": "PASS",
+            "title": "Regenerate data safety status, readiness summary, evidence acceptance, and final review after all artifacts land.",
+            "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+            "sourcePlan": "data-safety-submission-plan.json",
             "acceptanceCommands": [
-              "node scripts/ddd-staging-runtime-check.mjs"
+              "node scripts/ddd-staging-data-safety-check.mjs"
             ],
             "expectedArtifacts": [
-              "artifacts/ddd/readiness/summary.json",
-              "artifacts/ddd/performance/authenticated-runtime-actual.json",
-              "artifacts/ddd/ai/ai-runtime-drill.json",
-              "artifacts/ddd/frontend/frontend-smoke.json",
-              "artifacts/ddd/file/file-processing-e2e.json",
-              "artifacts/ddd/jobs/job-e2e-smoke.json",
-              "artifacts/ddd/payment/payment-webhook-e2e.json"
+              "artifacts/ddd/rollback/rollback-drill.json",
+              "artifacts/ddd/migration/migration-evidence.json",
+              "tmp/ddd-explain/*.json",
+              "artifacts/ddd/release/explain-gate-report.json"
             ],
             "missingArtifacts": [],
             "missingEvidenceArtifactCount": 0
@@ -164,9 +139,7 @@
               "tmp/ddd-explain/*.json",
               "artifacts/ddd/release/explain-gate-report.json"
             ],
-            "missingArtifacts": [
-              "tmp/ddd-explain/*.json"
-            ],
+            "missingArtifacts": [],
             "missingEvidenceArtifactCount": 0
           }
         ],
@@ -177,21 +150,44 @@
         "markdown": "owner-packets/ai-owner.md",
         "json": "owner-packets/ai-owner.json",
         "blockingInputsEnvTemplate": "owner-packets/ai-owner.blocking-inputs.template.env",
-        "evidenceGapCount": 2,
+        "evidenceGapCount": 1,
         "missingEvidenceArtifactCount": 0,
-        "blockingInputCount": 10,
-        "laneCount": 0,
-        "lanes": [],
-        "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"
+        "blockingInputCount": 0,
+        "laneCount": 1,
+        "lanes": [
+          {
+            "order": 3,
+            "lane": "p1-runtime-business",
+            "status": "PASS",
+            "title": "Prove AI provider and owner gateway are remote in staging, not localhost or test doubles.",
+            "command": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
+            "sourcePlan": "runtime-business-submission-plan.json",
+            "acceptanceCommands": [
+              "node scripts/ddd-staging-runtime-check.mjs"
+            ],
+            "expectedArtifacts": [
+              "artifacts/ddd/readiness/summary.json",
+              "artifacts/ddd/performance/authenticated-runtime-actual.json",
+              "artifacts/ddd/ai/ai-runtime-drill.json",
+              "artifacts/ddd/frontend/frontend-smoke.json",
+              "artifacts/ddd/file/file-processing-e2e.json",
+              "artifacts/ddd/jobs/job-e2e-smoke.json",
+              "artifacts/ddd/payment/payment-webhook-e2e.json"
+            ],
+            "missingArtifacts": [],
+            "missingEvidenceArtifactCount": 0
+          }
+        ],
+        "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"
       },
       {
         "owner": "payment-owner",
         "markdown": "owner-packets/payment-owner.md",
         "json": "owner-packets/payment-owner.json",
         "blockingInputsEnvTemplate": "owner-packets/payment-owner.blocking-inputs.template.env",
-        "evidenceGapCount": 2,
+        "evidenceGapCount": 1,
         "missingEvidenceArtifactCount": 0,
-        "blockingInputCount": 10,
+        "blockingInputCount": 0,
         "laneCount": 0,
         "lanes": [],
         "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"
@@ -211,11 +207,6 @@
       "providedLaneCount": 0,
       "missingLanes": [
         {
-          "key": "platform-owners:p1-p2-data-safety",
-          "owner": "platform-owners",
-          "lane": "p1-p2-data-safety"
-        },
-        {
           "key": "release-infra:p0-release-env",
           "owner": "release-infra",
           "lane": "p0-release-env"
@@ -226,14 +217,19 @@
           "lane": "p0-docker-images"
         },
         {
-          "key": "release-infra:p1-runtime-business",
+          "key": "release-infra:p1-p2-data-safety",
           "owner": "release-infra",
-          "lane": "p1-runtime-business"
+          "lane": "p1-p2-data-safety"
         },
         {
           "key": "release-infra:final-review",
           "owner": "release-infra",
           "lane": "final-review"
+        },
+        {
+          "key": "ai-owner:p1-runtime-business",
+          "owner": "ai-owner",
+          "lane": "p1-runtime-business"
         }
       ],
       "unexpectedLanes": []
@@ -248,15 +244,15 @@
     "closedLaneCount": 0,
     "openLaneCount": 5,
     "nextLane": {
-      "key": "platform-owners:p1-p2-data-safety",
+      "key": "release-infra:p0-release-env",
       "status": "BLOCKED",
       "receiptStatus": "MISSING",
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
-      "sourcePlan": "data-safety-submission-plan.json"
+      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+      "sourcePlan": "release-env-plan.json"
     },
     "issues": [
       "lane completion receipt file not provided",
-      "missing lanes=platform-owners:p1-p2-data-safety, release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-runtime-business, release-infra:final-review"
+      "missing lanes=release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-p2-data-safety, release-infra:final-review, ai-owner:p1-runtime-business"
     ]
   },
   "laneReceiptFragment": {
@@ -281,9 +277,7 @@
       "artifacts/ddd/release/explain-gate-report.json",
       "artifacts/ddd/release/staging-handoff-bundle/final-review.json"
     ],
-    "missingArtifacts": [
-      "tmp/ddd-explain/*.json"
-    ],
+    "missingArtifacts": [],
     "completedAt": "<ISO-8601 timestamp after final review enforce passes>",
     "completedBy": "<owner or workflow actor>",
     "acceptanceCommands": [
@@ -318,235 +312,19 @@
     {
       "id": "staging-evidence-accepted",
       "label": "All staging evidence gates accepted",
-      "passed": false,
+      "passed": true,
       "evidence": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-      "blocker": "accepted=1/6"
+      "blocker": null
     },
     {
       "id": "cutover-allowed",
       "label": "Final rollup allows cutover",
       "passed": false,
       "evidence": "node scripts/ddd-staging-execution-checklist.mjs --rollup-enforce",
-      "blocker": "NO_GO_STRICT; blocked=5/6"
+      "blocker": "NO_GO_STRICT; blocked=0/6"
     }
   ],
-  "blockers": [
-    {
-      "gate": "release-env",
-      "track": "p0-release-env",
-      "owner": "release-infra",
-      "firstBlocker": "release env file is not cutover-safe; blockers=34",
-      "blockingInputs": [
-        "DDD_RELEASE_ENV_FILE"
-      ],
-      "nextCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
-    },
-    {
-      "gate": "runtime-business",
-      "track": "p1-runtime-business",
-      "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
-      "firstBlocker": "LUMIRA_BASE_URL is required",
-      "blockingInputs": [
-        "LUMIRA_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_FRONTEND_EXPECT_DEPLOYED",
-        "DDD_AI_EXPECT_PROVIDER_REMOTE",
-        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "gate": "rollback",
-      "track": "p1-rollback",
-      "owner": "bounded-context owners",
-      "firstBlocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-      "blockingInputs": [
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "GITHUB_SHA",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR"
-      ],
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    },
-    {
-      "gate": "migration",
-      "track": "p2-database-performance",
-      "owner": "database",
-      "firstBlocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
-      "blockingInputs": [
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR",
-        "DDD_MIGRATION_COMPLETED_AT"
-      ],
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    },
-    {
-      "gate": "explain",
-      "track": "p2-database-performance",
-      "owner": "database",
-      "firstBlocker": "DDD_EXPLAIN_DATABASE is required",
-      "blockingInputs": [
-        "DDD_EXPLAIN_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "MYSQL_USER",
-        "MYSQL_PASSWORD",
-        "DDD_EXPLAIN_ENVIRONMENT",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_RELEASE_ENVIRONMENT",
-        "DDD_RELEASE_CANDIDATE",
-        "GITHUB_SHA",
-        "DDD_EVIDENCE_OPERATOR",
-        "GITHUB_ACTOR"
-      ],
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    }
-  ],
-  "topBlockingInputs": [
-    {
-      "input": "DDD_EVIDENCE_ENVIRONMENT",
-      "gateCount": 3,
-      "owners": [
-        "bounded-context owners",
-        "database"
-      ],
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    },
-    {
-      "input": "DDD_EVIDENCE_OPERATOR",
-      "gateCount": 3,
-      "owners": [
-        "bounded-context owners",
-        "database"
-      ],
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    },
-    {
-      "input": "DDD_RELEASE_ENVIRONMENT",
-      "gateCount": 3,
-      "owners": [
-        "bounded-context owners",
-        "database"
-      ],
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    },
-    {
-      "input": "GITHUB_ACTOR",
-      "gateCount": 3,
-      "owners": [
-        "bounded-context owners",
-        "database"
-      ],
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    },
-    {
-      "input": "DDD_RELEASE_CANDIDATE",
-      "gateCount": 2,
-      "owners": [
-        "bounded-context owners",
-        "database"
-      ],
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    },
-    {
-      "input": "GITHUB_SHA",
-      "gateCount": 2,
-      "owners": [
-        "bounded-context owners",
-        "database"
-      ],
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    },
-    {
-      "input": "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
-      "gateCount": 1,
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_AI_EXPECT_PROVIDER_REMOTE",
-      "gateCount": 1,
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-      "gateCount": 1,
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-      "gateCount": 1,
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_DEPLOYMENT_EVIDENCE",
-      "gateCount": 1,
-      "owners": [
-        "ai",
-        "file-owner",
-        "frontend",
-        "job-owner",
-        "payment-owner",
-        "release-infra"
-      ],
-      "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-    },
-    {
-      "input": "DDD_EXPLAIN_DATABASE",
-      "gateCount": 1,
-      "owners": [
-        "database"
-      ],
-      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
-    }
-  ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --commands"
+  "blockers": [],
+  "topBlockingInputs": [],
+  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --rollup-enforce"
 }

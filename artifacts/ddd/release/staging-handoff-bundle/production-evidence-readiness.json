@@ -1,11 +1,11 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:57:07.693Z",
+  "generatedAt": "2026-06-19T14:23:18.022Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "blockedAuditItemCount": 5,
-  "passedAuditItemCount": 2,
+  "blockedAuditItemCount": 4,
+  "passedAuditItemCount": 3,
   "readyEvidenceCount": 0,
   "evidenceGateCount": 5,
   "evidenceGates": [
@@ -32,9 +32,9 @@
       "label": "Owner evidence intake",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
-      "blocker": "missingArtifacts=2; blockingInputs=54"
+      "blocker": "missingArtifacts=0; blockingInputs=0"
     },
     {
       "id": "production-audit",
@@ -43,7 +43,7 @@
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/production-cutover-audit.json",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
       "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit",
-      "blocker": "blockedAuditItems=5"
+      "blocker": "blockedAuditItems=4"
     },
     {
       "id": "final-go-no-go",
@@ -79,9 +79,9 @@
       "label": "Owner evidence intake",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
-      "blocker": "missingArtifacts=2; blockingInputs=54"
+      "blocker": "missingArtifacts=0; blockingInputs=0"
     },
     {
       "id": "production-audit",
@@ -90,7 +90,7 @@
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/production-cutover-audit.json",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
       "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit",
-      "blocker": "blockedAuditItems=5"
+      "blocker": "blockedAuditItems=4"
     },
     {
       "id": "final-go-no-go",
@@ -131,10 +131,10 @@
       "order": 3,
       "id": "owner-evidence",
       "label": "Close next owner evidence lane",
-      "owner": "platform-owners",
+      "owner": "release-infra",
       "status": "ACTION_REQUIRED",
-      "reason": "missingArtifacts=2; blockingInputs=23; lanes=1",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+      "reason": "missingArtifacts=0; blockingInputs=0; lanes=4",
+      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
       "completionSignal": "owner evidence intake has 0 missing required artifacts"
