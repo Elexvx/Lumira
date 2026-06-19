@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:09:18.921Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T06:38:14.272Z",
-      "generatedAt": "2026-06-19T06:38:14.269Z",
+      "modifiedAt": "2026-06-19T18:09:16.572Z",
+      "generatedAt": "2026-06-19T18:09:16.571Z",
       "status": "FAIL",
-      "blockers": 1,
+      "blockers": 12,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -32,8 +32,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:42:37.440Z",
-      "generatedAt": "2026-06-19T13:42:37.438Z",
+      "modifiedAt": "2026-06-19T14:43:03.927Z",
+      "generatedAt": "2026-06-19T14:43:03.923Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -44,8 +44,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:42:37.550Z",
-      "generatedAt": "2026-06-19T13:42:37.547Z",
+      "modifiedAt": "2026-06-19T14:43:04.048Z",
+      "generatedAt": "2026-06-19T14:43:04.044Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -159,15 +159,15 @@
       "warnings": null
     },
     "frontendSmoke": {
-      "file": "artifacts\\ddd\\frontend\\frontend-smoke.json",
-      "relativePath": "frontend/frontend-smoke.json",
-      "present": true,
-      "missing": false,
+      "file": "artifacts\\ddd\\lumira-ui\\frontend-smoke.json",
+      "relativePath": "lumira-ui/frontend-smoke.json",
+      "present": false,
+      "missing": true,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.198Z",
-      "generatedAt": "2026-06-16T20:51:08.151Z",
-      "status": "PASS",
-      "blockers": 0,
+      "modifiedAt": null,
+      "generatedAt": null,
+      "status": null,
+      "blockers": null,
       "warnings": null
     },
     "aiRuntime": {
@@ -188,8 +188,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.312Z",
-      "generatedAt": "2026-06-16T06:24:20.373Z",
+      "modifiedAt": "2026-06-19T13:59:31.821Z",
+      "generatedAt": "2026-06-19T13:59:31.816Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -236,8 +236,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.219Z",
-      "generatedAt": "2026-06-15T20:41:37.875Z",
+      "modifiedAt": "2026-06-19T14:43:03.893Z",
+      "generatedAt": "2026-06-19T14:43:03.891Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
@@ -272,12 +272,14 @@
   },
   "releaseEnvFileCutoverSafe": false,
   "batchCount": 24,
-  "readyBatchCount": 4,
-  "blockedBatchCount": 20,
+  "readyBatchCount": 6,
+  "blockedBatchCount": 18,
   "nextPriority": "P0",
   "nextBatchIds": [
     "p0-docker-release-infra",
     "p0-runtime-readiness-release-infra",
+    "p0-manifest-database",
+    "p0-manifest-lumira-ui",
     "p0-manifest-release-owner",
     "p0-authenticated-performance-release-performance"
   ],
@@ -289,8 +291,7 @@
       "owner": "release-infra",
       "pendingItems": 4,
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
       ],
       "envKeys": [
         "DDD_DOCKER_BUILD_STRICT",
@@ -317,7 +318,7 @@
       ],
       "exitCriteria": [
         "Docker CLI and daemon are available in the evidence runner.",
-        "Required lumira-server and frontend images are built, inspected, and not skipped.",
+        "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
         "Clear this batch before running downstream runtime-heavy evidence."
       ],
       "itemIds": [
@@ -334,7 +335,7 @@
       "owner": "release-infra",
       "pendingItems": 4,
       "commands": [
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node bin/ddd-runtime-readiness-smoke.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -389,15 +390,138 @@
       ]
     },
     {
+      "id": "p0-manifest-database",
+      "priority": "P0",
+      "source": "manifest",
+      "owner": "database",
+      "pendingItems": 2,
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
+      ],
+      "envKeys": [
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+      ],
+      "envCheckGroups": [
+        {
+          "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+          "keys": [
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE"
+          ],
+          "spec": "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE"
+        },
+        {
+          "label": "DDD_MIGRATION_FRESH_DB_VALIDATED",
+          "keys": [
+            "DDD_MIGRATION_FRESH_DB_VALIDATED"
+          ],
+          "spec": "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED"
+        },
+        {
+          "label": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+          "keys": [
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+          ],
+          "spec": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+        },
+        {
+          "label": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+          "keys": [
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+          ],
+          "spec": "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+        }
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ],
+      "itemIds": [
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff"
+      ]
+    },
+    {
+      "id": "p0-manifest-lumira-ui",
+      "priority": "P0",
+      "source": "manifest",
+      "owner": "lumira-ui",
+      "pendingItems": 3,
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
+      ],
+      "envCheckGroups": [
+        {
+          "label": "DDD_EVIDENCE_ENVIRONMENT",
+          "keys": [
+            "DDD_EVIDENCE_ENVIRONMENT"
+          ],
+          "spec": "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT"
+        },
+        {
+          "label": "DDD_FRONTEND_EXPECT_DEPLOYED",
+          "keys": [
+            "DDD_FRONTEND_EXPECT_DEPLOYED"
+          ],
+          "spec": "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED"
+        },
+        {
+          "label": "DDD_RELEASE_CANDIDATE",
+          "keys": [
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
+        },
+        {
+          "label": "PLAYWRIGHT_BASE_URL",
+          "keys": [
+            "FRONTEND_BASE_URL",
+            "PLAYWRIGHT_BASE_URL"
+          ],
+          "spec": "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
+        }
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json",
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ],
+      "itemIds": [
+        "manifest-missing-lumira-ui-frontend-smoke-json",
+        "manifest-missing-lumira-ui-lumira-ui-build-evidence-json",
+        "manifest-missing-lumira-ui-lumira-ui-static-evidence-json"
+      ]
+    },
+    {
       "id": "p0-manifest-release-owner",
       "priority": "P0",
       "source": "manifest",
       "owner": "release-owner",
-      "pendingItems": 1,
+      "pendingItems": 7,
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -443,7 +567,13 @@
         "Clear this batch before running downstream runtime-heavy evidence."
       ],
       "itemIds": [
-        "manifest-missing-no-explain-json-files-in-tmp-ddd-explain"
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff"
       ]
     },
     {
@@ -453,8 +583,8 @@
       "owner": "release-performance",
       "pendingItems": 9,
       "commands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs"
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs"
       ],
       "envKeys": [
         "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
@@ -523,7 +653,7 @@
       "owner": "ai",
       "pendingItems": 3,
       "commands": [
-        "node scripts/ddd-ai-runtime-drill.mjs"
+        "node bin/ddd-ai-runtime-drill.mjs"
       ],
       "envKeys": [
         "BASE_URL",
@@ -638,7 +768,7 @@
         "ai-provider-runtime",
         "ai-runtime-base-url"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -650,7 +780,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -669,10 +799,10 @@
           ]
         },
         {
-          "id": "p0-manifest-release-owner",
+          "id": "p0-manifest-database",
           "priority": "P0",
           "source": "manifest",
-          "owner": "release-owner",
+          "owner": "database",
           "expectedArtifacts": [
             "artifacts/ddd/release/evidence-manifest.json"
           ],
@@ -682,83 +812,18 @@
           ]
         },
         {
-          "id": "p0-authenticated-performance-release-performance",
+          "id": "p0-manifest-lumira-ui",
           "priority": "P0",
-          "source": "authenticated-performance",
-          "owner": "release-performance",
+          "source": "manifest",
+          "owner": "lumira-ui",
           "expectedArtifacts": [
-            "artifacts/ddd/performance/authenticated-runtime-actual.json",
-            "artifacts/ddd/performance/authenticated-runtime-baseline.json",
-            "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json"
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
           ],
           "exitCriteria": [
-            "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
-            "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        }
-      ]
-    },
-    {
-      "id": "p1-frontend-smoke-frontend",
-      "priority": "P1",
-      "source": "frontend-smoke",
-      "owner": "frontend",
-      "pendingItems": 1,
-      "commands": [
-        "node scripts/ddd-frontend-playwright-smoke.mjs",
-        "node scripts/ddd-frontend-smoke-evidence.mjs"
-      ],
-      "envKeys": [
-        "DDD_FRONTEND_EXPECT_DEPLOYED"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "DDD_FRONTEND_EXPECT_DEPLOYED",
-          "keys": [
-            "DDD_FRONTEND_EXPECT_DEPLOYED"
-          ],
-          "spec": "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/frontend/frontend-smoke.json",
-        "artifacts/ddd/frontend/playwright-smoke-results.json"
-      ],
-      "exitCriteria": [
-        "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-        "Required Playwright smoke flows all pass and produce a JSON report."
-      ],
-      "itemIds": [
-        "frontend-deployed-expectation"
-      ],
-      "unmetDependencyCount": 4,
-      "unmetDependencies": [
-        {
-          "id": "p0-docker-release-infra",
-          "priority": "P0",
-          "source": "docker",
-          "owner": "release-infra",
-          "expectedArtifacts": [
-            "artifacts/ddd/build/docker-image-evidence.json"
-          ],
-          "exitCriteria": [
-            "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-runtime-readiness-release-infra",
-          "priority": "P0",
-          "source": "runtime-readiness",
-          "owner": "release-infra",
-          "expectedArtifacts": [
-            "artifacts/ddd/readiness/summary.json"
-          ],
-          "exitCriteria": [
-            "Runtime readiness is generated from an HTTPS non-local backend base URL.",
-            "All 30 owner readiness/health/metrics checks pass.",
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -800,7 +865,7 @@
       "owner": "file-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-file-processing-e2e-smoke.mjs"
+        "node bin/ddd-file-processing-e2e-smoke.mjs"
       ],
       "envKeys": [
         "BASE_URL",
@@ -861,7 +926,7 @@
       "itemIds": [
         "file-processing-production-equivalence"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -873,7 +938,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -888,6 +953,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -929,7 +1023,7 @@
       "owner": "job-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-job-e2e-smoke.mjs"
+        "node bin/ddd-job-e2e-smoke.mjs"
       ],
       "envKeys": [
         "BASE_URL",
@@ -981,7 +1075,7 @@
       "itemIds": [
         "job-e2e-production-equivalence"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -993,7 +1087,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1008,6 +1102,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1049,7 +1172,7 @@
       "owner": "payment-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs"
       ],
       "envKeys": [
         "BASE_URL",
@@ -1099,7 +1222,7 @@
       "itemIds": [
         "payment-webhook-production-equivalence"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1111,7 +1234,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1126,6 +1249,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1167,9 +1319,9 @@
       "owner": "ai-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1248,7 +1400,7 @@
       "itemIds": [
         "AI"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1260,7 +1412,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1275,6 +1427,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1316,9 +1497,9 @@
       "owner": "auth-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1397,7 +1578,7 @@
       "itemIds": [
         "Auth"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1409,7 +1590,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1424,6 +1605,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1465,9 +1675,9 @@
       "owner": "file-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1546,7 +1756,7 @@
       "itemIds": [
         "File"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1558,7 +1768,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1573,6 +1783,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1614,9 +1853,9 @@
       "owner": "iam-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1695,7 +1934,7 @@
       "itemIds": [
         "IAM"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1707,7 +1946,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1722,6 +1961,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1763,9 +2031,9 @@
       "owner": "job-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1844,7 +2112,7 @@
       "itemIds": [
         "Job"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -1856,7 +2124,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1871,6 +2139,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -1912,9 +2209,9 @@
       "owner": "localization-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1993,7 +2290,7 @@
       "itemIds": [
         "Localization"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2005,7 +2302,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2020,6 +2317,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2061,9 +2387,9 @@
       "owner": "message-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -2142,7 +2468,7 @@
       "itemIds": [
         "Message"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2154,7 +2480,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2169,6 +2495,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2210,9 +2565,9 @@
       "owner": "payment-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -2291,7 +2646,7 @@
       "itemIds": [
         "Payment"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2303,7 +2658,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2318,6 +2673,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2359,9 +2743,9 @@
       "owner": "platform-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -2440,7 +2824,7 @@
       "itemIds": [
         "Platform"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2452,7 +2836,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2467,6 +2851,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2508,9 +2921,9 @@
       "owner": "plugin-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -2589,7 +3002,7 @@
       "itemIds": [
         "Plugin"
       ],
-      "unmetDependencyCount": 4,
+      "unmetDependencyCount": 6,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2601,7 +3014,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2616,6 +3029,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2655,10 +3097,10 @@
       "priority": "P2",
       "source": "explain",
       "owner": "database",
-      "pendingItems": 8,
+      "pendingItems": 2,
       "commands": [
-        "node scripts/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_OPERATOR",
@@ -2773,16 +3215,10 @@
         "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
       ],
       "itemIds": [
-        "ai-knowledge-index-retry.json",
         "message-archive-total.json",
-        "message-unread-count.json",
-        "message-visible-list.json",
-        "platform-outbox-owner-relay-file.json",
-        "platform-outbox-owner-relay-message.json",
-        "platform-runtime-appearance.json",
-        "plugin-bootstrap.json"
+        "message-unread-count.json"
       ],
-      "unmetDependencyCount": 19,
+      "unmetDependencyCount": 20,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -2794,7 +3230,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2809,6 +3245,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -2852,20 +3317,6 @@
           "exitCriteria": [
             "AI runtime drill uses HTTPS non-local base URL with remote provider and owner gateway expectations enabled.",
             "Provider is not local fallback and owner gateway has configured owner integrations."
-          ]
-        },
-        {
-          "id": "p1-frontend-smoke-frontend",
-          "priority": "P1",
-          "source": "frontend-smoke",
-          "owner": "frontend",
-          "expectedArtifacts": [
-            "artifacts/ddd/frontend/frontend-smoke.json",
-            "artifacts/ddd/frontend/playwright-smoke-results.json"
-          ],
-          "exitCriteria": [
-            "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-            "Required Playwright smoke flows all pass and produce a JSON report."
           ]
         },
         {
@@ -3036,8 +3487,8 @@
       "owner": "database",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "envKeys": [
         "DDD_MIGRATION_FRESH_DB_EVIDENCE",
@@ -3088,7 +3539,7 @@
       "itemIds": [
         "orchestrator-preflight-migration-runtime-evidence"
       ],
-      "unmetDependencyCount": 20,
+      "unmetDependencyCount": 21,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -3100,7 +3551,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -3119,300 +3570,31 @@
           ]
         },
         {
-          "id": "p0-manifest-release-owner",
+          "id": "p0-manifest-database",
           "priority": "P0",
           "source": "manifest",
-          "owner": "release-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json"
-          ],
-          "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p0-authenticated-performance-release-performance",
-          "priority": "P0",
-          "source": "authenticated-performance",
-          "owner": "release-performance",
-          "expectedArtifacts": [
-            "artifacts/ddd/performance/authenticated-runtime-actual.json",
-            "artifacts/ddd/performance/authenticated-runtime-baseline.json",
-            "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json"
-          ],
-          "exitCriteria": [
-            "Authenticated performance actual is generated from a production-equivalent HTTPS backend.",
-            "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
-            "Clear this batch before running downstream runtime-heavy evidence."
-          ]
-        },
-        {
-          "id": "p1-ai-runtime-ai",
-          "priority": "P1",
-          "source": "ai-runtime",
-          "owner": "ai",
-          "expectedArtifacts": [
-            "artifacts/ddd/ai/ai-runtime-drill.json"
-          ],
-          "exitCriteria": [
-            "AI runtime drill uses HTTPS non-local base URL with remote provider and owner gateway expectations enabled.",
-            "Provider is not local fallback and owner gateway has configured owner integrations."
-          ]
-        },
-        {
-          "id": "p1-frontend-smoke-frontend",
-          "priority": "P1",
-          "source": "frontend-smoke",
-          "owner": "frontend",
-          "expectedArtifacts": [
-            "artifacts/ddd/frontend/frontend-smoke.json",
-            "artifacts/ddd/frontend/playwright-smoke-results.json"
-          ],
-          "exitCriteria": [
-            "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-            "Required Playwright smoke flows all pass and produce a JSON report."
-          ]
-        },
-        {
-          "id": "p1-business-e2e-file-owner",
-          "priority": "P1",
-          "source": "business-e2e",
-          "owner": "file-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/file/file-processing-e2e.json"
-          ],
-          "exitCriteria": [
-            "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
-            "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
-          ]
-        },
-        {
-          "id": "p1-business-e2e-job-owner",
-          "priority": "P1",
-          "source": "business-e2e",
-          "owner": "job-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/jobs/job-e2e-smoke.json"
-          ],
-          "exitCriteria": [
-            "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
-            "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
-          ]
-        },
-        {
-          "id": "p1-business-e2e-payment-owner",
-          "priority": "P1",
-          "source": "business-e2e",
-          "owner": "payment-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/payment/payment-webhook-e2e.json"
-          ],
-          "exitCriteria": [
-            "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
-            "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
-          ]
-        },
-        {
-          "id": "p1-rollback-ai-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "ai-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "id": "p1-rollback-auth-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "auth-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "id": "p1-rollback-file-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "file-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "id": "p1-rollback-iam-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "iam-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "id": "p1-rollback-job-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "job-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "id": "p1-rollback-localization-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "localization-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "id": "p1-rollback-message-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "message-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "id": "p1-rollback-payment-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "payment-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "id": "p1-rollback-platform-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "platform-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "id": "p1-rollback-plugin-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "plugin-owner",
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ]
-        },
-        {
-          "id": "p2-explain-database",
-          "priority": "P2",
-          "source": "explain",
           "owner": "database",
           "expectedArtifacts": [
-            "tmp/ddd-explain/*.json",
-            "artifacts/ddd/release/explain-gate-report.json"
+            "artifacts/ddd/release/evidence-manifest.json"
           ],
           "exitCriteria": [
-            "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
-            "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
-          ]
-        }
-      ]
-    },
-    {
-      "id": "p3-orchestrator-frontend",
-      "priority": "P3",
-      "source": "orchestrator",
-      "owner": "frontend",
-      "pendingItems": 1,
-      "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
-      ],
-      "envKeys": [
-        "FRONTEND_BASE_URL",
-        "PLAYWRIGHT_BASE_URL"
-      ],
-      "envCheckGroups": [
-        {
-          "label": "PLAYWRIGHT_BASE_URL",
-          "keys": [
-            "FRONTEND_BASE_URL",
-            "PLAYWRIGHT_BASE_URL"
-          ],
-          "spec": "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/release-evidence-gate.json",
-        "artifacts/ddd/release/readiness-summary.json"
-      ],
-      "exitCriteria": [
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Run only after all prerequisite evidence batches are clean."
-      ],
-      "itemIds": [
-        "orchestrator-preflight-frontend-runtime-base-url"
-      ],
-      "unmetDependencyCount": 20,
-      "unmetDependencies": [
-        {
-          "id": "p0-docker-release-infra",
-          "priority": "P0",
-          "source": "docker",
-          "owner": "release-infra",
-          "expectedArtifacts": [
-            "artifacts/ddd/build/docker-image-evidence.json"
-          ],
-          "exitCriteria": [
-            "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
         {
-          "id": "p0-runtime-readiness-release-infra",
+          "id": "p0-manifest-lumira-ui",
           "priority": "P0",
-          "source": "runtime-readiness",
-          "owner": "release-infra",
+          "source": "manifest",
+          "owner": "lumira-ui",
           "expectedArtifacts": [
-            "artifacts/ddd/readiness/summary.json"
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
           ],
           "exitCriteria": [
-            "Runtime readiness is generated from an HTTPS non-local backend base URL.",
-            "All 30 owner readiness/health/metrics checks pass.",
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -3456,20 +3638,6 @@
           "exitCriteria": [
             "AI runtime drill uses HTTPS non-local base URL with remote provider and owner gateway expectations enabled.",
             "Provider is not local fallback and owner gateway has configured owner integrations."
-          ]
-        },
-        {
-          "id": "p1-frontend-smoke-frontend",
-          "priority": "P1",
-          "source": "frontend-smoke",
-          "owner": "frontend",
-          "expectedArtifacts": [
-            "artifacts/ddd/frontend/frontend-smoke.json",
-            "artifacts/ddd/frontend/playwright-smoke-results.json"
-          ],
-          "exitCriteria": [
-            "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-            "Required Playwright smoke flows all pass and produce a JSON report."
           ]
         },
         {
@@ -3652,15 +3820,17 @@
       "priority": "P3",
       "source": "orchestrator",
       "owner": "release-infra",
-      "pendingItems": 1,
+      "pendingItems": 2,
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "envKeys": [
         "BASE_URL",
         "DEPLOY_CHECK_BASE_URL",
-        "LUMIRA_BASE_URL"
+        "FRONTEND_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL"
       ],
       "envCheckGroups": [
         {
@@ -3677,6 +3847,14 @@
             "LUMIRA_BASE_URL"
           ],
           "spec": "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+        },
+        {
+          "label": "PLAYWRIGHT_BASE_URL",
+          "keys": [
+            "FRONTEND_BASE_URL",
+            "PLAYWRIGHT_BASE_URL"
+          ],
+          "spec": "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
         }
       ],
       "expectedArtifacts": [
@@ -3690,9 +3868,10 @@
         "Run only after all prerequisite evidence batches are clean."
       ],
       "itemIds": [
-        "orchestrator-preflight-backend-runtime-base-url"
+        "orchestrator-preflight-backend-runtime-base-url",
+        "orchestrator-preflight-frontend-runtime-base-url"
       ],
-      "unmetDependencyCount": 20,
+      "unmetDependencyCount": 21,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -3704,7 +3883,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -3719,6 +3898,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -3762,20 +3970,6 @@
           "exitCriteria": [
             "AI runtime drill uses HTTPS non-local base URL with remote provider and owner gateway expectations enabled.",
             "Provider is not local fallback and owner gateway has configured owner integrations."
-          ]
-        },
-        {
-          "id": "p1-frontend-smoke-frontend",
-          "priority": "P1",
-          "source": "frontend-smoke",
-          "owner": "frontend",
-          "expectedArtifacts": [
-            "artifacts/ddd/frontend/frontend-smoke.json",
-            "artifacts/ddd/frontend/playwright-smoke-results.json"
-          ],
-          "exitCriteria": [
-            "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-            "Required Playwright smoke flows all pass and produce a JSON report."
           ]
         },
         {
@@ -3960,8 +4154,8 @@
       "owner": "release-owner",
       "pendingItems": 1,
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "envKeys": [
         "DDD_RELEASE_EVIDENCE_STRICT"
@@ -3988,7 +4182,7 @@
       "itemIds": [
         "orchestrator-run-mode"
       ],
-      "unmetDependencyCount": 20,
+      "unmetDependencyCount": 21,
       "unmetDependencies": [
         {
           "id": "p0-docker-release-infra",
@@ -4000,7 +4194,7 @@
           ],
           "exitCriteria": [
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped.",
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -4015,6 +4209,35 @@
           "exitCriteria": [
             "Runtime readiness is generated from an HTTPS non-local backend base URL.",
             "All 30 owner readiness/health/metrics checks pass.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-database",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "database",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
+          ]
+        },
+        {
+          "id": "p0-manifest-lumira-ui",
+          "priority": "P0",
+          "source": "manifest",
+          "owner": "lumira-ui",
+          "expectedArtifacts": [
+            "artifacts/ddd/release/evidence-manifest.json",
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
             "Clear this batch before running downstream runtime-heavy evidence."
           ]
         },
@@ -4058,20 +4281,6 @@
           "exitCriteria": [
             "AI runtime drill uses HTTPS non-local base URL with remote provider and owner gateway expectations enabled.",
             "Provider is not local fallback and owner gateway has configured owner integrations."
-          ]
-        },
-        {
-          "id": "p1-frontend-smoke-frontend",
-          "priority": "P1",
-          "source": "frontend-smoke",
-          "owner": "frontend",
-          "expectedArtifacts": [
-            "artifacts/ddd/frontend/frontend-smoke.json",
-            "artifacts/ddd/frontend/playwright-smoke-results.json"
-          ],
-          "exitCriteria": [
-            "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-            "Required Playwright smoke flows all pass and produce a JSON report."
           ]
         },
         {

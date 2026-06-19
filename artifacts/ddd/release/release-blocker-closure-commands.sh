@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # Lumira DDD release blocker closure commands.
-# Generated at: 2026-06-19T13:42:59.865Z
+# Generated at: 2026-06-19T18:09:18.921Z
 # Status: NOT_READY
 # Release gate blockers: 94
 # Default mode lists runnable closure items. Set DDD_RELEASE_CLOSURE_EXECUTE=1 to execute commands.
 # Use DDD_RELEASE_CLOSURE_ORDER, DDD_RELEASE_CLOSURE_OWNER, DDD_RELEASE_CLOSURE_PRIORITY, or DDD_RELEASE_CLOSURE_KIND to filter.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
-  if [[ -f "scripts/ddd-release-readiness-summary.mjs" ]]; then
+  if [[ -f "bin/ddd-release-readiness-summary.mjs" ]]; then
     LUMIRA_REPO_ROOT=$(pwd)
   else
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
@@ -203,8 +203,7 @@ if [[ "${DDD_RELEASE_CLOSURE_DETAIL}" == "1" || "${DDD_RELEASE_CLOSURE_DETAIL}" 
 ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF'
     echo 'envKeys=DDD_DOCKER_BUILD_STRICT;DDD_DOCKER_COMMAND'
     echo "commands:"
-    echo '- DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-    echo '- node scripts/ddd-docker-build-evidence.mjs'
+    echo '- DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
   fi
   if matches_closure_filter '2' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
@@ -217,8 +216,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=frontend: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT'
     echo 'envKeys=DDD_DOCKER_BUILD_STRICT;DDD_DOCKER_COMMAND'
     echo "commands:"
-    echo '- DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-    echo '- node scripts/ddd-docker-build-evidence.mjs'
+    echo '- DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
   fi
   if matches_closure_filter '3' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
@@ -231,8 +229,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT'
     echo 'envKeys=DDD_DOCKER_BUILD_STRICT;DDD_DOCKER_COMMAND'
     echo "commands:"
-    echo '- DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-    echo '- node scripts/ddd-docker-build-evidence.mjs'
+    echo '- DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
   fi
   if matches_closure_filter '4' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
@@ -323,8 +320,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF'
     echo 'envKeys=DDD_DOCKER_BUILD_STRICT;DDD_DOCKER_COMMAND'
     echo "commands:"
-    echo '- DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-    echo '- node scripts/ddd-docker-build-evidence.mjs'
+    echo '- DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
   fi
   if matches_closure_filter '5' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
@@ -337,7 +333,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=runtime readiness productionEquivalence.strict must be true for strict release evidence'
     echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;LUMIRA_BASE_URL'
     echo "commands:"
-    echo '- node scripts/ddd-runtime-readiness-smoke.mjs'
+    echo '- node bin/ddd-runtime-readiness-smoke.mjs'
   fi
   if matches_closure_filter '6' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
@@ -350,7 +346,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=runtime readiness productionEquivalence.https must be true for strict release evidence'
     echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;LUMIRA_BASE_URL'
     echo "commands:"
-    echo '- node scripts/ddd-runtime-readiness-smoke.mjs'
+    echo '- node bin/ddd-runtime-readiness-smoke.mjs'
   fi
   if matches_closure_filter '7' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
@@ -363,7 +359,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=runtime readiness productionEquivalence.localOnly must be false for strict release evidence'
     echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;LUMIRA_BASE_URL'
     echo "commands:"
-    echo '- node scripts/ddd-runtime-readiness-smoke.mjs'
+    echo '- node bin/ddd-runtime-readiness-smoke.mjs'
   fi
   if matches_closure_filter '8' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
@@ -376,26 +372,191 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=runtime readiness productionEquivalence.deploymentEvidence is required'
     echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;LUMIRA_BASE_URL'
     echo "commands:"
-    echo '- node scripts/ddd-runtime-readiness-smoke.mjs'
+    echo '- node bin/ddd-runtime-readiness-smoke.mjs'
   fi
-  if matches_closure_filter '9' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '9' 'database' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
     echo 'order=9'
+    echo 'owner=database'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs'
+    echo 'batch=p0-manifest-database'
+    echo 'reason=optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs'
+    echo 'envKeys=DDD_MIGRATION_FRESH_DB_EVIDENCE;DDD_MIGRATION_FRESH_DB_VALIDATED;DDD_MIGRATION_UPGRADE_DB_EVIDENCE;DDD_MIGRATION_UPGRADE_DB_VALIDATED'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '10' 'database' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=10'
+    echo 'owner=database'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff'
+    echo 'batch=p0-manifest-database'
+    echo 'reason=optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff'
+    echo 'envKeys=DDD_MIGRATION_FRESH_DB_EVIDENCE;DDD_MIGRATION_FRESH_DB_VALIDATED;DDD_MIGRATION_UPGRADE_DB_EVIDENCE;DDD_MIGRATION_UPGRADE_DB_VALIDATED'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '11' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=11'
+    echo 'owner=lumira-ui'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-lumira-ui-frontend-smoke-json'
+    echo 'batch=p0-manifest-lumira-ui'
+    echo 'reason=missing artifact lumira-ui/frontend-smoke.json'
+    echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_FRONTEND_EXPECT_DEPLOYED;DDD_RELEASE_CANDIDATE;PLAYWRIGHT_BASE_URL'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '12' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=12'
+    echo 'owner=lumira-ui'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-lumira-ui-lumira-ui-build-evidence-json'
+    echo 'batch=p0-manifest-lumira-ui'
+    echo 'reason=missing artifact lumira-ui/lumira-ui-build-evidence.json'
+    echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_FRONTEND_EXPECT_DEPLOYED;DDD_RELEASE_CANDIDATE;PLAYWRIGHT_BASE_URL'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '13' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=13'
+    echo 'owner=lumira-ui'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-lumira-ui-lumira-ui-static-evidence-json'
+    echo 'batch=p0-manifest-lumira-ui'
+    echo 'reason=missing artifact lumira-ui/lumira-ui-static-evidence.json'
+    echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_FRONTEND_EXPECT_DEPLOYED;DDD_RELEASE_CANDIDATE;PLAYWRIGHT_BASE_URL'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '14' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=14'
     echo 'owner=release-owner'
     echo 'priority=P0'
     echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
-    echo 'id=manifest-missing-no-explain-json-files-in-tmp-ddd-explain'
+    echo 'id=manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh'
     echo 'batch=p0-manifest-release-owner'
-    echo 'reason=no explain JSON files in tmp\ddd-explain'
+    echo 'reason=optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh'
     echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;DDD_RELEASE_MANIFEST_STRICT'
     echo "commands:"
-    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
-    echo '- node scripts/ddd-promote-performance-baseline.mjs'
-    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
   fi
-  if matches_closure_filter '10' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+  if matches_closure_filter '15' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
-    echo 'order=10'
+    echo 'order=15'
+    echo 'owner=release-owner'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs'
+    echo 'batch=p0-manifest-release-owner'
+    echo 'reason=optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs'
+    echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;DDD_RELEASE_MANIFEST_STRICT'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '16' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=16'
+    echo 'owner=release-owner'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs'
+    echo 'batch=p0-manifest-release-owner'
+    echo 'reason=optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs'
+    echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;DDD_RELEASE_MANIFEST_STRICT'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '17' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=17'
+    echo 'owner=release-owner'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs'
+    echo 'batch=p0-manifest-release-owner'
+    echo 'reason=optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs'
+    echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;DDD_RELEASE_MANIFEST_STRICT'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '18' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=18'
+    echo 'owner=release-owner'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet'
+    echo 'batch=p0-manifest-release-owner'
+    echo 'reason=optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet'
+    echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;DDD_RELEASE_MANIFEST_STRICT'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '19' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=19'
+    echo 'owner=release-owner'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt'
+    echo 'batch=p0-manifest-release-owner'
+    echo 'reason=optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt'
+    echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;DDD_RELEASE_MANIFEST_STRICT'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '20' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=20'
+    echo 'owner=release-owner'
+    echo 'priority=P0'
+    echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
+    echo 'id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff'
+    echo 'batch=p0-manifest-release-owner'
+    echo 'reason=optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff'
+    echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_EVIDENCE_OPERATOR;DDD_RELEASE_CANDIDATE;DDD_RELEASE_MANIFEST_STRICT'
+    echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_closure_filter '21' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+    DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
+    echo 'order=21'
     echo 'owner=release-performance'
     echo 'priority=P0'
     echo 'closureKind=RUN_NOW_LOCAL'
@@ -404,12 +565,12 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=authenticated performance actual productionEquivalence.strict must be true for strict release evidence'
     echo 'envKeys=none'
     echo "commands:"
-    echo '- node scripts/ddd-authenticated-performance-smoke.mjs'
-    echo '- node scripts/ddd-promote-performance-baseline.mjs'
+    echo '- node bin/ddd-authenticated-performance-smoke.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
   fi
-  if matches_closure_filter '11' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '22' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
-    echo 'order=11'
+    echo 'order=22'
     echo 'owner=release-performance'
     echo 'priority=P0'
     echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
@@ -418,12 +579,12 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=authenticated performance actual productionEquivalence.https must be true for strict release evidence'
     echo 'envKeys=none'
     echo "commands:"
-    echo '- node scripts/ddd-authenticated-performance-smoke.mjs'
-    echo '- node scripts/ddd-promote-performance-baseline.mjs'
+    echo '- node bin/ddd-authenticated-performance-smoke.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
   fi
-  if matches_closure_filter '12' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+  if matches_closure_filter '23' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
-    echo 'order=12'
+    echo 'order=23'
     echo 'owner=release-performance'
     echo 'priority=P0'
     echo 'closureKind=RUN_NOW_LOCAL'
@@ -432,12 +593,12 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence'
     echo 'envKeys=none'
     echo "commands:"
-    echo '- node scripts/ddd-authenticated-performance-smoke.mjs'
-    echo '- node scripts/ddd-promote-performance-baseline.mjs'
+    echo '- node bin/ddd-authenticated-performance-smoke.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
   fi
-  if matches_closure_filter '13' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+  if matches_closure_filter '24' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
-    echo 'order=13'
+    echo 'order=24'
     echo 'owner=release-performance'
     echo 'priority=P0'
     echo 'closureKind=RUN_NOW_LOCAL'
@@ -446,12 +607,12 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=authenticated performance actual productionEquivalence.deploymentEvidence is required'
     echo 'envKeys=none'
     echo "commands:"
-    echo '- node scripts/ddd-authenticated-performance-smoke.mjs'
-    echo '- node scripts/ddd-promote-performance-baseline.mjs'
+    echo '- node bin/ddd-authenticated-performance-smoke.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
   fi
-  if matches_closure_filter '14' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '25' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
-    echo 'order=14'
+    echo 'order=25'
     echo 'owner=release-performance'
     echo 'priority=P0'
     echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
@@ -460,12 +621,12 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=strict release baseline requires baselineType=authenticated-runtime'
     echo 'envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY;DDD_AUTH_PERF_BASELINE_ENVIRONMENT;DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT;DDD_RELEASE_CANDIDATE'
     echo "commands:"
-    echo '- node scripts/ddd-authenticated-performance-smoke.mjs'
-    echo '- node scripts/ddd-promote-performance-baseline.mjs'
+    echo '- node bin/ddd-authenticated-performance-smoke.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
   fi
-  if matches_closure_filter '15' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '26' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
-    echo 'order=15'
+    echo 'order=26'
     echo 'owner=release-performance'
     echo 'priority=P0'
     echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
@@ -474,12 +635,12 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=acceptedAt must be an ISO timestamp'
     echo 'envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY;DDD_AUTH_PERF_BASELINE_ENVIRONMENT;DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT;DDD_RELEASE_CANDIDATE'
     echo "commands:"
-    echo '- node scripts/ddd-authenticated-performance-smoke.mjs'
-    echo '- node scripts/ddd-promote-performance-baseline.mjs'
+    echo '- node bin/ddd-authenticated-performance-smoke.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
   fi
-  if matches_closure_filter '16' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '27' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
-    echo 'order=16'
+    echo 'order=27'
     echo 'owner=release-performance'
     echo 'priority=P0'
     echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
@@ -488,12 +649,12 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=acceptedBy is required'
     echo 'envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY;DDD_AUTH_PERF_BASELINE_ENVIRONMENT;DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT;DDD_RELEASE_CANDIDATE'
     echo "commands:"
-    echo '- node scripts/ddd-authenticated-performance-smoke.mjs'
-    echo '- node scripts/ddd-promote-performance-baseline.mjs'
+    echo '- node bin/ddd-authenticated-performance-smoke.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
   fi
-  if matches_closure_filter '17' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '28' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
-    echo 'order=17'
+    echo 'order=28'
     echo 'owner=release-performance'
     echo 'priority=P0'
     echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
@@ -502,12 +663,12 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=sourceArtifact is required'
     echo 'envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY;DDD_AUTH_PERF_BASELINE_ENVIRONMENT;DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT;DDD_RELEASE_CANDIDATE'
     echo "commands:"
-    echo '- node scripts/ddd-authenticated-performance-smoke.mjs'
-    echo '- node scripts/ddd-promote-performance-baseline.mjs'
+    echo '- node bin/ddd-authenticated-performance-smoke.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
   fi
-  if matches_closure_filter '18' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '29' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_DETAIL_MATCHED=1
-    echo 'order=18'
+    echo 'order=29'
     echo 'owner=release-performance'
     echo 'priority=P0'
     echo 'closureKind=RUN_NOW_WITH_REAL_ENV'
@@ -516,8 +677,8 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
     echo 'reason=sourceSha256 must be a SHA-256 hex digest'
     echo 'envKeys=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY;DDD_AUTH_PERF_BASELINE_ENVIRONMENT;DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT;DDD_RELEASE_CANDIDATE'
     echo "commands:"
-    echo '- node scripts/ddd-authenticated-performance-smoke.mjs'
-    echo '- node scripts/ddd-promote-performance-baseline.mjs'
+    echo '- node bin/ddd-authenticated-performance-smoke.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
   fi
   if [[ "${DDD_RELEASE_CLOSURE_DETAIL_MATCHED}" != "1" ]]; then
     echo "No runnable closure item matched the requested filters." >&2
@@ -561,45 +722,89 @@ if [[ "${DDD_RELEASE_CLOSURE_CHECK_ENV}" == "1" || "${DDD_RELEASE_CLOSURE_CHECK_
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
     check_closure_env '8' 'release-infra' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'LUMIRA_BASE_URL' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
-  if matches_closure_filter '9' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '9' 'database' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
-    check_closure_env '9' 'release-owner' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+    check_closure_env '9' 'database' 'DDD_MIGRATION_FRESH_DB_EVIDENCE' 'DDD_MIGRATION_FRESH_DB_VALIDATED' 'DDD_MIGRATION_UPGRADE_DB_EVIDENCE' 'DDD_MIGRATION_UPGRADE_DB_VALIDATED' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
-  if matches_closure_filter '10' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+  if matches_closure_filter '10' 'database' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
-    check_closure_env '10' 'release-performance' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+    check_closure_env '10' 'database' 'DDD_MIGRATION_FRESH_DB_EVIDENCE' 'DDD_MIGRATION_FRESH_DB_VALIDATED' 'DDD_MIGRATION_UPGRADE_DB_EVIDENCE' 'DDD_MIGRATION_UPGRADE_DB_VALIDATED' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
-  if matches_closure_filter '11' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '11' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
-    check_closure_env '11' 'release-performance' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+    check_closure_env '11' 'lumira-ui' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_FRONTEND_EXPECT_DEPLOYED' 'DDD_RELEASE_CANDIDATE' 'PLAYWRIGHT_BASE_URL' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
-  if matches_closure_filter '12' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+  if matches_closure_filter '12' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
-    check_closure_env '12' 'release-performance' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+    check_closure_env '12' 'lumira-ui' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_FRONTEND_EXPECT_DEPLOYED' 'DDD_RELEASE_CANDIDATE' 'PLAYWRIGHT_BASE_URL' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
-  if matches_closure_filter '13' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+  if matches_closure_filter '13' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
-    check_closure_env '13' 'release-performance' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+    check_closure_env '13' 'lumira-ui' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_FRONTEND_EXPECT_DEPLOYED' 'DDD_RELEASE_CANDIDATE' 'PLAYWRIGHT_BASE_URL' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
-  if matches_closure_filter '14' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '14' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
-    check_closure_env '14' 'release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+    check_closure_env '14' 'release-owner' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
-  if matches_closure_filter '15' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '15' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
-    check_closure_env '15' 'release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+    check_closure_env '15' 'release-owner' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
-  if matches_closure_filter '16' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '16' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
-    check_closure_env '16' 'release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+    check_closure_env '16' 'release-owner' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
-  if matches_closure_filter '17' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '17' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
-    check_closure_env '17' 'release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+    check_closure_env '17' 'release-owner' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
-  if matches_closure_filter '18' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  if matches_closure_filter '18' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
     DDD_RELEASE_CLOSURE_ENV_MATCHED=1
-    check_closure_env '18' 'release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+    check_closure_env '18' 'release-owner' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '19' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '19' 'release-owner' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '20' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '20' 'release-owner' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '21' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '21' 'release-performance' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '22' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '22' 'release-performance' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '23' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '23' 'release-performance' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '24' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '24' 'release-performance' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '25' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '25' 'release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '26' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '26' 'release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '27' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '27' 'release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '28' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '28' 'release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
+  fi
+  if matches_closure_filter '29' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    DDD_RELEASE_CLOSURE_ENV_MATCHED=1
+    check_closure_env '29' 'release-performance' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_RELEASE_CANDIDATE' || DDD_RELEASE_CLOSURE_ENV_FAILED=1
   fi
   if [[ "${DDD_RELEASE_CLOSURE_ENV_MATCHED}" != "1" ]]; then
     echo "No runnable closure item matched the requested filters." >&2
@@ -617,11 +822,17 @@ if [[ "${DDD_RELEASE_CLOSURE_EXECUTE}" != "1" && "${DDD_RELEASE_CLOSURE_EXECUTE}
   if [[ ( -z "${DDD_RELEASE_CLOSURE_OWNER}" || "${DDD_RELEASE_CLOSURE_OWNER}" == 'release-infra' ) && ( -z "${DDD_RELEASE_CLOSURE_PRIORITY}" || "${DDD_RELEASE_CLOSURE_PRIORITY}" == 'P0' ) ]]; then
     echo '2 P0 owner=release-infra batch=p0-runtime-readiness-release-infra items=5;6;7;8'
   fi
+  if [[ ( -z "${DDD_RELEASE_CLOSURE_OWNER}" || "${DDD_RELEASE_CLOSURE_OWNER}" == 'database' ) && ( -z "${DDD_RELEASE_CLOSURE_PRIORITY}" || "${DDD_RELEASE_CLOSURE_PRIORITY}" == 'P0' ) ]]; then
+    echo '3 P0 owner=database batch=p0-manifest-database items=9;10'
+  fi
+  if [[ ( -z "${DDD_RELEASE_CLOSURE_OWNER}" || "${DDD_RELEASE_CLOSURE_OWNER}" == 'lumira-ui' ) && ( -z "${DDD_RELEASE_CLOSURE_PRIORITY}" || "${DDD_RELEASE_CLOSURE_PRIORITY}" == 'P0' ) ]]; then
+    echo '4 P0 owner=lumira-ui batch=p0-manifest-lumira-ui items=11;12;13'
+  fi
   if [[ ( -z "${DDD_RELEASE_CLOSURE_OWNER}" || "${DDD_RELEASE_CLOSURE_OWNER}" == 'release-owner' ) && ( -z "${DDD_RELEASE_CLOSURE_PRIORITY}" || "${DDD_RELEASE_CLOSURE_PRIORITY}" == 'P0' ) ]]; then
-    echo '3 P0 owner=release-owner batch=p0-manifest-release-owner items=9'
+    echo '5 P0 owner=release-owner batch=p0-manifest-release-owner items=14;15;16;17;18;19;20'
   fi
   if [[ ( -z "${DDD_RELEASE_CLOSURE_OWNER}" || "${DDD_RELEASE_CLOSURE_OWNER}" == 'release-performance' ) && ( -z "${DDD_RELEASE_CLOSURE_PRIORITY}" || "${DDD_RELEASE_CLOSURE_PRIORITY}" == 'P0' ) ]]; then
-    echo '4 P0 owner=release-performance batch=p0-authenticated-performance-release-performance items=10;11;12;13;14;15;16;17;18'
+    echo '6 P0 owner=release-performance batch=p0-authenticated-performance-release-performance items=21;22;23;24;25;26;27;28;29'
   fi
   echo ""
   echo "Runnable release blocker closure items:"
@@ -657,44 +868,88 @@ if [[ "${DDD_RELEASE_CLOSURE_EXECUTE}" != "1" && "${DDD_RELEASE_CLOSURE_EXECUTE}
     echo '8 P0 RUN_NOW_WITH_REAL_ENV owner=release-infra id=runtime-readiness-contract-4 batch=p0-runtime-readiness-release-infra'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
-  if matches_closure_filter '9' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
-    echo '9 P0 RUN_NOW_WITH_REAL_ENV owner=release-owner id=manifest-missing-no-explain-json-files-in-tmp-ddd-explain batch=p0-manifest-release-owner'
+  if matches_closure_filter '9' 'database' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '9 P0 RUN_NOW_WITH_REAL_ENV owner=database id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs batch=p0-manifest-database'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
-  if matches_closure_filter '10' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
-    echo '10 P0 RUN_NOW_LOCAL owner=release-performance id=performance-actual-shape-1 batch=p0-authenticated-performance-release-performance'
+  if matches_closure_filter '10' 'database' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '10 P0 RUN_NOW_WITH_REAL_ENV owner=database id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff batch=p0-manifest-database'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
-  if matches_closure_filter '11' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
-    echo '11 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-actual-shape-2 batch=p0-authenticated-performance-release-performance'
+  if matches_closure_filter '11' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '11 P0 RUN_NOW_WITH_REAL_ENV owner=lumira-ui id=manifest-missing-lumira-ui-frontend-smoke-json batch=p0-manifest-lumira-ui'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
-  if matches_closure_filter '12' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
-    echo '12 P0 RUN_NOW_LOCAL owner=release-performance id=performance-actual-shape-3 batch=p0-authenticated-performance-release-performance'
+  if matches_closure_filter '12' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '12 P0 RUN_NOW_WITH_REAL_ENV owner=lumira-ui id=manifest-missing-lumira-ui-lumira-ui-build-evidence-json batch=p0-manifest-lumira-ui'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
-  if matches_closure_filter '13' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
-    echo '13 P0 RUN_NOW_LOCAL owner=release-performance id=performance-actual-shape-4 batch=p0-authenticated-performance-release-performance'
+  if matches_closure_filter '13' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '13 P0 RUN_NOW_WITH_REAL_ENV owner=lumira-ui id=manifest-missing-lumira-ui-lumira-ui-static-evidence-json batch=p0-manifest-lumira-ui'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
-  if matches_closure_filter '14' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
-    echo '14 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-baseline-metadata-5 batch=p0-authenticated-performance-release-performance'
+  if matches_closure_filter '14' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '14 P0 RUN_NOW_WITH_REAL_ENV owner=release-owner id=manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh batch=p0-manifest-release-owner'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
-  if matches_closure_filter '15' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
-    echo '15 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-baseline-metadata-6 batch=p0-authenticated-performance-release-performance'
+  if matches_closure_filter '15' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '15 P0 RUN_NOW_WITH_REAL_ENV owner=release-owner id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs batch=p0-manifest-release-owner'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
-  if matches_closure_filter '16' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
-    echo '16 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-baseline-metadata-7 batch=p0-authenticated-performance-release-performance'
+  if matches_closure_filter '16' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '16 P0 RUN_NOW_WITH_REAL_ENV owner=release-owner id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs batch=p0-manifest-release-owner'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
-  if matches_closure_filter '17' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
-    echo '17 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-baseline-metadata-8 batch=p0-authenticated-performance-release-performance'
+  if matches_closure_filter '17' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '17 P0 RUN_NOW_WITH_REAL_ENV owner=release-owner id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs batch=p0-manifest-release-owner'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
-  if matches_closure_filter '18' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
-    echo '18 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-baseline-metadata-9 batch=p0-authenticated-performance-release-performance'
+  if matches_closure_filter '18' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '18 P0 RUN_NOW_WITH_REAL_ENV owner=release-owner id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet batch=p0-manifest-release-owner'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '19' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '19 P0 RUN_NOW_WITH_REAL_ENV owner=release-owner id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt batch=p0-manifest-release-owner'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '20' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '20 P0 RUN_NOW_WITH_REAL_ENV owner=release-owner id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff batch=p0-manifest-release-owner'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '21' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+    echo '21 P0 RUN_NOW_LOCAL owner=release-performance id=performance-actual-shape-1 batch=p0-authenticated-performance-release-performance'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '22' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '22 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-actual-shape-2 batch=p0-authenticated-performance-release-performance'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '23' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+    echo '23 P0 RUN_NOW_LOCAL owner=release-performance id=performance-actual-shape-3 batch=p0-authenticated-performance-release-performance'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '24' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+    echo '24 P0 RUN_NOW_LOCAL owner=release-performance id=performance-actual-shape-4 batch=p0-authenticated-performance-release-performance'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '25' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '25 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-baseline-metadata-5 batch=p0-authenticated-performance-release-performance'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '26' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '26 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-baseline-metadata-6 batch=p0-authenticated-performance-release-performance'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '27' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '27 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-baseline-metadata-7 batch=p0-authenticated-performance-release-performance'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '28' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '28 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-baseline-metadata-8 batch=p0-authenticated-performance-release-performance'
+    DDD_RELEASE_CLOSURE_MATCHED=1
+  fi
+  if matches_closure_filter '29' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+    echo '29 P0 RUN_NOW_WITH_REAL_ENV owner=release-performance id=performance-baseline-metadata-9 batch=p0-authenticated-performance-release-performance'
     DDD_RELEASE_CLOSURE_MATCHED=1
   fi
   if [[ "${DDD_RELEASE_CLOSURE_MATCHED}" != "1" ]]; then
@@ -709,8 +964,7 @@ if matches_closure_filter '1' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   echo '[ddd-release-closure] running order=1 owner=release-infra priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=docker-blocker-1'
 # Reason: lumira-server: docker build failed: #5 DONE 0.3s  #4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre #4 DONE 0.8s  #6 [internal] load .dockerignore #6 transferring context: 309B 0.0s done #6 DONE 0.1s  #7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 #7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done #7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done #7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done #7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done #7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done #7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done #7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done #7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done #7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done #7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done #7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done #7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done #7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done #7 DONE 14.7s  #8 [stage-1 2/5] WORKDIR /app #8 DONE 0.3s  #9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data #9 DONE 3.3s  #10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 #10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done #10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done #10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done #10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done #10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done #10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done #10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done #10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done #10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s #10 ...  #11 [internal] load build context #11 transferring context: 20.64MB 10.0s #11 ...  #10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s #10 ...  #11 [internal] load build context #11 transferring context: 338.84MB 18.4s done #11 DONE 18.4s  #10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s #10 DONE 145.1s  #12 [builder  2/21] WORKDIR /workspace #12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF ------  > [builder  2/21] WORKDIR /workspace: ------ ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF
 # Expected artifacts: artifacts/ddd/build/docker-image-evidence.json
-  run_closure_command 'DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-  run_closure_command 'node scripts/ddd-docker-build-evidence.mjs'
+  run_closure_command 'DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
 fi
 
 if matches_closure_filter '2' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
@@ -718,8 +972,7 @@ if matches_closure_filter '2' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   echo '[ddd-release-closure] running order=2 owner=release-infra priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=docker-blocker-2'
 # Reason: frontend: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT
 # Expected artifacts: artifacts/ddd/build/docker-image-evidence.json
-  run_closure_command 'DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-  run_closure_command 'node scripts/ddd-docker-build-evidence.mjs'
+  run_closure_command 'DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
 fi
 
 if matches_closure_filter '3' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
@@ -727,8 +980,7 @@ if matches_closure_filter '3' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   echo '[ddd-release-closure] running order=3 owner=release-infra priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=docker-image-frontend-failed'
 # Reason: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT
 # Expected artifacts: artifacts/ddd/build/docker-image-evidence.json
-  run_closure_command 'DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-  run_closure_command 'node scripts/ddd-docker-build-evidence.mjs'
+  run_closure_command 'DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
 fi
 
 if matches_closure_filter '4' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
@@ -736,8 +988,7 @@ if matches_closure_filter '4' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   echo '[ddd-release-closure] running order=4 owner=release-infra priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=docker-image-lumira-server-failed'
 # Reason: docker build failed: #5 DONE 0.3s  #4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre #4 DONE 0.8s  #6 [internal] load .dockerignore #6 transferring context: 309B 0.0s done #6 DONE 0.1s  #7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 #7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done #7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done #7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done #7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done #7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done #7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done #7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done #7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done #7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done #7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done #7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done #7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done #7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done #7 DONE 14.7s  #8 [stage-1 2/5] WORKDIR /app #8 DONE 0.3s  #9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data #9 DONE 3.3s  #10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 #10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done #10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done #10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done #10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done #10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done #10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done #10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done #10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done #10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s #10 ...  #11 [internal] load build context #11 transferring context: 20.64MB 10.0s #11 ...  #10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s #10 ...  #11 [internal] load build context #11 transferring context: 338.84MB 18.4s done #11 DONE 18.4s  #10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s #10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s #10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s #10 DONE 145.1s  #12 [builder  2/21] WORKDIR /workspace #12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF ------  > [builder  2/21] WORKDIR /workspace: ------ ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF
 # Expected artifacts: artifacts/ddd/build/docker-image-evidence.json
-  run_closure_command 'DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-  run_closure_command 'node scripts/ddd-docker-build-evidence.mjs'
+  run_closure_command 'DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
 fi
 
 if matches_closure_filter '5' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
@@ -745,7 +996,7 @@ if matches_closure_filter '5' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   echo '[ddd-release-closure] running order=5 owner=release-infra priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=runtime-readiness-contract-1'
 # Reason: runtime readiness productionEquivalence.strict must be true for strict release evidence
 # Expected artifacts: artifacts/ddd/readiness/summary.json
-  run_closure_command 'node scripts/ddd-runtime-readiness-smoke.mjs'
+  run_closure_command 'node bin/ddd-runtime-readiness-smoke.mjs'
 fi
 
 if matches_closure_filter '6' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
@@ -753,7 +1004,7 @@ if matches_closure_filter '6' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   echo '[ddd-release-closure] running order=6 owner=release-infra priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=runtime-readiness-contract-2'
 # Reason: runtime readiness productionEquivalence.https must be true for strict release evidence
 # Expected artifacts: artifacts/ddd/readiness/summary.json
-  run_closure_command 'node scripts/ddd-runtime-readiness-smoke.mjs'
+  run_closure_command 'node bin/ddd-runtime-readiness-smoke.mjs'
 fi
 
 if matches_closure_filter '7' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
@@ -761,7 +1012,7 @@ if matches_closure_filter '7' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   echo '[ddd-release-closure] running order=7 owner=release-infra priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=runtime-readiness-contract-3'
 # Reason: runtime readiness productionEquivalence.localOnly must be false for strict release evidence
 # Expected artifacts: artifacts/ddd/readiness/summary.json
-  run_closure_command 'node scripts/ddd-runtime-readiness-smoke.mjs'
+  run_closure_command 'node bin/ddd-runtime-readiness-smoke.mjs'
 fi
 
 if matches_closure_filter '8' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
@@ -769,98 +1020,208 @@ if matches_closure_filter '8' 'release-infra' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   echo '[ddd-release-closure] running order=8 owner=release-infra priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=runtime-readiness-contract-4'
 # Reason: runtime readiness productionEquivalence.deploymentEvidence is required
 # Expected artifacts: artifacts/ddd/readiness/summary.json
-  run_closure_command 'node scripts/ddd-runtime-readiness-smoke.mjs'
+  run_closure_command 'node bin/ddd-runtime-readiness-smoke.mjs'
 fi
 
-if matches_closure_filter '9' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+if matches_closure_filter '9' 'database' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   DDD_RELEASE_CLOSURE_MATCHED=1
-  echo '[ddd-release-closure] running order=9 owner=release-owner priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-no-explain-json-files-in-tmp-ddd-explain'
-# Reason: no explain JSON files in tmp\ddd-explain
+  echo '[ddd-release-closure] running order=9 owner=database priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs'
+# Reason: optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs
 # Expected artifacts: artifacts/ddd/release/evidence-manifest.json
-  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
-  run_closure_command 'node scripts/ddd-promote-performance-baseline.mjs'
-  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
 fi
 
-if matches_closure_filter '10' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+if matches_closure_filter '10' 'database' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   DDD_RELEASE_CLOSURE_MATCHED=1
-  echo '[ddd-release-closure] running order=10 owner=release-performance priority=P0 kind=RUN_NOW_LOCAL id=performance-actual-shape-1'
+  echo '[ddd-release-closure] running order=10 owner=database priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff'
+# Reason: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '11' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=11 owner=lumira-ui priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-lumira-ui-frontend-smoke-json'
+# Reason: missing artifact lumira-ui/frontend-smoke.json
+# Expected artifacts: artifacts/ddd/lumira-ui/frontend-smoke.json; artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json; artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json; artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '12' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=12 owner=lumira-ui priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-lumira-ui-lumira-ui-build-evidence-json'
+# Reason: missing artifact lumira-ui/lumira-ui-build-evidence.json
+# Expected artifacts: artifacts/ddd/lumira-ui/frontend-smoke.json; artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json; artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json; artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '13' 'lumira-ui' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=13 owner=lumira-ui priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-lumira-ui-lumira-ui-static-evidence-json'
+# Reason: missing artifact lumira-ui/lumira-ui-static-evidence.json
+# Expected artifacts: artifacts/ddd/lumira-ui/frontend-smoke.json; artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json; artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json; artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '14' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=14 owner=release-owner priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh'
+# Reason: optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '15' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=15 owner=release-owner priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs'
+# Reason: optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '16' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=16 owner=release-owner priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs'
+# Reason: optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '17' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=17 owner=release-owner priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs'
+# Reason: optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '18' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=18 owner=release-owner priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet'
+# Reason: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '19' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=19 owner=release-owner priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt'
+# Reason: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '20' 'release-owner' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=20 owner=release-owner priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff'
+# Reason: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+  run_closure_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+if matches_closure_filter '21' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+  DDD_RELEASE_CLOSURE_MATCHED=1
+  echo '[ddd-release-closure] running order=21 owner=release-performance priority=P0 kind=RUN_NOW_LOCAL id=performance-actual-shape-1'
 # Reason: authenticated performance actual productionEquivalence.strict must be true for strict release evidence
 # Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json; artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json; artifacts/ddd/performance/authenticated-runtime-baseline.json
-  run_closure_command 'node scripts/ddd-authenticated-performance-smoke.mjs'
-  run_closure_command 'node scripts/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'node bin/ddd-authenticated-performance-smoke.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
 fi
 
-if matches_closure_filter '11' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+if matches_closure_filter '22' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   DDD_RELEASE_CLOSURE_MATCHED=1
-  echo '[ddd-release-closure] running order=11 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-actual-shape-2'
+  echo '[ddd-release-closure] running order=22 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-actual-shape-2'
 # Reason: authenticated performance actual productionEquivalence.https must be true for strict release evidence
 # Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json; artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json; artifacts/ddd/performance/authenticated-runtime-baseline.json
-  run_closure_command 'node scripts/ddd-authenticated-performance-smoke.mjs'
-  run_closure_command 'node scripts/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'node bin/ddd-authenticated-performance-smoke.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
 fi
 
-if matches_closure_filter '12' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+if matches_closure_filter '23' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
   DDD_RELEASE_CLOSURE_MATCHED=1
-  echo '[ddd-release-closure] running order=12 owner=release-performance priority=P0 kind=RUN_NOW_LOCAL id=performance-actual-shape-3'
+  echo '[ddd-release-closure] running order=23 owner=release-performance priority=P0 kind=RUN_NOW_LOCAL id=performance-actual-shape-3'
 # Reason: authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence
 # Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json; artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json; artifacts/ddd/performance/authenticated-runtime-baseline.json
-  run_closure_command 'node scripts/ddd-authenticated-performance-smoke.mjs'
-  run_closure_command 'node scripts/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'node bin/ddd-authenticated-performance-smoke.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
 fi
 
-if matches_closure_filter '13' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
+if matches_closure_filter '24' 'release-performance' 'P0' 'RUN_NOW_LOCAL'; then
   DDD_RELEASE_CLOSURE_MATCHED=1
-  echo '[ddd-release-closure] running order=13 owner=release-performance priority=P0 kind=RUN_NOW_LOCAL id=performance-actual-shape-4'
+  echo '[ddd-release-closure] running order=24 owner=release-performance priority=P0 kind=RUN_NOW_LOCAL id=performance-actual-shape-4'
 # Reason: authenticated performance actual productionEquivalence.deploymentEvidence is required
 # Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json; artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json; artifacts/ddd/performance/authenticated-runtime-baseline.json
-  run_closure_command 'node scripts/ddd-authenticated-performance-smoke.mjs'
-  run_closure_command 'node scripts/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'node bin/ddd-authenticated-performance-smoke.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
 fi
 
-if matches_closure_filter '14' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+if matches_closure_filter '25' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   DDD_RELEASE_CLOSURE_MATCHED=1
-  echo '[ddd-release-closure] running order=14 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-baseline-metadata-5'
+  echo '[ddd-release-closure] running order=25 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-baseline-metadata-5'
 # Reason: strict release baseline requires baselineType=authenticated-runtime
 # Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json; artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json; artifacts/ddd/performance/authenticated-runtime-baseline.json
-  run_closure_command 'node scripts/ddd-authenticated-performance-smoke.mjs'
-  run_closure_command 'node scripts/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'node bin/ddd-authenticated-performance-smoke.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
 fi
 
-if matches_closure_filter '15' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+if matches_closure_filter '26' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   DDD_RELEASE_CLOSURE_MATCHED=1
-  echo '[ddd-release-closure] running order=15 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-baseline-metadata-6'
+  echo '[ddd-release-closure] running order=26 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-baseline-metadata-6'
 # Reason: acceptedAt must be an ISO timestamp
 # Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json; artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json; artifacts/ddd/performance/authenticated-runtime-baseline.json
-  run_closure_command 'node scripts/ddd-authenticated-performance-smoke.mjs'
-  run_closure_command 'node scripts/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'node bin/ddd-authenticated-performance-smoke.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
 fi
 
-if matches_closure_filter '16' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+if matches_closure_filter '27' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   DDD_RELEASE_CLOSURE_MATCHED=1
-  echo '[ddd-release-closure] running order=16 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-baseline-metadata-7'
+  echo '[ddd-release-closure] running order=27 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-baseline-metadata-7'
 # Reason: acceptedBy is required
 # Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json; artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json; artifacts/ddd/performance/authenticated-runtime-baseline.json
-  run_closure_command 'node scripts/ddd-authenticated-performance-smoke.mjs'
-  run_closure_command 'node scripts/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'node bin/ddd-authenticated-performance-smoke.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
 fi
 
-if matches_closure_filter '17' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+if matches_closure_filter '28' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   DDD_RELEASE_CLOSURE_MATCHED=1
-  echo '[ddd-release-closure] running order=17 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-baseline-metadata-8'
+  echo '[ddd-release-closure] running order=28 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-baseline-metadata-8'
 # Reason: sourceArtifact is required
 # Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json; artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json; artifacts/ddd/performance/authenticated-runtime-baseline.json
-  run_closure_command 'node scripts/ddd-authenticated-performance-smoke.mjs'
-  run_closure_command 'node scripts/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'node bin/ddd-authenticated-performance-smoke.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
 fi
 
-if matches_closure_filter '18' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
+if matches_closure_filter '29' 'release-performance' 'P0' 'RUN_NOW_WITH_REAL_ENV'; then
   DDD_RELEASE_CLOSURE_MATCHED=1
-  echo '[ddd-release-closure] running order=18 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-baseline-metadata-9'
+  echo '[ddd-release-closure] running order=29 owner=release-performance priority=P0 kind=RUN_NOW_WITH_REAL_ENV id=performance-baseline-metadata-9'
 # Reason: sourceSha256 must be a SHA-256 hex digest
 # Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json; artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json; artifacts/ddd/performance/authenticated-runtime-baseline.json
-  run_closure_command 'node scripts/ddd-authenticated-performance-smoke.mjs'
-  run_closure_command 'node scripts/ddd-promote-performance-baseline.mjs'
+  run_closure_command 'node bin/ddd-authenticated-performance-smoke.mjs'
+  run_closure_command 'node bin/ddd-promote-performance-baseline.mjs'
 fi
 
 if [[ "${DDD_RELEASE_CLOSURE_MATCHED}" != "1" ]]; then
@@ -869,8 +1230,8 @@ if [[ "${DDD_RELEASE_CLOSURE_MATCHED}" != "1" ]]; then
 fi
 
 # After closure commands refresh artifacts, rerun:
-run_closure_command 'node scripts/ddd-release-evidence-gate.mjs'
-run_closure_command 'node scripts/ddd-release-readiness-summary.mjs'
+run_closure_command 'node bin/ddd-release-evidence-gate.mjs'
+run_closure_command 'node bin/ddd-release-readiness-summary.mjs'
 run_closure_command 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
 if [[ "${DDD_RELEASE_CLOSURE_COMMAND_FAILURES}" != "0" ]]; then
   echo "[ddd-release-closure][completed-with-failures] commandFailures=${DDD_RELEASE_CLOSURE_COMMAND_FAILURES}" >&2

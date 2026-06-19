@@ -1,6 +1,6 @@
 # DDD Release Env Owner Handoff
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:09:18.921Z
 Status: NOT_READY
 Env file: .env.release.local
 Owners: 6
@@ -12,15 +12,15 @@ Unresolved aliases covered: 0
 - Objective: Fill canonical release env keys once, sync aliases, then rerun strict env and final go/no-go gates.
 - Blocked until: All blocking release env placeholders are replaced in a permission-safe release env file.
 - Commands:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
+  - `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## Owners
@@ -42,24 +42,24 @@ Unresolved aliases covered: 0
   - `DB_URL` (runtime.database url; class=url; secret=false; aliases=DB_URL|SPRING_DATASOURCE_URL)
   - `DB_USERNAME` (runtime.database username; class=identifier; secret=false; aliases=DB_USERNAME|SPRING_DATASOURCE_USERNAME|MYSQL_USER)
   - `FIELD_SECRET` (runtime.field secret; class=secret; secret=true; aliases=FIELD_SECRET|SAAS_SECURITY_FIELD_SECRET)
-  - `PLAYWRIGHT_BASE_URL` (runtime.frontend base url; class=url; secret=false; aliases=PLAYWRIGHT_BASE_URL|FRONTEND_BASE_URL)
   - `JWT_SECRET` (runtime.jwt secret; class=secret; secret=true; aliases=JWT_SECRET|SAAS_SECURITY_JWT_SECRET)
+  - `PLAYWRIGHT_BASE_URL` (runtime.lumira-ui base url; class=url; secret=false; aliases=PLAYWRIGHT_BASE_URL|FRONTEND_BASE_URL)
   - `REDIS_HOST` (runtime.redis host; class=identifier; secret=false; aliases=REDIS_HOST|SPRING_DATA_REDIS_HOST)
   - `REDIS_PASSWORD` (runtime.redis password; class=secret; secret=true; aliases=REDIS_PASSWORD|SPRING_DATA_REDIS_PASSWORD)
   - `REDIS_PORT` (runtime.redis port; class=port; secret=false; aliases=REDIS_PORT|SPRING_DATA_REDIS_PORT)
   - `TRUST_FORWARDED_HEADERS` (runtime.trusted proxy mode; class=toggle; secret=false; aliases=TRUST_FORWARDED_HEADERS|SAAS_WEB_TRUST_FORWARDED_HEADERS)
 - Run after fill:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
+  - `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`
+  - `node bin/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## ai-owner
@@ -86,17 +86,17 @@ Unresolved aliases covered: 0
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL` (ai.provider base url; class=url; secret=false; aliases=LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL|LUMIRA_AI_PROVIDER_BASE_URL)
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED` (ai.provider enabled; class=toggle; secret=false; aliases=LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED|LUMIRA_AI_PROVIDER_ENABLED)
 - Run after fill:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
+  - `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`
+  - `node bin/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## file-owner
@@ -114,17 +114,17 @@ Unresolved aliases covered: 0
   - `LUMIRA_FILE_SECURITY_SCAN_MODE` (file-processing.security scan mode; class=runtime-setting; secret=false; aliases=LUMIRA_FILE_SECURITY_SCAN_MODE)
   - `UPLOAD_STORAGE_ROOT` (file-processing.upload storage root; class=runtime-setting; secret=false; aliases=UPLOAD_STORAGE_ROOT|LUMIRA_UPLOAD_STORAGE_ROOT)
 - Run after fill:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
+  - `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`
+  - `node bin/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `node bin/ddd-file-processing-e2e-smoke.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## payment-owner
@@ -141,17 +141,17 @@ Unresolved aliases covered: 0
   - `PAYMENT_PUBLIC_BASE_URL` (payment.payment public url; class=url; secret=false; aliases=PAYMENT_PUBLIC_BASE_URL)
   - `DDD_PAYMENT_WEBHOOK_SECRET` (payment.payment webhook secret; class=secret; secret=true; aliases=DDD_PAYMENT_WEBHOOK_SECRET|PAYMENT_WEBHOOK_SECRET|LUMIRA_PAYMENT_WEBHOOK_SECRET)
 - Run after fill:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
+  - `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`
+  - `node bin/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `node bin/ddd-payment-webhook-e2e-smoke.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## platform-events
@@ -176,16 +176,16 @@ Unresolved aliases covered: 0
   - `XXL_JOB_ADMIN_ADDRESSES` (jobs-and-events.xxl job admin; class=url; secret=false; aliases=XXL_JOB_ADMIN_ADDRESSES|LUMIRA_XXL_JOB_ADMIN_ADDRESSES)
   - `XXL_JOB_ACCESS_TOKEN` (jobs-and-events.xxl job token; class=secret; secret=true; aliases=XXL_JOB_ACCESS_TOKEN|XXL_JOB_ADMIN_ACCESS_TOKEN|LUMIRA_XXL_JOB_ACCESS_TOKEN)
 - Run after fill:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
+  - `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`
+  - `node bin/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## platform-owners
@@ -209,15 +209,15 @@ Unresolved aliases covered: 0
   - `PLUGIN_SERVICE_BASE_URL` (owner-services.plugin service; class=url; secret=false; aliases=PLUGIN_SERVICE_BASE_URL|LUMIRA_PLUGIN_SERVICE_BASE_URL)
   - `SYSTEM_SERVICE_BASE_URL` (owner-services.system service; class=url; secret=false; aliases=SYSTEM_SERVICE_BASE_URL|LUMIRA_SYSTEM_SERVICE_BASE_URL)
 - Run after fill:
-  - `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-  - `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs`
-  - `node scripts/ddd-release-config-evidence.mjs`
+  - `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+  - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`
+  - `node bin/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 

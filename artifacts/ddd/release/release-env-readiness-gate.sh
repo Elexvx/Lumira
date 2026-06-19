@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # Lumira DDD release env readiness gate.
-# Generated at: 2026-06-19T13:42:59.865Z
+# Generated at: 2026-06-19T18:09:18.921Z
 # Default mode prints redacted env readiness. Set DDD_RELEASE_ENV_READINESS_ENFORCE=1 to fail while env blockers remain.
 # Exit codes: 21 means release env values are unresolved; 22 means the redacted readiness packet is invalid.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
-  if [[ -f "scripts/ddd-release-readiness-summary.mjs" ]]; then
+  if [[ -f "bin/ddd-release-readiness-summary.mjs" ]]; then
     LUMIRA_REPO_ROOT=$(pwd)
   else
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
@@ -21,7 +21,7 @@ DDD_RELEASE_ENV_READINESS_ENFORCE="${DDD_RELEASE_ENV_READINESS_ENFORCE:-}"
 DDD_NODE_BIN="${DDD_NODE_BIN:-node}"
 if [[ ! -f "${DDD_RELEASE_ENV_READINESS_PACKET}" ]]; then
   echo "Release env readiness packet does not exist: ${DDD_RELEASE_ENV_READINESS_PACKET}" >&2
-  echo "Run: node scripts/ddd-release-readiness-summary.mjs" >&2
+  echo "Run: node bin/ddd-release-readiness-summary.mjs" >&2
   exit 2
 fi
 set +e

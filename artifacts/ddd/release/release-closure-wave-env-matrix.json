@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:09:18.921Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "summary": {
-    "waveCount": 4,
-    "uniqueEnvKeyCount": 10,
-    "ownerCount": 3
+    "waveCount": 6,
+    "uniqueEnvKeyCount": 16,
+    "ownerCount": 5
   },
   "uniqueEnvKeys": [
     "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
@@ -16,9 +16,15 @@
     "DDD_DOCKER_COMMAND",
     "DDD_EVIDENCE_ENVIRONMENT",
     "DDD_EVIDENCE_OPERATOR",
+    "DDD_FRONTEND_EXPECT_DEPLOYED",
+    "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+    "DDD_MIGRATION_FRESH_DB_VALIDATED",
+    "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+    "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
     "DDD_RELEASE_CANDIDATE",
     "DDD_RELEASE_MANIFEST_STRICT",
-    "LUMIRA_BASE_URL"
+    "LUMIRA_BASE_URL",
+    "PLAYWRIGHT_BASE_URL"
   ],
   "waves": [
     {
@@ -47,8 +53,7 @@
         "DDD_DOCKER_COMMAND"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
@@ -57,7 +62,7 @@
       "exitCriteria": [
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
-        "Required lumira-server and frontend images are built, inspected, and not skipped."
+        "Required lumira-server and lumira-ui images are built, inspected, and not skipped."
       ]
     },
     {
@@ -88,7 +93,7 @@
         "LUMIRA_BASE_URL"
       ],
       "commands": [
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node bin/ddd-runtime-readiness-smoke.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/readiness/summary.json"
@@ -102,6 +107,88 @@
     },
     {
       "wave": 3,
+      "owner": "database",
+      "batchId": "p0-manifest-database",
+      "priority": "P0",
+      "closureKinds": [
+        "RUN_NOW_WITH_REAL_ENV"
+      ],
+      "itemOrders": [
+        9,
+        10
+      ],
+      "itemIds": [
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff"
+      ],
+      "envKeyCount": 4,
+      "envKeys": [
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "blockerHints": [
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "wave": 4,
+      "owner": "lumira-ui",
+      "batchId": "p0-manifest-lumira-ui",
+      "priority": "P0",
+      "closureKinds": [
+        "RUN_NOW_WITH_REAL_ENV"
+      ],
+      "itemOrders": [
+        11,
+        12,
+        13
+      ],
+      "itemIds": [
+        "manifest-missing-lumira-ui-frontend-smoke-json",
+        "manifest-missing-lumira-ui-lumira-ui-build-evidence-json",
+        "manifest-missing-lumira-ui-lumira-ui-static-evidence-json"
+      ],
+      "envKeyCount": 4,
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json",
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "blockerHints": [],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ]
+    },
+    {
+      "wave": 5,
       "owner": "release-owner",
       "batchId": "p0-manifest-release-owner",
       "priority": "P0",
@@ -109,10 +196,22 @@
         "RUN_NOW_WITH_REAL_ENV"
       ],
       "itemOrders": [
-        9
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
       ],
       "itemIds": [
-        "manifest-missing-no-explain-json-files-in-tmp-ddd-explain"
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
+        "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff"
       ],
       "envKeyCount": 4,
       "envKeys": [
@@ -122,15 +221,21 @@
         "DDD_RELEASE_MANIFEST_STRICT"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/release/evidence-manifest.json"
       ],
       "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain"
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff"
       ],
       "exitCriteria": [
         "All required release evidence artifacts are present and checksummed.",
@@ -138,7 +243,7 @@
       ]
     },
     {
-      "wave": 4,
+      "wave": 6,
       "owner": "release-performance",
       "batchId": "p0-authenticated-performance-release-performance",
       "priority": "P0",
@@ -147,15 +252,15 @@
         "RUN_NOW_WITH_REAL_ENV"
       ],
       "itemOrders": [
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29
       ],
       "itemIds": [
         "performance-actual-shape-1",
@@ -176,8 +281,8 @@
         "DDD_RELEASE_CANDIDATE"
       ],
       "commands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs"
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/performance/authenticated-runtime-actual.json",

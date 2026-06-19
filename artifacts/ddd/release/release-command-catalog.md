@@ -1,6 +1,6 @@
 # DDD Release Command Catalog
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:09:18.921Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -53,6 +53,26 @@ Next priority: P0
 
 ## Owners
 
+### database
+
+- Priority: P0
+- Ready batches: p0-manifest-database
+- Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+- list: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- envCheck: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- dryRun: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- execute: `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
+
+### lumira-ui
+
+- Priority: P0
+- Ready batches: p0-manifest-lumira-ui
+- Expected artifacts: artifacts/ddd/lumira-ui/frontend-smoke.json, artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json, artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json, artifacts/ddd/release/evidence-manifest.json
+- list: `DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- envCheck: `DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- dryRun: `DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- execute: `DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
+
 ### release-infra
 
 - Priority: P0
@@ -84,6 +104,26 @@ Next priority: P0
 - execute: `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 
 ## Batches
+
+### p0-manifest-database
+
+- Owner: database
+- Priority: P0
+- Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+- list: `DDD_RELEASE_BATCH=p0-manifest-database DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- envCheck: `DDD_RELEASE_BATCH=p0-manifest-database DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- dryRun: `DDD_RELEASE_BATCH=p0-manifest-database DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- execute: `DDD_RELEASE_BATCH=p0-manifest-database bash artifacts/ddd/release/release-execution-commands.sh`
+
+### p0-manifest-lumira-ui
+
+- Owner: lumira-ui
+- Priority: P0
+- Expected artifacts: artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/lumira-ui/frontend-smoke.json, artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json, artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json
+- list: `DDD_RELEASE_BATCH=p0-manifest-lumira-ui DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- envCheck: `DDD_RELEASE_BATCH=p0-manifest-lumira-ui DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- dryRun: `DDD_RELEASE_BATCH=p0-manifest-lumira-ui DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- execute: `DDD_RELEASE_BATCH=p0-manifest-lumira-ui bash artifacts/ddd/release/release-execution-commands.sh`
 
 ### p0-docker-release-infra
 

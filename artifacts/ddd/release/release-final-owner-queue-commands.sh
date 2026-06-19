@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # Lumira DDD final owner queue commands.
-# Generated at: 2026-06-19T13:42:59.865Z
+# Generated at: 2026-06-19T18:09:18.921Z
 # Recommendation: NO_GO_STRICT
 # Default mode lists actionable owners. Set DDD_FINAL_OWNER_QUEUE_EXECUTE=1 to run commands.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
-  if [[ -f "scripts/ddd-release-readiness-summary.mjs" ]]; then
+  if [[ -f "bin/ddd-release-readiness-summary.mjs" ]]; then
     LUMIRA_REPO_ROOT=$(pwd)
   else
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
@@ -108,7 +108,7 @@ finalize_owner_queue_report() {
   if [[ "${DDD_FINAL_OWNER_QUEUE_EXECUTE}" != "1" && "${DDD_FINAL_OWNER_QUEUE_EXECUTE}" != "true" ]]; then return 0; fi
   mkdir -p "$(dirname "${DDD_FINAL_OWNER_QUEUE_REPORT}")"
   node --input-type=module -e 'import fs from "node:fs"; const [tmp, out, exitCode, ownerFilter, statusFilter] = process.argv.slice(1); const entries = fs.existsSync(tmp) ? fs.readFileSync(tmp, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)) : []; const exit = Number(exitCode); const failedEntries = entries.filter((entry) => Number(entry.status) !== 0).length; const summary = { totalEntries: entries.length, succeededEntries: entries.length - failedEntries, failedEntries }; fs.writeFileSync(out, `${JSON.stringify({ generatedAt: new Date().toISOString(), reportStatus: exit === 0 ? "PASS" : "FAIL", exitCode: exit, ownerFilter: ownerFilter || null, statusFilter: statusFilter || null, summary, entries }, null, 2)}\n`); if (fs.existsSync(tmp)) fs.rmSync(tmp);' "${DDD_FINAL_OWNER_QUEUE_REPORT_TMP}" "${DDD_FINAL_OWNER_QUEUE_REPORT}" "${exit_code}" "${DDD_FINAL_OWNER_QUEUE_OWNER}" "${DDD_FINAL_OWNER_QUEUE_STATUS}"
-  if ! DDD_FINAL_OWNER_QUEUE_REPORT="${DDD_FINAL_OWNER_QUEUE_REPORT}" node scripts/ddd-final-owner-queue-run-report-contract.mjs; then
+  if ! DDD_FINAL_OWNER_QUEUE_REPORT="${DDD_FINAL_OWNER_QUEUE_REPORT}" node bin/ddd-final-owner-queue-run-report-contract.mjs; then
     echo "[ddd-final-owner-queue][report-contract] failed" >&2
     return 1
   fi
@@ -159,67 +159,67 @@ if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" != "1" && "${DDD_FINAL_OWNER_QUEUE_DETAI
   echo "Final owner queue:"
   if matches_owner_queue_filter 'release-infra' 'ACTIONABLE'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=1 owner=release-infra status=ACTIONABLE ready=2 blocked=1 missingArtifacts=5 contentBlockers=0 first=node scripts/ddd-release-evidence-orchestrator.mjs'
+    echo '[ddd-final-owner-queue] order=1 owner=release-infra status=ACTIONABLE ready=2 blocked=1 missingArtifacts=5 contentBlockers=0 first=DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
+  fi
+  if matches_owner_queue_filter 'database' 'ACTIONABLE'; then
+    DDD_FINAL_OWNER_QUEUE_MATCHED=1
+    echo '[ddd-final-owner-queue] order=2 owner=database status=ACTIONABLE ready=1 blocked=2 missingArtifacts=6 contentBlockers=2 first=DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  fi
+  if matches_owner_queue_filter 'lumira-ui' 'ACTIONABLE'; then
+    DDD_FINAL_OWNER_QUEUE_MATCHED=1
+    echo '[ddd-final-owner-queue] order=3 owner=lumira-ui status=ACTIONABLE ready=1 blocked=0 missingArtifacts=4 contentBlockers=0 first=DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
   fi
   if matches_owner_queue_filter 'release-owner' 'ACTIONABLE'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=2 owner=release-owner status=ACTIONABLE ready=1 blocked=1 missingArtifacts=4 contentBlockers=1 first=DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
+    echo '[ddd-final-owner-queue] order=4 owner=release-owner status=ACTIONABLE ready=1 blocked=1 missingArtifacts=4 contentBlockers=7 first=DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
   fi
   if matches_owner_queue_filter 'release-performance' 'ACTIONABLE'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=3 owner=release-performance status=ACTIONABLE ready=1 blocked=0 missingArtifacts=3 contentBlockers=0 first=node scripts/ddd-authenticated-performance-smoke.mjs'
+    echo '[ddd-final-owner-queue] order=5 owner=release-performance status=ACTIONABLE ready=1 blocked=0 missingArtifacts=3 contentBlockers=0 first=node bin/ddd-authenticated-performance-smoke.mjs'
   fi
   if matches_owner_queue_filter 'ai' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=4 owner=ai status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node scripts/ddd-ai-runtime-drill.mjs'
+    echo '[ddd-final-owner-queue] order=6 owner=ai status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node bin/ddd-ai-runtime-drill.mjs'
   fi
   if matches_owner_queue_filter 'ai-owner' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=5 owner=ai-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node scripts/ddd-rollback-deferral-template.mjs'
+    echo '[ddd-final-owner-queue] order=7 owner=ai-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node bin/ddd-rollback-deferral-template.mjs'
   fi
   if matches_owner_queue_filter 'auth-owner' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=6 owner=auth-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node scripts/ddd-rollback-deferral-template.mjs'
-  fi
-  if matches_owner_queue_filter 'database' 'WAITING'; then
-    DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=7 owner=database status=WAITING ready=0 blocked=2 missingArtifacts=5 contentBlockers=0 first=node scripts/ddd-collect-explain.mjs'
+    echo '[ddd-final-owner-queue] order=8 owner=auth-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node bin/ddd-rollback-deferral-template.mjs'
   fi
   if matches_owner_queue_filter 'file-owner' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=8 owner=file-owner status=WAITING ready=0 blocked=2 missingArtifacts=2 contentBlockers=0 first=node scripts/ddd-file-processing-e2e-smoke.mjs'
-  fi
-  if matches_owner_queue_filter 'frontend' 'WAITING'; then
-    DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=9 owner=frontend status=WAITING ready=0 blocked=2 missingArtifacts=5 contentBlockers=0 first=node scripts/ddd-frontend-playwright-smoke.mjs'
+    echo '[ddd-final-owner-queue] order=9 owner=file-owner status=WAITING ready=0 blocked=2 missingArtifacts=2 contentBlockers=0 first=node bin/ddd-file-processing-e2e-smoke.mjs'
   fi
   if matches_owner_queue_filter 'iam-owner' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=10 owner=iam-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node scripts/ddd-rollback-deferral-template.mjs'
+    echo '[ddd-final-owner-queue] order=10 owner=iam-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node bin/ddd-rollback-deferral-template.mjs'
   fi
   if matches_owner_queue_filter 'job-owner' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=11 owner=job-owner status=WAITING ready=0 blocked=2 missingArtifacts=2 contentBlockers=0 first=node scripts/ddd-job-e2e-smoke.mjs'
+    echo '[ddd-final-owner-queue] order=11 owner=job-owner status=WAITING ready=0 blocked=2 missingArtifacts=2 contentBlockers=0 first=node bin/ddd-job-e2e-smoke.mjs'
   fi
   if matches_owner_queue_filter 'localization-owner' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=12 owner=localization-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node scripts/ddd-rollback-deferral-template.mjs'
+    echo '[ddd-final-owner-queue] order=12 owner=localization-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node bin/ddd-rollback-deferral-template.mjs'
   fi
   if matches_owner_queue_filter 'message-owner' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=13 owner=message-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node scripts/ddd-rollback-deferral-template.mjs'
+    echo '[ddd-final-owner-queue] order=13 owner=message-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node bin/ddd-rollback-deferral-template.mjs'
   fi
   if matches_owner_queue_filter 'payment-owner' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=14 owner=payment-owner status=WAITING ready=0 blocked=2 missingArtifacts=2 contentBlockers=0 first=node scripts/ddd-payment-webhook-e2e-smoke.mjs'
+    echo '[ddd-final-owner-queue] order=14 owner=payment-owner status=WAITING ready=0 blocked=2 missingArtifacts=2 contentBlockers=0 first=node bin/ddd-payment-webhook-e2e-smoke.mjs'
   fi
   if matches_owner_queue_filter 'platform-owner' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=15 owner=platform-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node scripts/ddd-rollback-deferral-template.mjs'
+    echo '[ddd-final-owner-queue] order=15 owner=platform-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node bin/ddd-rollback-deferral-template.mjs'
   fi
   if matches_owner_queue_filter 'plugin-owner' 'WAITING'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=16 owner=plugin-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node scripts/ddd-rollback-deferral-template.mjs'
+    echo '[ddd-final-owner-queue] order=16 owner=plugin-owner status=WAITING ready=0 blocked=1 missingArtifacts=1 contentBlockers=0 first=node bin/ddd-rollback-deferral-template.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_MATCHED}" != "1" ]]; then
     echo "No final owner queue item matched the requested filters." >&2
@@ -232,12 +232,12 @@ if matches_owner_queue_filter 'release-infra' 'ACTIONABLE'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
   echo '[ddd-final-owner-queue] order=1 owner=release-infra status=ACTIONABLE'
   echo "commands:"
-  echo '- node scripts/ddd-release-evidence-orchestrator.mjs'
-  echo '- DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-  echo '- node scripts/ddd-docker-build-evidence.mjs'
-  echo '- node scripts/ddd-runtime-readiness-smoke.mjs'
-  echo '- DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict'
-  echo '- node scripts/ddd-release-readiness-summary.mjs'
+  echo '- DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
+  echo '- DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
+  echo '- node bin/ddd-runtime-readiness-smoke.mjs'
+  echo '- node bin/ddd-release-evidence-orchestrator.mjs'
+  echo '- DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict'
+  echo '- node bin/ddd-release-readiness-summary.mjs'
   echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
@@ -248,7 +248,9 @@ if matches_owner_queue_filter 'release-infra' 'ACTIONABLE'; then
     echo '- DDD_EVIDENCE_OPERATOR'
     echo '- DDD_RELEASE_CANDIDATE'
     echo '- DEPLOY_CHECK_BASE_URL'
+    echo '- FRONTEND_BASE_URL'
     echo '- LUMIRA_BASE_URL'
+    echo '- PLAYWRIGHT_BASE_URL'
     echo "missingArtifacts:"
     echo '- artifacts/ddd/build/docker-image-evidence.json'
     echo '- artifacts/ddd/readiness/summary.json'
@@ -260,32 +262,134 @@ if matches_owner_queue_filter 'release-infra' 'ACTIONABLE'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
-    check_owner_queue_env 'BASE_URL' 'DDD_DOCKER_BUILD_STRICT' 'DDD_DOCKER_COMMAND' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DEPLOY_CHECK_BASE_URL' 'LUMIRA_BASE_URL'
+    check_owner_queue_env 'BASE_URL' 'DDD_DOCKER_BUILD_STRICT' 'DDD_DOCKER_COMMAND' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DEPLOY_CHECK_BASE_URL' 'FRONTEND_BASE_URL' 'LUMIRA_BASE_URL' 'PLAYWRIGHT_BASE_URL'
   else
-    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '1' '7' 'node scripts/ddd-release-evidence-orchestrator.mjs'
-    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '2' '7' 'DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '3' '7' 'node scripts/ddd-docker-build-evidence.mjs'
-    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '4' '7' 'node scripts/ddd-runtime-readiness-smoke.mjs'
-    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '5' '7' 'DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict'
-    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '6' '7' 'node scripts/ddd-release-readiness-summary.mjs'
+    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '1' '7' 'DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
+    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '2' '7' 'DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
+    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '3' '7' 'node bin/ddd-runtime-readiness-smoke.mjs'
+    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '4' '7' 'node bin/ddd-release-evidence-orchestrator.mjs'
+    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '5' '7' 'DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict'
+    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '6' '7' 'node bin/ddd-release-readiness-summary.mjs'
     run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '7' '7' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
+  fi
+fi
+
+if matches_owner_queue_filter 'database' 'ACTIONABLE'; then
+  DDD_FINAL_OWNER_QUEUE_MATCHED=1
+  echo '[ddd-final-owner-queue] order=2 owner=database status=ACTIONABLE'
+  echo "commands:"
+  echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  echo '- node bin/ddd-promote-performance-baseline.mjs'
+  echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  echo '- node bin/ddd-collect-explain.mjs'
+  echo '- DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs'
+  echo '- node bin/ddd-release-evidence-orchestrator.mjs'
+  echo '- DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict'
+  echo '- node bin/ddd-release-readiness-summary.mjs'
+  echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
+  if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
+    echo "envKeys:"
+    echo '- DDD_EVIDENCE_OPERATOR'
+    echo '- DDD_EXPLAIN_DATABASE'
+    echo '- DDD_EXPLAIN_DIR'
+    echo '- DDD_EXPLAIN_ENVIRONMENT'
+    echo '- DDD_EXPLAIN_STRICT'
+    echo '- DDD_MIGRATION_FRESH_DB_EVIDENCE'
+    echo '- DDD_MIGRATION_FRESH_DB_VALIDATED'
+    echo '- DDD_MIGRATION_UPGRADE_DB_EVIDENCE'
+    echo '- DDD_MIGRATION_UPGRADE_DB_VALIDATED'
+    echo '- DDD_RELEASE_CANDIDATE'
+    echo '- MYSQL_CLI'
+    echo '- MYSQL_DATABASE'
+    echo '- MYSQL_HOST'
+    echo '- MYSQL_PASSWORD'
+    echo '- MYSQL_PORT'
+    echo '- MYSQL_USER'
+    echo "missingArtifacts:"
+    echo '- artifacts/ddd/release/evidence-manifest.json'
+    echo '- artifacts/ddd/release/explain-gate-report.json'
+    echo '- artifacts/ddd/release/orchestrator-report.json'
+    echo '- artifacts/ddd/release/readiness-summary.json'
+    echo '- artifacts/ddd/release/release-evidence-gate.json'
+    echo '- tmp/ddd-explain/*.json'
+    echo "contentBlockers:"
+    echo '- artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs'
+    echo '- artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff'
+    echo "rerunCommands:"
+    echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
+    echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
+    echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
+  fi
+  if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
+    check_owner_queue_env 'DDD_EVIDENCE_OPERATOR' 'DDD_EXPLAIN_DATABASE' 'DDD_EXPLAIN_DIR' 'DDD_EXPLAIN_ENVIRONMENT' 'DDD_EXPLAIN_STRICT' 'DDD_MIGRATION_FRESH_DB_EVIDENCE' 'DDD_MIGRATION_FRESH_DB_VALIDATED' 'DDD_MIGRATION_UPGRADE_DB_EVIDENCE' 'DDD_MIGRATION_UPGRADE_DB_VALIDATED' 'DDD_RELEASE_CANDIDATE' 'MYSQL_CLI' 'MYSQL_DATABASE' 'MYSQL_HOST' 'MYSQL_PASSWORD' 'MYSQL_PORT' 'MYSQL_USER'
+  else
+    run_owner_queue_command 'database' '2' 'ACTIONABLE' '1' '9' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    run_owner_queue_command 'database' '2' 'ACTIONABLE' '2' '9' 'node bin/ddd-promote-performance-baseline.mjs'
+    run_owner_queue_command 'database' '2' 'ACTIONABLE' '3' '9' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+    run_owner_queue_command 'database' '2' 'ACTIONABLE' '4' '9' 'node bin/ddd-collect-explain.mjs'
+    run_owner_queue_command 'database' '2' 'ACTIONABLE' '5' '9' 'DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs'
+    run_owner_queue_command 'database' '2' 'ACTIONABLE' '6' '9' 'node bin/ddd-release-evidence-orchestrator.mjs'
+    run_owner_queue_command 'database' '2' 'ACTIONABLE' '7' '9' 'DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict'
+    run_owner_queue_command 'database' '2' 'ACTIONABLE' '8' '9' 'node bin/ddd-release-readiness-summary.mjs'
+    run_owner_queue_command 'database' '2' 'ACTIONABLE' '9' '9' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
+  fi
+fi
+
+if matches_owner_queue_filter 'lumira-ui' 'ACTIONABLE'; then
+  DDD_FINAL_OWNER_QUEUE_MATCHED=1
+  echo '[ddd-final-owner-queue] order=3 owner=lumira-ui status=ACTIONABLE'
+  echo "commands:"
+  echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  echo '- node bin/ddd-promote-performance-baseline.mjs'
+  echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  echo '- node bin/ddd-release-readiness-summary.mjs'
+  echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
+  if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
+    echo "envKeys:"
+    echo '- DDD_EVIDENCE_ENVIRONMENT'
+    echo '- DDD_FRONTEND_EXPECT_DEPLOYED'
+    echo '- DDD_RELEASE_CANDIDATE'
+    echo '- PLAYWRIGHT_BASE_URL'
+    echo "missingArtifacts:"
+    echo '- artifacts/ddd/lumira-ui/frontend-smoke.json'
+    echo '- artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json'
+    echo '- artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json'
+    echo '- artifacts/ddd/release/evidence-manifest.json'
+    echo "contentBlockers:"
+    echo "rerunCommands:"
+    echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
+    echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
+    echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
+  fi
+  if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
+    check_owner_queue_env 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_FRONTEND_EXPECT_DEPLOYED' 'DDD_RELEASE_CANDIDATE' 'PLAYWRIGHT_BASE_URL'
+  else
+    run_owner_queue_command 'lumira-ui' '3' 'ACTIONABLE' '1' '5' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    run_owner_queue_command 'lumira-ui' '3' 'ACTIONABLE' '2' '5' 'node bin/ddd-promote-performance-baseline.mjs'
+    run_owner_queue_command 'lumira-ui' '3' 'ACTIONABLE' '3' '5' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+    run_owner_queue_command 'lumira-ui' '3' 'ACTIONABLE' '4' '5' 'node bin/ddd-release-readiness-summary.mjs'
+    run_owner_queue_command 'lumira-ui' '3' 'ACTIONABLE' '5' '5' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
   fi
 fi
 
 if matches_owner_queue_filter 'release-owner' 'ACTIONABLE'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
-  echo '[ddd-final-owner-queue] order=2 owner=release-owner status=ACTIONABLE'
+  echo '[ddd-final-owner-queue] order=4 owner=release-owner status=ACTIONABLE'
   echo "commands:"
-  echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
-  echo '- node scripts/ddd-promote-performance-baseline.mjs'
-  echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
-  echo '- node scripts/ddd-release-evidence-orchestrator.mjs'
-  echo '- DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict'
-  echo '- node scripts/ddd-release-readiness-summary.mjs'
+  echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  echo '- node bin/ddd-promote-performance-baseline.mjs'
+  echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  echo '- node bin/ddd-release-evidence-orchestrator.mjs'
+  echo '- DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict'
+  echo '- node bin/ddd-release-readiness-summary.mjs'
   echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
@@ -300,39 +404,45 @@ if matches_owner_queue_filter 'release-owner' 'ACTIONABLE'; then
     echo '- artifacts/ddd/release/readiness-summary.json'
     echo '- artifacts/ddd/release/release-evidence-gate.json'
     echo "contentBlockers:"
-    echo '- artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\ddd-explain'
+    echo '- artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh'
+    echo '- artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs'
+    echo '- artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs'
+    echo '- artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs'
+    echo '- artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet'
+    echo '- artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt'
+    echo '- artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff'
     echo "rerunCommands:"
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_EVIDENCE_STRICT' 'DDD_RELEASE_MANIFEST_STRICT'
   else
-    run_owner_queue_command 'release-owner' '2' 'ACTIONABLE' '1' '7' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
-    run_owner_queue_command 'release-owner' '2' 'ACTIONABLE' '2' '7' 'node scripts/ddd-promote-performance-baseline.mjs'
-    run_owner_queue_command 'release-owner' '2' 'ACTIONABLE' '3' '7' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
-    run_owner_queue_command 'release-owner' '2' 'ACTIONABLE' '4' '7' 'node scripts/ddd-release-evidence-orchestrator.mjs'
-    run_owner_queue_command 'release-owner' '2' 'ACTIONABLE' '5' '7' 'DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict'
-    run_owner_queue_command 'release-owner' '2' 'ACTIONABLE' '6' '7' 'node scripts/ddd-release-readiness-summary.mjs'
-    run_owner_queue_command 'release-owner' '2' 'ACTIONABLE' '7' '7' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
+    run_owner_queue_command 'release-owner' '4' 'ACTIONABLE' '1' '7' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    run_owner_queue_command 'release-owner' '4' 'ACTIONABLE' '2' '7' 'node bin/ddd-promote-performance-baseline.mjs'
+    run_owner_queue_command 'release-owner' '4' 'ACTIONABLE' '3' '7' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+    run_owner_queue_command 'release-owner' '4' 'ACTIONABLE' '4' '7' 'node bin/ddd-release-evidence-orchestrator.mjs'
+    run_owner_queue_command 'release-owner' '4' 'ACTIONABLE' '5' '7' 'DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict'
+    run_owner_queue_command 'release-owner' '4' 'ACTIONABLE' '6' '7' 'node bin/ddd-release-readiness-summary.mjs'
+    run_owner_queue_command 'release-owner' '4' 'ACTIONABLE' '7' '7' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
   fi
 fi
 
 if matches_owner_queue_filter 'release-performance' 'ACTIONABLE'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
-  echo '[ddd-final-owner-queue] order=3 owner=release-performance status=ACTIONABLE'
+  echo '[ddd-final-owner-queue] order=5 owner=release-performance status=ACTIONABLE'
   echo "commands:"
-  echo '- node scripts/ddd-authenticated-performance-smoke.mjs'
-  echo '- node scripts/ddd-promote-performance-baseline.mjs'
+  echo '- node bin/ddd-authenticated-performance-smoke.mjs'
+  echo '- node bin/ddd-promote-performance-baseline.mjs'
   echo '- DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh'
-  echo '- DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs'
-  echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
-  echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
-  echo '- node scripts/ddd-release-evidence-gate.mjs'
-  echo '- node scripts/ddd-release-readiness-summary.mjs'
+  echo '- DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs'
+  echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  echo '- node bin/ddd-release-evidence-gate.mjs'
+  echo '- node bin/ddd-release-readiness-summary.mjs'
   echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
@@ -357,29 +467,29 @@ if matches_owner_queue_filter 'release-performance' 'ACTIONABLE'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'BASE_URL' 'DDD_AUTH_PASSWORD' 'DDD_AUTH_PERF_BASELINE_ACCEPTED_BY' 'DDD_AUTH_PERF_BASELINE_ENVIRONMENT' 'DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT' 'DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE' 'DDD_AUTH_PERF_ENVIRONMENT' 'DDD_AUTH_USERNAME' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DEPLOY_CHECK_BASE_URL' 'LUMIRA_BASE_URL'
   else
-    run_owner_queue_command 'release-performance' '3' 'ACTIONABLE' '1' '9' 'node scripts/ddd-authenticated-performance-smoke.mjs'
-    run_owner_queue_command 'release-performance' '3' 'ACTIONABLE' '2' '9' 'node scripts/ddd-promote-performance-baseline.mjs'
-    run_owner_queue_command 'release-performance' '3' 'ACTIONABLE' '3' '9' 'DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh'
-    run_owner_queue_command 'release-performance' '3' 'ACTIONABLE' '4' '9' 'DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs'
-    run_owner_queue_command 'release-performance' '3' 'ACTIONABLE' '5' '9' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
-    run_owner_queue_command 'release-performance' '3' 'ACTIONABLE' '6' '9' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
-    run_owner_queue_command 'release-performance' '3' 'ACTIONABLE' '7' '9' 'node scripts/ddd-release-evidence-gate.mjs'
-    run_owner_queue_command 'release-performance' '3' 'ACTIONABLE' '8' '9' 'node scripts/ddd-release-readiness-summary.mjs'
-    run_owner_queue_command 'release-performance' '3' 'ACTIONABLE' '9' '9' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
+    run_owner_queue_command 'release-performance' '5' 'ACTIONABLE' '1' '9' 'node bin/ddd-authenticated-performance-smoke.mjs'
+    run_owner_queue_command 'release-performance' '5' 'ACTIONABLE' '2' '9' 'node bin/ddd-promote-performance-baseline.mjs'
+    run_owner_queue_command 'release-performance' '5' 'ACTIONABLE' '3' '9' 'DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh'
+    run_owner_queue_command 'release-performance' '5' 'ACTIONABLE' '4' '9' 'DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs'
+    run_owner_queue_command 'release-performance' '5' 'ACTIONABLE' '5' '9' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    run_owner_queue_command 'release-performance' '5' 'ACTIONABLE' '6' '9' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+    run_owner_queue_command 'release-performance' '5' 'ACTIONABLE' '7' '9' 'node bin/ddd-release-evidence-gate.mjs'
+    run_owner_queue_command 'release-performance' '5' 'ACTIONABLE' '8' '9' 'node bin/ddd-release-readiness-summary.mjs'
+    run_owner_queue_command 'release-performance' '5' 'ACTIONABLE' '9' '9' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
   fi
 fi
 
 if matches_owner_queue_filter 'ai' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
-  echo '[ddd-final-owner-queue] order=4 owner=ai status=WAITING'
+  echo '[ddd-final-owner-queue] order=6 owner=ai status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-ai-runtime-drill.mjs'
+  echo '- node bin/ddd-ai-runtime-drill.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- BASE_URL'
@@ -401,8 +511,8 @@ if matches_owner_queue_filter 'ai' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'BASE_URL' 'DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE' 'DDD_AI_EXPECT_PROVIDER_REMOTE' 'DEPLOY_CHECK_BASE_URL' 'LUMIRA_AI_BASE_URL' 'LUMIRA_AI_OWNER_FILE_BASE_URL' 'LUMIRA_AI_OWNER_IAM_BASE_URL' 'LUMIRA_AI_OWNER_PLATFORM_BASE_URL' 'LUMIRA_AI_PROVIDER' 'LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY' 'LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL' 'LUMIRA_BASE_URL'
@@ -417,11 +527,11 @@ fi
 
 if matches_owner_queue_filter 'ai-owner' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
-  echo '[ddd-final-owner-queue] order=5 owner=ai-owner status=WAITING'
+  echo '[ddd-final-owner-queue] order=7 owner=ai-owner status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-rollback-deferral-template.mjs'
-  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs'
-  echo '- node scripts/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-deferral-template.mjs'
+  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- DDD_EVIDENCE_ENVIRONMENT'
@@ -439,8 +549,8 @@ if matches_owner_queue_filter 'ai-owner' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT'
@@ -455,11 +565,11 @@ fi
 
 if matches_owner_queue_filter 'auth-owner' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
-  echo '[ddd-final-owner-queue] order=6 owner=auth-owner status=WAITING'
+  echo '[ddd-final-owner-queue] order=8 owner=auth-owner status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-rollback-deferral-template.mjs'
-  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs'
-  echo '- node scripts/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-deferral-template.mjs'
+  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- DDD_EVIDENCE_ENVIRONMENT'
@@ -477,8 +587,8 @@ if matches_owner_queue_filter 'auth-owner' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT'
@@ -491,65 +601,14 @@ if matches_owner_queue_filter 'auth-owner' 'WAITING'; then
   fi
 fi
 
-if matches_owner_queue_filter 'database' 'WAITING'; then
-  DDD_FINAL_OWNER_QUEUE_MATCHED=1
-  echo '[ddd-final-owner-queue] order=7 owner=database status=WAITING'
-  echo "commands:"
-  echo '- node scripts/ddd-collect-explain.mjs'
-  echo '- DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs'
-  echo '- node scripts/ddd-release-evidence-orchestrator.mjs'
-  echo '- DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict'
-  if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
-    echo "envKeys:"
-    echo '- DDD_EVIDENCE_OPERATOR'
-    echo '- DDD_EXPLAIN_DATABASE'
-    echo '- DDD_EXPLAIN_DIR'
-    echo '- DDD_EXPLAIN_ENVIRONMENT'
-    echo '- DDD_EXPLAIN_STRICT'
-    echo '- DDD_MIGRATION_FRESH_DB_EVIDENCE'
-    echo '- DDD_MIGRATION_FRESH_DB_VALIDATED'
-    echo '- DDD_MIGRATION_UPGRADE_DB_EVIDENCE'
-    echo '- DDD_MIGRATION_UPGRADE_DB_VALIDATED'
-    echo '- DDD_RELEASE_CANDIDATE'
-    echo '- MYSQL_CLI'
-    echo '- MYSQL_DATABASE'
-    echo '- MYSQL_HOST'
-    echo '- MYSQL_PASSWORD'
-    echo '- MYSQL_PORT'
-    echo '- MYSQL_USER'
-    echo "missingArtifacts:"
-    echo '- artifacts/ddd/release/explain-gate-report.json'
-    echo '- artifacts/ddd/release/orchestrator-report.json'
-    echo '- artifacts/ddd/release/readiness-summary.json'
-    echo '- artifacts/ddd/release/release-evidence-gate.json'
-    echo '- tmp/ddd-explain/*.json'
-    echo "contentBlockers:"
-    echo "rerunCommands:"
-    echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
-    echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
-    echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
-  fi
-  if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
-    check_owner_queue_env 'DDD_EVIDENCE_OPERATOR' 'DDD_EXPLAIN_DATABASE' 'DDD_EXPLAIN_DIR' 'DDD_EXPLAIN_ENVIRONMENT' 'DDD_EXPLAIN_STRICT' 'DDD_MIGRATION_FRESH_DB_EVIDENCE' 'DDD_MIGRATION_FRESH_DB_VALIDATED' 'DDD_MIGRATION_UPGRADE_DB_EVIDENCE' 'DDD_MIGRATION_UPGRADE_DB_VALIDATED' 'DDD_RELEASE_CANDIDATE' 'MYSQL_CLI' 'MYSQL_DATABASE' 'MYSQL_HOST' 'MYSQL_PASSWORD' 'MYSQL_PORT' 'MYSQL_USER'
-  else
-    if [[ "${DDD_FINAL_OWNER_QUEUE_EXECUTE}" == "1" || "${DDD_FINAL_OWNER_QUEUE_EXECUTE}" == "true" ]]; then
-      echo '[ddd-final-owner-queue][blocked] owner=database status=WAITING; resolve dependencies before executing this owner queue.' >&2
-      exit 1
-    fi
-    echo '[ddd-final-owner-queue][waiting] owner=database status=WAITING; use DETAIL or CHECK_ENV for diagnostics.'
-  fi
-fi
-
 if matches_owner_queue_filter 'file-owner' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
-  echo '[ddd-final-owner-queue] order=8 owner=file-owner status=WAITING'
+  echo '[ddd-final-owner-queue] order=9 owner=file-owner status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-file-processing-e2e-smoke.mjs'
-  echo '- node scripts/ddd-rollback-deferral-template.mjs'
-  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs'
-  echo '- node scripts/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-file-processing-e2e-smoke.mjs'
+  echo '- node bin/ddd-rollback-deferral-template.mjs'
+  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- BASE_URL'
@@ -574,8 +633,8 @@ if matches_owner_queue_filter 'file-owner' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'BASE_URL' 'DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT' 'DEPLOY_CHECK_BASE_URL' 'LUMIRA_BASE_URL' 'LUMIRA_JOB_INTERNAL_TOKEN' 'LUMIRA_UPLOAD_STORAGE_ROOT'
@@ -588,51 +647,13 @@ if matches_owner_queue_filter 'file-owner' 'WAITING'; then
   fi
 fi
 
-if matches_owner_queue_filter 'frontend' 'WAITING'; then
-  DDD_FINAL_OWNER_QUEUE_MATCHED=1
-  echo '[ddd-final-owner-queue] order=9 owner=frontend status=WAITING'
-  echo "commands:"
-  echo '- node scripts/ddd-frontend-playwright-smoke.mjs'
-  echo '- node scripts/ddd-frontend-smoke-evidence.mjs'
-  echo '- node scripts/ddd-release-evidence-orchestrator.mjs'
-  echo '- DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict'
-  if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
-    echo "envKeys:"
-    echo '- DDD_FRONTEND_EXPECT_DEPLOYED'
-    echo '- FRONTEND_BASE_URL'
-    echo '- PLAYWRIGHT_BASE_URL'
-    echo "missingArtifacts:"
-    echo '- artifacts/ddd/frontend/frontend-smoke.json'
-    echo '- artifacts/ddd/frontend/playwright-smoke-results.json'
-    echo '- artifacts/ddd/release/orchestrator-report.json'
-    echo '- artifacts/ddd/release/readiness-summary.json'
-    echo '- artifacts/ddd/release/release-evidence-gate.json'
-    echo "contentBlockers:"
-    echo "rerunCommands:"
-    echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
-    echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
-    echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
-  fi
-  if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
-    check_owner_queue_env 'DDD_FRONTEND_EXPECT_DEPLOYED' 'FRONTEND_BASE_URL' 'PLAYWRIGHT_BASE_URL'
-  else
-    if [[ "${DDD_FINAL_OWNER_QUEUE_EXECUTE}" == "1" || "${DDD_FINAL_OWNER_QUEUE_EXECUTE}" == "true" ]]; then
-      echo '[ddd-final-owner-queue][blocked] owner=frontend status=WAITING; resolve dependencies before executing this owner queue.' >&2
-      exit 1
-    fi
-    echo '[ddd-final-owner-queue][waiting] owner=frontend status=WAITING; use DETAIL or CHECK_ENV for diagnostics.'
-  fi
-fi
-
 if matches_owner_queue_filter 'iam-owner' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
   echo '[ddd-final-owner-queue] order=10 owner=iam-owner status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-rollback-deferral-template.mjs'
-  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs'
-  echo '- node scripts/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-deferral-template.mjs'
+  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- DDD_EVIDENCE_ENVIRONMENT'
@@ -650,8 +671,8 @@ if matches_owner_queue_filter 'iam-owner' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT'
@@ -668,10 +689,10 @@ if matches_owner_queue_filter 'job-owner' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
   echo '[ddd-final-owner-queue] order=11 owner=job-owner status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-job-e2e-smoke.mjs'
-  echo '- node scripts/ddd-rollback-deferral-template.mjs'
-  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs'
-  echo '- node scripts/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-job-e2e-smoke.mjs'
+  echo '- node bin/ddd-rollback-deferral-template.mjs'
+  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- BASE_URL'
@@ -695,8 +716,8 @@ if matches_owner_queue_filter 'job-owner' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'BASE_URL' 'DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT' 'DEPLOY_CHECK_BASE_URL' 'LUMIRA_BASE_URL' 'LUMIRA_JOB_INTERNAL_TOKEN'
@@ -713,9 +734,9 @@ if matches_owner_queue_filter 'localization-owner' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
   echo '[ddd-final-owner-queue] order=12 owner=localization-owner status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-rollback-deferral-template.mjs'
-  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs'
-  echo '- node scripts/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-deferral-template.mjs'
+  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- DDD_EVIDENCE_ENVIRONMENT'
@@ -733,8 +754,8 @@ if matches_owner_queue_filter 'localization-owner' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT'
@@ -751,9 +772,9 @@ if matches_owner_queue_filter 'message-owner' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
   echo '[ddd-final-owner-queue] order=13 owner=message-owner status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-rollback-deferral-template.mjs'
-  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs'
-  echo '- node scripts/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-deferral-template.mjs'
+  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- DDD_EVIDENCE_ENVIRONMENT'
@@ -771,8 +792,8 @@ if matches_owner_queue_filter 'message-owner' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT'
@@ -789,10 +810,10 @@ if matches_owner_queue_filter 'payment-owner' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
   echo '[ddd-final-owner-queue] order=14 owner=payment-owner status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-payment-webhook-e2e-smoke.mjs'
-  echo '- node scripts/ddd-rollback-deferral-template.mjs'
-  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs'
-  echo '- node scripts/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-payment-webhook-e2e-smoke.mjs'
+  echo '- node bin/ddd-rollback-deferral-template.mjs'
+  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- BASE_URL'
@@ -816,8 +837,8 @@ if matches_owner_queue_filter 'payment-owner' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'BASE_URL' 'DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT' 'DEPLOY_CHECK_BASE_URL' 'LUMIRA_BASE_URL' 'PAYMENT_PUBLIC_BASE_URL'
@@ -834,9 +855,9 @@ if matches_owner_queue_filter 'platform-owner' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
   echo '[ddd-final-owner-queue] order=15 owner=platform-owner status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-rollback-deferral-template.mjs'
-  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs'
-  echo '- node scripts/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-deferral-template.mjs'
+  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- DDD_EVIDENCE_ENVIRONMENT'
@@ -854,8 +875,8 @@ if matches_owner_queue_filter 'platform-owner' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT'
@@ -872,9 +893,9 @@ if matches_owner_queue_filter 'plugin-owner' 'WAITING'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
   echo '[ddd-final-owner-queue] order=16 owner=plugin-owner status=WAITING'
   echo "commands:"
-  echo '- node scripts/ddd-rollback-deferral-template.mjs'
-  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs'
-  echo '- node scripts/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-deferral-template.mjs'
+  echo '- DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs'
+  echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
     echo '- DDD_EVIDENCE_ENVIRONMENT'
@@ -892,8 +913,8 @@ if matches_owner_queue_filter 'plugin-owner' 'WAITING'; then
     echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
     echo '- bash artifacts/ddd/release/release-artifact-integrity-gate.sh'
     echo '- bash artifacts/ddd/release/release-preflight-gate.sh'
-    echo '- node scripts/ddd-release-evidence-gate.mjs'
-    echo '- node scripts/ddd-release-readiness-summary.mjs'
+    echo '- node bin/ddd-release-evidence-gate.mjs'
+    echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT'
@@ -912,8 +933,8 @@ if [[ "${DDD_FINAL_OWNER_QUEUE_MATCHED}" != "1" ]]; then
 fi
 
 # After owner commands refresh evidence, rerun:
-run_owner_queue_command 'post-run' '0' 'POST_RUN' '1' '3' 'node scripts/ddd-release-evidence-gate.mjs'
-run_owner_queue_command 'post-run' '0' 'POST_RUN' '2' '3' 'node scripts/ddd-release-readiness-summary.mjs'
+run_owner_queue_command 'post-run' '0' 'POST_RUN' '1' '3' 'node bin/ddd-release-evidence-gate.mjs'
+run_owner_queue_command 'post-run' '0' 'POST_RUN' '2' '3' 'node bin/ddd-release-readiness-summary.mjs'
 run_owner_queue_command 'post-run' '0' 'POST_RUN' '3' '3' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
 if [[ "${DDD_FINAL_OWNER_QUEUE_COMMAND_FAILURES}" != "0" ]]; then
   echo "[ddd-final-owner-queue][completed-with-failures] commandFailures=${DDD_FINAL_OWNER_QUEUE_COMMAND_FAILURES}" >&2

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:09:18.921Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "finalRecommendation": "NO_GO_STRICT",
@@ -30,10 +30,10 @@
   },
   "summary": {
     "ownerCount": 16,
-    "actionableOwnerCount": 3,
-    "waitingOwnerCount": 13,
-    "missingArtifactCount": 18,
-    "contentBlockerCount": 1,
+    "actionableOwnerCount": 5,
+    "waitingOwnerCount": 11,
+    "missingArtifactCount": 19,
+    "contentBlockerCount": 9,
     "ownerInputReceiptStatus": "PENDING_OWNER_INPUT",
     "ownerInputReceiptCutoverReady": false,
     "ownerInputReceiptRequiredOwnerInputs": 0,
@@ -41,8 +41,8 @@
     "ownerInputReceiptMissingCriteriaCount": 1,
     "nextExecutableOwner": "release-infra",
     "nextExecutableQueueOrder": 1,
-    "nextExecutableCommand": "node scripts/ddd-release-evidence-orchestrator.mjs",
-    "nextExecutableEnvKeyCount": 8,
+    "nextExecutableCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "nextExecutableEnvKeyCount": 10,
     "nextExecutableMissingArtifactCount": 5
   },
   "ownerInputReceipt": {
@@ -67,16 +67,16 @@
     "blockedUntil": "Required owner env keys and expected evidence artifacts are available in a permission-safe release env file.",
     "owner": "release-infra",
     "queueOrder": 1,
-    "firstCommand": "node scripts/ddd-release-evidence-orchestrator.mjs",
-    "envKeyCount": 8,
+    "firstCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "envKeyCount": 10,
     "missingArtifactCount": 5,
     "commands": [
-      "node scripts/ddd-release-evidence-orchestrator.mjs",
-      "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-      "node scripts/ddd-docker-build-evidence.mjs",
-      "node scripts/ddd-runtime-readiness-smoke.mjs",
-      "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict",
-      "node scripts/ddd-release-readiness-summary.mjs",
+      "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+      "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+      "node bin/ddd-runtime-readiness-smoke.mjs",
+      "node bin/ddd-release-evidence-orchestrator.mjs",
+      "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+      "node bin/ddd-release-readiness-summary.mjs",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
     ],
     "releaseEnvFileRequired": true,
@@ -115,9 +115,11 @@
         "DDD_EVIDENCE_OPERATOR",
         "DDD_RELEASE_CANDIDATE",
         "DEPLOY_CHECK_BASE_URL",
-        "LUMIRA_BASE_URL"
+        "FRONTEND_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL"
       ],
-      "envKeyCount": 8,
+      "envKeyCount": 10,
       "missingArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json",
         "artifacts/ddd/readiness/summary.json",
@@ -129,22 +131,22 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-runtime-readiness-smoke.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict",
-        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-runtime-readiness-smoke.mjs",
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+        "node bin/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ],
       "commandCount": 7,
-      "firstCommand": "node scripts/ddd-release-evidence-orchestrator.mjs",
+      "firstCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: deployable-images",
@@ -156,11 +158,153 @@
     },
     {
       "queueOrder": 2,
-      "owner": "release-owner",
+      "owner": "database",
       "queueStatus": "ACTIONABLE",
       "canExecute": true,
       "firstOwnerActionPriority": false,
       "executionOrderHint": 3,
+      "cutoverItems": [
+        "database-performance",
+        "evidence-integrity",
+        "strict-release-gate"
+      ],
+      "readyBatchIds": [
+        "p0-manifest-database"
+      ],
+      "blockedBatchIds": [
+        "p2-explain-database",
+        "p3-orchestrator-database"
+      ],
+      "closureWaves": [
+        3
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_EXPLAIN_DATABASE",
+        "DDD_EXPLAIN_DIR",
+        "DDD_EXPLAIN_ENVIRONMENT",
+        "DDD_EXPLAIN_STRICT",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_RELEASE_CANDIDATE",
+        "MYSQL_CLI",
+        "MYSQL_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PASSWORD",
+        "MYSQL_PORT",
+        "MYSQL_USER"
+      ],
+      "envKeyCount": 16,
+      "missingArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json",
+        "artifacts/ddd/release/explain-gate-report.json",
+        "artifacts/ddd/release/orchestrator-report.json",
+        "artifacts/ddd/release/readiness-summary.json",
+        "artifacts/ddd/release/release-evidence-gate.json",
+        "tmp/ddd-explain/*.json"
+      ],
+      "missingArtifactCount": 6,
+      "contentBlockers": [
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff"
+      ],
+      "contentBlockerCount": 2,
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+        "node bin/ddd-release-readiness-summary.mjs",
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+      ],
+      "commandCount": 9,
+      "firstCommand": "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+      "rerunCommands": [
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
+        "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
+        "bash artifacts/ddd/release/release-preflight-gate.sh",
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
+      ],
+      "stopReasons": [
+        "closure wave 3 CONTENT_BLOCKED",
+        "closure wave 3 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        "closure wave 3 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff",
+        "cutover checklist blocked: database-performance",
+        "cutover checklist blocked: evidence-integrity",
+        "cutover checklist blocked: strict-release-gate"
+      ],
+      "stopReasonCount": 6
+    },
+    {
+      "queueOrder": 3,
+      "owner": "lumira-ui",
+      "queueStatus": "ACTIONABLE",
+      "canExecute": true,
+      "firstOwnerActionPriority": false,
+      "executionOrderHint": 4,
+      "cutoverItems": [
+        "evidence-integrity",
+        "strict-release-gate"
+      ],
+      "readyBatchIds": [
+        "p0-manifest-lumira-ui"
+      ],
+      "blockedBatchIds": [],
+      "closureWaves": [
+        4
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
+      ],
+      "envKeyCount": 4,
+      "missingArtifacts": [
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json",
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "missingArtifactCount": 4,
+      "contentBlockers": [],
+      "contentBlockerCount": 0,
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-release-readiness-summary.mjs",
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
+      ],
+      "commandCount": 5,
+      "firstCommand": "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+      "rerunCommands": [
+        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
+        "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
+        "bash artifacts/ddd/release/release-preflight-gate.sh",
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
+      ],
+      "stopReasons": [
+        "closure wave 4 ARTIFACT_MISSING",
+        "cutover checklist blocked: evidence-integrity",
+        "cutover checklist blocked: strict-release-gate"
+      ],
+      "stopReasonCount": 3
+    },
+    {
+      "queueOrder": 4,
+      "owner": "release-owner",
+      "queueStatus": "ACTIONABLE",
+      "canExecute": true,
+      "firstOwnerActionPriority": false,
+      "executionOrderHint": 5,
       "cutoverItems": [
         "evidence-integrity",
         "strict-release-gate"
@@ -172,7 +316,7 @@
         "p3-orchestrator-release-owner"
       ],
       "closureWaves": [
-        3
+        5
       ],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -190,42 +334,54 @@
       ],
       "missingArtifactCount": 4,
       "contentBlockers": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain"
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt",
+        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff"
       ],
-      "contentBlockerCount": 1,
+      "contentBlockerCount": 7,
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict",
-        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+        "node bin/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ],
       "commandCount": 7,
-      "firstCommand": "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
+      "firstCommand": "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
-        "closure wave 3 CONTENT_BLOCKED",
-        "closure wave 3 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain",
+        "closure wave 5 CONTENT_BLOCKED",
+        "closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh",
+        "closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs",
+        "closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs",
+        "closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs",
+        "closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet",
+        "closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt",
+        "closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff",
         "cutover checklist blocked: evidence-integrity",
         "cutover checklist blocked: strict-release-gate"
       ],
-      "stopReasonCount": 4
+      "stopReasonCount": 10
     },
     {
-      "queueOrder": 3,
+      "queueOrder": 5,
       "owner": "release-performance",
       "queueStatus": "ACTIONABLE",
       "canExecute": true,
       "firstOwnerActionPriority": false,
-      "executionOrderHint": 4,
+      "executionOrderHint": 6,
       "cutoverItems": [
         "production-equivalence",
         "strict-release-gate"
@@ -235,7 +391,7 @@
       ],
       "blockedBatchIds": [],
       "closureWaves": [
-        4
+        6
       ],
       "envKeys": [
         "BASE_URL",
@@ -261,24 +417,24 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
         "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
-        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ],
       "commandCount": 9,
-      "firstCommand": "node scripts/ddd-authenticated-performance-smoke.mjs",
+      "firstCommand": "node bin/ddd-authenticated-performance-smoke.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "acceptedAt must be an ISO timestamp",
@@ -297,7 +453,7 @@
       "stopReasonCount": 12
     },
     {
-      "queueOrder": 4,
+      "queueOrder": 6,
       "owner": "ai",
       "queueStatus": "WAITING",
       "canExecute": false,
@@ -334,16 +490,16 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-ai-runtime-drill.mjs"
+        "node bin/ddd-ai-runtime-drill.mjs"
       ],
       "commandCount": 1,
-      "firstCommand": "node scripts/ddd-ai-runtime-drill.mjs",
+      "firstCommand": "node bin/ddd-ai-runtime-drill.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: runtime-business-acceptance",
@@ -352,7 +508,7 @@
       "stopReasonCount": 2
     },
     {
-      "queueOrder": 5,
+      "queueOrder": 7,
       "owner": "ai-owner",
       "queueStatus": "WAITING",
       "canExecute": false,
@@ -385,18 +541,18 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "commandCount": 3,
-      "firstCommand": "node scripts/ddd-rollback-deferral-template.mjs",
+      "firstCommand": "node bin/ddd-rollback-deferral-template.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: rollback-safety",
@@ -405,7 +561,7 @@
       "stopReasonCount": 2
     },
     {
-      "queueOrder": 6,
+      "queueOrder": 8,
       "owner": "auth-owner",
       "queueStatus": "WAITING",
       "canExecute": false,
@@ -438,18 +594,18 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "commandCount": 3,
-      "firstCommand": "node scripts/ddd-rollback-deferral-template.mjs",
+      "firstCommand": "node bin/ddd-rollback-deferral-template.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: rollback-safety",
@@ -458,76 +614,7 @@
       "stopReasonCount": 2
     },
     {
-      "queueOrder": 7,
-      "owner": "database",
-      "queueStatus": "WAITING",
-      "canExecute": false,
-      "firstOwnerActionPriority": false,
-      "executionOrderHint": null,
-      "cutoverItems": [
-        "database-performance",
-        "evidence-integrity",
-        "strict-release-gate"
-      ],
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p2-explain-database",
-        "p3-orchestrator-database"
-      ],
-      "closureWaves": [],
-      "envKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_EXPLAIN_DIR",
-        "DDD_EXPLAIN_ENVIRONMENT",
-        "DDD_EXPLAIN_STRICT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "DDD_RELEASE_CANDIDATE",
-        "MYSQL_CLI",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PASSWORD",
-        "MYSQL_PORT",
-        "MYSQL_USER"
-      ],
-      "envKeyCount": 16,
-      "missingArtifacts": [
-        "artifacts/ddd/release/explain-gate-report.json",
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/readiness-summary.json",
-        "artifacts/ddd/release/release-evidence-gate.json",
-        "tmp/ddd-explain/*.json"
-      ],
-      "missingArtifactCount": 5,
-      "contentBlockers": [],
-      "contentBlockerCount": 0,
-      "commands": [
-        "node scripts/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
-      ],
-      "commandCount": 4,
-      "firstCommand": "node scripts/ddd-collect-explain.mjs",
-      "rerunCommands": [
-        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
-        "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
-        "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
-      ],
-      "stopReasons": [
-        "cutover checklist blocked: database-performance",
-        "cutover checklist blocked: evidence-integrity",
-        "cutover checklist blocked: strict-release-gate"
-      ],
-      "stopReasonCount": 3
-    },
-    {
-      "queueOrder": 8,
+      "queueOrder": 9,
       "owner": "file-owner",
       "queueStatus": "WAITING",
       "canExecute": false,
@@ -569,78 +656,22 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-file-processing-e2e-smoke.mjs",
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-file-processing-e2e-smoke.mjs",
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "commandCount": 4,
-      "firstCommand": "node scripts/ddd-file-processing-e2e-smoke.mjs",
+      "firstCommand": "node bin/ddd-file-processing-e2e-smoke.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: rollback-safety",
-        "cutover checklist blocked: runtime-business-acceptance",
-        "cutover checklist blocked: strict-release-gate"
-      ],
-      "stopReasonCount": 3
-    },
-    {
-      "queueOrder": 9,
-      "owner": "frontend",
-      "queueStatus": "WAITING",
-      "canExecute": false,
-      "firstOwnerActionPriority": false,
-      "executionOrderHint": null,
-      "cutoverItems": [
-        "evidence-integrity",
-        "runtime-business-acceptance",
-        "strict-release-gate"
-      ],
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p1-frontend-smoke-frontend",
-        "p3-orchestrator-frontend"
-      ],
-      "closureWaves": [],
-      "envKeys": [
-        "DDD_FRONTEND_EXPECT_DEPLOYED",
-        "FRONTEND_BASE_URL",
-        "PLAYWRIGHT_BASE_URL"
-      ],
-      "envKeyCount": 3,
-      "missingArtifacts": [
-        "artifacts/ddd/frontend/frontend-smoke.json",
-        "artifacts/ddd/frontend/playwright-smoke-results.json",
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/readiness-summary.json",
-        "artifacts/ddd/release/release-evidence-gate.json"
-      ],
-      "missingArtifactCount": 5,
-      "contentBlockers": [],
-      "contentBlockerCount": 0,
-      "commands": [
-        "node scripts/ddd-frontend-playwright-smoke.mjs",
-        "node scripts/ddd-frontend-smoke-evidence.mjs",
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
-      ],
-      "commandCount": 4,
-      "firstCommand": "node scripts/ddd-frontend-playwright-smoke.mjs",
-      "rerunCommands": [
-        "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
-        "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
-        "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
-      ],
-      "stopReasons": [
-        "cutover checklist blocked: evidence-integrity",
         "cutover checklist blocked: runtime-business-acceptance",
         "cutover checklist blocked: strict-release-gate"
       ],
@@ -680,18 +711,18 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "commandCount": 3,
-      "firstCommand": "node scripts/ddd-rollback-deferral-template.mjs",
+      "firstCommand": "node bin/ddd-rollback-deferral-template.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: rollback-safety",
@@ -741,19 +772,19 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-job-e2e-smoke.mjs",
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-job-e2e-smoke.mjs",
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "commandCount": 4,
-      "firstCommand": "node scripts/ddd-job-e2e-smoke.mjs",
+      "firstCommand": "node bin/ddd-job-e2e-smoke.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: rollback-safety",
@@ -796,18 +827,18 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "commandCount": 3,
-      "firstCommand": "node scripts/ddd-rollback-deferral-template.mjs",
+      "firstCommand": "node bin/ddd-rollback-deferral-template.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: rollback-safety",
@@ -849,18 +880,18 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "commandCount": 3,
-      "firstCommand": "node scripts/ddd-rollback-deferral-template.mjs",
+      "firstCommand": "node bin/ddd-rollback-deferral-template.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: rollback-safety",
@@ -910,19 +941,19 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs",
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "commandCount": 4,
-      "firstCommand": "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+      "firstCommand": "node bin/ddd-payment-webhook-e2e-smoke.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: rollback-safety",
@@ -965,18 +996,18 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "commandCount": 3,
-      "firstCommand": "node scripts/ddd-rollback-deferral-template.mjs",
+      "firstCommand": "node bin/ddd-rollback-deferral-template.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: rollback-safety",
@@ -1018,18 +1049,18 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "commandCount": 3,
-      "firstCommand": "node scripts/ddd-rollback-deferral-template.mjs",
+      "firstCommand": "node bin/ddd-rollback-deferral-template.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
         "bash artifacts/ddd/release/release-preflight-gate.sh",
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "stopReasons": [
         "cutover checklist blocked: rollback-safety",

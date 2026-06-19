@@ -1,6 +1,6 @@
 # DDD Release Env Canonical Fill
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:09:18.921Z
 Status: NOT_READY
 Env file: .env.release.local
 Canonical fill items: 48
@@ -18,7 +18,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: runtime-setting; secret=false; safeToPreFill=true
 - Fill guidance: Use the production runtime setting agreed by the owning context.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL` (present)
   - `LUMIRA_AI_CHAT_MODEL` (present)
@@ -32,7 +32,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: runtime-setting; secret=false; safeToPreFill=true
 - Fill guidance: Use the production runtime setting agreed by the owning context.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL` (present)
   - `LUMIRA_AI_EMBEDDING_MODEL` (present)
@@ -46,7 +46,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: toggle; secret=false; safeToPreFill=true
 - Fill guidance: Use one of: true.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=true
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED` (present)
 
@@ -59,7 +59,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL` (present)
   - `LUMIRA_AI_OWNER_FILE_BASE_URL` (present)
@@ -73,7 +73,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: toggle; secret=false; safeToPreFill=true
 - Fill guidance: Use one of: true.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=true
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED` (present)
 
@@ -86,7 +86,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL` (present)
   - `LUMIRA_AI_OWNER_IAM_BASE_URL` (present)
@@ -100,7 +100,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: secret; secret=true; safeToPreFill=false
 - Fill guidance: Provide via approved secret manager or secure release channel; never commit.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN` (present)
   - `LUMIRA_AI_OWNER_INTERNAL_TOKEN` (present)
@@ -115,7 +115,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: toggle; secret=false; safeToPreFill=true
 - Fill guidance: Use one of: true.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=true
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED` (present)
 
@@ -128,7 +128,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL` (present)
   - `LUMIRA_AI_OWNER_PLATFORM_BASE_URL` (present)
@@ -142,7 +142,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: secret; secret=true; safeToPreFill=false
 - Fill guidance: Provide via approved secret manager or secure release channel; never commit.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY` (present)
   - `LUMIRA_AI_PROVIDER_API_KEY` (present)
@@ -156,7 +156,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL` (present)
   - `LUMIRA_AI_PROVIDER_BASE_URL` (present)
@@ -170,7 +170,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: toggle; secret=false; safeToPreFill=true
 - Fill guidance: Use one of: true.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=true
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED` (present)
   - `LUMIRA_AI_PROVIDER_ENABLED` (present)
@@ -184,7 +184,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: runtime-setting; secret=false; safeToPreFill=true
 - Fill guidance: Use the production runtime setting agreed by the owning context.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_FILE_OCR_MODE` (present)
 
@@ -197,7 +197,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: runtime-setting; secret=false; safeToPreFill=true
 - Fill guidance: Use the production runtime setting agreed by the owning context.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_FILE_SECURITY_SCAN_MODE` (present)
 
@@ -210,7 +210,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: runtime-setting; secret=false; safeToPreFill=true
 - Fill guidance: Use the production runtime setting agreed by the owning context.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `UPLOAD_STORAGE_ROOT` (present)
   - `LUMIRA_UPLOAD_STORAGE_ROOT` (present)
@@ -224,7 +224,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `PAYMENT_PUBLIC_BASE_URL` (present)
 
@@ -237,7 +237,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: secret; secret=true; safeToPreFill=false
 - Fill guidance: Provide via approved secret manager or secure release channel; never commit.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `DDD_PAYMENT_WEBHOOK_SECRET` (present)
   - `PAYMENT_WEBHOOK_SECRET` (present)
@@ -252,7 +252,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: secret; secret=true; safeToPreFill=false
 - Fill guidance: Provide via approved secret manager or secure release channel; never commit.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `SAAS_EVENT_REDIS_STREAM_KEY` (present)
   - `LUMIRA_EVENT_REDIS_STREAM_KEY` (present)
@@ -266,7 +266,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `SAAS_JOB_BACKEND_BASE_URL` (present)
   - `LUMIRA_JOB_BACKEND_BASE_URL` (present)
@@ -280,7 +280,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `SAAS_JOB_FILE_SERVICE_BASE_URL` (present)
   - `LUMIRA_JOB_FILE_SERVICE_BASE_URL` (present)
@@ -294,7 +294,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: secret; secret=true; safeToPreFill=false
 - Fill guidance: Provide via approved secret manager or secure release channel; never commit.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `SAAS_JOB_INTERNAL_TOKEN` (present)
   - `DDD_JOB_INTERNAL_TOKEN` (present)
@@ -309,7 +309,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `SAAS_JOB_MESSAGE_SERVICE_BASE_URL` (present)
   - `LUMIRA_JOB_MESSAGE_SERVICE_BASE_URL` (present)
@@ -323,7 +323,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `SAAS_JOB_PAYMENT_SERVICE_BASE_URL` (present)
   - `LUMIRA_JOB_PAYMENT_SERVICE_BASE_URL` (present)
@@ -337,7 +337,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `SAAS_JOB_PLUGIN_SERVICE_BASE_URL` (present)
   - `LUMIRA_JOB_PLUGIN_SERVICE_BASE_URL` (present)
@@ -351,7 +351,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: runtime-setting; secret=false; safeToPreFill=true
 - Fill guidance: Use the production runtime setting agreed by the owning context.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `SAAS_EVENT_OUTBOX_DISPATCHER` (present)
   - `LUMIRA_EVENT_OUTBOX_DISPATCHER` (present)
@@ -365,7 +365,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `XXL_JOB_ADMIN_ADDRESSES` (present)
   - `LUMIRA_XXL_JOB_ADMIN_ADDRESSES` (present)
@@ -379,7 +379,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: secret; secret=true; safeToPreFill=false
 - Fill guidance: Provide via approved secret manager or secure release channel; never commit.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `XXL_JOB_ACCESS_TOKEN` (present)
   - `XXL_JOB_ADMIN_ACCESS_TOKEN` (present)
@@ -394,7 +394,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `AI_SERVICE_BASE_URL` (present)
   - `LUMIRA_AI_SERVICE_BASE_URL` (present)
@@ -409,7 +409,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `AUTH_SERVICE_BASE_URL` (present)
   - `LUMIRA_AUTH_SERVICE_BASE_URL` (present)
@@ -423,7 +423,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `FILE_SERVICE_BASE_URL` (present)
   - `LUMIRA_FILE_SERVICE_BASE_URL` (present)
@@ -437,7 +437,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `JOB_EXECUTOR_BASE_URL` (present)
   - `LUMIRA_JOB_EXECUTOR_BASE_URL` (present)
@@ -451,7 +451,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LOCALIZATION_SERVICE_BASE_URL` (present)
   - `LUMIRA_LOCALIZATION_SERVICE_BASE_URL` (present)
@@ -465,7 +465,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `MESSAGE_SERVICE_BASE_URL` (present)
   - `LUMIRA_MESSAGE_SERVICE_BASE_URL` (present)
@@ -479,7 +479,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `PAYMENT_SERVICE_BASE_URL` (present)
   - `LUMIRA_PAYMENT_SERVICE_BASE_URL` (present)
@@ -493,7 +493,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `PLUGIN_SERVICE_BASE_URL` (present)
   - `LUMIRA_PLUGIN_SERVICE_BASE_URL` (present)
@@ -507,7 +507,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `SYSTEM_SERVICE_BASE_URL` (present)
   - `LUMIRA_SYSTEM_SERVICE_BASE_URL` (present)
@@ -521,7 +521,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
 - Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `LUMIRA_BASE_URL` (present)
   - `DEPLOY_CHECK_BASE_URL` (present)
@@ -535,7 +535,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: identifier; secret=false; safeToPreFill=false
 - Fill guidance: Use the production value from the owning context.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `CORS_ALLOWED_ORIGIN_PATTERNS` (present)
   - `SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS` (present)
@@ -549,7 +549,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: secret; secret=true; safeToPreFill=false
 - Fill guidance: Provide via approved secret manager or secure release channel; never commit.
 - Validation: https=false, nonLocal=false, minLength=16, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `DB_PASSWORD` (present)
   - `SPRING_DATASOURCE_PASSWORD` (present)
@@ -564,7 +564,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: url; secret=false; safeToPreFill=false
 - Fill guidance: Use the production-equivalent endpoint or DSN; localhost and placeholders are rejected when nonLocal=true.
 - Validation: https=false, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `DB_URL` (present)
   - `SPRING_DATASOURCE_URL` (present)
@@ -578,7 +578,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: identifier; secret=false; safeToPreFill=false
 - Fill guidance: Use the production value from the owning context.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `DB_USERNAME` (present)
   - `SPRING_DATASOURCE_USERNAME` (present)
@@ -593,26 +593,12 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: secret; secret=true; safeToPreFill=false
 - Fill guidance: Provide via approved secret manager or secure release channel; never commit.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `FIELD_SECRET` (present)
   - `SAAS_SECURITY_FIELD_SECRET` (present)
 
-## 43. PLAYWRIGHT_BASE_URL
-
-- Owner: release-infra
-- Group: runtime
-- Requirement: frontend base url
-- Required: true
-- Value class: url; secret=false; safeToPreFill=false
-- Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
-- Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
-- Aliases:
-  - `PLAYWRIGHT_BASE_URL` (present)
-  - `FRONTEND_BASE_URL` (present)
-
-## 44. JWT_SECRET
+## 43. JWT_SECRET
 
 - Owner: release-infra
 - Group: runtime
@@ -621,10 +607,24 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: secret; secret=true; safeToPreFill=false
 - Fill guidance: Provide via approved secret manager or secure release channel; never commit.
 - Validation: https=false, nonLocal=false, minLength=32, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `JWT_SECRET` (present)
   - `SAAS_SECURITY_JWT_SECRET` (present)
+
+## 44. PLAYWRIGHT_BASE_URL
+
+- Owner: release-infra
+- Group: runtime
+- Requirement: lumira-ui base url
+- Required: true
+- Value class: url; secret=false; safeToPreFill=false
+- Fill guidance: Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.
+- Validation: https=true, nonLocal=true, minLength=none, expectedValues=none
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
+- Aliases:
+  - `PLAYWRIGHT_BASE_URL` (present)
+  - `FRONTEND_BASE_URL` (present)
 
 ## 45. REDIS_HOST
 
@@ -635,7 +635,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: identifier; secret=false; safeToPreFill=false
 - Fill guidance: Use the production value from the owning context.
 - Validation: https=false, nonLocal=true, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `REDIS_HOST` (present)
   - `SPRING_DATA_REDIS_HOST` (present)
@@ -649,7 +649,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: secret; secret=true; safeToPreFill=false
 - Fill guidance: Provide via approved secret manager or secure release channel; never commit.
 - Validation: https=false, nonLocal=false, minLength=16, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `REDIS_PASSWORD` (present)
   - `SPRING_DATA_REDIS_PASSWORD` (present)
@@ -663,7 +663,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: port; secret=false; safeToPreFill=false
 - Fill guidance: Use the production service TCP port.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=none
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `REDIS_PORT` (present)
   - `SPRING_DATA_REDIS_PORT` (present)
@@ -677,7 +677,7 @@ Fill the canonical key once, then run alias sync to propagate equivalent keys.
 - Value class: toggle; secret=false; safeToPreFill=true
 - Fill guidance: Use one of: true.
 - Validation: https=false, nonLocal=false, minLength=none, expectedValues=true
-- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs`
+- Alias sync: `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs`
 - Aliases:
   - `TRUST_FORWARDED_HEADERS` (present)
   - `SAAS_WEB_TRUST_FORWARDED_HEADERS` (present)

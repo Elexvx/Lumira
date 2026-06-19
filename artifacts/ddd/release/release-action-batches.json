@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:09:18.921Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T06:38:14.272Z",
-      "generatedAt": "2026-06-19T06:38:14.269Z",
+      "modifiedAt": "2026-06-19T18:09:16.572Z",
+      "generatedAt": "2026-06-19T18:09:16.571Z",
       "status": "FAIL",
-      "blockers": 1,
+      "blockers": 12,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -32,8 +32,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:42:37.440Z",
-      "generatedAt": "2026-06-19T13:42:37.438Z",
+      "modifiedAt": "2026-06-19T14:43:03.927Z",
+      "generatedAt": "2026-06-19T14:43:03.923Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -44,8 +44,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:42:37.550Z",
-      "generatedAt": "2026-06-19T13:42:37.547Z",
+      "modifiedAt": "2026-06-19T14:43:04.048Z",
+      "generatedAt": "2026-06-19T14:43:04.044Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -159,15 +159,15 @@
       "warnings": null
     },
     "frontendSmoke": {
-      "file": "artifacts\\ddd\\frontend\\frontend-smoke.json",
-      "relativePath": "frontend/frontend-smoke.json",
-      "present": true,
-      "missing": false,
+      "file": "artifacts\\ddd\\lumira-ui\\frontend-smoke.json",
+      "relativePath": "lumira-ui/frontend-smoke.json",
+      "present": false,
+      "missing": true,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.198Z",
-      "generatedAt": "2026-06-16T20:51:08.151Z",
-      "status": "PASS",
-      "blockers": 0,
+      "modifiedAt": null,
+      "generatedAt": null,
+      "status": null,
+      "blockers": null,
       "warnings": null
     },
     "aiRuntime": {
@@ -188,8 +188,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.312Z",
-      "generatedAt": "2026-06-16T06:24:20.373Z",
+      "modifiedAt": "2026-06-19T13:59:31.821Z",
+      "generatedAt": "2026-06-19T13:59:31.816Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -236,8 +236,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.219Z",
-      "generatedAt": "2026-06-15T20:41:37.875Z",
+      "modifiedAt": "2026-06-19T14:43:03.893Z",
+      "generatedAt": "2026-06-19T14:43:03.891Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
@@ -249,11 +249,11 @@
     "warnings": 8
   },
   "batchCount": 24,
-  "totalPendingItems": 47,
+  "totalPendingItems": 51,
   "byPriority": {
-    "P0": 18,
-    "P1": 17,
-    "P2": 8,
+    "P0": 29,
+    "P1": 16,
+    "P2": 2,
     "P3": 4
   },
   "bySource": {
@@ -261,9 +261,8 @@
     "authenticated-performance": 9,
     "business-e2e": 3,
     "docker": 4,
-    "explain": 8,
-    "frontend-smoke": 1,
-    "manifest": 1,
+    "explain": 2,
+    "manifest": 12,
     "orchestrator": 4,
     "rollback": 10,
     "runtime-readiness": 4
@@ -272,18 +271,18 @@
     "ai": 3,
     "ai-owner": 1,
     "auth-owner": 1,
-    "database": 9,
+    "database": 5,
     "file-owner": 2,
-    "frontend": 2,
     "iam-owner": 1,
     "job-owner": 2,
     "localization-owner": 1,
+    "lumira-ui": 3,
     "message-owner": 1,
     "payment-owner": 2,
     "platform-owner": 1,
     "plugin-owner": 1,
-    "release-infra": 9,
-    "release-owner": 2,
+    "release-infra": 10,
+    "release-owner": 8,
     "release-performance": 9
   },
   "batches": [
@@ -298,8 +297,7 @@
         "DDD_DOCKER_COMMAND"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
       ],
       "items": [
         {
@@ -308,7 +306,7 @@
           "reason": "lumira-server: docker build failed: #5 DONE 0.3s\n\n#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre\n#4 DONE 0.8s\n\n#6 [internal] load .dockerignore\n#6 transferring context: 309B 0.0s done\n#6 DONE 0.1s\n\n#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603\n#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done\n#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done\n#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done\n#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done\n#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done\n#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done\n#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done\n#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done\n#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done\n#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done\n#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done\n#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done\n#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done\n#7 DONE 14.7s\n\n#8 [stage-1 2/5] WORKDIR /app\n#8 DONE 0.3s\n\n#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data\n#9 DONE 3.3s\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done\n#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done\n#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done\n#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done\n#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done\n#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done\n#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done\n#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done\n#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s\n#10 ...\n\n#11 [internal] load build context\n#11 transferring context: 20.64MB 10.0s\n#11 ...\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s\n#10 ...\n\n#11 [internal] load build context\n#11 transferring context: 338.84MB 18.4s done\n#11 DONE 18.4s\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s\n#10 DONE 145.1s\n\n#12 [builder  2/21] WORKDIR /workspace\n#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF\n------\n > [builder  2/21] WORKDIR /workspace:\n------\nERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF",
           "detail": "lumira-server: docker build failed: #5 DONE 0.3s\n\n#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre\n#4 DONE 0.8s\n\n#6 [internal] load .dockerignore\n#6 transferring context: 309B 0.0s done\n#6 DONE 0.1s\n\n#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603\n#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done\n#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done\n#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done\n#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done\n#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done\n#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done\n#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done\n#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done\n#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done\n#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done\n#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done\n#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done\n#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done\n#7 DONE 14.7s\n\n#8 [stage-1 2/5] WORKDIR /app\n#8 DONE 0.3s\n\n#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data\n#9 DONE 3.3s\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done\n#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done\n#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done\n#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done\n#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done\n#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done\n#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done\n#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done\n#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s\n#10 ...\n\n#11 [internal] load build context\n#11 transferring context: 20.64MB 10.0s\n#11 ...\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s\n#10 ...\n\n#11 [internal] load build context\n#11 transferring context: 338.84MB 18.4s done\n#11 DONE 18.4s\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s\n#10 DONE 145.1s\n\n#12 [builder  2/21] WORKDIR /workspace\n#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF\n------\n > [builder  2/21] WORKDIR /workspace:\n------\nERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF",
           "structured": false,
-          "action": "Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
+          "action": "Resolve Docker image evidence blocker and rerun `node bin/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
           "envKeys": [
             "DDD_DOCKER_COMMAND",
             "DDD_DOCKER_BUILD_STRICT"
@@ -321,7 +319,7 @@
           "reason": "frontend: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT",
           "detail": "frontend: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT",
           "structured": false,
-          "action": "Resolve Docker image evidence blocker and rerun `node scripts/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
+          "action": "Resolve Docker image evidence blocker and rerun `node bin/ddd-docker-build-evidence.mjs`; for Docker Hub/network failures set `DDD_DOCKER_MAVEN_IMAGE`, `DDD_DOCKER_JRE_IMAGE`, `DDD_DOCKER_NODE_IMAGE`, and `DDD_DOCKER_NGINX_IMAGE` to trusted registry mirror images. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
           "envKeys": [
             "DDD_DOCKER_COMMAND",
             "DDD_DOCKER_BUILD_STRICT"
@@ -334,7 +332,7 @@
           "reason": "docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT",
           "detail": "docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT",
           "structured": false,
-          "action": "Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
+          "action": "Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
           "envKeys": [
             "DDD_DOCKER_COMMAND",
             "DDD_DOCKER_BUILD_STRICT"
@@ -347,7 +345,7 @@
           "reason": "docker build failed: #5 DONE 0.3s\n\n#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre\n#4 DONE 0.8s\n\n#6 [internal] load .dockerignore\n#6 transferring context: 309B 0.0s done\n#6 DONE 0.1s\n\n#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603\n#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done\n#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done\n#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done\n#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done\n#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done\n#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done\n#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done\n#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done\n#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done\n#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done\n#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done\n#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done\n#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done\n#7 DONE 14.7s\n\n#8 [stage-1 2/5] WORKDIR /app\n#8 DONE 0.3s\n\n#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data\n#9 DONE 3.3s\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done\n#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done\n#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done\n#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done\n#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done\n#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done\n#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done\n#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done\n#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s\n#10 ...\n\n#11 [internal] load build context\n#11 transferring context: 20.64MB 10.0s\n#11 ...\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s\n#10 ...\n\n#11 [internal] load build context\n#11 transferring context: 338.84MB 18.4s done\n#11 DONE 18.4s\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s\n#10 DONE 145.1s\n\n#12 [builder  2/21] WORKDIR /workspace\n#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF\n------\n > [builder  2/21] WORKDIR /workspace:\n------\nERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF",
           "detail": "docker build failed: #5 DONE 0.3s\n\n#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre\n#4 DONE 0.8s\n\n#6 [internal] load .dockerignore\n#6 transferring context: 309B 0.0s done\n#6 DONE 0.1s\n\n#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603\n#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done\n#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done\n#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done\n#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done\n#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done\n#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done\n#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done\n#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done\n#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done\n#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done\n#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done\n#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done\n#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done\n#7 DONE 14.7s\n\n#8 [stage-1 2/5] WORKDIR /app\n#8 DONE 0.3s\n\n#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data\n#9 DONE 3.3s\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done\n#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done\n#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done\n#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done\n#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done\n#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done\n#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done\n#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done\n#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s\n#10 ...\n\n#11 [internal] load build context\n#11 transferring context: 20.64MB 10.0s\n#11 ...\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s\n#10 ...\n\n#11 [internal] load build context\n#11 transferring context: 338.84MB 18.4s done\n#11 DONE 18.4s\n\n#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s\n#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s\n#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s\n#10 DONE 145.1s\n\n#12 [builder  2/21] WORKDIR /workspace\n#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF\n------\n > [builder  2/21] WORKDIR /workspace:\n------\nERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF",
           "structured": false,
-          "action": "Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
+          "action": "Fix Docker image build/inspect failure and regenerate image evidence with `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`; for transient registry failures configure `DDD_DOCKER_*_IMAGE` mirror overrides and rerun. Mirror retry example: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_COMMAND_TIMEOUT_MS=1800000 DDD_DOCKER_BUILD_RETRIES=4 DDD_DOCKER_MAVEN_IMAGE=<registry>/maven:3.9.11-eclipse-temurin-21 DDD_DOCKER_JRE_IMAGE=<registry>/eclipse-temurin:21-jre DDD_DOCKER_NODE_IMAGE=<registry>/node:22-bookworm-slim DDD_DOCKER_NGINX_IMAGE=<registry>/nginx:1.29-alpine node scripts/ddd-docker-build-evidence.mjs. If CI already built the release candidate images, use explicit inspect-only evidence instead: DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs.",
           "envKeys": [
             "DDD_DOCKER_COMMAND",
             "DDD_DOCKER_BUILD_STRICT"
@@ -378,7 +376,7 @@
       ],
       "exitCriteria": [
         "Docker CLI and daemon are available in the evidence runner.",
-        "Required lumira-server and frontend images are built, inspected, and not skipped.",
+        "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
         "Clear this batch before running downstream runtime-heavy evidence."
       ],
       "dependsOn": [],
@@ -397,7 +395,7 @@
         "LUMIRA_BASE_URL"
       ],
       "commands": [
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node bin/ddd-runtime-readiness-smoke.mjs"
       ],
       "items": [
         {
@@ -406,7 +404,7 @@
           "reason": "runtime readiness productionEquivalence.strict must be true for strict release evidence",
           "detail": "runtime readiness productionEquivalence.strict must be true for strict release evidence",
           "structured": false,
-          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node bin/ddd-runtime-readiness-smoke.mjs`.",
           "envKeys": [
             "LUMIRA_BASE_URL",
             "DDD_EVIDENCE_ENVIRONMENT",
@@ -421,7 +419,7 @@
           "reason": "runtime readiness productionEquivalence.https must be true for strict release evidence",
           "detail": "runtime readiness productionEquivalence.https must be true for strict release evidence",
           "structured": false,
-          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node bin/ddd-runtime-readiness-smoke.mjs`.",
           "envKeys": [
             "LUMIRA_BASE_URL",
             "DDD_EVIDENCE_ENVIRONMENT",
@@ -436,7 +434,7 @@
           "reason": "runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
           "detail": "runtime readiness productionEquivalence.localOnly must be false for strict release evidence",
           "structured": false,
-          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node bin/ddd-runtime-readiness-smoke.mjs`.",
           "envKeys": [
             "LUMIRA_BASE_URL",
             "DDD_EVIDENCE_ENVIRONMENT",
@@ -451,7 +449,7 @@
           "reason": "runtime readiness productionEquivalence.deploymentEvidence is required",
           "detail": "runtime readiness productionEquivalence.deploymentEvidence is required",
           "structured": false,
-          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node scripts/ddd-runtime-readiness-smoke.mjs`.",
+          "action": "Fix runtime readiness artifact contract issues and regenerate summary.json with `node bin/ddd-runtime-readiness-smoke.mjs`.",
           "envKeys": [
             "LUMIRA_BASE_URL",
             "DDD_EVIDENCE_ENVIRONMENT",
@@ -506,11 +504,212 @@
       "canRunImmediately": true
     },
     {
+      "key": "P0:manifest:database",
+      "priority": "P0",
+      "source": "manifest",
+      "owner": "database",
+      "pendingItems": 2,
+      "envKeys": [
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
+      ],
+      "items": [
+        {
+          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
+          "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs",
+          "reason": "optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+          "detail": "optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+          "structured": false,
+          "action": "Run fresh/upgrade migration drills and regenerate migration evidence before rebuilding the release manifest.",
+          "envKeys": [
+            "DDD_MIGRATION_FRESH_DB_VALIDATED",
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+          ],
+          "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs"
+        },
+        {
+          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff",
+          "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff",
+          "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff",
+          "detail": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff",
+          "structured": false,
+          "action": "Run fresh/upgrade migration drills and regenerate migration evidence before rebuilding the release manifest.",
+          "envKeys": [
+            "DDD_MIGRATION_FRESH_DB_VALIDATED",
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+          ],
+          "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff"
+        }
+      ],
+      "id": "p0-manifest-database",
+      "order": 3,
+      "envCheckGroups": [
+        {
+          "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+          "keys": [
+            "DDD_MIGRATION_FRESH_DB_EVIDENCE"
+          ],
+          "spec": "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE"
+        },
+        {
+          "label": "DDD_MIGRATION_FRESH_DB_VALIDATED",
+          "keys": [
+            "DDD_MIGRATION_FRESH_DB_VALIDATED"
+          ],
+          "spec": "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED"
+        },
+        {
+          "label": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+          "keys": [
+            "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+          ],
+          "spec": "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
+        },
+        {
+          "label": "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+          "keys": [
+            "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+          ],
+          "spec": "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED"
+        }
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ],
+      "dependsOn": [],
+      "canRunImmediately": true
+    },
+    {
+      "key": "P0:manifest:lumira-ui",
+      "priority": "P0",
+      "source": "manifest",
+      "owner": "lumira-ui",
+      "pendingItems": 3,
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
+      ],
+      "items": [
+        {
+          "id": "manifest-missing-lumira-ui-frontend-smoke-json",
+          "check": "manifest-missing-lumira-ui-frontend-smoke-json",
+          "reason": "missing artifact lumira-ui/frontend-smoke.json",
+          "detail": "missing artifact lumira-ui/frontend-smoke.json",
+          "structured": false,
+          "action": "Run deployed frontend smoke and regenerate lumira-ui evidence before rebuilding the release manifest.",
+          "envKeys": [
+            "PLAYWRIGHT_BASE_URL",
+            "DDD_FRONTEND_EXPECT_DEPLOYED",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": "lumira-ui/frontend-smoke.json"
+        },
+        {
+          "id": "manifest-missing-lumira-ui-lumira-ui-build-evidence-json",
+          "check": "manifest-missing-lumira-ui-lumira-ui-build-evidence-json",
+          "reason": "missing artifact lumira-ui/lumira-ui-build-evidence.json",
+          "detail": "missing artifact lumira-ui/lumira-ui-build-evidence.json",
+          "structured": false,
+          "action": "Run deployed frontend smoke and regenerate lumira-ui evidence before rebuilding the release manifest.",
+          "envKeys": [
+            "PLAYWRIGHT_BASE_URL",
+            "DDD_FRONTEND_EXPECT_DEPLOYED",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": "lumira-ui/lumira-ui-build-evidence.json"
+        },
+        {
+          "id": "manifest-missing-lumira-ui-lumira-ui-static-evidence-json",
+          "check": "manifest-missing-lumira-ui-lumira-ui-static-evidence-json",
+          "reason": "missing artifact lumira-ui/lumira-ui-static-evidence.json",
+          "detail": "missing artifact lumira-ui/lumira-ui-static-evidence.json",
+          "structured": false,
+          "action": "Run deployed frontend smoke and regenerate lumira-ui evidence before rebuilding the release manifest.",
+          "envKeys": [
+            "PLAYWRIGHT_BASE_URL",
+            "DDD_FRONTEND_EXPECT_DEPLOYED",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "artifact": "lumira-ui/lumira-ui-static-evidence.json"
+        }
+      ],
+      "id": "p0-manifest-lumira-ui",
+      "order": 4,
+      "envCheckGroups": [
+        {
+          "label": "DDD_EVIDENCE_ENVIRONMENT",
+          "keys": [
+            "DDD_EVIDENCE_ENVIRONMENT"
+          ],
+          "spec": "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT"
+        },
+        {
+          "label": "DDD_FRONTEND_EXPECT_DEPLOYED",
+          "keys": [
+            "DDD_FRONTEND_EXPECT_DEPLOYED"
+          ],
+          "spec": "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED"
+        },
+        {
+          "label": "DDD_RELEASE_CANDIDATE",
+          "keys": [
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
+        },
+        {
+          "label": "PLAYWRIGHT_BASE_URL",
+          "keys": [
+            "FRONTEND_BASE_URL",
+            "PLAYWRIGHT_BASE_URL"
+          ],
+          "spec": "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
+        }
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json",
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ],
+      "dependsOn": [],
+      "canRunImmediately": true
+    },
+    {
       "key": "P0:manifest:release-owner",
       "priority": "P0",
       "source": "manifest",
       "owner": "release-owner",
-      "pendingItems": 1,
+      "pendingItems": 7,
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
@@ -518,29 +717,119 @@
         "DDD_RELEASE_MANIFEST_STRICT"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
       ],
       "items": [
         {
-          "id": "manifest-missing-no-explain-json-files-in-tmp-ddd-explain",
-          "check": "manifest-missing-no-explain-json-files-in-tmp-ddd-explain",
-          "reason": "no explain JSON files in tmp\\ddd-explain",
-          "detail": "no explain JSON files in tmp\\ddd-explain",
+          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
+          "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh",
+          "reason": "optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh",
+          "detail": "optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh",
           "structured": false,
-          "action": "Regenerate the missing evidence artifact, then rerun `node scripts/ddd-release-evidence-manifest.mjs`.",
+          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
           "envKeys": [
             "DDD_RELEASE_MANIFEST_STRICT",
             "DDD_EVIDENCE_ENVIRONMENT",
             "DDD_RELEASE_CANDIDATE",
             "DDD_EVIDENCE_OPERATOR"
           ],
-          "artifact": "no explain JSON files in tmp\\ddd-explain"
+          "artifact": "optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh"
+        },
+        {
+          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
+          "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs",
+          "reason": "optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs",
+          "detail": "optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs",
+          "structured": false,
+          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_MANIFEST_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs"
+        },
+        {
+          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
+          "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs",
+          "reason": "optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs",
+          "detail": "optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs",
+          "structured": false,
+          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_MANIFEST_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs"
+        },
+        {
+          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
+          "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs",
+          "reason": "optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs",
+          "detail": "optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs",
+          "structured": false,
+          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_MANIFEST_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": "optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs"
+        },
+        {
+          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
+          "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet",
+          "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet",
+          "detail": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet",
+          "structured": false,
+          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_MANIFEST_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet"
+        },
+        {
+          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
+          "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt",
+          "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt",
+          "detail": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt",
+          "structured": false,
+          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_MANIFEST_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt"
+        },
+        {
+          "id": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff",
+          "check": "manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff",
+          "reason": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff",
+          "detail": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff",
+          "structured": false,
+          "action": "Regenerate the missing evidence artifact, then rerun `node bin/ddd-release-evidence-manifest.mjs`.",
+          "envKeys": [
+            "DDD_RELEASE_MANIFEST_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": "optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff"
         }
       ],
       "id": "p0-manifest-release-owner",
-      "order": 3,
+      "order": 5,
       "envCheckGroups": [
         {
           "label": "DDD_EVIDENCE_ENVIRONMENT",
@@ -594,8 +883,8 @@
         "DDD_RELEASE_CANDIDATE"
       ],
       "commands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs"
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs"
       ],
       "items": [
         {
@@ -715,7 +1004,7 @@
         }
       ],
       "id": "p0-authenticated-performance-release-performance",
-      "order": 4,
+      "order": 6,
       "envCheckGroups": [
         {
           "label": "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
@@ -780,7 +1069,7 @@
         "LUMIRA_BASE_URL"
       ],
       "commands": [
-        "node scripts/ddd-ai-runtime-drill.mjs"
+        "node bin/ddd-ai-runtime-drill.mjs"
       ],
       "items": [
         {
@@ -830,7 +1119,7 @@
         }
       ],
       "id": "p1-ai-runtime-ai",
-      "order": 5,
+      "order": 7,
       "envCheckGroups": [
         {
           "label": "BASE_URL",
@@ -928,60 +1217,8 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "canRunImmediately": false
-    },
-    {
-      "key": "P1:frontend-smoke:frontend",
-      "priority": "P1",
-      "source": "frontend-smoke",
-      "owner": "frontend",
-      "pendingItems": 1,
-      "envKeys": [
-        "DDD_FRONTEND_EXPECT_DEPLOYED"
-      ],
-      "commands": [
-        "node scripts/ddd-frontend-playwright-smoke.mjs",
-        "node scripts/ddd-frontend-smoke-evidence.mjs"
-      ],
-      "items": [
-        {
-          "id": "frontend-deployed-expectation",
-          "check": "frontend-deployed-expectation",
-          "reason": "strict release requires deployed frontend smoke expectation",
-          "detail": "strict release requires deployed frontend smoke expectation",
-          "structured": false,
-          "action": "Set DDD_FRONTEND_EXPECT_DEPLOYED=true for strict deployed frontend smoke evidence.",
-          "envKeys": [
-            "DDD_FRONTEND_EXPECT_DEPLOYED"
-          ],
-          "artifact": null
-        }
-      ],
-      "id": "p1-frontend-smoke-frontend",
-      "order": 6,
-      "envCheckGroups": [
-        {
-          "label": "DDD_FRONTEND_EXPECT_DEPLOYED",
-          "keys": [
-            "DDD_FRONTEND_EXPECT_DEPLOYED"
-          ],
-          "spec": "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/frontend/frontend-smoke.json",
-        "artifacts/ddd/frontend/playwright-smoke-results.json"
-      ],
-      "exitCriteria": [
-        "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-        "Required Playwright smoke flows all pass and produce a JSON report."
-      ],
-      "dependsOn": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
@@ -1002,7 +1239,7 @@
         "LUMIRA_UPLOAD_STORAGE_ROOT"
       ],
       "commands": [
-        "node scripts/ddd-file-processing-e2e-smoke.mjs"
+        "node bin/ddd-file-processing-e2e-smoke.mjs"
       ],
       "items": [
         {
@@ -1011,7 +1248,7 @@
           "reason": "strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080",
           "detail": "strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080",
           "structured": false,
-          "action": "Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node scripts/ddd-file-processing-e2e-smoke.mjs`.",
+          "action": "Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node bin/ddd-file-processing-e2e-smoke.mjs`.",
           "envKeys": [
             "LUMIRA_BASE_URL",
             "DEPLOY_CHECK_BASE_URL",
@@ -1024,7 +1261,7 @@
         }
       ],
       "id": "p1-business-e2e-file-owner",
-      "order": 7,
+      "order": 8,
       "envCheckGroups": [
         {
           "label": "BASE_URL",
@@ -1076,6 +1313,8 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
@@ -1095,7 +1334,7 @@
         "LUMIRA_JOB_INTERNAL_TOKEN"
       ],
       "commands": [
-        "node scripts/ddd-job-e2e-smoke.mjs"
+        "node bin/ddd-job-e2e-smoke.mjs"
       ],
       "items": [
         {
@@ -1104,7 +1343,7 @@
           "reason": "strict job E2E requires HTTPS baseUrl evidence; strict job E2E requires non-local baseUrl, got http://127.0.0.1:8080",
           "detail": "strict job E2E requires HTTPS baseUrl evidence; strict job E2E requires non-local baseUrl, got http://127.0.0.1:8080",
           "structured": false,
-          "action": "Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token using `node scripts/ddd-job-e2e-smoke.mjs`.",
+          "action": "Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token using `node bin/ddd-job-e2e-smoke.mjs`.",
           "envKeys": [
             "LUMIRA_BASE_URL",
             "DEPLOY_CHECK_BASE_URL",
@@ -1116,7 +1355,7 @@
         }
       ],
       "id": "p1-business-e2e-job-owner",
-      "order": 8,
+      "order": 9,
       "envCheckGroups": [
         {
           "label": "BASE_URL",
@@ -1160,6 +1399,8 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
@@ -1179,7 +1420,7 @@
         "PAYMENT_PUBLIC_BASE_URL"
       ],
       "commands": [
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs"
       ],
       "items": [
         {
@@ -1188,7 +1429,7 @@
           "reason": "strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080",
           "detail": "strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080",
           "structured": false,
-          "action": "Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node scripts/ddd-payment-webhook-e2e-smoke.mjs`.",
+          "action": "Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node bin/ddd-payment-webhook-e2e-smoke.mjs`.",
           "envKeys": [
             "LUMIRA_BASE_URL",
             "DEPLOY_CHECK_BASE_URL",
@@ -1200,7 +1441,7 @@
         }
       ],
       "id": "p1-business-e2e-payment-owner",
-      "order": 9,
+      "order": 10,
       "envCheckGroups": [
         {
           "label": "BASE_URL",
@@ -1242,6 +1483,8 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
@@ -1264,9 +1507,9 @@
         "DDD_ROLLBACK_DRILL_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "items": [
         {
@@ -1275,7 +1518,7 @@
           "reason": "AI rollback drill is DEFERRED with approved deferral evidence",
           "detail": "AI rollback drill is DEFERRED with approved deferral evidence",
           "structured": false,
-          "action": "Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "action": "Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
           "envKeys": [
             "DDD_ROLLBACK_DRILL_FILE",
             "DDD_ROLLBACK_DRILL_CHECK_ENV",
@@ -1290,122 +1533,6 @@
         }
       ],
       "id": "p1-rollback-ai-owner",
-      "order": 10,
-      "envCheckGroups": [
-        {
-          "label": "DDD_EVIDENCE_ENVIRONMENT",
-          "keys": [
-            "DDD_EVIDENCE_ENVIRONMENT"
-          ],
-          "spec": "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT"
-        },
-        {
-          "label": "DDD_EVIDENCE_OPERATOR",
-          "keys": [
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "spec": "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR"
-        },
-        {
-          "label": "DDD_RELEASE_CANDIDATE",
-          "keys": [
-            "DDD_RELEASE_CANDIDATE"
-          ],
-          "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
-        },
-        {
-          "label": "DDD_ROLLBACK_DRILL_CHECK_ENV",
-          "keys": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV"
-          ],
-          "spec": "DDD_ROLLBACK_DRILL_CHECK_ENV=DDD_ROLLBACK_DRILL_CHECK_ENV"
-        },
-        {
-          "label": "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-          "keys": [
-            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
-          ],
-          "spec": "DDD_ROLLBACK_DRILL_DEFERRAL_FILE=DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
-        },
-        {
-          "label": "DDD_ROLLBACK_DRILL_FILE",
-          "keys": [
-            "DDD_ROLLBACK_DRILL_FILE"
-          ],
-          "spec": "DDD_ROLLBACK_DRILL_FILE=DDD_ROLLBACK_DRILL_FILE"
-        },
-        {
-          "label": "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-          "keys": [
-            "DDD_ROLLBACK_DRILL_HANDOFF_FILE"
-          ],
-          "spec": "DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE"
-        },
-        {
-          "label": "DDD_ROLLBACK_DRILL_STRICT",
-          "keys": [
-            "DDD_ROLLBACK_DRILL_STRICT"
-          ],
-          "spec": "DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ],
-      "dependsOn": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "canRunImmediately": false
-    },
-    {
-      "key": "P1:rollback:auth-owner",
-      "priority": "P1",
-      "source": "rollback",
-      "owner": "auth-owner",
-      "pendingItems": 1,
-      "envKeys": [
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT"
-      ],
-      "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
-      ],
-      "items": [
-        {
-          "id": "Auth",
-          "check": "Auth",
-          "reason": "Auth rollback drill is DEFERRED with approved deferral evidence",
-          "detail": "Auth rollback drill is DEFERRED with approved deferral evidence",
-          "structured": false,
-          "action": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
-          "envKeys": [
-            "DDD_ROLLBACK_DRILL_FILE",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV",
-            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-            "DDD_ROLLBACK_DRILL_STRICT",
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR"
-          ],
-          "artifact": null
-        }
-      ],
-      "id": "p1-rollback-auth-owner",
       "order": 11,
       "envCheckGroups": [
         {
@@ -1474,16 +1601,18 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false
     },
     {
-      "key": "P1:rollback:file-owner",
+      "key": "P1:rollback:auth-owner",
       "priority": "P1",
       "source": "rollback",
-      "owner": "file-owner",
+      "owner": "auth-owner",
       "pendingItems": 1,
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1496,18 +1625,18 @@
         "DDD_ROLLBACK_DRILL_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "items": [
         {
-          "id": "File",
-          "check": "File",
-          "reason": "File rollback drill is DEFERRED with approved deferral evidence",
-          "detail": "File rollback drill is DEFERRED with approved deferral evidence",
+          "id": "Auth",
+          "check": "Auth",
+          "reason": "Auth rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Auth rollback drill is DEFERRED with approved deferral evidence",
           "structured": false,
-          "action": "Exercise file processing pause, stable object-key access, and task rerun by id; attach upload, processing row, and storage evidence. Required evidence: file processing pause/resume command or job output; stable object-key read evidence after rollback; processing task rerun by id with final state; storage artifact or upload row proving access continuity. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "action": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
           "envKeys": [
             "DDD_ROLLBACK_DRILL_FILE",
             "DDD_ROLLBACK_DRILL_CHECK_ENV",
@@ -1521,7 +1650,7 @@
           "artifact": null
         }
       ],
-      "id": "p1-rollback-file-owner",
+      "id": "p1-rollback-auth-owner",
       "order": 12,
       "envCheckGroups": [
         {
@@ -1590,16 +1719,18 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false
     },
     {
-      "key": "P1:rollback:iam-owner",
+      "key": "P1:rollback:file-owner",
       "priority": "P1",
       "source": "rollback",
-      "owner": "iam-owner",
+      "owner": "file-owner",
       "pendingItems": 1,
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1612,18 +1743,18 @@
         "DDD_ROLLBACK_DRILL_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "items": [
         {
-          "id": "IAM",
-          "check": "IAM",
-          "reason": "IAM rollback drill is DEFERRED with approved deferral evidence",
-          "detail": "IAM rollback drill is DEFERRED with approved deferral evidence",
+          "id": "File",
+          "check": "File",
+          "reason": "File rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "File rollback drill is DEFERRED with approved deferral evidence",
           "structured": false,
-          "action": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "action": "Exercise file processing pause, stable object-key access, and task rerun by id; attach upload, processing row, and storage evidence. Required evidence: file processing pause/resume command or job output; stable object-key read evidence after rollback; processing task rerun by id with final state; storage artifact or upload row proving access continuity. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
           "envKeys": [
             "DDD_ROLLBACK_DRILL_FILE",
             "DDD_ROLLBACK_DRILL_CHECK_ENV",
@@ -1637,7 +1768,7 @@
           "artifact": null
         }
       ],
-      "id": "p1-rollback-iam-owner",
+      "id": "p1-rollback-file-owner",
       "order": 13,
       "envCheckGroups": [
         {
@@ -1706,16 +1837,18 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false
     },
     {
-      "key": "P1:rollback:job-owner",
+      "key": "P1:rollback:iam-owner",
       "priority": "P1",
       "source": "rollback",
-      "owner": "job-owner",
+      "owner": "iam-owner",
       "pendingItems": 1,
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1728,18 +1861,18 @@
         "DDD_ROLLBACK_DRILL_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "items": [
         {
-          "id": "Job",
-          "check": "Job",
-          "reason": "Job rollback drill is DEFERRED with approved deferral evidence",
-          "detail": "Job rollback drill is DEFERRED with approved deferral evidence",
+          "id": "IAM",
+          "check": "IAM",
+          "reason": "IAM rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "IAM rollback drill is DEFERRED with approved deferral evidence",
           "structured": false,
-          "action": "Exercise XXL-JOB handler disablement and manual owner internal endpoint fallback; attach dashboard, token, and endpoint evidence. Required evidence: XXL-JOB handler disablement or dashboard evidence; manual owner internal endpoint fallback result; internal job token provenance or redacted request evidence; job readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "action": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
           "envKeys": [
             "DDD_ROLLBACK_DRILL_FILE",
             "DDD_ROLLBACK_DRILL_CHECK_ENV",
@@ -1753,7 +1886,7 @@
           "artifact": null
         }
       ],
-      "id": "p1-rollback-job-owner",
+      "id": "p1-rollback-iam-owner",
       "order": 14,
       "envCheckGroups": [
         {
@@ -1822,16 +1955,18 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false
     },
     {
-      "key": "P1:rollback:localization-owner",
+      "key": "P1:rollback:job-owner",
       "priority": "P1",
       "source": "rollback",
-      "owner": "localization-owner",
+      "owner": "job-owner",
       "pendingItems": 1,
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1844,18 +1979,18 @@
         "DDD_ROLLBACK_DRILL_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "items": [
         {
-          "id": "Localization",
-          "check": "Localization",
-          "reason": "Localization rollback drill is DEFERRED with approved deferral evidence",
-          "detail": "Localization rollback drill is DEFERRED with approved deferral evidence",
+          "id": "Job",
+          "check": "Job",
+          "reason": "Job rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Job rollback drill is DEFERRED with approved deferral evidence",
           "structured": false,
-          "action": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "action": "Exercise XXL-JOB handler disablement and manual owner internal endpoint fallback; attach dashboard, token, and endpoint evidence. Required evidence: XXL-JOB handler disablement or dashboard evidence; manual owner internal endpoint fallback result; internal job token provenance or redacted request evidence; job readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
           "envKeys": [
             "DDD_ROLLBACK_DRILL_FILE",
             "DDD_ROLLBACK_DRILL_CHECK_ENV",
@@ -1869,7 +2004,7 @@
           "artifact": null
         }
       ],
-      "id": "p1-rollback-localization-owner",
+      "id": "p1-rollback-job-owner",
       "order": 15,
       "envCheckGroups": [
         {
@@ -1938,16 +2073,18 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false
     },
     {
-      "key": "P1:rollback:message-owner",
+      "key": "P1:rollback:localization-owner",
       "priority": "P1",
       "source": "rollback",
-      "owner": "message-owner",
+      "owner": "localization-owner",
       "pendingItems": 1,
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -1960,18 +2097,18 @@
         "DDD_ROLLBACK_DRILL_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "items": [
         {
-          "id": "Message",
-          "check": "Message",
-          "reason": "Message rollback drill is DEFERRED with approved deferral evidence",
-          "detail": "Message rollback drill is DEFERRED with approved deferral evidence",
+          "id": "Localization",
+          "check": "Localization",
+          "reason": "Localization rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Localization rollback drill is DEFERRED with approved deferral evidence",
           "structured": false,
-          "action": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "action": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
           "envKeys": [
             "DDD_ROLLBACK_DRILL_FILE",
             "DDD_ROLLBACK_DRILL_CHECK_ENV",
@@ -1985,7 +2122,7 @@
           "artifact": null
         }
       ],
-      "id": "p1-rollback-message-owner",
+      "id": "p1-rollback-localization-owner",
       "order": 16,
       "envCheckGroups": [
         {
@@ -2054,16 +2191,18 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false
     },
     {
-      "key": "P1:rollback:payment-owner",
+      "key": "P1:rollback:message-owner",
       "priority": "P1",
       "source": "rollback",
-      "owner": "payment-owner",
+      "owner": "message-owner",
       "pendingItems": 1,
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -2076,18 +2215,18 @@
         "DDD_ROLLBACK_DRILL_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "items": [
         {
-          "id": "Payment",
-          "check": "Payment",
-          "reason": "Payment rollback drill is DEFERRED with approved deferral evidence",
-          "detail": "Payment rollback drill is DEFERRED with approved deferral evidence",
+          "id": "Message",
+          "check": "Message",
+          "reason": "Message rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Message rollback drill is DEFERRED with approved deferral evidence",
           "structured": false,
-          "action": "Exercise payment webhook route fallback and idempotent event replay; attach provider routing, webhook metrics, and order trace evidence. Required evidence: payment provider route fallback configuration evidence; webhook idempotent replay result; order status trace before and after replay; webhook metrics or audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "action": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
           "envKeys": [
             "DDD_ROLLBACK_DRILL_FILE",
             "DDD_ROLLBACK_DRILL_CHECK_ENV",
@@ -2101,7 +2240,7 @@
           "artifact": null
         }
       ],
-      "id": "p1-rollback-payment-owner",
+      "id": "p1-rollback-message-owner",
       "order": 17,
       "envCheckGroups": [
         {
@@ -2170,16 +2309,18 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false
     },
     {
-      "key": "P1:rollback:platform-owner",
+      "key": "P1:rollback:payment-owner",
       "priority": "P1",
       "source": "rollback",
-      "owner": "platform-owner",
+      "owner": "payment-owner",
       "pendingItems": 1,
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -2192,18 +2333,18 @@
         "DDD_ROLLBACK_DRILL_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "items": [
         {
-          "id": "Platform",
-          "check": "Platform",
-          "reason": "Platform rollback drill is DEFERRED with approved deferral evidence",
-          "detail": "Platform rollback drill is DEFERRED with approved deferral evidence",
+          "id": "Payment",
+          "check": "Payment",
+          "reason": "Payment rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Payment rollback drill is DEFERRED with approved deferral evidence",
           "structured": false,
-          "action": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "action": "Exercise payment webhook route fallback and idempotent event replay; attach provider routing, webhook metrics, and order trace evidence. Required evidence: payment provider route fallback configuration evidence; webhook idempotent replay result; order status trace before and after replay; webhook metrics or audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
           "envKeys": [
             "DDD_ROLLBACK_DRILL_FILE",
             "DDD_ROLLBACK_DRILL_CHECK_ENV",
@@ -2217,7 +2358,7 @@
           "artifact": null
         }
       ],
-      "id": "p1-rollback-platform-owner",
+      "id": "p1-rollback-payment-owner",
       "order": 18,
       "envCheckGroups": [
         {
@@ -2286,16 +2427,18 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "canRunImmediately": false
     },
     {
-      "key": "P1:rollback:plugin-owner",
+      "key": "P1:rollback:platform-owner",
       "priority": "P1",
       "source": "rollback",
-      "owner": "plugin-owner",
+      "owner": "platform-owner",
       "pendingItems": 1,
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
@@ -2308,18 +2451,18 @@
         "DDD_ROLLBACK_DRILL_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "items": [
         {
-          "id": "Plugin",
-          "check": "Plugin",
-          "reason": "Plugin rollback drill is DEFERRED with approved deferral evidence",
-          "detail": "Plugin rollback drill is DEFERRED with approved deferral evidence",
+          "id": "Platform",
+          "check": "Platform",
+          "reason": "Platform rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Platform rollback drill is DEFERRED with approved deferral evidence",
           "structured": false,
-          "action": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+          "action": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
           "envKeys": [
             "DDD_ROLLBACK_DRILL_FILE",
             "DDD_ROLLBACK_DRILL_CHECK_ENV",
@@ -2333,7 +2476,7 @@
           "artifact": null
         }
       ],
-      "id": "p1-rollback-plugin-owner",
+      "id": "p1-rollback-platform-owner",
       "order": 19,
       "envCheckGroups": [
         {
@@ -2402,6 +2545,126 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
+        "p0-manifest-release-owner",
+        "p0-authenticated-performance-release-performance"
+      ],
+      "canRunImmediately": false
+    },
+    {
+      "key": "P1:rollback:plugin-owner",
+      "priority": "P1",
+      "source": "rollback",
+      "owner": "plugin-owner",
+      "pendingItems": 1,
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT"
+      ],
+      "commands": [
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "items": [
+        {
+          "id": "Plugin",
+          "check": "Plugin",
+          "reason": "Plugin rollback drill is DEFERRED with approved deferral evidence",
+          "detail": "Plugin rollback drill is DEFERRED with approved deferral evidence",
+          "structured": false,
+          "action": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+          "envKeys": [
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT",
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "artifact": null
+        }
+      ],
+      "id": "p1-rollback-plugin-owner",
+      "order": 20,
+      "envCheckGroups": [
+        {
+          "label": "DDD_EVIDENCE_ENVIRONMENT",
+          "keys": [
+            "DDD_EVIDENCE_ENVIRONMENT"
+          ],
+          "spec": "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT"
+        },
+        {
+          "label": "DDD_EVIDENCE_OPERATOR",
+          "keys": [
+            "DDD_EVIDENCE_OPERATOR"
+          ],
+          "spec": "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR"
+        },
+        {
+          "label": "DDD_RELEASE_CANDIDATE",
+          "keys": [
+            "DDD_RELEASE_CANDIDATE"
+          ],
+          "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
+        },
+        {
+          "label": "DDD_ROLLBACK_DRILL_CHECK_ENV",
+          "keys": [
+            "DDD_ROLLBACK_DRILL_CHECK_ENV"
+          ],
+          "spec": "DDD_ROLLBACK_DRILL_CHECK_ENV=DDD_ROLLBACK_DRILL_CHECK_ENV"
+        },
+        {
+          "label": "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+          "keys": [
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
+          ],
+          "spec": "DDD_ROLLBACK_DRILL_DEFERRAL_FILE=DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
+        },
+        {
+          "label": "DDD_ROLLBACK_DRILL_FILE",
+          "keys": [
+            "DDD_ROLLBACK_DRILL_FILE"
+          ],
+          "spec": "DDD_ROLLBACK_DRILL_FILE=DDD_ROLLBACK_DRILL_FILE"
+        },
+        {
+          "label": "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+          "keys": [
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE"
+          ],
+          "spec": "DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE"
+        },
+        {
+          "label": "DDD_ROLLBACK_DRILL_STRICT",
+          "keys": [
+            "DDD_ROLLBACK_DRILL_STRICT"
+          ],
+          "spec": "DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT"
+        }
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+      ],
+      "dependsOn": [
+        "p0-docker-release-infra",
+        "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
@@ -2412,7 +2675,7 @@
       "priority": "P2",
       "source": "explain",
       "owner": "database",
-      "pendingItems": 8,
+      "pendingItems": 2,
       "envKeys": [
         "DDD_EVIDENCE_OPERATOR",
         "DDD_EXPLAIN_DATABASE",
@@ -2428,40 +2691,17 @@
         "MYSQL_USER"
       ],
       "commands": [
-        "node scripts/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
       ],
       "items": [
         {
-          "id": "ai-knowledge-index-retry.json",
-          "check": "ai-knowledge-index-retry.json",
-          "reason": "missing required EXPLAIN artifact",
-          "detail": "missing required EXPLAIN artifact",
-          "structured": false,
-          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
-          "envKeys": [
-            "DDD_EXPLAIN_DIR",
-            "DDD_EXPLAIN_STRICT",
-            "DDD_EXPLAIN_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR",
-            "MYSQL_CLI",
-            "MYSQL_HOST",
-            "MYSQL_PORT",
-            "MYSQL_USER",
-            "MYSQL_PASSWORD",
-            "MYSQL_DATABASE",
-            "DDD_EXPLAIN_DATABASE"
-          ],
-          "artifact": null
-        },
-        {
           "id": "message-archive-total.json",
           "check": "message-archive-total.json",
-          "reason": "missing required EXPLAIN artifact",
-          "detail": "missing required EXPLAIN artifact",
+          "reason": "[plan] message-archive-total.json: archive_candidates does not report an index key for access_type=ALL | [plan] message-archive-total.json: archive_candidates uses full scan access_type=ALL",
+          "detail": "[plan] message-archive-total.json: archive_candidates does not report an index key for access_type=ALL | [plan] message-archive-total.json: archive_candidates uses full scan access_type=ALL",
           "structured": false,
-          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node bin/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`.",
           "envKeys": [
             "DDD_EXPLAIN_DIR",
             "DDD_EXPLAIN_STRICT",
@@ -2481,125 +2721,10 @@
         {
           "id": "message-unread-count.json",
           "check": "message-unread-count.json",
-          "reason": "missing required EXPLAIN artifact",
-          "detail": "missing required EXPLAIN artifact",
+          "reason": "[plan] message-unread-count.json: unread_candidates does not report an index key for access_type=ALL | [plan] message-unread-count.json: unread_candidates uses full scan access_type=ALL",
+          "detail": "[plan] message-unread-count.json: unread_candidates does not report an index key for access_type=ALL | [plan] message-unread-count.json: unread_candidates uses full scan access_type=ALL",
           "structured": false,
-          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
-          "envKeys": [
-            "DDD_EXPLAIN_DIR",
-            "DDD_EXPLAIN_STRICT",
-            "DDD_EXPLAIN_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR",
-            "MYSQL_CLI",
-            "MYSQL_HOST",
-            "MYSQL_PORT",
-            "MYSQL_USER",
-            "MYSQL_PASSWORD",
-            "MYSQL_DATABASE",
-            "DDD_EXPLAIN_DATABASE"
-          ],
-          "artifact": null
-        },
-        {
-          "id": "message-visible-list.json",
-          "check": "message-visible-list.json",
-          "reason": "missing required EXPLAIN artifact",
-          "detail": "missing required EXPLAIN artifact",
-          "structured": false,
-          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
-          "envKeys": [
-            "DDD_EXPLAIN_DIR",
-            "DDD_EXPLAIN_STRICT",
-            "DDD_EXPLAIN_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR",
-            "MYSQL_CLI",
-            "MYSQL_HOST",
-            "MYSQL_PORT",
-            "MYSQL_USER",
-            "MYSQL_PASSWORD",
-            "MYSQL_DATABASE",
-            "DDD_EXPLAIN_DATABASE"
-          ],
-          "artifact": null
-        },
-        {
-          "id": "platform-outbox-owner-relay-file.json",
-          "check": "platform-outbox-owner-relay-file.json",
-          "reason": "missing required EXPLAIN artifact",
-          "detail": "missing required EXPLAIN artifact",
-          "structured": false,
-          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
-          "envKeys": [
-            "DDD_EXPLAIN_DIR",
-            "DDD_EXPLAIN_STRICT",
-            "DDD_EXPLAIN_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR",
-            "MYSQL_CLI",
-            "MYSQL_HOST",
-            "MYSQL_PORT",
-            "MYSQL_USER",
-            "MYSQL_PASSWORD",
-            "MYSQL_DATABASE",
-            "DDD_EXPLAIN_DATABASE"
-          ],
-          "artifact": null
-        },
-        {
-          "id": "platform-outbox-owner-relay-message.json",
-          "check": "platform-outbox-owner-relay-message.json",
-          "reason": "missing required EXPLAIN artifact",
-          "detail": "missing required EXPLAIN artifact",
-          "structured": false,
-          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
-          "envKeys": [
-            "DDD_EXPLAIN_DIR",
-            "DDD_EXPLAIN_STRICT",
-            "DDD_EXPLAIN_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR",
-            "MYSQL_CLI",
-            "MYSQL_HOST",
-            "MYSQL_PORT",
-            "MYSQL_USER",
-            "MYSQL_PASSWORD",
-            "MYSQL_DATABASE",
-            "DDD_EXPLAIN_DATABASE"
-          ],
-          "artifact": null
-        },
-        {
-          "id": "platform-runtime-appearance.json",
-          "check": "platform-runtime-appearance.json",
-          "reason": "missing required EXPLAIN artifact",
-          "detail": "missing required EXPLAIN artifact",
-          "structured": false,
-          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
-          "envKeys": [
-            "DDD_EXPLAIN_DIR",
-            "DDD_EXPLAIN_STRICT",
-            "DDD_EXPLAIN_ENVIRONMENT",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_EVIDENCE_OPERATOR",
-            "MYSQL_CLI",
-            "MYSQL_HOST",
-            "MYSQL_PORT",
-            "MYSQL_USER",
-            "MYSQL_PASSWORD",
-            "MYSQL_DATABASE",
-            "DDD_EXPLAIN_DATABASE"
-          ],
-          "artifact": null
-        },
-        {
-          "id": "plugin-bootstrap.json",
-          "check": "plugin-bootstrap.json",
-          "reason": "missing required EXPLAIN artifact",
-          "detail": "missing required EXPLAIN artifact",
-          "structured": false,
-          "action": "Run production-equivalent MySQL EXPLAIN collection with `node scripts/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`.",
+          "action": "Run production-equivalent MySQL EXPLAIN collection with `node bin/ddd-collect-explain.mjs`, then `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`.",
           "envKeys": [
             "DDD_EXPLAIN_DIR",
             "DDD_EXPLAIN_STRICT",
@@ -2618,7 +2743,7 @@
         }
       ],
       "id": "p2-explain-database",
-      "order": 20,
+      "order": 21,
       "envCheckGroups": [
         {
           "label": "DDD_EVIDENCE_OPERATOR",
@@ -2720,10 +2845,11 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -2753,8 +2879,8 @@
         "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
       ],
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "items": [
         {
@@ -2763,7 +2889,7 @@
           "reason": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
           "detail": "missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
           "structured": false,
-          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`.",
           "envKeys": [
             "DDD_MIGRATION_FRESH_DB_VALIDATED",
             "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
@@ -2774,7 +2900,7 @@
         }
       ],
       "id": "p3-orchestrator-database",
-      "order": 21,
+      "order": 22,
       "envCheckGroups": [
         {
           "label": "DDD_MIGRATION_FRESH_DB_EVIDENCE",
@@ -2818,85 +2944,11 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
-        "p1-business-e2e-file-owner",
-        "p1-business-e2e-job-owner",
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-ai-owner",
-        "p1-rollback-auth-owner",
-        "p1-rollback-file-owner",
-        "p1-rollback-iam-owner",
-        "p1-rollback-job-owner",
-        "p1-rollback-localization-owner",
-        "p1-rollback-message-owner",
-        "p1-rollback-payment-owner",
-        "p1-rollback-platform-owner",
-        "p1-rollback-plugin-owner",
-        "p2-explain-database"
-      ],
-      "canRunImmediately": false
-    },
-    {
-      "key": "P3:orchestrator:frontend",
-      "priority": "P3",
-      "source": "orchestrator",
-      "owner": "frontend",
-      "pendingItems": 1,
-      "envKeys": [
-        "FRONTEND_BASE_URL",
-        "PLAYWRIGHT_BASE_URL"
-      ],
-      "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
-      ],
-      "items": [
-        {
-          "id": "orchestrator-preflight-frontend-runtime-base-url",
-          "check": "frontend-runtime-base-url",
-          "reason": "missing deployed frontend base URL",
-          "detail": "missing deployed frontend base URL",
-          "structured": false,
-          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
-          "envKeys": [
-            "PLAYWRIGHT_BASE_URL",
-            "FRONTEND_BASE_URL"
-          ],
-          "artifact": null
-        }
-      ],
-      "id": "p3-orchestrator-frontend",
-      "order": 22,
-      "envCheckGroups": [
-        {
-          "label": "PLAYWRIGHT_BASE_URL",
-          "keys": [
-            "FRONTEND_BASE_URL",
-            "PLAYWRIGHT_BASE_URL"
-          ],
-          "spec": "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/release-evidence-gate.json",
-        "artifacts/ddd/release/readiness-summary.json"
-      ],
-      "exitCriteria": [
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Run only after all prerequisite evidence batches are clean."
-      ],
-      "dependsOn": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance",
-        "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -2919,15 +2971,17 @@
       "priority": "P3",
       "source": "orchestrator",
       "owner": "release-infra",
-      "pendingItems": 1,
+      "pendingItems": 2,
       "envKeys": [
         "BASE_URL",
         "DEPLOY_CHECK_BASE_URL",
-        "LUMIRA_BASE_URL"
+        "FRONTEND_BASE_URL",
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL"
       ],
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "items": [
         {
@@ -2936,11 +2990,24 @@
           "reason": "missing backend runtime base URL",
           "detail": "missing backend runtime base URL",
           "structured": false,
-          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`.",
           "envKeys": [
             "LUMIRA_BASE_URL",
             "DEPLOY_CHECK_BASE_URL",
             "BASE_URL"
+          ],
+          "artifact": null
+        },
+        {
+          "id": "orchestrator-preflight-frontend-runtime-base-url",
+          "check": "frontend-runtime-base-url",
+          "reason": "missing deployed frontend base URL",
+          "detail": "missing deployed frontend base URL",
+          "structured": false,
+          "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`.",
+          "envKeys": [
+            "PLAYWRIGHT_BASE_URL",
+            "FRONTEND_BASE_URL"
           ],
           "artifact": null
         }
@@ -2962,6 +3029,14 @@
             "LUMIRA_BASE_URL"
           ],
           "spec": "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+        },
+        {
+          "label": "PLAYWRIGHT_BASE_URL",
+          "keys": [
+            "FRONTEND_BASE_URL",
+            "PLAYWRIGHT_BASE_URL"
+          ],
+          "spec": "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
         }
       ],
       "expectedArtifacts": [
@@ -2977,10 +3052,11 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -3008,8 +3084,8 @@
         "DDD_RELEASE_EVIDENCE_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "items": [
         {
@@ -3018,7 +3094,7 @@
           "reason": "strict release requires run mode report, got plan",
           "detail": "strict release requires run mode report, got plan",
           "structured": false,
-          "action": "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node scripts/ddd-release-evidence-orchestrator.mjs`.",
+          "action": "Run the release evidence orchestrator in strict run mode after preflight blockers are resolved with `node bin/ddd-release-evidence-orchestrator.mjs`.",
           "envKeys": [
             "DDD_RELEASE_EVIDENCE_STRICT"
           ],
@@ -3049,10 +3125,11 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",

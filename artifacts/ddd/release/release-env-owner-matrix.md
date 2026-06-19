@@ -1,17 +1,17 @@
 # DDD Release Env Owner Matrix
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:09:18.921Z
 Status: NOT_READY
 Release gate blockers: 94
 Owners: 16
 Template env keys: 46
 Unique unresolved template env keys: 29
-Unresolved owner assignments: 65
+Unresolved owner assignments: 67
 
 ## release-infra
 
-- Env keys: 7
-- Unresolved env keys: 4
+- Env keys: 8
+- Unresolved env keys: 5
 - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
 - Blocked batches: p3-orchestrator-release-infra
 - Expected artifacts: artifacts/ddd/build/docker-image-evidence.json, artifacts/ddd/readiness/summary.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
@@ -20,6 +20,7 @@ Unresolved owner assignments: 65
   - `DDD_EVIDENCE_OPERATOR`
   - `DDD_RELEASE_CANDIDATE`
   - `LUMIRA_BASE_URL`
+  - `PLAYWRIGHT_BASE_URL`
 - Template env keys:
   - `BASE_URL`
   - `DDD_DOCKER_BUILD_STRICT`
@@ -28,51 +29,18 @@ Unresolved owner assignments: 65
   - `DDD_EVIDENCE_OPERATOR`
   - `DDD_RELEASE_CANDIDATE`
   - `LUMIRA_BASE_URL`
+  - `PLAYWRIGHT_BASE_URL`
 - Alias mappings:
   - `DEPLOY_CHECK_BASE_URL` -> `LUMIRA_BASE_URL`
-
-## release-owner
-
-- Env keys: 5
-- Unresolved env keys: 2
-- Ready batches: p0-manifest-release-owner
-- Blocked batches: p3-orchestrator-release-owner
-- Expected artifacts: artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
-- Unresolved template env keys:
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_RELEASE_CANDIDATE`
-- Template env keys:
-  - `DDD_EVIDENCE_ENVIRONMENT`
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_RELEASE_CANDIDATE`
-  - `DDD_RELEASE_EVIDENCE_STRICT`
-  - `DDD_RELEASE_MANIFEST_STRICT`
-
-## release-performance
-
-- Env keys: 4
-- Unresolved env keys: 4
-- Ready batches: p0-authenticated-performance-release-performance
-- Blocked batches: none
-- Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json, artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json, artifacts/ddd/performance/authenticated-runtime-baseline.json
-- Unresolved template env keys:
-  - `DDD_AUTH_PERF_BASELINE_ACCEPTED_BY`
-  - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
-  - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
-  - `DDD_RELEASE_CANDIDATE`
-- Template env keys:
-  - `DDD_AUTH_PERF_BASELINE_ACCEPTED_BY`
-  - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
-  - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
-  - `DDD_RELEASE_CANDIDATE`
+  - `FRONTEND_BASE_URL` -> `PLAYWRIGHT_BASE_URL`
 
 ## database
 
 - Env keys: 16
 - Unresolved env keys: 12
-- Ready batches: none
+- Ready batches: p0-manifest-database
 - Blocked batches: p2-explain-database, p3-orchestrator-database
-- Expected artifacts: artifacts/ddd/release/explain-gate-report.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json, tmp/ddd-explain/*.json
+- Expected artifacts: artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/explain-gate-report.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json, tmp/ddd-explain/*.json
 - Unresolved template env keys:
   - `DB_PASSWORD`
   - `DB_USERNAME`
@@ -106,6 +74,57 @@ Unresolved owner assignments: 65
 - Alias mappings:
   - `MYSQL_PASSWORD` -> `DB_PASSWORD`
   - `MYSQL_USER` -> `DB_USERNAME`
+
+## release-owner
+
+- Env keys: 5
+- Unresolved env keys: 2
+- Ready batches: p0-manifest-release-owner
+- Blocked batches: p3-orchestrator-release-owner
+- Expected artifacts: artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
+- Unresolved template env keys:
+  - `DDD_EVIDENCE_OPERATOR`
+  - `DDD_RELEASE_CANDIDATE`
+- Template env keys:
+  - `DDD_EVIDENCE_ENVIRONMENT`
+  - `DDD_EVIDENCE_OPERATOR`
+  - `DDD_RELEASE_CANDIDATE`
+  - `DDD_RELEASE_EVIDENCE_STRICT`
+  - `DDD_RELEASE_MANIFEST_STRICT`
+
+## lumira-ui
+
+- Env keys: 4
+- Unresolved env keys: 2
+- Ready batches: p0-manifest-lumira-ui
+- Blocked batches: none
+- Expected artifacts: artifacts/ddd/lumira-ui/frontend-smoke.json, artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json, artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json, artifacts/ddd/release/evidence-manifest.json
+- Unresolved template env keys:
+  - `DDD_RELEASE_CANDIDATE`
+  - `PLAYWRIGHT_BASE_URL`
+- Template env keys:
+  - `DDD_EVIDENCE_ENVIRONMENT`
+  - `DDD_FRONTEND_EXPECT_DEPLOYED`
+  - `DDD_RELEASE_CANDIDATE`
+  - `PLAYWRIGHT_BASE_URL`
+
+## release-performance
+
+- Env keys: 4
+- Unresolved env keys: 4
+- Ready batches: p0-authenticated-performance-release-performance
+- Blocked batches: none
+- Expected artifacts: artifacts/ddd/performance/authenticated-runtime-actual.json, artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json, artifacts/ddd/performance/authenticated-runtime-baseline.json
+- Unresolved template env keys:
+  - `DDD_AUTH_PERF_BASELINE_ACCEPTED_BY`
+  - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
+  - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
+  - `DDD_RELEASE_CANDIDATE`
+- Template env keys:
+  - `DDD_AUTH_PERF_BASELINE_ACCEPTED_BY`
+  - `DDD_AUTH_PERF_BASELINE_ENVIRONMENT`
+  - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
+  - `DDD_RELEASE_CANDIDATE`
 
 ## file-owner
 
@@ -377,19 +396,4 @@ Unresolved owner assignments: 65
   - `DDD_ROLLBACK_DRILL_FILE`
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT`
-
-## frontend
-
-- Env keys: 2
-- Unresolved env keys: 1
-- Ready batches: none
-- Blocked batches: p1-frontend-smoke-frontend, p3-orchestrator-frontend
-- Expected artifacts: artifacts/ddd/frontend/frontend-smoke.json, artifacts/ddd/frontend/playwright-smoke-results.json, artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
-- Unresolved template env keys:
-  - `PLAYWRIGHT_BASE_URL`
-- Template env keys:
-  - `DDD_FRONTEND_EXPECT_DEPLOYED`
-  - `PLAYWRIGHT_BASE_URL`
-- Alias mappings:
-  - `FRONTEND_BASE_URL` -> `PLAYWRIGHT_BASE_URL`
 

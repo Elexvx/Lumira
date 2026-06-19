@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:09:18.921Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T06:38:14.272Z",
-      "generatedAt": "2026-06-19T06:38:14.269Z",
+      "modifiedAt": "2026-06-19T18:09:16.572Z",
+      "generatedAt": "2026-06-19T18:09:16.571Z",
       "status": "FAIL",
-      "blockers": 1,
+      "blockers": 12,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -32,8 +32,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:42:37.440Z",
-      "generatedAt": "2026-06-19T13:42:37.438Z",
+      "modifiedAt": "2026-06-19T14:43:03.927Z",
+      "generatedAt": "2026-06-19T14:43:03.923Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -44,8 +44,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:42:37.550Z",
-      "generatedAt": "2026-06-19T13:42:37.547Z",
+      "modifiedAt": "2026-06-19T14:43:04.048Z",
+      "generatedAt": "2026-06-19T14:43:04.044Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -159,15 +159,15 @@
       "warnings": null
     },
     "frontendSmoke": {
-      "file": "artifacts\\ddd\\frontend\\frontend-smoke.json",
-      "relativePath": "frontend/frontend-smoke.json",
-      "present": true,
-      "missing": false,
+      "file": "artifacts\\ddd\\lumira-ui\\frontend-smoke.json",
+      "relativePath": "lumira-ui/frontend-smoke.json",
+      "present": false,
+      "missing": true,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.198Z",
-      "generatedAt": "2026-06-16T20:51:08.151Z",
-      "status": "PASS",
-      "blockers": 0,
+      "modifiedAt": null,
+      "generatedAt": null,
+      "status": null,
+      "blockers": null,
       "warnings": null
     },
     "aiRuntime": {
@@ -188,8 +188,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.312Z",
-      "generatedAt": "2026-06-16T06:24:20.373Z",
+      "modifiedAt": "2026-06-19T13:59:31.821Z",
+      "generatedAt": "2026-06-19T13:59:31.816Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -236,8 +236,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.219Z",
-      "generatedAt": "2026-06-15T20:41:37.875Z",
+      "modifiedAt": "2026-06-19T14:43:03.893Z",
+      "generatedAt": "2026-06-19T14:43:03.891Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
@@ -274,11 +274,11 @@
     }
   },
   "summary": {
-    "totalPendingItems": 47,
-    "nonWaivableItems": 37,
-    "readyBatches": 4,
-    "blockedBatches": 20,
-    "lanes": 10,
+    "totalPendingItems": 51,
+    "nonWaivableItems": 31,
+    "readyBatches": 6,
+    "blockedBatches": 18,
+    "lanes": 9,
     "cutoverChecklistItems": 9,
     "blockedCutoverItems": 7
   },
@@ -301,12 +301,13 @@
       "readyBatchIds": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "blockedBatchIds": [
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -322,7 +323,6 @@
         "p1-rollback-plugin-owner",
         "p2-explain-database",
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
         "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ]
@@ -342,7 +342,7 @@
     },
     {
       "id": "deployable-images",
-      "title": "Deployable backend/frontend images are built and inspected.",
+      "title": "Deployable backend/lumira-ui images are built and inspected.",
       "required": true,
       "status": "BLOCKED",
       "pendingItems": 4,
@@ -392,18 +392,17 @@
     },
     {
       "id": "runtime-business-acceptance",
-      "title": "AI, frontend, file, job, and payment acceptance evidence is complete.",
+      "title": "AI, lumira-ui, file, job, and payment acceptance evidence is complete.",
       "required": true,
       "status": "BLOCKED",
-      "pendingItems": 7,
+      "pendingItems": 6,
       "lanes": [
         "runtime-acceptance",
-        "frontend-acceptance",
+        "lumira-ui-acceptance",
         "business-acceptance"
       ],
       "batchIds": [
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner"
@@ -411,7 +410,6 @@
       "readyBatchIds": [],
       "blockedBatchIds": [
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner"
@@ -457,7 +455,7 @@
       "title": "Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.",
       "required": true,
       "status": "BLOCKED",
-      "pendingItems": 8,
+      "pendingItems": 2,
       "lanes": [
         "database-performance"
       ],
@@ -474,24 +472,26 @@
       "title": "Evidence manifest and final orchestrator strict rerun are clean.",
       "required": true,
       "status": "BLOCKED",
-      "pendingItems": 5,
+      "pendingItems": 16,
       "lanes": [
         "evidence-integrity",
         "final-verification"
       ],
       "batchIds": [
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner",
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
         "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ],
       "readyBatchIds": [
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner"
       ],
       "blockedBatchIds": [
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
         "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ]
@@ -520,8 +520,7 @@
         "DDD_DOCKER_COMMAND=DDD_DOCKER_COMMAND"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
@@ -552,7 +551,7 @@
         "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
       ],
       "commands": [
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node bin/ddd-runtime-readiness-smoke.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/readiness/summary.json"
@@ -583,8 +582,8 @@
         "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
       ],
       "commands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs"
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/performance/authenticated-runtime-actual.json",
@@ -624,42 +623,12 @@
         "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
       ],
       "commands": [
-        "node scripts/ddd-ai-runtime-drill.mjs"
+        "node bin/ddd-ai-runtime-drill.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/ai/ai-runtime-drill.json"
       ],
       "acceleration": "Use remote provider and owner gateway settings in the same production-equivalent environment."
-    },
-    {
-      "lane": "frontend-acceptance",
-      "safetyClass": "required-before-cutover",
-      "pendingItems": 1,
-      "sources": [
-        "frontend-smoke"
-      ],
-      "owners": [
-        "frontend"
-      ],
-      "batchIds": [
-        "p1-frontend-smoke-frontend"
-      ],
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p1-frontend-smoke-frontend"
-      ],
-      "envCheckGroups": [
-        "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED"
-      ],
-      "commands": [
-        "node scripts/ddd-frontend-playwright-smoke.mjs",
-        "node scripts/ddd-frontend-smoke-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/frontend/frontend-smoke.json",
-        "artifacts/ddd/frontend/playwright-smoke-results.json"
-      ],
-      "acceleration": "Run deployed Playwright smoke and evidence conversion from the deployed frontend URL."
     },
     {
       "lane": "business-acceptance",
@@ -693,9 +662,9 @@
         "UPLOAD_STORAGE_ROOT=LUMIRA_UPLOAD_STORAGE_ROOT|UPLOAD_STORAGE_ROOT"
       ],
       "commands": [
-        "node scripts/ddd-file-processing-e2e-smoke.mjs",
-        "node scripts/ddd-job-e2e-smoke.mjs",
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+        "node bin/ddd-file-processing-e2e-smoke.mjs",
+        "node bin/ddd-job-e2e-smoke.mjs",
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/file/file-processing-e2e.json",
@@ -759,9 +728,9 @@
         "DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/rollback/rollback-drill.json"
@@ -771,7 +740,7 @@
     {
       "lane": "database-performance",
       "safetyClass": "non-waivable",
-      "pendingItems": 8,
+      "pendingItems": 2,
       "sources": [
         "explain"
       ],
@@ -800,8 +769,8 @@
         "MYSQL_PORT=MYSQL_PORT"
       ],
       "commands": [
-        "node scripts/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/release/explain-gate-report.json",
@@ -812,32 +781,47 @@
     {
       "lane": "evidence-integrity",
       "safetyClass": "required-before-cutover",
-      "pendingItems": 1,
+      "pendingItems": 12,
       "sources": [
         "manifest"
       ],
       "owners": [
+        "database",
+        "lumira-ui",
         "release-owner"
       ],
       "batchIds": [
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner"
       ],
       "readyBatchIds": [
+        "p0-manifest-database",
+        "p0-manifest-lumira-ui",
         "p0-manifest-release-owner"
       ],
       "blockedBatchIds": [],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
+        "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED",
         "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
+        "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT",
+        "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
       ],
       "expectedArtifacts": [
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json",
         "artifacts/ddd/release/evidence-manifest.json"
       ],
       "acceleration": "Regenerate the manifest after all prerequisite artifacts exist."
@@ -851,20 +835,17 @@
       ],
       "owners": [
         "database",
-        "frontend",
         "release-infra",
         "release-owner"
       ],
       "batchIds": [
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
         "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ],
       "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
         "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ],
@@ -879,8 +860,8 @@
         "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
       ],
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/release/orchestrator-report.json",

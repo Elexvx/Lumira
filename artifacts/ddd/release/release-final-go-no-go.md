@@ -1,6 +1,6 @@
 # DDD Final Go/No-Go Packet
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:09:18.921Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 Final recommendation: NO_GO_STRICT
@@ -8,8 +8,8 @@ Cutover allowed: false
 No auto waivers: true
 Strict gate blockers: 94
 Blocked cutover items: 7
-Receipt missing artifact waves: 0
-Receipt content blocked waves: 1
+Receipt missing artifact waves: 1
+Receipt content blocked waves: 2
 Performance baseline status: BLOCKED
 Owner input receipt status: PENDING_OWNER_INPUT
 Owner input receipt cutover ready: false
@@ -18,28 +18,38 @@ CI non-GO exit code: 10
 ## CI Summary
 
 - Enforce command: `DDD_RELEASE_PREFLIGHT_ENFORCE=1 bash artifacts/ddd/release/release-preflight-gate.sh`
-- Stop owners: ai, ai-owner, auth-owner, database, file-owner, frontend, iam-owner, job-owner, localization-owner, message-owner, payment-owner, platform-owner, plugin-owner, release-infra, release-owner, release-performance
+- Stop owners: ai, ai-owner, auth-owner, database, file-owner, iam-owner, job-owner, localization-owner, lumira-ui, message-owner, payment-owner, platform-owner, plugin-owner, release-infra, release-owner, release-performance
 - First next command: `bash artifacts/ddd/release/release-preflight-gate.sh`
 - First owner action: release-infra - Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.
-- First owner action command: `node scripts/ddd-release-evidence-orchestrator.mjs`
+- First owner action command: `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - Exit codes: finalNoGo=10, finalPacketInvalid=11, releaseEnvUnresolved=21, releaseEnvInvalidPacket=22
-- Blocked artifacts: 4
-- Blocked content hints: 1
+- Blocked artifacts: 7
+- Blocked content hints: 9
 - Release env readiness: blockers=0, placeholders=0, owners=6
 - Owner input receipt: status=PENDING_OWNER_INPUT, cutoverReady=false, inputs=0, pendingOwners=0, missingCriteria=releaseEnvReadinessStatus
 - Release env owner blockers: none
 - First release env owner action: none
 - Orchestrator preflight: mode=plan status=FAIL blockers=4
-- Orchestrator preflight owners: ai:1, database:1, frontend:1, release-infra:1
-- First orchestrator preflight action: ai ai-runtime-base-url
+- Orchestrator preflight owners: release-infra:2, ai:1, database:1
+- First orchestrator preflight action: release-infra backend-runtime-base-url
 - Release env redacted handoff: artifacts/ddd/release/release-env-owner-handoff-redacted
 - Release env redacted handoff CSV: artifacts/ddd/release/release-env-owner-handoff-redacted.csv
 
 ## Stop Reasons
 
 - authenticated performance baseline not ready: BLOCKED
-- closure wave 3 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\ddd-explain
-- closure wave CONTENT_BLOCKED: wave 3 release-owner/p0-manifest-release-owner
+- closure wave 3 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs
+- closure wave 3 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff
+- closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh
+- closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs
+- closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs
+- closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs
+- closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet
+- closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt
+- closure wave 5 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff
+- closure wave ARTIFACT_MISSING: wave 4 lumira-ui/p0-manifest-lumira-ui
+- closure wave CONTENT_BLOCKED: wave 3 database/p0-manifest-database
+- closure wave CONTENT_BLOCKED: wave 5 release-owner/p0-manifest-release-owner
 - cutover checklist blocked: database-performance
 - cutover checklist blocked: deployable-images
 - cutover checklist blocked: evidence-integrity
@@ -82,35 +92,39 @@ CI non-GO exit code: 10
 
 - strict-release-gate: Strict release gate has zero blockers and no contract issues.
   - Pending items: 94
-  - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-  - Blocked batches: p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database, p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-infra, p3-orchestrator-release-owner
-- deployable-images: Deployable backend/frontend images are built and inspected.
+  - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+  - Blocked batches: p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database, p3-orchestrator-database, p3-orchestrator-release-infra, p3-orchestrator-release-owner
+- deployable-images: Deployable backend/lumira-ui images are built and inspected.
   - Pending items: 4
   - Ready batches: p0-docker-release-infra
 - production-equivalence: Runtime and performance evidence use HTTPS non-local production-equivalent endpoints.
   - Pending items: 13
   - Ready batches: p0-runtime-readiness-release-infra, p0-authenticated-performance-release-performance
-- runtime-business-acceptance: AI, frontend, file, job, and payment acceptance evidence is complete.
-  - Pending items: 7
-  - Blocked batches: p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner
+- runtime-business-acceptance: AI, lumira-ui, file, job, and payment acceptance evidence is complete.
+  - Pending items: 6
+  - Blocked batches: p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner
 - rollback-safety: Every bounded context has rollback PASS or approved unexpired DEFERRED risk acceptance.
   - Pending items: 10
   - Blocked batches: p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
 - database-performance: Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.
-  - Pending items: 8
+  - Pending items: 2
   - Blocked batches: p2-explain-database
 - evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean.
-  - Pending items: 5
-  - Ready batches: p0-manifest-release-owner
-  - Blocked batches: p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-infra, p3-orchestrator-release-owner
+  - Pending items: 16
+  - Ready batches: p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner
+  - Blocked batches: p3-orchestrator-database, p3-orchestrator-release-infra, p3-orchestrator-release-owner
 
 ## Closure Waves
 
 - Wave 1: release-infra/p0-docker-release-infra - READY_FOR_STRICT_GATE_RERUN
 - Wave 2: release-infra/p0-runtime-readiness-release-infra - READY_FOR_STRICT_GATE_RERUN
-- Wave 3: release-owner/p0-manifest-release-owner - CONTENT_BLOCKED
-  - Content blockers: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\ddd-explain
-- Wave 4: release-performance/p0-authenticated-performance-release-performance - READY_FOR_STRICT_GATE_RERUN
+- Wave 3: database/p0-manifest-database - CONTENT_BLOCKED
+  - Content blockers: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs; artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff
+- Wave 4: lumira-ui/p0-manifest-lumira-ui - ARTIFACT_MISSING
+  - Missing artifacts: artifacts/ddd/lumira-ui/frontend-smoke.json, artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json, artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json
+- Wave 5: release-owner/p0-manifest-release-owner - CONTENT_BLOCKED
+  - Content blockers: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh; artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs; artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs; artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs; artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet; artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt; artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff
+- Wave 6: release-performance/p0-authenticated-performance-release-performance - READY_FOR_STRICT_GATE_RERUN
 
 ## Next Commands
 
@@ -118,47 +132,54 @@ CI non-GO exit code: 10
 - `bash artifacts/ddd/release/release-artifact-integrity-gate.sh`
 - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
 - `DDD_RELEASE_ENV_FILE=<release-env-file> bash artifacts/ddd/release/release-env-bootstrap.sh`
-- `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-safe-defaults.mjs`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-provenance-defaults.mjs`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-alias-sync.mjs`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-- `node scripts/ddd-release-evidence-orchestrator.mjs`
+- `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`
 - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
-- `node scripts/ddd-authenticated-performance-smoke.mjs`
-- `node scripts/ddd-promote-performance-baseline.mjs`
-- `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
-- `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
 - `DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
+- `node bin/ddd-authenticated-performance-smoke.mjs`
+- `node bin/ddd-promote-performance-baseline.mjs`
+- `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs`
+- `node bin/ddd-migration-evidence.mjs`
+- `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- `DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh`
 - `DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh`
-- `DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs`
-- `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-- `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-- `node scripts/ddd-release-evidence-gate.mjs`
-- `node scripts/ddd-release-readiness-summary.mjs`
+- `DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs`
+- `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+- `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
+- `node bin/ddd-release-evidence-gate.mjs`
+- `node bin/ddd-release-readiness-summary.mjs`
 - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
-- `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-- `node scripts/ddd-docker-build-evidence.mjs`
-- `node scripts/ddd-runtime-readiness-smoke.mjs`
-- `node scripts/ddd-ai-runtime-drill.mjs`
-- `node scripts/ddd-frontend-playwright-smoke.mjs`
-- `node scripts/ddd-frontend-smoke-evidence.mjs`
-- `node scripts/ddd-file-processing-e2e-smoke.mjs`
-- `node scripts/ddd-job-e2e-smoke.mjs`
-- `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
-- `node scripts/ddd-rollback-deferral-template.mjs`
-- `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-- `node scripts/ddd-rollback-drill-evidence.mjs`
-- `node scripts/ddd-collect-explain.mjs`
-- `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
-- `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+- `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+- `node bin/ddd-runtime-readiness-smoke.mjs`
+- `node bin/ddd-ai-runtime-drill.mjs`
+- `node bin/ddd-file-processing-e2e-smoke.mjs`
+- `node bin/ddd-job-e2e-smoke.mjs`
+- `node bin/ddd-payment-webhook-e2e-smoke.mjs`
+- `node bin/ddd-rollback-deferral-template.mjs`
+- `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+- `node bin/ddd-rollback-drill-evidence.mjs`
+- `node bin/ddd-collect-explain.mjs`
+- `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
+- `node bin/ddd-release-evidence-orchestrator.mjs`
+- `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`

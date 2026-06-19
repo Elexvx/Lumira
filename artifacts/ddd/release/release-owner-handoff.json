@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:09:18.921Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -57,17 +57,17 @@
   },
   "summary": {
     "ownerCount": 16,
-    "readyOwnerCount": 3,
-    "blockedOwnerCount": 13,
-    "readyBatchCount": 4,
-    "blockedBatchCount": 20,
+    "readyOwnerCount": 5,
+    "blockedOwnerCount": 11,
+    "readyBatchCount": 6,
+    "blockedBatchCount": 18,
     "templateEnvKeyCount": 46
   },
   "owners": [
     {
       "owner": "release-infra",
       "status": "READY",
-      "pendingItems": 9,
+      "pendingItems": 10,
       "priorities": [
         "P0",
         "P3"
@@ -89,7 +89,6 @@
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
-        "p1-frontend-smoke-frontend",
         "p1-rollback-ai-owner",
         "p1-rollback-auth-owner",
         "p1-rollback-file-owner",
@@ -115,12 +114,17 @@
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
         "DDD_RELEASE_CANDIDATE",
-        "LUMIRA_BASE_URL"
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL"
       ],
       "aliasMappings": [
         {
           "alias": "DEPLOY_CHECK_BASE_URL",
           "canonical": "LUMIRA_BASE_URL"
+        },
+        {
+          "alias": "FRONTEND_BASE_URL",
+          "canonical": "PLAYWRIGHT_BASE_URL"
         }
       ],
       "expectedArtifacts": [
@@ -135,7 +139,7 @@
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
         "Final strict release gate and readiness summary report zero blockers.",
-        "Required lumira-server and frontend images are built, inspected, and not skipped.",
+        "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
         "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
         "Rerun strict release gate and readiness summary after evidence is refreshed.",
         "Run only after all prerequisite evidence batches are clean.",
@@ -201,7 +205,7 @@
     {
       "owner": "release-owner",
       "status": "READY",
-      "pendingItems": 2,
+      "pendingItems": 8,
       "priorities": [
         "P0",
         "P3"
@@ -221,7 +225,6 @@
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
-        "p1-frontend-smoke-frontend",
         "p1-rollback-ai-owner",
         "p1-rollback-auth-owner",
         "p1-rollback-file-owner",
@@ -273,17 +276,21 @@
     },
     {
       "owner": "database",
-      "status": "BLOCKED",
-      "pendingItems": 9,
+      "status": "READY",
+      "pendingItems": 5,
       "priorities": [
+        "P0",
         "P2",
         "P3"
       ],
       "batchIds": [
+        "p0-manifest-database",
         "p2-explain-database",
         "p3-orchestrator-database"
       ],
-      "readyBatchIds": [],
+      "readyBatchIds": [
+        "p0-manifest-database"
+      ],
       "blockedBatchIds": [
         "p2-explain-database",
         "p3-orchestrator-database"
@@ -293,7 +300,6 @@
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
-        "p1-frontend-smoke-frontend",
         "p1-rollback-ai-owner",
         "p1-rollback-auth-owner",
         "p1-rollback-file-owner",
@@ -306,7 +312,12 @@
         "p1-rollback-plugin-owner",
         "p2-explain-database"
       ],
-      "commandSet": null,
+      "commandSet": {
+        "list": "DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=database DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      },
       "templateEnvKeys": [
         "DB_PASSWORD",
         "DB_USERNAME",
@@ -336,6 +347,7 @@
         }
       ],
       "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json",
         "artifacts/ddd/release/explain-gate-report.json",
         "artifacts/ddd/release/orchestrator-report.json",
         "artifacts/ddd/release/readiness-summary.json",
@@ -343,6 +355,8 @@
         "tmp/ddd-explain/*.json"
       ],
       "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence.",
         "Final strict release gate and readiness summary report zero blockers.",
         "Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.",
         "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
@@ -352,6 +366,57 @@
       ],
       "handoffChecklist": [
         "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
+        "Run the owner env-check command before collecting evidence.",
+        "Run the owner dry-run command to confirm batch scope.",
+        "Run the owner execute command in the production-equivalent release environment.",
+        "Archive or refresh every expected artifact listed for this owner.",
+        "Confirm every exit criterion before the next dependent batch starts."
+      ]
+    },
+    {
+      "owner": "lumira-ui",
+      "status": "READY",
+      "pendingItems": 3,
+      "priorities": [
+        "P0"
+      ],
+      "batchIds": [
+        "p0-manifest-lumira-ui"
+      ],
+      "readyBatchIds": [
+        "p0-manifest-lumira-ui"
+      ],
+      "blockedBatchIds": [],
+      "blockedByBatchIds": [],
+      "commandSet": {
+        "list": "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "envCheck": "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "dryRun": "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "execute": "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      },
+      "templateEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
+      ],
+      "aliasMappings": [],
+      "expectedArtifacts": [
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json",
+        "artifacts/ddd/release/evidence-manifest.json"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence.",
+        "Rerun strict release gate and readiness summary after evidence is refreshed."
+      ],
+      "handoffChecklist": [
+        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
+        "Run the owner env-check command before collecting evidence.",
+        "Run the owner dry-run command to confirm batch scope.",
+        "Run the owner execute command in the production-equivalent release environment.",
         "Archive or refresh every expected artifact listed for this owner.",
         "Confirm every exit criterion before the next dependent batch starts."
       ]
@@ -477,73 +542,6 @@
         "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
         "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata.",
         "Rerun strict release gate and readiness summary after evidence is refreshed."
-      ],
-      "handoffChecklist": [
-        "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",
-        "Archive or refresh every expected artifact listed for this owner.",
-        "Confirm every exit criterion before the next dependent batch starts."
-      ]
-    },
-    {
-      "owner": "frontend",
-      "status": "BLOCKED",
-      "pendingItems": 2,
-      "priorities": [
-        "P1",
-        "P3"
-      ],
-      "batchIds": [
-        "p1-frontend-smoke-frontend",
-        "p3-orchestrator-frontend"
-      ],
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p1-frontend-smoke-frontend",
-        "p3-orchestrator-frontend"
-      ],
-      "blockedByBatchIds": [
-        "p1-ai-runtime-ai",
-        "p1-business-e2e-file-owner",
-        "p1-business-e2e-job-owner",
-        "p1-business-e2e-payment-owner",
-        "p1-frontend-smoke-frontend",
-        "p1-rollback-ai-owner",
-        "p1-rollback-auth-owner",
-        "p1-rollback-file-owner",
-        "p1-rollback-iam-owner",
-        "p1-rollback-job-owner",
-        "p1-rollback-localization-owner",
-        "p1-rollback-message-owner",
-        "p1-rollback-payment-owner",
-        "p1-rollback-platform-owner",
-        "p1-rollback-plugin-owner",
-        "p2-explain-database"
-      ],
-      "commandSet": null,
-      "templateEnvKeys": [
-        "DDD_FRONTEND_EXPECT_DEPLOYED",
-        "PLAYWRIGHT_BASE_URL"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "FRONTEND_BASE_URL",
-          "canonical": "PLAYWRIGHT_BASE_URL"
-        }
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/frontend/frontend-smoke.json",
-        "artifacts/ddd/frontend/playwright-smoke-results.json",
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/readiness-summary.json",
-        "artifacts/ddd/release/release-evidence-gate.json"
-      ],
-      "exitCriteria": [
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-        "Required Playwright smoke flows all pass and produce a JSON report.",
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Rerun strict release gate and readiness summary after evidence is refreshed.",
-        "Run only after all prerequisite evidence batches are clean."
       ],
       "handoffChecklist": [
         "Populate the listed canonical env keys or accepted aliases in a secure release env file; do not commit secret values.",

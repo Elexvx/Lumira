@@ -2,11 +2,11 @@
 set -euo pipefail
 
 # Lumira DDD final go/no-go gate.
-# Generated at: 2026-06-19T13:42:59.865Z
+# Generated at: 2026-06-19T18:09:18.921Z
 # Default mode prints the decision. Set DDD_FINAL_GO_NO_GO_ENFORCE=1 to fail on NO-GO.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
-  if [[ -f "scripts/ddd-release-readiness-summary.mjs" ]]; then
+  if [[ -f "bin/ddd-release-readiness-summary.mjs" ]]; then
     LUMIRA_REPO_ROOT=$(pwd)
   else
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
@@ -21,7 +21,7 @@ DDD_STAGING_FINAL_REVIEW_ENFORCE="${DDD_STAGING_FINAL_REVIEW_ENFORCE:-${DDD_FINA
 DDD_NODE_BIN="${DDD_NODE_BIN:-node}"
 if [[ ! -f "${DDD_FINAL_GO_NO_GO_PACKET}" ]]; then
   echo "Final go/no-go packet does not exist: ${DDD_FINAL_GO_NO_GO_PACKET}" >&2
-  echo "Run: node scripts/ddd-release-readiness-summary.mjs" >&2
+  echo "Run: node bin/ddd-release-readiness-summary.mjs" >&2
   exit 2
 fi
 set +e
@@ -131,11 +131,11 @@ set -e
 if [[ "${DDD_FINAL_GO_NO_GO_STATUS}" == "0" ]]; then
   if [[ "${DDD_STAGING_FINAL_REVIEW_ENFORCE}" == "1" || "${DDD_STAGING_FINAL_REVIEW_ENFORCE}" == "true" ]]; then
     set +e
-    "${DDD_NODE_BIN}" scripts/ddd-staging-execution-checklist.mjs --final-review-enforce
+    "${DDD_NODE_BIN}" bin/ddd-staging-execution-checklist.mjs --final-review-enforce
     DDD_STAGING_FINAL_REVIEW_STATUS=$?
     set -e
     if [[ "${DDD_STAGING_FINAL_REVIEW_STATUS}" != "0" ]]; then
-      echo "[ddd-final-go-no-go][staging-final-review-blocked] cutover blocked; run node scripts/ddd-staging-execution-checklist.mjs --final-review" >&2
+      echo "[ddd-final-go-no-go][staging-final-review-blocked] cutover blocked; run node bin/ddd-staging-execution-checklist.mjs --final-review" >&2
       if [[ "${DDD_FINAL_GO_NO_GO_ENFORCE}" == "1" || "${DDD_FINAL_GO_NO_GO_ENFORCE}" == "true" ]]; then
         exit 10
       fi
@@ -154,4 +154,4 @@ if [[ "${DDD_FINAL_GO_NO_GO_STATUS}" == "10" ]]; then
 fi
 exit "${DDD_FINAL_GO_NO_GO_STATUS}"
 
-# Generated packet is currently NO-GO with 12 stop reasons.
+# Generated packet is currently NO-GO with 22 stop reasons.

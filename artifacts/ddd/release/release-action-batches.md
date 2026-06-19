@@ -1,11 +1,11 @@
 # DDD Release Action Batches
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:09:18.921Z
 Status: NOT_READY
 Release gate mode: strict
 Release gate blockers: 94
 Batch count: 24
-Total pending items: 47
+Total pending items: 51
 
 ## Execution Notes
 
@@ -28,13 +28,12 @@ Total pending items: 47
   - `DDD_DOCKER_BUILD_STRICT=DDD_DOCKER_BUILD_STRICT`
   - `DDD_DOCKER_COMMAND=DDD_DOCKER_COMMAND`
 - Commands:
-  - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-docker-build-evidence.mjs`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
 - Exit criteria:
   - Docker CLI and daemon are available in the evidence runner.
-  - Required lumira-server and frontend images are built, inspected, and not skipped.
+  - Required lumira-server and lumira-ui images are built, inspected, and not skipped.
   - Clear this batch before running downstream runtime-heavy evidence.
 
 - docker-blocker-1: lumira-server: docker build failed: #5 DONE 0.3s
@@ -211,7 +210,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
   - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
 - Commands:
-  - `node scripts/ddd-runtime-readiness-smoke.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
 - Expected artifacts:
   - `artifacts/ddd/readiness/summary.json`
 - Exit criteria:
@@ -224,12 +223,66 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - runtime-readiness-contract-3: runtime readiness productionEquivalence.localOnly must be false for strict release evidence
 - runtime-readiness-contract-4: runtime readiness productionEquivalence.deploymentEvidence is required
 
-### 3. P0 manifest -> release-owner
+### 3. P0 manifest -> database
+
+- Batch id: p0-manifest-database
+- Depends on: none
+- Can run immediately: true
+- Pending items: 2
+- Env keys: DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED
+- Env check groups:
+  - `DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE`
+  - `DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED`
+  - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
+  - `DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED`
+- Commands:
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
+- Expected artifacts:
+  - `artifacts/ddd/release/evidence-manifest.json`
+- Exit criteria:
+  - All required release evidence artifacts are present and checksummed.
+  - Clear this batch before running downstream runtime-heavy evidence.
+
+- manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs: optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs
+- manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff
+
+### 4. P0 manifest -> lumira-ui
+
+- Batch id: p0-manifest-lumira-ui
+- Depends on: none
+- Can run immediately: true
+- Pending items: 3
+- Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_FRONTEND_EXPECT_DEPLOYED, DDD_RELEASE_CANDIDATE, PLAYWRIGHT_BASE_URL
+- Env check groups:
+  - `DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT`
+  - `DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED`
+  - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
+  - `PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL`
+- Commands:
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
+- Expected artifacts:
+  - `artifacts/ddd/release/evidence-manifest.json`
+  - `artifacts/ddd/lumira-ui/frontend-smoke.json`
+  - `artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json`
+  - `artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json`
+- Exit criteria:
+  - All required release evidence artifacts are present and checksummed.
+  - Clear this batch before running downstream runtime-heavy evidence.
+
+- manifest-missing-lumira-ui-frontend-smoke-json: missing artifact lumira-ui/frontend-smoke.json
+- manifest-missing-lumira-ui-lumira-ui-build-evidence-json: missing artifact lumira-ui/lumira-ui-build-evidence.json
+- manifest-missing-lumira-ui-lumira-ui-static-evidence-json: missing artifact lumira-ui/lumira-ui-static-evidence.json
+
+### 5. P0 manifest -> release-owner
 
 - Batch id: p0-manifest-release-owner
 - Depends on: none
 - Can run immediately: true
-- Pending items: 1
+- Pending items: 7
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_RELEASE_MANIFEST_STRICT
 - Env check groups:
   - `DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT`
@@ -237,18 +290,24 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
   - `DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT`
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
 - Expected artifacts:
   - `artifacts/ddd/release/evidence-manifest.json`
 - Exit criteria:
   - All required release evidence artifacts are present and checksummed.
   - Clear this batch before running downstream runtime-heavy evidence.
 
-- manifest-missing-no-explain-json-files-in-tmp-ddd-explain: no explain JSON files in tmp\ddd-explain
+- manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh: optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh
+- manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs: optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs
+- manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs: optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs
+- manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs: optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs
+- manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet
+- manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-owner-input-receipt: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-owner-input-receipt
+- manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-rollback-deferral-owner-handoff: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for rollback-deferral-owner-handoff
 
-### 4. P0 authenticated-performance -> release-performance
+### 6. P0 authenticated-performance -> release-performance
 
 - Batch id: p0-authenticated-performance-release-performance
 - Depends on: none
@@ -261,8 +320,8 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
   - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
 - Commands:
-  - `node scripts/ddd-authenticated-performance-smoke.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
+  - `node bin/ddd-authenticated-performance-smoke.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
 - Expected artifacts:
   - `artifacts/ddd/performance/authenticated-runtime-actual.json`
   - `artifacts/ddd/performance/authenticated-runtime-baseline.json`
@@ -282,10 +341,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - performance-baseline-metadata-8: sourceArtifact is required
 - performance-baseline-metadata-9: sourceSha256 must be a SHA-256 hex digest
 
-### 5. P1 ai-runtime -> ai
+### 7. P1 ai-runtime -> ai
 
 - Batch id: p1-ai-runtime-ai
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 3
 - Env keys: 12 keys
@@ -305,7 +364,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY=LUMIRA_AI_PROVIDER_API_KEY|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY`
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL`
 - Commands:
-  - `node scripts/ddd-ai-runtime-drill.mjs`
+  - `node bin/ddd-ai-runtime-drill.mjs`
 - Expected artifacts:
   - `artifacts/ddd/ai/ai-runtime-drill.json`
 - Exit criteria:
@@ -316,31 +375,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - ai-provider-runtime: provider status=CONFIGURED remoteConfigured=false
 - ai-runtime-base-url: missing production-equivalent AI base URL
 
-### 6. P1 frontend-smoke -> frontend
-
-- Batch id: p1-frontend-smoke-frontend
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-- Can run immediately: false
-- Pending items: 1
-- Env keys: DDD_FRONTEND_EXPECT_DEPLOYED
-- Env check groups:
-  - `DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED`
-- Commands:
-  - `node scripts/ddd-frontend-playwright-smoke.mjs`
-  - `node scripts/ddd-frontend-smoke-evidence.mjs`
-- Expected artifacts:
-  - `artifacts/ddd/frontend/frontend-smoke.json`
-  - `artifacts/ddd/frontend/playwright-smoke-results.json`
-- Exit criteria:
-  - Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.
-  - Required Playwright smoke flows all pass and produce a JSON report.
-
-- frontend-deployed-expectation: strict release requires deployed frontend smoke expectation
-
-### 7. P1 business-e2e -> file-owner
+### 8. P1 business-e2e -> file-owner
 
 - Batch id: p1-business-e2e-file-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN, LUMIRA_UPLOAD_STORAGE_ROOT
@@ -351,7 +389,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN`
   - `UPLOAD_STORAGE_ROOT=LUMIRA_UPLOAD_STORAGE_ROOT|UPLOAD_STORAGE_ROOT`
 - Commands:
-  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
+  - `node bin/ddd-file-processing-e2e-smoke.mjs`
 - Expected artifacts:
   - `artifacts/ddd/file/file-processing-e2e.json`
 - Exit criteria:
@@ -360,10 +398,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - file-processing-production-equivalence: strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080
 
-### 8. P1 business-e2e -> job-owner
+### 9. P1 business-e2e -> job-owner
 
 - Batch id: p1-business-e2e-job-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN
@@ -373,7 +411,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
   - `SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN`
 - Commands:
-  - `node scripts/ddd-job-e2e-smoke.mjs`
+  - `node bin/ddd-job-e2e-smoke.mjs`
 - Expected artifacts:
   - `artifacts/ddd/jobs/job-e2e-smoke.json`
 - Exit criteria:
@@ -382,10 +420,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - job-e2e-production-equivalence: strict job E2E requires HTTPS baseUrl evidence; strict job E2E requires non-local baseUrl, got http://127.0.0.1:8080
 
-### 9. P1 business-e2e -> payment-owner
+### 10. P1 business-e2e -> payment-owner
 
 - Batch id: p1-business-e2e-payment-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
@@ -395,7 +433,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
   - `PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL`
 - Commands:
-  - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
+  - `node bin/ddd-payment-webhook-e2e-smoke.mjs`
 - Expected artifacts:
   - `artifacts/ddd/payment/payment-webhook-e2e.json`
 - Exit criteria:
@@ -404,10 +442,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - payment-webhook-production-equivalence: strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080
 
-### 10. P1 rollback -> ai-owner
+### 11. P1 rollback -> ai-owner
 
 - Batch id: p1-rollback-ai-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -421,9 +459,9 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Exit criteria:
@@ -431,10 +469,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - AI: AI rollback drill is DEFERRED with approved deferral evidence
 
-### 11. P1 rollback -> auth-owner
+### 12. P1 rollback -> auth-owner
 
 - Batch id: p1-rollback-auth-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -448,9 +486,9 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Exit criteria:
@@ -458,10 +496,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - Auth: Auth rollback drill is DEFERRED with approved deferral evidence
 
-### 12. P1 rollback -> file-owner
+### 13. P1 rollback -> file-owner
 
 - Batch id: p1-rollback-file-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -475,9 +513,9 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Exit criteria:
@@ -485,10 +523,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - File: File rollback drill is DEFERRED with approved deferral evidence
 
-### 13. P1 rollback -> iam-owner
+### 14. P1 rollback -> iam-owner
 
 - Batch id: p1-rollback-iam-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -502,9 +540,9 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Exit criteria:
@@ -512,10 +550,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - IAM: IAM rollback drill is DEFERRED with approved deferral evidence
 
-### 14. P1 rollback -> job-owner
+### 15. P1 rollback -> job-owner
 
 - Batch id: p1-rollback-job-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -529,9 +567,9 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Exit criteria:
@@ -539,10 +577,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - Job: Job rollback drill is DEFERRED with approved deferral evidence
 
-### 15. P1 rollback -> localization-owner
+### 16. P1 rollback -> localization-owner
 
 - Batch id: p1-rollback-localization-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -556,9 +594,9 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Exit criteria:
@@ -566,10 +604,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - Localization: Localization rollback drill is DEFERRED with approved deferral evidence
 
-### 16. P1 rollback -> message-owner
+### 17. P1 rollback -> message-owner
 
 - Batch id: p1-rollback-message-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -583,9 +621,9 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Exit criteria:
@@ -593,10 +631,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - Message: Message rollback drill is DEFERRED with approved deferral evidence
 
-### 17. P1 rollback -> payment-owner
+### 18. P1 rollback -> payment-owner
 
 - Batch id: p1-rollback-payment-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -610,9 +648,9 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Exit criteria:
@@ -620,10 +658,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - Payment: Payment rollback drill is DEFERRED with approved deferral evidence
 
-### 18. P1 rollback -> platform-owner
+### 19. P1 rollback -> platform-owner
 
 - Batch id: p1-rollback-platform-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -637,9 +675,9 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Exit criteria:
@@ -647,10 +685,10 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - Platform: Platform rollback drill is DEFERRED with approved deferral evidence
 
-### 19. P1 rollback -> plugin-owner
+### 20. P1 rollback -> plugin-owner
 
 - Batch id: p1-rollback-plugin-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
@@ -664,9 +702,9 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/rollback/rollback-drill.json`
 - Exit criteria:
@@ -674,12 +712,12 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - Plugin: Plugin rollback drill is DEFERRED with approved deferral evidence
 
-### 20. P2 explain -> database
+### 21. P2 explain -> database
 
 - Batch id: p2-explain-database
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
 - Can run immediately: false
-- Pending items: 8
+- Pending items: 2
 - Env keys: 12 keys
   - DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_DIR, DDD_EXPLAIN_ENVIRONMENT
   - DDD_EXPLAIN_STRICT, DDD_RELEASE_CANDIDATE, MYSQL_CLI, MYSQL_DATABASE
@@ -698,8 +736,8 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `MYSQL_PORT=MYSQL_PORT`
   - `DB_USERNAME=DB_USERNAME|MYSQL_USER|SPRING_DATASOURCE_USERNAME`
 - Commands:
-  - `node scripts/ddd-collect-explain.mjs`
-  - `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
+  - `node bin/ddd-collect-explain.mjs`
+  - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
 - Expected artifacts:
   - `tmp/ddd-explain/*.json`
   - `artifacts/ddd/release/explain-gate-report.json`
@@ -707,19 +745,13 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - Production-equivalent MySQL EXPLAIN artifacts are freshly collected for every required hot path.
   - Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues.
 
-- ai-knowledge-index-retry.json: missing required EXPLAIN artifact
-- message-archive-total.json: missing required EXPLAIN artifact
-- message-unread-count.json: missing required EXPLAIN artifact
-- message-visible-list.json: missing required EXPLAIN artifact
-- platform-outbox-owner-relay-file.json: missing required EXPLAIN artifact
-- platform-outbox-owner-relay-message.json: missing required EXPLAIN artifact
-- platform-runtime-appearance.json: missing required EXPLAIN artifact
-- plugin-bootstrap.json: missing required EXPLAIN artifact
+- message-archive-total.json: [plan] message-archive-total.json: archive_candidates does not report an index key for access_type=ALL | [plan] message-archive-total.json: archive_candidates uses full scan access_type=ALL
+- message-unread-count.json: [plan] message-unread-count.json: unread_candidates does not report an index key for access_type=ALL | [plan] message-unread-count.json: unread_candidates uses full scan access_type=ALL
 
-### 21. P3 orchestrator -> database
+### 22. P3 orchestrator -> database
 
 - Batch id: p3-orchestrator-database
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_VALIDATED
@@ -729,8 +761,8 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - `DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE`
   - `DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED`
 - Commands:
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
@@ -742,42 +774,20 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
 
-### 22. P3 orchestrator -> frontend
-
-- Batch id: p3-orchestrator-frontend
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
-- Can run immediately: false
-- Pending items: 1
-- Env keys: FRONTEND_BASE_URL, PLAYWRIGHT_BASE_URL
-- Env check groups:
-  - `PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL`
-- Commands:
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
-- Expected artifacts:
-  - `artifacts/ddd/release/orchestrator-report.json`
-  - `artifacts/ddd/release/release-evidence-gate.json`
-  - `artifacts/ddd/release/readiness-summary.json`
-- Exit criteria:
-  - Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.
-  - Final strict release gate and readiness summary report zero blockers.
-  - Run only after all prerequisite evidence batches are clean.
-
-- orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
-
 ### 23. P3 orchestrator -> release-infra
 
 - Batch id: p3-orchestrator-release-infra
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Can run immediately: false
-- Pending items: 1
-- Env keys: BASE_URL, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL
+- Pending items: 2
+- Env keys: BASE_URL, DEPLOY_CHECK_BASE_URL, FRONTEND_BASE_URL, LUMIRA_BASE_URL, PLAYWRIGHT_BASE_URL
 - Env check groups:
   - `BASE_URL=BASE_URL`
   - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
+  - `PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL`
 - Commands:
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
@@ -788,19 +798,20 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - Run only after all prerequisite evidence batches are clean.
 
 - orchestrator-preflight-backend-runtime-base-url: missing backend runtime base URL
+- orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
 
 ### 24. P3 orchestrator -> release-owner
 
 - Batch id: p3-orchestrator-release-owner
-- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
+- Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-database, p0-manifest-lumira-ui, p0-manifest-release-owner, p0-authenticated-performance-release-performance, p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database
 - Can run immediately: false
 - Pending items: 1
 - Env keys: DDD_RELEASE_EVIDENCE_STRICT
 - Env check groups:
   - `DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT`
 - Commands:
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`

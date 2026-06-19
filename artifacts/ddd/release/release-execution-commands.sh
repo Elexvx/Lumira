@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # Lumira DDD release execution commands.
-# Generated at: 2026-06-19T13:42:59.865Z
+# Generated at: 2026-06-19T18:09:18.921Z
 # Status: NOT_READY
 # Release gate blockers: 94
 # This file contains command hints only. Provide a real DDD_RELEASE_ENV_FILE before running evidence commands.
 # Do not use release-env-missing.template.env as release evidence.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
-  if [[ -f "scripts/ddd-release-readiness-summary.mjs" ]]; then
+  if [[ -f "bin/ddd-release-readiness-summary.mjs" ]]; then
     LUMIRA_REPO_ROOT=$(pwd)
   else
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
@@ -27,6 +27,14 @@ if [[ "${DDD_RELEASE_LIST_BATCHES:-}" == "1" || "${DDD_RELEASE_LIST_BATCHES:-}" 
   fi
   if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-runtime-readiness-release-infra' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'release-infra' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
     echo 'p0-runtime-readiness-release-infra P0 runtime-readiness->release-infra owner=release-infra priority=P0'
+    DDD_RELEASE_LIST_MATCHED=1
+  fi
+  if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-manifest-database' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'database' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
+    echo 'p0-manifest-database P0 manifest->database owner=database priority=P0'
+    DDD_RELEASE_LIST_MATCHED=1
+  fi
+  if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-manifest-lumira-ui' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'lumira-ui' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
+    echo 'p0-manifest-lumira-ui P0 manifest->lumira-ui owner=lumira-ui priority=P0'
     DDD_RELEASE_LIST_MATCHED=1
   fi
   if [[ ( -z "${DDD_RELEASE_BATCH:-}" || "${DDD_RELEASE_BATCH:-}" == 'p0-manifest-release-owner' ) && ( -z "${DDD_RELEASE_OWNER:-}" || "${DDD_RELEASE_OWNER:-}" == 'release-owner' ) && ( -z "${DDD_RELEASE_PRIORITY:-}" || "${DDD_RELEASE_PRIORITY:-}" == 'P0' ) ]]; then
@@ -110,7 +118,7 @@ finalize_release_execution_report() {
   DDD_RELEASE_EXECUTION_REPORT_FINALIZED=1
   mkdir -p "$(dirname "${DDD_RELEASE_EXECUTION_REPORT}")"
   node --input-type=module -e 'import fs from "node:fs"; const [tmp, out, exitCode, batchFilter, ownerFilter, priorityFilter] = process.argv.slice(1); const entries = fs.existsSync(tmp) ? fs.readFileSync(tmp, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)) : []; const exit = Number(exitCode); const failedEntries = entries.filter((entry) => Number(entry.status) !== 0).length; const summary = { totalEntries: entries.length, succeededEntries: entries.length - failedEntries, failedEntries }; fs.writeFileSync(out, `${JSON.stringify({ generatedAt: new Date().toISOString(), reportStatus: exit === 0 ? "PASS" : "FAIL", exitCode: exit, batchFilter: batchFilter || null, ownerFilter: ownerFilter || null, priorityFilter: priorityFilter || null, summary, entries }, null, 2)}\n`); if (fs.existsSync(tmp)) fs.rmSync(tmp);' "${DDD_RELEASE_EXECUTION_REPORT_TMP}" "${DDD_RELEASE_EXECUTION_REPORT}" "${exit_code}" "${DDD_RELEASE_BATCH}" "${DDD_RELEASE_OWNER}" "${DDD_RELEASE_PRIORITY}"
-  if ! DDD_RELEASE_EXECUTION_REPORT="${DDD_RELEASE_EXECUTION_REPORT}" node scripts/ddd-release-execution-run-report-contract.mjs; then
+  if ! DDD_RELEASE_EXECUTION_REPORT="${DDD_RELEASE_EXECUTION_REPORT}" node bin/ddd-release-execution-run-report-contract.mjs; then
     echo "[ddd-release-execution][report-contract] failed" >&2
     return 1
   fi
@@ -209,10 +217,9 @@ if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "$
   print_missing_env_groups 'p0-docker-release-infra' 'DDD_DOCKER_BUILD_STRICT=DDD_DOCKER_BUILD_STRICT' 'DDD_DOCKER_COMMAND=DDD_DOCKER_COMMAND'
 # Exit criteria:
 # - Docker CLI and daemon are available in the evidence runner.
-# - Required lumira-server and frontend images are built, inspected, and not skipped.
+# - Required lumira-server and lumira-ui images are built, inspected, and not skipped.
 # - Clear this batch before running downstream runtime-heavy evidence.
-run_command 'p0-docker-release-infra' 'release-infra' 'P0' 'DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs'
-run_command 'p0-docker-release-infra' 'release-infra' 'P0' 'node scripts/ddd-docker-build-evidence.mjs'
+run_command 'p0-docker-release-infra' 'release-infra' 'P0' 'DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
 fi
 
 run_batch 'p0-runtime-readiness-release-infra' 'release-infra' 'P0'
@@ -227,23 +234,55 @@ if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "$
 # - Runtime readiness is generated from an HTTPS non-local backend base URL.
 # - All 30 owner readiness/health/metrics checks pass.
 # - Clear this batch before running downstream runtime-heavy evidence.
-run_command 'p0-runtime-readiness-release-infra' 'release-infra' 'P0' 'node scripts/ddd-runtime-readiness-smoke.mjs'
+run_command 'p0-runtime-readiness-release-infra' 'release-infra' 'P0' 'node bin/ddd-runtime-readiness-smoke.mjs'
+fi
+
+run_batch 'p0-manifest-database' 'database' 'P0'
+if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "${DDD_RELEASE_BATCH}" == 'p0-manifest-database' ) && ( -z "${DDD_RELEASE_OWNER}" || "${DDD_RELEASE_OWNER}" == 'database' ) && ( -z "${DDD_RELEASE_PRIORITY}" || "${DDD_RELEASE_PRIORITY}" == 'P0' ) ]]; then
+# -----
+# p0-manifest-database: P0 manifest -> database
+# Pending items: 2
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json
+# Env keys: DDD_MIGRATION_FRESH_DB_EVIDENCE; DDD_MIGRATION_FRESH_DB_VALIDATED; DDD_MIGRATION_UPGRADE_DB_EVIDENCE; DDD_MIGRATION_UPGRADE_DB_VALIDATED
+  print_missing_env_groups 'p0-manifest-database' 'DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE' 'DDD_MIGRATION_FRESH_DB_VALIDATED=DDD_MIGRATION_FRESH_DB_VALIDATED' 'DDD_MIGRATION_UPGRADE_DB_EVIDENCE=DDD_MIGRATION_UPGRADE_DB_EVIDENCE' 'DDD_MIGRATION_UPGRADE_DB_VALIDATED=DDD_MIGRATION_UPGRADE_DB_VALIDATED'
+# Exit criteria:
+# - All required release evidence artifacts are present and checksummed.
+# - Clear this batch before running downstream runtime-heavy evidence.
+run_command 'p0-manifest-database' 'database' 'P0' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+run_command 'p0-manifest-database' 'database' 'P0' 'node bin/ddd-promote-performance-baseline.mjs'
+run_command 'p0-manifest-database' 'database' 'P0' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+fi
+
+run_batch 'p0-manifest-lumira-ui' 'lumira-ui' 'P0'
+if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "${DDD_RELEASE_BATCH}" == 'p0-manifest-lumira-ui' ) && ( -z "${DDD_RELEASE_OWNER}" || "${DDD_RELEASE_OWNER}" == 'lumira-ui' ) && ( -z "${DDD_RELEASE_PRIORITY}" || "${DDD_RELEASE_PRIORITY}" == 'P0' ) ]]; then
+# -----
+# p0-manifest-lumira-ui: P0 manifest -> lumira-ui
+# Pending items: 3
+# Expected artifacts: artifacts/ddd/release/evidence-manifest.json; artifacts/ddd/lumira-ui/frontend-smoke.json; artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json; artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json
+# Env keys: DDD_EVIDENCE_ENVIRONMENT; DDD_FRONTEND_EXPECT_DEPLOYED; DDD_RELEASE_CANDIDATE; PLAYWRIGHT_BASE_URL
+  print_missing_env_groups 'p0-manifest-lumira-ui' 'DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT' 'DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED' 'DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE' 'PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL'
+# Exit criteria:
+# - All required release evidence artifacts are present and checksummed.
+# - Clear this batch before running downstream runtime-heavy evidence.
+run_command 'p0-manifest-lumira-ui' 'lumira-ui' 'P0' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+run_command 'p0-manifest-lumira-ui' 'lumira-ui' 'P0' 'node bin/ddd-promote-performance-baseline.mjs'
+run_command 'p0-manifest-lumira-ui' 'lumira-ui' 'P0' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
 fi
 
 run_batch 'p0-manifest-release-owner' 'release-owner' 'P0'
 if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "${DDD_RELEASE_BATCH}" == 'p0-manifest-release-owner' ) && ( -z "${DDD_RELEASE_OWNER}" || "${DDD_RELEASE_OWNER}" == 'release-owner' ) && ( -z "${DDD_RELEASE_PRIORITY}" || "${DDD_RELEASE_PRIORITY}" == 'P0' ) ]]; then
 # -----
 # p0-manifest-release-owner: P0 manifest -> release-owner
-# Pending items: 1
+# Pending items: 7
 # Expected artifacts: artifacts/ddd/release/evidence-manifest.json
 # Env keys: DDD_EVIDENCE_ENVIRONMENT; DDD_EVIDENCE_OPERATOR; DDD_RELEASE_CANDIDATE; DDD_RELEASE_MANIFEST_STRICT
   print_missing_env_groups 'p0-manifest-release-owner' 'DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE' 'DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT'
 # Exit criteria:
 # - All required release evidence artifacts are present and checksummed.
 # - Clear this batch before running downstream runtime-heavy evidence.
-run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
-run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'node scripts/ddd-promote-performance-baseline.mjs'
-run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
+run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'node bin/ddd-promote-performance-baseline.mjs'
+run_command 'p0-manifest-release-owner' 'release-owner' 'P0' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
 fi
 
 run_batch 'p0-authenticated-performance-release-performance' 'release-performance' 'P0'
@@ -258,8 +297,8 @@ if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "$
 # - Authenticated performance actual is generated from a production-equivalent HTTPS backend.
 # - Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.
 # - Clear this batch before running downstream runtime-heavy evidence.
-run_command 'p0-authenticated-performance-release-performance' 'release-performance' 'P0' 'node scripts/ddd-authenticated-performance-smoke.mjs'
-run_command 'p0-authenticated-performance-release-performance' 'release-performance' 'P0' 'node scripts/ddd-promote-performance-baseline.mjs'
+run_command 'p0-authenticated-performance-release-performance' 'release-performance' 'P0' 'node bin/ddd-authenticated-performance-smoke.mjs'
+run_command 'p0-authenticated-performance-release-performance' 'release-performance' 'P0' 'node bin/ddd-promote-performance-baseline.mjs'
 fi
 
 if [[ -n "${DDD_RELEASE_BATCH}" && "${DDD_RELEASE_BATCH_MATCHED}" != "1" ]]; then
@@ -276,8 +315,8 @@ if [[ -n "${DDD_RELEASE_PRIORITY}" && "${DDD_RELEASE_BATCH_MATCHED}" != "1" ]]; 
 fi
 
 # After these commands refresh artifacts, rerun:
-run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node scripts/ddd-release-evidence-gate.mjs'
-run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node scripts/ddd-release-readiness-summary.mjs'
+run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node bin/ddd-release-evidence-gate.mjs'
+run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'node bin/ddd-release-readiness-summary.mjs'
 run_command 'release-execution-rerun' 'release-owner' 'RERUN' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
 if [[ "${DDD_RELEASE_COMMAND_FAILURES}" != "0" ]]; then
   echo "[ddd-release-execution][completed-with-failures] commandFailures=${DDD_RELEASE_COMMAND_FAILURES}" >&2

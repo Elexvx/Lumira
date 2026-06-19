@@ -1,14 +1,14 @@
 # DDD Release Owner Receipts
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:09:18.921Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
 Ready for strict gate rerun owners: 0
-Content blocked owners: 15
-Artifact missing owners: 1
-Missing artifacts: 1
-Pending actions: 47
+Content blocked owners: 14
+Artifact missing owners: 2
+Missing artifacts: 4
+Pending actions: 51
 
 ## release-infra
 
@@ -16,7 +16,7 @@ Pending actions: 47
 - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
 - Present artifacts: 5
 - Missing artifacts: 0
-- Pending actions: 9
+- Pending actions: 10
 - Pending action reasons:
   - [docker] docker-blocker-1: lumira-server: docker build failed: #5 DONE 0.3s
 
@@ -202,27 +202,47 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - Ready batches: p0-manifest-release-owner
 - Present artifacts: 4
 - Missing artifacts: 0
-- Pending actions: 2
+- Pending actions: 8
 - Pending action reasons:
-  - [manifest] manifest-missing-no-explain-json-files-in-tmp-ddd-explain: no explain JSON files in tmp\ddd-explain
-  - [orchestrator] orchestrator-run-mode: strict release requires run mode report, got plan
+  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-finalownerqueuefastpath-commands-must-include-readiness-summary-refresh: optional artifact release/release-unblock-brief.json: finalOwnerQueueFastPath.commands must include readiness summary refresh
+  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-env-owner-input-packet-command-must-be-node-bin-ddd-release-env-owner-input-packet-contract-mjs: optional artifact release/release-unblock-brief.json: handoffReferences release-env-owner-input-packet command must be node bin/ddd-release-env-owner-input-packet-contract.mjs
+  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-release-owner-input-receipt-command-must-be-node-bin-ddd-release-owner-input-receipt-contract-mjs: optional artifact release/release-unblock-brief.json: handoffReferences release-owner-input-receipt command must be node bin/ddd-release-owner-input-receipt-contract.mjs
+  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-rollback-deferral-owner-handoff-command-must-be-node-bin-ddd-rollback-deferral-template-mjs: optional artifact release/release-unblock-brief.json: handoffReferences rollback-deferral-owner-handoff command must be node bin/ddd-rollback-deferral-template.mjs
+  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-release-env-owner-input-packet: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for release-env-owner-input-packet
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 
 ## database
 
 - Receipt status: ARTIFACT_MISSING
-- Ready batches: none
-- Present artifacts: 4
+- Ready batches: p0-manifest-database
+- Present artifacts: 5
 - Missing artifacts: 1
-- Pending actions: 9
+- Pending actions: 5
 - Missing artifact paths:
   - `tmp/ddd-explain/*.json`
 - Pending action reasons:
-  - [explain] ai-knowledge-index-retry.json: missing required EXPLAIN artifact
-  - [explain] message-archive-total.json: missing required EXPLAIN artifact
-  - [explain] message-unread-count.json: missing required EXPLAIN artifact
-  - [explain] message-visible-list.json: missing required EXPLAIN artifact
-  - [explain] platform-outbox-owner-relay-file.json: missing required EXPLAIN artifact
+  - [explain] message-archive-total.json: [plan] message-archive-total.json: archive_candidates does not report an index key for access_type=ALL | [plan] message-archive-total.json: archive_candidates uses full scan access_type=ALL
+  - [explain] message-unread-count.json: [plan] message-unread-count.json: unread_candidates does not report an index key for access_type=ALL | [plan] message-unread-count.json: unread_candidates uses full scan access_type=ALL
+  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-handoffreferences-migration-evidence-handoff-command-must-be-ddd-migration-check-env-true-node-bin-ddd-migration-evidence-mjs: optional artifact release/release-unblock-brief.json: handoffReferences migration-evidence-handoff command must be DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs
+  - [manifest] manifest-missing-optional-artifact-release-release-unblock-brief-json-markdown-evidence-handoffs-must-include-required-command-for-migration-evidence-handoff: optional artifact release/release-unblock-brief.json: markdown evidence handoffs must include required command for migration-evidence-handoff
+  - [orchestrator] orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
+- Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
+
+## lumira-ui
+
+- Receipt status: ARTIFACT_MISSING
+- Ready batches: p0-manifest-lumira-ui
+- Present artifacts: 1
+- Missing artifacts: 3
+- Pending actions: 3
+- Missing artifact paths:
+  - `artifacts/ddd/lumira-ui/frontend-smoke.json`
+  - `artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json`
+  - `artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json`
+- Pending action reasons:
+  - [manifest] manifest-missing-lumira-ui-frontend-smoke-json: missing artifact lumira-ui/frontend-smoke.json
+  - [manifest] manifest-missing-lumira-ui-lumira-ui-build-evidence-json: missing artifact lumira-ui/lumira-ui-build-evidence.json
+  - [manifest] manifest-missing-lumira-ui-lumira-ui-static-evidence-json: missing artifact lumira-ui/lumira-ui-static-evidence.json
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 
 ## ai
@@ -248,18 +268,6 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - Pending action reasons:
   - [business-e2e] file-processing-production-equivalence: strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080
   - [rollback] File: File rollback drill is DEFERRED with approved deferral evidence
-- Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
-
-## frontend
-
-- Receipt status: CONTENT_BLOCKED
-- Ready batches: none
-- Present artifacts: 5
-- Missing artifacts: 0
-- Pending actions: 2
-- Pending action reasons:
-  - [frontend-smoke] frontend-deployed-expectation: strict release requires deployed frontend smoke expectation
-  - [orchestrator] orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 
 ## job-owner

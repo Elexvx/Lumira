@@ -1,125 +1,59 @@
 {
-  "generatedAt": "2026-06-19T06:38:12.054Z",
+  "generatedAt": "2026-06-19T18:09:16.916Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
   "noAutoWaivers": true,
   "safetySignals": {
     "releaseEnvFile": {
-      "ready": false,
-      "status": "FAIL",
+      "ready": true,
+      "status": "PASS",
       "inputKind": "release-env-file",
       "envFile": "<release-env-file>",
       "envFilePresent": true,
       "generatedMissingTemplate": false,
       "securityChecked": true,
       "permissionSafe": true,
-      "permissionCheckSkipped": false,
-      "modeOctal": "600",
+      "permissionCheckSkipped": true,
+      "modeOctal": "666",
       "reason": "env-file",
       "requiredMode": "600",
-      "pendingActionIds": [
-        "release-env-lint-status",
-        "release-env-lint-placeholders"
-      ],
+      "pendingActionIds": [],
       "blockingSafeDefaultAvailable": 0,
-      "blockingRequiresOwnerInput": 34,
+      "blockingRequiresOwnerInput": 0,
       "safeDefaultsExhausted": true,
-      "ownerInputReasonCounts": {
-        "production-endpoint": 24,
-        "secret-manager": 8,
-        "owner-production-value": 2
-      },
-      "ownerInputOwners": [
-        {
-          "owner": "platform-events",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "platform-owners",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "release-infra",
-          "requiresOwnerInput": 9,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "ai-owner",
-          "requiresOwnerInput": 6,
-          "safeDefaultAvailable": 0
-        },
-        {
-          "owner": "payment-owner",
-          "requiresOwnerInput": 1,
-          "safeDefaultAvailable": 0
-        }
-      ]
+      "ownerInputReasonCounts": {},
+      "ownerInputOwners": []
     }
   },
   "releaseEnvFileCutoverSafe": false,
   "blockerSummary": {
     "strictGateBlockers": 94,
-    "envOwnerBlockers": 34,
+    "envOwnerBlockers": 0,
     "envOwnerCount": 6,
     "orchestratorPreflightBlockers": 4,
-    "orchestratorPreflightOwners": 4,
-    "blockedCutoverItems": 8,
-    "stopReasons": 13
+    "orchestratorPreflightOwners": 3,
+    "blockedCutoverItems": 7,
+    "stopReasons": 12
   },
   "releaseEnvSafety": {
     "cutoverSafe": false,
-    "ready": false,
-    "status": "FAIL",
+    "ready": true,
+    "status": "PASS",
     "inputKind": "release-env-file",
     "envFilePresent": true,
     "generatedMissingTemplate": false,
     "securityChecked": true,
     "permissionSafe": true,
-    "permissionCheckSkipped": false,
-    "modeOctal": "600",
+    "permissionCheckSkipped": true,
+    "modeOctal": "666",
     "requiredMode": "600",
-    "pendingActionIds": [
-      "release-env-lint-placeholders",
-      "release-env-lint-status"
-    ],
+    "pendingActionIds": [],
     "blockingSafeDefaultAvailable": 0,
-    "blockingRequiresOwnerInput": 34,
+    "blockingRequiresOwnerInput": 0,
     "safeDefaultsExhausted": true,
-    "ownerInputReasonCounts": {
-      "owner-production-value": 2,
-      "production-endpoint": 24,
-      "secret-manager": 8
-    },
-    "ownerInputOwners": [
-      {
-        "owner": "platform-events",
-        "requiresOwnerInput": 9,
-        "safeDefaultAvailable": 0
-      },
-      {
-        "owner": "platform-owners",
-        "requiresOwnerInput": 9,
-        "safeDefaultAvailable": 0
-      },
-      {
-        "owner": "release-infra",
-        "requiresOwnerInput": 9,
-        "safeDefaultAvailable": 0
-      },
-      {
-        "owner": "ai-owner",
-        "requiresOwnerInput": 6,
-        "safeDefaultAvailable": 0
-      },
-      {
-        "owner": "payment-owner",
-        "requiresOwnerInput": 1,
-        "safeDefaultAvailable": 0
-      }
-    ]
+    "ownerInputReasonCounts": {},
+    "ownerInputOwners": []
   },
   "orchestratorPreflight": {
     "artifact": "artifacts/ddd/release/orchestrator-report.json",
@@ -131,6 +65,40 @@
     "selectedStepCount": 26,
     "executedResultCount": 0,
     "ownerActionSummary": [
+      {
+        "owner": "release-infra",
+        "pendingItems": 2,
+        "envKeys": [
+          "BASE_URL",
+          "DEPLOY_CHECK_BASE_URL",
+          "FRONTEND_BASE_URL",
+          "LUMIRA_BASE_URL",
+          "PLAYWRIGHT_BASE_URL"
+        ],
+        "actions": [
+          {
+            "id": "orchestrator-preflight-backend-runtime-base-url",
+            "checkId": "backend-runtime-base-url",
+            "reason": "missing backend runtime base URL",
+            "envKeys": [
+              "BASE_URL",
+              "DEPLOY_CHECK_BASE_URL",
+              "LUMIRA_BASE_URL"
+            ],
+            "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`."
+          },
+          {
+            "id": "orchestrator-preflight-frontend-runtime-base-url",
+            "checkId": "frontend-runtime-base-url",
+            "reason": "missing deployed frontend base URL",
+            "envKeys": [
+              "FRONTEND_BASE_URL",
+              "PLAYWRIGHT_BASE_URL"
+            ],
+            "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`."
+          }
+        ]
+      },
       {
         "owner": "ai",
         "pendingItems": 1,
@@ -151,7 +119,7 @@
               "LUMIRA_AI_BASE_URL",
               "LUMIRA_BASE_URL"
             ],
-            "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`."
+            "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`."
           }
         ]
       },
@@ -175,65 +143,22 @@
               "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
               "DDD_MIGRATION_UPGRADE_DB_VALIDATED"
             ],
-            "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`."
-          }
-        ]
-      },
-      {
-        "owner": "frontend",
-        "pendingItems": 1,
-        "envKeys": [
-          "FRONTEND_BASE_URL",
-          "PLAYWRIGHT_BASE_URL"
-        ],
-        "actions": [
-          {
-            "id": "orchestrator-preflight-frontend-runtime-base-url",
-            "checkId": "frontend-runtime-base-url",
-            "reason": "missing deployed frontend base URL",
-            "envKeys": [
-              "FRONTEND_BASE_URL",
-              "PLAYWRIGHT_BASE_URL"
-            ],
-            "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`."
-          }
-        ]
-      },
-      {
-        "owner": "release-infra",
-        "pendingItems": 1,
-        "envKeys": [
-          "BASE_URL",
-          "DEPLOY_CHECK_BASE_URL",
-          "LUMIRA_BASE_URL"
-        ],
-        "actions": [
-          {
-            "id": "orchestrator-preflight-backend-runtime-base-url",
-            "checkId": "backend-runtime-base-url",
-            "reason": "missing backend runtime base URL",
-            "envKeys": [
-              "BASE_URL",
-              "DEPLOY_CHECK_BASE_URL",
-              "LUMIRA_BASE_URL"
-            ],
-            "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node scripts/ddd-release-evidence-orchestrator.mjs`."
+            "action": "Resolve the orchestrator preflight blocker, then rerun strict release evidence with `node bin/ddd-release-evidence-orchestrator.mjs`."
           }
         ]
       }
     ],
     "firstAction": {
-      "owner": "ai",
-      "id": "orchestrator-preflight-ai-runtime-base-url",
-      "checkId": "ai-runtime-base-url",
-      "reason": "missing AI runtime base URL",
+      "owner": "release-infra",
+      "id": "orchestrator-preflight-backend-runtime-base-url",
+      "checkId": "backend-runtime-base-url",
+      "reason": "missing backend runtime base URL",
       "envKeys": [
         "BASE_URL",
         "DEPLOY_CHECK_BASE_URL",
-        "LUMIRA_AI_BASE_URL",
         "LUMIRA_BASE_URL"
       ],
-      "command": "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+      "command": "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
     }
   },
   "ownerInputReceipt": {
@@ -241,62 +166,14 @@
     "markdown": "artifacts/ddd/release/release-owner-input-receipt.md",
     "status": "PENDING_OWNER_INPUT",
     "cutoverReady": false,
-    "requiredOwnerInputs": 34,
-    "ownerCount": 5,
+    "requiredOwnerInputs": 0,
+    "ownerCount": 0,
     "readyOwnerCount": 0,
-    "pendingOwnerCount": 5,
+    "pendingOwnerCount": 0,
     "missingCriteria": [
-      "releaseEnvReadinessBlockers",
-      "releaseEnvReadinessPlaceholders",
       "releaseEnvReadinessStatus"
     ],
-    "pendingOwners": [
-      {
-        "owner": "platform-events",
-        "requiredOwnerInputs": 9,
-        "remainingPlaceholders": 9,
-        "remainingMissing": 0,
-        "ready": false,
-        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/01-platform-events.json",
-        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/01-platform-events.md"
-      },
-      {
-        "owner": "platform-owners",
-        "requiredOwnerInputs": 9,
-        "remainingPlaceholders": 9,
-        "remainingMissing": 0,
-        "ready": false,
-        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.json",
-        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-owners.md"
-      },
-      {
-        "owner": "release-infra",
-        "requiredOwnerInputs": 9,
-        "remainingPlaceholders": 9,
-        "remainingMissing": 0,
-        "ready": false,
-        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/03-release-infra.json",
-        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/03-release-infra.md"
-      },
-      {
-        "owner": "ai-owner",
-        "requiredOwnerInputs": 6,
-        "remainingPlaceholders": 6,
-        "remainingMissing": 0,
-        "ready": false,
-        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/04-ai-owner.json",
-        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/04-ai-owner.md"
-      },
-      {
-        "owner": "payment-owner",
-        "requiredOwnerInputs": 1,
-        "remainingPlaceholders": 1,
-        "remainingMissing": 0,
-        "ready": false,
-        "packetPath": "artifacts/ddd/release/release-env-owner-input-packet/05-payment-owner.json",
-        "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-owner.md"
-      }
-    ]
+    "pendingOwners": []
   },
   "blockedCutoverItems": [
     {
@@ -307,12 +184,6 @@
         "p0-authenticated-performance-release-performance",
         "p0-docker-release-infra",
         "p0-manifest-release-owner",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
       "blockedBatchIds": [
@@ -320,7 +191,6 @@
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
-        "p1-frontend-smoke-frontend",
         "p1-rollback-ai-owner",
         "p1-rollback-auth-owner",
         "p1-rollback-file-owner",
@@ -333,7 +203,7 @@
         "p1-rollback-plugin-owner",
         "p2-explain-database",
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
+        "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ],
       "readyBatches": [
@@ -346,8 +216,8 @@
           "canRunImmediately": true,
           "dependsOn": [],
           "commands": [
-            "node scripts/ddd-authenticated-performance-smoke.mjs",
-            "node scripts/ddd-promote-performance-baseline.mjs"
+            "node bin/ddd-authenticated-performance-smoke.mjs",
+            "node bin/ddd-promote-performance-baseline.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/performance/authenticated-runtime-actual.json",
@@ -364,8 +234,7 @@
           "canRunImmediately": true,
           "dependsOn": [],
           "commands": [
-            "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-            "node scripts/ddd-docker-build-evidence.mjs"
+            "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/build/docker-image-evidence.json"
@@ -380,104 +249,12 @@
           "canRunImmediately": true,
           "dependsOn": [],
           "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-            "node scripts/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+            "node bin/ddd-promote-performance-baseline.mjs",
+            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/release/evidence-manifest.json"
-          ]
-        },
-        {
-          "id": "p0-release-config-ai-owner",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "ai-owner",
-          "pendingItems": 12,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        },
-        {
-          "id": "p0-release-config-payment-owner",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "payment-owner",
-          "pendingItems": 2,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        },
-        {
-          "id": "p0-release-config-platform-events",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "platform-events",
-          "pendingItems": 17,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        },
-        {
-          "id": "p0-release-config-platform-owners",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "platform-owners",
-          "pendingItems": 18,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        },
-        {
-          "id": "p0-release-config-release-infra",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "release-infra",
-          "pendingItems": 14,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        },
-        {
-          "id": "p0-release-env-lint-release-infra",
-          "priority": "P0",
-          "source": "release-env-lint",
-          "owner": "release-infra",
-          "pendingItems": 2,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/release-env-lint.json",
-            "artifacts/ddd/config/release-config-evidence.json"
           ]
         },
         {
@@ -489,7 +266,7 @@
           "canRunImmediately": true,
           "dependsOn": [],
           "commands": [
-            "node scripts/ddd-runtime-readiness-smoke.mjs"
+            "node bin/ddd-runtime-readiness-smoke.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/readiness/summary.json"
@@ -508,16 +285,10 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-ai-runtime-drill.mjs"
+            "node bin/ddd-ai-runtime-drill.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/ai/ai-runtime-drill.json"
@@ -534,16 +305,10 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-file-processing-e2e-smoke.mjs"
+            "node bin/ddd-file-processing-e2e-smoke.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/file/file-processing-e2e.json"
@@ -560,16 +325,10 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-job-e2e-smoke.mjs"
+            "node bin/ddd-job-e2e-smoke.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/jobs/job-e2e-smoke.json"
@@ -586,47 +345,13 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+            "node bin/ddd-payment-webhook-e2e-smoke.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/payment/payment-webhook-e2e.json"
-          ]
-        },
-        {
-          "id": "p1-frontend-smoke-frontend",
-          "priority": "P1",
-          "source": "frontend-smoke",
-          "owner": "frontend",
-          "pendingItems": 1,
-          "canRunImmediately": false,
-          "dependsOn": [
-            "p0-authenticated-performance-release-performance",
-            "p0-docker-release-infra",
-            "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
-            "p0-runtime-readiness-release-infra"
-          ],
-          "commands": [
-            "node scripts/ddd-frontend-playwright-smoke.mjs",
-            "node scripts/ddd-frontend-smoke-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/frontend/frontend-smoke.json",
-            "artifacts/ddd/frontend/playwright-smoke-results.json"
           ]
         },
         {
@@ -640,18 +365,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -668,18 +387,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -696,18 +409,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -724,18 +431,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -752,18 +453,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -780,18 +475,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -808,18 +497,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -836,18 +519,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -864,18 +541,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -892,18 +563,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -914,24 +579,17 @@
           "priority": "P2",
           "source": "explain",
           "owner": "database",
-          "pendingItems": 8,
+          "pendingItems": 2,
           "canRunImmediately": false,
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
             "p1-business-e2e-job-owner",
             "p1-business-e2e-payment-owner",
-            "p1-frontend-smoke-frontend",
             "p1-rollback-ai-owner",
             "p1-rollback-auth-owner",
             "p1-rollback-file-owner",
@@ -944,8 +602,8 @@
             "p1-rollback-plugin-owner"
           ],
           "commands": [
-            "node scripts/ddd-collect-explain.mjs",
-            "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+            "node bin/ddd-collect-explain.mjs",
+            "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
           ],
           "expectedArtifacts": [
             "tmp/ddd-explain/*.json",
@@ -963,18 +621,11 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
             "p1-business-e2e-job-owner",
             "p1-business-e2e-payment-owner",
-            "p1-frontend-smoke-frontend",
             "p1-rollback-ai-owner",
             "p1-rollback-auth-owner",
             "p1-rollback-file-owner",
@@ -988,8 +639,8 @@
             "p2-explain-database"
           ],
           "commands": [
-            "node scripts/ddd-release-evidence-orchestrator.mjs",
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+            "node bin/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/release/orchestrator-report.json",
@@ -998,28 +649,21 @@
           ]
         },
         {
-          "id": "p3-orchestrator-frontend",
+          "id": "p3-orchestrator-release-infra",
           "priority": "P3",
           "source": "orchestrator",
-          "owner": "frontend",
-          "pendingItems": 1,
+          "owner": "release-infra",
+          "pendingItems": 2,
           "canRunImmediately": false,
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
             "p1-business-e2e-job-owner",
             "p1-business-e2e-payment-owner",
-            "p1-frontend-smoke-frontend",
             "p1-rollback-ai-owner",
             "p1-rollback-auth-owner",
             "p1-rollback-file-owner",
@@ -1033,8 +677,8 @@
             "p2-explain-database"
           ],
           "commands": [
-            "node scripts/ddd-release-evidence-orchestrator.mjs",
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+            "node bin/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/release/orchestrator-report.json",
@@ -1053,18 +697,11 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
             "p1-business-e2e-job-owner",
             "p1-business-e2e-payment-owner",
-            "p1-frontend-smoke-frontend",
             "p1-rollback-ai-owner",
             "p1-rollback-auth-owner",
             "p1-rollback-file-owner",
@@ -1078,8 +715,8 @@
             "p2-explain-database"
           ],
           "commands": [
-            "node scripts/ddd-release-evidence-orchestrator.mjs",
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+            "node bin/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/release/orchestrator-report.json",
@@ -1090,117 +727,8 @@
       ]
     },
     {
-      "id": "release-environment",
-      "title": "Completed release env file and config matrix are valid.",
-      "pendingItems": 65,
-      "readyBatchIds": [
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra"
-      ],
-      "blockedBatchIds": [],
-      "readyBatches": [
-        {
-          "id": "p0-release-config-ai-owner",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "ai-owner",
-          "pendingItems": 12,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        },
-        {
-          "id": "p0-release-config-payment-owner",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "payment-owner",
-          "pendingItems": 2,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        },
-        {
-          "id": "p0-release-config-platform-events",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "platform-events",
-          "pendingItems": 17,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        },
-        {
-          "id": "p0-release-config-platform-owners",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "platform-owners",
-          "pendingItems": 18,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        },
-        {
-          "id": "p0-release-config-release-infra",
-          "priority": "P0",
-          "source": "release-config",
-          "owner": "release-infra",
-          "pendingItems": 14,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        },
-        {
-          "id": "p0-release-env-lint-release-infra",
-          "priority": "P0",
-          "source": "release-env-lint",
-          "owner": "release-infra",
-          "pendingItems": 2,
-          "canRunImmediately": true,
-          "dependsOn": [],
-          "commands": [
-            "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-            "node scripts/ddd-release-config-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/release-env-lint.json",
-            "artifacts/ddd/config/release-config-evidence.json"
-          ]
-        }
-      ],
-      "blockedBatches": []
-    },
-    {
       "id": "deployable-images",
-      "title": "Deployable backend/frontend images are built and inspected.",
+      "title": "Deployable backend/lumira-ui images are built and inspected.",
       "pendingItems": 4,
       "readyBatchIds": [
         "p0-docker-release-infra"
@@ -1216,8 +744,7 @@
           "canRunImmediately": true,
           "dependsOn": [],
           "commands": [
-            "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-            "node scripts/ddd-docker-build-evidence.mjs"
+            "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/build/docker-image-evidence.json"
@@ -1245,8 +772,8 @@
           "canRunImmediately": true,
           "dependsOn": [],
           "commands": [
-            "node scripts/ddd-authenticated-performance-smoke.mjs",
-            "node scripts/ddd-promote-performance-baseline.mjs"
+            "node bin/ddd-authenticated-performance-smoke.mjs",
+            "node bin/ddd-promote-performance-baseline.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/performance/authenticated-runtime-actual.json",
@@ -1263,7 +790,7 @@
           "canRunImmediately": true,
           "dependsOn": [],
           "commands": [
-            "node scripts/ddd-runtime-readiness-smoke.mjs"
+            "node bin/ddd-runtime-readiness-smoke.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/readiness/summary.json"
@@ -1274,15 +801,14 @@
     },
     {
       "id": "runtime-business-acceptance",
-      "title": "AI, frontend, file, job, and payment acceptance evidence is complete.",
-      "pendingItems": 7,
+      "title": "AI, lumira-ui, file, job, and payment acceptance evidence is complete.",
+      "pendingItems": 6,
       "readyBatchIds": [],
       "blockedBatchIds": [
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
-        "p1-business-e2e-payment-owner",
-        "p1-frontend-smoke-frontend"
+        "p1-business-e2e-payment-owner"
       ],
       "readyBatches": [],
       "blockedBatches": [
@@ -1297,16 +823,10 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-ai-runtime-drill.mjs"
+            "node bin/ddd-ai-runtime-drill.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/ai/ai-runtime-drill.json"
@@ -1323,16 +843,10 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-file-processing-e2e-smoke.mjs"
+            "node bin/ddd-file-processing-e2e-smoke.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/file/file-processing-e2e.json"
@@ -1349,16 +863,10 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-job-e2e-smoke.mjs"
+            "node bin/ddd-job-e2e-smoke.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/jobs/job-e2e-smoke.json"
@@ -1375,47 +883,13 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+            "node bin/ddd-payment-webhook-e2e-smoke.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/payment/payment-webhook-e2e.json"
-          ]
-        },
-        {
-          "id": "p1-frontend-smoke-frontend",
-          "priority": "P1",
-          "source": "frontend-smoke",
-          "owner": "frontend",
-          "pendingItems": 1,
-          "canRunImmediately": false,
-          "dependsOn": [
-            "p0-authenticated-performance-release-performance",
-            "p0-docker-release-infra",
-            "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
-            "p0-runtime-readiness-release-infra"
-          ],
-          "commands": [
-            "node scripts/ddd-frontend-playwright-smoke.mjs",
-            "node scripts/ddd-frontend-smoke-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/frontend/frontend-smoke.json",
-            "artifacts/ddd/frontend/playwright-smoke-results.json"
           ]
         }
       ]
@@ -1450,18 +924,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -1478,18 +946,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -1506,18 +968,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -1534,18 +990,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -1562,18 +1012,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -1590,18 +1034,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -1618,18 +1056,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -1646,18 +1078,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -1674,18 +1100,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -1702,18 +1122,12 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra"
           ],
           "commands": [
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/rollback/rollback-drill.json"
@@ -1724,7 +1138,7 @@
     {
       "id": "database-performance",
       "title": "Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.",
-      "pendingItems": 8,
+      "pendingItems": 2,
       "readyBatchIds": [],
       "blockedBatchIds": [
         "p2-explain-database"
@@ -1736,24 +1150,17 @@
           "priority": "P2",
           "source": "explain",
           "owner": "database",
-          "pendingItems": 8,
+          "pendingItems": 2,
           "canRunImmediately": false,
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
             "p1-business-e2e-job-owner",
             "p1-business-e2e-payment-owner",
-            "p1-frontend-smoke-frontend",
             "p1-rollback-ai-owner",
             "p1-rollback-auth-owner",
             "p1-rollback-file-owner",
@@ -1766,8 +1173,8 @@
             "p1-rollback-plugin-owner"
           ],
           "commands": [
-            "node scripts/ddd-collect-explain.mjs",
-            "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+            "node bin/ddd-collect-explain.mjs",
+            "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
           ],
           "expectedArtifacts": [
             "tmp/ddd-explain/*.json",
@@ -1779,13 +1186,13 @@
     {
       "id": "evidence-integrity",
       "title": "Evidence manifest and final orchestrator strict rerun are clean.",
-      "pendingItems": 4,
+      "pendingItems": 5,
       "readyBatchIds": [
         "p0-manifest-release-owner"
       ],
       "blockedBatchIds": [
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
+        "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ],
       "readyBatches": [
@@ -1798,9 +1205,9 @@
           "canRunImmediately": true,
           "dependsOn": [],
           "commands": [
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-            "node scripts/ddd-promote-performance-baseline.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+            "node bin/ddd-promote-performance-baseline.mjs",
+            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/release/evidence-manifest.json"
@@ -1819,18 +1226,11 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
             "p1-business-e2e-job-owner",
             "p1-business-e2e-payment-owner",
-            "p1-frontend-smoke-frontend",
             "p1-rollback-ai-owner",
             "p1-rollback-auth-owner",
             "p1-rollback-file-owner",
@@ -1844,8 +1244,8 @@
             "p2-explain-database"
           ],
           "commands": [
-            "node scripts/ddd-release-evidence-orchestrator.mjs",
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+            "node bin/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/release/orchestrator-report.json",
@@ -1854,28 +1254,21 @@
           ]
         },
         {
-          "id": "p3-orchestrator-frontend",
+          "id": "p3-orchestrator-release-infra",
           "priority": "P3",
           "source": "orchestrator",
-          "owner": "frontend",
-          "pendingItems": 1,
+          "owner": "release-infra",
+          "pendingItems": 2,
           "canRunImmediately": false,
           "dependsOn": [
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
             "p1-business-e2e-job-owner",
             "p1-business-e2e-payment-owner",
-            "p1-frontend-smoke-frontend",
             "p1-rollback-ai-owner",
             "p1-rollback-auth-owner",
             "p1-rollback-file-owner",
@@ -1889,8 +1282,8 @@
             "p2-explain-database"
           ],
           "commands": [
-            "node scripts/ddd-release-evidence-orchestrator.mjs",
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+            "node bin/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/release/orchestrator-report.json",
@@ -1909,18 +1302,11 @@
             "p0-authenticated-performance-release-performance",
             "p0-docker-release-infra",
             "p0-manifest-release-owner",
-            "p0-release-config-ai-owner",
-            "p0-release-config-payment-owner",
-            "p0-release-config-platform-events",
-            "p0-release-config-platform-owners",
-            "p0-release-config-release-infra",
-            "p0-release-env-lint-release-infra",
             "p0-runtime-readiness-release-infra",
             "p1-ai-runtime-ai",
             "p1-business-e2e-file-owner",
             "p1-business-e2e-job-owner",
             "p1-business-e2e-payment-owner",
-            "p1-frontend-smoke-frontend",
             "p1-rollback-ai-owner",
             "p1-rollback-auth-owner",
             "p1-rollback-file-owner",
@@ -1934,8 +1320,8 @@
             "p2-explain-database"
           ],
           "commands": [
-            "node scripts/ddd-release-evidence-orchestrator.mjs",
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+            "node bin/ddd-release-evidence-orchestrator.mjs",
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/release/orchestrator-report.json",
@@ -1949,31 +1335,21 @@
   "executionWaves": [
     {
       "priority": "P0",
-      "batchCount": 10,
+      "batchCount": 4,
       "runnableBatchIds": [
         "p0-authenticated-performance-release-performance",
         "p0-docker-release-infra",
         "p0-manifest-release-owner",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
       "blockedBatchIds": [],
       "owners": [
-        "ai-owner",
-        "payment-owner",
-        "platform-events",
-        "platform-owners",
         "release-infra",
         "release-owner",
         "release-performance"
       ],
       "dependsOn": [],
-      "commandCount": 15,
+      "commandCount": 7,
       "operatorCommands": [
         "DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_ENV_FILE=<release-env-file> DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
@@ -1983,14 +1359,13 @@
     },
     {
       "priority": "P1",
-      "batchCount": 15,
+      "batchCount": 14,
       "runnableBatchIds": [],
       "blockedBatchIds": [
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
-        "p1-frontend-smoke-frontend",
         "p1-rollback-ai-owner",
         "p1-rollback-auth-owner",
         "p1-rollback-file-owner",
@@ -2007,7 +1382,6 @@
         "ai-owner",
         "auth-owner",
         "file-owner",
-        "frontend",
         "iam-owner",
         "job-owner",
         "localization-owner",
@@ -2020,15 +1394,9 @@
         "p0-authenticated-performance-release-performance",
         "p0-docker-release-infra",
         "p0-manifest-release-owner",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra"
       ],
-      "commandCount": 36,
+      "commandCount": 34,
       "operatorCommands": []
     },
     {
@@ -2045,18 +1413,11 @@
         "p0-authenticated-performance-release-performance",
         "p0-docker-release-infra",
         "p0-manifest-release-owner",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
-        "p1-frontend-smoke-frontend",
         "p1-rollback-ai-owner",
         "p1-rollback-auth-owner",
         "p1-rollback-file-owner",
@@ -2077,30 +1438,23 @@
       "runnableBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
+        "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ],
       "owners": [
         "database",
-        "frontend",
+        "release-infra",
         "release-owner"
       ],
       "dependsOn": [
         "p0-authenticated-performance-release-performance",
         "p0-docker-release-infra",
         "p0-manifest-release-owner",
-        "p0-release-config-ai-owner",
-        "p0-release-config-payment-owner",
-        "p0-release-config-platform-events",
-        "p0-release-config-platform-owners",
-        "p0-release-config-release-infra",
-        "p0-release-env-lint-release-infra",
         "p0-runtime-readiness-release-infra",
         "p1-ai-runtime-ai",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
-        "p1-frontend-smoke-frontend",
         "p1-rollback-ai-owner",
         "p1-rollback-auth-owner",
         "p1-rollback-file-owner",
@@ -2124,61 +1478,9 @@
     "reason": "strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence",
     "command": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "envKeys": [
-      "AI_SERVICE_BASE_URL",
-      "AUTH_SERVICE_BASE_URL",
       "BASE_URL",
-      "CORS_ALLOWED_ORIGIN_PATTERNS",
-      "DB_PASSWORD",
-      "DB_URL",
-      "DB_USERNAME",
-      "DDD_AUTH_PASSWORD",
-      "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-      "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-      "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-      "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-      "DDD_AUTH_PERF_ENVIRONMENT",
-      "DDD_AUTH_USERNAME",
-      "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-      "DDD_DEPLOYMENT_EVIDENCE",
-      "DDD_EXPLAIN_DATABASE",
-      "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-      "DDD_MIGRATION_COMPLETED_AT",
-      "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-      "DDD_MIGRATION_FRESH_DB_VALIDATED",
-      "DDD_MIGRATION_OPERATOR",
-      "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-      "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-      "FIELD_SECRET",
-      "FILE_SERVICE_BASE_URL",
-      "JOB_EXECUTOR_BASE_URL",
-      "JWT_SECRET",
-      "LOCALIZATION_SERVICE_BASE_URL",
-      "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-      "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-      "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-      "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-      "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-      "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-      "LUMIRA_BASE_URL",
-      "MESSAGE_SERVICE_BASE_URL",
-      "MYSQL_DATABASE",
-      "MYSQL_HOST",
-      "MYSQL_PORT",
-      "PAYMENT_PUBLIC_BASE_URL",
-      "PAYMENT_SERVICE_BASE_URL",
-      "PLAYWRIGHT_BASE_URL",
-      "PLUGIN_SERVICE_BASE_URL",
-      "REDIS_HOST",
-      "SAAS_EVENT_REDIS_STREAM_KEY",
-      "SAAS_JOB_BACKEND_BASE_URL",
-      "SAAS_JOB_FILE_SERVICE_BASE_URL",
-      "SAAS_JOB_INTERNAL_TOKEN",
-      "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-      "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-      "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-      "SYSTEM_SERVICE_BASE_URL",
-      "XXL_JOB_ACCESS_TOKEN",
-      "XXL_JOB_ADMIN_ADDRESSES"
+      "DEPLOY_CHECK_BASE_URL",
+      "LUMIRA_BASE_URL"
     ]
   },
   "finalOwnerQueueFastPath": {
@@ -2187,18 +1489,17 @@
     "owner": "release-infra",
     "queueOrder": 1,
     "firstCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "envKeyCount": 71,
-    "missingArtifactCount": 4,
+    "envKeyCount": 10,
+    "missingArtifactCount": 5,
     "releaseEnvFileRequired": true,
     "finalGateCommand": "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     "commands": [
       "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-      "node scripts/ddd-release-config-evidence.mjs",
-      "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-      "node scripts/ddd-docker-build-evidence.mjs",
-      "node scripts/ddd-runtime-readiness-smoke.mjs",
-      "node scripts/ddd-release-readiness-summary.mjs",
+      "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+      "node bin/ddd-runtime-readiness-smoke.mjs",
+      "node bin/ddd-release-evidence-orchestrator.mjs",
+      "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+      "node bin/ddd-release-readiness-summary.mjs",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
     ]
   },
@@ -2208,132 +1509,7 @@
     "Collect HTTPS production-equivalent runtime, migration, Docker image, manifest, and authenticated performance evidence.",
     "Run strict preflight only after env readiness and production-equivalent evidence are clean."
   ],
-  "owners": [
-    {
-      "owner": "platform-events",
-      "blockers": 9,
-      "placeholders": 9,
-      "secretKeys": 3,
-      "safeDefaultAvailable": 0,
-      "requiresOwnerInput": 9,
-      "ownerInputReasons": [
-        "production-endpoint",
-        "secret-manager"
-      ],
-      "totalKeys": 10,
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/01-platform-events.md",
-      "keys": [
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SAAS_EVENT_OUTBOX_DISPATCHER",
-        "XXL_JOB_ADMIN_ADDRESSES",
-        "XXL_JOB_ACCESS_TOKEN"
-      ]
-    },
-    {
-      "owner": "platform-owners",
-      "blockers": 9,
-      "placeholders": 9,
-      "secretKeys": 0,
-      "safeDefaultAvailable": 0,
-      "requiresOwnerInput": 9,
-      "ownerInputReasons": [
-        "production-endpoint"
-      ],
-      "totalKeys": 9,
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/02-platform-owners.md",
-      "keys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL"
-      ]
-    },
-    {
-      "owner": "release-infra",
-      "blockers": 9,
-      "placeholders": 9,
-      "secretKeys": 4,
-      "safeDefaultAvailable": 0,
-      "requiresOwnerInput": 9,
-      "ownerInputReasons": [
-        "owner-production-value",
-        "production-endpoint",
-        "secret-manager"
-      ],
-      "totalKeys": 12,
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/03-release-infra.md",
-      "keys": [
-        "LUMIRA_BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "FIELD_SECRET",
-        "PLAYWRIGHT_BASE_URL",
-        "JWT_SECRET",
-        "REDIS_HOST",
-        "REDIS_PASSWORD",
-        "REDIS_PORT",
-        "TRUST_FORWARDED_HEADERS"
-      ]
-    },
-    {
-      "owner": "ai-owner",
-      "blockers": 6,
-      "placeholders": 6,
-      "secretKeys": 2,
-      "safeDefaultAvailable": 0,
-      "requiresOwnerInput": 6,
-      "ownerInputReasons": [
-        "production-endpoint",
-        "secret-manager"
-      ],
-      "totalKeys": 12,
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/04-ai-owner.md",
-      "keys": [
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
-      ]
-    },
-    {
-      "owner": "payment-owner",
-      "blockers": 1,
-      "placeholders": 1,
-      "secretKeys": 1,
-      "safeDefaultAvailable": 0,
-      "requiresOwnerInput": 1,
-      "ownerInputReasons": [
-        "production-endpoint"
-      ],
-      "totalKeys": 2,
-      "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/05-payment-owner.md",
-      "keys": [
-        "PAYMENT_PUBLIC_BASE_URL",
-        "DDD_PAYMENT_WEBHOOK_SECRET"
-      ]
-    }
-  ],
+  "owners": [],
   "handoffReferences": [
     {
       "id": "migration-evidence-handoff",
@@ -2341,7 +1517,7 @@
       "path": "artifacts/ddd/migration/migration-evidence-handoff.md",
       "present": true,
       "purpose": "Fill production-equivalent fresh DB and previous-schema upgrade Flyway evidence before regenerating migration-evidence.json.",
-      "command": "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs"
+      "command": "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs"
     },
     {
       "id": "rollback-deferral-owner-handoff",
@@ -2349,7 +1525,7 @@
       "path": "artifacts/ddd/rollback/rollback-deferrals-owner-handoff/README.md",
       "present": true,
       "purpose": "Coordinate real PASS rollback drills or approved DEFERRED risk acceptance by bounded-context owner.",
-      "command": "node scripts/ddd-rollback-deferral-template.mjs"
+      "command": "node bin/ddd-rollback-deferral-template.mjs"
     },
     {
       "id": "performance-baseline-handoff",
@@ -2365,7 +1541,7 @@
       "path": "artifacts/ddd/release/release-env-owner-input-packet.md",
       "present": true,
       "purpose": "Collect the remaining real production-equivalent endpoints, secrets, and owner values without exposing concrete values in artifacts.",
-      "command": "node scripts/ddd-release-env-owner-input-packet-contract.mjs"
+      "command": "node bin/ddd-release-env-owner-input-packet-contract.mjs"
     },
     {
       "id": "release-owner-input-receipt",
@@ -2373,7 +1549,7 @@
       "path": "artifacts/ddd/release/release-owner-input-receipt.md",
       "present": true,
       "purpose": "Confirm whether every owner-supplied production value is reconciled with env readiness before allowing strict cutover.",
-      "command": "node scripts/ddd-release-owner-input-receipt-contract.mjs"
+      "command": "node bin/ddd-release-owner-input-receipt-contract.mjs"
     }
   ],
   "performanceBaseline": {
@@ -2406,12 +1582,12 @@
     ],
     "commands": [
       "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
-      "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
-      "node scripts/ddd-promote-performance-baseline.mjs",
-      "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-      "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs",
-      "node scripts/ddd-release-evidence-gate.mjs",
-      "node scripts/ddd-release-readiness-summary.mjs",
+      "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
+      "node bin/ddd-promote-performance-baseline.mjs",
+      "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+      "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
+      "node bin/ddd-release-evidence-gate.mjs",
+      "node bin/ddd-release-readiness-summary.mjs",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
     ]
   },
@@ -2424,61 +1600,9 @@
       "nextAction": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.",
       "reason": "strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence",
       "envKeys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
         "BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "DDD_AUTH_PASSWORD",
-        "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
-        "DDD_AUTH_PERF_BASELINE_ENVIRONMENT",
-        "DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT",
-        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "DDD_AUTH_PERF_ENVIRONMENT",
-        "DDD_AUTH_USERNAME",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_EXPLAIN_DATABASE",
-        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "DDD_MIGRATION_COMPLETED_AT",
-        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
-        "DDD_MIGRATION_FRESH_DB_VALIDATED",
-        "DDD_MIGRATION_OPERATOR",
-        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
-        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
-        "FIELD_SECRET",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "JWT_SECRET",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "MYSQL_DATABASE",
-        "MYSQL_HOST",
-        "MYSQL_PORT",
-        "PAYMENT_PUBLIC_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLAYWRIGHT_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "REDIS_HOST",
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL",
-        "XXL_JOB_ACCESS_TOKEN",
-        "XXL_JOB_ADMIN_ADDRESSES"
+        "DEPLOY_CHECK_BASE_URL",
+        "LUMIRA_BASE_URL"
       ],
       "executableCommands": [
         "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
@@ -2489,22 +1613,6 @@
     },
     {
       "order": 2,
-      "owner": "release-performance",
-      "queueStatus": "RUN_NOW",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "nextAction": "Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion.",
-      "reason": "strictGate=authenticated-performance-shape authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
-      "envKeys": [],
-      "executableCommands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh"
-      ]
-    },
-    {
-      "order": 3,
       "owner": "release-owner",
       "queueStatus": "RUN_NOW",
       "receiptStatus": "CONTENT_BLOCKED",
@@ -2514,7 +1622,6 @@
         "DDD_RELEASE_EVIDENCE_STRICT"
       ],
       "executableCommands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
@@ -2522,67 +1629,46 @@
       ]
     },
     {
-      "order": 4,
-      "owner": "payment-owner",
+      "order": 3,
+      "owner": "release-performance",
       "queueStatus": "RUN_NOW",
       "receiptStatus": "CONTENT_BLOCKED",
-      "nextAction": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.",
-      "reason": "strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h",
-      "envKeys": [
-        "PAYMENT_PUBLIC_BASE_URL"
-      ],
+      "nextAction": "Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion.",
+      "reason": "strictGate=authenticated-performance-shape authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
+      "envKeys": [],
       "executableCommands": [
-        "node scripts/ddd-release-config-evidence.mjs",
-        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=payment-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      ]
-    },
-    {
-      "order": 5,
-      "owner": "platform-events",
-      "queueStatus": "RUN_NOW",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "nextAction": "Run `DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs` after exporting real provenance, then confirm every owner relay report is present with zero failures and errors.",
-      "reason": "strictGate=outbox-replay-dead-letter-freshness generatedAt is 91.7h old; limit=24h",
-      "envKeys": [
-        "LUMIRA_EVENT_REDIS_STREAM_KEY",
-        "SAAS_EVENT_REDIS_STREAM_KEY"
-      ],
-      "executableCommands": [
-        "DDD_OUTBOX_SMOKE_STRICT=true node scripts/ddd-outbox-replay-dead-letter-smoke.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
-        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=platform-events DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh"
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh"
       ]
     }
   ],
   "stopReasons": [
     "authenticated performance baseline not ready: BLOCKED",
-    "closure wave 9 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain",
-    "closure wave CONTENT_BLOCKED: wave 9 release-owner/p0-manifest-release-owner",
+    "closure wave 3 blocker hint: artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain",
+    "closure wave CONTENT_BLOCKED: wave 3 release-owner/p0-manifest-release-owner",
     "cutover checklist blocked: database-performance",
     "cutover checklist blocked: deployable-images",
     "cutover checklist blocked: evidence-integrity",
     "cutover checklist blocked: production-equivalence",
-    "cutover checklist blocked: release-environment",
     "cutover checklist blocked: rollback-safety",
     "cutover checklist blocked: runtime-business-acceptance",
     "cutover checklist blocked: strict-release-gate",
-    "owner input receipt pending: releaseEnvReadinessStatus,releaseEnvReadinessBlockers,releaseEnvReadinessPlaceholders"
+    "owner input receipt pending: releaseEnvReadinessStatus",
+    "strict release gate blockers=94"
   ],
   "nextCommands": [
     "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
     "DDD_RELEASE_ENV_FILE=<release-env-file> bash artifacts/ddd/release/release-env-bootstrap.sh",
-    "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-safe-defaults.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-provenance-defaults.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-alias-sync.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-    "node scripts/ddd-authenticated-performance-smoke.mjs"
+    "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+    "node bin/ddd-authenticated-performance-smoke.mjs"
   ]
 }

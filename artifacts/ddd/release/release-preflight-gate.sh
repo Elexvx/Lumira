@@ -2,11 +2,11 @@
 set -euo pipefail
 
 # Lumira DDD release preflight gate.
-# Generated at: 2026-06-19T13:42:59.865Z
+# Generated at: 2026-06-19T18:09:18.921Z
 # Default mode reports every gate without failing on NO-GO. Set DDD_RELEASE_PREFLIGHT_ENFORCE=1 for CI blocking behavior.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
-  if [[ -f "scripts/ddd-release-readiness-summary.mjs" ]]; then
+  if [[ -f "bin/ddd-release-readiness-summary.mjs" ]]; then
     LUMIRA_REPO_ROOT=$(pwd)
   else
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
@@ -48,7 +48,7 @@ failed_step=""
 write_preflight_report() {
   local status="$1"
   mkdir -p "$(dirname "${DDD_RELEASE_PREFLIGHT_REPORT}")"
-  node --input-type=module - "${DDD_RELEASE_PREFLIGHT_REPORT}" "${DDD_RELEASE_PREFLIGHT_ENFORCE:-}" "${status}" "${failed_step}" "${artifact_integrity_status}" "${manifest_preflight_status}" "${path_leak_status}" "${unblock_brief_status}" "${env_owner_handoff_status}" "${env_owner_input_packet_status}" "${config_owner_input_reconciliation_status}" "${owner_input_receipt_status}" "${env_readiness_status}" "${final_go_no_go_status}" "NO_GO_STRICT" "false" "false" "94" "12" <<'NODE'
+  node --input-type=module - "${DDD_RELEASE_PREFLIGHT_REPORT}" "${DDD_RELEASE_PREFLIGHT_ENFORCE:-}" "${status}" "${failed_step}" "${artifact_integrity_status}" "${manifest_preflight_status}" "${path_leak_status}" "${unblock_brief_status}" "${env_owner_handoff_status}" "${env_owner_input_packet_status}" "${config_owner_input_reconciliation_status}" "${owner_input_receipt_status}" "${env_readiness_status}" "${final_go_no_go_status}" "NO_GO_STRICT" "false" "false" "94" "22" <<'NODE'
 import fs from 'node:fs';
 const [reportPath, enforceValue, status, failedStep, artifactIntegrityStatus, manifestPreflightStatus, pathLeakStatus, unblockBriefStatus, envOwnerHandoffStatus, envOwnerInputPacketStatus, configOwnerInputReconciliationStatus, ownerInputReceiptStatus, envReadinessStatus, finalGoNoGoStatus, finalRecommendation, cutoverAllowedValue, releaseEnvFileCutoverSafeValue, gateBlockersValue, stopReasonCountValue] = process.argv.slice(2);
 const toNumber = (value) => Number.isFinite(Number(value)) ? Number(value) : -1;
@@ -57,13 +57,13 @@ const cutoverAllowed = cutoverAllowedValue === 'true';
 const releaseEnvFileCutoverSafe = releaseEnvFileCutoverSafeValue === 'true';
 const steps = [
   { name: 'artifact-integrity', exitCode: toNumber(artifactIntegrityStatus), command: 'bash ${DDD_RELEASE_DIR}/release-artifact-integrity-gate.sh' },
-  { name: 'manifest-provenance-preflight', exitCode: toNumber(manifestPreflightStatus), command: 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs' },
-  { name: 'artifact-path-leak', exitCode: toNumber(pathLeakStatus), command: 'node scripts/ddd-release-artifact-path-leak-contract.mjs' },
-  { name: 'unblock-brief', exitCode: toNumber(unblockBriefStatus), command: 'node scripts/ddd-release-unblock-brief.mjs && node scripts/ddd-release-unblock-brief-contract.mjs' },
-  { name: 'env-owner-handoff-redacted', exitCode: toNumber(envOwnerHandoffStatus), command: 'node scripts/ddd-release-env-owner-handoff-redacted-contract.mjs' },
-  { name: 'env-owner-input-packet', exitCode: toNumber(envOwnerInputPacketStatus), command: 'node scripts/ddd-release-env-owner-input-packet-contract.mjs' },
-  { name: 'config-owner-input-reconciliation', exitCode: toNumber(configOwnerInputReconciliationStatus), command: 'DDD_RELEASE_CONFIG_REPORT=${DDD_RELEASE_CONFIG_REPORT} node scripts/ddd-release-config-owner-input-reconciliation.mjs' },
-  { name: 'owner-input-receipt', exitCode: toNumber(ownerInputReceiptStatus), command: 'node scripts/ddd-release-owner-input-receipt.mjs && node scripts/ddd-release-owner-input-receipt-contract.mjs' },
+  { name: 'manifest-provenance-preflight', exitCode: toNumber(manifestPreflightStatus), command: 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs' },
+  { name: 'artifact-path-leak', exitCode: toNumber(pathLeakStatus), command: 'node bin/ddd-release-artifact-path-leak-contract.mjs' },
+  { name: 'unblock-brief', exitCode: toNumber(unblockBriefStatus), command: 'node bin/ddd-release-unblock-brief.mjs && node bin/ddd-release-unblock-brief-contract.mjs' },
+  { name: 'env-owner-handoff-redacted', exitCode: toNumber(envOwnerHandoffStatus), command: 'node bin/ddd-release-env-owner-handoff-redacted-contract.mjs' },
+  { name: 'env-owner-input-packet', exitCode: toNumber(envOwnerInputPacketStatus), command: 'node bin/ddd-release-env-owner-input-packet-contract.mjs' },
+  { name: 'config-owner-input-reconciliation', exitCode: toNumber(configOwnerInputReconciliationStatus), command: 'DDD_RELEASE_CONFIG_REPORT=${DDD_RELEASE_CONFIG_REPORT} node bin/ddd-release-config-owner-input-reconciliation.mjs' },
+  { name: 'owner-input-receipt', exitCode: toNumber(ownerInputReceiptStatus), command: 'node bin/ddd-release-owner-input-receipt.mjs && node bin/ddd-release-owner-input-receipt-contract.mjs' },
   { name: 'env-readiness', exitCode: toNumber(envReadinessStatus), command: enforceValue === '1' || enforceValue === 'true' ? 'DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash ${DDD_RELEASE_DIR}/release-env-readiness-gate.sh' : 'bash ${DDD_RELEASE_DIR}/release-env-readiness-gate.sh' },
   { name: 'final-go-no-go', exitCode: toNumber(finalGoNoGoStatus), command: enforceValue === '1' || enforceValue === 'true' ? 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash ${DDD_RELEASE_DIR}/release-final-go-no-go-gate.sh' : 'bash ${DDD_RELEASE_DIR}/release-final-go-no-go-gate.sh' },
 ];
@@ -111,9 +111,9 @@ if [[ "${artifact_integrity_status}" != "0" ]]; then
   write_preflight_report FAIL
   exit "${artifact_integrity_status}"
 fi
-run_preflight_step manifest-provenance-preflight env DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs
+run_preflight_step manifest-provenance-preflight env DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs
 manifest_preflight_status="${preflight_step_status}"
-run_preflight_step artifact-path-leak node scripts/ddd-release-artifact-path-leak-contract.mjs
+run_preflight_step artifact-path-leak node bin/ddd-release-artifact-path-leak-contract.mjs
 path_leak_status="${preflight_step_status}"
 if [[ "${path_leak_status}" != "0" ]]; then
   failed_step="artifact-path-leak"
@@ -125,10 +125,10 @@ if [[ "${manifest_preflight_status}" != "0" && ( "${DDD_RELEASE_PREFLIGHT_ENFORC
   write_preflight_report NO_GO
   exit "${manifest_preflight_status}"
 fi
-run_preflight_step unblock-brief node scripts/ddd-release-unblock-brief.mjs
+run_preflight_step unblock-brief node bin/ddd-release-unblock-brief.mjs
 unblock_brief_status="${preflight_step_status}"
 if [[ "${unblock_brief_status}" == "0" ]]; then
-  run_preflight_step unblock-brief-contract node scripts/ddd-release-unblock-brief-contract.mjs
+  run_preflight_step unblock-brief-contract node bin/ddd-release-unblock-brief-contract.mjs
   unblock_brief_status="${preflight_step_status}"
 fi
 if [[ "${unblock_brief_status}" != "0" ]]; then
@@ -136,31 +136,31 @@ if [[ "${unblock_brief_status}" != "0" ]]; then
   write_preflight_report FAIL
   exit "${unblock_brief_status}"
 fi
-run_preflight_step env-owner-handoff-redacted node scripts/ddd-release-env-owner-handoff-redacted-contract.mjs
+run_preflight_step env-owner-handoff-redacted node bin/ddd-release-env-owner-handoff-redacted-contract.mjs
 env_owner_handoff_status="${preflight_step_status}"
 if [[ "${env_owner_handoff_status}" != "0" ]]; then
   failed_step="env-owner-handoff-redacted"
   write_preflight_report FAIL
   exit "${env_owner_handoff_status}"
 fi
-run_preflight_step env-owner-input-packet node scripts/ddd-release-env-owner-input-packet-contract.mjs
+run_preflight_step env-owner-input-packet node bin/ddd-release-env-owner-input-packet-contract.mjs
 env_owner_input_packet_status="${preflight_step_status}"
 if [[ "${env_owner_input_packet_status}" != "0" ]]; then
   failed_step="env-owner-input-packet"
   write_preflight_report FAIL
   exit "${env_owner_input_packet_status}"
 fi
-run_preflight_step config-owner-input-reconciliation env DDD_RELEASE_CONFIG_REPORT="${DDD_RELEASE_CONFIG_REPORT}" node scripts/ddd-release-config-owner-input-reconciliation.mjs
+run_preflight_step config-owner-input-reconciliation env DDD_RELEASE_CONFIG_REPORT="${DDD_RELEASE_CONFIG_REPORT}" node bin/ddd-release-config-owner-input-reconciliation.mjs
 config_owner_input_reconciliation_status="${preflight_step_status}"
 if [[ "${config_owner_input_reconciliation_status}" != "0" ]]; then
   failed_step="config-owner-input-reconciliation"
   write_preflight_report FAIL
   exit "${config_owner_input_reconciliation_status}"
 fi
-run_preflight_step owner-input-receipt node scripts/ddd-release-owner-input-receipt.mjs
+run_preflight_step owner-input-receipt node bin/ddd-release-owner-input-receipt.mjs
 owner_input_receipt_status="${preflight_step_status}"
 if [[ "${owner_input_receipt_status}" == "0" ]]; then
-  run_preflight_step owner-input-receipt-contract node scripts/ddd-release-owner-input-receipt-contract.mjs
+  run_preflight_step owner-input-receipt-contract node bin/ddd-release-owner-input-receipt-contract.mjs
   owner_input_receipt_status="${preflight_step_status}"
 fi
 if [[ "${owner_input_receipt_status}" != "0" ]]; then
