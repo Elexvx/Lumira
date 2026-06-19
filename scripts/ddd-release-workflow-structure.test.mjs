@@ -396,6 +396,14 @@ assert(
   "CI staging handoff summary must include production cutover audit",
 );
 assert(
+  ciWorkflowText.includes("node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  "CI staging handoff summary must include production unblock plan",
+);
+assert(
+  ciWorkflowText.includes("node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> \"$GITHUB_STEP_SUMMARY\""),
+  "CI staging handoff summary must include production evidence readiness",
+);
+assert(
   ciWorkflowText.includes("node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include release-owner closeout",
 );
@@ -414,8 +422,20 @@ assertTextBefore(
 assertTextBefore(
   ciWorkflowText,
   "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "CI staging handoff summary must show production cutover audit before production unblock plan",
+);
+assertTextBefore(
+  ciWorkflowText,
+  "node scripts/ddd-staging-execution-checklist.mjs --production-unblock-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "CI staging handoff summary must show production unblock plan before production evidence readiness",
+);
+assertTextBefore(
+  ciWorkflowText,
+  "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-markdown >> \"$GITHUB_STEP_SUMMARY\"",
   "node scripts/ddd-staging-execution-checklist.mjs --release-owner-closeout-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "CI staging handoff summary must show production cutover audit before release-owner closeout",
+  "CI staging handoff summary must show production evidence readiness before release-owner closeout",
 );
 assert(
   ciWorkflowText.includes("node scripts/ddd-staging-execution-checklist.mjs --final-review-markdown >> \"$GITHUB_STEP_SUMMARY\""),

@@ -4,9 +4,9 @@
 
 基线提交：`89381581`
 
-已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`
+已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`、`d23d4580`、`5c4a5501`、`d8392d64`
 
-当前补充证据：本轮重新生成发布交接包，修正 Docker 证据通道状态、阻断数量、报告中文状态字段和证据时间说明；补充生产证据就绪轻量回归测试。
+当前补充证据：本轮复核发布汇总和生产证据就绪门禁，确认 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断；报告元数据已同步最新提交。
 
 ## 范围与依据
 
@@ -65,6 +65,7 @@
 - 2026-06-19：部署运行态检查失败：`node scripts/check-deployment.mjs` 对 `127.0.0.1:8000` 与 `127.0.0.1:8080` 均无 HTTP 响应。
 - 2026-06-19：前端端到端冒烟测试所需 Chromium 已安装；因 `127.0.0.1:8000`/`127.0.0.1:8080` 未提供运行态，未形成新的 2026-06-19 端到端运行态通过证据。
 - 2026-06-19：主报告补充 21 条详细测评项清单，覆盖 GB/T 22239、GB/T 28449、GB/T 20984、GB/T 30279、OWASP、ATT&CK、NIST 的本地证据、执行结果和未闭环条件。
+- 2026-06-19：再次复核 `node scripts/ddd-staging-execution-checklist.mjs --rollup` 与 `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`；结果仍为 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门阻断。
 - 2026-06-19：脚本门禁复核：
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`：输出“阻断/严格不放行”。
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce`：证据未齐时按设计非零阻断。
