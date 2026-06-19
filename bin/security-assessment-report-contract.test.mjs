@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -36,7 +36,10 @@ for (const [name, text] of [
 ]) {
   assert(!/\?{4,}/.test(text), `${name} must not contain repeated question-mark mojibake`);
   assert(!text.includes("\uFFFD"), `${name} must not contain replacement characters`);
-  assert(!/[閻庡綊骞庨悹鍥ㄧ▔]{2,}/.test(text), `${name} must not contain common garbled Chinese fragments`);
+  const mojibakeFragments = ["\u7039\u5927", "\u93c1", "\u6daf", "\u95c1", "\u95bb", "\u940e", "\u951f"];
+  for (const fragment of mojibakeFragments) {
+    assert(!text.includes(fragment), `${name} must not contain garbled Chinese fragment: ${fragment}`);
+  }
 }
 
 for (const marker of [

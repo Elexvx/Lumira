@@ -8,7 +8,7 @@ import { releaseConfigGroups } from "./ddd-release-config-contract.mjs";
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const workflowFile = path.join(repoRoot, ".github", "workflows", "ddd-release-evidence.yml");
 const ciWorkflowFile = path.join(repoRoot, ".github", "workflows", "ci.yml");
-const templateFile = path.join(repoRoot, "docs", "36-ddd-release-env-template.env");
+const templateFile = path.join(repoRoot, "doc", "36-ddd-release-env-template.env");
 const frontendPackageFile = path.join(repoRoot, "lumira-ui", "package.json");
 const frontendVitestConfigFile = path.join(repoRoot, "lumira-ui", "vitest.config.ts");
 const frontendPlaywrightConfigFile = path.join(repoRoot, "lumira-ui", "playwright.config.ts");
@@ -47,7 +47,7 @@ function requiredConfigRequirements() {
     })));
 }
 
-function scriptTestFiles(dir = path.join(repoRoot, "scripts")) {
+function scriptTestFiles(dir = path.join(repoRoot, "bin")) {
   const files = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const fullPath = path.join(dir, entry.name);
@@ -260,7 +260,7 @@ assert(workflowText.includes("node bin/ddd-release-redact-output.mjs < artifacts
 assert(workflowText.includes("mv artifacts/ddd/release/release-preflight-strict-output.redacted.tmp artifacts/ddd/release/release-preflight-strict-output.txt"), "workflow must replace strict preflight output with redacted content before upload");
 assert(workflowText.includes("node bin/ddd-release-preflight-capture-contract.mjs"), "workflow must validate release preflight capture files with the shared contract");
 assert(
-  /DDD_RELEASE_MANIFEST_CHECK_ENV=true\s*\\\s*\r?\n\s*node scripts\/ddd-release-evidence-manifest\.mjs/.test(workflowText),
+  /DDD_RELEASE_MANIFEST_CHECK_ENV=true\s*\\\s*\r?\n\s*node bin\/ddd-release-evidence-manifest\.mjs/.test(workflowText),
   "workflow must refresh manifest provenance preflight before final pre-upload manifest refresh",
 );
 assert(workflowText.includes("DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false"), "workflow must refresh manifest after preflight capture without hiding blockers");

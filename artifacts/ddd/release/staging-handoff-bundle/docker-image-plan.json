@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T17:59:25.383Z",
   "willWriteFiles": false,
   "recommendedMode": "build-and-inspect",
   "blocker": null,
@@ -11,7 +11,7 @@
       "dockerfile": "deploy/docker/service.Dockerfile",
       "status": "PASS",
       "exists": true,
-      "dockerfileSha256": "b028411f0ed5fb4bdb8a45a40d1764b118d25069179b14150dd6b6dc38494fe4",
+      "dockerfileSha256": "56f156c9c74d97ae4c6ccff32cec6ff7cf3aa292bd79809bd6648de4196b41b1",
       "issues": [],
       "checks": {
         "exposesExpectedPort": true,
@@ -25,11 +25,11 @@
       }
     },
     {
-      "name": "frontend",
-      "dockerfile": "deploy/docker/frontend.Dockerfile",
+      "name": "lumira-ui",
+      "dockerfile": "deploy/docker/lumira-ui.Dockerfile",
       "status": "PASS",
       "exists": true,
-      "dockerfileSha256": "43dc2013cd3f3595bbbba2b76c74e873fdd7bec13826e30fbc4a3a2fd01f1f78",
+      "dockerfileSha256": "fcfbc53f8ab90f88f02a6007ee28e0ba9afba5cf542cd02a66c74dd7b284f046",
       "issues": [],
       "checks": {
         "exposesExpectedPort": true,
@@ -50,8 +50,8 @@
       "valuePresent": false
     },
     {
-      "name": "frontend",
-      "envKey": "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
+      "name": "lumira-ui",
+      "envKey": "DDD_DOCKER_EXISTING_LUMIRA_UI_IMAGE",
       "valuePresent": false
     }
   ],
@@ -61,7 +61,7 @@
     "DDD_EVIDENCE_OPERATOR",
     "DDD_EVIDENCE_ENVIRONMENT",
     "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
-    "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
+    "DDD_DOCKER_EXISTING_LUMIRA_UI_IMAGE",
     "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE"
   ],
   "paths": [
@@ -69,7 +69,7 @@
       "id": "docker-runner-build",
       "owner": "release-infra",
       "when": "Docker CLI and daemon are available in the evidence runner.",
-      "command": "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
+      "command": "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
       "artifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
       ]
@@ -78,18 +78,18 @@
       "id": "existing-image-inspect",
       "owner": "release-infra",
       "when": "CI already built and pushed release-candidate images.",
-      "command": "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs",
+      "command": "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<release-candidate> node bin/ddd-docker-build-evidence.mjs",
       "artifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
       ]
     }
   ],
   "validationCommands": [
-    "node scripts/ddd-docker-build-evidence.mjs --check",
-    "node scripts/ddd-release-readiness-summary.mjs",
-    "node scripts/ddd-staging-execution-checklist.mjs --rollup",
-    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+    "node bin/ddd-docker-build-evidence.mjs --check",
+    "node bin/ddd-release-readiness-summary.mjs",
+    "node bin/ddd-staging-execution-checklist.mjs --rollup",
+    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
   ],
   "remediationActions": [],
-  "nextCommand": "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs"
+  "nextCommand": "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
 }

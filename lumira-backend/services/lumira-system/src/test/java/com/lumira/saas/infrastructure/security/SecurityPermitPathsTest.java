@@ -96,6 +96,6 @@ class SecurityPermitPathsTest {
     }
 
     private static String readMainConfig() throws IOException {
-        return Files.readString(Path.of("../lumira-server/src/main/resources/application.yml"), StandardCharsets.UTF_8);
+        return Files.readString(Path.of("../lumira-admin/src/main/resources/application.yml"), StandardCharsets.UTF_8);
     }
 }

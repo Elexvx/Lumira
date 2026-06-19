@@ -36,13 +36,13 @@ DDD_EVIDENCE_OPERATOR=__REQUIRED__
 
 ## Commands
 
-- `node scripts/ddd-staging-data-safety-check.mjs`
-- `node scripts/ddd-collect-explain.mjs`
-- `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
-- `DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs`
-- `DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs`
-- `node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report`
-- `node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`
+- `node bin/ddd-staging-data-safety-check.mjs`
+- `node bin/ddd-collect-explain.mjs`
+- `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
+- `DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs`
+- `DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs`
+- `node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report`
+- `node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance`
 
 ## Expected Artifacts
 
@@ -51,9 +51,9 @@ DDD_EVIDENCE_OPERATOR=__REQUIRED__
 
 ## Pass Criteria
 
-- `node scripts/ddd-collect-explain.mjs` writes JSON files under `tmp/ddd-explain/`.
-- `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs` passes and writes the EXPLAIN gate report.
-- `node scripts/ddd-staging-data-safety-check.mjs` accepts rollback, migration, and EXPLAIN evidence.
-- `node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report` shows no missing EXPLAIN artifact.
+- `node bin/ddd-collect-explain.mjs` writes JSON files under `tmp/ddd-explain/`.
+- `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs` passes and writes the EXPLAIN gate report.
+- `node bin/ddd-staging-data-safety-check.mjs` accepts rollback, migration, and EXPLAIN evidence.
+- `node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report` shows no missing EXPLAIN artifact.
 
-Next: `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
+Next: `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`

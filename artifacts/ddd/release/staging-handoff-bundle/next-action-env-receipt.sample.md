@@ -6,10 +6,12 @@ Env file: not provided
 Env file SHA-256: missing
 Keys present: 0
 Required selected keys: 0
-Issues: 1
+Issues: 15
 
 | Lane | Owner | Status | Inputs | Selected keys | First issue |
 | --- | --- | --- | ---: | --- | --- |
+| p1-runtime-business | release-infra | BLOCKED | 0/5 | none | LUMIRA_BASE_URL is required |
+| p1-p2-data-safety | bounded-context owners | BLOCKED | 0/4 | none | DDD_ROLLBACK_DRILL_FILE is required |
 
 ## Pass Criteria
 
@@ -19,4 +21,4 @@ Issues: 1
 - envFileSha256 must be present for the validated file
 - receipt must not include env values
 
-Next: `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-template`
+Next: `node bin/ddd-staging-execution-checklist.mjs --next-action-env-template`

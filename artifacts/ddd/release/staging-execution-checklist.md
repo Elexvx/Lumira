@@ -1,6 +1,6 @@
 # DDD Staging Execution Checklist
 
-Generated at: 2026-06-19T14:05:35.779Z
+Generated at: 2026-06-19T17:42:14.912Z
 Status: STAGING_REQUIRED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
@@ -9,27 +9,13 @@ Evidence gate: blockers=94 warnings=8 strict=true
 ## First Move
 
 - Release env is marked ready; continue with deployable image evidence and staging runtime smokes.
-- If a populated env file does not exist yet, check the initializer with `node scripts/ddd-release-env-init.mjs --check`, then initialize it with `node scripts/ddd-release-env-init.mjs`.
+- If a populated env file does not exist yet, check the initializer with `node bin/ddd-release-env-init.mjs --check`, then initialize it with `node bin/ddd-release-env-init.mjs`.
 - Run `DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh` before expensive evidence collection.
 - Do not cut over until `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh` exits cleanly.
 
 ## Release Env Owner Handoff
 
-- platform-events: blockers=0 placeholders=0 secretKeys=3 handoff=undefined
-  - reasons: none
-  - keys: SAAS_EVENT_REDIS_STREAM_KEY, SAAS_JOB_BACKEND_BASE_URL, SAAS_JOB_FILE_SERVICE_BASE_URL, SAAS_JOB_INTERNAL_TOKEN, SAAS_JOB_MESSAGE_SERVICE_BASE_URL, SAAS_JOB_PAYMENT_SERVICE_BASE_URL, SAAS_JOB_PLUGIN_SERVICE_BASE_URL, SAAS_EVENT_OUTBOX_DISPATCHER, XXL_JOB_ADMIN_ADDRESSES, XXL_JOB_ACCESS_TOKEN
-- platform-owners: blockers=0 placeholders=0 secretKeys=0 handoff=undefined
-  - reasons: none
-  - keys: AI_SERVICE_BASE_URL, AUTH_SERVICE_BASE_URL, FILE_SERVICE_BASE_URL, JOB_EXECUTOR_BASE_URL, LOCALIZATION_SERVICE_BASE_URL, MESSAGE_SERVICE_BASE_URL, PAYMENT_SERVICE_BASE_URL, PLUGIN_SERVICE_BASE_URL, SYSTEM_SERVICE_BASE_URL
-- release-infra: blockers=0 placeholders=0 secretKeys=4 handoff=undefined
-  - reasons: none
-  - keys: LUMIRA_BASE_URL, CORS_ALLOWED_ORIGIN_PATTERNS, DB_PASSWORD, DB_URL, DB_USERNAME, FIELD_SECRET, PLAYWRIGHT_BASE_URL, JWT_SECRET, REDIS_HOST, REDIS_PASSWORD, REDIS_PORT, TRUST_FORWARDED_HEADERS
-- ai-owner: blockers=0 placeholders=0 secretKeys=2 handoff=undefined
-  - reasons: none
-  - keys: LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL, LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED, LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED, LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL, LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN, LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED, LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL, LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED
-- payment-owner: blockers=0 placeholders=0 secretKeys=1 handoff=undefined
-  - reasons: none
-  - keys: PAYMENT_PUBLIC_BASE_URL, DDD_PAYMENT_WEBHOOK_SECRET
+- no owner handoff blockers reported
 
 ## Blocked Cutover Items
 
@@ -85,13 +71,13 @@ Reason: release env file is cutover-safe
 Env keys: BASE_URL, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_AI_BASE_URL, PLAYWRIGHT_BASE_URL, FRONTEND_BASE_URL, DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
 
 Setup:
-  - `node scripts/ddd-release-env-init.mjs --check`
-  - `node scripts/ddd-release-env-init.mjs`
+  - `node bin/ddd-release-env-init.mjs --check`
+  - `node bin/ddd-release-env-init.mjs`
 
 Commands:
-  - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-  - `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`
+  - `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
 
 Artifacts: artifacts/ddd/release/release-env-lint.json, artifacts/ddd/config/release-config-evidence.json, artifacts/ddd/release/readiness-summary.json
 
@@ -99,39 +85,39 @@ Artifacts: artifacts/ddd/release/release-env-lint.json, artifacts/ddd/config/rel
 
 Status: blocked
 Owner: release-infra
-Reason: backend and frontend images must be built or inspected from CI-produced release images
+Reason: backend and lumira-ui images must be built or inspected from CI-produced release images
 Env keys: DDD_DOCKER_BUILD_STRICT, DDD_DOCKER_COMMAND, DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE, DDD_DOCKER_EXISTING_FRONTEND_IMAGE
 
 Setup:
-  - `node scripts/ddd-docker-build-evidence.mjs --check`
+  - `node bin/ddd-docker-build-evidence.mjs --check`
 
 Commands:
-  - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
 
 Artifacts: artifacts/ddd/build/docker-image-evidence.json
 
 ### p1-runtime-business: P1 runtime and business acceptance
 
 Status: blocked
-Owner: release-infra, frontend, ai, file-owner, job-owner, payment-owner
+Owner: release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner
 Reason: local-only runtime evidence must be replaced by HTTPS staging evidence
 Env keys: LUMIRA_BASE_URL, PLAYWRIGHT_BASE_URL, DDD_FRONTEND_EXPECT_DEPLOYED, DDD_AI_EXPECT_PROVIDER_REMOTE, DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE
 
 Setup:
-  - `node scripts/ddd-staging-runtime-check.mjs`
+  - `node bin/ddd-staging-runtime-check.mjs`
 
 Commands:
-  - `node scripts/ddd-runtime-readiness-smoke.mjs`
-  - `DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs`
-  - `node scripts/ddd-ai-runtime-drill.mjs`
-  - `node scripts/ddd-frontend-playwright-smoke.mjs`
-  - `node scripts/ddd-frontend-smoke-evidence.mjs`
-  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
-  - `node scripts/ddd-job-e2e-smoke.mjs`
-  - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
+  - `DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs`
+  - `node bin/ddd-ai-runtime-drill.mjs`
+  - `node bin/ddd-frontend-playwright-smoke.mjs`
+  - `node bin/ddd-frontend-smoke-evidence.mjs`
+  - `node bin/ddd-file-processing-e2e-smoke.mjs`
+  - `node bin/ddd-job-e2e-smoke.mjs`
+  - `node bin/ddd-payment-webhook-e2e-smoke.mjs`
 
-Artifacts: artifacts/ddd/readiness/summary.json, artifacts/ddd/performance/authenticated-runtime-actual.json, artifacts/ddd/ai/ai-runtime-drill.json, artifacts/ddd/frontend/frontend-smoke.json, artifacts/ddd/file/file-processing-e2e.json, artifacts/ddd/jobs/job-e2e-smoke.json, artifacts/ddd/payment/payment-webhook-e2e.json
+Artifacts: artifacts/ddd/readiness/summary.json, artifacts/ddd/performance/authenticated-runtime-actual.json, artifacts/ddd/ai/ai-runtime-drill.json, artifacts/ddd/lumira-ui/frontend-smoke.json, artifacts/ddd/file/file-processing-e2e.json, artifacts/ddd/jobs/job-e2e-smoke.json, artifacts/ddd/payment/payment-webhook-e2e.json
 
 ### p1-rollback: P1 rollback safety
 
@@ -141,11 +127,11 @@ Reason: every bounded context needs PASS rollback drill evidence or approved une
 Env keys: DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_STRICT, DDD_ROLLBACK_DRILL_FILE
 
 Setup:
-  - `node scripts/ddd-staging-data-safety-check.mjs`
+  - `node bin/ddd-staging-data-safety-check.mjs`
 
 Commands:
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 Artifacts: artifacts/ddd/rollback/rollback-drill.json
 
@@ -157,13 +143,13 @@ Reason: fresh production-equivalent migration and hot-path EXPLAIN evidence are 
 Env keys: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_EXPLAIN_DATABASE, DDD_EXPLAIN_ENVIRONMENT
 
 Setup:
-  - `node scripts/ddd-staging-data-safety-check.mjs`
+  - `node bin/ddd-staging-data-safety-check.mjs`
 
 Commands:
-  - `DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs`
-  - `DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs`
-  - `node scripts/ddd-collect-explain.mjs`
-  - `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
+  - `DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs`
+  - `DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs`
+  - `node bin/ddd-collect-explain.mjs`
+  - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
 
 Artifacts: artifacts/ddd/migration/migration-evidence.json, tmp/ddd-explain/*.json, artifacts/ddd/release/explain-gate-report.json
 
@@ -175,10 +161,10 @@ Reason: final recommendation is NO_GO_STRICT
 Env keys: DDD_RELEASE_EVIDENCE_STRICT, DDD_FINAL_GO_NO_GO_ENFORCE
 
 Commands:
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-gate.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-gate.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 Artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/evidence-manifest.json, artifacts/ddd/release/release-evidence-gate.json, artifacts/ddd/release/release-final-go-no-go.json
@@ -191,5 +177,4 @@ Artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release
 - commandCatalog: artifacts/ddd/release/release-command-catalog.md
 - missingEnvTemplate: artifacts/ddd/release/release-env-missing.template.env
 - releaseEnvInit: artifacts/ddd/release/release-final-owner-queue-env-init.sh
-- releaseEnvInitWrapper: scripts/ddd-release-env-init.mjs
 

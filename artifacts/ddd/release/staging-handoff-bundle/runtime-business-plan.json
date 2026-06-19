@@ -1,113 +1,260 @@
 {
-  "status": "PASS",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T17:59:25.383Z",
   "willWriteFiles": false,
-  "backendBaseUrl": "https://saas.elexvx.com",
-  "frontendBaseUrl": "https://saas.elexvx.com",
+  "backendBaseUrl": null,
+  "frontendBaseUrl": null,
   "runtimeCheck": {
-    "status": "PASS",
-    "generatedAt": "2026-06-19T14:23:42.136Z",
+    "status": "BLOCKED",
+    "generatedAt": "2026-06-19T17:59:53.041Z",
     "willWriteFiles": false,
-    "backendBaseUrl": "https://saas.elexvx.com",
-    "frontendBaseUrl": "https://saas.elexvx.com",
+    "backendBaseUrl": null,
+    "frontendBaseUrl": null,
     "productionEquivalence": {
       "backend": {
         "strict": true,
-        "https": true,
+        "https": false,
         "localOnly": false,
-        "deploymentEvidence": "artifacts/ddd/build/docker-image-evidence.json",
-        "issues": []
+        "deploymentEvidence": null,
+        "issues": [
+          "strict backend runtime staging check requires HTTPS baseUrl evidence",
+          "strict backend runtime staging check deploymentEvidence is required"
+        ]
       },
-      "frontend": {
+      "lumira-ui": {
         "strict": true,
-        "https": true,
+        "https": false,
         "localOnly": false,
-        "deploymentEvidence": "artifacts/ddd/frontend/frontend-smoke.json",
-        "issues": []
+        "deploymentEvidence": null,
+        "issues": [
+          "strict lumira-ui runtime staging check requires HTTPS baseUrl evidence",
+          "strict lumira-ui runtime staging check deploymentEvidence is required"
+        ]
       }
     },
     "urlChecks": [
       {
         "name": "LUMIRA_BASE_URL",
-        "valuePresent": true,
-        "https": true,
+        "valuePresent": false,
+        "https": false,
         "localOnly": false,
-        "issues": []
+        "issues": [
+          "LUMIRA_BASE_URL is required",
+          "LUMIRA_BASE_URL must be an HTTPS URL"
+        ]
       },
       {
         "name": "PLAYWRIGHT_BASE_URL",
-        "valuePresent": true,
-        "https": true,
+        "valuePresent": false,
+        "https": false,
         "localOnly": false,
-        "issues": []
+        "issues": [
+          "PLAYWRIGHT_BASE_URL is required",
+          "PLAYWRIGHT_BASE_URL must be an HTTPS URL"
+        ]
       }
     ],
     "evidenceChecks": [
       {
         "name": "DDD_DEPLOYMENT_EVIDENCE",
-        "issue": null
+        "issue": "is required"
       },
       {
         "name": "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
-        "issue": null
+        "issue": "is required"
       },
       {
         "name": "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
-        "issue": null
+        "issue": "is required"
       },
       {
         "name": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
-        "issue": null
+        "issue": "is required"
       }
     ],
     "expectationChecks": [
       {
         "name": "DDD_FRONTEND_EXPECT_DEPLOYED",
         "expected": "true",
-        "valuePresent": true,
-        "pass": true,
-        "issue": null
+        "valuePresent": false,
+        "pass": false,
+        "issue": "DDD_FRONTEND_EXPECT_DEPLOYED must be true"
       },
       {
         "name": "DDD_AI_EXPECT_PROVIDER_REMOTE",
         "expected": "true",
-        "valuePresent": true,
-        "pass": true,
-        "issue": null
+        "valuePresent": false,
+        "pass": false,
+        "issue": "DDD_AI_EXPECT_PROVIDER_REMOTE must be true"
       },
       {
         "name": "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
         "expected": "true",
-        "valuePresent": true,
-        "pass": true,
-        "issue": null
+        "valuePresent": false,
+        "pass": false,
+        "issue": "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE must be true"
       }
     ],
     "nextCommands": [
-      "node scripts/ddd-runtime-readiness-smoke.mjs",
-      "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
-      "node scripts/ddd-ai-runtime-drill.mjs",
-      "node scripts/ddd-frontend-playwright-smoke.mjs",
-      "node scripts/ddd-frontend-smoke-evidence.mjs"
+      "node bin/ddd-runtime-readiness-smoke.mjs",
+      "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
+      "node bin/ddd-ai-runtime-drill.mjs",
+      "node bin/ddd-frontend-playwright-smoke.mjs",
+      "node bin/ddd-frontend-smoke-evidence.mjs"
     ],
-    "issues": []
+    "issues": [
+      "LUMIRA_BASE_URL is required",
+      "LUMIRA_BASE_URL must be an HTTPS URL",
+      "PLAYWRIGHT_BASE_URL is required",
+      "PLAYWRIGHT_BASE_URL must be an HTTPS URL",
+      "strict backend runtime staging check requires HTTPS baseUrl evidence",
+      "strict backend runtime staging check deploymentEvidence is required",
+      "strict lumira-ui runtime staging check requires HTTPS baseUrl evidence",
+      "strict lumira-ui runtime staging check deploymentEvidence is required",
+      "DDD_DEPLOYMENT_EVIDENCE is required",
+      "DDD_FRONTEND_DEPLOYMENT_EVIDENCE is required",
+      "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE is required",
+      "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE is required",
+      "DDD_FRONTEND_EXPECT_DEPLOYED must be true",
+      "DDD_AI_EXPECT_PROVIDER_REMOTE must be true",
+      "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE must be true"
+    ]
   },
   "runtimeGate": {
-    "status": "PASS",
-    "blocker": "local-only runtime evidence must be replaced by HTTPS staging evidence",
-    "blockingInputs": [],
-    "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs"
+    "status": "BLOCKED",
+    "blocker": "LUMIRA_BASE_URL is required",
+    "blockingInputs": [
+      "LUMIRA_BASE_URL",
+      "PLAYWRIGHT_BASE_URL",
+      "DDD_DEPLOYMENT_EVIDENCE",
+      "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+      "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
+      "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+      "DDD_FRONTEND_EXPECT_DEPLOYED",
+      "DDD_AI_EXPECT_PROVIDER_REMOTE",
+      "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
+    ],
+    "acceptanceCommand": "node bin/ddd-staging-runtime-check.mjs"
   },
   "owners": [
     "release-infra",
-    "frontend",
+    "lumira-ui",
     "ai",
     "file-owner",
     "job-owner",
     "payment-owner",
     "release-performance"
   ],
-  "blockingInputs": [],
+  "blockingInputs": [
+    {
+      "input": "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_AI_EXPECT_PROVIDER_REMOTE",
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_DEPLOYMENT_EVIDENCE",
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_FRONTEND_EXPECT_DEPLOYED",
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "LUMIRA_BASE_URL",
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "PLAYWRIGHT_BASE_URL",
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    }
+  ],
   "requiredEnv": {
     "urls": [
       "LUMIRA_BASE_URL",
@@ -128,66 +275,66 @@
   },
   "commands": {
     "preflight": [
-      "node scripts/ddd-staging-runtime-check.mjs",
-      "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
+      "node bin/ddd-staging-runtime-check.mjs",
+      "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
     ],
     "smoke": [
-      "node scripts/ddd-runtime-readiness-smoke.mjs",
-      "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
-      "node scripts/ddd-ai-runtime-drill.mjs",
-      "node scripts/ddd-frontend-playwright-smoke.mjs && node scripts/ddd-frontend-smoke-evidence.mjs",
-      "node scripts/ddd-file-processing-e2e-smoke.mjs",
-      "node scripts/ddd-job-e2e-smoke.mjs",
-      "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+      "node bin/ddd-runtime-readiness-smoke.mjs",
+      "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
+      "node bin/ddd-ai-runtime-drill.mjs",
+      "node bin/ddd-frontend-playwright-smoke.mjs && node bin/ddd-frontend-smoke-evidence.mjs",
+      "node bin/ddd-file-processing-e2e-smoke.mjs",
+      "node bin/ddd-job-e2e-smoke.mjs",
+      "node bin/ddd-payment-webhook-e2e-smoke.mjs"
     ],
     "validate": [
-      "node scripts/ddd-staging-runtime-check.mjs",
-      "node scripts/ddd-release-readiness-summary.mjs",
-      "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-      "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      "node bin/ddd-staging-runtime-check.mjs",
+      "node bin/ddd-release-readiness-summary.mjs",
+      "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
     ]
   },
   "smokeSteps": [
     {
       "id": "runtime-readiness",
       "owner": "release-infra",
-      "command": "node scripts/ddd-runtime-readiness-smoke.mjs",
+      "command": "node bin/ddd-runtime-readiness-smoke.mjs",
       "artifact": "artifacts/ddd/readiness/summary.json"
     },
     {
       "id": "authenticated-performance",
       "owner": "release-performance",
-      "command": "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
+      "command": "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
       "artifact": "artifacts/ddd/performance/authenticated-runtime-actual.json"
     },
     {
       "id": "ai-runtime",
       "owner": "ai",
-      "command": "node scripts/ddd-ai-runtime-drill.mjs",
+      "command": "node bin/ddd-ai-runtime-drill.mjs",
       "artifact": "artifacts/ddd/ai/ai-runtime-drill.json"
     },
     {
       "id": "frontend-smoke",
-      "owner": "frontend",
-      "command": "node scripts/ddd-frontend-playwright-smoke.mjs && node scripts/ddd-frontend-smoke-evidence.mjs",
-      "artifact": "artifacts/ddd/frontend/frontend-smoke.json"
+      "owner": "lumira-ui",
+      "command": "node bin/ddd-frontend-playwright-smoke.mjs && node bin/ddd-frontend-smoke-evidence.mjs",
+      "artifact": "artifacts/ddd/lumira-ui/frontend-smoke.json"
     },
     {
       "id": "file-processing-e2e",
       "owner": "file-owner",
-      "command": "node scripts/ddd-file-processing-e2e-smoke.mjs",
+      "command": "node bin/ddd-file-processing-e2e-smoke.mjs",
       "artifact": "artifacts/ddd/file/file-processing-e2e.json"
     },
     {
       "id": "job-e2e",
       "owner": "job-owner",
-      "command": "node scripts/ddd-job-e2e-smoke.mjs",
+      "command": "node bin/ddd-job-e2e-smoke.mjs",
       "artifact": "artifacts/ddd/jobs/job-e2e-smoke.json"
     },
     {
       "id": "payment-webhook-e2e",
       "owner": "payment-owner",
-      "command": "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+      "command": "node bin/ddd-payment-webhook-e2e-smoke.mjs",
       "artifact": "artifacts/ddd/payment/payment-webhook-e2e.json"
     }
   ],
@@ -195,15 +342,15 @@
     "artifacts/ddd/readiness/summary.json",
     "artifacts/ddd/performance/authenticated-runtime-actual.json",
     "artifacts/ddd/ai/ai-runtime-drill.json",
-    "artifacts/ddd/frontend/frontend-smoke.json",
+    "artifacts/ddd/lumira-ui/frontend-smoke.json",
     "artifacts/ddd/file/file-processing-e2e.json",
     "artifacts/ddd/jobs/job-e2e-smoke.json",
     "artifacts/ddd/payment/payment-webhook-e2e.json"
   ],
   "safety": [
     "Use HTTPS staging or production-equivalent URLs; localhost evidence is not accepted for strict release.",
-    "Attach deployment evidence for backend, frontend, AI runtime, authenticated performance, and business E2E flows.",
+    "Attach deployment evidence for backend, lumira-ui, AI runtime, authenticated performance, and business E2E flows.",
     "Regenerate release readiness after every smoke artifact is refreshed."
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
+  "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
 }

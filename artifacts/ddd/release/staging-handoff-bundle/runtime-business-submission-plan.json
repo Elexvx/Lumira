@@ -1,14 +1,14 @@
 {
-  "status": "PASS",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T17:59:25.383Z",
   "willWriteFiles": false,
   "gate": "runtime-business",
   "owner": "release-infra",
-  "backendBaseUrl": "https://saas.elexvx.com",
-  "frontendBaseUrl": "https://saas.elexvx.com",
+  "backendBaseUrl": null,
+  "frontendBaseUrl": null,
   "deploymentSubmission": {
     "owner": "release-infra",
-    "status": "PASS",
+    "status": "BLOCKED",
     "requiredInputs": [
       "LUMIRA_BASE_URL",
       "PLAYWRIGHT_BASE_URL",
@@ -17,14 +17,14 @@
       "DDD_FRONTEND_EXPECT_DEPLOYED=true"
     ],
     "commands": [
-      "node scripts/ddd-staging-runtime-check.mjs",
-      "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
+      "node bin/ddd-staging-runtime-check.mjs",
+      "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
     ],
     "artifacts": [
       "artifacts/ddd/readiness/summary.json"
     ],
-    "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs",
-    "blocker": "local-only runtime evidence must be replaced by HTTPS staging evidence"
+    "acceptanceCommand": "node bin/ddd-staging-runtime-check.mjs",
+    "blocker": "LUMIRA_BASE_URL is required"
   },
   "ownerSubmissions": [
     {
@@ -38,12 +38,12 @@
         "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true"
       ],
       "commands": [
-        "node scripts/ddd-ai-runtime-drill.mjs"
+        "node bin/ddd-ai-runtime-drill.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/ai/ai-runtime-drill.json"
       ],
-      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "acceptanceCommand": "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       "dependsOn": [
         "runtime-deployment-evidence"
       ],
@@ -58,20 +58,20 @@
         "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE"
       ],
       "commands": [
-        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs"
+        "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/performance/authenticated-runtime-actual.json"
       ],
-      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "acceptanceCommand": "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       "dependsOn": [
         "runtime-deployment-evidence"
       ],
       "blocker": "missing authenticated performance staging evidence"
     },
     {
-      "owner": "frontend",
-      "phase": "frontend-runtime-smoke",
+      "owner": "lumira-ui",
+      "phase": "lumira-ui-runtime-smoke",
       "status": "BLOCKED",
       "goal": "Run deployed frontend smoke checks against the HTTPS Playwright base URL and write smoke evidence.",
       "requiredInputs": [
@@ -80,16 +80,16 @@
         "DDD_FRONTEND_EXPECT_DEPLOYED=true"
       ],
       "commands": [
-        "node scripts/ddd-frontend-playwright-smoke.mjs && node scripts/ddd-frontend-smoke-evidence.mjs"
+        "node bin/ddd-frontend-playwright-smoke.mjs && node bin/ddd-frontend-smoke-evidence.mjs"
       ],
       "artifacts": [
-        "artifacts/ddd/frontend/frontend-smoke.json"
+        "artifacts/ddd/lumira-ui/frontend-smoke.json"
       ],
-      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "acceptanceCommand": "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       "dependsOn": [
         "runtime-deployment-evidence"
       ],
-      "blocker": "missing frontend staging smoke evidence"
+      "blocker": "missing lumira-ui staging smoke evidence"
     },
     {
       "owner": "file-owner",
@@ -100,12 +100,12 @@
         "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
       ],
       "commands": [
-        "node scripts/ddd-file-processing-e2e-smoke.mjs"
+        "node bin/ddd-file-processing-e2e-smoke.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/file/file-processing-e2e.json"
       ],
-      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "acceptanceCommand": "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       "dependsOn": [
         "runtime-deployment-evidence"
       ],
@@ -120,12 +120,12 @@
         "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
       ],
       "commands": [
-        "node scripts/ddd-job-e2e-smoke.mjs"
+        "node bin/ddd-job-e2e-smoke.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/jobs/job-e2e-smoke.json"
       ],
-      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "acceptanceCommand": "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       "dependsOn": [
         "runtime-deployment-evidence"
       ],
@@ -140,12 +140,12 @@
         "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
       ],
       "commands": [
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/payment/payment-webhook-e2e.json"
       ],
-      "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "acceptanceCommand": "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       "dependsOn": [
         "runtime-deployment-evidence"
       ],
@@ -155,22 +155,22 @@
   "parallelAfterDeployment": [
     "ai-runtime-evidence",
     "auth-performance-evidence",
-    "frontend-runtime-smoke",
+    "lumira-ui-runtime-smoke",
     "business-file-smoke",
     "business-job-smoke",
     "business-payment-smoke"
   ],
   "validationCommands": [
-    "node scripts/ddd-staging-runtime-check.mjs",
-    "node scripts/ddd-release-readiness-summary.mjs",
-    "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+    "node bin/ddd-staging-runtime-check.mjs",
+    "node bin/ddd-release-readiness-summary.mjs",
+    "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
   ],
   "expectedArtifacts": [
     "artifacts/ddd/readiness/summary.json",
     "artifacts/ddd/performance/authenticated-runtime-actual.json",
     "artifacts/ddd/ai/ai-runtime-drill.json",
-    "artifacts/ddd/frontend/frontend-smoke.json",
+    "artifacts/ddd/lumira-ui/frontend-smoke.json",
     "artifacts/ddd/file/file-processing-e2e.json",
     "artifacts/ddd/jobs/job-e2e-smoke.json",
     "artifacts/ddd/payment/payment-webhook-e2e.json"
@@ -178,51 +178,59 @@
   "laneReceiptFragment": {
     "owner": "release-infra",
     "lane": "p1-runtime-business",
-    "status": "PASS",
+    "status": "BLOCKED",
     "providedArtifacts": [
       "artifacts/ddd/readiness/summary.json",
       "artifacts/ddd/performance/authenticated-runtime-actual.json",
       "artifacts/ddd/ai/ai-runtime-drill.json",
-      "artifacts/ddd/frontend/frontend-smoke.json",
+      "artifacts/ddd/lumira-ui/frontend-smoke.json",
       "artifacts/ddd/file/file-processing-e2e.json",
       "artifacts/ddd/jobs/job-e2e-smoke.json",
       "artifacts/ddd/payment/payment-webhook-e2e.json"
     ],
-    "missingArtifacts": [],
+    "missingArtifacts": [
+      "artifacts/ddd/readiness/summary.json",
+      "artifacts/ddd/performance/authenticated-runtime-actual.json",
+      "artifacts/ddd/ai/ai-runtime-drill.json",
+      "artifacts/ddd/lumira-ui/frontend-smoke.json",
+      "artifacts/ddd/file/file-processing-e2e.json",
+      "artifacts/ddd/jobs/job-e2e-smoke.json",
+      "artifacts/ddd/payment/payment-webhook-e2e.json"
+    ],
     "completedAt": "<ISO-8601 timestamp after validation commands pass>",
     "completedBy": "<owner or workflow actor>",
     "acceptanceCommands": [
-      "node scripts/ddd-staging-runtime-check.mjs",
-      "node scripts/ddd-release-readiness-summary.mjs",
-      "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-      "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      "node bin/ddd-staging-runtime-check.mjs",
+      "node bin/ddd-release-readiness-summary.mjs",
+      "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
     ]
   },
   "passCriteria": [
-    "Deployment evidence phase passes with HTTPS backend and frontend URLs.",
-    "AI, authenticated performance, frontend, file, job, and payment owners refresh their smoke artifacts after deployment evidence lands.",
+    "Deployment evidence phase passes with HTTPS backend and lumira-ui URLs.",
+    "AI, authenticated performance, lumira-ui, file, job, and payment owners refresh their smoke artifacts after deployment evidence lands.",
     "Runtime staging check and evidence acceptance pass after all owner artifacts are present.",
     "Final review no longer reports the runtime-business gate as blocked."
   ],
   "acceptance": {
     "owner": "release-infra",
     "commands": [
-      "node scripts/ddd-staging-runtime-check.mjs",
-      "node scripts/ddd-release-readiness-summary.mjs",
-      "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-      "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      "node bin/ddd-staging-runtime-check.mjs",
+      "node bin/ddd-release-readiness-summary.mjs",
+      "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
     ],
     "artifacts": [
       "artifacts/ddd/readiness/summary.json",
       "artifacts/ddd/performance/authenticated-runtime-actual.json",
       "artifacts/ddd/ai/ai-runtime-drill.json",
-      "artifacts/ddd/frontend/frontend-smoke.json",
+      "artifacts/ddd/lumira-ui/frontend-smoke.json",
       "artifacts/ddd/file/file-processing-e2e.json",
       "artifacts/ddd/jobs/job-e2e-smoke.json",
       "artifacts/ddd/payment/payment-webhook-e2e.json"
     ],
-    "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
-    "blocker": null
+    "acceptanceCommand": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "blocker": "runtime/business evidence is not fully accepted"
   },
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
+  "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
 }

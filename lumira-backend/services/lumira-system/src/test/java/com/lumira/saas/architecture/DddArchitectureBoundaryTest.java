@@ -21,7 +21,7 @@ import org.junit.jupiter.api.Test;
 
 class DddArchitectureBoundaryTest {
 
-    private static final Path OWNER_TABLE_MANIFEST = Path.of("doc/27-ddd-owner-table-manifest.csv");
+    private static final Path OWNER_TABLE_MANIFEST = Path.of("../doc/27-ddd-owner-table-manifest.csv");
     private static final Set<String> PER_PRODUCER_TABLE_NAMES = Set.of("platform_event_outbox");
     private static final Pattern TABLE_DDL_PATTERN = Pattern.compile(
             "(?i)\\b(?:create\\s+table\\s+(?:if\\s+not\\s+exists\\s+)?|alter\\s+table\\s+)`?([a-zA-Z0-9_]+)`?");
@@ -64,24 +64,24 @@ class DddArchitectureBoundaryTest {
             "JOB"
     );
     private static final Map<String, List<String>> SPLIT_TARGET_PERSISTENCE_IMPORT_PREFIXES = Map.of(
-            "auth-service", List.of("com.lumira.auth.mapper.", "com.lumira.auth.entity."),
-            "message-service", List.of("com.lumira.message.mapper.", "com.lumira.message.entity."),
-            "file-service", List.of("com.lumira.file.mapper.", "com.lumira.file.entity."),
-            "plugin-service", List.of("com.lumira.saas.modules.plugin.mapper.", "com.lumira.saas.modules.plugin.entity."),
-            "localization-service", List.of("com.lumira.saas.modules.localization.mapper.", "com.lumira.saas.modules.localization.entity."),
-            "payment-service", List.of("com.lumira.payment.mapper.", "com.lumira.payment.entity."),
-            "ai-service", List.of("com.lumira.ai.mapper.", "com.lumira.ai.entity.")
+            "lumira-auth", List.of("com.lumira.auth.mapper.", "com.lumira.auth.entity."),
+            "lumira-message", List.of("com.lumira.message.mapper.", "com.lumira.message.entity."),
+            "lumira-file", List.of("com.lumira.file.mapper.", "com.lumira.file.entity."),
+            "lumira-plugin", List.of("com.lumira.saas.modules.plugin.mapper.", "com.lumira.saas.modules.plugin.entity."),
+            "lumira-localization", List.of("com.lumira.saas.modules.localization.mapper.", "com.lumira.saas.modules.localization.entity."),
+            "lumira-payment", List.of("com.lumira.payment.mapper.", "com.lumira.payment.entity."),
+            "lumira-ai", List.of("com.lumira.ai.mapper.", "com.lumira.ai.entity.")
     );
     private static final Set<String> SERVICE_ARTIFACT_IDS = Set.of(
-            "system-service",
-            "auth-service",
-            "message-service",
-            "file-service",
-            "plugin-service",
-            "localization-service",
-            "payment-service",
-            "ai-service",
-            "job-executor"
+            "lumira-system",
+            "lumira-auth",
+            "lumira-message",
+            "lumira-file",
+            "lumira-plugin",
+            "lumira-localization",
+            "lumira-payment",
+            "lumira-ai",
+            "lumira-quartz"
     );
     private static final Pattern MAVEN_DEPENDENCY_PATTERN = Pattern.compile(
             "(?s)<dependency>.*?<groupId>com\\.lumira</groupId>.*?<artifactId>([^<]+)</artifactId>.*?</dependency>");
@@ -260,7 +260,7 @@ class DddArchitectureBoundaryTest {
                 .filteredOn(rule -> !rule.tablePatterns().equals(List.of("-")))
                 .allSatisfy(rule -> assertThat(rule.ownerModule())
                         .as("%s must have a real bounded-context owner module", rule.context())
-                        .isNotIn("lumira-server", "job-executor"));
+                        .isNotIn("lumira-admin", "lumira-quartz"));
 
         Map<String, String> activeOwnersByPattern = new LinkedHashMap<>();
         for (OwnerTableRule rule : rules) {

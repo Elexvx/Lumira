@@ -1,21 +1,21 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T17:59:25.383Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverReady": false,
   "cutoverAllowed": false,
-  "eta": "ready for final go/no-go enforcement",
+  "eta": "fast path 0.5-1.5d with staging access and owner evidence ready; 1-3d if deployment, Docker, database, or approval evidence must be produced",
   "auditItemCount": 7,
-  "passedAuditItemCount": 3,
-  "blockedAuditItemCount": 4,
+  "passedAuditItemCount": 2,
+  "blockedAuditItemCount": 5,
   "auditItems": [
     {
       "id": "handoff-bundle-integrity",
       "label": "Handoff bundle verifies and manifest hashes match",
       "status": "PASS",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/manifest.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
       "blocker": null
     },
     {
@@ -23,7 +23,7 @@
       "label": "All owner packets and env templates are present",
       "status": "PASS",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-dispatch.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
       "blocker": null
     },
     {
@@ -31,31 +31,31 @@
       "label": "Redacted lane completion receipt covers every owner lane",
       "status": "BLOCKED",
       "evidence": "lane completion receipt file not provided",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
-      "blocker": "coverage=0/5; receipt=MISSING"
+      "command": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+      "blocker": "coverage=0/0; receipt=MISSING"
     },
     {
       "id": "staging-evidence-accepted",
       "label": "Every staging evidence gate is accepted",
-      "status": "PASS",
+      "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/evidence-acceptance.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-      "blocker": null
+      "command": "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "blocker": "accepted=2/6"
     },
     {
       "id": "critical-path-clear",
       "label": "Critical path phases are all clear",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/operator-progress.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
-      "blocker": "blocked=1/6"
+      "command": "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
+      "blocker": "blocked=4/6"
     },
     {
       "id": "final-review-enforced",
       "label": "Release-owner final review enforces PASS",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/final-review.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
       "blocker": "finalReview=BLOCKED; recommendation=NO_GO_STRICT"
     },
     {
@@ -73,23 +73,31 @@
       "label": "Redacted lane completion receipt covers every owner lane",
       "status": "BLOCKED",
       "evidence": "lane completion receipt file not provided",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
-      "blocker": "coverage=0/5; receipt=MISSING"
+      "command": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+      "blocker": "coverage=0/0; receipt=MISSING"
+    },
+    {
+      "id": "staging-evidence-accepted",
+      "label": "Every staging evidence gate is accepted",
+      "status": "BLOCKED",
+      "evidence": "artifacts/ddd/release/staging-handoff-bundle/evidence-acceptance.json",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+      "blocker": "accepted=2/6"
     },
     {
       "id": "critical-path-clear",
       "label": "Critical path phases are all clear",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/operator-progress.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
-      "blocker": "blocked=1/6"
+      "command": "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
+      "blocker": "blocked=4/6"
     },
     {
       "id": "final-review-enforced",
       "label": "Release-owner final review enforces PASS",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/final-review.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
       "blocker": "finalReview=BLOCKED; recommendation=NO_GO_STRICT"
     },
     {
@@ -106,33 +114,26 @@
       "id": "first-wave-env",
       "label": "Validate first-wave secure env file",
       "owner": "release-infra",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
       "reason": "DDD_NEXT_ACTION_ENV_FILE or --next-action-env-file is required"
     },
     {
       "id": "lane-completion-receipt",
       "label": "Initialize or validate lane completion receipt",
       "owner": "release-owner",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
-      "reason": "receipt=MISSING; coverage=0/5; dispatchReady=false"
-    },
-    {
-      "id": "owner-evidence",
-      "label": "Close next owner evidence lane",
-      "owner": "release-infra",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
-      "reason": "missingArtifacts=0; blockingInputs=0; lanes=4"
+      "command": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+      "reason": "receipt=MISSING; coverage=0/0; dispatchReady=false"
     }
   ],
   "requiredCommands": [
-    "node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
-    "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
-    "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
-    "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-    "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
-    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+    "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
+    "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
+    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+    "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
+    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
   "noAutoWaivers": true
 }

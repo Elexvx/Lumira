@@ -11,16 +11,16 @@ Blocked tracks: 5/6
 - Owner: release-infra
 - Status: ready
 - Reason: release env file is cutover-safe
-- Next command: `node scripts/ddd-release-env-init.mjs --check`
+- Next command: `node bin/ddd-release-env-init.mjs --check`
 
 Setup commands:
-- `node scripts/ddd-release-env-init.mjs --check`
-- `node scripts/ddd-release-env-init.mjs`
+- `node bin/ddd-release-env-init.mjs --check`
+- `node bin/ddd-release-env-init.mjs`
 
 Evidence commands:
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs`
-- `node scripts/ddd-release-readiness-summary.mjs`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs`
+- `node bin/ddd-release-readiness-summary.mjs`
 
 Expected artifacts:
 - `artifacts/ddd/release/release-env-lint.json`
@@ -44,15 +44,15 @@ Env keys:
 - Track: `p0-images`
 - Owner: release-infra
 - Status: blocked
-- Reason: backend and frontend images must be built or inspected from CI-produced release images
-- Next command: `node scripts/ddd-docker-build-evidence.mjs --check`
+- Reason: backend and lumira-ui images must be built or inspected from CI-produced release images
+- Next command: `node bin/ddd-docker-build-evidence.mjs --check`
 
 Setup commands:
-- `node scripts/ddd-docker-build-evidence.mjs --check`
+- `node bin/ddd-docker-build-evidence.mjs --check`
 
 Evidence commands:
-- `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-- `node scripts/ddd-release-readiness-summary.mjs`
+- `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+- `node bin/ddd-release-readiness-summary.mjs`
 
 Expected artifacts:
 - `artifacts/ddd/build/docker-image-evidence.json`
@@ -66,29 +66,29 @@ Env keys:
 ## 3. P1 runtime and business acceptance
 
 - Track: `p1-runtime-business`
-- Owner: release-infra, frontend, ai, file-owner, job-owner, payment-owner
+- Owner: release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner
 - Status: blocked
 - Reason: local-only runtime evidence must be replaced by HTTPS staging evidence
-- Next command: `node scripts/ddd-staging-runtime-check.mjs`
+- Next command: `node bin/ddd-staging-runtime-check.mjs`
 
 Setup commands:
-- `node scripts/ddd-staging-runtime-check.mjs`
+- `node bin/ddd-staging-runtime-check.mjs`
 
 Evidence commands:
-- `node scripts/ddd-runtime-readiness-smoke.mjs`
-- `DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs`
-- `node scripts/ddd-ai-runtime-drill.mjs`
-- `node scripts/ddd-frontend-playwright-smoke.mjs`
-- `node scripts/ddd-frontend-smoke-evidence.mjs`
-- `node scripts/ddd-file-processing-e2e-smoke.mjs`
-- `node scripts/ddd-job-e2e-smoke.mjs`
-- `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
+- `node bin/ddd-runtime-readiness-smoke.mjs`
+- `DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs`
+- `node bin/ddd-ai-runtime-drill.mjs`
+- `node bin/ddd-frontend-playwright-smoke.mjs`
+- `node bin/ddd-frontend-smoke-evidence.mjs`
+- `node bin/ddd-file-processing-e2e-smoke.mjs`
+- `node bin/ddd-job-e2e-smoke.mjs`
+- `node bin/ddd-payment-webhook-e2e-smoke.mjs`
 
 Expected artifacts:
 - `artifacts/ddd/readiness/summary.json`
 - `artifacts/ddd/performance/authenticated-runtime-actual.json`
 - `artifacts/ddd/ai/ai-runtime-drill.json`
-- `artifacts/ddd/frontend/frontend-smoke.json`
+- `artifacts/ddd/lumira-ui/frontend-smoke.json`
 - `artifacts/ddd/file/file-processing-e2e.json`
 - `artifacts/ddd/jobs/job-e2e-smoke.json`
 - `artifacts/ddd/payment/payment-webhook-e2e.json`
@@ -106,14 +106,14 @@ Env keys:
 - Owner: bounded-context owners
 - Status: blocked
 - Reason: every bounded context needs PASS rollback drill evidence or approved unexpired deferral
-- Next command: `node scripts/ddd-staging-data-safety-check.mjs`
+- Next command: `node bin/ddd-staging-data-safety-check.mjs`
 
 Setup commands:
-- `node scripts/ddd-staging-data-safety-check.mjs`
+- `node bin/ddd-staging-data-safety-check.mjs`
 
 Evidence commands:
-- `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-- `node scripts/ddd-rollback-drill-evidence.mjs`
+- `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+- `node bin/ddd-rollback-drill-evidence.mjs`
 
 Expected artifacts:
 - `artifacts/ddd/rollback/rollback-drill.json`
@@ -129,16 +129,16 @@ Env keys:
 - Owner: database
 - Status: blocked
 - Reason: fresh production-equivalent migration and hot-path EXPLAIN evidence are required
-- Next command: `node scripts/ddd-staging-data-safety-check.mjs`
+- Next command: `node bin/ddd-staging-data-safety-check.mjs`
 
 Setup commands:
-- `node scripts/ddd-staging-data-safety-check.mjs`
+- `node bin/ddd-staging-data-safety-check.mjs`
 
 Evidence commands:
-- `DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs`
-- `DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs`
-- `node scripts/ddd-collect-explain.mjs`
-- `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
+- `DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs`
+- `DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs`
+- `node bin/ddd-collect-explain.mjs`
+- `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
 
 Expected artifacts:
 - `artifacts/ddd/migration/migration-evidence.json`
@@ -157,16 +157,16 @@ Env keys:
 - Owner: release-owner
 - Status: blocked
 - Reason: final recommendation is NO_GO_STRICT
-- Next command: `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+- Next command: `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 
 Setup commands:
 - none
 
 Evidence commands:
-- `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
-- `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-- `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-gate.mjs`
-- `node scripts/ddd-release-readiness-summary.mjs`
+- `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
+- `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
+- `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-gate.mjs`
+- `node bin/ddd-release-readiness-summary.mjs`
 - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 Expected artifacts:
@@ -179,4 +179,4 @@ Env keys:
 - `DDD_RELEASE_EVIDENCE_STRICT`
 - `DDD_FINAL_GO_NO_GO_ENFORCE`
 
-Next: `node scripts/ddd-staging-execution-checklist.mjs --execution-status`
+Next: `node bin/ddd-staging-execution-checklist.mjs --execution-status`

@@ -1,114 +1,13 @@
 {
   "status": "PASS",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T17:59:25.383Z",
   "willWriteFiles": false,
   "target": "tmp/ddd-dispatch-check-env-init.env",
-  "ownerCount": 5,
+  "ownerCount": 0,
   "blockers": 0,
   "placeholders": 0,
-  "secretKeys": 10,
-  "ownerSubmissions": [
-    {
-      "owner": "platform-events",
-      "blockers": 0,
-      "placeholders": 0,
-      "secretKeys": 3,
-      "keyCount": 10,
-      "keys": [
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SAAS_EVENT_OUTBOX_DISPATCHER",
-        "XXL_JOB_ADMIN_ADDRESSES",
-        "XXL_JOB_ACCESS_TOKEN"
-      ],
-      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-events",
-      "handoffPath": null
-    },
-    {
-      "owner": "platform-owners",
-      "blockers": 0,
-      "placeholders": 0,
-      "secretKeys": 0,
-      "keyCount": 9,
-      "keys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL"
-      ],
-      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-owners",
-      "handoffPath": null
-    },
-    {
-      "owner": "release-infra",
-      "blockers": 0,
-      "placeholders": 0,
-      "secretKeys": 4,
-      "keyCount": 12,
-      "keys": [
-        "LUMIRA_BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "FIELD_SECRET",
-        "PLAYWRIGHT_BASE_URL",
-        "JWT_SECRET",
-        "REDIS_HOST",
-        "REDIS_PASSWORD",
-        "REDIS_PORT",
-        "TRUST_FORWARDED_HEADERS"
-      ],
-      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra",
-      "handoffPath": null
-    },
-    {
-      "owner": "ai-owner",
-      "blockers": 0,
-      "placeholders": 0,
-      "secretKeys": 2,
-      "keyCount": 12,
-      "keys": [
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
-      ],
-      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=ai-owner",
-      "handoffPath": null
-    },
-    {
-      "owner": "payment-owner",
-      "blockers": 0,
-      "placeholders": 0,
-      "secretKeys": 1,
-      "keyCount": 2,
-      "keys": [
-        "PAYMENT_PUBLIC_BASE_URL",
-        "DDD_PAYMENT_WEBHOOK_SECRET"
-      ],
-      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=payment-owner",
-      "handoffPath": null
-    }
-  ],
+  "secretKeys": 0,
+  "ownerSubmissions": [],
   "mergePlan": {
     "ownerTemplateDir": "artifacts/ddd/release/release-env-owner-templates",
     "canonicalTemplate": "artifacts/ddd/release/release-env-canonical-fill.template.env",
@@ -118,9 +17,9 @@
         "id": "collect-owner-values",
         "owner": "release-owner",
         "commands": [
-          "node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
-          "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
-          "node scripts/ddd-staging-execution-checklist.mjs --owner-packets"
+          "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+          "node bin/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+          "node bin/ddd-staging-execution-checklist.mjs --owner-packets"
         ],
         "artifacts": [
           "artifacts/ddd/release/staging-handoff-bundle/release-env-next-owner.template.env",
@@ -131,11 +30,11 @@
         "id": "merge-owner-values",
         "owner": "release-infra",
         "commands": [
-          "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-safe-defaults.mjs",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-provenance-defaults.mjs",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-alias-sync.mjs"
+          "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs"
         ],
         "artifacts": [
           "artifacts/ddd/release/release-env-canonical-fill.template.env",
@@ -146,12 +45,12 @@
         "id": "validate-release-env",
         "owner": "release-infra",
         "commands": [
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
-          "node scripts/ddd-release-readiness-summary.mjs",
-          "node scripts/ddd-staging-execution-checklist.mjs --rollup",
-          "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
+          "node bin/ddd-release-readiness-summary.mjs",
+          "node bin/ddd-staging-execution-checklist.mjs --rollup",
+          "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
         ],
         "artifacts": [
           "artifacts/ddd/release/release-env-lint.json",
@@ -166,9 +65,9 @@
     "receiptFile": "<receipt-file>",
     "redacted": true,
     "commands": [
-      "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<release-env-file>",
-      "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<release-env-file> --next-action-env-receipt-output=<receipt-file>",
-      "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>"
+      "node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<release-env-file>",
+      "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<release-env-file> --next-action-env-receipt-output=<receipt-file>",
+      "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>"
     ]
   },
   "laneReceiptFragment": {
@@ -184,16 +83,16 @@
     "completedAt": "<ISO-8601 timestamp after validation commands pass>",
     "completedBy": "<owner or workflow actor>",
     "acceptanceCommands": [
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs"
     ]
   },
   "validationCommands": [
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
-    "node scripts/ddd-release-readiness-summary.mjs",
-    "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>",
-    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
+    "node bin/ddd-release-readiness-summary.mjs",
+    "node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>",
+    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
   ],
   "passCriteria": [
     "owner templates must be completed without committing populated secrets",
@@ -202,5 +101,5 @@
     "next-action env receipt must be redacted and pass its contract",
     "release config evidence and readiness summary must be regenerated after env validation"
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix"
 }

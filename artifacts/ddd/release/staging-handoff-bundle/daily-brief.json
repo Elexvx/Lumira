@@ -1,58 +1,48 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T17:59:25.383Z",
   "willWriteFiles": false,
   "cutoverReady": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "blockedGateCount": 0,
+  "blockedGateCount": 4,
   "gateCount": 6,
-  "acceptedGateCount": 6,
+  "acceptedGateCount": 2,
   "acceptedGateTotal": 6,
   "evidenceArtifacts": {
-    "present": 18,
-    "missing": 0,
+    "present": 17,
+    "missing": 1,
     "total": 18,
-    "acceptedGates": 6,
+    "acceptedGates": 2,
     "totalGates": 6,
-    "missingItems": [],
-    "missingByOwner": []
+    "missingItems": [
+      {
+        "gate": "runtime-business",
+        "owner": "release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner",
+        "artifact": "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "acceptanceCommand": "node bin/ddd-staging-runtime-check.mjs"
+      }
+    ],
+    "missingByOwner": [
+      {
+        "owner": "release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner",
+        "missingCount": 1,
+        "gates": [
+          "runtime-business"
+        ],
+        "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+      }
+    ]
   },
   "laneReceipt": {
     "status": "MISSING",
     "receiptStatus": null,
     "coverage": {
       "status": "BLOCKED",
-      "expectedLaneCount": 5,
+      "expectedLaneCount": 0,
       "coveredLaneCount": 0,
       "providedLaneCount": 0,
-      "missingLanes": [
-        {
-          "key": "release-infra:p0-release-env",
-          "owner": "release-infra",
-          "lane": "p0-release-env"
-        },
-        {
-          "key": "release-infra:p0-docker-images",
-          "owner": "release-infra",
-          "lane": "p0-docker-images"
-        },
-        {
-          "key": "release-infra:p1-p2-data-safety",
-          "owner": "release-infra",
-          "lane": "p1-p2-data-safety"
-        },
-        {
-          "key": "release-infra:final-review",
-          "owner": "release-infra",
-          "lane": "final-review"
-        },
-        {
-          "key": "ai-owner:p1-runtime-business",
-          "owner": "ai-owner",
-          "lane": "p1-runtime-business"
-        }
-      ],
+      "missingLanes": [],
       "unexpectedLanes": []
     },
     "receiptFile": null
@@ -64,10 +54,10 @@
       "owner": "release-infra",
       "dispatchOwner": "release-infra",
       "status": "PASS",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "sourcePlan": "release-env-plan.json",
       "artifactPlanCommands": [],
-      "missingEvidenceArtifactCount": 0
+      "missingEvidenceArtifactCount": 1
     },
     {
       "order": 2,
@@ -75,29 +65,29 @@
       "owner": "release-infra",
       "dispatchOwner": "release-infra",
       "status": "PASS",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
       "sourcePlan": "docker-image-submission-plan.json",
       "artifactPlanCommands": [],
-      "missingEvidenceArtifactCount": 0
+      "missingEvidenceArtifactCount": 1
     },
     {
       "order": 3,
       "lane": "p1-runtime-business",
-      "owner": "ai",
-      "dispatchOwner": "ai-owner",
-      "status": "PASS",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
+      "owner": "release-infra",
+      "dispatchOwner": "release-infra",
+      "status": "BLOCKED",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
       "sourcePlan": "runtime-business-submission-plan.json",
       "artifactPlanCommands": [],
-      "missingEvidenceArtifactCount": 0
+      "missingEvidenceArtifactCount": 1
     },
     {
       "order": 4,
       "lane": "p1-p2-data-safety",
-      "owner": "release-infra",
-      "dispatchOwner": "release-infra",
-      "status": "PASS",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
+      "owner": "bounded-context owners",
+      "dispatchOwner": "platform-owners",
+      "status": "BLOCKED",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
       "sourcePlan": "data-safety-submission-plan.json",
       "artifactPlanCommands": [],
       "missingEvidenceArtifactCount": 0
@@ -108,194 +98,186 @@
       "owner": "release-infra",
       "dispatchOwner": "release-infra",
       "status": "BLOCKED",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "sourcePlan": "final-review.json",
       "artifactPlanCommands": [],
-      "missingEvidenceArtifactCount": 0
+      "missingEvidenceArtifactCount": 1
     }
   ],
-  "dailyPriorities": [
+  "dailyPriorities": [],
+  "ownerActions": [],
+  "topBlockingInputs": [
     {
-      "order": 1,
-      "owner": "release-infra",
-      "reason": "missingArtifacts=0; blockingInputs=0; lanes=4",
-      "ownerPacket": "owner-packets/release-infra.md",
-      "envTemplate": "owner-packets/release-infra.blocking-inputs.template.env",
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
-    }
-  ],
-  "ownerActions": [
-    {
-      "owner": "platform-events",
-      "sourceOwners": [],
-      "blockingInputOwners": [],
-      "status": "PASS",
-      "ownerPacket": "owner-packets/platform-events.md",
-      "envTemplate": "owner-packets/platform-events.blocking-inputs.template.env",
-      "laneCount": 0,
-      "lanes": [],
-      "blockingInputCount": 0,
-      "blockingInputs": [],
-      "evidenceGapCount": 0,
-      "missingEvidenceArtifactCount": 0,
-      "missingEvidenceArtifacts": [],
-      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"
+      "input": "DDD_EVIDENCE_ENVIRONMENT",
+      "gateCount": 3,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
     },
     {
-      "owner": "platform-owners",
-      "sourceOwners": [],
-      "blockingInputOwners": [],
-      "status": "PASS",
-      "ownerPacket": "owner-packets/platform-owners.md",
-      "envTemplate": "owner-packets/platform-owners.blocking-inputs.template.env",
-      "laneCount": 0,
-      "lanes": [],
-      "blockingInputCount": 0,
-      "blockingInputs": [],
-      "evidenceGapCount": 2,
-      "missingEvidenceArtifactCount": 0,
-      "missingEvidenceArtifacts": [],
-      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"
+      "input": "DDD_EVIDENCE_OPERATOR",
+      "gateCount": 3,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
     },
     {
-      "owner": "release-infra",
-      "sourceOwners": [
+      "input": "DDD_RELEASE_ENVIRONMENT",
+      "gateCount": 3,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "input": "GITHUB_ACTOR",
+      "gateCount": 3,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "input": "DDD_RELEASE_CANDIDATE",
+      "gateCount": 2,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "input": "GITHUB_SHA",
+      "gateCount": 2,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "input": "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
+      "gateCount": 1,
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
         "release-infra"
       ],
-      "blockingInputOwners": [],
-      "status": "ACTION_REQUIRED",
-      "ownerPacket": "owner-packets/release-infra.md",
-      "envTemplate": "owner-packets/release-infra.blocking-inputs.template.env",
-      "laneCount": 4,
-      "lanes": [
-        {
-          "lane": "p0-release-env",
-          "status": "PASS",
-          "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
-          "expectedArtifacts": [],
-          "missingArtifacts": [],
-          "sourcePlan": "release-env-plan.json"
-        },
-        {
-          "lane": "p0-docker-images",
-          "status": "PASS",
-          "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
-          "expectedArtifacts": [],
-          "missingArtifacts": [],
-          "sourcePlan": "docker-image-submission-plan.json"
-        },
-        {
-          "lane": "p1-p2-data-safety",
-          "status": "PASS",
-          "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
-          "expectedArtifacts": [],
-          "missingArtifacts": [],
-          "sourcePlan": "data-safety-submission-plan.json"
-        },
-        {
-          "lane": "final-review",
-          "status": "BLOCKED",
-          "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
-          "expectedArtifacts": [],
-          "missingArtifacts": [],
-          "sourcePlan": "final-review.json"
-        }
-      ],
-      "blockingInputCount": 0,
-      "blockingInputs": [],
-      "evidenceGapCount": 2,
-      "missingEvidenceArtifactCount": 0,
-      "missingEvidenceArtifacts": [],
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
     },
     {
-      "owner": "ai-owner",
-      "sourceOwners": [
-        "ai"
+      "input": "DDD_AI_EXPECT_PROVIDER_REMOTE",
+      "gateCount": 1,
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
       ],
-      "blockingInputOwners": [],
-      "status": "PASS",
-      "ownerPacket": "owner-packets/ai-owner.md",
-      "envTemplate": "owner-packets/ai-owner.blocking-inputs.template.env",
-      "laneCount": 1,
-      "lanes": [
-        {
-          "lane": "p1-runtime-business",
-          "status": "PASS",
-          "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
-          "expectedArtifacts": [],
-          "missingArtifacts": [],
-          "sourcePlan": "runtime-business-submission-plan.json"
-        }
-      ],
-      "blockingInputCount": 0,
-      "blockingInputs": [],
-      "evidenceGapCount": 1,
-      "missingEvidenceArtifactCount": 0,
-      "missingEvidenceArtifacts": [],
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
     },
     {
-      "owner": "payment-owner",
-      "sourceOwners": [],
-      "blockingInputOwners": [],
-      "status": "PASS",
-      "ownerPacket": "owner-packets/payment-owner.md",
-      "envTemplate": "owner-packets/payment-owner.blocking-inputs.template.env",
-      "laneCount": 0,
-      "lanes": [],
-      "blockingInputCount": 0,
-      "blockingInputs": [],
-      "evidenceGapCount": 1,
-      "missingEvidenceArtifactCount": 0,
-      "missingEvidenceArtifacts": [],
-      "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"
+      "input": "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
+      "gateCount": 1,
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+      "gateCount": 1,
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_DEPLOYMENT_EVIDENCE",
+      "gateCount": 1,
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_EXPLAIN_DATABASE",
+      "gateCount": 1,
+      "owners": [
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
     }
   ],
-  "topBlockingInputs": [],
   "acceptanceCommands": [
     {
       "gate": "release-env",
       "owner": "release-infra",
       "accepted": true,
-      "command": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+      "command": "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
       "missingArtifactCount": 0
     },
     {
       "gate": "docker-images",
       "owner": "release-infra",
       "accepted": true,
-      "command": "node scripts/ddd-docker-build-evidence.mjs --check",
+      "command": "node bin/ddd-docker-build-evidence.mjs --check",
       "missingArtifactCount": 0
     },
     {
       "gate": "runtime-business",
-      "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
-      "accepted": true,
-      "command": "node scripts/ddd-staging-runtime-check.mjs",
-      "missingArtifactCount": 0
+      "owner": "release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner",
+      "accepted": false,
+      "command": "node bin/ddd-staging-runtime-check.mjs",
+      "missingArtifactCount": 1
     },
     {
       "gate": "rollback",
       "owner": "bounded-context owners",
-      "accepted": true,
-      "command": "node scripts/ddd-staging-data-safety-check.mjs",
+      "accepted": false,
+      "command": "node bin/ddd-staging-data-safety-check.mjs",
       "missingArtifactCount": 0
     },
     {
       "gate": "migration",
       "owner": "database",
-      "accepted": true,
-      "command": "node scripts/ddd-staging-data-safety-check.mjs",
+      "accepted": false,
+      "command": "node bin/ddd-staging-data-safety-check.mjs",
       "missingArtifactCount": 0
     },
     {
       "gate": "explain",
       "owner": "database",
-      "accepted": true,
-      "command": "node scripts/ddd-staging-data-safety-check.mjs",
+      "accepted": false,
+      "command": "node bin/ddd-staging-data-safety-check.mjs",
       "missingArtifactCount": 0
     }
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --commands"
 }

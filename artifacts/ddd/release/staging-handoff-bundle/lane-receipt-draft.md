@@ -8,9 +8,9 @@ Lane receipts: 5
 | --- | --- | --- | ---: | ---: |
 | release-infra | `p0-release-env` | PASS | 3 | 0 |
 | release-infra | `p0-docker-images` | PASS | 1 | 0 |
-| release-infra | `p1-runtime-business` | PASS | 7 | 0 |
-| platform-owners | `p1-p2-data-safety` | PASS | 4 | 0 |
-| release-infra | `final-review` | BLOCKED | 16 | 0 |
+| release-infra | `p1-runtime-business` | BLOCKED | 7 | 7 |
+| platform-owners | `p1-p2-data-safety` | BLOCKED | 4 | 1 |
+| release-infra | `final-review` | BLOCKED | 1 | 0 |
 
 ## Pass Criteria
 
@@ -23,9 +23,9 @@ Lane receipts: 5
 
 ## Validation Commands
 
-- `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>`
-- `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>`
-- `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>`
-- `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>`
+- `node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>`
+- `node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>`
+- `node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>`
+- `node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>`
 
-Next: `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>`
+Next: `node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>`

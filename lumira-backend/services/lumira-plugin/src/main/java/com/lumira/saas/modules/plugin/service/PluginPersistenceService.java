@@ -1,4 +1,4 @@
-﻿package com.lumira.saas.modules.plugin.service;
+package com.lumira.saas.modules.plugin.service;
 
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.PluginPermissionRegistrationRequestDTO;

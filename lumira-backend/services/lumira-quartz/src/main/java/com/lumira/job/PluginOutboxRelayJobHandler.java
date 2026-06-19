@@ -1,4 +1,4 @@
-﻿package com.lumira.job;
+package com.lumira.job;
 
 import com.lumira.job.domain.model.JobDomainModels.RelayTaskReadModel;
 import com.xxl.job.core.context.XxlJobHelper;

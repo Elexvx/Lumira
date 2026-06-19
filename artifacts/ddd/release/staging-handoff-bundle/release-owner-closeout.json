@@ -1,33 +1,54 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T17:59:25.383Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverReady": false,
   "cutoverAllowed": false,
   "handoffBundleStatus": "PASS",
-  "acceptedGates": "6/6",
-  "blockedGates": "0/6",
+  "acceptedGates": "2/6",
+  "blockedGates": "4/6",
   "laneReceipt": {
     "status": "MISSING",
-    "coverage": "0/5",
+    "coverage": "0/0",
     "receiptFile": null
   },
   "evidenceClosure": {
     "status": "BLOCKED",
-    "closed": "0/5",
-    "nextLane": {
-      "key": "release-infra:p0-release-env",
-      "sourcePlan": "release-env-plan.json",
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template"
-    }
+    "closed": "0/0",
+    "nextLane": null
   },
-  "blockers": [],
-  "requiredCommandSequence": [
-    "node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"
+  "blockers": [
+    {
+      "gate": "runtime-business",
+      "owner": "release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner",
+      "firstBlocker": "LUMIRA_BASE_URL is required",
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "gate": "rollback",
+      "owner": "bounded-context owners",
+      "firstBlocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "gate": "migration",
+      "owner": "database",
+      "firstBlocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "gate": "explain",
+      "owner": "database",
+      "firstBlocker": "DDD_EXPLAIN_DATABASE is required",
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    }
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template"
+  "requiredCommandSequence": [
+    "node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"
+  ],
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --commands"
 }

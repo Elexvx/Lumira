@@ -1,12 +1,12 @@
 {
   "status": "PASS",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T17:59:25.383Z",
   "willWriteFiles": false,
   "target": "tmp/ddd-dispatch-check-env-init.env",
-  "ownerCount": 5,
+  "ownerCount": 0,
   "blockers": 0,
   "placeholders": 0,
-  "secretKeys": 10,
+  "secretKeys": 0,
   "ownerTemplateDir": "artifacts/ddd/release/release-env-owner-templates",
   "canonicalTemplate": "artifacts/ddd/release/release-env-canonical-fill.template.env",
   "releaseEnvFile": "<release-env-file>",
@@ -15,9 +15,9 @@
       "id": "collect-owner-values",
       "owner": "release-owner",
       "commands": [
-        "node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
-        "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
-        "node scripts/ddd-staging-execution-checklist.mjs --owner-packets"
+        "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix",
+        "node bin/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
+        "node bin/ddd-staging-execution-checklist.mjs --owner-packets"
       ],
       "artifacts": [
         "artifacts/ddd/release/staging-handoff-bundle/release-env-next-owner.template.env",
@@ -28,11 +28,11 @@
       "id": "merge-owner-values",
       "owner": "release-infra",
       "commands": [
-        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-safe-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-provenance-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-alias-sync.mjs"
+        "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/release/release-env-canonical-fill.template.env",
@@ -43,12 +43,12 @@
       "id": "validate-release-env",
       "owner": "release-infra",
       "commands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs",
-        "node scripts/ddd-staging-execution-checklist.mjs --rollup",
-        "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
+        "node bin/ddd-release-readiness-summary.mjs",
+        "node bin/ddd-staging-execution-checklist.mjs --rollup",
+        "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
       ],
       "artifacts": [
         "artifacts/ddd/release/release-env-lint.json",
@@ -63,5 +63,5 @@
     "Run canonical lint and env-file lint before config evidence.",
     "Rerun final review only after readiness summary is regenerated from the completed env file."
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix"
 }

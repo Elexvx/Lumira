@@ -1,4 +1,4 @@
-﻿package com.lumira.saas.modules.system.controller;
+package com.lumira.saas.modules.system.controller;
 
 import com.lumira.api.auth.LoginCodeChallengeDTO;
 import com.lumira.api.auth.LoginCodeCompleteRequest;
@@ -387,7 +387,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     @Transactional
     public Boolean registerPluginPermissions(@Valid @RequestBody PluginPermissionRegistrationRequestDTO request) {
         if (request == null || request.tenantId() == null || !StringUtils.hasText(request.pluginCode())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "鎻掍欢鏉冮檺娉ㄥ唽鍙傛暟涓嶅畬鏁?);
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "插件权限注册参数不完整");
         }
         if (request.permissions() == null || request.permissions().isEmpty()) {
             return Boolean.TRUE;
@@ -831,7 +831,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         String normalizedLoginType = normalizeLoginCodeType(loginType);
         String identityType = iamUserService.detectIdentityType(account);
         if (FACTOR_SMS.equals(normalizedLoginType) && !IamUserService.IDENTITY_MOBILE.equals(identityType)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "鐭俊楠岃瘉鐮佺櫥褰曡浣跨敤鎵嬫満鍙?);
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "短信验证码登录请使用手机号");
         }
         if (FACTOR_EMAIL.equals(normalizedLoginType) && !IamUserService.IDENTITY_EMAIL.equals(identityType)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "閭楠岃瘉鐮佺櫥褰曡浣跨敤閭鍦板潃");
@@ -868,7 +868,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 username
         );
         SysUserEntity user = userDomainService.findById(createdUserId)
-                .orElseThrow(() -> new IllegalStateException("楠岃瘉鐮佺櫥褰曡嚜鍔ㄦ敞鍐岀敤鎴峰け璐?));
+                .orElseThrow(() -> new IllegalStateException("验证码登录自动注册用户失败"));
         iamUserService.createUserWithIdentity(user, normalizedAccount, "LOGIN_CODE_REGISTER");
         iamUserService.recordUserRegistered(user.getId(), "LOGIN_CODE_REGISTER", null, null);
         upsertUserTenantRelation(user.getId(), tenantId);

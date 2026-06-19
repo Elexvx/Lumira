@@ -1,13 +1,13 @@
 {
-  "status": "PASS",
-  "generatedAt": "2026-06-19T14:23:42.234Z",
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T17:59:53.171Z",
   "willWriteFiles": false,
   "cutoverReady": false,
   "finalRecommendation": "NO_GO_STRICT",
-  "eta": "ready for final go/no-go enforcement",
+  "eta": "fast path 0.5-1.5d with staging access and owner evidence ready; 1-3d if deployment, Docker, database, or approval evidence must be produced",
   "phaseCount": 7,
-  "blockedPhaseCount": 0,
-  "acceptedGateCount": 6,
+  "blockedPhaseCount": 5,
+  "acceptedGateCount": 2,
   "acceptedGateTotal": 6,
   "phases": [
     {
@@ -18,10 +18,10 @@
       "blocker": null,
       "dependsOn": [],
       "commands": [
-        "node scripts/ddd-release-env-init.mjs --check",
-        "node scripts/ddd-release-env-init.mjs",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs"
+        "node bin/ddd-release-env-init.mjs --check",
+        "node bin/ddd-release-env-init.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/release/release-config-evidence.json"
@@ -37,8 +37,8 @@
         "p0-release-env"
       ],
       "commands": [
-        "node scripts/ddd-docker-build-evidence.mjs --check",
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs"
+        "node bin/ddd-docker-build-evidence.mjs --check",
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/release/docker-image-evidence.json"
@@ -47,28 +47,28 @@
     {
       "id": "p1-runtime-business",
       "title": "HTTPS staging runtime and business smokes accepted",
-      "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
-      "status": "PASS",
-      "blocker": null,
+      "owner": "release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner",
+      "status": "BLOCKED",
+      "blocker": "LUMIRA_BASE_URL is required",
       "dependsOn": [
         "p0-release-env",
         "p0-docker-images"
       ],
       "commands": [
-        "node scripts/ddd-staging-runtime-check.mjs",
-        "node scripts/ddd-runtime-readiness-smoke.mjs",
-        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-ai-runtime-drill.mjs",
-        "node scripts/ddd-frontend-playwright-smoke.mjs && node scripts/ddd-frontend-smoke-evidence.mjs",
-        "node scripts/ddd-file-processing-e2e-smoke.mjs",
-        "node scripts/ddd-job-e2e-smoke.mjs",
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+        "node bin/ddd-staging-runtime-check.mjs",
+        "node bin/ddd-runtime-readiness-smoke.mjs",
+        "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-ai-runtime-drill.mjs",
+        "node bin/ddd-frontend-playwright-smoke.mjs && node bin/ddd-frontend-smoke-evidence.mjs",
+        "node bin/ddd-file-processing-e2e-smoke.mjs",
+        "node bin/ddd-job-e2e-smoke.mjs",
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/readiness/summary.json",
         "artifacts/ddd/performance/authenticated-runtime-actual.json",
         "artifacts/ddd/ai/ai-runtime-drill.json",
-        "artifacts/ddd/frontend/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
         "artifacts/ddd/file/file-processing-e2e.json",
         "artifacts/ddd/jobs/job-e2e-smoke.json",
         "artifacts/ddd/payment/payment-webhook-e2e.json"
@@ -78,14 +78,14 @@
       "id": "p1-rollback",
       "title": "Rollback drill evidence accepted",
       "owner": "bounded-context owners",
-      "status": "PASS",
-      "blocker": null,
+      "status": "BLOCKED",
+      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
       "dependsOn": [
         "p1-runtime-business"
       ],
       "commands": [
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "DDD_ROLLBACK_DRILL_STRICT=true node scripts/ddd-rollback-drill-evidence.mjs"
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "DDD_ROLLBACK_DRILL_STRICT=true node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/rollback/rollback-drill.json"
@@ -95,14 +95,14 @@
       "id": "p2-migration",
       "title": "Fresh and upgrade migration drills accepted",
       "owner": "database",
-      "status": "PASS",
-      "blocker": null,
+      "status": "BLOCKED",
+      "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
       "dependsOn": [
         "p0-release-env"
       ],
       "commands": [
-        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
-        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs"
+        "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs"
       ],
       "artifacts": [
         "artifacts/ddd/migration/migration-evidence.json"
@@ -112,14 +112,14 @@
       "id": "p2-explain",
       "title": "Production-equivalent EXPLAIN evidence accepted",
       "owner": "database",
-      "status": "PASS",
-      "blocker": null,
+      "status": "BLOCKED",
+      "blocker": "DDD_EXPLAIN_DATABASE is required",
       "dependsOn": [
         "p0-release-env"
       ],
       "commands": [
-        "node scripts/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
       ],
       "artifacts": [
         "tmp/ddd-explain/*.json",
@@ -130,8 +130,8 @@
       "id": "final-review",
       "title": "Release-owner final review and strict gate",
       "owner": "release-owner",
-      "status": "PASS",
-      "blocker": null,
+      "status": "BLOCKED",
+      "blocker": "accepted=2/6",
       "dependsOn": [
         "p1-runtime-business",
         "p1-rollback",
@@ -139,9 +139,9 @@
         "p2-explain"
       ],
       "commands": [
-        "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-        "node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
-        "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+        "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+        "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
+        "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ],
       "artifacts": [
@@ -151,16 +151,16 @@
     }
   ],
   "validationCommands": [
-    "node scripts/ddd-production-readiness-preflight.mjs --static-only --no-report",
-    "node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle",
-    "node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
-    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+    "node bin/ddd-production-readiness-preflight.mjs --static-only --no-report",
+    "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle",
+    "node bin/ddd-staging-execution-checklist.mjs --handoff-bundle-verify",
+    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
   ],
   "nextPhase": {
-    "id": "final-review",
-    "title": "Release-owner final review and strict gate",
-    "owner": "release-owner",
-    "blocker": null,
-    "command": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
+    "id": "p1-runtime-business",
+    "title": "HTTPS staging runtime and business smokes accepted",
+    "owner": "release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner",
+    "blocker": "LUMIRA_BASE_URL is required",
+    "command": "node bin/ddd-staging-runtime-check.mjs"
   }
 }

@@ -1,4 +1,4 @@
-﻿package com.lumira.job;
+package com.lumira.job;
 
 import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.core.handler.annotation.XxlJob;

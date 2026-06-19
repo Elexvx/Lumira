@@ -362,6 +362,8 @@ jobs:
       - name: Production evidence readiness contract tests
         timeout-minutes: 10
         run: node bin/ddd-production-evidence-readiness.test.mjs
+      - name: Production unblock attempt tests
+        run: node bin/ddd-production-unblock-attempt.test.mjs
       - name: Lane completion receipt autofill tests
         run: node bin/ddd-lane-completion-receipt-autofill.test.mjs
       - name: Release env fill checklist tests

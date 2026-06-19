@@ -1,4 +1,4 @@
-﻿package com.lumira.saas.modules.plugin.dto;
+package com.lumira.saas.modules.plugin.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;

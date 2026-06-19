@@ -9,8 +9,8 @@ Blocker: none
 
 | Image | Dockerfile | Status | SHA-256 | Issues |
 | --- | --- | --- | --- | --- |
-| lumira-server | `deploy/docker/service.Dockerfile` | PASS | b028411f0ed5fb4bdb8a45a40d1764b118d25069179b14150dd6b6dc38494fe4 | none |
-| frontend | `deploy/docker/frontend.Dockerfile` | PASS | 43dc2013cd3f3595bbbba2b76c74e873fdd7bec13826e30fbc4a3a2fd01f1f78 | none |
+| lumira-server | `deploy/docker/service.Dockerfile` | PASS | 56f156c9c74d97ae4c6ccff32cec6ff7cf3aa292bd79809bd6648de4196b41b1 | none |
+| lumira-ui | `deploy/docker/lumira-ui.Dockerfile` | PASS | fcfbc53f8ab90f88f02a6007ee28e0ba9afba5cf542cd02a66c74dd7b284f046 | none |
 
 ## Evidence Paths
 
@@ -18,7 +18,7 @@ Blocker: none
 
 Owner: release-infra
 When: Docker CLI and daemon are available in the evidence runner.
-Command: `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
+Command: `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
 
 Artifacts:
 
@@ -28,7 +28,7 @@ Artifacts:
 
 Owner: release-infra
 When: CI already built and pushed release-candidate images.
-Command: `DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs`
+Command: `DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/lumira-ui:<release-candidate> node bin/ddd-docker-build-evidence.mjs`
 
 Artifacts:
 
@@ -41,14 +41,14 @@ Artifacts:
 - `DDD_EVIDENCE_OPERATOR`
 - `DDD_EVIDENCE_ENVIRONMENT`
 - `DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE`
-- `DDD_DOCKER_EXISTING_FRONTEND_IMAGE`
+- `DDD_DOCKER_EXISTING_LUMIRA_UI_IMAGE`
 - `DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE`
 
 ## Validation Commands
 
-- `node scripts/ddd-docker-build-evidence.mjs --check`
-- `node scripts/ddd-release-readiness-summary.mjs`
-- `node scripts/ddd-staging-execution-checklist.mjs --rollup`
-- `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce`
+- `node bin/ddd-docker-build-evidence.mjs --check`
+- `node bin/ddd-release-readiness-summary.mjs`
+- `node bin/ddd-staging-execution-checklist.mjs --rollup`
+- `node bin/ddd-staging-execution-checklist.mjs --final-review-enforce`
 
-Next: `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
+Next: `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`

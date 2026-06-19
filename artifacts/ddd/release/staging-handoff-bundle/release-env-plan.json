@@ -1,6 +1,6 @@
 {
   "status": "PASS",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T17:59:25.383Z",
   "willWriteFiles": false,
   "target": "tmp/ddd-dispatch-check-env-init.env",
   "targetExists": false,
@@ -16,128 +16,32 @@
     "forceEnabled": false,
     "receipt": "tmp/ddd-dispatch-check-env-init-receipt.json",
     "willWriteFiles": false,
-    "nextCommand": "node scripts/ddd-release-env-init.mjs",
+    "nextCommand": "node bin/ddd-release-env-init.mjs",
     "issues": []
   },
   "releaseEnvGate": {
     "status": "PASS",
     "blocker": "release env file is cutover-safe",
     "blockingInputs": [],
-    "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
+    "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs"
   },
-  "ownerCount": 5,
-  "ownerSteps": [
-    {
-      "owner": "platform-events",
-      "blockers": 0,
-      "placeholders": 0,
-      "secretKeys": 3,
-      "keys": [
-        "SAAS_EVENT_REDIS_STREAM_KEY",
-        "SAAS_JOB_BACKEND_BASE_URL",
-        "SAAS_JOB_FILE_SERVICE_BASE_URL",
-        "SAAS_JOB_INTERNAL_TOKEN",
-        "SAAS_JOB_MESSAGE_SERVICE_BASE_URL",
-        "SAAS_JOB_PAYMENT_SERVICE_BASE_URL",
-        "SAAS_JOB_PLUGIN_SERVICE_BASE_URL",
-        "SAAS_EVENT_OUTBOX_DISPATCHER",
-        "XXL_JOB_ADMIN_ADDRESSES",
-        "XXL_JOB_ACCESS_TOKEN"
-      ],
-      "reasons": [],
-      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-events"
-    },
-    {
-      "owner": "platform-owners",
-      "blockers": 0,
-      "placeholders": 0,
-      "secretKeys": 0,
-      "keys": [
-        "AI_SERVICE_BASE_URL",
-        "AUTH_SERVICE_BASE_URL",
-        "FILE_SERVICE_BASE_URL",
-        "JOB_EXECUTOR_BASE_URL",
-        "LOCALIZATION_SERVICE_BASE_URL",
-        "MESSAGE_SERVICE_BASE_URL",
-        "PAYMENT_SERVICE_BASE_URL",
-        "PLUGIN_SERVICE_BASE_URL",
-        "SYSTEM_SERVICE_BASE_URL"
-      ],
-      "reasons": [],
-      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-owners"
-    },
-    {
-      "owner": "release-infra",
-      "blockers": 0,
-      "placeholders": 0,
-      "secretKeys": 4,
-      "keys": [
-        "LUMIRA_BASE_URL",
-        "CORS_ALLOWED_ORIGIN_PATTERNS",
-        "DB_PASSWORD",
-        "DB_URL",
-        "DB_USERNAME",
-        "FIELD_SECRET",
-        "PLAYWRIGHT_BASE_URL",
-        "JWT_SECRET",
-        "REDIS_HOST",
-        "REDIS_PASSWORD",
-        "REDIS_PORT",
-        "TRUST_FORWARDED_HEADERS"
-      ],
-      "reasons": [],
-      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
-    },
-    {
-      "owner": "ai-owner",
-      "blockers": 0,
-      "placeholders": 0,
-      "secretKeys": 2,
-      "keys": [
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_EMBEDDING_MODEL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_ENABLED",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_FILE_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_ENABLED",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_INTERNAL_TOKEN",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_ENABLED",
-        "LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
-        "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_ENABLED"
-      ],
-      "reasons": [],
-      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=ai-owner"
-    },
-    {
-      "owner": "payment-owner",
-      "blockers": 0,
-      "placeholders": 0,
-      "secretKeys": 1,
-      "keys": [
-        "PAYMENT_PUBLIC_BASE_URL",
-        "DDD_PAYMENT_WEBHOOK_SECRET"
-      ],
-      "reasons": [],
-      "envTemplateCommand": "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=payment-owner"
-    }
-  ],
+  "ownerCount": 0,
+  "ownerSteps": [],
   "commands": {
     "preflight": [
-      "node scripts/ddd-release-env-init.mjs --check",
-      "node scripts/ddd-staging-execution-checklist.mjs --owner-packets",
-      "node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
+      "node bin/ddd-release-env-init.mjs --check",
+      "node bin/ddd-staging-execution-checklist.mjs --owner-packets",
+      "node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra"
     ],
     "initialize": [
-      "node scripts/ddd-release-env-init.mjs"
+      "node bin/ddd-release-env-init.mjs"
     ],
     "validate": [
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
-      "node scripts/ddd-release-readiness-summary.mjs",
-      "node scripts/ddd-staging-execution-checklist.mjs --rollup",
-      "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
+      "node bin/ddd-release-readiness-summary.mjs",
+      "node bin/ddd-staging-execution-checklist.mjs --rollup",
+      "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
     ]
   },
   "expectedArtifacts": [
@@ -151,5 +55,5 @@
     "Use owner packets for redacted key collection; merge values only in a secure secret store or local release runner.",
     "Rerun final review after lint, config evidence, and readiness summary are regenerated."
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
 }

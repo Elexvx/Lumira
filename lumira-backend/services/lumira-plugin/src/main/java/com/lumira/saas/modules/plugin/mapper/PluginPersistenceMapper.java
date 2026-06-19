@@ -1,4 +1,4 @@
-﻿package com.lumira.saas.modules.plugin.mapper;
+package com.lumira.saas.modules.plugin.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginDependencyEntity;

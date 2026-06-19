@@ -1,191 +1,27 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T17:59:25.383Z",
   "willWriteFiles": false,
   "receiptFile": null,
   "receiptStatus": null,
   "contractStatus": "BLOCKED",
   "coverage": {
     "status": "BLOCKED",
-    "expectedLaneCount": 5,
+    "expectedLaneCount": 0,
     "coveredLaneCount": 0,
     "providedLaneCount": 0,
-    "missingLanes": [
-      {
-        "key": "release-infra:p0-release-env",
-        "owner": "release-infra",
-        "lane": "p0-release-env"
-      },
-      {
-        "key": "release-infra:p0-docker-images",
-        "owner": "release-infra",
-        "lane": "p0-docker-images"
-      },
-      {
-        "key": "release-infra:p1-p2-data-safety",
-        "owner": "release-infra",
-        "lane": "p1-p2-data-safety"
-      },
-      {
-        "key": "release-infra:final-review",
-        "owner": "release-infra",
-        "lane": "final-review"
-      },
-      {
-        "key": "ai-owner:p1-runtime-business",
-        "owner": "ai-owner",
-        "lane": "p1-runtime-business"
-      }
-    ],
+    "missingLanes": [],
     "unexpectedLanes": []
   },
-  "laneCount": 5,
+  "laneCount": 0,
   "closedLaneCount": 0,
-  "openLaneCount": 5,
-  "lanes": [
-    {
-      "key": "release-infra:p0-release-env",
-      "owner": "release-infra",
-      "lane": "p0-release-env",
-      "status": "BLOCKED",
-      "receiptStatus": "MISSING",
-      "sourcePlan": "release-env-plan.json",
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
-      "acceptanceCommands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json",
-        "artifacts/ddd/release/readiness-summary.json"
-      ],
-      "providedArtifacts": [],
-      "missingArtifacts": [],
-      "missingEvidenceArtifactCount": 0
-    },
-    {
-      "key": "release-infra:p0-docker-images",
-      "owner": "release-infra",
-      "lane": "p0-docker-images",
-      "status": "BLOCKED",
-      "receiptStatus": "MISSING",
-      "sourcePlan": "docker-image-submission-plan.json",
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
-      "acceptanceCommands": [
-        "node scripts/ddd-docker-build-evidence.mjs --check"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/build/docker-image-evidence.json"
-      ],
-      "providedArtifacts": [],
-      "missingArtifacts": [],
-      "missingEvidenceArtifactCount": 0
-    },
-    {
-      "key": "release-infra:p1-p2-data-safety",
-      "owner": "release-infra",
-      "lane": "p1-p2-data-safety",
-      "status": "BLOCKED",
-      "receiptStatus": "MISSING",
-      "sourcePlan": "data-safety-submission-plan.json",
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
-      "acceptanceCommands": [
-        "node scripts/ddd-staging-data-safety-check.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/rollback/rollback-drill.json",
-        "artifacts/ddd/migration/migration-evidence.json",
-        "tmp/ddd-explain/*.json",
-        "artifacts/ddd/release/explain-gate-report.json"
-      ],
-      "providedArtifacts": [],
-      "missingArtifacts": [],
-      "missingEvidenceArtifactCount": 0
-    },
-    {
-      "key": "release-infra:final-review",
-      "owner": "release-infra",
-      "lane": "final-review",
-      "status": "BLOCKED",
-      "receiptStatus": "MISSING",
-      "sourcePlan": "final-review.json",
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
-      "acceptanceCommands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs --check",
-        "node scripts/ddd-staging-runtime-check.mjs",
-        "node scripts/ddd-staging-data-safety-check.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/release-env-lint.json",
-        "artifacts/ddd/config/release-config-evidence.json",
-        "artifacts/ddd/release/readiness-summary.json",
-        "artifacts/ddd/build/docker-image-evidence.json",
-        "artifacts/ddd/readiness/summary.json",
-        "artifacts/ddd/performance/authenticated-runtime-actual.json",
-        "artifacts/ddd/ai/ai-runtime-drill.json",
-        "artifacts/ddd/frontend/frontend-smoke.json",
-        "artifacts/ddd/file/file-processing-e2e.json",
-        "artifacts/ddd/jobs/job-e2e-smoke.json",
-        "artifacts/ddd/payment/payment-webhook-e2e.json",
-        "artifacts/ddd/rollback/rollback-drill.json",
-        "artifacts/ddd/migration/migration-evidence.json",
-        "tmp/ddd-explain/*.json",
-        "artifacts/ddd/release/explain-gate-report.json"
-      ],
-      "providedArtifacts": [],
-      "missingArtifacts": [],
-      "missingEvidenceArtifactCount": 0
-    },
-    {
-      "key": "ai-owner:p1-runtime-business",
-      "owner": "ai-owner",
-      "lane": "p1-runtime-business",
-      "status": "BLOCKED",
-      "receiptStatus": "MISSING",
-      "sourcePlan": "runtime-business-submission-plan.json",
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown",
-      "acceptanceCommands": [
-        "node scripts/ddd-staging-runtime-check.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/readiness/summary.json",
-        "artifacts/ddd/performance/authenticated-runtime-actual.json",
-        "artifacts/ddd/ai/ai-runtime-drill.json",
-        "artifacts/ddd/frontend/frontend-smoke.json",
-        "artifacts/ddd/file/file-processing-e2e.json",
-        "artifacts/ddd/jobs/job-e2e-smoke.json",
-        "artifacts/ddd/payment/payment-webhook-e2e.json"
-      ],
-      "providedArtifacts": [],
-      "missingArtifacts": [],
-      "missingEvidenceArtifactCount": 0
-    }
-  ],
-  "nextLane": {
-    "key": "release-infra:p0-release-env",
-    "owner": "release-infra",
-    "lane": "p0-release-env",
-    "status": "BLOCKED",
-    "receiptStatus": "MISSING",
-    "sourcePlan": "release-env-plan.json",
-    "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
-    "acceptanceCommands": [
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
-    ],
-    "expectedArtifacts": [
-      "artifacts/ddd/release/release-env-lint.json",
-      "artifacts/ddd/config/release-config-evidence.json",
-      "artifacts/ddd/release/readiness-summary.json"
-    ],
-    "providedArtifacts": [],
-    "missingArtifacts": [],
-    "missingEvidenceArtifactCount": 0
-  },
+  "openLaneCount": 0,
+  "lanes": [],
+  "nextLane": null,
   "issueCount": 2,
   "issues": [
     "lane completion receipt file not provided",
-    "missing lanes=release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-p2-data-safety, release-infra:final-review, ai-owner:p1-runtime-business"
+    "receiptStatus=missing"
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template"
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"
 }
