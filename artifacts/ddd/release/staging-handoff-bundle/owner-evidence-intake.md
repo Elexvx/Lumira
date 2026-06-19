@@ -5,7 +5,7 @@ Owner filter: all
 Owners: 5
 Action required owners: 5
 Lanes: 5
-Blocking inputs: 57
+Blocking inputs: 54
 Missing artifacts: 2
 
 ## Owner Intake
@@ -14,7 +14,7 @@ Missing artifacts: 2
 | --- | --- | ---: | ---: | ---: | ---: | --- | --- | --- |
 | platform-events | ACTION_REQUIRED | 0 | 1 | 0 | 0 | `owner-packets/platform-events.md` | `owner-packets/platform-events.blocking-inputs.template.env` | `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh` |
 | platform-owners | ACTION_REQUIRED | 1 | 23 | 2 | 1 | `owner-packets/platform-owners.md` | `owner-packets/platform-owners.blocking-inputs.template.env` | `node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown` |
-| release-infra | ACTION_REQUIRED | 4 | 13 | 0 | 4 | `owner-packets/release-infra.md` | `owner-packets/release-infra.blocking-inputs.template.env` | `node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template` |
+| release-infra | ACTION_REQUIRED | 4 | 10 | 0 | 4 | `owner-packets/release-infra.md` | `owner-packets/release-infra.blocking-inputs.template.env` | `node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template` |
 | ai-owner | ACTION_REQUIRED | 0 | 10 | 0 | 0 | `owner-packets/ai-owner.md` | `owner-packets/ai-owner.blocking-inputs.template.env` | `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh` |
 | payment-owner | ACTION_REQUIRED | 0 | 10 | 0 | 0 | `owner-packets/payment-owner.md` | `owner-packets/payment-owner.blocking-inputs.template.env` | `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh` |
 
@@ -118,13 +118,13 @@ Env template: `owner-packets/release-infra.blocking-inputs.template.env`
 
 Lanes:
 - `p0-release-env`: status=BLOCKED; source=`release-env-plan.json`; command=`node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template`; missing=none
-- `p0-docker-images`: status=BLOCKED; source=`docker-image-submission-plan.json`; command=`node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown`; missing=none
+- `p0-docker-images`: status=PASS; source=`docker-image-submission-plan.json`; command=`node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown`; missing=none
 - `p1-runtime-business`: status=BLOCKED; source=`runtime-business-submission-plan.json`; command=`node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown`; missing=none
 - `final-review`: status=BLOCKED; source=`final-review.json`; command=`node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce`; missing=none
 
 Receipt fragments:
 - `release-infra:p0-release-env`: status=BLOCKED; source=`release-env-submission-plan.json`; missing=`artifacts/ddd/release/release-env-lint.json`, `artifacts/ddd/config/release-config-evidence.json`, `artifacts/ddd/release/readiness-summary.json`
-- `release-infra:p0-docker-images`: status=BLOCKED; source=`docker-image-submission-plan.json`; missing=`artifacts/ddd/build/docker-image-evidence.json`
+- `release-infra:p0-docker-images`: status=PASS; source=`docker-image-submission-plan.json`; missing=none
 - `release-infra:p1-runtime-business`: status=BLOCKED; source=`runtime-business-submission-plan.json`; missing=`artifacts/ddd/readiness/summary.json`, `artifacts/ddd/performance/authenticated-runtime-actual.json`, `artifacts/ddd/ai/ai-runtime-drill.json`, `artifacts/ddd/frontend/frontend-smoke.json`, `artifacts/ddd/file/file-processing-e2e.json`, `artifacts/ddd/jobs/job-e2e-smoke.json`, `artifacts/ddd/payment/payment-webhook-e2e.json`
 - `release-infra:final-review`: status=BLOCKED; source=`final-review.json`; missing=`tmp/ddd-explain/*.json`
 
@@ -137,9 +137,6 @@ Receipt workflow:
 
 Blocking inputs:
 - `DDD_RELEASE_ENV_FILE`
-- `DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE`
-- `DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE`
-- `DDD_DOCKER_EXISTING_FRONTEND_IMAGE`
 - `LUMIRA_BASE_URL`
 - `PLAYWRIGHT_BASE_URL`
 - `DDD_DEPLOYMENT_EVIDENCE`

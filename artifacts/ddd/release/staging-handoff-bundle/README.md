@@ -1,10 +1,10 @@
 # DDD Staging Handoff Bundle
 
-Generated at: 2026-06-19T07:15:06.971Z
+Generated at: 2026-06-19T09:03:45.762Z
 Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
-Blocked gates: 6/6
+Blocked gates: 5/6
 
 ## Operator Quick Start
 

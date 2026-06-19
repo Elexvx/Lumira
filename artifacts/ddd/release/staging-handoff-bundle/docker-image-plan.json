@@ -1,10 +1,10 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
-  "recommendedMode": "external-runner-required",
-  "blocker": "docker CLI is not available: spawnSync docker ENOENT",
-  "dockerAvailable": false,
+  "recommendedMode": "build-and-inspect",
+  "blocker": null,
+  "dockerAvailable": true,
   "staticDockerfiles": [
     {
       "name": "lumira-server",
@@ -90,26 +90,6 @@
     "node scripts/ddd-staging-execution-checklist.mjs --rollup",
     "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
   ],
-  "remediationActions": [
-    {
-      "id": "docker-daemon-ready",
-      "owner": "release-infra",
-      "action": "Start Docker Desktop or run this evidence script on a CI runner with Docker Buildx available.",
-      "envKeys": [
-        "DDD_DOCKER_COMMAND"
-      ]
-    },
-    {
-      "id": "docker-existing-image-inspect",
-      "owner": "release-infra",
-      "action": "If CI already built and pushed the release candidate images, pull them and rerun Docker evidence in explicit inspect-only mode.",
-      "envKeys": [
-        "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
-        "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
-        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"
-      ],
-      "exampleCommand": "DDD_DOCKER_BUILD_STRICT=true DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=<ci-build-artifact-or-run-url> DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=<registry>/lumira-server:<release-candidate> DDD_DOCKER_EXISTING_FRONTEND_IMAGE=<registry>/frontend:<release-candidate> node scripts/ddd-docker-build-evidence.mjs"
-    }
-  ],
-  "nextCommand": "Run DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs on a Docker-enabled CI runner, or provide DDD_DOCKER_EXISTING_* image env vars for inspect-only evidence."
+  "remediationActions": [],
+  "nextCommand": "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs"
 }

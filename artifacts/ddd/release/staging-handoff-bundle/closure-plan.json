@@ -1,19 +1,18 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
   "cutoverReady": false,
-  "blockedGateCount": 6,
-  "acceptedGateCount": 0,
+  "blockedGateCount": 5,
+  "acceptedGateCount": 1,
   "acceptedGateTotal": 6,
   "phases": [
     {
       "phase": "P0",
       "gates": [
-        "release-env",
-        "docker-images"
+        "release-env"
       ],
       "owners": [
         "release-infra"
@@ -85,34 +84,6 @@
         "artifacts/ddd/release/readiness-summary.json"
       ],
       "eta": "2-4h if owner inputs are available; 0.5-1d if secrets must be collected",
-      "parallelGroup": "release-foundation"
-    },
-    {
-      "order": 2,
-      "phase": "P0",
-      "gate": "docker-images",
-      "track": "p0-images",
-      "title": "P0 deployable images",
-      "owner": "release-infra",
-      "status": "BLOCKED",
-      "blocker": "docker CLI is not available: spawnSync docker ENOENT",
-      "blockingInputs": [
-        "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
-        "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
-        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"
-      ],
-      "setupCommands": [
-        "node scripts/ddd-docker-build-evidence.mjs --check"
-      ],
-      "evidenceCommands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
-      ],
-      "acceptanceCommand": "node scripts/ddd-docker-build-evidence.mjs --check",
-      "expectedArtifacts": [
-        "artifacts/ddd/build/docker-image-evidence.json"
-      ],
-      "eta": "1-3h with CI/Docker access; 0.5-1d if image provenance must be recreated",
       "parallelGroup": "release-foundation"
     },
     {
@@ -398,12 +369,12 @@
       "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
     },
     {
-      "input": "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
+      "input": "DDD_EXPLAIN_DATABASE",
       "gateCount": 1,
       "owners": [
-        "release-infra"
+        "database"
       ],
-      "nextCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
     }
   ],
   "eta": "fast path 0.5-1.5d with staging access and owner evidence ready; 1-3d if deployment, Docker, database, or approval evidence must be produced",

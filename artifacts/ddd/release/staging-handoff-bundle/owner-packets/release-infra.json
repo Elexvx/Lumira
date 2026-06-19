@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "owner": "release-infra",
   "blockers": 9,
   "placeholders": 9,
@@ -7,7 +7,7 @@
   "laneCount": 4,
   "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template",
   "missingEvidenceArtifactCount": 0,
-  "blockingInputCount": 13,
+  "blockingInputCount": 10,
   "handoffPath": "artifacts/ddd/release/release-env-owner-handoff-redacted/03-release-infra.md",
   "keys": [
     "LUMIRA_BASE_URL",
@@ -169,19 +169,6 @@
       "nextCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
     },
     {
-      "gate": "docker-images",
-      "track": "p0-images",
-      "owner": "release-infra",
-      "status": "BLOCKED",
-      "blocker": "docker CLI is not available: spawnSync docker ENOENT",
-      "blockingInputs": [
-        "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
-        "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
-        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"
-      ],
-      "nextCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
-    },
-    {
       "gate": "runtime-business",
       "track": "p1-runtime-business",
       "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
@@ -203,9 +190,6 @@
   ],
   "blockingInputs": [
     "DDD_RELEASE_ENV_FILE",
-    "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
-    "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
-    "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
     "LUMIRA_BASE_URL",
     "PLAYWRIGHT_BASE_URL",
     "DDD_DEPLOYMENT_EVIDENCE",
@@ -244,7 +228,7 @@
       "lane": "p0-docker-images",
       "owner": "release-infra",
       "dispatchOwner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "title": "Produce Docker build or existing-image inspect evidence",
       "blocker": null,
       "command": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
@@ -290,7 +274,7 @@
       "dispatchOwner": "release-infra",
       "status": "BLOCKED",
       "title": "Regenerate readiness and enforce final cutover gates",
-      "blocker": "NO_GO_STRICT; blocked=6/6",
+      "blocker": "NO_GO_STRICT; blocked=5/6",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "acceptanceCommands": [
         "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",

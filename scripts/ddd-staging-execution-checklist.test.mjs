@@ -33,6 +33,16 @@ function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const stopAfterCheckpoint = process.env.DDD_STAGING_CHECKLIST_TEST_STOP_AFTER || "";
+
+function maybeStopAfter(checkpoint) {
+  if (stopAfterCheckpoint === checkpoint) {
+    console.log(`[ddd-staging-execution-checklist.test] ok stopAfter=${checkpoint}`);
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    process.exit(0);
+  }
+}
+
 try {
   const preflightHelpResult = spawnSyncWithTimeout("node", ["scripts/ddd-production-readiness-preflight.mjs", "--help"], {
     cwd: repoRoot,
@@ -1984,8 +1994,8 @@ try {
   assert.equal(ownerBlockingInputsResult.status, 0, ownerBlockingInputsResult.stderr || ownerBlockingInputsResult.stdout);
   const ownerBlockingInputs = JSON.parse(ownerBlockingInputsResult.stdout);
   assert.equal(ownerBlockingInputs.ownerFilter, "release-infra");
-  assert.equal(ownerBlockingInputs.blockedGateCount, 3);
-  assert(ownerBlockingInputs.inputs.some((input) => input.input === "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE"));
+  assert.equal(ownerBlockingInputs.blockedGateCount, 2);
+  assert.equal(ownerBlockingInputs.inputs.some((input) => input.input === "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE"), false);
   assert(ownerBlockingInputs.inputs.some((input) => input.input === "LUMIRA_BASE_URL"));
   assert.equal(ownerBlockingInputs.inputs.some((input) => input.input === "MYSQL_PASSWORD"), false);
 
@@ -2834,6 +2844,7 @@ try {
   assert(handoffBundleVerify.checkedFileCount >= 10);
   assert(handoffBundleVerify.checkedFiles.some((item) => item.file === "rollup.json" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(handoffBundleVerify.checkedFiles.some((item) => item.file === "lane-receipt-fragments.json" && /^[a-f0-9]{64}$/.test(item.sha256)));
+  maybeStopAfter("handoff-bundle-verify");
 
   const laneReceiptFragmentsResult = spawnSyncWithTimeout("node", ["scripts/ddd-staging-execution-checklist.mjs", "--lane-receipt-fragments"], {
     cwd: repoRoot,
@@ -3244,7 +3255,7 @@ try {
   assert(finalReview.checklist.some((item) => item.id === "handoff-bundle-integrity" && item.passed === true));
   assert(finalReview.checklist.some((item) => item.id === "owner-lane-completion-receipt" && item.passed === false));
   assert(finalReview.checklist.some((item) => item.id === "cutover-allowed" && item.passed === false));
-  assert(finalReview.blockers.some((gate) => gate.gate === "docker-images" && gate.blockingInputs.includes("DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE")));
+  assert.equal(finalReview.blockers.some((gate) => gate.gate === "docker-images"), false);
   assert.equal(finalReview.nextCommand, "node scripts/ddd-staging-execution-checklist.mjs --commands");
 
   const finalReviewWithPartialLaneReceiptResult = spawnSyncWithTimeout("node", ["scripts/ddd-staging-execution-checklist.mjs", "--final-review"], {

@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "envFile": null,
   "receiptFile": null,
@@ -13,7 +13,7 @@
     "present": 16,
     "missing": 2,
     "total": 18,
-    "acceptedGates": 0,
+    "acceptedGates": 1,
     "totalGates": 6,
     "missingItems": [
       {
@@ -62,7 +62,7 @@
       "lane": "p0-docker-images",
       "owner": "release-infra",
       "dispatchOwner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
       "sourcePlan": "docker-image-submission-plan.json",
       "acceptanceCommands": [
@@ -155,7 +155,7 @@
       "order": 3,
       "phase": "verify-docker-images",
       "owner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "dependency": "Docker-enabled runner or existing image evidence",
       "command": "node scripts/ddd-docker-build-evidence.mjs --check",
       "followUpCommand": null,
@@ -242,14 +242,14 @@
       "id": "verification-route",
       "label": "Post-env verification route",
       "status": "BLOCKED",
-      "detail": "blockedPhases=6/6",
+      "detail": "blockedPhases=5/6",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown"
     },
     {
       "id": "final-review",
       "label": "Release-owner final review",
       "status": "BLOCKED",
-      "detail": "accepted=0/6",
+      "detail": "accepted=1/6",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
     }
   ],
@@ -382,12 +382,12 @@
       "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
     },
     {
-      "input": "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
+      "input": "DDD_EXPLAIN_DATABASE",
       "gateCount": 1,
       "owners": [
-        "release-infra"
+        "database"
       ],
-      "nextCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
     }
   ]
 }

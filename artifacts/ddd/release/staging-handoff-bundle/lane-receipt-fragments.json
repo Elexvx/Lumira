@@ -1,11 +1,11 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "redacted": true,
   "laneCount": 5,
-  "passLaneCount": 0,
-  "blockedLaneCount": 5,
+  "passLaneCount": 1,
+  "blockedLaneCount": 4,
   "fragments": [
     {
       "key": "release-infra:p0-release-env",
@@ -34,15 +34,13 @@
       "key": "release-infra:p0-docker-images",
       "owner": "release-infra",
       "lane": "p0-docker-images",
-      "status": "BLOCKED",
+      "status": "PASS",
       "sourcePlan": "docker-image-submission-plan.json",
       "sourceCommand": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
       "providedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
       ],
-      "missingArtifacts": [
-        "artifacts/ddd/build/docker-image-evidence.json"
-      ],
+      "missingArtifacts": [],
       "completedAt": "<ISO-8601 timestamp after validation commands pass>",
       "completedBy": "<owner or workflow actor>",
       "acceptanceCommands": [

@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
@@ -34,7 +34,7 @@
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
       "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
-      "blocker": "missingArtifacts=2; blockingInputs=57"
+      "blocker": "missingArtifacts=2; blockingInputs=54"
     },
     {
       "id": "production-audit",
@@ -81,7 +81,7 @@
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown",
       "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
-      "blocker": "missingArtifacts=2; blockingInputs=57"
+      "blocker": "missingArtifacts=2; blockingInputs=54"
     },
     {
       "id": "production-audit",

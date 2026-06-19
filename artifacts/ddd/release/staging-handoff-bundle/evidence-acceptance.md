@@ -3,14 +3,14 @@
 Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
-Accepted: 0/6
+Accepted: 1/6
 Artifacts present: 16
 Artifacts missing: 2
 
 | Gate | Owner | Accepted | Current blocker | Blocking inputs | Acceptance command | Expected artifacts |
 | --- | --- | --- | --- | --- | --- | --- |
 | release-env | release-infra | no | release env file is not cutover-safe; blockers=34 | `DDD_RELEASE_ENV_FILE` | `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs` | `artifacts/ddd/release/release-env-lint.json`, `artifacts/ddd/config/release-config-evidence.json`, `artifacts/ddd/release/readiness-summary.json` |
-| docker-images | release-infra | no | docker CLI is not available: spawnSync docker ENOENT | `DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE`, `DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE`, `DDD_DOCKER_EXISTING_FRONTEND_IMAGE` | `node scripts/ddd-docker-build-evidence.mjs --check` | `artifacts/ddd/build/docker-image-evidence.json` |
+| docker-images | release-infra | yes | none | `DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE`, `DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE`, `DDD_DOCKER_EXISTING_FRONTEND_IMAGE` | `node scripts/ddd-docker-build-evidence.mjs --check` | `artifacts/ddd/build/docker-image-evidence.json` |
 | runtime-business | release-infra, frontend, ai, file-owner, job-owner, payment-owner | no | LUMIRA_BASE_URL is required | `LUMIRA_BASE_URL`, `PLAYWRIGHT_BASE_URL`, `DDD_DEPLOYMENT_EVIDENCE`, `DDD_FRONTEND_DEPLOYMENT_EVIDENCE`, `DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE`, `DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE`, `DDD_FRONTEND_EXPECT_DEPLOYED`, `DDD_AI_EXPECT_PROVIDER_REMOTE`, `DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE` | `node scripts/ddd-staging-runtime-check.mjs` | `artifacts/ddd/readiness/summary.json`, `artifacts/ddd/performance/authenticated-runtime-actual.json`, `artifacts/ddd/ai/ai-runtime-drill.json`, `artifacts/ddd/frontend/frontend-smoke.json`, `artifacts/ddd/file/file-processing-e2e.json`, `artifacts/ddd/jobs/job-e2e-smoke.json`, `artifacts/ddd/payment/payment-webhook-e2e.json` |
 | rollback | bounded-context owners | no | rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE | `DDD_ROLLBACK_DRILL_FILE`, `DDD_ROLLBACK_DRILL_DEFERRAL_FILE`, `DDD_ROLLBACK_DRILL_ENVIRONMENT`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, `GITHUB_SHA`, `DDD_EVIDENCE_OPERATOR`, `GITHUB_ACTOR` | `node scripts/ddd-staging-data-safety-check.mjs` | `artifacts/ddd/rollback/rollback-drill.json` |
 | migration | database | no | DDD_MIGRATION_FRESH_DB_VALIDATED must be true | `DDD_MIGRATION_FRESH_DB_VALIDATED`, `DDD_MIGRATION_FRESH_DB_EVIDENCE`, `DDD_MIGRATION_UPGRADE_DB_VALIDATED`, `DDD_MIGRATION_UPGRADE_DB_EVIDENCE`, `DDD_MIGRATION_ENVIRONMENT`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_ENVIRONMENT`, `DDD_MIGRATION_OPERATOR`, `DDD_EVIDENCE_OPERATOR`, `GITHUB_ACTOR`, `DDD_MIGRATION_COMPLETED_AT` | `node scripts/ddd-staging-data-safety-check.mjs` | `artifacts/ddd/migration/migration-evidence.json`, `tmp/ddd-explain/*.json`, `artifacts/ddd/release/explain-gate-report.json` |
@@ -39,7 +39,7 @@ Artifacts missing: 2
 - Gate: `docker-images`
 - Track: `p0-images`
 - Owner: release-infra
-- Status: BLOCKED
+- Status: PASS
 - Acceptance command: `node scripts/ddd-docker-build-evidence.mjs --check`
 - Blocking inputs: `DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE`, `DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE`, `DDD_DOCKER_EXISTING_FRONTEND_IMAGE`
 - Artifacts present: 1/1

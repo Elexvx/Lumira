@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverReady": false,
@@ -58,14 +58,14 @@
     {
       "id": "staging-evidence-accepted",
       "label": "Every staging evidence gate is accepted",
-      "blocker": "accepted=0/6",
+      "blocker": "accepted=1/6",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/evidence-acceptance.json"
     },
     {
       "id": "critical-path-clear",
       "label": "Critical path phases are all clear",
-      "blocker": "blocked=6/6",
+      "blocker": "blocked=5/6",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/operator-progress.json"
     },

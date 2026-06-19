@@ -3,15 +3,15 @@
 Status: BLOCKED
 Redacted: true
 Lanes: 5
-PASS lanes: 0
-BLOCKED lanes: 5
+PASS lanes: 1
+BLOCKED lanes: 4
 
 ## Fragments
 
 | Key | Status | Source | Provided artifacts | Missing artifacts |
 | --- | --- | --- | --- | --- |
 | `release-infra:p0-release-env` | BLOCKED | `release-env-submission-plan.json` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json` |
-| `release-infra:p0-docker-images` | BLOCKED | `docker-image-submission-plan.json` | `artifacts/ddd/build/docker-image-evidence.json` | `artifacts/ddd/build/docker-image-evidence.json` |
+| `release-infra:p0-docker-images` | PASS | `docker-image-submission-plan.json` | `artifacts/ddd/build/docker-image-evidence.json` | none |
 | `release-infra:p1-runtime-business` | BLOCKED | `runtime-business-submission-plan.json` | `artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json` | `artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json` |
 | `platform-owners:p1-p2-data-safety` | BLOCKED | `data-safety-submission-plan.json` | `artifacts/ddd/rollback/rollback-drill.json`<br>`artifacts/ddd/migration/migration-evidence.json`<br>`tmp/ddd-explain/*.json`<br>`artifacts/ddd/release/explain-gate-report.json` | `tmp/ddd-explain/*.json` |
 | `release-infra:final-review` | BLOCKED | `final-review.json` | `artifacts/ddd/release/release-env-lint.json`<br>`artifacts/ddd/config/release-config-evidence.json`<br>`artifacts/ddd/release/readiness-summary.json`<br>`artifacts/ddd/build/docker-image-evidence.json`<br>`artifacts/ddd/readiness/summary.json`<br>`artifacts/ddd/performance/authenticated-runtime-actual.json`<br>`artifacts/ddd/ai/ai-runtime-drill.json`<br>`artifacts/ddd/frontend/frontend-smoke.json`<br>`artifacts/ddd/file/file-processing-e2e.json`<br>`artifacts/ddd/jobs/job-e2e-smoke.json`<br>`artifacts/ddd/payment/payment-webhook-e2e.json`<br>`artifacts/ddd/rollback/rollback-drill.json`<br>`artifacts/ddd/migration/migration-evidence.json`<br>`tmp/ddd-explain/*.json`<br>`artifacts/ddd/release/explain-gate-report.json`<br>`artifacts/ddd/release/staging-handoff-bundle/final-review.json` | `tmp/ddd-explain/*.json` |
@@ -43,13 +43,11 @@ BLOCKED lanes: 5
     {
       "owner": "release-infra",
       "lane": "p0-docker-images",
-      "status": "BLOCKED",
+      "status": "PASS",
       "providedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
       ],
-      "missingArtifacts": [
-        "artifacts/ddd/build/docker-image-evidence.json"
-      ],
+      "missingArtifacts": [],
       "completedAt": "<ISO-8601 timestamp after validation commands pass>",
       "completedBy": "<owner or workflow actor>"
     },
@@ -165,13 +163,11 @@ Source command: `node scripts/ddd-staging-execution-checklist.mjs --docker-image
 {
   "owner": "release-infra",
   "lane": "p0-docker-images",
-  "status": "BLOCKED",
+  "status": "PASS",
   "providedArtifacts": [
     "artifacts/ddd/build/docker-image-evidence.json"
   ],
-  "missingArtifacts": [
-    "artifacts/ddd/build/docker-image-evidence.json"
-  ],
+  "missingArtifacts": [],
   "completedAt": "<ISO-8601 timestamp after validation commands pass>",
   "completedBy": "<owner or workflow actor>",
   "acceptanceCommands": [

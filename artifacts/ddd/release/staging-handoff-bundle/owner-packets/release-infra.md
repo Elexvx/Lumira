@@ -1,6 +1,6 @@
 # DDD Staging Owner Packet: release-infra
 
-Generated at: 2026-06-19T07:15:06.971Z
+Generated at: 2026-06-19T09:03:45.762Z
 Owner: release-infra
 Blockers: 9
 Placeholders: 9
@@ -52,7 +52,7 @@ Handoff: artifacts/ddd/release/release-env-owner-handoff-redacted/03-release-inf
 | Order | Lane | Status | Missing artifacts | Command | Source |
 | ---: | --- | --- | ---: | --- | --- |
 | 1 | `p0-release-env` | BLOCKED | 0 | `node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template` | `release-env-plan.json` |
-| 2 | `p0-docker-images` | BLOCKED | 0 | `node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown` | `docker-image-submission-plan.json` |
+| 2 | `p0-docker-images` | PASS | 0 | `node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown` | `docker-image-submission-plan.json` |
 | 3 | `p1-runtime-business` | BLOCKED | 0 | `node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown` | `runtime-business-submission-plan.json` |
 | 5 | `final-review` | BLOCKED | 0 | `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce` | `final-review.json` |
 
@@ -98,13 +98,6 @@ Status: BLOCKED
 First blocker: release env file is not cutover-safe; blockers=34
 Next command: `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
 Blocking inputs: DDD_RELEASE_ENV_FILE
-
-### docker-images
-
-Status: BLOCKED
-First blocker: docker CLI is not available: spawnSync docker ENOENT
-Next command: `node scripts/ddd-docker-build-evidence.mjs --check`
-Blocking inputs: DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE, DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE, DDD_DOCKER_EXISTING_FRONTEND_IMAGE
 
 ### runtime-business
 

@@ -1,18 +1,17 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "ownerFilter": null,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "inputCount": 35,
-  "blockedGateCount": 6,
+  "inputCount": 32,
+  "blockedGateCount": 5,
   "blockedGates": [
     "rollback",
     "migration",
     "explain",
     "runtime-business",
-    "docker-images",
     "release-env"
   ],
   "inputs": [
@@ -426,84 +425,6 @@
           "status": "BLOCKED",
           "blocker": "LUMIRA_BASE_URL is required",
           "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
-        }
-      ]
-    },
-    {
-      "input": "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
-      "gateCount": 1,
-      "owners": [
-        "release-infra"
-      ],
-      "tracks": [
-        "p0-images"
-      ],
-      "nextCommands": [
-        "node scripts/ddd-docker-build-evidence.mjs --check"
-      ],
-      "firstBlockers": [
-        "docker CLI is not available: spawnSync docker ENOENT"
-      ],
-      "gates": [
-        {
-          "gate": "docker-images",
-          "track": "p0-images",
-          "owner": "release-infra",
-          "status": "BLOCKED",
-          "blocker": "docker CLI is not available: spawnSync docker ENOENT",
-          "nextCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
-        }
-      ]
-    },
-    {
-      "input": "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
-      "gateCount": 1,
-      "owners": [
-        "release-infra"
-      ],
-      "tracks": [
-        "p0-images"
-      ],
-      "nextCommands": [
-        "node scripts/ddd-docker-build-evidence.mjs --check"
-      ],
-      "firstBlockers": [
-        "docker CLI is not available: spawnSync docker ENOENT"
-      ],
-      "gates": [
-        {
-          "gate": "docker-images",
-          "track": "p0-images",
-          "owner": "release-infra",
-          "status": "BLOCKED",
-          "blocker": "docker CLI is not available: spawnSync docker ENOENT",
-          "nextCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
-        }
-      ]
-    },
-    {
-      "input": "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
-      "gateCount": 1,
-      "owners": [
-        "release-infra"
-      ],
-      "tracks": [
-        "p0-images"
-      ],
-      "nextCommands": [
-        "node scripts/ddd-docker-build-evidence.mjs --check"
-      ],
-      "firstBlockers": [
-        "docker CLI is not available: spawnSync docker ENOENT"
-      ],
-      "gates": [
-        {
-          "gate": "docker-images",
-          "track": "p0-images",
-          "owner": "release-infra",
-          "status": "BLOCKED",
-          "blocker": "docker CLI is not available: spawnSync docker ENOENT",
-          "nextCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
         }
       ]
     },

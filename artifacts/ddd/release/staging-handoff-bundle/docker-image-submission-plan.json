@@ -1,12 +1,12 @@
 {
-  "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "status": "PASS",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "owner": "release-infra",
   "gate": "docker-images",
-  "recommendedMode": "external-runner-required",
-  "dockerAvailable": false,
-  "blocker": "docker CLI is not available: spawnSync docker ENOENT",
+  "recommendedMode": "build-and-inspect",
+  "dockerAvailable": true,
+  "blocker": null,
   "evidenceArtifact": "artifacts/ddd/build/docker-image-evidence.json",
   "staticDockerfiles": [
     {
@@ -103,13 +103,11 @@
   "laneReceiptFragment": {
     "owner": "release-infra",
     "lane": "p0-docker-images",
-    "status": "BLOCKED",
+    "status": "PASS",
     "providedArtifacts": [
       "artifacts/ddd/build/docker-image-evidence.json"
     ],
-    "missingArtifacts": [
-      "artifacts/ddd/build/docker-image-evidence.json"
-    ],
+    "missingArtifacts": [],
     "completedAt": "<ISO-8601 timestamp after validation commands pass>",
     "completedBy": "<owner or workflow actor>",
     "acceptanceCommands": [
@@ -122,5 +120,5 @@
     "Readiness summary and operator progress are regenerated after evidence capture.",
     "The docker-images gate no longer blocks final review."
   ],
-  "nextCommand": "Run DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs on a Docker-enabled CI runner, or provide DDD_DOCKER_EXISTING_* image env vars for inspect-only evidence."
+  "nextCommand": "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs"
 }

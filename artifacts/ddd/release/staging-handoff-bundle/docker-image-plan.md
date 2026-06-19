@@ -1,9 +1,9 @@
 # DDD Docker Image Evidence Plan
 
-Status: BLOCKED
-Recommended mode: external-runner-required
-Docker available: false
-Blocker: docker CLI is not available: spawnSync docker ENOENT
+Status: PASS
+Recommended mode: build-and-inspect
+Docker available: true
+Blocker: none
 
 ## Static Dockerfiles
 
@@ -51,4 +51,4 @@ Artifacts:
 - `node scripts/ddd-staging-execution-checklist.mjs --rollup`
 - `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce`
 
-Next: `Run DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs on a Docker-enabled CI runner, or provide DDD_DOCKER_EXISTING_* image env vars for inspect-only evidence.`
+Next: `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`

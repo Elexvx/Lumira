@@ -1,11 +1,11 @@
 # DDD Docker Image Submission Plan
 
-Status: BLOCKED
+Status: PASS
 Owner: release-infra
 Gate: docker-images
-Recommended mode: external-runner-required
-Docker available: false
-Blocker: docker CLI is not available: spawnSync docker ENOENT
+Recommended mode: build-and-inspect
+Docker available: true
+Blocker: none
 Evidence artifact: `artifacts/ddd/build/docker-image-evidence.json`
 
 ## Static Dockerfiles
@@ -83,13 +83,11 @@ Artifacts:
 {
   "owner": "release-infra",
   "lane": "p0-docker-images",
-  "status": "BLOCKED",
+  "status": "PASS",
   "providedArtifacts": [
     "artifacts/ddd/build/docker-image-evidence.json"
   ],
-  "missingArtifacts": [
-    "artifacts/ddd/build/docker-image-evidence.json"
-  ],
+  "missingArtifacts": [],
   "completedAt": "<ISO-8601 timestamp after validation commands pass>",
   "completedBy": "<owner or workflow actor>",
   "acceptanceCommands": [
@@ -105,4 +103,4 @@ Artifacts:
 - Readiness summary and operator progress are regenerated after evidence capture.
 - The docker-images gate no longer blocks final review.
 
-Next: `Run DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs on a Docker-enabled CI runner, or provide DDD_DOCKER_EXISTING_* image env vars for inspect-only evidence.`
+Next: `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`

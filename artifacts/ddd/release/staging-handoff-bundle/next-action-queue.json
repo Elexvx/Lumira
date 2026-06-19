@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
@@ -35,7 +35,7 @@
       "order": 2,
       "lane": "p0-docker-images",
       "owner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "title": "Produce Docker build or existing-image inspect evidence",
       "blocker": null,
       "command": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
@@ -147,7 +147,7 @@
       "owner": "release-infra",
       "status": "BLOCKED",
       "title": "Regenerate readiness and enforce final cutover gates",
-      "blocker": "NO_GO_STRICT; blocked=6/6",
+      "blocker": "NO_GO_STRICT; blocked=5/6",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "followUpCommands": [
         "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
@@ -171,7 +171,7 @@
         "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
         "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
         "DDD_DEPLOYMENT_EVIDENCE",
-        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"
+        "DDD_EXPLAIN_DATABASE"
       ],
       "sourcePlan": "final-review.json",
       "dispatchOwner": "release-infra",
@@ -180,7 +180,7 @@
       "artifactPlanCommands": []
     }
   ],
-  "actionableCount": 5,
+  "actionableCount": 4,
   "immediateActions": [
     {
       "order": 1,
@@ -203,39 +203,6 @@
         "DDD_RELEASE_ENV_FILE"
       ],
       "sourcePlan": "release-env-plan.json",
-      "dispatchOwner": "release-infra",
-      "missingEvidenceArtifacts": [],
-      "missingEvidenceArtifactCount": 0,
-      "artifactPlanCommands": []
-    },
-    {
-      "order": 2,
-      "lane": "p0-docker-images",
-      "owner": "release-infra",
-      "status": "BLOCKED",
-      "title": "Produce Docker build or existing-image inspect evidence",
-      "blocker": null,
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
-      "followUpCommands": [
-        "node scripts/ddd-docker-build-evidence.mjs --check",
-        "node scripts/ddd-release-readiness-summary.mjs",
-        "node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown",
-        "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
-      ],
-      "artifacts": [
-        "artifacts/ddd/release/staging-handoff-bundle/docker-image-submission-plan.md",
-        "artifacts/ddd/build/docker-image-evidence.json"
-      ],
-      "blockingInputs": [
-        "DDD_DOCKER_BUILD_STRICT",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
-        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
-        "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE"
-      ],
-      "sourcePlan": "docker-image-submission-plan.json",
       "dispatchOwner": "release-infra",
       "missingEvidenceArtifacts": [],
       "missingEvidenceArtifactCount": 0,
@@ -321,7 +288,6 @@
   ],
   "parallelNow": [
     "p0-release-env",
-    "p0-docker-images",
     "p1-runtime-business",
     "p1-p2-data-safety"
   ],

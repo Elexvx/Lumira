@@ -1,19 +1,19 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "cutoverReady": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "blockedGateCount": 6,
+  "blockedGateCount": 5,
   "gateCount": 6,
-  "acceptedGateCount": 0,
+  "acceptedGateCount": 1,
   "acceptedGateTotal": 6,
   "evidenceArtifacts": {
     "present": 16,
     "missing": 2,
     "total": 18,
-    "acceptedGates": 0,
+    "acceptedGates": 1,
     "totalGates": 6,
     "missingItems": [
       {
@@ -97,7 +97,7 @@
       "lane": "p0-docker-images",
       "owner": "release-infra",
       "dispatchOwner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
       "sourcePlan": "docker-image-submission-plan.json",
       "artifactPlanCommands": [],
@@ -157,14 +157,6 @@
     },
     {
       "order": 2,
-      "owner": "release-infra",
-      "reason": "missingArtifacts=0; blockingInputs=13; lanes=4",
-      "ownerPacket": "owner-packets/release-infra.md",
-      "envTemplate": "owner-packets/release-infra.blocking-inputs.template.env",
-      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template"
-    },
-    {
-      "order": 3,
       "owner": "ai-owner",
       "reason": "missingArtifacts=0; blockingInputs=10; lanes=0",
       "ownerPacket": "owner-packets/ai-owner.md",
@@ -172,12 +164,20 @@
       "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"
     },
     {
-      "order": 4,
+      "order": 3,
       "owner": "payment-owner",
       "reason": "missingArtifacts=0; blockingInputs=10; lanes=0",
       "ownerPacket": "owner-packets/payment-owner.md",
       "envTemplate": "owner-packets/payment-owner.blocking-inputs.template.env",
       "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh"
+    },
+    {
+      "order": 4,
+      "owner": "release-infra",
+      "reason": "missingArtifacts=0; blockingInputs=10; lanes=4",
+      "ownerPacket": "owner-packets/release-infra.md",
+      "envTemplate": "owner-packets/release-infra.blocking-inputs.template.env",
+      "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template"
     },
     {
       "order": 5,
@@ -306,7 +306,7 @@
         },
         {
           "lane": "p0-docker-images",
-          "status": "BLOCKED",
+          "status": "PASS",
           "acceptanceCommand": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
           "expectedArtifacts": [],
           "missingArtifacts": [],
@@ -329,12 +329,9 @@
           "sourcePlan": "final-review.json"
         }
       ],
-      "blockingInputCount": 13,
+      "blockingInputCount": 10,
       "blockingInputs": [
         "DDD_RELEASE_ENV_FILE",
-        "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
-        "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
-        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
         "LUMIRA_BASE_URL",
         "PLAYWRIGHT_BASE_URL",
         "DDD_DEPLOYMENT_EVIDENCE",
@@ -532,12 +529,12 @@
       "nextCommand": "node scripts/ddd-staging-runtime-check.mjs"
     },
     {
-      "input": "DDD_DOCKER_EXISTING_FRONTEND_IMAGE",
+      "input": "DDD_EXPLAIN_DATABASE",
       "gateCount": 1,
       "owners": [
-        "release-infra"
+        "database"
       ],
-      "nextCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
+      "nextCommand": "node scripts/ddd-staging-data-safety-check.mjs"
     }
   ],
   "acceptanceCommands": [
@@ -551,7 +548,7 @@
     {
       "gate": "docker-images",
       "owner": "release-infra",
-      "accepted": false,
+      "accepted": true,
       "command": "node scripts/ddd-docker-build-evidence.mjs --check",
       "missingArtifactCount": 0
     },

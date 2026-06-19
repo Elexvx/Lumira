@@ -7,7 +7,7 @@ Lane receipts: 5
 | Owner | Lane | Status | Provided artifacts | Missing artifacts |
 | --- | --- | --- | ---: | ---: |
 | release-infra | `p0-release-env` | BLOCKED | 3 | 3 |
-| release-infra | `p0-docker-images` | BLOCKED | 1 | 1 |
+| release-infra | `p0-docker-images` | PASS | 1 | 0 |
 | release-infra | `p1-runtime-business` | BLOCKED | 7 | 7 |
 | platform-owners | `p1-p2-data-safety` | BLOCKED | 4 | 1 |
 | release-infra | `final-review` | BLOCKED | 16 | 1 |

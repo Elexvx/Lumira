@@ -17,8 +17,8 @@ No auto waivers: true
 ## Blocked Audit Items
 
 - lane-receipt-coverage: coverage=0/5; receipt=MISSING; evidence=`lane completion receipt file not provided`; command=`node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`
-- staging-evidence-accepted: accepted=0/6; evidence=`artifacts/ddd/release/staging-handoff-bundle/evidence-acceptance.json`; command=`node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`
-- critical-path-clear: blocked=6/6; evidence=`artifacts/ddd/release/staging-handoff-bundle/operator-progress.json`; command=`node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown`
+- staging-evidence-accepted: accepted=1/6; evidence=`artifacts/ddd/release/staging-handoff-bundle/evidence-acceptance.json`; command=`node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`
+- critical-path-clear: blocked=5/6; evidence=`artifacts/ddd/release/staging-handoff-bundle/operator-progress.json`; command=`node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown`
 - final-review-enforced: finalReview=BLOCKED; recommendation=NO_GO_STRICT; evidence=`artifacts/ddd/release/staging-handoff-bundle/final-review.json`; command=`node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>`
 - strict-go-no-go: cutoverAllowed=false; finalRecommendation=NO_GO_STRICT; evidence=`artifacts/ddd/release/release-final-go-no-go.json`; command=`DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 

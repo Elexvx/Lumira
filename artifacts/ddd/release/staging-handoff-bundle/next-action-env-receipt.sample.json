@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "redacted": true,
   "envFile": null,
@@ -21,18 +21,6 @@
       "candidateKeyCount": 1,
       "issueCount": 1,
       "firstIssue": "DDD_RELEASE_ENV_FILE is required"
-    },
-    {
-      "lane": "p0-docker-images",
-      "owner": "release-infra",
-      "sourcePlan": "docker-image-submission-plan.json",
-      "status": "BLOCKED",
-      "inputCount": 7,
-      "passedInputCount": 0,
-      "selectedKeys": [],
-      "candidateKeyCount": 7,
-      "issueCount": 7,
-      "firstIssue": "DDD_DOCKER_BUILD_STRICT is required"
     },
     {
       "lane": "p1-runtime-business",
@@ -59,17 +47,10 @@
       "firstIssue": "DDD_ROLLBACK_DRILL_FILE is required"
     }
   ],
-  "issueCount": 23,
+  "issueCount": 16,
   "issues": [
     "DDD_NEXT_ACTION_ENV_FILE or --next-action-env-file is required",
     "p0-release-env: DDD_RELEASE_ENV_FILE is required",
-    "p0-docker-images: DDD_DOCKER_BUILD_STRICT is required",
-    "p0-docker-images: DDD_RELEASE_CANDIDATE is required",
-    "p0-docker-images: DDD_EVIDENCE_OPERATOR is required",
-    "p0-docker-images: DDD_EVIDENCE_ENVIRONMENT is required",
-    "p0-docker-images: DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE is required",
-    "p0-docker-images: DDD_DOCKER_EXISTING_FRONTEND_IMAGE is required",
-    "p0-docker-images: DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE is required",
     "p1-runtime-business: LUMIRA_BASE_URL is required",
     "p1-runtime-business: PLAYWRIGHT_BASE_URL is required",
     "p1-runtime-business: DDD_DEPLOYMENT_EVIDENCE is required",

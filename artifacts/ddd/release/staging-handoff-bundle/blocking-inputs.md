@@ -3,8 +3,8 @@
 Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
-Blocking inputs: 35
-Blocked gates: 6
+Blocking inputs: 32
+Blocked gates: 5
 
 | Input | Gates | Owners | Next commands |
 | --- | --- | --- | --- |
@@ -19,9 +19,6 @@ Blocked gates: 6
 | `DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE` | `runtime-business` | ai, file-owner, frontend, job-owner, payment-owner, release-infra | `node scripts/ddd-staging-runtime-check.mjs` |
 | `DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE` | `runtime-business` | ai, file-owner, frontend, job-owner, payment-owner, release-infra | `node scripts/ddd-staging-runtime-check.mjs` |
 | `DDD_DEPLOYMENT_EVIDENCE` | `runtime-business` | ai, file-owner, frontend, job-owner, payment-owner, release-infra | `node scripts/ddd-staging-runtime-check.mjs` |
-| `DDD_DOCKER_EXISTING_FRONTEND_IMAGE` | `docker-images` | release-infra | `node scripts/ddd-docker-build-evidence.mjs --check` |
-| `DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE` | `docker-images` | release-infra | `node scripts/ddd-docker-build-evidence.mjs --check` |
-| `DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE` | `docker-images` | release-infra | `node scripts/ddd-docker-build-evidence.mjs --check` |
 | `DDD_EXPLAIN_DATABASE` | `explain` | database | `node scripts/ddd-staging-data-safety-check.mjs` |
 | `DDD_EXPLAIN_ENVIRONMENT` | `explain` | database | `node scripts/ddd-staging-data-safety-check.mjs` |
 | `DDD_FRONTEND_DEPLOYMENT_EVIDENCE` | `runtime-business` | ai, file-owner, frontend, job-owner, payment-owner, release-infra | `node scripts/ddd-staging-runtime-check.mjs` |
@@ -99,18 +96,6 @@ Blocked gates: 6
 ### DDD_DEPLOYMENT_EVIDENCE
 
 - runtime-business: owner=release-infra, frontend, ai, file-owner, job-owner, payment-owner; blocker=LUMIRA_BASE_URL is required; next=node scripts/ddd-staging-runtime-check.mjs
-
-### DDD_DOCKER_EXISTING_FRONTEND_IMAGE
-
-- docker-images: owner=release-infra; blocker=docker CLI is not available: spawnSync docker ENOENT; next=node scripts/ddd-docker-build-evidence.mjs --check
-
-### DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE
-
-- docker-images: owner=release-infra; blocker=docker CLI is not available: spawnSync docker ENOENT; next=node scripts/ddd-docker-build-evidence.mjs --check
-
-### DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE
-
-- docker-images: owner=release-infra; blocker=docker CLI is not available: spawnSync docker ENOENT; next=node scripts/ddd-docker-build-evidence.mjs --check
 
 ### DDD_EXPLAIN_DATABASE
 

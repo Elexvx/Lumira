@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "status": "STAGING_REQUIRED",
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
@@ -67,7 +67,7 @@
       "blockingInputsEnvTemplate": "owner-packets/release-infra.blocking-inputs.template.env",
       "evidenceGapCount": 3,
       "missingEvidenceArtifactCount": 0,
-      "blockingInputCount": 13,
+      "blockingInputCount": 10,
       "laneCount": 4,
       "lanes": [
         {
@@ -91,7 +91,7 @@
         {
           "order": 2,
           "lane": "p0-docker-images",
-          "status": "BLOCKED",
+          "status": "PASS",
           "title": "Produce Docker build or existing-image inspect evidence",
           "command": "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
           "sourcePlan": "docker-image-submission-plan.json",

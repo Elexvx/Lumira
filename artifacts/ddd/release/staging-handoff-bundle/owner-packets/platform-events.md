@@ -1,6 +1,6 @@
 # DDD Staging Owner Packet: platform-events
 
-Generated at: 2026-06-19T07:15:06.971Z
+Generated at: 2026-06-19T09:03:45.762Z
 Owner: platform-events
 Blockers: 9
 Placeholders: 9

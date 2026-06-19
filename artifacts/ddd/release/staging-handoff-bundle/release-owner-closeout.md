@@ -5,8 +5,8 @@ Final recommendation: NO_GO_STRICT
 Cutover ready: false
 Cutover allowed: false
 Handoff bundle: PASS
-Accepted gates: 0/6
-Blocked gates: 6/6
+Accepted gates: 1/6
+Blocked gates: 5/6
 Lane receipt: MISSING
 Lane receipt coverage: 0/5
 Evidence closure: 0/5
@@ -22,7 +22,6 @@ Evidence closure: 0/5
 | Gate | Owner | First blocker | Next command |
 | --- | --- | --- | --- |
 | release-env | release-infra | release env file is not cutover-safe; blockers=34 | `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs` |
-| docker-images | release-infra | docker CLI is not available: spawnSync docker ENOENT | `node scripts/ddd-docker-build-evidence.mjs --check` |
 | runtime-business | release-infra, frontend, ai, file-owner, job-owner, payment-owner | LUMIRA_BASE_URL is required | `node scripts/ddd-staging-runtime-check.mjs` |
 | rollback | bounded-context owners | rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE | `node scripts/ddd-staging-data-safety-check.mjs` |
 | migration | database | DDD_MIGRATION_FRESH_DB_VALIDATED must be true | `node scripts/ddd-staging-data-safety-check.mjs` |

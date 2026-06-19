@@ -1,12 +1,12 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "acceptedCount": 0,
+  "acceptedCount": 1,
   "itemCount": 6,
-  "blockedCount": 6,
+  "blockedCount": 5,
   "presentArtifactCount": 16,
   "missingArtifactCount": 2,
   "items": [
@@ -133,9 +133,9 @@
       "track": "p0-images",
       "title": "P0 deployable images",
       "owner": "release-infra",
-      "status": "BLOCKED",
-      "accepted": false,
-      "blocker": "docker CLI is not available: spawnSync docker ENOENT",
+      "status": "PASS",
+      "accepted": true,
+      "blocker": null,
       "blockingInputs": [
         "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
         "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",

@@ -1,11 +1,11 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
   "ownerCount": 5,
-  "blockedCount": 6,
+  "blockedCount": 5,
   "items": [
     {
       "id": "release-env",
@@ -22,15 +22,15 @@
       "id": "docker-images",
       "track": "p0-images",
       "owner": "release-infra",
-      "status": "BLOCKED",
+      "status": "PASS",
       "nextCommand": "node scripts/ddd-docker-build-evidence.mjs --check",
-      "issue": "docker CLI is not available: spawnSync docker ENOENT",
+      "issue": null,
       "blockingInputs": [
         "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
         "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
         "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"
       ],
-      "recommendedMode": "external-runner-required"
+      "recommendedMode": "build-and-inspect"
     },
     {
       "id": "runtime-business",

@@ -1,13 +1,13 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverReady": false,
   "cutoverAllowed": false,
   "handoffBundleStatus": "PASS",
-  "acceptedGates": "0/6",
-  "blockedGates": "6/6",
+  "acceptedGates": "1/6",
+  "blockedGates": "5/6",
   "laneReceipt": {
     "status": "MISSING",
     "coverage": "0/5",
@@ -28,12 +28,6 @@
       "owner": "release-infra",
       "firstBlocker": "release env file is not cutover-safe; blockers=34",
       "nextCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs"
-    },
-    {
-      "gate": "docker-images",
-      "owner": "release-infra",
-      "firstBlocker": "docker CLI is not available: spawnSync docker ENOENT",
-      "nextCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
     },
     {
       "gate": "runtime-business",

@@ -1,13 +1,13 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:19.003Z",
+  "generatedAt": "2026-06-19T09:04:12.720Z",
   "willWriteFiles": false,
   "cutoverReady": false,
   "finalRecommendation": "NO_GO_STRICT",
   "eta": "fast path 0.5-1.5d with staging access and owner evidence ready; 1-3d if deployment, Docker, database, or approval evidence must be produced",
   "phaseCount": 7,
-  "blockedPhaseCount": 7,
-  "acceptedGateCount": 0,
+  "blockedPhaseCount": 6,
+  "acceptedGateCount": 1,
   "acceptedGateTotal": 6,
   "phases": [
     {
@@ -31,8 +31,8 @@
       "id": "p0-docker-images",
       "title": "Deployable Docker images built or inspected",
       "owner": "release-infra",
-      "status": "BLOCKED",
-      "blocker": "docker CLI is not available: spawnSync docker ENOENT",
+      "status": "PASS",
+      "blocker": null,
       "dependsOn": [
         "p0-release-env"
       ],
@@ -131,7 +131,7 @@
       "title": "Release-owner final review and strict gate",
       "owner": "release-owner",
       "status": "BLOCKED",
-      "blocker": "accepted=0/6",
+      "blocker": "accepted=1/6",
       "dependsOn": [
         "p1-runtime-business",
         "p1-rollback",

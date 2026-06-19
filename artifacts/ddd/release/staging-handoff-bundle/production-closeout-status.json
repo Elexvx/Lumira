@@ -1,14 +1,14 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T07:15:06.971Z",
+  "generatedAt": "2026-06-19T09:03:45.762Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverReady": false,
   "cutoverAllowed": false,
   "eta": "fast path 0.5-1.5d with staging access and owner evidence ready; 1-3d if deployment, Docker, database, or approval evidence must be produced",
   "etaBasis": "Derived from --cutover-rehearsal-plan and current evidence gates; it is not a waiver or deployment approval.",
-  "acceptedGates": "0/6",
-  "blockedGates": "6/6",
+  "acceptedGates": "1/6",
+  "blockedGates": "5/6",
   "blockedStages": [
     {
       "id": "first-wave-env",
@@ -35,14 +35,14 @@
       "id": "verification-route",
       "label": "Post-env verification route",
       "status": "BLOCKED",
-      "detail": "blockedPhases=6/6",
+      "detail": "blockedPhases=5/6",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown"
     },
     {
       "id": "final-review",
       "label": "Release-owner final review",
       "status": "BLOCKED",
-      "detail": "accepted=0/6",
+      "detail": "accepted=1/6",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
     }
   ],
@@ -53,13 +53,6 @@
       "owner": "release-infra",
       "blocker": "release env file is not cutover-safe; blockers=34",
       "firstCommand": "node scripts/ddd-release-env-init.mjs --check"
-    },
-    {
-      "id": "p0-docker-images",
-      "title": "Deployable Docker images built or inspected",
-      "owner": "release-infra",
-      "blocker": "docker CLI is not available: spawnSync docker ENOENT",
-      "firstCommand": "node scripts/ddd-docker-build-evidence.mjs --check"
     },
     {
       "id": "p1-runtime-business",
@@ -93,7 +86,7 @@
       "id": "final-review",
       "title": "Release-owner final review and strict gate",
       "owner": "release-owner",
-      "blocker": "accepted=0/6",
+      "blocker": "accepted=1/6",
       "firstCommand": "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance"
     }
   ],
@@ -101,7 +94,7 @@
     "present": 16,
     "missing": 2,
     "total": 18,
-    "acceptedGates": 0,
+    "acceptedGates": 1,
     "totalGates": 6,
     "missingItems": [
       {
