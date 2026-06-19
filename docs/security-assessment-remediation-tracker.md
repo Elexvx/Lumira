@@ -6,7 +6,7 @@
 
 已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`
 
-当前补充证据：本轮重新生成发布交接包，修正 Docker 证据通道状态、阻断数量、报告中文状态字段和证据时间说明。
+当前补充证据：本轮重新生成发布交接包，修正 Docker 证据通道状态、阻断数量、报告中文状态字段和证据时间说明；补充生产证据就绪轻量回归测试。
 
 ## 范围与依据
 
@@ -69,6 +69,7 @@
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce`：证据未齐时按设计非零阻断。
   - `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle`：重新生成发布交接包，写入 113 个文件，Docker 镜像证据通道为通过，阻断门为 5/6。
   - `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify`：通过，检查 112 个文件，问题列表为空。
+  - `node scripts/ddd-production-evidence-readiness.test.mjs`：通过，覆盖生产解阻计划、生产证据就绪 JSON 和交接包完整性。
   - `node scripts/ddd-release-artifact-integrity-gate-contract.test.mjs`：通过。
   - `node scripts/ddd-release-config-sync.test.mjs`：通过。
 

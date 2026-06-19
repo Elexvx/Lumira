@@ -8,7 +8,7 @@
 
 已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`
 
-当前补充证据：本轮重新生成发布交接包，修正 Docker 证据门状态、阻断数量、报告中文状态字段和证据时间说明。
+当前补充证据：本轮重新生成发布交接包，修正 Docker 证据门状态、阻断数量、报告中文状态字段和证据时间说明；补充生产证据就绪轻量回归测试。
 
 ## 1. 结论
 
@@ -94,6 +94,7 @@
 | E-REL-02 | 发布证据强制门禁 | `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` | 按设计在证据未齐时非零阻断。 |
 | E-REL-03 | 交接包完整性 | `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle`、`--handoff-bundle-verify` | 本轮重新生成交接包，写入 113 个文件；验证通过，检查 112 个文件，问题列表为空。 |
 | E-REL-04 | 发布制品/配置门禁 | `ddd-release-artifact-integrity-gate-contract.test.mjs`、`ddd-release-config-sync.test.mjs` | 均通过。 |
+| E-REL-05 | 生产证据就绪轻量回归 | `node scripts/ddd-production-evidence-readiness.test.mjs` | 通过；覆盖生产解阻计划、生产证据就绪 JSON、交接包完整性，并确认当前 5 个生产证据门仍处于阻断状态。 |
 | E-DEPLOY-FAIL | 部署运行态检查 | `node scripts/check-deployment.mjs` | 失败：`127.0.0.1:8000/health`、`/api/health`、`127.0.0.1:8080/actuator/health` 均无 HTTP 响应。 |
 | E-DEPLOY-PS | Compose 部署脚本探测 | `node scripts/deploy-container.mjs --ps --local-mysql` | 通过；修复 Windows 下 Docker/Compose 调用、目录准备和 compose 相对路径后，可正常输出 compose `ps`。 |
 | E-DEPLOY-START-BLOCKED | 本地 compose 启动尝试 | `node scripts/start-platform.mjs --skip-build --local-mysql --skip-check` | 启动进入 Docker volume/image 阶段，但 busybox/base image 拉取超时，未形成可访问运行态。 |
