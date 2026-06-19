@@ -872,6 +872,7 @@ function verifyHandoffBundleResult() {
     "release-owner-closeout.md",
     "production-closeout-status.json",
     "production-closeout-status.md",
+    "production-unblock-quickstart.md",
     "production-unblock-plan.json",
     "production-unblock-plan.md",
     "production-evidence-readiness.json",
@@ -919,6 +920,7 @@ function verifyHandoffBundleResult() {
     "release-env-submission-plan.md",
     "release-env-fill-checklist.json",
     "release-env-fill-checklist.md",
+    "release-env-fill.template.env",
     "docker-image-plan.json",
     "docker-image-plan.md",
     "docker-image-submission-plan.json",
@@ -999,6 +1001,9 @@ function verifyHandoffBundleResult() {
     ["production-closeout-status.md", "# DDD Production Closeout Status"],
     ["production-closeout-status.md", "## Parallel Next Actions"],
     ["production-closeout-status.md", "## Required Before Production"],
+    ["production-unblock-quickstart.md", "# DDD Production Unblock Quickstart"],
+    ["production-unblock-quickstart.md", "## Fast Path"],
+    ["production-unblock-quickstart.md", "## Final Gate"],
     ["production-unblock-plan.md", "# DDD Production Unblock Plan"],
     ["production-unblock-plan.md", "## Parallel Workstreams"],
     ["production-unblock-plan.md", "## Exit Criteria"],
@@ -1013,6 +1018,8 @@ function verifyHandoffBundleResult() {
     ["release-env-fill-checklist.md", "# P0 Release Env Fill Checklist"],
     ["release-env-fill-checklist.md", "## Required Keys By Group"],
     ["release-env-fill-checklist.md", "## Validation Commands"],
+    ["release-env-fill.template.env", "# P0 release env fill template."],
+    ["release-env-fill.template.env", "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs"],
     ["lane-receipt-fragments.md", "# DDD Lane Receipt Fragments"],
     ["lane-receipt-fragments.md", "## Receipt JSON Skeleton"],
     ["lane-receipt-fragments.md", "## Owner Fragment Copy Blocks"],
@@ -7763,6 +7770,50 @@ function renderProductionUnblockPlanMarkdown(plan) {
   return lines.join("\n");
 }
 
+function renderProductionUnblockQuickstartMarkdown(plan) {
+  const firstWorkstream = plan.parallelWorkstreams[0] || null;
+  const lines = [
+    "# DDD Production Unblock Quickstart",
+    "",
+    `Status: ${plan.status}`,
+    `Final recommendation: ${plan.finalRecommendation}`,
+    `Cutover allowed: ${plan.cutoverAllowed}`,
+    `Blocked audit items: ${plan.blockedAuditItemCount}`,
+    "",
+    "## Fast Path",
+    "",
+    "1. Fill release env values from `release-env-fill.template.env` into `.env.release.local`.",
+    "2. Validate the release env file:",
+    "",
+    "```bash",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-config-evidence.mjs",
+    "```",
+    "",
+    firstWorkstream
+      ? `3. Start with ${firstWorkstream.label}: \`${firstWorkstream.command}\``
+      : "3. No open production unblock workstream is currently listed.",
+    firstWorkstream
+      ? `4. Verify with \`${firstWorkstream.verifyCommand}\`.`
+      : "4. Re-run the production unblock plan to refresh the next action.",
+    "5. Continue the parallel workstreams below until every completion signal is satisfied.",
+    "",
+    "## Parallel Workstreams",
+    "",
+    ...(plan.parallelWorkstreams.length > 0
+      ? plan.parallelWorkstreams.map((workstream) => `- ${workstream.id}: owner=${workstream.owner}; command=\`${workstream.command}\`; verify=\`${workstream.verifyCommand}\`; done=${workstream.completionSignal}`)
+      : ["- none"]),
+    "",
+    "## Final Gate",
+    "",
+    "- `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` must exit 0.",
+    "- `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh` must exit 0.",
+    "- No manual waiver is allowed while `finalRecommendation` remains `NO_GO_STRICT`.",
+    "",
+  ];
+  return lines.join("\n");
+}
+
 function runProductionUnblockPlan({ markdown = false } = {}) {
   let plan;
   try {
@@ -8934,10 +8985,11 @@ function renderHandoffBundleReadme(rollup) {
     "9. Validate owner lane receipt coverage with `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>` and require `Coverage: 5/5`.",
     "10. Use `lane-receipt-fragments.md` as the 5-lane receipt assembly index before submitting the redacted receipt.",
     "11. Read `production-cutover-audit.md` before final approval; every audit item must be PASS.",
-    "12. Use `production-unblock-plan.md` as the focused production unblock checklist when the audit is still `NO_GO_STRICT`.",
-    "13. Use `production-evidence-readiness.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go/no-go evidence in one table.",
-    "14. Run `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` before final go/no-go; it must exit 0.",
-    "12. Re-run `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.",
+    "12. Start from `production-unblock-quickstart.md` when the audit is still `NO_GO_STRICT`.",
+    "13. Use `production-unblock-plan.md` as the focused production unblock checklist when the quickstart needs detail.",
+    "14. Use `production-evidence-readiness.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go/no-go evidence in one table.",
+    "15. Run `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` before final go/no-go; it must exit 0.",
+    "16. Re-run `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.",
     "",
     "## Status Views",
     "",
@@ -8971,6 +9023,7 @@ function renderHandoffBundleReadme(rollup) {
     "- `release-owner-closeout.md`: paste-ready single-page release-owner closeout status.",
     "- `production-closeout-status.json`: machine-readable production closeout status with ETA band and next owner action.",
     "- `production-closeout-status.md`: paste-ready production closeout status with remaining production preconditions.",
+    "- `production-unblock-quickstart.md`: one-page fastest path for env, receipts, owner evidence, and final gates.",
     "- `production-unblock-plan.json`: machine-readable focused plan for clearing the remaining production blockers.",
     "- `production-unblock-plan.md`: paste-ready focused plan for the parallel unblock workstreams and exit criteria.",
     "- `production-evidence-readiness.json`: machine-readable aggregate readiness for production evidence submission.",
@@ -9020,6 +9073,7 @@ function renderHandoffBundleReadme(rollup) {
     "- `release-env-submission-plan.md`: paste-ready release env owner submission and receipt plan.",
     "- `release-env-fill-checklist.json`: machine-readable P0 release env blocker key checklist.",
     "- `release-env-fill-checklist.md`: paste-ready P0 release env blocker key checklist.",
+    "- `release-env-fill.template.env`: paste-ready P0 release env fill template generated from current blockers.",
     "- `docker-image-plan.json`: machine-readable Docker image build or inspect evidence plan.",
     "- `docker-image-plan.md`: paste-ready Docker image evidence plan.",
     "- `docker-image-submission-plan.json`: machine-readable Docker image evidence submission route.",
@@ -9095,6 +9149,7 @@ function renderHandoffBundleReadme(rollup) {
     "node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown",
     "node scripts/ddd-release-env-fill-checklist.mjs --markdown",
+    "node scripts/ddd-release-env-fill-checklist.mjs --env-template",
     "node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown",
@@ -9193,6 +9248,46 @@ function renderReleaseEnvFillChecklistMarkdown(checklist) {
     "## Acceptance Rule",
     "",
     "Do not mark `release-infra:p0-release-env` PASS until release env lint and release config evidence are PASS, and the resulting artifacts are attached to the lane receipt.",
+    "",
+  );
+  return lines.join("\n");
+}
+
+function releaseEnvFillPlaceholderForKey(key) {
+  if (key.endsWith("_BASE_URL") || key === "PLAYWRIGHT_BASE_URL" || key === "LUMIRA_BASE_URL" || key.includes("ORIGIN")) {
+    return "__REQUIRED_HTTPS__";
+  }
+  if (key.includes("PASSWORD") || key.includes("SECRET") || key.includes("TOKEN") || key.endsWith("_KEY")) {
+    return "__REQUIRED_SECRET_REF__";
+  }
+  if (key.includes("COMPLETED_AT")) return "__REQUIRED_ISO_TIMESTAMP__";
+  if (key.includes("VALIDATED")) return "__REQUIRED_TRUE__";
+  if (key.includes("PORT")) return "__REQUIRED_PORT__";
+  if (key.includes("EVIDENCE") || key.includes("ARTIFACT")) return "__REQUIRED_ARTIFACT_PATH_OR_URL__";
+  return "__REQUIRED__";
+}
+
+function renderReleaseEnvFillTemplate(checklist) {
+  const lines = [
+    "# P0 release env fill template.",
+    "# Fill this into .env.release.local, then run the validation commands at the bottom.",
+    "# Do not commit real values. Secret-like values should be secret references, not plaintext.",
+    "",
+    `# Source lint file: ${checklist.lintFile}`,
+    `# Source config evidence file: ${checklist.configEvidenceFile}`,
+    `# Primary blockers: ${checklist.primaryBlockerCount}`,
+    `# Config blockers: ${checklist.configBlockerCount}`,
+    "",
+  ];
+
+  for (const [group, keys] of Object.entries(checklist.groups)) {
+    if (keys.length === 0) continue;
+    lines.push(`# ${group}`, ...keys.map((key) => `${key}=${releaseEnvFillPlaceholderForKey(key)}`), "");
+  }
+
+  lines.push(
+    "# Validation commands",
+    ...checklist.validationCommands.map((command) => `# ${command}`),
     "",
   );
   return lines.join("\n");
@@ -9373,6 +9468,7 @@ function writeHandoffBundle() {
     "release-env-submission-plan.md": renderReleaseEnvSubmissionPlanMarkdown(releaseEnvSubmissionPlan),
     "release-env-fill-checklist.json": `${JSON.stringify(releaseEnvFillChecklist, null, 2)}\n`,
     "release-env-fill-checklist.md": renderReleaseEnvFillChecklistMarkdown(releaseEnvFillChecklist),
+    "release-env-fill.template.env": renderReleaseEnvFillTemplate(releaseEnvFillChecklist),
     "docker-image-plan.json": `${JSON.stringify(dockerImagePlan, null, 2)}\n`,
     "docker-image-plan.md": renderDockerImagePlanMarkdown(dockerImagePlan),
     "docker-image-submission-plan.json": `${JSON.stringify(dockerImageSubmissionPlan, null, 2)}\n`,
@@ -9543,6 +9639,7 @@ function writeHandoffBundle() {
   files["release-owner-closeout.md"] = renderReleaseOwnerCloseoutMarkdown(releaseOwnerCloseout);
   files["production-closeout-status.json"] = `${JSON.stringify(productionCloseoutStatus, null, 2)}\n`;
   files["production-closeout-status.md"] = renderProductionCloseoutStatusMarkdown(productionCloseoutStatus);
+  files["production-unblock-quickstart.md"] = renderProductionUnblockQuickstartMarkdown(productionUnblockPlan);
   files["production-unblock-plan.json"] = `${JSON.stringify(productionUnblockPlan, null, 2)}\n`;
   files["production-unblock-plan.md"] = renderProductionUnblockPlanMarkdown(productionUnblockPlan);
   files["production-evidence-readiness.json"] = `${JSON.stringify(productionEvidenceReadiness, null, 2)}\n`;
@@ -9594,6 +9691,7 @@ function writeHandoffBundle() {
     unblockPlanOverride: productionUnblockPlanWithCheckedFiles,
   });
   files["production-unblock-plan.json"] = `${JSON.stringify(productionUnblockPlanWithCheckedFiles, null, 2)}\n`;
+  files["production-unblock-quickstart.md"] = renderProductionUnblockQuickstartMarkdown(productionUnblockPlanWithCheckedFiles);
   files["production-unblock-plan.md"] = renderProductionUnblockPlanMarkdown(productionUnblockPlanWithCheckedFiles);
   files["production-evidence-readiness.json"] = `${JSON.stringify(productionEvidenceReadinessWithCheckedFiles, null, 2)}\n`;
   files["production-evidence-readiness.md"] = renderProductionEvidenceReadinessMarkdown(productionEvidenceReadinessWithCheckedFiles);
@@ -9888,6 +9986,7 @@ function renderCommands() {
     "node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown",
     "node scripts/ddd-release-env-fill-checklist.mjs",
     "node scripts/ddd-release-env-fill-checklist.mjs --markdown",
+    "node scripts/ddd-release-env-fill-checklist.mjs --env-template",
     "node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan",
     "node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan",

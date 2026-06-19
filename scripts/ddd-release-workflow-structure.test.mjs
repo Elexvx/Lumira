@@ -424,6 +424,10 @@ assert(
   "CI staging handoff summary must include production closeout status",
 );
 assert(
+  ciWorkflowText.includes("cat artifacts/ddd/release/staging-handoff-bundle/production-unblock-quickstart.md >> \"$GITHUB_STEP_SUMMARY\""),
+  "CI staging handoff summary must include production unblock quickstart",
+);
+assert(
   ciWorkflowText.includes("node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include production cutover audit",
 );
@@ -448,8 +452,14 @@ assertTextBefore(
 assertTextBefore(
   ciWorkflowText,
   "node scripts/ddd-staging-execution-checklist.mjs --production-closeout-status-markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "cat artifacts/ddd/release/staging-handoff-bundle/production-unblock-quickstart.md >> \"$GITHUB_STEP_SUMMARY\"",
+  "CI staging handoff summary must show production closeout status before production unblock quickstart",
+);
+assertTextBefore(
+  ciWorkflowText,
+  "cat artifacts/ddd/release/staging-handoff-bundle/production-unblock-quickstart.md >> \"$GITHUB_STEP_SUMMARY\"",
   "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "CI staging handoff summary must show production closeout status before production cutover audit",
+  "CI staging handoff summary must show production unblock quickstart before production cutover audit",
 );
 assertTextBefore(
   ciWorkflowText,
@@ -513,6 +523,10 @@ assert(
   ciWorkflowText.includes("node scripts/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\""),
   "CI staging handoff summary must include release-env fill checklist",
 );
+assert(
+  ciWorkflowText.includes("node scripts/ddd-release-env-fill-checklist.mjs --env-template"),
+  "CI staging handoff summary must include release-env fill template",
+);
 assertTextBefore(
   ciWorkflowText,
   "node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
@@ -522,8 +536,14 @@ assertTextBefore(
 assertTextBefore(
   ciWorkflowText,
   "node scripts/ddd-release-env-fill-checklist.mjs --markdown >> \"$GITHUB_STEP_SUMMARY\"",
+  "node scripts/ddd-release-env-fill-checklist.mjs --env-template",
+  "CI staging handoff summary must show release-env fill checklist before release-env fill template",
+);
+assertTextBefore(
+  ciWorkflowText,
+  "node scripts/ddd-release-env-fill-checklist.mjs --env-template",
   "node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown >> \"$GITHUB_STEP_SUMMARY\"",
-  "CI staging handoff summary must show release-env fill checklist before Docker plans",
+  "CI staging handoff summary must show release-env fill template before Docker plans",
 );
 assert(
   ciWorkflowText.includes("node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown >> \"$GITHUB_STEP_SUMMARY\""),
@@ -678,6 +698,18 @@ assert(
 assert(
   productionReadinessPlanText.includes("formal release evidence workflow generates and verifies `artifacts/ddd/release/staging-handoff-bundle`"),
   "production readiness plan must document that the release evidence workflow generates the staging handoff bundle",
+);
+assert(
+  productionReadinessPlanText.includes("production-unblock-quickstart.md"),
+  "production readiness plan must document the production unblock quickstart",
+);
+assert(
+  productionReadinessPlanText.includes("release-env-fill.template.env"),
+  "production readiness plan must document the release-env fill template",
+);
+assert(
+  productionReadinessPlanText.includes("ddd-release-env-fill-checklist.mjs --env-template"),
+  "production readiness plan must document the release-env fill template command",
 );
 assert(
   productionReadinessPlanText.includes("handoff summary, production closeout status, release-owner closeout, lane receipt coverage, closure board, receipt fragments, receipt draft, owner evidence intake, operator progress, daily brief, dispatch inputs, and final review"),

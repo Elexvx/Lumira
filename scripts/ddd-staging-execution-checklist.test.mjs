@@ -391,6 +391,7 @@ try {
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-submission-plan-markdown$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs --markdown$/m);
+  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs --env-template$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-plan$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-plan-markdown$/m);
   assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-submission-plan$/m);
@@ -1626,7 +1627,7 @@ try {
   });
   assert.equal(dockerImagePlanResult.status, 0, dockerImagePlanResult.stderr || dockerImagePlanResult.stdout);
   const dockerImagePlan = JSON.parse(dockerImagePlanResult.stdout);
-  assert.equal(dockerImagePlan.status, "BLOCKED");
+  assert.equal(dockerImagePlan.status, "PASS");
   assert.equal(dockerImagePlan.willWriteFiles, false);
   assert(dockerImagePlan.paths.some((item) => item.id === "docker-runner-build" && item.command.includes("DDD_DOCKER_BUILD_STRICT=true")));
   assert(dockerImagePlan.paths.some((item) => item.id === "existing-image-inspect" && item.command.includes("DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE")));
@@ -1657,7 +1658,7 @@ try {
   });
   assert.equal(dockerImageSubmissionPlanResult.status, 0, dockerImageSubmissionPlanResult.stderr || dockerImageSubmissionPlanResult.stdout);
   const dockerImageSubmissionPlan = JSON.parse(dockerImageSubmissionPlanResult.stdout);
-  assert.equal(dockerImageSubmissionPlan.status, "BLOCKED");
+  assert.equal(dockerImageSubmissionPlan.status, "PASS");
   assert.equal(dockerImageSubmissionPlan.willWriteFiles, false);
   assert.equal(dockerImageSubmissionPlan.evidenceArtifact, "artifacts/ddd/build/docker-image-evidence.json");
   assert(dockerImageSubmissionPlan.submissionModes.some((item) => item.id === "docker-runner-build" && item.command.includes("DDD_DOCKER_BUILD_STRICT=true")));
@@ -1666,8 +1667,9 @@ try {
   assert(dockerImageSubmissionPlan.validationCommands.includes("node scripts/ddd-docker-build-evidence.mjs --check"));
   assert.equal(dockerImageSubmissionPlan.laneReceiptFragment.owner, "release-infra");
   assert.equal(dockerImageSubmissionPlan.laneReceiptFragment.lane, "p0-docker-images");
+  assert.equal(dockerImageSubmissionPlan.laneReceiptFragment.status, "PASS");
   assert(dockerImageSubmissionPlan.laneReceiptFragment.providedArtifacts.includes("artifacts/ddd/build/docker-image-evidence.json"));
-  assert(dockerImageSubmissionPlan.laneReceiptFragment.missingArtifacts.includes("artifacts/ddd/build/docker-image-evidence.json"));
+  assert.equal(dockerImageSubmissionPlan.laneReceiptFragment.missingArtifacts.length, 0);
   assert(dockerImageSubmissionPlan.passCriteria.some((item) => item.includes("docker-images gate")));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-docker-image-submission-plan.json")), false);
 
@@ -2145,7 +2147,7 @@ try {
   assert.equal(handoffBundleResult.status, 0, handoffBundleResult.stderr || handoffBundleResult.stdout);
   assert.match(handoffBundleResult.stdout, /handoffBundle=/);
   assert.match(handoffBundleResult.stdout, /ownerPackets=5/);
-  for (const file of ["README.md", "rollup.json", "rollup.md", "handoff-summary.md", "execution-status.json", "execution-status.md", "final-review.json", "final-review.md", "release-owner-closeout.json", "release-owner-closeout.md", "production-closeout-status.json", "production-closeout-status.md", "production-unblock-plan.json", "production-unblock-plan.md", "production-evidence-readiness.json", "production-evidence-readiness.md", "production-cutover-audit.json", "production-cutover-audit.md", "operator-progress.json", "operator-progress.md", "daily-brief.json", "daily-brief.md", "closure-plan.json", "closure-plan.md", "next-action-queue.json", "next-action-queue.md", "owner-lane-matrix.json", "owner-lane-matrix.md", "lane-completion-receipt.template.json", "lane-completion-receipt.template.md", "lane-completion-receipt.coverage.json", "lane-completion-receipt.coverage.md", "evidence-closure-board.json", "evidence-closure-board.md", "evidence-closure-board.csv", "lane-receipt-fragments.json", "lane-receipt-fragments.md", "lane-receipt-draft.json", "lane-receipt-draft.md", "owner-evidence-intake.json", "owner-evidence-intake.md", "lane-completion-submission-plan.json", "lane-completion-submission-plan.md", "lane-completion-submission-check.json", "lane-completion-submission-check.md", "next-action.template.env", "next-action-env-receipt.sample.json", "next-action-env-receipt.sample.md", "next-action-verification-plan.json", "next-action-verification-plan.md", "release-env-plan.json", "release-env-plan.md", "release-env-owner-matrix.json", "release-env-owner-matrix.md", "release-env-next-owner.template.env", "release-env-merge-plan.json", "release-env-merge-plan.md", "release-env-submission-plan.json", "release-env-submission-plan.md", "release-env-fill-checklist.json", "release-env-fill-checklist.md", "docker-image-plan.json", "docker-image-plan.md", "docker-image-submission-plan.json", "docker-image-submission-plan.md", "runtime-business-plan.json", "runtime-business-plan.md", "runtime-smoke-plan.json", "runtime-smoke-plan.md", "runtime-business-submission-plan.json", "runtime-business-submission-plan.md", "data-safety-plan.json", "data-safety-plan.md", "data-safety-owner-plan.json", "data-safety-owner-plan.md", "data-safety-submission-plan.json", "data-safety-submission-plan.md", "cutover-rehearsal-plan.json", "cutover-rehearsal-plan.md", "evidence-gaps.json", "evidence-runbook.json", "evidence-runbook.md", "evidence-acceptance.json", "evidence-acceptance.md", "evidence-artifact-gaps.json", "evidence-artifact-gaps.md", "explain-artifact-plan.json", "explain-artifact-plan.md", "blocking-inputs.json", "blocking-inputs.md", "blocking-inputs.template.env", "release-evidence-dispatch-plan.json", "release-evidence-dispatch-plan.md", "release-evidence-dispatch-inputs.json", "release-evidence-dispatch-command.sh", "evidence-env.template.env", "commands.txt", "owner-dispatch.json", "manifest.json"]) {
+  for (const file of ["README.md", "rollup.json", "rollup.md", "handoff-summary.md", "execution-status.json", "execution-status.md", "final-review.json", "final-review.md", "release-owner-closeout.json", "release-owner-closeout.md", "production-closeout-status.json", "production-closeout-status.md", "production-unblock-quickstart.md", "production-unblock-plan.json", "production-unblock-plan.md", "production-evidence-readiness.json", "production-evidence-readiness.md", "production-cutover-audit.json", "production-cutover-audit.md", "operator-progress.json", "operator-progress.md", "daily-brief.json", "daily-brief.md", "closure-plan.json", "closure-plan.md", "next-action-queue.json", "next-action-queue.md", "owner-lane-matrix.json", "owner-lane-matrix.md", "lane-completion-receipt.template.json", "lane-completion-receipt.template.md", "lane-completion-receipt.coverage.json", "lane-completion-receipt.coverage.md", "evidence-closure-board.json", "evidence-closure-board.md", "evidence-closure-board.csv", "lane-receipt-fragments.json", "lane-receipt-fragments.md", "lane-receipt-draft.json", "lane-receipt-draft.md", "owner-evidence-intake.json", "owner-evidence-intake.md", "lane-completion-submission-plan.json", "lane-completion-submission-plan.md", "lane-completion-submission-check.json", "lane-completion-submission-check.md", "next-action.template.env", "next-action-env-receipt.sample.json", "next-action-env-receipt.sample.md", "next-action-verification-plan.json", "next-action-verification-plan.md", "release-env-plan.json", "release-env-plan.md", "release-env-owner-matrix.json", "release-env-owner-matrix.md", "release-env-next-owner.template.env", "release-env-merge-plan.json", "release-env-merge-plan.md", "release-env-submission-plan.json", "release-env-submission-plan.md", "release-env-fill-checklist.json", "release-env-fill-checklist.md", "release-env-fill.template.env", "docker-image-plan.json", "docker-image-plan.md", "docker-image-submission-plan.json", "docker-image-submission-plan.md", "runtime-business-plan.json", "runtime-business-plan.md", "runtime-smoke-plan.json", "runtime-smoke-plan.md", "runtime-business-submission-plan.json", "runtime-business-submission-plan.md", "data-safety-plan.json", "data-safety-plan.md", "data-safety-owner-plan.json", "data-safety-owner-plan.md", "data-safety-submission-plan.json", "data-safety-submission-plan.md", "cutover-rehearsal-plan.json", "cutover-rehearsal-plan.md", "evidence-gaps.json", "evidence-runbook.json", "evidence-runbook.md", "evidence-acceptance.json", "evidence-acceptance.md", "evidence-artifact-gaps.json", "evidence-artifact-gaps.md", "explain-artifact-plan.json", "explain-artifact-plan.md", "blocking-inputs.json", "blocking-inputs.md", "blocking-inputs.template.env", "release-evidence-dispatch-plan.json", "release-evidence-dispatch-plan.md", "release-evidence-dispatch-inputs.json", "release-evidence-dispatch-command.sh", "evidence-env.template.env", "commands.txt", "owner-dispatch.json", "manifest.json"]) {
     assert.equal(fs.existsSync(path.join(handoffBundleDir, file)), true, `handoff bundle should write ${file}`);
   }
   const bundleOwnerPacketDir = path.join(handoffBundleDir, "owner-packets");
@@ -2181,8 +2183,16 @@ try {
   assert.match(bundleReadme, /final-review\.json/);
   assert.match(bundleReadme, /release-owner-closeout\.json/);
   assert.match(bundleReadme, /production-closeout-status\.json/);
+  assert.match(bundleReadme, /production-unblock-quickstart\.md/);
   assert.match(bundleReadme, /production-unblock-plan\.json/);
   assert.match(bundleReadme, /production-evidence-readiness\.json/);
+  assert.match(bundleReadme, /release-env-fill\.template\.env/);
+  const bundleReleaseEnvFillTemplatePreview = fs.readFileSync(path.join(handoffBundleDir, "release-env-fill.template.env"), "utf8");
+  assert.match(bundleReleaseEnvFillTemplatePreview, /^# P0 release env fill template\./m);
+  assert.match(bundleReleaseEnvFillTemplatePreview, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
+  assert.match(bundleReleaseEnvFillTemplatePreview, /^JWT_SECRET=__REQUIRED_SECRET_REF__$/m);
+  assert.match(bundleReleaseEnvFillTemplatePreview, /^# DDD_RELEASE_ENV_FILE=.env.release.local node scripts\/ddd-release-env-file-lint\.mjs$/m);
+  assert.doesNotMatch(bundleReleaseEnvFillTemplatePreview, /real-/);
   assert.match(bundleReadme, /production-cutover-audit\.json/);
   assert.match(bundleReadme, /operator-progress\.json/);
   assert.match(bundleReadme, /daily-brief\.json/);
@@ -2216,6 +2226,7 @@ try {
   assert.match(bundleReadme, /`## Parallel Next Actions`/);
   assert.match(bundleReadme, /first-wave env, lane receipt, and owner evidence are parallel blockers and none of them waive the others/);
   assert.match(bundleReadme, /production-cutover-audit\.md` before final approval/);
+  assert.match(bundleReadme, /production-unblock-quickstart\.md` when the audit is still `NO_GO_STRICT`/);
   assert.match(bundleReadme, /production-unblock-plan\.md` as the focused production unblock checklist/);
   assert.match(bundleReadme, /production-evidence-readiness\.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go\/no-go evidence in one table/);
   assert.match(bundleReadme, /--production-evidence-readiness-enforce/);
@@ -2247,8 +2258,11 @@ try {
   assert.match(bundleReadme, /release-env-merge-plan\.json/);
   assert.match(bundleReadme, /release-env-submission-plan\.json/);
   assert.match(bundleReadme, /release-env-fill-checklist\.json/);
+  assert.match(bundleReadme, /release-env-fill\.template\.env/);
   assert.match(bundleReadme, /P0 release env blocker key checklist/);
+  assert.match(bundleReadme, /P0 release env fill template/);
   assert.match(bundleReadme, /ddd-release-env-fill-checklist\.mjs --markdown/);
+  assert.match(bundleReadme, /ddd-release-env-fill-checklist\.mjs --env-template/);
   assert.match(bundleReadme, /--release-env-submission-plan-markdown/);
   assert.match(bundleReadme, /docker-image-plan\.json/);
   assert.match(bundleReadme, /docker-image-submission-plan\.json/);
@@ -2403,6 +2417,13 @@ try {
   assert.match(bundleProductionCloseoutStatusMarkdown, /Initialize or validate lane completion receipt/);
   assert.match(bundleProductionCloseoutStatusMarkdown, /## Next Owner Action/);
   assert.match(bundleProductionCloseoutStatusMarkdown, /## Required Before Production/);
+  const bundleProductionUnblockQuickstart = fs.readFileSync(path.join(handoffBundleDir, "production-unblock-quickstart.md"), "utf8");
+  assert.match(bundleProductionUnblockQuickstart, /^# DDD Production Unblock Quickstart/m);
+  assert.match(bundleProductionUnblockQuickstart, /## Fast Path/);
+  assert.match(bundleProductionUnblockQuickstart, /release-env-fill\.template\.env/);
+  assert.match(bundleProductionUnblockQuickstart, /DDD_RELEASE_ENV_FILE=.env.release.local node scripts\/ddd-release-env-file-lint\.mjs/);
+  assert.match(bundleProductionUnblockQuickstart, /## Final Gate/);
+  assert.match(bundleProductionUnblockQuickstart, /production-evidence-readiness-enforce/);
   const bundleProductionUnblockPlan = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "production-unblock-plan.json"), "utf8"));
   assert.equal(bundleProductionUnblockPlan.status, "BLOCKED");
   assert.equal(bundleProductionUnblockPlan.finalRecommendation, "NO_GO_STRICT");
@@ -2630,12 +2651,18 @@ try {
   assert(bundleReleaseEnvFillChecklist.validationCommands.includes("DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs"));
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "release-env-fill-checklist.md"), "utf8"), /^# P0 Release Env Fill Checklist/m);
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "release-env-fill-checklist.md"), "utf8"), /## Required Keys By Group/);
+  const bundleReleaseEnvFillTemplate = fs.readFileSync(path.join(handoffBundleDir, "release-env-fill.template.env"), "utf8");
+  assert.match(bundleReleaseEnvFillTemplate, /^# P0 release env fill template\./m);
+  assert.match(bundleReleaseEnvFillTemplate, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
+  assert.match(bundleReleaseEnvFillTemplate, /^DB_PASSWORD=__REQUIRED_SECRET_REF__$/m);
+  assert.match(bundleReleaseEnvFillTemplate, /^DDD_DEPLOYMENT_EVIDENCE=__REQUIRED_ARTIFACT_PATH_OR_URL__$/m);
   const bundleDockerImagePlan = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "docker-image-plan.json"), "utf8"));
-  assert.equal(bundleDockerImagePlan.status, "BLOCKED");
+  assert.equal(bundleDockerImagePlan.status, "PASS");
   assert(bundleDockerImagePlan.paths.some((item) => item.id === "existing-image-inspect"));
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "docker-image-plan.md"), "utf8"), /^# DDD Docker Image Evidence Plan/m);
   const bundleDockerImageSubmissionPlan = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "docker-image-submission-plan.json"), "utf8"));
-  assert.equal(bundleDockerImageSubmissionPlan.status, "BLOCKED");
+  assert.equal(bundleDockerImageSubmissionPlan.status, "PASS");
+  assert.equal(bundleDockerImageSubmissionPlan.laneReceiptFragment.status, "PASS");
   assert(bundleDockerImageSubmissionPlan.submissionModes.some((item) => item.id === "existing-image-inspect"));
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "docker-image-submission-plan.md"), "utf8"), /^# DDD Docker Image Submission Plan/m);
   const bundleRuntimeBusinessPlan = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "runtime-business-plan.json"), "utf8"));
@@ -2683,7 +2710,7 @@ try {
   assert.equal(bundleAcceptance.itemCount, 6);
   assert.equal(bundleAcceptance.blockedCount, 5);
   assert(bundleAcceptance.missingArtifactCount > 0);
-  assert(bundleAcceptance.items.some((item) => item.gate === "docker-images" && item.accepted === false));
+  assert(bundleAcceptance.items.some((item) => item.gate === "docker-images" && item.accepted === true));
   assert(bundleAcceptance.items.some((item) => item.gate === "explain" && item.blockingInputs.includes("MYSQL_PASSWORD")));
   assert(bundleAcceptance.items.some((item) => item.gate === "explain" && item.artifactChecks.some((artifact) => typeof artifact.present === "boolean")));
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "evidence-acceptance.md"), "utf8"), /^# DDD Staging Evidence Acceptance/m);
@@ -2728,7 +2755,8 @@ try {
   assert.match(bundledReleaseInfraPacket, /## Current Blocking Inputs/);
   assert.match(bundledPlatformOwnersPacket, /## Queue Lanes/);
   assert.match(bundledPlatformOwnersPacket, /p1-p2-data-safety/);
-  assert.match(bundledReleaseInfraPacket, /DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE/);
+  assert.match(bundledReleaseInfraPacket, /\| 2 \| `p0-docker-images` \| PASS \| 0 \|/);
+  assert.match(bundledReleaseInfraPacket, /### p0-docker-images[\s\S]*Currently missing artifacts: none/);
   assert.match(bundledReleaseInfraPacket, /## Staging Evidence Gaps/);
   assert.match(bundledReleaseInfraPacket, /## Missing Evidence Artifacts/);
   assert.match(bundledReleaseInfraPacket, /## Owner Completion Receipt/);
@@ -2792,6 +2820,7 @@ try {
   assert(bundleManifest.files.some((item) => item.file === "next-action-env-receipt.sample.md" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "production-closeout-status.json" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "production-closeout-status.md" && /^[a-f0-9]{64}$/.test(item.sha256)));
+  assert(bundleManifest.files.some((item) => item.file === "production-unblock-quickstart.md" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "production-cutover-audit.json" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "production-cutover-audit.md" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "operator-progress.json" && /^[a-f0-9]{64}$/.test(item.sha256)));
@@ -2809,6 +2838,7 @@ try {
   assert(bundleManifest.files.some((item) => item.file === "release-env-submission-plan.md" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "release-env-fill-checklist.json" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "release-env-fill-checklist.md" && /^[a-f0-9]{64}$/.test(item.sha256)));
+  assert(bundleManifest.files.some((item) => item.file === "release-env-fill.template.env" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "docker-image-plan.json" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "docker-image-plan.md" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "docker-image-submission-plan.json" && /^[a-f0-9]{64}$/.test(item.sha256)));
@@ -3554,7 +3584,8 @@ try {
   assert.match(releaseInfraPacket, /--next-action-env-receipt-output=<receipt-file>/);
   assert.match(releaseInfraPacket, /--operator-progress-markdown --next-action-env-receipt-file=<receipt-file>/);
   assert.match(releaseInfraPacket, /## Current Blocking Inputs/);
-  assert.match(releaseInfraPacket, /DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE/);
+  assert.match(releaseInfraPacket, /\| 2 \| `p0-docker-images` \| PASS \| 0 \|/);
+  assert.match(releaseInfraPacket, /### p0-docker-images[\s\S]*Currently missing artifacts: none/);
   assert.match(releaseInfraPacket, /## Submission Routes/);
   assert.match(releaseInfraPacket, /Source plan: `docker-image-submission-plan\.json`/);
   assert.match(releaseInfraPacket, /Next command: `node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-submission-plan-markdown`/);

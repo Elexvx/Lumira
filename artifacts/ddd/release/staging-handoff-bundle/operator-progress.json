@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:38:27.186Z",
+  "generatedAt": "2026-06-19T11:57:07.693Z",
   "willWriteFiles": false,
   "envFile": null,
   "receiptFile": null,
@@ -228,7 +228,7 @@
       "id": "handoff-bundle",
       "label": "Handoff bundle integrity",
       "status": "PASS",
-      "detail": "checkedFiles=114",
+      "detail": "checkedFiles=116",
       "command": "node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify"
     },
     {

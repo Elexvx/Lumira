@@ -45,7 +45,7 @@ Evidence gates: 1/6 accepted
 | --- | --- | --- | --- |
 | First-wave env file | BLOCKED | DDD_NEXT_ACTION_ENV_FILE or --next-action-env-file is required | `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>` |
 | First-wave env receipt | SKIPPED | waiting for first-wave env PASS | `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>` |
-| Handoff bundle integrity | PASS | checkedFiles=114 | `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify` |
+| Handoff bundle integrity | PASS | checkedFiles=116 | `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify` |
 | Lane completion receipt | SKIPPED | receipt file not provided | `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>` |
 | Post-env verification route | BLOCKED | blockedPhases=5/6 | `node scripts/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown` |
 | Release-owner final review | BLOCKED | accepted=1/6 | `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce` |

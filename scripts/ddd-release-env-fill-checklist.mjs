@@ -16,8 +16,10 @@ const lintFile = readArg("lint-file", "artifacts/ddd/release/release-env-lint.js
 const configEvidenceFile = readArg("config-evidence-file", "artifacts/ddd/config/release-config-evidence.json");
 const markdownOutput = readArg("markdown-output", "tmp/p0-release-env-fill-checklist.md");
 const jsonOutput = readArg("json-output", "tmp/p0-release-env-fill-keys.json");
+const envTemplateOutput = readArg("env-template-output", "tmp/p0-release-env-fill.template.env");
 const markdownOnly = rawArgs.includes("--markdown");
 const jsonOnly = rawArgs.includes("--json");
+const envTemplateOnly = rawArgs.includes("--env-template");
 
 const groupDefinitions = {
   runtime: [
@@ -115,6 +117,46 @@ function renderMarkdown(checklist) {
   return lines.join("\n");
 }
 
+function placeholderForKey(key) {
+  if (key.endsWith("_BASE_URL") || key === "PLAYWRIGHT_BASE_URL" || key === "LUMIRA_BASE_URL" || key.includes("ORIGIN")) {
+    return "__REQUIRED_HTTPS__";
+  }
+  if (key.includes("PASSWORD") || key.includes("SECRET") || key.includes("TOKEN") || key.endsWith("_KEY")) {
+    return "__REQUIRED_SECRET_REF__";
+  }
+  if (key.includes("COMPLETED_AT")) return "__REQUIRED_ISO_TIMESTAMP__";
+  if (key.includes("VALIDATED")) return "__REQUIRED_TRUE__";
+  if (key.includes("PORT")) return "__REQUIRED_PORT__";
+  if (key.includes("EVIDENCE") || key.includes("ARTIFACT")) return "__REQUIRED_ARTIFACT_PATH_OR_URL__";
+  return "__REQUIRED__";
+}
+
+function renderEnvTemplate(checklist) {
+  const lines = [
+    "# P0 release env fill template.",
+    "# Fill this into .env.release.local, then run the validation commands at the bottom.",
+    "# Do not commit real values. Secret-like values should be secret references, not plaintext.",
+    "",
+    `# Source lint file: ${checklist.lintFile}`,
+    `# Source config evidence file: ${checklist.configEvidenceFile}`,
+    `# Primary blockers: ${checklist.primaryBlockerCount}`,
+    `# Config blockers: ${checklist.configBlockerCount}`,
+    "",
+  ];
+
+  for (const [group, keys] of Object.entries(checklist.groups)) {
+    if (keys.length === 0) continue;
+    lines.push(`# ${group}`, ...keys.map((key) => `${key}=${placeholderForKey(key)}`), "");
+  }
+
+  lines.push(
+    "# Validation commands",
+    ...checklist.validationCommands.map((command) => `# ${command}`),
+    "",
+  );
+  return lines.join("\n");
+}
+
 function writeFile(file, value) {
   const absoluteFile = path.resolve(repoRoot, file);
   fs.mkdirSync(path.dirname(absoluteFile), { recursive: true });
@@ -146,6 +188,7 @@ const checklist = {
 };
 
 const markdown = renderMarkdown(checklist);
+const envTemplate = renderEnvTemplate(checklist);
 
 if (markdownOnly) {
   process.stdout.write(markdown);
@@ -157,14 +200,21 @@ if (jsonOnly) {
   process.exit(0);
 }
 
+if (envTemplateOnly) {
+  process.stdout.write(envTemplate);
+  process.exit(0);
+}
+
 writeFile(markdownOutput, markdown);
 writeFile(jsonOutput, `${JSON.stringify(checklist, null, 2)}\n`);
+writeFile(envTemplateOutput, envTemplate);
 console.log(JSON.stringify({
   status: checklist.status,
   generatedAt,
   willWriteFiles: true,
   markdownOutput,
   jsonOutput,
+  envTemplateOutput,
   keyCount: checklist.keyCount,
   primaryBlockerCount: checklist.primaryBlockerCount,
   configBlockerCount: checklist.configBlockerCount,

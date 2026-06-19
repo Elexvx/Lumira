@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T11:38:27.186Z",
+  "generatedAt": "2026-06-19T11:57:07.693Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
@@ -11,7 +11,7 @@
     "status": "PASS",
     "bundleDir": "artifacts/ddd/release/staging-handoff-bundle",
     "manifest": "artifacts/ddd/release/staging-handoff-bundle/manifest.json",
-    "checkedFileCount": 114,
+    "checkedFileCount": 116,
     "issues": []
   },
   "gates": [

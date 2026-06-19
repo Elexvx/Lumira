@@ -1,6 +1,6 @@
 # DDD Staging Handoff Bundle
 
-Generated at: 2026-06-19T11:38:27.186Z
+Generated at: 2026-06-19T11:57:07.693Z
 Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
@@ -19,10 +19,11 @@ Blocked gates: 5/6
 9. Validate owner lane receipt coverage with `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>` and require `Coverage: 5/5`.
 10. Use `lane-receipt-fragments.md` as the 5-lane receipt assembly index before submitting the redacted receipt.
 11. Read `production-cutover-audit.md` before final approval; every audit item must be PASS.
-12. Use `production-unblock-plan.md` as the focused production unblock checklist when the audit is still `NO_GO_STRICT`.
-13. Use `production-evidence-readiness.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go/no-go evidence in one table.
-14. Run `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` before final go/no-go; it must exit 0.
-12. Re-run `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.
+12. Start from `production-unblock-quickstart.md` when the audit is still `NO_GO_STRICT`.
+13. Use `production-unblock-plan.md` as the focused production unblock checklist when the quickstart needs detail.
+14. Use `production-evidence-readiness.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go/no-go evidence in one table.
+15. Run `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` before final go/no-go; it must exit 0.
+16. Re-run `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.
 
 ## Status Views
 
@@ -56,6 +57,7 @@ Blocked gates: 5/6
 - `release-owner-closeout.md`: paste-ready single-page release-owner closeout status.
 - `production-closeout-status.json`: machine-readable production closeout status with ETA band and next owner action.
 - `production-closeout-status.md`: paste-ready production closeout status with remaining production preconditions.
+- `production-unblock-quickstart.md`: one-page fastest path for env, receipts, owner evidence, and final gates.
 - `production-unblock-plan.json`: machine-readable focused plan for clearing the remaining production blockers.
 - `production-unblock-plan.md`: paste-ready focused plan for the parallel unblock workstreams and exit criteria.
 - `production-evidence-readiness.json`: machine-readable aggregate readiness for production evidence submission.
@@ -105,6 +107,7 @@ Blocked gates: 5/6
 - `release-env-submission-plan.md`: paste-ready release env owner submission and receipt plan.
 - `release-env-fill-checklist.json`: machine-readable P0 release env blocker key checklist.
 - `release-env-fill-checklist.md`: paste-ready P0 release env blocker key checklist.
+- `release-env-fill.template.env`: paste-ready P0 release env fill template generated from current blockers.
 - `docker-image-plan.json`: machine-readable Docker image build or inspect evidence plan.
 - `docker-image-plan.md`: paste-ready Docker image evidence plan.
 - `docker-image-submission-plan.json`: machine-readable Docker image evidence submission route.
@@ -180,6 +183,7 @@ node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-templa
 node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown
 node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown
 node scripts/ddd-release-env-fill-checklist.mjs --markdown
+node scripts/ddd-release-env-fill-checklist.mjs --env-template
 node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown
 node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown
 node scripts/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown
