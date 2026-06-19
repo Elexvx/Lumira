@@ -6,9 +6,9 @@
 
 评估基线：`89381581`
 
-已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`、`d23d4580`、`5c4a5501`、`d8392d64`
+已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`、`d23d4580`、`5c4a5501`、`d8392d64`、`d4322be6`
 
-当前补充证据：本轮复核发布汇总和生产证据就绪门禁，确认 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断；报告元数据已同步最新提交。
+当前补充证据：本轮补充报告结构合约测试，自动校验 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、关键标准和证据编号；发布汇总和生产证据就绪门禁仍显示 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断。
 
 ## 1. 结论
 
@@ -126,6 +126,7 @@
 | E-DEPLOY-START-BLOCKED | 本地 compose 启动尝试 | `node scripts/start-platform.mjs --skip-build --local-mysql --skip-check` | 启动进入 Docker volume/image 阶段，但 busybox/base image 拉取超时，未形成可访问运行态。 |
 | E-DOC-01 | 主报告 | `docs/security-assessment-full-test-report.md` | UTF-8 中文检查命令通过，无连续问号串、无替换字符、无常见乱码片段。 |
 | E-DOC-02 | 整改跟踪表 | `docs/security-assessment-remediation-tracker.md` | UTF-8 中文检查命令通过，无连续问号串、无替换字符、无常见乱码片段。 |
+| E-DOC-03 | 报告结构合约 | `node scripts/security-assessment-report-contract.test.mjs` | 通过；验证 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、标准名称、关键证据 ID 和阻断摘要。 |
 | E-SUB-01 | 子代理审计 | 多轮只读复核 | 发现并验证 3 项补充风险；本轮再次指出标准映射、证据时间、交接包状态和中文化缺口，已纳入本报告。 |
 
 ## 7. OWASP/MITRE/NIST 专项覆盖

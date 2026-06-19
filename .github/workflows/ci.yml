@@ -138,6 +138,7 @@ jobs:
           node --check scripts/ddd-release-env-canonical-merge.test.mjs
           node --check scripts/ddd-release-config-sync.test.mjs
           node --check scripts/ddd-release-workflow-structure.test.mjs
+          node --check scripts/security-assessment-report-contract.test.mjs
           node --check scripts/ddd-release-config-template.test.mjs
           node --check scripts/ddd-release-evidence-manifest.mjs
           node --check scripts/ddd-release-evidence-manifest.test.mjs
@@ -184,6 +185,8 @@ jobs:
           node --check scripts/ddd-staging-execution-checklist.mjs
           node --check scripts/ddd-staging-execution-checklist.test.mjs
           node --check scripts/ddd-production-evidence-readiness.test.mjs
+          node --check scripts/ddd-lane-completion-receipt-autofill.mjs
+          node --check scripts/ddd-lane-completion-receipt-autofill.test.mjs
           node --check scripts/ddd-release-closure-wave-receipts-contract.mjs
           node --check scripts/ddd-release-closure-wave-receipts-contract.test.mjs
           node --check scripts/ddd-release-next-action-queue-contract.mjs
@@ -357,6 +360,10 @@ jobs:
       - name: Production evidence readiness contract tests
         timeout-minutes: 10
         run: node scripts/ddd-production-evidence-readiness.test.mjs
+      - name: Lane completion receipt autofill tests
+        run: node scripts/ddd-lane-completion-receipt-autofill.test.mjs
+      - name: Security assessment report contract tests
+        run: node scripts/security-assessment-report-contract.test.mjs
       - name: Staging runtime check contract tests
         run: node scripts/ddd-staging-runtime-check.test.mjs
       - name: Staging data safety check contract tests

@@ -4,9 +4,9 @@
 
 基线提交：`89381581`
 
-已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`、`d23d4580`、`5c4a5501`、`d8392d64`
+已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`、`982576f1`、`5310a365`、`c327aa6a`、`d23d4580`、`5c4a5501`、`d8392d64`、`d4322be6`
 
-当前补充证据：本轮复核发布汇总和生产证据就绪门禁，确认 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断；报告元数据已同步最新提交。
+当前补充证据：本轮补充报告结构合约测试，自动校验 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、关键标准和证据编号；发布汇总和生产证据就绪门禁仍显示 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门仍阻断。
 
 ## 范围与依据
 
@@ -67,6 +67,7 @@
 - 2026-06-19：主报告补充 21 条详细测评项清单，覆盖 GB/T 22239、GB/T 28449、GB/T 20984、GB/T 30279、OWASP、ATT&CK、NIST 的本地证据、执行结果和未闭环条件。
 - 2026-06-19：再次复核 `node scripts/ddd-staging-execution-checklist.mjs --rollup` 与 `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`；结果仍为 Docker 证据通道通过、总门禁 5/6 阻断、5 个生产证据门阻断。
 - 2026-06-19：主报告补充剩余阻断责任矩阵；`--blocking-inputs-markdown` 显示 32 个阻断输入、5 个阻断 gate，`--production-unblock-plan-markdown` 显示 3 条并行解阻工作流和 5 个阻断审计项。
+- 2026-06-19：补充报告结构合约测试 `node scripts/security-assessment-report-contract.test.mjs`，覆盖 UTF-8 中文、21 条详细测评项、剩余阻断责任矩阵、标准名称、关键证据 ID 和阻断摘要，并接入 CI。
 - 2026-06-19：脚本门禁复核：
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`：输出“阻断/严格不放行”。
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce`：证据未齐时按设计非零阻断。

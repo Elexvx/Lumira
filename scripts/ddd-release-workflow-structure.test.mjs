@@ -364,12 +364,32 @@ assert(
   "CI syntax checks must cover production evidence readiness tests",
 );
 assert(
+  ciWorkflowText.includes("node --check scripts/ddd-lane-completion-receipt-autofill.mjs"),
+  "CI syntax checks must cover lane completion receipt autofill",
+);
+assert(
+  ciWorkflowText.includes("node --check scripts/ddd-lane-completion-receipt-autofill.test.mjs"),
+  "CI syntax checks must cover lane completion receipt autofill tests",
+);
+assert(
+  ciWorkflowText.includes("node --check scripts/security-assessment-report-contract.test.mjs"),
+  "CI syntax checks must cover security assessment report contract tests",
+);
+assert(
   ciWorkflowText.includes("node scripts/ddd-release-workflow-structure.test.mjs"),
   "CI must run release workflow structure tests",
 );
 assert(
   ciWorkflowText.includes("node scripts/ddd-production-evidence-readiness.test.mjs"),
   "CI must run production evidence readiness tests",
+);
+assert(
+  ciWorkflowText.includes("node scripts/ddd-lane-completion-receipt-autofill.test.mjs"),
+  "CI must run lane completion receipt autofill tests",
+);
+assert(
+  ciWorkflowText.includes("node scripts/security-assessment-report-contract.test.mjs"),
+  "CI must run security assessment report contract tests",
 );
 assert(
   ciWorkflowText.includes("node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle"),

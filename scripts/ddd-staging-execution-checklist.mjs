@@ -150,6 +150,7 @@ const ownerPacketDir = process.env.DDD_STAGING_OWNER_PACKET_DIR
 const handoffBundleDir = process.env.DDD_STAGING_HANDOFF_BUNDLE_DIR
   ? path.resolve(repoRoot, process.env.DDD_STAGING_HANDOFF_BUNDLE_DIR)
   : path.join(releaseDir, "staging-handoff-bundle");
+const laneCompletionReceiptAutofillCommand = "node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>";
 
 function printHelp() {
   console.log(`DDD staging execution checklist
@@ -2332,6 +2333,7 @@ function buildLaneCompletionReceiptTemplate({ matrixOverride = null } = {}) {
       "run node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
     ],
     submissionFlow: [
+      laneCompletionReceiptAutofillCommand,
       "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
       "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
       "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
@@ -2800,6 +2802,7 @@ function buildLaneCompletionSubmissionPlan({ rollupOverride = null } = {}) {
     },
     commands: [
       "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+      laneCompletionReceiptAutofillCommand,
       "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template",
       "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
       "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>",
@@ -9717,6 +9720,7 @@ function renderCommands() {
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template",
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+    laneCompletionReceiptAutofillCommand,
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>",
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
@@ -9931,6 +9935,7 @@ function buildOwnerPacket(owner, { rollup = null } = {}) {
   const receiptWorkflow = {
     laneKeys,
     initCommand: "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+    autofillCommand: laneCompletionReceiptAutofillCommand,
     editRule: "update only this owner's laneReceipts entries, then leave unrelated owner/lane pairs unchanged",
     checkCommand: "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
     coverageCommand: "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
@@ -9948,6 +9953,7 @@ function buildOwnerPacket(owner, { rollup = null } = {}) {
     "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
     "node scripts/ddd-release-readiness-summary.mjs",
     receiptWorkflow.initCommand,
+    receiptWorkflow.autofillCommand,
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown",
     receiptWorkflow.checkCommand,
     "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>",
