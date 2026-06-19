@@ -24,6 +24,12 @@ function sectionBetween(text, startMarker, endMarker) {
   return text.slice(start, end);
 }
 
+function sectionFrom(text, startMarker) {
+  const start = text.indexOf(startMarker);
+  assert(start >= 0, `missing section start: ${startMarker}`);
+  return text.slice(start);
+}
+
 for (const [name, text] of [
   ["full security assessment report", fullReportText],
   ["security remediation tracker", trackerText],
@@ -38,11 +44,13 @@ for (const marker of [
   "## 2. 标准逐项对照矩阵",
   "## 3. 详细测评项清单",
   "## 10. 剩余阻断责任矩阵",
+  "## 11. 全量排查判定",
 ]) {
   assertIncludes(fullReportText, marker);
 }
 
 assertIncludes(trackerText, "# Lumira 安全评估整改跟踪表");
+assertIncludes(trackerText, "## 尚未闭环");
 
 const detailedChecklist = sectionBetween(
   fullReportText,
@@ -81,8 +89,13 @@ for (const marker of [
   "MITRE ATT&CK",
   "NIST SP 800-115",
   "E-REL-05",
+  "E-REL-06",
   "E-DOC-01",
   "E-DOC-02",
+  "E-DOC-03",
+  "lane completion receipt 自动填充辅助",
+  "node scripts/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>",
+  "NO_GO_STRICT",
   "32 个阻断输入",
   "5 个阻断 gate",
   "3 条并行解阻工作流",
@@ -90,5 +103,13 @@ for (const marker of [
 ]) {
   assertIncludes(combinedText, marker);
 }
+
+const fullAssessmentDecision = sectionFrom(
+  fullReportText,
+  "## 11. 全量排查判定",
+);
+assertIncludes(fullReportText, "不能判定：生产环境全量安全测评已完成。");
+assertIncludes(fullAssessmentDecision, "本机可验证边界");
+assertIncludes(trackerText, "发布证据仍处于严格不放行状态");
 
 console.log("[security-assessment-report-contract.test] ok");
