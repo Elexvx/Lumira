@@ -80,6 +80,8 @@
 | E-FE-01 | 前端测试 | `corepack pnpm --dir lumira-ui run test` | 通过：12 个测试文件，37 个测试 |
 | E-FE-02 | 前端覆盖率 | `corepack pnpm --dir lumira-ui run test:coverage` | 通过；Statements 34.7%、Branches 12.53%、Functions 23.46%、Lines 35.22% |
 | E-FE-03 | 前端构建 | `corepack pnpm --dir lumira-ui run build` | 通过；生成 `dist` 87 个文件 |
+| E-FE-04 | 前端 lint | `corepack pnpm --dir lumira-ui run lint` | 通过 |
+| E-FE-05 | 前端 smoke | `corepack pnpm --dir lumira-ui run test:smoke` | 通过；修复 smoke 脚本从旧 `bin` 到 `scripts` 的路径引用 |
 | E-REL-01 | 发布证据就绪 | `node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness` | `BLOCKED`/`NO_GO_STRICT`，blockedAuditItemCount=6，readyEvidenceCount=1 |
 | E-REL-02 | 发布证据强制门禁 | `node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` | 证据未齐时应非零阻断 |
 | E-REL-05 | 生产证据就绪轻量回归 | `node bin/ddd-production-evidence-readiness.test.mjs` | 覆盖生产解阻计划、生产证据就绪 JSON 和交接包阻断缺口 |
@@ -105,7 +107,7 @@
 |---|---|
 | 文档 | 重建中文 UTF-8 报告和整改表，加入乱码回归合约 |
 | 后端 | 移除 Java BOM，修复插件加载器编码，更新 DDD 表归属模块名 |
-| 前端 | 修正 `adapt-cdn-assets.mjs` 从旧 `bin` 到 `scripts` 的构建路径 |
+| 前端 | 修正 `adapt-cdn-assets.mjs` 和 smoke 脚本从旧 `bin` 到 `scripts` 的路径 |
 | 发布证据 | 将证据合约改为如实断言 `BLOCKED`/`NO_GO_STRICT`，不绕过生产门禁 |
 
 ## 9. 环境限制与阻断项

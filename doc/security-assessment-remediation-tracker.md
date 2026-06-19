@@ -34,7 +34,7 @@
 - 2026-06-20：修复主报告和整改跟踪表乱码，重建为中文 UTF-8，并通过 `node bin/security-assessment-report-contract.test.mjs`。
 - 2026-06-20：修复 Java BOM/源码编码、插件加载器异常文案编码、DDD 表归属旧模块名和报告合约旧路径。
 - 2026-06-20：`lumira-backend\mvnw.cmd test` 全量通过，17 个 reactor 模块 SUCCESS。
-- 2026-06-20：`corepack pnpm --dir lumira-ui run test`、`typecheck`、`test:coverage`、`build` 通过；修复 `adapt-cdn-assets.mjs` 从旧 `bin` 到 `scripts` 的路径引用。
+- 2026-06-20：`corepack pnpm --dir lumira-ui run test`、`typecheck`、`test:coverage`、`build`、`lint`、`test:smoke` 通过；修复 `adapt-cdn-assets.mjs` 和 smoke 脚本从旧 `bin` 到 `scripts` 的路径引用。
 - 2026-06-20：`node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness` 返回 `BLOCKED`/`NO_GO_STRICT`，blockedAuditItemCount=6，readyEvidenceCount=1。
 - 2026-06-20：补齐 E-REL-05 至 E-REL-09 证据编号，覆盖生产证据就绪轻量回归、lane completion receipt 自动填充、P0 release env 填写清单、第一波 env 脱敏回执样例合约和生产解锁本地尝试。
 
