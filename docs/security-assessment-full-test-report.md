@@ -6,44 +6,61 @@
 
 评估基线：`89381581`
 
-已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`
+已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`
 
-当前补充整改：待提交
+当前补充证据：待提交
 
 ## 1. 结论
 
-本轮已完成仓库代码层、自动化测试门禁层和关键安全控制的全量排查：覆盖后端 17 个 Maven 模块、前端依赖锁定安装、lint、类型检查、单元测试、smoke 测试、发布脚本门禁、交接包完整性、以及一次子代理只读复核。已发现的原 11 项问题已闭环；子代理补充发现的 3 项问题也已完成代码整改并通过针对性回归和后端全量回归。
+本轮已完成仓库内静态审计、自动化测试门禁、发布证据门禁和已知安全发现整改的全量排查。覆盖范围包括后端 17 个 Maven 模块、前端依赖锁定安装、lint、类型检查、单元测试、coverage、生产构建、smoke 测试、Dockerfile 静态契约、发布脚本门禁、交接包完整性，以及多轮子代理只读复核。原 11 项发现和子代理补充的 3 项发现均已完成代码整改；除 `DEPLOY-OPS-BACKUP-ENV-001` 属静态复核闭环外，其余发现项均有针对性回归测试。
 
-本结论不等同于“生产环境全量渗透测试已完成”。真实生产网络边界、外部暴露资产、云账号权限、第三方服务、日志平台、备份介质、真实更新源签名链和运行态 DAST，需要在授权的预生产或生产窗口继续执行。
+本报告不能判定“生产环境全量安全测评已完成”。Docker daemon 当前不可用，容器运行态、Playwright E2E、DAST、外部资产扫描、真实第三方服务、云账号、日志平台、备份介质、生产更新源签名链等仍需在授权的本地隔离、预生产或生产窗口继续执行。相关条款在本报告中判定为“受限/未验证/阻断”。
 
-## 2. 依据标准
+## 2. 标准逐项对照矩阵
 
-| 标准/方法 | 本轮对应工作 |
-|---|---|
-| GB/T 22239-2019 | 复核身份鉴别、访问控制、安全审计、入侵防范、恶意代码防范、数据完整性和安全运维控制。 |
-| GB/T 28449-2018 | 按测评准备、方案执行、证据留存、结果判定、整改复测组织本轮评估。 |
-| GB/T 20984-2022 | 按资产、威胁、脆弱性、影响和现有控制进行风险判定与优先级排序。 |
-| GB/T 30279-2020 | 按利用条件、影响范围和危害程度对漏洞分类分级。 |
-| OWASP Testing Guide V4 | 覆盖认证、会话管理、访问控制、输入校验、文件处理、配置管理、客户端与接口行为测试。 |
-| MITRE ATT&CK Enterprise | 将发现项映射到凭据访问、权限提升、防御规避、初始访问和命令控制相关技术。 |
-| NIST SP 800-115 | 按规划、发现、攻击面验证、报告和整改复测的技术测试流程留存证据。 |
+| 标准/方法 | 条款/测试项 | 要求摘要 | 适用性 | 验证方法 | 证据 ID | 判定 | 发现项/残余风险 |
+|---|---|---|---|---|---|---|---|
+| GB/T 22239-2019 | 身份鉴别 | 默认账号、登录、会话、令牌、二次校验应具备安全控制。 | 适用 | 代码审计、单元测试、后端全量测试 | E-BE-01、E-REG-01 | 部分符合 | `DEPLOY-OPS-ADMIN-DEFAULT-001`、`AUTH-IAM-001`、`AUTH-IAM-002` 已修复；生产登录策略需现场验证。 |
+| GB/T 22239-2019 | 访问控制 | 用户、角色、数据权限、AI 工具、内部接口应按最小权限控制。 | 适用 | 子代理审计、权限回归测试 | E-BE-01、E-REG-01 | 部分符合 | `SQL-DATA-001`、`EXT-CALLBACK-001` 已修复；生产租户数据隔离需 E2E 验证。 |
+| GB/T 22239-2019 | 安全审计 | 高危管理操作、认证事件、内部任务应留痕并可追溯。 | 适用 | 代码审计、测试检索 | E-SUB-01 | 受限 | 缺少所有高危管理接口均产生审计记录的系统化运行态证据。 |
+| GB/T 22239-2019 | 入侵防范/恶意代码防范 | 上传、插件、更新链路应限制恶意输入和供应链污染。 | 适用 | 单元测试、插件/更新审计、Dockerfile 契约 | E-REG-01、E-DOCKER-01 | 部分符合 | `CAND-PLUGIN-PATH-001`、`PLUGIN-CLEANUP-BOUNDARY-001`、`UPDATE-SOURCE-TRUST-001` 已修复；真实恶意样本和 DAST 未完成。 |
+| GB/T 22239-2019 | 数据完整性与保密性 | 机密配置、备份、字段加密、日志脱敏应防泄露。 | 适用 | 静态复核、配置测试 | E-REG-01、E-DOC-02 | 部分符合 | `DEPLOY-OPS-BACKUP-ENV-001` 静态闭环；日志平台和备份恢复需现场验证。 |
+| GB/T 28449-2018 | 测评准备 | 明确范围、依据、资产和限制。 | 适用 | 文档审查 | E-DOC-01 | 部分符合 | 资产清单和授权边界仍需现场补齐。 |
+| GB/T 28449-2018 | 方案执行与证据留存 | 每项测试应有命令、结果、环境和限制。 | 适用 | 命令执行、证据索引 | E-BE-01 到 E-DEPLOY-FAIL | 部分符合 | 本地证据完整；运行态证据缺 Docker/服务环境。 |
+| GB/T 28449-2018 | 结果判定与整改复测 | 发现项应有风险、整改、复测和残余风险。 | 适用 | 跟踪表、回归测试 | E-DOC-02、E-REG-01 | 部分符合 | 代码层闭环；生产验证状态仍为未验证。 |
+| GB/T 20984-2022 | 资产识别 | 识别账号、数据、插件、文件、更新、部署和发布证据资产。 | 适用 | 架构/代码审计 | E-SUB-01 | 部分符合 | 外部资产、云资源、第三方服务资产清单缺失。 |
+| GB/T 20984-2022 | 威胁/脆弱性/影响分析 | 结合攻击路径和影响判定风险等级。 | 适用 | 子代理审计、风险表 | E-SUB-01、E-DOC-02 | 部分符合 | 代码风险已评估；运行态威胁仍需 DAST/渗透。 |
+| GB/T 20984-2022 | 风险处置 | 应给出整改、接受、规避或转移策略。 | 适用 | 整改跟踪表 | E-DOC-02 | 部分符合 | 阻断项需指定现场责任人与完成窗口。 |
+| GB/T 30279-2020 | 漏洞分类分级 | 按利用条件、影响范围、危害程度和现有控制分级。 | 适用 | 发现项分级、复核 | E-DOC-02 | 部分符合 | 已按 Critical/High/Medium 等分级；需补生产可利用性验证。 |
+| OWASP Testing Guide V4 | WSTG-ATHN/SESS | 认证、会话、令牌、验证码和强制改密。 | 适用 | 单元测试、代码审计 | E-BE-01、E-REG-01 | 部分符合 | E2E 登录链路未完成。 |
+| OWASP Testing Guide V4 | WSTG-ATHZ | 角色、租户、对象级访问控制。 | 适用 | 单元测试、代码审计 | E-BE-01、E-SUB-01 | 部分符合 | 运行态越权测试未完成。 |
+| OWASP Testing Guide V4 | WSTG-INPV/FILE | 输入校验、文件上传、插件包、Zip 路径。 | 适用 | 单元测试、插件审计 | E-REG-01 | 部分符合 | polyglot、畸形 zip、压缩炸弹等运行态样本未完成。 |
+| OWASP Testing Guide V4 | WSTG-CONF | 配置、默认密钥、CORS、管理接口、更新源。 | 适用 | 配置审计、测试 | E-REG-01、E-DOCKER-01 | 部分符合 | 真实部署配置未现场验证。 |
+| OWASP Testing Guide V4 | WSTG-CLNT/API | 前端构建、接口形态、客户端状态与 API smoke。 | 适用 | 前端测试、构建、smoke | E-FE-01、E-FE-02 | 部分符合 | Playwright E2E 受运行态阻塞。 |
+| MITRE ATT&CK Enterprise | T1190 初始访问 | Web/API 暴露面和管理接口滥用。 | 适用 | 代码审计、部署检查 | E-DEPLOY-FAIL | 受限 | 外部暴露面扫描和 DAST 未完成。 |
+| MITRE ATT&CK Enterprise | T1059/T1105 执行与传输 | 插件、更新、内部任务可能成为执行/下载链路。 | 适用 | 插件/更新审计、测试 | E-REG-01、E-DOCKER-01 | 部分符合 | 真实更新源和插件沙箱运行态未验证。 |
+| MITRE ATT&CK Enterprise | T1552 凭据暴露 | env、备份、日志、配置可能泄露凭据。 | 适用 | 静态审计、备份脚本复核 | E-DOC-02 | 部分符合 | 日志平台、备份介质现场验证未完成。 |
+| NIST SP 800-115 | Planning | 规划范围、授权边界、测试目标。 | 适用 | 文档审查 | E-DOC-01 | 部分符合 | 缺真实授权窗口和资产清单。 |
+| NIST SP 800-115 | Discovery | 识别服务、代码、脚本、发布制品和攻击面。 | 适用 | 子代理、搜索、测试清单 | E-SUB-01 | 部分符合 | 外部资产发现未完成。 |
+| NIST SP 800-115 | Attack/Validation | 验证漏洞、攻击路径、运行态影响。 | 适用 | 单元/合约测试、尝试 E2E | E-BE-01、E-DEPLOY-FAIL | 受限 | E2E/DAST/渗透未完成。 |
+| NIST SP 800-115 | Reporting/Remediation | 报告、整改、复测、残余风险。 | 适用 | 报告、跟踪表、提交记录 | E-DOC-01、E-DOC-02 | 部分符合 | 生产验证和风险接受待现场闭环。 |
 
 ## 3. 范围说明
 
 已完成范围：
 
-- 后端：`services/*`、`libs/*` 的 Maven 全量测试与安全回归。
-- 前端：`frontend` 依赖锁定安装、lint、typecheck、单元测试、smoke 测试。
-- 脚本门禁：发布证据就绪、强制阻断、交接包完整性、发布制品完整性、配置同步门禁。
-- 运维与发布：CI 门禁、updater 认证、发布证据完整性、镜像摘要、环境证据生成。
-- 子代理复核：后端服务与公共库安全复核，补充发现 3 项风险。
-- 文档：整改跟踪表、全量测试证据、国家标准对照说明。
+- 后端：`services/*`、`libs/*` 的 Maven 全量测试、安全回归和发行包构建。
+- 前端：`frontend` 依赖锁定安装、lint、typecheck、单元测试、coverage、生产构建、smoke 测试。
+- 脚本门禁：发布证据就绪、强制阻断、交接包完整性、发布制品完整性、配置同步门禁、Dockerfile 静态契约。
+- 运维与发布：CI 门禁、updater 认证、发布证据完整性、镜像摘要要求、Docker build evidence 阻断证据。
+- 子代理复核：后端、IAM、文件/插件、外部回调、部署运维、数据访问、标准矩阵和测试缺口复核。
 
 未完成或受环境限制范围：
 
 - 未对真实生产环境执行授权渗透测试。
 - 未对互联网暴露资产执行外部扫描。
 - 未连接真实第三方服务、云账号、日志平台或密钥管理平台做现场核验。
+- Docker daemon 当前不可用，`node scripts/deploy-container.mjs --ps` 返回 Docker 未运行，`node scripts/ddd-docker-build-evidence.mjs` 记录镜像构建证据 `FAIL`。
 - 前端 Playwright E2E smoke 已安装 Chromium，但本机 `127.0.0.1:8000` 与 `127.0.0.1:8080` 未提供可访问运行态，E2E smoke 因连接拒绝未完成。
 - `scripts/ddd-staging-execution-checklist.test.mjs` 全量脚本测试受重复 Node 进程干扰，已改用关键门禁命令复核并记录限制。
 
@@ -51,42 +68,46 @@
 
 | 风险级别 | 数量 | 状态 |
 |---|---:|---|
-| Critical | 1 | 已修复并复测通过 |
-| High | 7 | 已修复并复测通过 |
-| Medium-High | 2 | 已修复并复测通过 |
-| Medium | 3 | 已修复并复测通过 |
-| Low-Medium | 1 | 已修复并复测通过 |
+| Critical | 1 | 已修复并回归通过 |
+| High | 7 | 已修复并回归通过 |
+| Medium-High | 2 | 已修复并回归通过 |
+| Medium | 3 | 2 项回归通过，1 项静态复核通过 |
+| Low-Medium | 1 | 已修复并回归通过 |
 
-本轮补充整改：
+## 5. 测试证据索引
 
-- 更新清单源增加 HTTPS 校验和可配置主机 allowlist，镜像仍要求 `@sha256:` 摘要钉扎。
-- 插件目录递归清理增加根目录边界校验，禁止删除插件存储根、暂存根或任意外部路径。
-- `Forwarded/X-Forwarded-For` 只接受受信代理 CIDR 且客户端值必须为 IP 字面量，拒绝主机名、伪造值和 `unknown`。
-- 发布证据就绪增加强制门禁命令：证据未齐时按设计返回阻断。
+| 证据 ID | 类别 | 命令 | 结果 |
+|---|---|---|---|
+| E-BE-01 | 后端全量测试 | `.\mvnw.cmd clean test` | 17 个 Maven 模块全部 `BUILD SUCCESS`，完成时间 2026-06-19 15:18:55，耗时 01:51；`system-service` 有 4 个既有 integration skip。 |
+| E-BE-02 | 后端发行包 | `.\mvnw.cmd -pl services/lumira-server -am -DskipTests package` | 16 个模块全部 `BUILD SUCCESS`，完成时间 2026-06-19 15:29:25，耗时 33.622 s，生成 repackaged boot jar。 |
+| E-REG-01 | 安全回归 | `ClientIpResolverTest`、`PluginArtifactLoaderTest`、`PlatformUpdateAppServiceTest` 等 | IP 校验 5 例、插件清理 3 例、更新源 3 例均通过。 |
+| E-FE-01 | 前端基础测试 | `install --frozen-lockfile`、`lint`、`typecheck`、`test`、`test:smoke` | 均通过；单元测试 12 个文件、37 个用例通过。 |
+| E-FE-02 | 前端 coverage | `corepack pnpm --dir frontend run test:coverage` | 12 个文件、37 个用例通过；语句 34.7%、分支 12.53%、函数 23.46%、行 35.22%，覆盖率偏低，列为质量改进项。 |
+| E-FE-03 | 前端生产构建 | `corepack pnpm --dir frontend run build` | 通过，输出 `dist`，87 个 assets。 |
+| E-DOCKER-01 | Docker 静态契约 | `node scripts/ddd-dockerfile-contract.test.mjs`、`node scripts/ddd-docker-evidence-contract.test.mjs` | 均通过。 |
+| E-DOCKER-02 | Docker build evidence | `node scripts/ddd-docker-build-evidence.mjs` | 写入 `artifacts/ddd/build/docker-image-evidence.json`；状态 `FAIL`，2 个镜像 skipped，blocker 为 Docker CLI/daemon 不可用。 |
+| E-DDD-01 | DDD 证据合约 | `ddd-backend-evidence-contract.test.mjs`、`ddd-frontend-evidence-contract.test.mjs`、`ddd-frontend-smoke-contract.test.mjs` | 均通过。 |
+| E-REL-01 | 发布证据就绪 | `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness` | 正常输出 `BLOCKED/NO_GO_STRICT`，列出 5 个缺失/阻断证据门。 |
+| E-REL-02 | 发布证据强制门禁 | `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` | 按设计在证据未齐时非零阻断。 |
+| E-REL-03 | 交接包完整性 | `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify` | 通过，检查 112 个文件，`issues=[]`。 |
+| E-REL-04 | 发布制品/配置门禁 | `ddd-release-artifact-integrity-gate-contract.test.mjs`、`ddd-release-config-sync.test.mjs` | 均通过。 |
+| E-DEPLOY-FAIL | 部署运行态检查 | `node scripts/check-deployment.mjs` | 失败：`127.0.0.1:8000/health`、`/api/health`、`127.0.0.1:8080/actuator/health` 均无 HTTP 响应。 |
+| E-DOC-01 | 主报告 | `docs/security-assessment-full-test-report.md` | UTF-8 中文检查通过，无问号串、无替换字符、无 mojibake。 |
+| E-DOC-02 | 整改跟踪表 | `docs/security-assessment-remediation-tracker.md` | UTF-8 中文检查通过，无问号串、无替换字符、无 mojibake。 |
+| E-SUB-01 | 子代理审计 | Raman、Ampere、Poincare 等只读复核 | 发现并验证 3 项补充风险；指出标准逐项矩阵和测试缺口并已纳入本报告。 |
 
-## 5. 测试证据
+## 6. OWASP/MITRE/NIST 专项覆盖
 
-| 类别 | 命令 | 结果 |
+| 专项 | 已覆盖 | 未覆盖/受限 |
 |---|---|---|
-| 后端全量测试 | `.\mvnw.cmd clean test` | 17 个 Maven 模块全部 `BUILD SUCCESS`，完成时间 2026-06-19 15:18:55，耗时 01:51；`system-service` 有 4 个既有 integration skip。 |
-| IP 解析回归 | `.\mvnw.cmd -pl libs/common-web -Dtest=ClientIpResolverTest test` | 5 个用例通过，覆盖受信代理、非法值、可解析主机名拒绝、IPv6 `Forwarded`。 |
-| 插件清理边界回归 | `.\mvnw.cmd -pl services/plugin-service -Dtest=PluginArtifactLoaderTest test` | 3 个用例通过。 |
-| 更新源校验回归 | `.\mvnw.cmd -pl services/system-service -Dtest=PlatformUpdateAppServiceTest test` | 3 个用例通过。 |
-| 前端依赖锁定安装 | `corepack pnpm --dir frontend install --frozen-lockfile` | 通过。 |
-| 前端 lint | `corepack pnpm --dir frontend run lint` | 通过。 |
-| 前端类型检查 | `corepack pnpm --dir frontend run typecheck` | 通过。 |
-| 前端单元测试 | `corepack pnpm --dir frontend run test` | 12 个测试文件、37 个用例通过。 |
-| 前端 smoke | `corepack pnpm --dir frontend run test:smoke` | 通过。 |
-| 前端 E2E smoke | `corepack pnpm --dir frontend run test:e2e:smoke` | Chromium 已安装；因 `http://127.0.0.1:8000/user/login` 连接拒绝未完成。 |
-| 发布证据就绪 | `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness` | 正常输出 `BLOCKED/NO_GO_STRICT`，列出 5 个缺失/阻断证据门。 |
-| 发布证据强制门禁 | `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` | 按设计在证据未齐时非零阻断。 |
-| 交接包完整性 | `node scripts/ddd-staging-execution-checklist.mjs --handoff-bundle-verify` | 通过，检查 112 个文件，`issues=[]`。 |
-| 发布制品完整性门禁 | `node scripts/ddd-release-artifact-integrity-gate-contract.test.mjs` | 通过。 |
-| 发布配置同步门禁 | `node scripts/ddd-release-config-sync.test.mjs` | 通过。 |
+| OWASP 认证与会话 | 默认管理员、refresh token、验证码、JWT/session 回归测试。 | 真实浏览器登录、强制改密、会话失效 E2E 未完成。 |
+| OWASP 访问控制 | 角色权限、数据权限、AI 工具权限、内部接口令牌审计。 | 租户越权、对象级越权运行态测试未完成。 |
+| OWASP 文件/输入 | 文件根路径、插件包路径、插件清理、更新源校验测试。 | polyglot、畸形 zip、压缩炸弹、恶意插件运行态样本未完成。 |
+| OWASP 配置 | 生产配置校验、Dockerfile 静态契约、CORS/secret 规则审计。 | 真实部署配置、WAF、TLS、日志平台未现场验证。 |
+| MITRE ATT&CK | T1190、T1059、T1105、T1552 的相关攻击路径已在代码层映射。 | 外部攻击面扫描、DAST、真实供应链与更新通道攻击演练未完成。 |
+| NIST SP 800-115 | Planning、Discovery、Reporting、Remediation 在仓库范围有文档和证据。 | Attack/Validation 的运行态验证受 Docker/环境阻塞。 |
 
-## 6. 子代理复核
-
-已使用子代理 `Raman` 对后端服务与公共库进行只读复核。补充发现与处置如下：
+## 7. 子代理复核发现
 
 | ID | 风险 | 处置 |
 |---|---|---|
@@ -94,18 +115,18 @@
 | PLUGIN-CLEANUP-BOUNDARY-001 | 插件清理方法可对传入路径执行递归删除，缺少根边界。 | 已限制只能删除插件存储根/暂存根内的子路径，且禁止删除根本身。 |
 | FORWARDED-IP-VALIDATION-001 | 受信代理头中的客户端 IP 未严格校验。 | 已要求 IP 字面量，拒绝伪造字符串和可解析主机名。 |
 
-## 7. 风险保留与建议
+## 8. 环境限制与阻断项
 
-| 风险 | 建议动作 |
-|---|---|
-| 生产环境未现场验证 | 在授权预生产或生产窗口执行 NIST SP 800-115 风格动态测试，覆盖认证、越权、文件上传、管理接口、代理链与日志告警。 |
-| 外部资产未扫描 | 建立资产清单，明确域名、IP、端口、云资源和第三方回调地址后执行授权扫描。 |
-| 运行态 E2E/DAST 未完成 | 启动本地或隔离环境的前端入口和后端 API，再执行 Playwright E2E、OWASP ZAP/等价 DAST 与业务流攻击路径验证。 |
-| 生产证据仍为阻断 | 补齐 first-wave env receipt、lane completion receipt、owner evidence、production audit、final go/no-go 证据。 |
-| 安全运营证据仍需现场补齐 | 补充日志留存、告警闭环、备份恢复演练、权限审计和应急响应记录。 |
+| 阻断项 | 影响标准/测试 | 当前证据 | 完成条件 |
+|---|---|---|---|
+| Docker daemon 不可用 | 容器部署、镜像构建 inspect、运行态健康检查 | E-DOCKER-02、E-DEPLOY-FAIL | 启动 Docker Desktop/daemon 或使用 CI 可信 Docker 环境，重新执行 build evidence 与部署检查。 |
+| 本地 8000/8080 无服务 | Playwright E2E、API smoke、DAST | E-DEPLOY-FAIL | 启动隔离环境或提供 `PLAYWRIGHT_BASE_URL`/API 地址。 |
+| 生产授权缺失 | NIST Attack/Validation、外部扫描、DAST | 本报告范围声明 | 提供授权窗口、资产清单、测试边界、应急联系人。 |
+| 发布证据 NO_GO_STRICT | 发布前证据门禁 | E-REL-01、E-REL-02 | 补齐 first-wave env receipt、lane receipt、owner evidence、production audit、final go/no-go。 |
+| 前端覆盖率偏低 | 质量/回归充分性 | E-FE-02 | 为登录、请求层、权限、文件、AI/系统关键页面增加测试，提升覆盖率基线。 |
 
-## 8. 全量排查判定
+## 9. 全量排查判定
 
-可以判定：仓库代码、自动化测试门禁、发布证据门禁和已知安全发现整改的全量排查已完成。
+可以判定：仓库代码、自动化测试门禁、发布证据门禁、标准映射矩阵和已知安全发现整改的全量排查已完成到本机可验证边界。
 
-不能判定：生产环境全量安全测评已完成。该结论仍需要真实环境授权、资产清单、外部扫描结果、运行态 E2E/DAST、现场访谈和安全运营证据支持。
+不能判定：生产环境全量安全测评已完成。该结论仍需要真实环境授权、资产清单、外部扫描结果、运行态 E2E/DAST、镜像 build/inspect、现场访谈和安全运营证据支持。

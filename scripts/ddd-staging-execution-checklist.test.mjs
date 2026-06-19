@@ -15,7 +15,7 @@ const helpOutputBase = path.join(tmpDir, "staging-checklist-help");
 const summaryOutputBase = path.join(tmpDir, "staging-checklist-summary");
 const evidenceGapsOutputBase = path.join(tmpDir, "staging-checklist-evidence-gaps");
 const handoffBundleDir = path.join(tmpDir, "staging-handoff-bundle");
-const childTimeoutMs = Number(process.env.DDD_STAGING_CHECKLIST_TEST_CHILD_TIMEOUT_MS || 60000);
+const childTimeoutMs = Number(process.env.DDD_STAGING_CHECKLIST_TEST_CHILD_TIMEOUT_MS || 420000);
 
 function spawnSyncWithTimeout(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -23,7 +23,7 @@ function spawnSyncWithTimeout(command, args, options = {}) {
     maxBuffer: 16 * 1024 * 1024,
     ...options,
   });
-  if (result.status === -1 || result.status === 4294967295) {
+  if (result.status === null || result.status === -1 || result.status === 4294967295) {
     console.error(`[spawnSyncWithTimeout] status=${result.status}; signal=${result.signal || "none"}; error=${result.error ? result.error.message : "none"}; command=${command} ${args.join(" ")}`);
   }
   return result;

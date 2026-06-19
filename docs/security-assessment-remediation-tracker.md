@@ -4,48 +4,62 @@
 
 基线提交：`89381581`
 
-已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`
+已完成整改提交：`f9ff9e3a`、`dc3d17e1`、`72c08f54`、`d2b31294`
 
-当前补充整改：待提交
+当前补充证据：待提交
 
 ## 范围与依据
 
-本跟踪表用于承接 GB/T 22239-2019、GB/T 28449-2018、GB/T 20984-2022、GB/T 30279-2020、OWASP Testing Guide V4、MITRE ATT&CK Enterprise、NIST SP 800-115 对照评估后的整改闭环。范围覆盖仓库内后端服务、前端、脚本门禁、部署脚本、发布证据与配置基线；不替代需要真实授权环境的生产渗透测试、互联网暴露面扫描和第三方平台现场核验。
+本跟踪表用于承接 GB/T 22239-2019、GB/T 28449-2018、GB/T 20984-2022、GB/T 30279-2020、OWASP Testing Guide V4、MITRE ATT&CK Enterprise、NIST SP 800-115 的条款/测试项映射整改闭环。范围覆盖仓库内后端服务、前端、脚本门禁、部署脚本、发布证据与配置基线；不替代需要真实授权环境的生产渗透测试、互联网暴露面扫描、DAST 和第三方平台现场核验。
 
 ## 发现项状态
 
-| ID | 控制域 | 风险 | 当前状态 | 验证方式 |
-|---|---|---:|---|---|
-| DEPLOY-OPS-ADMIN-DEFAULT-001 | 身份鉴别/安全运维 | Critical | 已修复并回归通过 | `DefaultAdminPasswordBaselineTest` |
-| SQL-DATA-001 | 访问控制 | High | 已修复并回归通过 | `SystemRoleManagementAppServiceTest` |
-| EXT-CALLBACK-001 | 访问控制/内部接口 | High | 已修复并回归通过 | `AiCommandServiceTest` |
-| EXT-CALLBACK-002 | 安全运维/供应链 | High | 已修复并回归通过 | `PlatformUpdateAppServiceTest` |
-| CAND-PLUGIN-PATH-001 | 文件上传/插件管理 | High | 已修复并回归通过 | `PluginArtifactLoaderTest` |
-| AUTH-IAM-001 | 身份鉴别/会话管理 | High | 已修复并回归通过 | `AuthAppServiceTest` |
-| AUTH-IAM-002 | 身份鉴别/登录防护 | High | 已修复并回归通过 | `AuthAppServiceTest` |
-| DEPLOY-OPS-UPDATER-AUTH-001 | 安全运维/管理接口 | High | 已修复并回归通过 | `node scripts/lumira-updater-auth.test.mjs` |
-| FILE-PLUGIN-FILE-ROOT-001 | 文件存储边界 | Medium-High | 已修复并回归通过 | `FileManagementAppServiceTest` |
-| PLUGIN-CLEANUP-BOUNDARY-001 | 插件存储边界 | Medium-High | 已修复并回归通过 | `PluginArtifactLoaderTest` |
-| UPDATE-SOURCE-TRUST-001 | 安全运维/供应链 | Medium | 已修复并回归通过 | `PlatformUpdateAppServiceTest` |
-| CAND-FORWARDED-IP-001 | 边界防护/审计 | Medium | 已修复并回归通过 | `ClientIpResolverTest` |
-| DEPLOY-OPS-BACKUP-ENV-001 | 备份/机密保护 | Medium | 已修复并静态复核通过 | `deploy/backup-platform.sh`、`.gitignore` |
-| FORWARDED-IP-VALIDATION-001 | 边界防护/审计 | Low-Medium | 已修复并回归通过 | `ClientIpResolverTest` |
+| ID | 控制域 | 风险 | 标准/测试项映射 | 当前状态 | 复测证据 | 生产验证 |
+|---|---|---:|---|---|---|---|
+| DEPLOY-OPS-ADMIN-DEFAULT-001 | 身份鉴别/安全运维 | Critical | GB/T 22239 身份鉴别；OWASP WSTG-ATHN；MITRE T1078 | 已修复并回归通过 | `DefaultAdminPasswordBaselineTest`、E-BE-01 | 待现场验证 |
+| SQL-DATA-001 | 访问控制 | High | GB/T 22239 访问控制；OWASP WSTG-ATHZ；MITRE T1068 | 已修复并回归通过 | `SystemRoleManagementAppServiceTest`、E-BE-01 | 待 E2E 验证 |
+| EXT-CALLBACK-001 | 访问控制/内部接口 | High | GB/T 22239 访问控制；OWASP WSTG-ATHZ/API；MITRE T1059 | 已修复并回归通过 | `AiCommandServiceTest`、E-BE-01 | 待运行态验证 |
+| EXT-CALLBACK-002 | 安全运维/供应链 | High | GB/T 22239 安全运维；OWASP WSTG-CONF；MITRE T1105 | 已修复并回归通过 | `PlatformUpdateAppServiceTest`、E-REG-01 | 待真实更新源验证 |
+| CAND-PLUGIN-PATH-001 | 文件上传/插件管理 | High | GB/T 22239 入侵防范；OWASP WSTG-INPV/FILE；MITRE T1059 | 已修复并回归通过 | `PluginArtifactLoaderTest`、E-BE-01 | 待恶意样本验证 |
+| AUTH-IAM-001 | 身份鉴别/会话管理 | High | GB/T 22239 身份鉴别；OWASP WSTG-SESS | 已修复并回归通过 | `AuthAppServiceTest`、E-BE-01 | 待 E2E 验证 |
+| AUTH-IAM-002 | 身份鉴别/登录防护 | High | GB/T 22239 身份鉴别；OWASP WSTG-ATHN | 已修复并回归通过 | `AuthAppServiceTest`、E-BE-01 | 待浏览器验证 |
+| DEPLOY-OPS-UPDATER-AUTH-001 | 安全运维/管理接口 | High | GB/T 22239 安全运维；OWASP WSTG-CONF；MITRE T1190 | 已修复并回归通过 | `node scripts/lumira-updater-auth.test.mjs` | 待端口暴露验证 |
+| FILE-PLUGIN-FILE-ROOT-001 | 文件存储边界 | Medium-High | GB/T 22239 数据完整性；OWASP WSTG-INPV/FILE | 已修复并回归通过 | `FileManagementAppServiceTest`、E-BE-01 | 待上传 E2E 验证 |
+| PLUGIN-CLEANUP-BOUNDARY-001 | 插件存储边界 | Medium-High | GB/T 22239 入侵防范；OWASP WSTG-INPV/FILE；MITRE T1059 | 已修复并回归通过 | `PluginArtifactLoaderTest`、E-REG-01 | 待运行态验证 |
+| UPDATE-SOURCE-TRUST-001 | 安全运维/供应链 | Medium | GB/T 22239 安全运维；OWASP WSTG-CONF；MITRE T1105 | 已修复并回归通过 | `PlatformUpdateAppServiceTest`、E-REG-01 | 待真实源验证 |
+| CAND-FORWARDED-IP-001 | 边界防护/审计 | Medium | GB/T 22239 安全审计；OWASP WSTG-CONF | 已修复并回归通过 | `ClientIpResolverTest`、E-REG-01 | 待代理链验证 |
+| DEPLOY-OPS-BACKUP-ENV-001 | 备份/机密保护 | Medium | GB/T 22239 数据保密；GB/T 20984 风险处置；MITRE T1552 | 已修复并静态复核通过 | `deploy/backup-platform.sh`、`.gitignore` | 待备份恢复演练 |
+| FORWARDED-IP-VALIDATION-001 | 边界防护/审计 | Low-Medium | GB/T 22239 安全审计；OWASP WSTG-CONF | 已修复并回归通过 | `ClientIpResolverTest`、E-REG-01 | 待代理链验证 |
+
+## 风险分级依据
+
+| ID | GB/T 20984 风险要素 | GB/T 30279 分级理由 | 残余风险 |
+|---|---|---|---|
+| DEPLOY-OPS-ADMIN-DEFAULT-001 | 资产：管理员账号；威胁：首个访问者接管；影响：全局控制。 | 可远程利用、影响全系统、默认部署条件下危害高。 | 生产首启流程需现场确认。 |
+| SQL-DATA-001 | 资产：权限与租户数据；威胁：通配权限提升。 | 需认证但影响范围大，可造成越权。 | 需 E2E 验证租户与对象级访问。 |
+| EXT-CALLBACK-001 | 资产：内部工具/API；威胁：AI 工具越权调用。 | 需权限但可扩大访问面。 | 需运行态工具链验证。 |
+| EXT-CALLBACK-002/UPDATE-SOURCE-TRUST-001 | 资产：更新链路；威胁：恶意 manifest/镜像。 | 供应链路径影响部署制品。 | 需真实签名源和镜像仓库验证。 |
+| CAND-PLUGIN-PATH-001/PLUGIN-CLEANUP-BOUNDARY-001 | 资产：插件目录/主机文件；威胁：路径穿越或误删。 | 需插件管理路径但可影响文件系统边界。 | 需恶意样本和运行态插件隔离验证。 |
+| AUTH-IAM-001/AUTH-IAM-002 | 资产：会话与登录入口；威胁：token 重放/验证码绕过。 | 可影响身份鉴别可靠性。 | 需真实浏览器登录链路验证。 |
+| DEPLOY-OPS-UPDATER-AUTH-001 | 资产：更新管理接口；威胁：未授权更新/回滚。 | 端口误暴露时影响高。 | 需部署端口暴露和网络 ACL 验证。 |
+| FILE-PLUGIN-FILE-ROOT-001 | 资产：上传文件与存储根；威胁：越界读写。 | 需管理权限但影响文件存储边界。 | 需上传/下载/删除 E2E。 |
+| CAND-FORWARDED-IP-001/FORWARDED-IP-VALIDATION-001 | 资产：审计 IP 与限流 key；威胁：伪造客户端地址。 | 依赖代理链配置，影响审计准确性。 | 需真实反向代理链验证。 |
+| DEPLOY-OPS-BACKUP-ENV-001 | 资产：env secret；威胁：备份泄露。 | 本地/运维路径影响机密性。 | 需备份恢复演练和权限检查。 |
 
 ## 运行记录
 
 - 2026-06-19：提交现有工作树作为整改基线 `89381581`。
 - 2026-06-19：完成原 11 项报告问题的第一轮代码整改并提交 `f9ff9e3a`。
 - 2026-06-19：补充安全评估证据与生产门禁证据提交 `dc3d17e1`、`72c08f54`。
-- 2026-06-19：使用子代理 `Raman` 完成后端服务与公共库只读复核，新增 3 项发现并完成整改。
-- 2026-06-19：通过后端全量回归：
-  - `.\mvnw.cmd clean test`
-  - 结果：17 个 Maven 模块全部 `BUILD SUCCESS`，完成时间 2026-06-19 15:18:55，耗时 01:51；`system-service` 有 4 个既有 integration skip。
-- 2026-06-19：通过前端回归：
-  - `corepack pnpm --dir frontend install --frozen-lockfile`
-  - `corepack pnpm --dir frontend run lint`
-  - `corepack pnpm --dir frontend run typecheck`
-  - `corepack pnpm --dir frontend run test`：12 个测试文件、37 个用例通过。
-  - `corepack pnpm --dir frontend run test:smoke`
+- 2026-06-19：使用子代理 `Raman` 完成后端服务与公共库只读复核，新增 3 项发现并完成整改，提交 `d2b31294`。
+- 2026-06-19：通过后端全量回归：`.\mvnw.cmd clean test`，17 个 Maven 模块全部 `BUILD SUCCESS`，完成时间 2026-06-19 15:18:55。
+- 2026-06-19：通过后端发行包构建：`.\mvnw.cmd -pl services/lumira-server -am -DskipTests package`，16 个模块 `BUILD SUCCESS`，完成时间 2026-06-19 15:29:25。
+- 2026-06-19：通过前端回归：install、lint、typecheck、test、test:smoke 均通过；`test` 为 12 个测试文件、37 个用例通过。
+- 2026-06-19：通过前端 coverage：12 个测试文件、37 个用例通过；语句 34.7%、分支 12.53%、函数 23.46%、行 35.22%，覆盖率偏低，列入质量改进项。
+- 2026-06-19：通过前端生产构建：`corepack pnpm --dir frontend run build`，输出 `dist`，87 个 assets。
+- 2026-06-19：通过静态/合约门禁：`ddd-dockerfile-contract.test.mjs`、`ddd-docker-evidence-contract.test.mjs`、`ddd-backend-evidence-contract.test.mjs`、`ddd-frontend-evidence-contract.test.mjs`、`ddd-frontend-smoke-contract.test.mjs`。
+- 2026-06-19：Docker build evidence 记录阻断：`node scripts/ddd-docker-build-evidence.mjs` 写入 `artifacts/ddd/build/docker-image-evidence.json`，状态 `FAIL`，blocker 为 Docker CLI/daemon 不可用。
+- 2026-06-19：部署运行态检查失败：`node scripts/check-deployment.mjs` 对 `127.0.0.1:8000` 与 `127.0.0.1:8080` 均无 HTTP 响应。
 - 2026-06-19：前端 E2E smoke 安装 Chromium 后执行，因 `127.0.0.1:8000`/`127.0.0.1:8080` 未提供运行态而连接拒绝，未完成。
 - 2026-06-19：脚本门禁复核：
   - `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness`：输出 `BLOCKED/NO_GO_STRICT`。
@@ -54,9 +68,19 @@
   - `node scripts/ddd-release-artifact-integrity-gate-contract.test.mjs`：通过。
   - `node scripts/ddd-release-config-sync.test.mjs`：通过。
 
+## 阻断项清单
+
+| 阻断项 | 优先级 | 当前证据 | 完成条件 |
+|---|---|---|---|
+| Docker daemon/CLI 在 Node 子进程中不可用 | P0 | `artifacts/ddd/build/docker-image-evidence.json`：`status=FAIL`，2 个镜像 skipped。 | 启动 Docker daemon 或切换可信 CI Docker 环境，重新生成 PASS 的 build/inspect evidence。 |
+| 本地 API proxy 与后端未运行 | P0 | `node scripts/check-deployment.mjs` 全部健康检查无 HTTP 响应。 | 启动隔离环境，确保 `127.0.0.1:8000`、`127.0.0.1:8080` 或指定目标可访问。 |
+| Playwright E2E/DAST 未完成 | P0 | E2E smoke 连接拒绝；无 DAST 报告。 | 提供运行态 URL、测试账号、测试数据和授权边界，执行 E2E 与 DAST。 |
+| 生产证据 `NO_GO_STRICT` | P0 | production evidence readiness 输出 5 个阻断证据门。 | 补齐 first-wave env receipt、lane completion receipt、owner evidence、production audit、final go/no-go。 |
+| 前端覆盖率偏低 | P1 | coverage 行覆盖率 35.22%、分支 12.53%。 | 增加关键登录、请求、权限、文件、系统/AI 页面测试。 |
+
 ## 尚未闭环
 
 - 生产环境渗透测试、真实外部资产扫描、第三方服务现场核验尚未执行，需要明确授权环境、目标资产、时间窗口和测试边界。
 - 真实部署后的代理链、updater 端口暴露、真实更新源签名、备份目录权限、日志留存与告警联动仍需现场复核。
 - Playwright E2E smoke、运行态 DAST 和业务流攻击路径验证仍需可访问的本地或隔离运行环境。
-- 发布证据仍处于 `NO_GO_STRICT`：first-wave env receipt、lane completion receipt、owner evidence、production audit、final go/no-go 证据未齐。
+- 发布证据仍处于 `NO_GO_STRICT`，不能作为生产上线放行依据。
