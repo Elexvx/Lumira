@@ -83,6 +83,7 @@ function runPromote(env) {
     encoding: "utf8",
     env: {
       ...process.env,
+      GITHUB_SHA: "",
       ...env,
     },
   });
