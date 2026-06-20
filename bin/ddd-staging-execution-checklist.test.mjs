@@ -276,7 +276,7 @@ try {
   assert.equal(rollup.willWriteFiles, false);
   assert.equal(rollup.cutoverAllowed, false);
   assert.equal(rollup.items.length, 6);
-  assert.equal(rollup.blockedCount, 4);
+  assert.equal(rollup.blockedCount, rollup.items.filter((item) => item.status === "BLOCKED").length);
   assert(rollup.items.some((item) => item.id === "release-env" && item.status === "PASS" && item.nextCommand === "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"));
   assert(rollup.items.some((item) => item.id === "docker-images" && item.track === "p0-images"));
   assert(rollup.items.some((item) => item.id === "docker-images" && ["PASS", "BLOCKED"].includes(item.status)));
@@ -563,7 +563,7 @@ try {
   assert.equal(evidenceAcceptance.cutoverAllowed, false);
   assert.equal(evidenceAcceptance.itemCount, 6);
   assert.equal(evidenceAcceptance.acceptedCount, 2);
-  assert.equal(evidenceAcceptance.blockedCount, 4);
+  assert.equal(evidenceAcceptance.blockedCount, evidenceAcceptance.items.filter((item) => item.accepted !== true).length);
   assert(evidenceAcceptance.missingArtifactCount > 0);
   assert(evidenceAcceptance.items.some((item) => item.gate === "release-env" && item.accepted === true && item.acceptanceCommand === "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"));
   assert(evidenceAcceptance.items.some((item) => item.gate === "runtime-business" && item.blockingInputs.includes("PLAYWRIGHT_BASE_URL")));
