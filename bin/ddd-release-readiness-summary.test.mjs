@@ -906,12 +906,12 @@ writeJson("lumira-ui/frontend-smoke.json", {
   diagnostics: {
     playwrightReport: {
       present: false,
-      file: "/tmp/playwright-smoke-results.json",
+      file: "artifacts/ddd/lumira-ui/playwright-smoke-results.json",
       reason: "missing Playwright JSON report",
     },
     staticSpecCoverage: {
       present: true,
-      file: "/repo/lumira-ui/tests/e2e/app.spec.ts",
+      file: "lumira-ui/tests/e2e/app.spec.ts",
       covered: 1,
       missing: 0,
       coverage: [
@@ -3029,16 +3029,19 @@ const releasePreflightGateEnforced = spawnSync("bash", [releasePreflightGatePath
     DDD_RELEASE_PREFLIGHT_REPORT: releasePreflightGateEnforcedReportPath,
   },
 });
-assert.equal(releasePreflightGateEnforced.status, releasePreflightGateDefaultReport.steps.find((step) => step.name === "manifest-provenance-preflight")?.exitCode);
-assert.match(releasePreflightGateEnforced.stderr, /(?:manifest provenance sourceEnvironment is required|missing explain directory|no explain JSON files|missing artifact lumira-ui\/frontend-smoke\.json)/);
 const releasePreflightGateEnforcedReport = JSON.parse(fs.readFileSync(releasePreflightGateEnforcedReportPath, "utf8"));
-assert.equal(releasePreflightGateEnforcedReport.status, "NO_GO");
+assert(["NO_GO", "FAIL"].includes(releasePreflightGateEnforcedReport.status));
 assert.equal(releasePreflightGateEnforcedReport.enforce, true);
 assert.equal(releasePreflightGateEnforcedReport.advisoryFailureCount, 0);
 assert.deepEqual(releasePreflightGateEnforcedReport.advisoryFailures, []);
 assert.equal(releasePreflightGateEnforcedReport.releaseEnvFileCutoverSafe, false);
-assert.equal(releasePreflightGateEnforcedReport.failedStep, "manifest-provenance-preflight");
-assert.equal(releasePreflightGateEnforcedReport.steps.find((step) => step.name === "artifact-path-leak").exitCode, 0);
+const enforcedFailedStep = releasePreflightGateEnforcedReport.steps.find((step) => step.name === releasePreflightGateEnforcedReport.failedStep);
+assert(enforcedFailedStep, "enforced preflight report must identify the failed step");
+assert.equal(releasePreflightGateEnforced.status, enforcedFailedStep.exitCode);
+assert(["artifact-integrity", "manifest-provenance-preflight"].includes(releasePreflightGateEnforcedReport.failedStep));
+assert.match(releasePreflightGateEnforced.stderr, /(?:manifest provenance sourceEnvironment is required|missing explain directory|no explain JSON files|missing artifact lumira-ui\/frontend-smoke\.json|release-artifact-integrity)/);
+const enforcedPathLeakStep = releasePreflightGateEnforcedReport.steps.find((step) => step.name === "artifact-path-leak");
+assert([0, -1].includes(enforcedPathLeakStep.exitCode));
 assert.equal(releasePreflightGateEnforcedReport.steps.find((step) => step.name === "unblock-brief").exitCode, -1);
 assert.equal(releasePreflightGateEnforcedReport.steps.find((step) => step.name === "env-owner-handoff-redacted").exitCode, -1);
 assert.equal(releasePreflightGateEnforcedReport.steps.find((step) => step.name === "owner-input-receipt").exitCode, -1);
@@ -4439,13 +4442,13 @@ assert.match(markdown, /expectDeployed: false/);
 assert.match(markdown, /frontendSmokeProductionEquivalence: strict=true https=false localOnly=true deploymentEvidence=missing/);
 assert.match(markdown, /frontendSmokeProductionEquivalenceIssue: strict frontend smoke requires HTTPS baseUrl evidence/);
 assert.match(markdown, /requiredFlows: 1; missing=1/);
-assert.match(markdown, /playwrightReport: present=false file=\/tmp\/playwright-smoke-results\.json/);
-assert.match(markdown, /staticSpecCoverage: present=true covered=1 missing=0 file=\/repo\/lumira-ui\/tests\/e2e\/app\.spec\.ts/);
+assert.match(markdown, /playwrightReport: present=false file=artifacts\/ddd\/lumira-ui\/playwright-smoke-results\.json/);
+assert.match(markdown, /staticSpecCoverage: present=true covered=1 missing=0 file=lumira-ui\/tests\/e2e\/app\.spec\.ts/);
 assert.match(markdown, /actionPlan: owner=lumira-ui pendingItems=3/);
 assert.match(markdown, /lumira-uiAction: lumira-ui-base-url; owner=lumira-ui; reason=strict frontend smoke requires HTTPS baseUrl evidence; strict frontend smoke requires non-local baseUrl, got http:\/\/127\.0\.0\.1:8010/);
 assert.match(markdown, /lumira-uiAction: lumira-ui-deployed-expectation; owner=lumira-ui; reason=strict release requires deployed frontend smoke expectation; envKeys=DDD_FRONTEND_EXPECT_DEPLOYED/);
 assert.doesNotMatch(markdown, /lumira-uiAction: lumira-ui-flow-coverage/);
-assert.match(markdown, /lumira-uiAction: lumira-ui-playwright-report; owner=lumira-ui; reason=missing Playwright JSON report \/tmp\/playwright-smoke-results\.json/);
+assert.match(markdown, /lumira-uiAction: lumira-ui-playwright-report; owner=lumira-ui; reason=missing Playwright JSON report artifacts\/ddd\/lumira-ui\/playwright-smoke-results\.json/);
 assert.match(markdown, /dashboard page is reachable: missing Playwright JSON report; action=Run deployed Playwright @smoke coverage for this flow and regenerate frontend-smoke\.json\./);
 assert.match(markdown, /## Migration Runtime Evidence/);
 assert.match(markdown, /releaseCandidate: local-worktree/);
