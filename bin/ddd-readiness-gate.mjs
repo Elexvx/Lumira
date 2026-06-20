@@ -79,11 +79,19 @@ function fail(message) {
 }
 
 function read(relativePath) {
-  return fs.readFileSync(path.join(repoRoot, relativePath), "utf8");
+  return fs.readFileSync(resolveRepoPath(relativePath), "utf8");
+}
+
+function resolveRepoPath(relativePath) {
+  const primary = path.join(repoRoot, relativePath);
+  if (fs.existsSync(primary) || !relativePath.startsWith("services/")) {
+    return primary;
+  }
+  return path.join(repoRoot, "lumira-backend", relativePath);
 }
 
 function assertFile(relativePath, label) {
-  const absolutePath = path.join(repoRoot, relativePath);
+  const absolutePath = resolveRepoPath(relativePath);
   if (!fs.existsSync(absolutePath)) {
     fail(`missing ${label}: ${relativePath}`);
     return "";
