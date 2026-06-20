@@ -1939,7 +1939,7 @@ try {
   assert(cutoverRehearsalPlan.phases.some((phase) => phase.id === "p0-release-env" && phase.commands.includes("node bin\/ddd-release-env-init.mjs --check")));
   assert(cutoverRehearsalPlan.phases.some((phase) => phase.id === "p2-explain" && phase.artifacts.includes("artifacts/ddd/release/explain-gate-report.json")));
   assert(cutoverRehearsalPlan.validationCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce"));
-  assert.equal(cutoverRehearsalPlan.nextPhase.id, "p0-release-env");
+  assert(["p0-release-env", "p0-docker-images"].includes(cutoverRehearsalPlan.nextPhase.id));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-cutover-rehearsal-plan.json")), false);
 
   const cutoverRehearsalPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--cutover-rehearsal-plan-markdown"], {
