@@ -1053,7 +1053,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (currentUser != null && currentUser.getCurrentTenantId() != null) {
             return currentUser.getCurrentTenantId();
         }
-        return PlatformConstants.PLATFORM_TENANT_ID;
+        throw new BizException(ErrorCode.FORBIDDEN, "Tenant context is required");
     }
 
     private record ToolExecutionContext(CurrentUser currentUser, Long tenantId, Map<String, Object> arguments) {

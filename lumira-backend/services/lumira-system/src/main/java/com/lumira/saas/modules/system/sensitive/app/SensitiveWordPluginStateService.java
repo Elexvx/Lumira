@@ -1,6 +1,5 @@
 package com.lumira.saas.modules.system.sensitive.app;
 
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -76,6 +75,9 @@ public class SensitiveWordPluginStateService {
     }
 
     private Long resolveTenantId(CurrentUser currentUser) {
-        return currentUser.getCurrentTenantId() == null ? PlatformConstants.PLATFORM_TENANT_ID : currentUser.getCurrentTenantId();
+        if (currentUser.getCurrentTenantId() == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
+        }
+        return currentUser.getCurrentTenantId();
     }
 }

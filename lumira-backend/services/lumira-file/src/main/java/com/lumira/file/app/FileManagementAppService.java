@@ -15,6 +15,9 @@ import com.lumira.common.security.data.DataPermissionDecision;
 import com.lumira.common.security.data.DataPermissionResolver;
 import com.lumira.common.security.data.DataScopeType;
 import com.lumira.common.vo.PageResponse;
+import com.lumira.common.web.TraceContext;
+import com.lumira.common.web.security.audit.SecurityAuditEvent;
+import com.lumira.common.web.security.audit.SecurityAuditEventService;
 import com.lumira.file.config.UploadProperties;
 import com.lumira.file.dto.FileStorageSpaceRequest;
 import com.lumira.file.domain.model.FileDomainModels.FileObjectAggregate;
@@ -28,6 +31,9 @@ import com.lumira.file.vo.FileVO;
 import com.lumira.file.upload.DocumentUploadService;
 import com.lumira.file.upload.FileStorageMetrics;
 import com.lumira.file.upload.ImageUploadService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -53,6 +59,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class FileManagementAppService {
+
+    private static final Logger log = LoggerFactory.getLogger(FileManagementAppService.class);
+    private static final String STORAGE_TEST_PUBLIC_ERROR = "存储空间不可访问或配置不正确";
 
     private static final long MAX_PAGE_SIZE = 100L;
     private static final long FILE_LIST_TOTAL_COUNT_CAP = 1000L;
@@ -89,6 +98,7 @@ public class FileManagementAppService {
     private final FieldCryptoService fieldCryptoService;
     private final FileStorageMetrics storageMetrics;
     private final SafeUrlValidator safeUrlValidator;
+    private final SecurityAuditEventService securityAuditEventService;
     private final Map<String, CachedFilePage> localFileListCache = new ConcurrentHashMap<>();
 
     public FileManagementAppService(
@@ -104,6 +114,26 @@ public class FileManagementAppService {
             FileStorageMetrics storageMetrics,
             SafeUrlValidator safeUrlValidator
     ) {
+        this(fileObjectMapper, fileStorageSpaceMapper, jdbcTemplate, uploadProperties, documentUploadService,
+                imageUploadService, domainEventPublisher, fileProcessingTaskService, fieldCryptoService,
+                storageMetrics, safeUrlValidator, null);
+    }
+
+    @Autowired
+    public FileManagementAppService(
+            FileObjectMapper fileObjectMapper,
+            FileStorageSpaceMapper fileStorageSpaceMapper,
+            JdbcTemplate jdbcTemplate,
+            UploadProperties uploadProperties,
+            DocumentUploadService documentUploadService,
+            ImageUploadService imageUploadService,
+            @Qualifier("fileDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            FileProcessingTaskService fileProcessingTaskService,
+            FieldCryptoService fieldCryptoService,
+            FileStorageMetrics storageMetrics,
+            SafeUrlValidator safeUrlValidator,
+            SecurityAuditEventService securityAuditEventService
+    ) {
         this.fileObjectMapper = fileObjectMapper;
         this.fileStorageSpaceMapper = fileStorageSpaceMapper;
         this.jdbcTemplate = jdbcTemplate;
@@ -115,6 +145,7 @@ public class FileManagementAppService {
         this.fieldCryptoService = fieldCryptoService;
         this.storageMetrics = storageMetrics;
         this.safeUrlValidator = safeUrlValidator;
+        this.securityAuditEventService = securityAuditEventService;
     }
 
     public PageResponse<FileObjectDTO> listFiles(
@@ -618,8 +649,11 @@ public class FileManagementAppService {
             result.setMessage("对象存储配置完整，Endpoint 可访问");
             return result;
         } catch (Exception ex) {
+            log.warn("Storage space test failed tenantId={} storageSpaceId={} provider={} reason={}",
+                    tenantId, id, entity.getProvider(), ex.getMessage(), ex);
+            recordStorageSpaceTestAudit(currentUser, tenantId, id, entity.getProvider(), ex);
             result.setStatus("DOWN");
-            result.setMessage(ex.getMessage());
+            result.setMessage(STORAGE_TEST_PUBLIC_ERROR);
             return result;
         } finally {
             result.setResponseTimeMs(Duration.ofNanos(System.nanoTime() - startedAt).toMillis());
@@ -879,6 +913,27 @@ public class FileManagementAppService {
             throw new BizException(ErrorCode.BAD_REQUEST, "File path escapes storage root", "File path is invalid");
         }
         return target;
+    }
+
+    private void recordStorageSpaceTestAudit(CurrentUser currentUser, Long tenantId, Long storageSpaceId, String provider, Exception ex) {
+        if (securityAuditEventService == null) {
+            return;
+        }
+        securityAuditEventService.record(SecurityAuditEvent.builder("STORAGE_SPACE_TEST_FAILED", "WARN", "DENIED")
+                .tenantId(tenantId)
+                .userId(currentUser == null ? null : currentUser.getUserId())
+                .requestId(TraceContext.getRequestId())
+                .traceId(TraceContext.getTraceId())
+                .resourceCode("file_storage_space")
+                .actionCode("test")
+                .targetId(storageSpaceId == null ? null : String.valueOf(storageSpaceId))
+                .reasonCode(ex == null ? "STORAGE_TEST_FAILED" : ex.getClass().getSimpleName())
+                .message("Storage space test failed")
+                .metadata(Map.of(
+                        "provider", provider == null ? "" : provider,
+                        "storageSpaceId", storageSpaceId == null ? "" : storageSpaceId
+                ))
+                .build());
     }
 
     private Path resolveFilePath(FileObjectDTO file) {
@@ -1246,7 +1301,7 @@ public class FileManagementAppService {
         if (currentUser != null && currentUser.getCurrentTenantId() != null) {
             return currentUser.getCurrentTenantId();
         }
-        return com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        throw visibleBizException(ErrorCode.FORBIDDEN, "Tenant context is required");
     }
 
     private BizException visibleBizException(ErrorCode errorCode, String message) {

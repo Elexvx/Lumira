@@ -3,7 +3,6 @@ package com.lumira.saas.modules.system.app;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.common.security.FieldCryptoService;
@@ -45,7 +44,7 @@ class SystemPlatformSettingsAppServiceTest {
         );
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(configValues);
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(PlatformConstants.PLATFORM_TENANT_ID, "platform", "runtime-appearance")).thenReturn(1L);
+        when(readModelVersionService.getOrInitialize(1L, "platform", "runtime-appearance")).thenReturn(1L);
 
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         OwnerRuntimeMetrics ownerRuntimeMetrics = new OwnerRuntimeMetrics(meterRegistry);
@@ -58,7 +57,7 @@ class SystemPlatformSettingsAppServiceTest {
         assertThat(first.getWebsiteName()).isEqualTo("Lumira");
         assertThat(second.getWebsiteName()).isEqualTo("Lumira");
         assertThat(queryOperations.queryForListCount()).isEqualTo(1);
-        verify(readModelVersionService, times(1)).getOrInitialize(PlatformConstants.PLATFORM_TENANT_ID, "platform", "runtime-appearance");
+        verify(readModelVersionService, times(1)).getOrInitialize(1L, "platform", "runtime-appearance");
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_MISS)).isEqualTo(1.0);
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_HIT)).isEqualTo(1.0);
         assertThat(first.getCopyrightStartYear()).isEqualTo(2020);
@@ -74,7 +73,7 @@ class SystemPlatformSettingsAppServiceTest {
         );
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(configValues);
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(PlatformConstants.PLATFORM_TENANT_ID, "platform", "runtime-appearance")).thenReturn(5L, 6L);
+        when(readModelVersionService.getOrInitialize(1L, "platform", "runtime-appearance")).thenReturn(5L, 6L);
 
         SystemPlatformSettingsAppService service = newService(queryOperations, readModelVersionService, null, mock(SmtpMailService.class));
 
@@ -88,7 +87,7 @@ class SystemPlatformSettingsAppServiceTest {
 
         assertThat(third.getWebsiteName()).isEqualTo("Lumira");
         assertThat(queryOperations.queryForListCount()).isEqualTo(2);
-        verify(readModelVersionService, times(2)).getOrInitialize(PlatformConstants.PLATFORM_TENANT_ID, "platform", "runtime-appearance");
+        verify(readModelVersionService, times(2)).getOrInitialize(1L, "platform", "runtime-appearance");
         assertThat(System.identityHashCode(first)).isNotEqualTo(System.identityHashCode(third));
     }
 
@@ -102,7 +101,7 @@ class SystemPlatformSettingsAppServiceTest {
         );
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(configValues);
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(PlatformConstants.PLATFORM_TENANT_ID, "platform", "runtime-appearance")).thenReturn(2L);
+        when(readModelVersionService.getOrInitialize(1L, "platform", "runtime-appearance")).thenReturn(2L);
 
         SystemPlatformSettingsAppService service = newService(queryOperations, readModelVersionService, null, mock(SmtpMailService.class));
 
@@ -133,7 +132,7 @@ class SystemPlatformSettingsAppServiceTest {
             assertThat(setting.getWebsiteName()).isEqualTo(expect.getWebsiteName());
         }
         assertThat(queryOperations.queryForListCount()).isEqualTo(1);
-        verify(readModelVersionService, times(1)).getOrInitialize(PlatformConstants.PLATFORM_TENANT_ID, "platform", "runtime-appearance");
+        verify(readModelVersionService, times(1)).getOrInitialize(1L, "platform", "runtime-appearance");
     }
 
     @Test
@@ -172,7 +171,7 @@ class SystemPlatformSettingsAppServiceTest {
         service.updateSmtpSettings(currentUser, request);
         service.resetSmtpSettings(currentUser);
 
-        verify(smtpMailService, times(2)).invalidateTenant(PlatformConstants.PLATFORM_TENANT_ID);
+        verify(smtpMailService, times(2)).invalidateTenant(1L);
     }
 
     private static SystemPlatformSettingsAppService newService(

@@ -1,7 +1,7 @@
-import { storage } from '@/cache/storage';
 import { bumpAuthSessionEpoch } from '@/auth/loginFlowState';
 
 export const TOKEN_STORAGE_KEY = 'auth_tokens';
+export const AUTH_SESSION_BROADCAST_CHANNEL = 'lumira-auth-session';
 let authTokenGeneration = 0;
 
 export interface AuthTokenState {
@@ -13,34 +13,30 @@ export interface AuthTokenState {
 
 let memoryTokenState: AuthTokenState | null = null;
 
-const getPersistedTokenMeta = (): AuthTokenState | null => {
-  const state = storage.get<Partial<AuthTokenState> & { refreshToken?: string }>(TOKEN_STORAGE_KEY);
-  if (!state?.accessToken) {
-    return null;
-  }
-  return {
-    accessToken: state.accessToken,
-    tokenType: state.tokenType || 'Bearer',
-    expiresIn: Number(state.expiresIn || 0),
-    expiresAt: Number(state.expiresAt || 0),
-  };
-};
-
-const getTokenState = (): AuthTokenState | null => memoryTokenState ?? getPersistedTokenMeta();
+const getTokenState = (): AuthTokenState | null => memoryTokenState;
 
 const writeTokenState = (state: AuthTokenState) => {
   memoryTokenState = state;
-  storage.set(TOKEN_STORAGE_KEY, {
-    accessToken: state.accessToken,
-    tokenType: state.tokenType,
-    expiresIn: state.expiresIn,
-    expiresAt: state.expiresAt,
-  });
 };
 
 const removeTokenState = () => {
   memoryTokenState = null;
-  storage.remove(TOKEN_STORAGE_KEY);
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage?.removeItem(TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Access tokens are memory-only; legacy persisted tokens are best-effort cleared.
+  }
+};
+
+const broadcastAuthSession = (type: 'updated' | 'cleared') => {
+  if (typeof BroadcastChannel === 'undefined') {
+    return;
+  }
+  const channel = new BroadcastChannel(AUTH_SESSION_BROADCAST_CHANNEL);
+  channel.postMessage({ type, generation: authTokenGeneration, occurredAt: Date.now() });
+  channel.close();
 };
 
 export const tokenManager = {
@@ -59,10 +55,12 @@ export const tokenManager = {
     });
     authTokenGeneration += 1;
     bumpAuthSessionEpoch();
+    broadcastAuthSession('updated');
   },
   clearTokenState: () => {
     removeTokenState();
     authTokenGeneration += 1;
     bumpAuthSessionEpoch();
+    broadcastAuthSession('cleared');
   },
 };

@@ -1,11 +1,8 @@
 import { DEFAULT_HOME_PATH, LOGIN_PATH } from '@/app.constants';
 import buildAccess from '@/access';
-import { buildStorageKey } from '@/cache/storage';
-import { TOKEN_STORAGE_KEY } from '@/auth/token';
+import { AUTH_SESSION_BROADCAST_CHANNEL } from '@/auth/token';
 import { realPageRouteMetaList, resolveCanonicalRoutePath } from '@/routes/meta';
 import type { CurrentUser, MenuNode } from '@/types/api';
-
-export const AUTH_TOKEN_STORAGE_KEY = buildStorageKey(TOKEN_STORAGE_KEY);
 
 export const resolveLoginRedirectTarget = (search: string, fallback = DEFAULT_HOME_PATH) => {
   const redirect = new URLSearchParams(search).get('redirect')?.trim();
@@ -105,15 +102,17 @@ export const resolveAuthorizedLoginRedirectTarget = (
   return canVisitPath(canonicalFallback, currentUser) ? canonicalFallback : '/403';
 };
 
-export const isAuthTokenStorageEvent = (event: Pick<StorageEvent, 'key' | 'newValue'>) =>
-  event.key === AUTH_TOKEN_STORAGE_KEY && Boolean(event.newValue);
-
-export const createLoginStorageHandler = (redirectTarget: string, onNavigate: (target: string) => void) => {
-  return (event: Pick<StorageEvent, 'key' | 'newValue'>) => {
-    if (!isAuthTokenStorageEvent(event)) {
+export const createLoginSessionBroadcastListener = (redirectTarget: string, onNavigate: (target: string) => void) => {
+  if (typeof BroadcastChannel === 'undefined') {
+    return () => {};
+  }
+  const channel = new BroadcastChannel(AUTH_SESSION_BROADCAST_CHANNEL);
+  channel.onmessage = (event: MessageEvent<{ type?: string }>) => {
+    if (event.data?.type !== 'updated') {
       return;
     }
 
     onNavigate(redirectTarget);
   };
+  return () => channel.close();
 };

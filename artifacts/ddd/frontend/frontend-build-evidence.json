@@ -1,132 +1,132 @@
 {
-  "generatedAt": "2026-06-15T10:50:23.034Z",
-  "sourceEnvironment": "local-evidence-audit",
-  "releaseCandidate": "local-ddd-release-audit",
+  "generatedAt": "2026-06-20T05:36:11.946Z",
+  "sourceEnvironment": "local-security-fix-validation",
+  "releaseCandidate": "local-security-hardening",
   "evidenceOperator": "codex-local-audit",
   "status": "PASS",
-  "frontendDir": "frontend",
-  "distDir": "frontend/dist",
+  "frontendDir": "lumira-ui",
+  "distDir": "lumira-ui\\dist",
   "build": {
     "skipped": false,
     "status": "PASS",
-    "command": "corepack pnpm --dir frontend build",
+    "command": "corepack pnpm --dir lumira-ui build",
     "exitCode": 0,
     "signal": null,
-    "durationMs": 30993.48,
-    "stdoutTail": "\n> saas-frontend@0.1.0 build ./frontend\n> max setup && max build && node scripts/adapt-cdn-assets.mjs\n\ninfo  - [你知道吗？] 如果想预览构建后产物, 可尝试 max preview，详见 https://umijs.org/docs/api/commands#preview\ninfo  - generate files\ninfo  - [你知道吗？] @umijs/max 是蚂蚁内网框架 Bigfish 的对外版本。\ninfo  - Memory Usage: 186.4 MB (RSS: 1025.77 MB)\n\n  utoo pack v1.4.3 built in 20189ms\n\n  ➜  Output:  dist\n  ➜  Assets:  90 files\n\ninfo  - File sizes after gzip:\n\n  861.16 kB  dist/_4ea20005.d5689fd4.async.js\n  79.38 kB   dist/_595845b6.fd2865ba.async.js\n  64.13 kB   dist/_64f1f1b4.32eb04ad.async.js\n  49.37 kB   dist/_e2cb6e07.2f13f1e1.async.js\n  46.88 kB   dist/node_modules__pnpm_5e3e4c95.c5655e45.async.js\n  42.56 kB   dist/node_modules__pnpm_a2f24464.2c031f47.async.js\n  37.43 kB   dist/node_modules__pnpm_7deeaacd.828ce9b7.async.js\n  31.39 kB   dist/_73d919f0.1cfbd072.async.js\n  22.08 kB   dist/src_pages_profile_Center_tsx_ee468aa7.241ab232.async.js\n  15.27 kB   dist/node_modules__pnpm_802de503.3871ccd9.async.js\n  14.64 kB   dist/src_pages_system_users_tsx_f2aea66a.fa2b12f6.async.js\n  13.61 kB   dist/cf403_antd_es_64e22bfd.d6867d34.async.js\n  13.48 kB   dist/src_pages_user_Login_tsx_6c0e0382.0cbf767f.async.js\n  11.89 kB   dist/src_pages_settings_verification_tsx_1f210a5d.853b7572.async.js\n  10.28 kB   dist/src_pages_files_Center_tsx_ecd2fb6a.04ed6e93.async.js\n  10.2 kB    dist/src_pages_settings_monitoring_MonitoringPage_tsx_0a5bc58f.cf687313.async.js\n  10.15 kB   dist/src_pages_settings_notifications_NotificationsPage_tsx_ad2c4dc8.7b287108.async.js\n  10.02 kB   dist/src_pages_system_roles_tsx_e32428e7.71a32caf.async.js\n  9.93 kB    dist/cf403_antd_es_upload_index_09faac18.e0c82853.async.js\n  9.82 kB    dist/node_modules__pnpm_f8898dd1.5097ea5d.async.js\n  9.55 kB    dist/cf403_antd_es_03ab54c9.ad6b436c.async.js\n  9.21 kB    dist/node_modules__pnpm_ca707ac5.b3e63d2b.async.js\n  9.21 kB    dist/src_pages_settings_personalization_tsx_3474621d.490b43f0.async.js\n  9.15 kB    dist/src_pages_settings_menus_tsx_1db7e2c4.12d86630.async.js\n  8.87 kB    dist/src_pages_settings_ai-employees_AiEmployeesPage_tsx_19ee607a.a61335d5.async.js\n  8.86 kB    dist/cf403_antd_es_image_index_556f7770.484bec53.async.js\n  8.79 kB    dist/src_components_captcha_SliderCaptchaBox_tsx_7b3e7c69.de1bab1e.async.js\n  8.47 kB    dist/cf403_antd_es_cascader_index_c0a14fed.bb4dbe38.async.js\n  7.55 kB    dist/_0bdb1f68.57f89781.async.js\n  7.34 kB    dist/src_pages_settings_plugins_PluginsPage_tsx_a0548035.9d11fa35.async.js\n  6.91 kB    dist/_107bf4b0.e92ed18c.async.js\n  6.75 kB    dist/node_modules__pnpm_b302c0c2.4a87cc33.async.js\n  6.46 kB    dist/node_modules__pnpm_88b78c84.0b94e6de.async.js\n  6.34 kB    dist/node_modules__pnpm_ce5c9d08.fb9d2778.async.js\n  6.12 kB    dist/_6bfda696.2c316de4.async.js\n  5.94 kB    dist/_5300bc1b.c72271a2.async.js\n  5.69 kB    dist/src_9813bdc8.c271b602.css\n  5.6 kB     dist/_b4d67540.5c22a90c.async.js\n  5.55 kB    dist/cf403_antd_es_82a19c60.2e910f9a.async.js\n  5.52 kB    dist/node_modules__pnpm_6943dedf.9bd7f681.async.js\n  5.29 kB    dist/_b63b5073.25b8d243.async.js\n  5.27 kB    dist/src_pages_ai_knowledge_KnowledgePage_tsx_12346f62.f502b444.async.js\n  5.1 kB     dist/node_modules__pnpm_6f09b2a8.2e53eb3d.async.js\n  5.05 kB    dist/_e0af153a.497f3a60.async.js\n  5.04 kB    dist/src_pages_settings_localization_LocalizationPage_tsx_dedb18a0.51bd0bdd.async.js\n  5.03 kB    dist/cf403_antd_es_3b501874.8635f73a.async.js\n  5.03 kB    dist/src_pages_settings_payment_tsx_60f5428f.9457dce5.async.js\n  4.87 kB    dist/989e0__ant-design_pro-components_es_descriptions_index_936351c4.bb723564.async.js\n  4.67 kB    dist/_d1adac39.c220ceb0.async.js\n  4.58 kB    dist/_9d17e4ea.8f9c3542.async.js\n  4.58 kB    dist/_c2e8714c.051fe21d.async.js\n  4.53 kB    dist/_a5a8ecc2.adaba3ec.async.js\n  4.48 kB    dist/_cb7a95ad.7edbcf01.async.js\n  4.31 kB    dist/umi.c92dc572.js\n  4.26 kB    dist/_e70c64ed.6f7cc7ed.async.js\n  4.16 kB    dist/src_19d816ef.b3bc257f.async.js\n  4.02 kB    dist/src_pages_settings_dicts_tsx_cff3aa1c.b4cabef3.async.js\n  3.72 kB    dist/node_modules__pnpm_af171f9a.2842d651.async.js\n  3.09 kB    dist/src_pages_system_departments_tsx_f6cc23ea.c2e0a1d8.async.js\n  2.84 kB    dist/src_pages_settings_security_tsx_9b8018e2.d8693f60.async.js\n  2.83 kB    dist/src_pages_ai_Assistant_87ec1748.c2753c3d.css\n  2.82 kB    dist/src_30b57759.9ffb9cdf.async.js\n  2.82 kB    dist/src_pages_dashboard_DashboardHomePage_tsx_db913049.67d0b0d8.async.js\n  2.77 kB    dist/src_6f75a18f.7edf8a2f.async.js\n  2.68 kB    dist/_258a5c5b.0ca35cf8.async.js\n  2.62 kB    dist/src_c0616407.559fc72c.async.js\n  2.47 kB    dist/src_pages_user_Login_f8a531f3.2c704bea.css\n  2.24 kB    dist/_06e44ad2.dd8dc279.async.js\n  2.1 kB     dist/_4a37f856.48b8497e.async.js\n  1.87 kB    dist/_aed56ece.1fc04ac4.async.js\n  1.81 kB    dist/src_features_acad3c03.d6ad6857.async.js\n  1.78 kB    dist/8562f__ant-design_x-markdown_es_XMarkdown_7ee52a5d.ebc9a01e.css\n  1.63 kB    dist/src_e5e73657.0072ef82.async.js\n  1.15 kB    dist/src_features_cff38d73.5fcfb59d.async.js\n  868 B      dist/src_features_a8bf9e8e.2a1f08ae.async.js\n  843 B      dist/src_pages_settings_personalization_components_AgreementMarkdownEditor_0eaae2f8.7652f77b.css\n  828 B      dist/src_pages_system_roles_30a5e9bf.8a933ebe.css\n  753 B      dist/node_modules__pnpm_9a8479fc.5bb8b013.async.js\n  726 B      dist/src_pages_dashboard_Home_428e78cc.67436606.css\n  667 B      dist/src_features_f3ece90b.55e78e0d.async.js\n  666 B      dist/src_pages_settings_menus_components_MenuIconPicker_de70d962.c519f29e.css\n  653 B      dist/src_features_detail_config_tsx_551c3d11.4e46751b.async.js\n  608 B      dist/src_pages_system_users_69d434e3.c0cc6c07.css\n  557 B      dist/src_layouts_SettingsLayout_SettingsLayout_tsx_3f4ebecb.2b438a1f.async.js\n  441 B      dist/src_pages_exception_NotFound_tsx_533758b6.983269f1.async.js\n  369 B      dist/src__umi-production_plugin-layout_Layout_c37650f7.8353ca41.css\n  357 B      dist/src_layouts_AiLayout_AiLayout_tsx_ad9427a2.49f3d63c.async.js\n  233 B      dist/src__umi-production_core_EmptyRoute_tsx_1f63b8e9.a5f341ab.async.js\n  202 B      dist/src_features_form_config_ts_2d5d03ce.a06817e0.async.js\n\nevent - Build index.html\n",
+    "durationMs": 15431.06,
+    "stdoutTail": "\n> saas-lumira-ui@0.1.0 build .\\lumira-ui\n> max setup && max build && node scripts/adapt-cdn-assets.mjs\n\ninfo  - [你知道吗？] 请求加载态、数据管理、避免竞态问题，用 react-query 帮你全部解决，详见 https://umijs.org/docs/max/react-query\ninfo  - generate files\ninfo  - [你知道吗？] CSS 不够灵活、编写动态样式太繁琐怎么办？试试 styled-components 插件，详见 https://umijs.org/docs/max/styled-components\ninfo  - Memory Usage: 140.76 MB (RSS: 1086.97 MB)\n\n  utoo pack v1.4.3 built in 7688ms\n\n  ➜  Output:  dist\n  ➜  Assets:  87 files\n\ninfo  - File sizes after gzip:\n\n  866.21 kB  dist\\_013779da.9430e5cc.async.js\n  79.82 kB   dist\\_5070b973.bf575248.async.js\n  64.47 kB   dist\\_55871fab.1eae5b45.async.js\n  49.96 kB   dist\\_e2440265.66e2cf41.async.js\n  47.45 kB   dist\\node_modules__pnpm_cb0ffd55.f3e14ed9.async.js\n  42.8 kB    dist\\node_modules__pnpm_9ea158d3.14d08f7b.async.js\n  37.46 kB   dist\\node_modules__pnpm_c2e559bd.443fb43e.async.js\n  31.01 kB   dist\\_aaccbed5.0097f132.async.js\n  22.23 kB   dist\\src_pages_profile_Center_tsx_ee468aa7.809b91ed.async.js\n  15.42 kB   dist\\node_modules__pnpm_32617743.18f6bf5c.async.js\n  14.71 kB   dist\\src_pages_system_users_tsx_f2aea66a.8b42d51e.async.js\n  13.73 kB   dist\\src_pages_user_Login_tsx_6c0e0382.25ab8648.async.js\n  12.11 kB   dist\\src_pages_settings_monitoring_MonitoringPage_tsx_0a5bc58f.4a7a416e.async.js\n  11.94 kB   dist\\src_pages_settings_verification_tsx_1f210a5d.5aaf911b.async.js\n  10.38 kB   dist\\src_pages_files_Center_tsx_ecd2fb6a.05e17b4c.async.js\n  10.38 kB   dist\\src_pages_settings_notifications_NotificationsPage_tsx_ad2c4dc8.4a88c3f7.async.js\n  10.06 kB   dist\\src_pages_system_roles_tsx_e32428e7.3f73af84.async.js\n  9.96 kB    dist\\3843f_antd_es_upload_index_7bf2c4ef.27c63c2e.async.js\n  9.83 kB    dist\\node_modules__pnpm_fbbd6c4a.3b8d9417.async.js\n  9.5 kB     dist\\src_pages_settings_personalization_tsx_3474621d.51cc39e9.async.js\n  9.49 kB    dist\\3843f_antd_es_6b550e22.26193bc1.async.js\n  9.28 kB    dist\\node_modules__pnpm_e8ba9b07.2dc8de48.async.js\n  9.21 kB    dist\\src_pages_settings_menus_tsx_1db7e2c4.1750cf9a.async.js\n  8.92 kB    dist\\src_pages_settings_ai-employees_AiEmployeesPage_tsx_19ee607a.363138fa.async.js\n  8.9 kB     dist\\3843f_antd_es_image_index_e0191acc.1cefaf0d.async.js\n  8.8 kB     dist\\src_components_captcha_SliderCaptchaBox_tsx_7b3e7c69.ea9cbc72.async.js\n  8.58 kB    dist\\3843f_antd_es_slider_index_d3a21339.3249b823.async.js\n  8.51 kB    dist\\3843f_antd_es_cascader_index_c58396db.0f9ec938.async.js\n  7.59 kB    dist\\_46d37128.e30fa143.async.js\n  7.36 kB    dist\\src_pages_settings_plugins_PluginsPage_tsx_a0548035.aba9503a.async.js\n  7.18 kB    dist\\3843f_antd_es_28f41f73.fca327e6.async.js\n  6.98 kB    dist\\_f8140aab.f8b61975.async.js\n  6.87 kB    dist\\_f95433b8.5dee3ee3.async.js\n  6.86 kB    dist\\_17b8be7a.1c5a4ead.async.js\n  6.81 kB    dist\\node_modules__pnpm_3439a923.792ed681.async.js\n  6.51 kB    dist\\node_modules__pnpm_8b7b812b.958a3747.async.js\n  6.38 kB    dist\\node_modules__pnpm_de2592d5.32c830ff.async.js\n  6.07 kB    dist\\_57883a18.fe847ac3.async.js\n  5.97 kB    dist\\_25dbbf6c.83e6fe29.async.js\n  5.75 kB    dist\\src_9813bdc8.9951a9d2.css\n  5.57 kB    dist\\3843f_antd_es_db04b458.5717cf37.async.js\n  5.46 kB    dist\\src_pages_ai_knowledge_KnowledgePage_tsx_12346f62.cdd70564.async.js\n  5.3 kB     dist\\_9dc08c80.cf1267fa.async.js\n  5.06 kB    dist\\src_pages_settings_payment_tsx_60f5428f.886cc98a.async.js\n  4.92 kB    dist\\src_pages_settings_localization_LocalizationPage_tsx_dedb18a0.62211026.async.js\n  4.89 kB    dist\\808d7__ant-design_pro-components_es_descriptions_index_f6a24871.c71100ca.async.js\n  4.81 kB    dist\\_196a23de.fcd3832d.async.js\n  4.71 kB    dist\\_effc7124.8a8b7d6a.async.js\n  4.62 kB    dist\\_dec354e6.8890218b.async.js\n  4.6 kB     dist\\_10f571f7.9dbc6a9b.async.js\n  4.47 kB    dist\\_c639edaa.ce962bc7.async.js\n  4.32 kB    dist\\umi.1616324a.js\n  4.32 kB    dist\\_8ab5cc31.67014fe8.async.js\n  4.17 kB    dist\\_96b2c667.023330f0.async.js\n  4.13 kB    dist\\_1aa6b1d9.d3eccea3.async.js\n  4.06 kB    dist\\src_pages_settings_dicts_tsx_cff3aa1c.1453fee1.async.js\n  4.01 kB    dist\\_50e7f52c.0aadf60a.async.js\n  3.9 kB     dist\\_d8100860.542110d5.async.js\n  3.81 kB    dist\\src_d55b469a.54ecb8b8.async.js\n  3.76 kB    dist\\node_modules__pnpm_73148461.c6d78f58.async.js\n  3.35 kB    dist\\_dfdadfa8.3bc4fab2.async.js\n  3.12 kB    dist\\src_c5d2468e.4473da99.async.js\n  3.07 kB    dist\\src_e64468c5.dd698c3b.async.js\n  2.86 kB    dist\\src_pages_settings_security_tsx_9b8018e2.94633f25.async.js\n  2.83 kB    dist\\src_pages_ai_Assistant_87ec1748.c2753c3d.css\n  2.59 kB    dist\\src_6fca6382.2ab5f8f7.async.js\n  2.57 kB    dist\\src_pages_user_Login_f8a531f3.f6e96e50.css\n  2.32 kB    dist\\_0102b24d.8008361a.async.js\n  2.11 kB    dist\\_4a37f856.fb63987a.async.js\n  1.89 kB    dist\\_bcb2dff0.20e5ab26.async.js\n  1.78 kB    dist\\bfb57__ant-design_x-markdown_es_XMarkdown_52f435df.ebc9a01e.css\n  1.59 kB    dist\\src_7753b58f.4b2a2627.async.js\n  1.43 kB    dist\\src_features_0a576de7.3c5d8c9a.async.js\n  1.4 kB     dist\\_8eea9ff8.e172e2e4.async.js\n  1.24 kB    dist\\src_30a93b7c.bf8d8f8c.async.js\n  843 B      dist\\src_pages_settings_personalization_components_AgreementMarkdownEditor_0eaae2f8.7652f77b.css\n  828 B      dist\\src_pages_system_roles_30a5e9bf.8a933ebe.css\n  765 B      dist\\node_modules__pnpm_8d23156b.1c381c54.async.js\n  726 B      dist\\src_pages_dashboard_Home_428e78cc.67436606.css\n  666 B      dist\\src_pages_settings_menus_components_MenuIconPicker_de70d962.c519f29e.css\n  608 B      dist\\src_pages_system_users_69d434e3.c0cc6c07.css\n  563 B      dist\\src_layouts_SettingsLayout_SettingsLayout_tsx_3f4ebecb.4eb83649.async.js\n  450 B      dist\\src_pages_exception_NotFound_tsx_533758b6.8d426f09.async.js\n  369 B      dist\\src__umi-production_plugin-layout_Layout_c37650f7.8353ca41.css\n  361 B      dist\\src_layouts_AiLayout_AiLayout_tsx_ad9427a2.844f8981.async.js\n  235 B      dist\\src__umi-production_core_EmptyRoute_tsx_1f63b8e9.9646990a.async.js\n\nevent - Build index.html\n",
     "stderrTail": ""
   },
   "summary": {
-    "files": 182,
-    "assets": 90,
-    "totalBytes": 15160286,
+    "files": 176,
+    "assets": 87,
+    "totalBytes": 15186427,
     "indexHtmlPresent": true
   },
   "entrypoint": {
-    "file": "frontend/dist/index.html",
+    "file": "lumira-ui\\dist\\index.html",
     "bytes": 1977,
-    "sha256": "fb05d9b9162e4be5d332afd8362b21c0556f5331badf7c894b0136ba1bec3731"
+    "sha256": "9f4ff161582b50587c74b82b0d930585bc52902ed1c038f87ab99ebf3e46a612"
   },
   "largestFiles": [
     {
-      "file": "frontend/dist/_4ea20005.d5689fd4.async.js",
-      "bytes": 2955637,
-      "sha256": "9f39dd25212ba61ad10a46743ca4af153354ed9556dcf326bd047d22379c7309"
+      "file": "lumira-ui\\dist\\cdn-assets\\js\\_013779da__dot__9430e5cc__dot__async__dot__js",
+      "bytes": 2967959,
+      "sha256": "f6f72de82122122da13441b31b6f27caedf723631d8ef269783eb38aae4a870f"
     },
     {
-      "file": "frontend/dist/cdn-assets/js/_4ea20005__dot__d5689fd4__dot__async__dot__js",
-      "bytes": 2955637,
-      "sha256": "9f39dd25212ba61ad10a46743ca4af153354ed9556dcf326bd047d22379c7309"
+      "file": "lumira-ui\\dist\\_013779da.9430e5cc.async.js",
+      "bytes": 2967959,
+      "sha256": "f6f72de82122122da13441b31b6f27caedf723631d8ef269783eb38aae4a870f"
     },
     {
-      "file": "frontend/dist/cdn-assets/img/login-cloud-platform__dot__04f91af8__dot__png",
+      "file": "lumira-ui\\dist\\cdn-assets\\img\\login-cloud-platform__dot__04f91af8__dot__png",
       "bytes": 1799208,
       "sha256": "367b2b91a7216955ee5edb4a232db0da785dab39ba83d53bb835cb9cda7da504"
     },
     {
-      "file": "frontend/dist/static/login-cloud-platform.04f91af8.png",
+      "file": "lumira-ui\\dist\\static\\login-cloud-platform.04f91af8.png",
       "bytes": 1799208,
       "sha256": "367b2b91a7216955ee5edb4a232db0da785dab39ba83d53bb835cb9cda7da504"
     },
     {
-      "file": "frontend/dist/stats.json",
-      "bytes": 555793,
-      "sha256": "f6690ba56deeb97c54d7c415bd733f153e2ea6df1a2ab3b76950cd47d40f947b"
+      "file": "lumira-ui\\dist\\stats.json",
+      "bytes": 533027,
+      "sha256": "13bc2d1b5b3c44ade7dc147d9bc5e2e219c2a29517a4764ea1ee2db8a07cced8"
     },
     {
-      "file": "frontend/dist/_595845b6.fd2865ba.async.js",
-      "bytes": 252376,
-      "sha256": "a969f2210aa71d49c470cf8fbec6dba71d03f151678b9c66026a4fc1c9ca6a73"
+      "file": "lumira-ui\\dist\\cdn-assets\\js\\_5070b973__dot__bf575248__dot__async__dot__js",
+      "bytes": 252929,
+      "sha256": "9fe8ab6eee55165dd4f6fb9588107e0e1cb3837b2840f30801cab014546d15fa"
     },
     {
-      "file": "frontend/dist/cdn-assets/js/_595845b6__dot__fd2865ba__dot__async__dot__js",
-      "bytes": 252376,
-      "sha256": "a969f2210aa71d49c470cf8fbec6dba71d03f151678b9c66026a4fc1c9ca6a73"
+      "file": "lumira-ui\\dist\\_5070b973.bf575248.async.js",
+      "bytes": 252929,
+      "sha256": "9fe8ab6eee55165dd4f6fb9588107e0e1cb3837b2840f30801cab014546d15fa"
     },
     {
-      "file": "frontend/dist/_64f1f1b4.32eb04ad.async.js",
-      "bytes": 211182,
-      "sha256": "8c190ddbb562d6aebbcfc7c16c39b13c521081cef91549e6e39a70018d56cf73"
+      "file": "lumira-ui\\dist\\cdn-assets\\js\\_55871fab__dot__1eae5b45__dot__async__dot__js",
+      "bytes": 211607,
+      "sha256": "c61b64bb0cc23b6d18ac2fb763c51ea686860ff89a163527e2f0e7aa46b08e5e"
     },
     {
-      "file": "frontend/dist/cdn-assets/js/_64f1f1b4__dot__32eb04ad__dot__async__dot__js",
-      "bytes": 211182,
-      "sha256": "8c190ddbb562d6aebbcfc7c16c39b13c521081cef91549e6e39a70018d56cf73"
+      "file": "lumira-ui\\dist\\_55871fab.1eae5b45.async.js",
+      "bytes": 211607,
+      "sha256": "c61b64bb0cc23b6d18ac2fb763c51ea686860ff89a163527e2f0e7aa46b08e5e"
     },
     {
-      "file": "frontend/dist/cdn-assets/js/node_modules__pnpm_5e3e4c95__dot__c5655e45__dot__async__dot__js",
-      "bytes": 205733,
-      "sha256": "b332af24f641bb32ae352db3264496d506ca7c8917371cfbfedd0c3d5a1b1803"
+      "file": "lumira-ui\\dist\\cdn-assets\\js\\node_modules__pnpm_cb0ffd55__dot__f3e14ed9__dot__async__dot__js",
+      "bytes": 205844,
+      "sha256": "78ea94dd80c8ab54ce6de7df45eb2309e13c972027cb30db594bbd1ccd959ec6"
     },
     {
-      "file": "frontend/dist/node_modules__pnpm_5e3e4c95.c5655e45.async.js",
-      "bytes": 205733,
-      "sha256": "b332af24f641bb32ae352db3264496d506ca7c8917371cfbfedd0c3d5a1b1803"
+      "file": "lumira-ui\\dist\\node_modules__pnpm_cb0ffd55.f3e14ed9.async.js",
+      "bytes": 205844,
+      "sha256": "78ea94dd80c8ab54ce6de7df45eb2309e13c972027cb30db594bbd1ccd959ec6"
     },
     {
-      "file": "frontend/dist/_e2cb6e07.2f13f1e1.async.js",
-      "bytes": 169016,
-      "sha256": "fec114df8dd51e4ed115190cf9f8983e656342ec5152e876bc2b328ed773613b"
+      "file": "lumira-ui\\dist\\cdn-assets\\js\\_e2440265__dot__66e2cf41__dot__async__dot__js",
+      "bytes": 171654,
+      "sha256": "9dbfa2b076e6ac17e36353e31e96fd01d3051072515bd766366c4eabf01c8d03"
     },
     {
-      "file": "frontend/dist/cdn-assets/js/_e2cb6e07__dot__2f13f1e1__dot__async__dot__js",
-      "bytes": 169016,
-      "sha256": "fec114df8dd51e4ed115190cf9f8983e656342ec5152e876bc2b328ed773613b"
+      "file": "lumira-ui\\dist\\_e2440265.66e2cf41.async.js",
+      "bytes": 171654,
+      "sha256": "9dbfa2b076e6ac17e36353e31e96fd01d3051072515bd766366c4eabf01c8d03"
     },
     {
-      "file": "frontend/dist/cdn-assets/js/node_modules__pnpm_a2f24464__dot__2c031f47__dot__async__dot__js",
-      "bytes": 132978,
-      "sha256": "e0eb9ee9d631e4f79493878852a2d3536f74cee977ba0a476ab95a1885f235c8"
+      "file": "lumira-ui\\dist\\cdn-assets\\js\\node_modules__pnpm_9ea158d3__dot__14d08f7b__dot__async__dot__js",
+      "bytes": 133183,
+      "sha256": "6e839436acf23a134f40d04c1a6b6501e02e1949f33050fba1969c06d0252015"
     },
     {
-      "file": "frontend/dist/node_modules__pnpm_a2f24464.2c031f47.async.js",
-      "bytes": 132978,
-      "sha256": "e0eb9ee9d631e4f79493878852a2d3536f74cee977ba0a476ab95a1885f235c8"
+      "file": "lumira-ui\\dist\\node_modules__pnpm_9ea158d3.14d08f7b.async.js",
+      "bytes": 133183,
+      "sha256": "6e839436acf23a134f40d04c1a6b6501e02e1949f33050fba1969c06d0252015"
     },
     {
-      "file": "frontend/dist/cdn-assets/js/node_modules__pnpm_7deeaacd__dot__828ce9b7__dot__async__dot__js",
-      "bytes": 115899,
-      "sha256": "6081626f8e163e56e7932cd27296490e49831b187dcfd4676976630a82e6fbe9"
+      "file": "lumira-ui\\dist\\cdn-assets\\js\\node_modules__pnpm_c2e559bd__dot__443fb43e__dot__async__dot__js",
+      "bytes": 115947,
+      "sha256": "911d641b9174d0dda1c22cb8a8744ef686fc17a48bebd74c5153dd5dfaab3e86"
     },
     {
-      "file": "frontend/dist/node_modules__pnpm_7deeaacd.828ce9b7.async.js",
-      "bytes": 115899,
-      "sha256": "6081626f8e163e56e7932cd27296490e49831b187dcfd4676976630a82e6fbe9"
+      "file": "lumira-ui\\dist\\node_modules__pnpm_c2e559bd.443fb43e.async.js",
+      "bytes": 115947,
+      "sha256": "911d641b9174d0dda1c22cb8a8744ef686fc17a48bebd74c5153dd5dfaab3e86"
     },
     {
-      "file": "frontend/dist/_73d919f0.1cfbd072.async.js",
-      "bytes": 100559,
-      "sha256": "a95bf465b546ebc06c6324bf6a2311a2aa0e6b3687e83060cd9fb6526cd7ba07"
+      "file": "lumira-ui\\dist\\cdn-assets\\js\\_aaccbed5__dot__0097f132__dot__async__dot__js",
+      "bytes": 100613,
+      "sha256": "da68df6f60e25916509cf36226f60108e02a1d0f16769598b90078c1950876fe"
     },
     {
-      "file": "frontend/dist/cdn-assets/js/_73d919f0__dot__1cfbd072__dot__async__dot__js",
-      "bytes": 100559,
-      "sha256": "a95bf465b546ebc06c6324bf6a2311a2aa0e6b3687e83060cd9fb6526cd7ba07"
+      "file": "lumira-ui\\dist\\_aaccbed5.0097f132.async.js",
+      "bytes": 100613,
+      "sha256": "da68df6f60e25916509cf36226f60108e02a1d0f16769598b90078c1950876fe"
     },
     {
-      "file": "frontend/dist/cdn-assets/js/src_pages_profile_Center_tsx_ee468aa7__dot__241ab232__dot__async__dot__js",
-      "bytes": 74925,
-      "sha256": "d723dde8df6dc510069cb0911e6eca46a1b4b8dec12490c496f009682522e657"
+      "file": "lumira-ui\\dist\\cdn-assets\\js\\src_pages_profile_Center_tsx_ee468aa7__dot__809b91ed__dot__async__dot__js",
+      "bytes": 75399,
+      "sha256": "d651b1c26552c23b0a9414bf17b5f2a26d0bd5e77adbf699d428cfe1f30fe4a8"
     }
   ],
   "blockers": []

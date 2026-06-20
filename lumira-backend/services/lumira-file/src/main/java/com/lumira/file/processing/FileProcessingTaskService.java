@@ -83,7 +83,7 @@ public class FileProcessingTaskService {
             Instant startedAt = Instant.now();
             try {
                 process(task);
-                markSucceeded(task.id(), task.updatedBy());
+                markSucceeded(task);
                 processingMetrics.recordSucceeded(task.taskType(), Duration.between(startedAt, Instant.now()));
                 processed++;
             } catch (RuntimeException exception) {
@@ -168,8 +168,8 @@ public class FileProcessingTaskService {
         );
     }
 
-    public void markSucceeded(Long taskId, Long userId) {
-        if (taskId == null) {
+    public void markSucceeded(ProcessingTask task) {
+        if (task == null || task.id() == null || !StringUtils.hasText(task.claimToken())) {
             return;
         }
         LocalDateTime now = LocalDateTime.now();
@@ -178,18 +178,44 @@ public class FileProcessingTaskService {
                         update file_processing_task
                         set status = ?, completed_at = ?, last_error = null, next_retry_at = null,
                             claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0
+                        where id = ? and claim_token = ? and deleted = 0
+                        """,
+                STATUS_SUCCEEDED,
+                now,
+                now,
+                task.updatedBy() == null ? 0L : task.updatedBy(),
+                task.id(),
+                task.claimToken()
+        );
+    }
+
+    public void markSucceeded(Long taskId, Long userId) {
+        markSucceeded(taskId, userId, null);
+    }
+
+    public void markSucceeded(Long taskId, Long userId, String claimToken) {
+        if (taskId == null || !StringUtils.hasText(claimToken)) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        jdbcTemplate.update(
+                """
+                        update file_processing_task
+                        set status = ?, completed_at = ?, last_error = null, next_retry_at = null,
+                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
+                        where id = ? and claim_token = ? and deleted = 0
                         """,
                 STATUS_SUCCEEDED,
                 now,
                 now,
                 userId == null ? 0L : userId,
-                taskId
+                taskId,
+                claimToken
         );
     }
 
     public void markFailed(ProcessingTask task, String errorMessage) {
-        if (task == null || task.id() == null) {
+        if (task == null || task.id() == null || !StringUtils.hasText(task.claimToken())) {
             return;
         }
         int retryCount = task.retryCount() == null ? 0 : task.retryCount();
@@ -201,7 +227,7 @@ public class FileProcessingTaskService {
                         update file_processing_task
                         set status = ?, retry_count = ?, next_retry_at = ?, last_error = ?,
                             claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0
+                        where id = ? and claim_token = ? and deleted = 0
                         """,
                 deadLetter ? STATUS_DEAD_LETTER : STATUS_FAILED,
                 nextRetryCount,
@@ -209,7 +235,8 @@ public class FileProcessingTaskService {
                 truncate(errorMessage),
                 now,
                 task.updatedBy() == null ? 0L : task.updatedBy(),
-                task.id()
+                task.id(),
+                task.claimToken()
         );
     }
 

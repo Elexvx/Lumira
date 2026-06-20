@@ -613,6 +613,9 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        return com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        if (currentUser != null && currentUser.getCurrentTenantId() != null) {
+            return currentUser.getCurrentTenantId();
+        }
+        throw new BizException(ErrorCode.FORBIDDEN, "Tenant context is required");
     }
 }

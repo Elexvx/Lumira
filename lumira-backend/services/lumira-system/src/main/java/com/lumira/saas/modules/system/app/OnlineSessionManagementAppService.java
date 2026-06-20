@@ -288,11 +288,14 @@ public class OnlineSessionManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        return com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
+        }
+        return currentUser.getCurrentTenantId();
     }
 
     private void ensureTenantMatch(Long currentTenantId, AuthSession session) {
-        if (!currentTenantId.equals(com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID)) {
+        if (session == null || !currentTenantId.equals(session.getCurrentTenantId())) {
             throw new BizException(ErrorCode.FORBIDDEN, "只能操作当前平台会话");
         }
     }

@@ -34,6 +34,9 @@ public class SqlRow {
         if (requiredType == Integer.class || requiredType == int.class) {
             return (T) Integer.valueOf(value instanceof Number number ? number.intValue() : Integer.parseInt(String.valueOf(value)));
         }
+        if (requiredType == Double.class || requiredType == double.class) {
+            return (T) Double.valueOf(value instanceof Number number ? number.doubleValue() : Double.parseDouble(String.valueOf(value)));
+        }
         if (requiredType == String.class) {
             return (T) String.valueOf(value);
         }

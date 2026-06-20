@@ -1280,7 +1280,7 @@ public class AiManagementAppService {
         if (currentUser != null && currentUser.getCurrentTenantId() != null) {
             return currentUser.getCurrentTenantId();
         }
-        return com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        throw new BizException(ErrorCode.FORBIDDEN, "Tenant context is required");
     }
 
     private Long count(String sql, Object... args) {

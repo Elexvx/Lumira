@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -128,7 +129,8 @@ class FileProcessingTaskServiceTest {
                 2001L,
                 LocalDateTime.now(),
                 2001L,
-                LocalDateTime.now()
+                LocalDateTime.now(),
+                "claim-token"
         );
 
         ArgumentCaptor<String> updateSql = ArgumentCaptor.forClass(String.class);
@@ -137,9 +139,64 @@ class FileProcessingTaskServiceTest {
 
         verify(jdbcTemplate).update(updateSql.capture(), updateArgs.capture());
         assertThat(updateSql.getValue()).contains("update file_processing_task");
-        assertThat(updateSql.getValue()).contains("where id = ? and deleted = 0");
+        assertThat(updateSql.getValue()).contains("where id = ? and claim_token = ? and deleted = 0");
         assertThat(updateArgs.getValue()[0]).isEqualTo(FileProcessingTaskService.STATUS_DEAD_LETTER);
         assertThat(updateArgs.getValue()[1]).isEqualTo(5);
+    }
+
+    @Test
+    void markFailed_shouldIgnoreTaskWithoutClaimToken() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
+        var service = service(jdbcTemplate, outboxService);
+        var task = new FileProcessingTaskService.ProcessingTask(
+                99L,
+                1001L,
+                3001L,
+                FileProcessingTaskService.TASK_SECURITY_SCAN,
+                FileProcessingTaskService.STATUS_PROCESSING,
+                100,
+                0,
+                null,
+                LocalDateTime.now(),
+                null,
+                null,
+                2001L,
+                LocalDateTime.now(),
+                2001L,
+                LocalDateTime.now(),
+                null
+        );
+
+        service.markFailed(task, "boom");
+
+        verify(jdbcTemplate, never()).update(anyString(), Mockito.<Object[]>any());
+    }
+
+    @Test
+    void markSucceededById_shouldRequireClaimToken() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
+        var service = service(jdbcTemplate, outboxService);
+
+        service.markSucceeded(99L, 2001L);
+
+        verify(jdbcTemplate, never()).update(anyString(), Mockito.<Object[]>any());
+    }
+
+    @Test
+    void markSucceededById_shouldUpdateOnlyMatchingClaimToken() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
+        var service = service(jdbcTemplate, outboxService);
+        ArgumentCaptor<String> updateSql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Object[]> updateArgs = ArgumentCaptor.forClass(Object[].class);
+
+        service.markSucceeded(99L, 2001L, "claim-token");
+
+        verify(jdbcTemplate).update(updateSql.capture(), updateArgs.capture());
+        assertThat(updateSql.getValue()).contains("where id = ? and claim_token = ? and deleted = 0");
+        assertThat(updateArgs.getValue()).contains(99L, "claim-token");
     }
 
     @Test
@@ -154,7 +211,7 @@ class FileProcessingTaskServiceTest {
 
         assertThat(processed).isEqualTo(1);
         verify(securityScanProcessor).scan(1001L, 3001L, 2001L);
-        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L));
+        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
     @Test
@@ -169,7 +226,7 @@ class FileProcessingTaskServiceTest {
 
         assertThat(processed).isEqualTo(1);
         verify(thumbnailProcessor).generateThumbnail(1001L, 3001L, 2001L);
-        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L));
+        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
     @Test
@@ -184,7 +241,7 @@ class FileProcessingTaskServiceTest {
 
         assertThat(processed).isEqualTo(1);
         verify(ocrProcessor).extractImageText(1001L, 3001L, 2001L);
-        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L));
+        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
     @Test
@@ -197,7 +254,7 @@ class FileProcessingTaskServiceTest {
         int processed = service.processPendingTasks(10);
 
         assertThat(processed).isZero();
-        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_FAILED), eq(1), any(LocalDateTime.class), anyString(), any(LocalDateTime.class), eq(2001L), eq(99L));
+        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_FAILED), eq(1), any(LocalDateTime.class), anyString(), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
     @Test
@@ -212,7 +269,7 @@ class FileProcessingTaskServiceTest {
 
         assertThat(processed).isEqualTo(1);
         verify(textExtractionProcessor).extractText(1001L, 3001L, 2001L);
-        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L));
+        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
     @Test
@@ -227,7 +284,7 @@ class FileProcessingTaskServiceTest {
 
         assertThat(processed).isEqualTo(1);
         verify(aiParseProcessor).prepareForAiParse(1001L, 3001L, 2001L);
-        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L));
+        verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
     private void mockClaimableTask(JdbcTemplate jdbcTemplate, String taskType, String status, int retryCount) {

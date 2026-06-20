@@ -199,7 +199,7 @@ class FileManagementAppServiceTest {
         var result = service.testStorageSpace(currentUser, 5L);
 
         assertThat(result.getStatus()).isEqualTo("DOWN");
-        assertThat(result.getMessage()).contains("upload root");
+        assertThat(result.getMessage()).isEqualTo("存储空间不可访问或配置不正确");
     }
 
     @Test

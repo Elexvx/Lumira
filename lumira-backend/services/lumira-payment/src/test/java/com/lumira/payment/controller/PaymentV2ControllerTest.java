@@ -140,13 +140,18 @@ class PaymentV2ControllerTest {
     }
 
     @Test
-    void webhook_shouldUseExplicitTenantHeaderAndForwardHeaders() {
+    void webhook_shouldResolveTenantFromProviderIdentityAndForwardHeaders() {
         HttpServletRequest request = requestWithHeaders(Map.of(
                 "X-Tenant-Id", "2002",
                 "X-Signature", "sig",
                 "X-Nonce", "nonce-1"
         ));
         PaymentWebhookEventDTO event = new PaymentWebhookEventDTO("stripe", "evt-1", "payment.succeeded", true, true, "ok", LocalDateTime.now(), LocalDateTime.now());
+        when(paymentManagementAppService.resolveWebhookTenantId("stripe", "{\"eventId\":\"evt-1\"}", Map.of(
+                "X-Tenant-Id", "2002",
+                "X-Signature", "sig",
+                "X-Nonce", "nonce-1"
+        ))).thenReturn(2002L);
         when(paymentWebhookService.handleWebhook(2002L, "stripe", "{\"eventId\":\"evt-1\"}", Map.of(
                 "X-Tenant-Id", "2002",
                 "X-Signature", "sig",
@@ -156,6 +161,11 @@ class PaymentV2ControllerTest {
         var response = controller.webhook("stripe", "{\"eventId\":\"evt-1\"}", request);
 
         assertThat(response.getData()).isSameAs(event);
+        verify(paymentManagementAppService).resolveWebhookTenantId("stripe", "{\"eventId\":\"evt-1\"}", Map.of(
+                "X-Tenant-Id", "2002",
+                "X-Signature", "sig",
+                "X-Nonce", "nonce-1"
+        ));
         verify(paymentWebhookService).handleWebhook(2002L, "stripe", "{\"eventId\":\"evt-1\"}", Map.of(
                 "X-Tenant-Id", "2002",
                 "X-Signature", "sig",
@@ -164,16 +174,17 @@ class PaymentV2ControllerTest {
     }
 
     @Test
-    void webhook_shouldFallbackToPlatformTenantWhenAnonymousAndHeaderInvalid() {
-        HttpServletRequest request = requestWithHeaders(Map.of("X-Tenant-Id", "bad"));
-        when(securityContextFacade.isAuthenticated()).thenReturn(false);
+    void webhook_shouldNotUseTenantHeaderAsTrustSource() {
+        HttpServletRequest request = requestWithHeaders(Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"));
         PaymentWebhookEventDTO event = new PaymentWebhookEventDTO("paypal", "evt-2", "payment", false, false, "签名校验失败", LocalDateTime.now(), null);
-        when(paymentWebhookService.handleWebhook(1001L, "paypal", "{}", Map.of("X-Tenant-Id", "bad"))).thenReturn(event);
+        when(paymentManagementAppService.resolveWebhookTenantId("paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"))).thenReturn(2002L);
+        when(paymentWebhookService.handleWebhook(2002L, "paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"))).thenReturn(event);
 
         var response = controller.webhook("paypal", "{}", request);
 
         assertThat(response.getData()).isSameAs(event);
-        verify(paymentWebhookService).handleWebhook(1001L, "paypal", "{}", Map.of("X-Tenant-Id", "bad"));
+        verify(paymentManagementAppService).resolveWebhookTenantId("paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"));
+        verify(paymentWebhookService).handleWebhook(2002L, "paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"));
     }
 
     private CurrentUser currentUser(Long userId, String username, String permission) {

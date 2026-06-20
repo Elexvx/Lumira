@@ -108,6 +108,8 @@ CREATE TABLE `ai_knowledge_base` (
   `status` varchar(32) NOT NULL DEFAULT 'ENABLED',
   `visibility_scope` varchar(32) NOT NULL DEFAULT 'PERSONAL',
   `owner_user_id` bigint unsigned NOT NULL DEFAULT '0',
+  `document_count` bigint NOT NULL DEFAULT '0',
+  `chunk_count` bigint NOT NULL DEFAULT '0',
   `created_by` bigint unsigned NOT NULL DEFAULT '0',
   `updated_by` bigint unsigned NOT NULL DEFAULT '0',
   `is_deleted` tinyint unsigned NOT NULL DEFAULT '0',
@@ -160,6 +162,8 @@ CREATE TABLE `ai_knowledge_chunk` (
   `embedding_model` varchar(64) DEFAULT NULL,
   `embedding_dim` int unsigned NOT NULL DEFAULT '0',
   `embedding_vector_json` json DEFAULT NULL,
+  `embedding_vector_blob` mediumblob DEFAULT NULL,
+  `embedding_norm` double DEFAULT NULL,
   `vector_indexed_at` datetime DEFAULT NULL,
   `is_deleted` tinyint unsigned NOT NULL DEFAULT '0',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -168,12 +172,28 @@ CREATE TABLE `ai_knowledge_chunk` (
   UNIQUE KEY `uk_ai_knowledge_chunk_index` (`tenant_id`,`document_id`,`chunk_index`,`is_deleted`),
   KEY `idx_ai_knowledge_chunk_base` (`tenant_id`,`knowledge_base_id`,`is_deleted`),
   KEY `idx_ai_knowledge_chunk_document` (`tenant_id`,`document_id`,`is_deleted`),
-  KEY `idx_ai_knowledge_chunk_vector` (`tenant_id`,`knowledge_base_id`,`is_deleted`,`embedding_model`,`update_time`)
+  KEY `idx_ai_knowledge_chunk_vector` (`tenant_id`,`knowledge_base_id`,`is_deleted`,`embedding_model`,`update_time`),
+  FULLTEXT KEY `ft_ai_knowledge_chunk_search_text` (`search_text`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 /*!40000 ALTER TABLE `ai_knowledge_chunk` DISABLE KEYS */;
 /*!40000 ALTER TABLE `ai_knowledge_chunk` ENABLE KEYS */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ai_knowledge_base_stats` (
+  `tenant_id` bigint unsigned NOT NULL,
+  `knowledge_base_id` bigint unsigned NOT NULL,
+  `document_count` bigint unsigned NOT NULL DEFAULT '0',
+  `chunk_count` bigint unsigned NOT NULL DEFAULT '0',
+  `vector_indexed_chunk_count` bigint unsigned NOT NULL DEFAULT '0',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`tenant_id`,`knowledge_base_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40000 ALTER TABLE `ai_knowledge_base_stats` DISABLE KEYS */;
+/*!40000 ALTER TABLE `ai_knowledge_base_stats` ENABLE KEYS */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ai_knowledge_document` (

@@ -8,7 +8,6 @@ import com.lumira.api.payment.PaymentProviderTestResultDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
 import com.lumira.common.api.ApiResponse;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -143,8 +142,14 @@ public class PaymentV2Controller {
             @RequestBody(required = false) String payload,
             HttpServletRequest request
     ) {
+        Map<String, String> headers = extractHeaders(request);
         return ApiResponse.success(
-                paymentWebhookService.handleWebhook(resolveTenantId(request), providerCode, payload, extractHeaders(request)),
+                paymentWebhookService.handleWebhook(
+                        paymentManagementAppService.resolveWebhookTenantId(providerCode, payload, headers),
+                        providerCode,
+                        payload,
+                        headers
+                ),
                 TraceContext.getRequestId()
         );
     }
@@ -162,22 +167,6 @@ public class PaymentV2Controller {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         permissionGuard.requirePermission(currentUser, permissionKey);
         return currentUser;
-    }
-
-    private Long resolveTenantId(HttpServletRequest request) {
-        String tenantId = request.getHeader("X-Tenant-Id");
-        if (tenantId == null || tenantId.isBlank()) {
-            return securityContextFacade.isAuthenticated()
-                    ? securityContextFacade.getCurrentUser().getCurrentTenantId()
-                    : PlatformConstants.PLATFORM_TENANT_ID;
-        }
-        try {
-            return Long.parseLong(tenantId.trim());
-        } catch (Exception ignored) {
-            return securityContextFacade.isAuthenticated()
-                    ? securityContextFacade.getCurrentUser().getCurrentTenantId()
-                    : PlatformConstants.PLATFORM_TENANT_ID;
-        }
     }
 
     private Map<String, String> extractHeaders(HttpServletRequest request) {

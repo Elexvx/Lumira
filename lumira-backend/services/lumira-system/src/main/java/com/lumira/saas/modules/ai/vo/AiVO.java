@@ -566,6 +566,7 @@ public final class AiVO {
         private String riskLevel;
         private Boolean readOnly;
         private Boolean needConfirm;
+        private String permissionMode;
         private Boolean enabled;
         private LocalDateTime createTime;
         private LocalDateTime updateTime;
@@ -632,6 +633,14 @@ public final class AiVO {
 
         public void setNeedConfirm(Boolean needConfirm) {
             this.needConfirm = needConfirm;
+        }
+
+        public String getPermissionMode() {
+            return permissionMode;
+        }
+
+        public void setPermissionMode(String permissionMode) {
+            this.permissionMode = permissionMode;
         }
 
         public Boolean getEnabled() {

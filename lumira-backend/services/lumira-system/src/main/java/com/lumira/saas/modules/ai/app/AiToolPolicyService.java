@@ -296,6 +296,6 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
         if (currentUser != null && currentUser.getCurrentTenantId() != null) {
             return currentUser.getCurrentTenantId();
         }
-        return PlatformConstants.PLATFORM_TENANT_ID;
+        throw new BizException(ErrorCode.FORBIDDEN, "Tenant context is required");
     }
 }

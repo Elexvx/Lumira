@@ -2,7 +2,6 @@ package com.lumira.saas.modules.system.online;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -39,7 +38,10 @@ public class OnlineSessionStreamService {
 
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
         String subscriberId = UUID.randomUUID().toString();
-        Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
+        if (currentUser.getCurrentTenantId() == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
+        }
+        Long tenantId = currentUser.getCurrentTenantId();
         Subscriber subscriber = new Subscriber(subscriberId, currentUser.getSessionId(), tenantId, emitter);
 
         subscribers.put(subscriberId, subscriber);

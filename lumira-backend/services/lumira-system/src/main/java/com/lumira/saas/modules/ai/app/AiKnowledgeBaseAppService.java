@@ -113,16 +113,12 @@ public class AiKnowledgeBaseAppService {
                 """
                         select kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
                                kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time,
-                               count(distinct d.id) as document_count,
-                               count(c.id) as chunk_count
+                               coalesce(st.document_count, 0) as document_count,
+                               coalesce(st.chunk_count, 0) as chunk_count
                         from ai_knowledge_base kb
-                        left join ai_knowledge_document d
-                          on d.tenant_id = kb.tenant_id and d.knowledge_base_id = kb.id and d.is_deleted = 0
-                        left join ai_knowledge_chunk c
-                          on c.tenant_id = kb.tenant_id and c.knowledge_base_id = kb.id and c.is_deleted = 0
+                        left join ai_knowledge_base_stats st
+                          on st.tenant_id = kb.tenant_id and st.knowledge_base_id = kb.id
                         """ + sqlClause(where) + """
-                        group by kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
-                                 kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time
                         order by kb.id desc
                         limit ? offset ?
                         """,
@@ -484,7 +480,8 @@ public class AiKnowledgeBaseAppService {
                 """
                         select c.id as chunk_id, c.knowledge_base_id, kb.name as knowledge_base_name,
                                c.document_id, d.title as document_title, d.file_id, d.original_file_name,
-                               c.chunk_index, c.content, c.embedding_vector_json
+                               c.chunk_index, c.content, c.embedding_vector_json,
+                               c.embedding_vector_blob, c.embedding_norm
                         from ai_knowledge_chunk c
                         join ai_knowledge_document d on d.tenant_id = c.tenant_id and d.id = c.document_id
                         join ai_knowledge_base kb on kb.tenant_id = c.tenant_id and kb.id = c.knowledge_base_id
@@ -501,7 +498,8 @@ public class AiKnowledgeBaseAppService {
                 """
                         select c.id as chunk_id, c.knowledge_base_id, kb.name as knowledge_base_name,
                                c.document_id, d.title as document_title, d.file_id, d.original_file_name,
-                               c.chunk_index, c.content, c.embedding_vector_json
+                               c.chunk_index, c.content, c.embedding_vector_json,
+                               c.embedding_vector_blob, c.embedding_norm
                         from ai_knowledge_chunk c
                         join ai_knowledge_document d on d.tenant_id = c.tenant_id and d.id = c.document_id
                         join ai_knowledge_base kb on kb.tenant_id = c.tenant_id and kb.id = c.knowledge_base_id
@@ -529,15 +527,12 @@ public class AiKnowledgeBaseAppService {
                 """
                         select kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
                                kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time,
-                               count(distinct d.id) as document_count,
-                               count(c.id) as chunk_count
+                               coalesce(st.document_count, 0) as document_count,
+                               coalesce(st.chunk_count, 0) as chunk_count
                         from ai_employee_knowledge_base rel
                         join ai_knowledge_base kb on kb.tenant_id = rel.tenant_id and kb.id = rel.knowledge_base_id and kb.is_deleted = 0
-                        left join ai_knowledge_document d on d.tenant_id = kb.tenant_id and d.knowledge_base_id = kb.id and d.is_deleted = 0
-                        left join ai_knowledge_chunk c on c.tenant_id = kb.tenant_id and c.knowledge_base_id = kb.id and c.is_deleted = 0
+                        left join ai_knowledge_base_stats st on st.tenant_id = kb.tenant_id and st.knowledge_base_id = kb.id
                         """ + sqlClause(where) + """
-                        group by kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
-                                 kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time
                         order by kb.id desc
                         """,
                 this::mapKnowledgeBase,
@@ -661,7 +656,38 @@ public class AiKnowledgeBaseAppService {
                 knowledgeBaseId,
                 documentId
         );
+        refreshKnowledgeBaseStats(tenantId, knowledgeBaseId);
         return chunks.size();
+    }
+
+    private void refreshKnowledgeBaseStats(Long tenantId, Long knowledgeBaseId) {
+        jdbcTemplate.update(
+                """
+                        insert into ai_knowledge_base_stats (
+                            tenant_id, knowledge_base_id, document_count, chunk_count, vector_indexed_chunk_count, update_time
+                        )
+                        select kb.tenant_id,
+                               kb.id,
+                               count(distinct d.id),
+                               count(c.id),
+                               sum(case when c.embedding_vector_blob is not null or c.embedding_vector_json is not null then 1 else 0 end),
+                               current_timestamp
+                        from ai_knowledge_base kb
+                        left join ai_knowledge_document d
+                          on d.tenant_id = kb.tenant_id and d.knowledge_base_id = kb.id and d.is_deleted = 0
+                        left join ai_knowledge_chunk c
+                          on c.tenant_id = kb.tenant_id and c.knowledge_base_id = kb.id and c.is_deleted = 0
+                        where kb.tenant_id = ? and kb.id = ? and kb.is_deleted = 0
+                        group by kb.tenant_id, kb.id
+                        on duplicate key update
+                            document_count = values(document_count),
+                            chunk_count = values(chunk_count),
+                            vector_indexed_chunk_count = values(vector_indexed_chunk_count),
+                            update_time = values(update_time)
+                        """,
+                tenantId,
+                knowledgeBaseId
+        );
     }
 
     private void batchInsertChunks(
@@ -681,16 +707,16 @@ public class AiKnowledgeBaseAppService {
             StringBuilder sql = new StringBuilder("""
                     insert into ai_knowledge_chunk (
                         tenant_id, knowledge_base_id, document_id, chunk_index, content, search_text,
-                        token_count, embedding_model, embedding_dim, embedding_vector_json, vector_indexed_at,
+                        token_count, embedding_model, embedding_dim, embedding_vector_json, embedding_vector_blob, embedding_norm, vector_indexed_at,
                         is_deleted, create_time, update_time
                     ) values
                     """);
-            List<Object> args = new ArrayList<>((end - start) * 13);
+            List<Object> args = new ArrayList<>((end - start) * 15);
             for (int index = start; index < end; index += 1) {
                 if (index > start) {
                     sql.append(", ");
                 }
-                sql.append("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)");
+                sql.append("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)");
                 String chunk = chunks.get(index);
                 AiKnowledgeVectorService.VectorProjection projection = index < projections.size()
                         ? projections.get(index)
@@ -705,6 +731,8 @@ public class AiKnowledgeBaseAppService {
                 args.add(projection.model());
                 args.add(projection.dimensions());
                 args.add(projection.vectorJson());
+                args.add(projection.vectorBlob());
+                args.add(projection.vectorNorm());
                 args.add(now);
                 args.add(now);
                 args.add(now);
@@ -975,14 +1003,11 @@ public class AiKnowledgeBaseAppService {
                 """
                         select kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
                                kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time,
-                               count(distinct d.id) as document_count,
-                               count(c.id) as chunk_count
+                               coalesce(st.document_count, 0) as document_count,
+                               coalesce(st.chunk_count, 0) as chunk_count
                         from ai_knowledge_base kb
-                        left join ai_knowledge_document d on d.tenant_id = kb.tenant_id and d.knowledge_base_id = kb.id and d.is_deleted = 0
-                        left join ai_knowledge_chunk c on c.tenant_id = kb.tenant_id and c.knowledge_base_id = kb.id and c.is_deleted = 0
+                        left join ai_knowledge_base_stats st on st.tenant_id = kb.tenant_id and st.knowledge_base_id = kb.id
                         """ + sqlClause(where) + """
-                        group by kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
-                                 kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time
                         limit 1
                         """,
                 this::mapKnowledgeBase,
@@ -1070,14 +1095,12 @@ public class AiKnowledgeBaseAppService {
 
     private VectorSearchCandidate mapVectorSearchCandidate(SqlRow row, String query, AiEmbeddingVector queryVector) {
         AiVO.KnowledgeReferenceVO reference = mapKnowledgeReference(row, 0);
-        double score = vectorService.score(
-                queryVector,
-                row.getString("embedding_vector_json"),
-                query,
-                row.getString("content"),
-                row.getString("document_title"),
-                row.getString("knowledge_base_name")
-        );
+        byte[] vectorBlob = row.getObject("embedding_vector_blob", byte[].class);
+        Double vectorNorm = row.getObject("embedding_norm", Double.class);
+        double[] vector = vectorService.parseBlob(vectorBlob);
+        double score = vector.length > 0
+                ? vectorService.score(queryVector, vector, vectorNorm, query, row.getString("content"), row.getString("document_title"), row.getString("knowledge_base_name"))
+                : vectorService.score(queryVector, row.getString("embedding_vector_json"), query, row.getString("content"), row.getString("document_title"), row.getString("knowledge_base_name"));
         return new VectorSearchCandidate(reference, score);
     }
 
@@ -1235,7 +1258,7 @@ public class AiKnowledgeBaseAppService {
         if (currentUser != null && currentUser.getCurrentTenantId() != null) {
             return currentUser.getCurrentTenantId();
         }
-        return com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        throw new BizException(ErrorCode.FORBIDDEN, "Tenant context is required");
     }
 
     private Long currentUserId(CurrentUser currentUser) {

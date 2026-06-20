@@ -1,6 +1,7 @@
 package com.lumira.payment.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
@@ -159,6 +160,43 @@ public class PaymentManagementAppService {
         return settings;
     }
 
+    public Long resolveWebhookTenantId(String providerCode, String payload, Map<String, String> headers) {
+        PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
+        List<PaymentProviderConfigRow> rows = jdbcTemplate.query(
+                """
+                        select id, tenant_id as tenantId, provider_code as providerCode, provider_name as providerName,
+                               enabled, environment, encrypted_config_json as encryptedConfigJson, configured,
+                               last_tested_at as lastTestedAt, last_test_success as lastTestSuccess,
+                               last_test_message as lastTestMessage, created_by as createdBy, created_at as createdAt,
+                               updated_by as updatedBy, updated_at as updatedAt, deleted
+                        from payment_provider_config
+                        where provider_code = ? and enabled = 1 and configured = 1 and deleted = 0
+                        order by id desc
+                        """,
+                new BeanPropertyRowMapper<>(PaymentProviderConfigRow.class),
+                definition.providerCode()
+        );
+        Long claimedTenantId = parseTenantHeader(headers);
+        Long matchedTenantId = null;
+        for (PaymentProviderConfigRow row : rows) {
+            PaymentProviderSettingsDTO settings = cryptoService.decryptJson(row.getEncryptedConfigJson(), PaymentProviderSettingsDTO.class);
+            if (!matchesWebhookIdentity(settings, payload, headers)) {
+                continue;
+            }
+            if (matchedTenantId != null && !matchedTenantId.equals(row.getTenantId())) {
+                throw new BizException(ErrorCode.BAD_REQUEST, "Webhook tenant is ambiguous", "Webhook request is invalid");
+            }
+            matchedTenantId = row.getTenantId();
+        }
+        if (matchedTenantId == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook tenant cannot be resolved", "Webhook request is invalid");
+        }
+        if (claimedTenantId != null && !claimedTenantId.equals(matchedTenantId)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook tenant header mismatch", "Webhook request is invalid");
+        }
+        return matchedTenantId;
+    }
+
     private PaymentProviderSettingsDTO loadProviderSettings(Long tenantId, String providerCode) {
         return loadProviderSettings(tenantId, providerCode, true);
     }
@@ -184,6 +222,86 @@ public class PaymentManagementAppService {
         response.setLastTestMessage(row.getLastTestMessage());
         copyProviderValues(response, stored, maskSecrets);
         return response;
+    }
+
+    private boolean matchesWebhookIdentity(PaymentProviderSettingsDTO settings, String payload, Map<String, String> headers) {
+        String endpointToken = resolveHeader(headers, "X-Webhook-Token", "X-Endpoint-Token", "Webhook-Id");
+        if (StringUtils.hasText(endpointToken) && matchesAny(endpointToken, settings.getWebhookId(), settings.getWebhookSecret())) {
+            return true;
+        }
+        String merchantId = firstText(resolveHeader(headers, "X-Merchant-Id", "Wechatpay-Mchid", "PayPal-Client-Id"),
+                extractField(payload, "merchantId", "merchant_id", "mchid", "seller_id", "account"));
+        if (StringUtils.hasText(merchantId) && matchesAny(merchantId, settings.getMerchantId(), settings.getClientId())) {
+            return true;
+        }
+        String appId = firstText(resolveHeader(headers, "X-App-Id", "Wechatpay-Appid"),
+                extractField(payload, "appId", "app_id", "appid", "client_id"));
+        return StringUtils.hasText(appId) && matchesAny(appId, settings.getAppId(), settings.getClientId(), settings.getPublishableKey());
+    }
+
+    private String extractField(String payload, String... fieldNames) {
+        if (!StringUtils.hasText(payload)) {
+            return "";
+        }
+        try {
+            JsonNode root = objectMapper.readTree(payload);
+            for (String fieldName : fieldNames) {
+                JsonNode node = root.path(fieldName);
+                if (!node.isMissingNode() && !node.isNull() && StringUtils.hasText(node.asText())) {
+                    return node.asText();
+                }
+            }
+        } catch (Exception ignored) {
+            return "";
+        }
+        return "";
+    }
+
+    private String resolveHeader(Map<String, String> headers, String... keys) {
+        if (headers == null) {
+            return "";
+        }
+        for (String key : keys) {
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(key) && StringUtils.hasText(entry.getValue())) {
+                    return entry.getValue().trim();
+                }
+            }
+        }
+        return "";
+    }
+
+    private Long parseTenantHeader(Map<String, String> headers) {
+        String value = resolveHeader(headers, "X-Tenant-Id");
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException exception) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook tenant header invalid", "Webhook request is invalid");
+        }
+    }
+
+    private String firstText(String... values) {
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
+    private boolean matchesAny(String candidate, String... configuredValues) {
+        if (!StringUtils.hasText(candidate)) {
+            return false;
+        }
+        for (String configuredValue : configuredValues) {
+            if (StringUtils.hasText(configuredValue) && candidate.trim().equals(configuredValue.trim())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void upsertProviderConfig(

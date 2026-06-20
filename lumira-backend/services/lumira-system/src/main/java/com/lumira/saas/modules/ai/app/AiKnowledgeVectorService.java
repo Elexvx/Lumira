@@ -1,6 +1,8 @@
 package com.lumira.saas.modules.ai.app;
 
 import java.util.ArrayList;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -19,7 +21,7 @@ public class AiKnowledgeVectorService {
 
     public VectorProjection project(String text) {
         AiEmbeddingVector vector = embeddingModel.embed(text);
-        return new VectorProjection(vector.model(), vector.dimensions(), serialize(vector.values()));
+        return new VectorProjection(vector.model(), vector.dimensions(), serialize(vector.values()), toBlob(vector.values()), norm(vector.values()));
     }
 
     public List<VectorProjection> projectBatch(List<String> texts) {
@@ -29,7 +31,7 @@ public class AiKnowledgeVectorService {
         List<AiEmbeddingVector> vectors = embeddingModel.embedBatch(texts);
         List<VectorProjection> projections = new ArrayList<>(vectors.size());
         for (AiEmbeddingVector vector : vectors) {
-            projections.add(new VectorProjection(vector.model(), vector.dimensions(), serialize(vector.values())));
+            projections.add(new VectorProjection(vector.model(), vector.dimensions(), serialize(vector.values()), toBlob(vector.values()), norm(vector.values())));
         }
         return projections;
     }
@@ -40,6 +42,12 @@ public class AiKnowledgeVectorService {
 
     public double score(AiEmbeddingVector queryVector, String vectorJson, String query, String content, String title, String knowledgeBaseName) {
         double vectorScore = cosine(queryVector.values(), parse(vectorJson));
+        double lexicalScore = lexicalScore(query, content, title, knowledgeBaseName);
+        return (0.82d * vectorScore) + (0.18d * lexicalScore);
+    }
+
+    public double score(AiEmbeddingVector queryVector, double[] candidateVector, Double candidateNorm, String query, String content, String title, String knowledgeBaseName) {
+        double vectorScore = cosine(queryVector.values(), norm(queryVector.values()), candidateVector, candidateNorm == null ? norm(candidateVector) : candidateNorm);
         double lexicalScore = lexicalScore(query, content, title, knowledgeBaseName);
         return (0.82d * vectorScore) + (0.18d * lexicalScore);
     }
@@ -120,6 +128,18 @@ public class AiKnowledgeVectorService {
         return parsed;
     }
 
+    public double[] parseBlob(byte[] vectorBlob) {
+        if (vectorBlob == null || vectorBlob.length == 0 || vectorBlob.length % Double.BYTES != 0) {
+            return new double[0];
+        }
+        ByteBuffer buffer = ByteBuffer.wrap(vectorBlob).order(ByteOrder.BIG_ENDIAN);
+        double[] values = new double[vectorBlob.length / Double.BYTES];
+        for (int index = 0; index < values.length; index += 1) {
+            values[index] = buffer.getDouble();
+        }
+        return values;
+    }
+
     private double cosine(double[] left, double[] right) {
         if (left == null || right == null || left.length == 0 || right.length == 0 || left.length != right.length) {
             return 0.0d;
@@ -136,6 +156,39 @@ public class AiKnowledgeVectorService {
             return 0.0d;
         }
         return dot / (Math.sqrt(leftSquares) * Math.sqrt(rightSquares));
+    }
+
+    private double cosine(double[] left, double leftNorm, double[] right, double rightNorm) {
+        if (left == null || right == null || left.length == 0 || right.length == 0 || left.length != right.length || leftNorm <= 0.0d || rightNorm <= 0.0d) {
+            return 0.0d;
+        }
+        double dot = 0.0d;
+        for (int index = 0; index < left.length; index += 1) {
+            dot += left[index] * right[index];
+        }
+        return dot / (leftNorm * rightNorm);
+    }
+
+    private byte[] toBlob(double[] values) {
+        if (values == null || values.length == 0) {
+            return new byte[0];
+        }
+        ByteBuffer buffer = ByteBuffer.allocate(values.length * Double.BYTES).order(ByteOrder.BIG_ENDIAN);
+        for (double value : values) {
+            buffer.putDouble(value);
+        }
+        return buffer.array();
+    }
+
+    private double norm(double[] values) {
+        if (values == null || values.length == 0) {
+            return 0.0d;
+        }
+        double squares = 0.0d;
+        for (double value : values) {
+            squares += value * value;
+        }
+        return Math.sqrt(squares);
     }
 
     private double lexicalScore(String query, String content, String title, String knowledgeBaseName) {
@@ -165,7 +218,9 @@ public class AiKnowledgeVectorService {
     public record VectorProjection(
             String model,
             int dimensions,
-            String vectorJson
+            String vectorJson,
+            byte[] vectorBlob,
+            double vectorNorm
     ) {
     }
 

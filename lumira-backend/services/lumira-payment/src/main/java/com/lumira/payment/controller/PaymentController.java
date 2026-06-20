@@ -8,7 +8,6 @@ import com.lumira.api.payment.PaymentProviderTestResultDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
 import com.lumira.common.api.ApiResponse;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
@@ -142,10 +141,14 @@ public class PaymentController {
             @RequestBody(required = false) String payload,
             HttpServletRequest request
     ) {
-        Long tenantId = resolveTenantId(request);
         Map<String, String> headers = extractHeaders(request);
         return ApiResponse.success(
-                paymentWebhookService.handleWebhook(tenantId, providerCode, payload, headers),
+                paymentWebhookService.handleWebhook(
+                        paymentManagementAppService.resolveWebhookTenantId(providerCode, payload, headers),
+                        providerCode,
+                        payload,
+                        headers
+                ),
                 TraceContext.getRequestId()
         );
     }
@@ -208,22 +211,6 @@ public class PaymentController {
             return;
         }
         throw new com.lumira.common.exception.BizException(com.lumira.common.enums.ErrorCode.FORBIDDEN, "仅超级管理员可访问设置");
-    }
-
-    private Long resolveTenantId(HttpServletRequest request) {
-        String tenantId = request.getHeader("X-Tenant-Id");
-        if (tenantId == null || tenantId.isBlank()) {
-            return securityContextFacade.isAuthenticated()
-                    ? currentTenantId()
-                    : PlatformConstants.PLATFORM_TENANT_ID;
-        }
-        try {
-            return Long.parseLong(tenantId.trim());
-        } catch (Exception ignored) {
-            return securityContextFacade.isAuthenticated()
-                    ? currentTenantId()
-                    : PlatformConstants.PLATFORM_TENANT_ID;
-        }
     }
 
     private Map<String, String> extractHeaders(HttpServletRequest request) {

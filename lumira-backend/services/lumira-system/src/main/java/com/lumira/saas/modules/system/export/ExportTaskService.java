@@ -6,7 +6,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.file.FileObjectDTO;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -138,8 +137,9 @@ public class ExportTaskService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        return currentUser == null || currentUser.getCurrentTenantId() == null
-                ? PlatformConstants.PLATFORM_TENANT_ID
-                : currentUser.getCurrentTenantId();
+        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
+        }
+        return currentUser.getCurrentTenantId();
     }
 }

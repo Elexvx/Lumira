@@ -8,7 +8,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { flushSync } from 'react-dom';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 import { isLoggedIn, tryRefreshToken } from '@/auth/sessionLifecycle';
-import { createLoginStorageHandler, resolveAuthorizedLoginRedirectTarget } from '@/auth/loginRedirect';
+import { createLoginSessionBroadcastListener, resolveAuthorizedLoginRedirectTarget } from '@/auth/loginRedirect';
 import { resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { isPasskeySupported, toAuthenticationPayload, toPublicKeyRequestOptions } from '@/auth/passkey';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
@@ -1333,12 +1333,9 @@ export const useLoginFlowRuntime = ({
     setInitialState,
   ]);
   useEffect(() => {
-    const handleStorage = createLoginStorageHandler(redirectTarget, (target) => {
+    return createLoginSessionBroadcastListener(redirectTarget, (target) => {
       window.location.replace(target);
     });
-
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
   }, [redirectTarget]);
   useEffect(() => {
     if (wechatCallbackHandledRef.current) {

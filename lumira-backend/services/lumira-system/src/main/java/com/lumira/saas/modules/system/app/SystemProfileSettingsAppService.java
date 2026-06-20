@@ -640,7 +640,10 @@ public class SystemProfileSettingsAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        return DEFAULT_PUBLIC_TENANT_ID;
+        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
+        }
+        return currentUser.getCurrentTenantId();
     }
 
     private static final class EvaluatedField {

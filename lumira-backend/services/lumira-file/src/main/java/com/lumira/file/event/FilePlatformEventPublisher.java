@@ -1,6 +1,8 @@
 package com.lumira.file.event;
 
 import com.lumira.api.file.FileObjectDTO;
+import com.lumira.common.enums.ErrorCode;
+import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import org.springframework.stereotype.Service;
 
@@ -79,6 +81,6 @@ public class FilePlatformEventPublisher {
         if (currentUser != null && currentUser.getCurrentTenantId() != null) {
             return currentUser.getCurrentTenantId();
         }
-        return com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+        throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
     }
 }

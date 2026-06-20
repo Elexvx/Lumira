@@ -2559,7 +2559,10 @@ public class SystemManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        return currentUser == null || currentUser.getCurrentTenantId() == null ? DEFAULT_PUBLIC_TENANT_ID : currentUser.getCurrentTenantId();
+        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
+        }
+        return currentUser.getCurrentTenantId();
     }
 
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {

@@ -12,8 +12,7 @@ import buildAccess from '@/access';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import { isLoggedIn } from '@/auth/sessionLifecycle';
 import { clearSessionActivity, getSessionActivityStorageKey, getStoredSessionActivityAt, persistSessionActivity } from '@/auth/activity';
-import { buildStorageKey } from '@/cache/storage';
-import { TOKEN_STORAGE_KEY, tokenManager } from '@/auth/token';
+import { AUTH_SESSION_BROADCAST_CHANNEL, tokenManager } from '@/auth/token';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { getStoredSecuritySettings } from '@/auth/securitySettingsStorage';
 import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
@@ -53,7 +52,6 @@ const PERSONAL_CENTER_GROUP_PATH = '/user-center/personal-center';
 const PERSONAL_CENTER_CHILD_PATHS = ['/user-center/personal-center/profile', '/user-center/files'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
 const STORAGE_ACTIVITY_KEY = getSessionActivityStorageKey();
-const STORAGE_TOKEN_KEY = buildStorageKey(TOKEN_STORAGE_KEY);
 const MOUSE_MOVE_THROTTLE_MS = 1000;
 const KEEPALIVE_THROTTLE_MS = 60_000;
 const TOKEN_REFRESH_SKEW_MS = 60_000;
@@ -371,17 +369,22 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      if (event.key === STORAGE_TOKEN_KEY) {
-        if (tokenManager.hasToken()) {
+    };
+    window.addEventListener('storage', handleStorage);
+    const authChannel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel(AUTH_SESSION_BROADCAST_CHANNEL);
+    if (authChannel) {
+      authChannel.onmessage = (event: MessageEvent<{ type?: string }>) => {
+        if (event.data?.type === 'updated' && tokenManager.hasToken()) {
           controller.resetLogoutGuard();
           controller.scheduleTokenExpiration();
           controller.scheduleTimeout(controller.getLastActivityAt());
-        } else {
+          return;
+        }
+        if (event.data?.type === 'cleared') {
           controller.forceLogout();
         }
-      }
-    };
-    window.addEventListener('storage', handleStorage);
+      };
+    }
 
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible') {
@@ -413,6 +416,7 @@ const SessionActivityGuard = ({ children }: { children: ReactNode }) => {
         window.removeEventListener(eventName, handleUserActivity);
       });
       window.removeEventListener('storage', handleStorage);
+      authChannel?.close();
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
     };

@@ -62,11 +62,18 @@ function runBuild() {
     };
   }
   const startedAt = performance.now();
-  const result = spawnSync("corepack", ["pnpm", "--dir", "lumira-ui", "build"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-    maxBuffer: 30 * 1024 * 1024,
-  });
+  const result = process.platform === "win32"
+    ? spawnSync("corepack.cmd pnpm --dir lumira-ui build", {
+        cwd: repoRoot,
+        encoding: "utf8",
+        maxBuffer: 30 * 1024 * 1024,
+        shell: true,
+      })
+    : spawnSync("corepack", ["pnpm", "--dir", "lumira-ui", "build"], {
+        cwd: repoRoot,
+        encoding: "utf8",
+        maxBuffer: 30 * 1024 * 1024,
+      });
   return {
     skipped: false,
     status: result.status === 0 ? "PASS" : "FAIL",

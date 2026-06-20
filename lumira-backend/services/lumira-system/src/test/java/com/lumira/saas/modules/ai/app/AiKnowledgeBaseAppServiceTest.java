@@ -30,7 +30,7 @@ import static org.mockito.Mockito.mock;
 class AiKnowledgeBaseAppServiceTest {
 
     @Test
-    void ownedKnowledgeBaseListKeepsWhereClauseSeparatedFromGroupBy() {
+    void ownedKnowledgeBaseListUsesStatsTableAndKeepsWhereClauseSeparated() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
                 queryOperations,
@@ -45,8 +45,9 @@ class AiKnowledgeBaseAppServiceTest {
 
         service.listKnowledgeBases(currentUser, null, null, "OWNED", 1, 10);
 
-        assertFalse(queryOperations.lastListSql.contains("?group by"));
-        assertTrue(queryOperations.lastListSql.contains("kb.owner_user_id = ?\ngroup by"));
+        assertFalse(queryOperations.lastListSql.contains("?left join"));
+        assertTrue(queryOperations.lastListSql.contains("left join ai_knowledge_base_stats"));
+        assertTrue(queryOperations.lastListSql.contains("kb.owner_user_id = ?\norder by"));
         assertThat(queryOperations.countQueryCount).isZero();
     }
 
