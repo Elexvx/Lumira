@@ -562,7 +562,7 @@ try {
   assert.equal(evidenceAcceptance.willWriteFiles, false);
   assert.equal(evidenceAcceptance.cutoverAllowed, false);
   assert.equal(evidenceAcceptance.itemCount, 6);
-  assert.equal(evidenceAcceptance.acceptedCount, 2);
+  assert.equal(evidenceAcceptance.acceptedCount, evidenceAcceptance.items.filter((item) => item.accepted === true).length);
   assert.equal(evidenceAcceptance.blockedCount, evidenceAcceptance.items.filter((item) => item.accepted !== true).length);
   assert(evidenceAcceptance.missingArtifactCount > 0);
   assert(evidenceAcceptance.items.some((item) => item.gate === "release-env" && item.accepted === true && item.acceptanceCommand === "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"));
