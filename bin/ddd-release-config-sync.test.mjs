@@ -81,9 +81,17 @@ const ciWorkflowText = fs.readFileSync(ciWorkflowFile, "utf8");
 const frontendPackageJson = JSON.parse(fs.readFileSync(frontendPackageFile, "utf8"));
 const frontendVitestConfigText = fs.readFileSync(frontendVitestConfigFile, "utf8");
 const frontendPlaywrightConfigText = fs.readFileSync(frontendPlaywrightConfigFile, "utf8");
+const localOnlyScriptTests = new Set([
+  "bin/ddd-staging-execution-checklist.test.mjs",
+]);
 const missingCiScriptTests = scriptTestFiles()
+  .filter((file) => !localOnlyScriptTests.has(file))
   .filter((file) => !ciWorkflowText.includes(`node ${file}`));
 assert.deepEqual(missingCiScriptTests, [], "CI must run every bin/*.test.mjs file");
+assert(
+  ciWorkflowText.includes("node bin/ddd-staging-execution-checklist-ci-contract.test.mjs"),
+  "CI must run the deterministic staging execution checklist contract",
+);
 const requiredDddGateJavaTests = [
   "InternalServiceTokenAuthFilterTest",
   "JwtTokenParserTest",
