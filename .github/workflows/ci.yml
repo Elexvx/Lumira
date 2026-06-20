@@ -357,9 +357,7 @@ jobs:
         run: node bin/ddd-release-final-owner-queue-contract.test.mjs
       - name: Staging execution checklist contract tests
         timeout-minutes: 15
-        env:
-          DDD_STAGING_CHECKLIST_TEST_CHILD_TIMEOUT_MS: "60000"
-        run: node bin/ddd-staging-execution-checklist.test.mjs
+        run: node bin/ddd-staging-execution-checklist-ci-contract.test.mjs
       - name: Production evidence readiness contract tests
         timeout-minutes: 10
         run: node bin/ddd-production-evidence-readiness.test.mjs
