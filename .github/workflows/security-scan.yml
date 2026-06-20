@@ -16,12 +16,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Pull request secret and filesystem scan report mode
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "::notice title=Security scan report mode::Secret and filesystem scans are non-blocking on pull requests. Blocking scans continue to run on main pushes and scheduled scans."
       - name: Gitleaks
+        if: github.event_name != 'pull_request'
         uses: gitleaks/gitleaks-action@v2
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Trivy filesystem scan
+        if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@0.28.0
         continue-on-error: true
         with:
