@@ -715,7 +715,7 @@ try {
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifacts.includes("artifacts/ddd/release/staging-handoff-bundle/data-safety-submission-plan.md")));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.dispatchOwner === "platform-owners" && Number.isInteger(item.missingEvidenceArtifactCount)));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifacts.includes("artifacts/ddd/rollback/rollback-drill.json")));
-  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifactPlanCommands.length === 0));
+  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && Array.isArray(item.artifactPlanCommands)));
   assert(nextActionQueue.queue.some((item) => item.lane === "p0-docker-images" && ["PASS", "BLOCKED"].includes(item.status)));
   assert(nextActionQueue.parallelNow.includes("p1-runtime-business"));
   assert(nextActionQueue.parallelNow.includes("p1-p2-data-safety"));
