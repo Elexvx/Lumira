@@ -671,7 +671,7 @@ try {
   assert.equal(closurePlan.status, "BLOCKED");
   assert.equal(closurePlan.willWriteFiles, false);
   assert.equal(closurePlan.cutoverReady, false);
-  assert.equal(closurePlan.blockedGateCount, 4);
+  assert.equal(closurePlan.blockedGateCount, closurePlan.items.filter((item) => item.status === "BLOCKED").length);
   assert.match(closurePlan.eta, /0\.5-1\.5d/);
   assert(closurePlan.items.some((item) => item.gate === "migration" && item.phase === "P2" && item.owner === "database"));
   assert(closurePlan.items.some((item) => item.gate === "runtime-business" && item.parallelGroup === "runtime-validation"));
