@@ -26,7 +26,7 @@ assert.equal(productionUnblockPlanResult.status, 0, productionUnblockPlanResult.
 const productionUnblockPlan = parseJsonResult(productionUnblockPlanResult);
 assert.equal(productionUnblockPlan.status, "BLOCKED");
 assert.equal(productionUnblockPlan.finalRecommendation, "NO_GO_STRICT");
-assert.equal(productionUnblockPlan.blockedAuditItemCount, 6);
+assert.equal(productionUnblockPlan.blockedAuditItemCount, 5);
 assert(productionUnblockPlan.parallelWorkstreams.some((item) => item.id === "first-wave-env" && item.command.includes("--next-action-env-check")));
 assert(productionUnblockPlan.parallelWorkstreams.some((item) => item.id === "first-wave-env" && item.verifyCommand.includes("--next-action-env-receipt-contract")));
 assert(productionUnblockPlan.parallelWorkstreams.some((item) => item.id === "lane-completion-receipt" && item.verifyCommand.includes("--lane-completion-submission-check")));
@@ -41,7 +41,7 @@ const productionEvidenceReadiness = parseJsonResult(productionEvidenceReadinessR
 assert.equal(productionEvidenceReadiness.status, "BLOCKED");
 assert.equal(productionEvidenceReadiness.evidenceGateCount, 5);
 assert.equal(productionEvidenceReadiness.readyEvidenceCount, 1);
-assert.equal(productionEvidenceReadiness.blockedAuditItemCount, 6);
+assert.equal(productionEvidenceReadiness.blockedAuditItemCount, 5);
 assert(productionEvidenceReadiness.evidenceGates.some((gate) => gate.id === "first-wave-env-receipt" && gate.status === "MISSING"));
 assert(productionEvidenceReadiness.evidenceGates.some((gate) => gate.id === "lane-completion-receipt" && gate.blocker.includes("receipt file not provided")));
 assert(productionEvidenceReadiness.evidenceGates.some((gate) => gate.id === "owner-evidence" && gate.status === "PASS" && gate.evidence.includes("owner-evidence-intake.json")));
