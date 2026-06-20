@@ -138,22 +138,20 @@ class PlatformEventOutboxServiceTest {
         assertThat(queryOperations.queries).hasSize(1);
         String listSql = queryOperations.queries.get(0).sql.toLowerCase(Locale.ROOT);
         Object[] listArgs = queryOperations.queries.get(0).args;
-        assertThat(listSql).contains("from platform_event_outbox force index (idx_platform_event_outbox_owner_queue)");
+        assertThat(listSql).contains("claim_token = ?");
         assertThat(listSql).contains("where deleted = 0");
         assertThat(listSql).contains("source_type = ?");
-        assertThat(listSql).contains("dispatch_status = ?");
-        assertThat(listSql).contains("next_retry_at is null or next_retry_at <= ?");
         assertThat(listSql).contains("order by created_at asc, id asc");
         assertThat(listArgs[0]).isEqualTo(PlatformEventTypes.SOURCE_SYSTEM);
-        assertThat(listArgs[1]).isEqualTo(PlatformEventOutboxService.STATUS_RECORDED);
-        assertThat(listArgs[2]).isEqualTo(PlatformEventOutboxService.STATUS_FAILED);
-        assertThat(listArgs[4]).isEqualTo(200);
 
         assertThat(queryOperations.updates).hasSize(2);
         assertThat(queryOperations.updates.get(0).sql.toLowerCase(Locale.ROOT))
-                .contains("where deleted = 0 and source_type = ? and id = ? and dispatch_status = ?");
+                .contains("join (")
+                .contains("force index (idx_platform_event_outbox_owner_queue)")
+                .contains("claim_token = ?");
         assertThat(queryOperations.updates.get(1).sql.toLowerCase(Locale.ROOT))
-                .contains("where deleted = 0 and source_type = ? and id = ?");
+                .contains("where deleted = 0 and source_type = ? and id = ?")
+                .contains("claim_token");
     }
 
     @Test
@@ -214,7 +212,7 @@ class PlatformEventOutboxServiceTest {
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             queries.add(new RecordedSql(sql, args));
-            if (sql.toLowerCase(Locale.ROOT).contains("force index")) {
+            if (sql.toLowerCase(Locale.ROOT).contains("claim_token = ?")) {
                 return (List<T>) listRows;
             }
             if (sql.toLowerCase(Locale.ROOT).contains("where id = ? and deleted = 0 and source_type = ?")) {

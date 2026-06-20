@@ -50,6 +50,7 @@ public class AuthV2Controller {
     @PostMapping("/refresh-token")
     @RepeatSubmit
     public ApiResponse<RefreshTokenResponseDTO> refreshToken(@RequestBody(required = false) RefreshTokenRequest request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
+        authCookieService.validateCsrfIfCookieAuth(httpServletRequest);
         String refreshToken = request != null && request.refreshToken() != null ? request.refreshToken() : authCookieService.readRefreshToken(httpServletRequest);
         RefreshTokenResponseDTO response = authAppService.refreshToken(new RefreshTokenRequest(refreshToken));
         authCookieService.writeRefreshToken(httpServletResponse, response.refreshToken());
@@ -69,6 +70,7 @@ public class AuthV2Controller {
     @PostMapping("/logout")
     @RepeatSubmit
     public ApiResponse<Boolean> logout(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
+        authCookieService.validateCsrfIfCookieAuth(httpServletRequest);
         authAppService.logout(httpServletRequest);
         authCookieService.clearRefreshToken(httpServletResponse);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());

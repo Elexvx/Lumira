@@ -29,6 +29,9 @@ public class PlatformEventOutboxEntity {
     private Long updatedBy;
     private LocalDateTime updatedAt;
     private Integer deleted;
+    private String claimedBy;
+    private String claimToken;
+    private LocalDateTime claimExpiresAt;
 
     public Long getId() {
         return id;
@@ -180,5 +183,29 @@ public class PlatformEventOutboxEntity {
 
     public void setDeleted(Integer deleted) {
         this.deleted = deleted;
+    }
+
+    public String getClaimedBy() {
+        return claimedBy;
+    }
+
+    public void setClaimedBy(String claimedBy) {
+        this.claimedBy = claimedBy;
+    }
+
+    public String getClaimToken() {
+        return claimToken;
+    }
+
+    public void setClaimToken(String claimToken) {
+        this.claimToken = claimToken;
+    }
+
+    public LocalDateTime getClaimExpiresAt() {
+        return claimExpiresAt;
+    }
+
+    public void setClaimExpiresAt(LocalDateTime claimExpiresAt) {
+        this.claimExpiresAt = claimExpiresAt;
     }
 }

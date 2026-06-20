@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +57,7 @@ public class SensitiveWordService {
     private final SensitiveWordMetrics metrics;
     private final Map<Class<?>, java.lang.reflect.Field[]> reflectiveFieldCache = new ConcurrentHashMap<>();
 
+    @Autowired
     public SensitiveWordService(
             MyBatisQueryOperations jdbcTemplate,
             AiKnowledgeTextExtractor textExtractor,

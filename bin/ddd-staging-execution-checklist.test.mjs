@@ -1488,7 +1488,8 @@ try {
   assert.equal(releaseEnvPlan.target, "tmp/ddd-dispatch-check-env-init.env");
   assert.equal(releaseEnvPlan.envInitCheck.status, "PASS");
   assert.equal(releaseEnvPlan.releaseEnvGate.acceptanceCommand, "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs");
-  assert(releaseEnvPlan.ownerSteps.some((owner) => owner.owner === "release-infra"));
+  assert.equal(releaseEnvPlan.ownerCount, 0);
+  assert.deepEqual(releaseEnvPlan.ownerSteps, []);
   assert(releaseEnvPlan.commands.preflight.includes("node bin\/ddd-release-env-init.mjs --check"));
   assert(releaseEnvPlan.commands.preflight.includes("node bin\/ddd-staging-execution-checklist.mjs --owner-packets"));
   assert(releaseEnvPlan.commands.validate.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs"));
@@ -1518,12 +1519,12 @@ try {
   });
   assert.equal(releaseEnvOwnerMatrixResult.status, 0, releaseEnvOwnerMatrixResult.stderr || releaseEnvOwnerMatrixResult.stdout);
   const releaseEnvOwnerMatrix = JSON.parse(releaseEnvOwnerMatrixResult.stdout);
-  assert.equal(releaseEnvOwnerMatrix.status, "BLOCKED");
+  assert.equal(releaseEnvOwnerMatrix.status, "PASS");
   assert.equal(releaseEnvOwnerMatrix.willWriteFiles, false);
-  assert.equal(releaseEnvOwnerMatrix.ownerCount, 5);
-  assert(releaseEnvOwnerMatrix.totals.blockers > 0);
-  assert(releaseEnvOwnerMatrix.owners.some((owner) => owner.owner === "release-infra" && owner.keys.includes("LUMIRA_BASE_URL")));
-  assert.match(releaseEnvOwnerMatrix.nextCommand, /--blocking-inputs-env-template --owner=/);
+  assert.equal(releaseEnvOwnerMatrix.ownerCount, 0);
+  assert.equal(releaseEnvOwnerMatrix.totals.blockers, 0);
+  assert.deepEqual(releaseEnvOwnerMatrix.owners, []);
+  assert.equal(releaseEnvOwnerMatrix.nextCommand, "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce");
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-owner-matrix.json")), false);
 
   const releaseEnvOwnerMatrixMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-owner-matrix-markdown"], {
@@ -1536,8 +1537,8 @@ try {
   });
   assert.equal(releaseEnvOwnerMatrixMarkdownResult.status, 0, releaseEnvOwnerMatrixMarkdownResult.stderr || releaseEnvOwnerMatrixMarkdownResult.stdout);
   assert.match(releaseEnvOwnerMatrixMarkdownResult.stdout, /^# DDD Release Env Owner Matrix/m);
-  assert.match(releaseEnvOwnerMatrixMarkdownResult.stdout, /release-infra/);
-  assert.match(releaseEnvOwnerMatrixMarkdownResult.stdout, /LUMIRA_BASE_URL/);
+  assert.match(releaseEnvOwnerMatrixMarkdownResult.stdout, /Status: PASS/);
+  assert.match(releaseEnvOwnerMatrixMarkdownResult.stdout, /Owners: 0/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-owner-matrix-markdown.json")), false);
 
   const releaseEnvNextOwnerTemplateResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-next-owner-template"], {
@@ -1549,9 +1550,9 @@ try {
     },
   });
   assert.equal(releaseEnvNextOwnerTemplateResult.status, 0, releaseEnvNextOwnerTemplateResult.stderr || releaseEnvNextOwnerTemplateResult.stdout);
-  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^# Current top release-env owner template\./);
-  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^# Owner: release-infra$/m);
-  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
+  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^# Lumira DDD staging blocking input environment template\./);
+  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^# Status: PASS$/m);
+  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^# Blocking inputs: 0$/m);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-next-owner-template.json")), false);
 
   const releaseEnvMergePlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-merge-plan"], {
@@ -1564,7 +1565,7 @@ try {
   });
   assert.equal(releaseEnvMergePlanResult.status, 0, releaseEnvMergePlanResult.stderr || releaseEnvMergePlanResult.stdout);
   const releaseEnvMergePlan = JSON.parse(releaseEnvMergePlanResult.stdout);
-  assert.equal(releaseEnvMergePlan.status, "BLOCKED");
+  assert.equal(releaseEnvMergePlan.status, "PASS");
   assert.equal(releaseEnvMergePlan.willWriteFiles, false);
   assert(releaseEnvMergePlan.phases.some((phase) => phase.id === "merge-owner-values" && phase.commands.some((command) => command.includes("ddd-release-env-canonical-merge.mjs"))));
   assert(releaseEnvMergePlan.phases.some((phase) => phase.id === "validate-release-env" && phase.commands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs")));
@@ -1595,14 +1596,15 @@ try {
   });
   assert.equal(releaseEnvSubmissionPlanResult.status, 0, releaseEnvSubmissionPlanResult.stderr || releaseEnvSubmissionPlanResult.stdout);
   const releaseEnvSubmissionPlan = JSON.parse(releaseEnvSubmissionPlanResult.stdout);
-  assert.equal(releaseEnvSubmissionPlan.status, "BLOCKED");
-  assert.equal(releaseEnvSubmissionPlan.ownerCount, 5);
-  assert(releaseEnvSubmissionPlan.ownerSubmissions.some((owner) => owner.owner === "release-infra" && owner.keys.includes("LUMIRA_BASE_URL")));
+  assert.equal(releaseEnvSubmissionPlan.status, "PASS");
+  assert.equal(releaseEnvSubmissionPlan.ownerCount, 0);
+  assert.deepEqual(releaseEnvSubmissionPlan.ownerSubmissions, []);
   assert(releaseEnvSubmissionPlan.receipt.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>"));
   assert.equal(releaseEnvSubmissionPlan.laneReceiptFragment.owner, "release-infra");
   assert.equal(releaseEnvSubmissionPlan.laneReceiptFragment.lane, "p0-release-env");
   assert(releaseEnvSubmissionPlan.laneReceiptFragment.providedArtifacts.includes("artifacts/ddd/release/release-env-lint.json"));
-  assert(releaseEnvSubmissionPlan.laneReceiptFragment.missingArtifacts.includes("artifacts/ddd/config/release-config-evidence.json"));
+  assert(releaseEnvSubmissionPlan.laneReceiptFragment.providedArtifacts.includes("artifacts/ddd/config/release-config-evidence.json"));
+  assert.deepEqual(releaseEnvSubmissionPlan.laneReceiptFragment.missingArtifacts, []);
   assert(releaseEnvSubmissionPlan.validationCommands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-submission-plan.json")), false);
 

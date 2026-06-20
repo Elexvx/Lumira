@@ -1,16 +1,16 @@
 ALTER TABLE file_processing_task
-    ADD COLUMN IF NOT EXISTS claimed_by varchar(128) NULL,
-    ADD COLUMN IF NOT EXISTS claim_token varchar(128) NULL,
-    ADD COLUMN IF NOT EXISTS claim_expires_at datetime NULL;
+    ADD COLUMN claimed_by varchar(128) NULL,
+    ADD COLUMN claim_token varchar(128) NULL,
+    ADD COLUMN claim_expires_at datetime NULL;
 
 ALTER TABLE platform_event_outbox
-    ADD COLUMN IF NOT EXISTS claimed_by varchar(128) NULL,
-    ADD COLUMN IF NOT EXISTS claim_token varchar(128) NULL,
-    ADD COLUMN IF NOT EXISTS claim_expires_at datetime NULL;
+    ADD COLUMN claimed_by varchar(128) NULL,
+    ADD COLUMN claim_token varchar(128) NULL,
+    ADD COLUMN claim_expires_at datetime NULL;
 
 ALTER TABLE ai_knowledge_base
-    ADD COLUMN IF NOT EXISTS document_count bigint NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS chunk_count bigint NOT NULL DEFAULT 0;
+    ADD COLUMN document_count bigint NOT NULL DEFAULT 0,
+    ADD COLUMN chunk_count bigint NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS sys_department_closure (
     id bigint NOT NULL AUTO_INCREMENT,

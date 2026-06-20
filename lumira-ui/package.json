@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "dev": "node bin/console-banner.mjs && max dev",
+    "dev": "node scripts/console-banner.mjs && max dev",
     "build": "max setup && max build && node scripts/adapt-cdn-assets.mjs",
-    "start": "node bin/console-banner.mjs && max preview",
+    "start": "node scripts/console-banner.mjs && max preview",
     "lint": "max lint",
     "stylelint": "max lint --stylelint-only",
     "typecheck": "max setup && tsc --noEmit",

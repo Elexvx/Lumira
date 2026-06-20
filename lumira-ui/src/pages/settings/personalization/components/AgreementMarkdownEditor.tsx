@@ -21,6 +21,7 @@ import { XMarkdown } from '@ant-design/x-markdown';
 import './AgreementMarkdownEditor.css';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
+import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -72,7 +73,7 @@ const AGREEMENT_MARKDOWN_TOOLBAR_HEADINGS = {
   paragraph: <ProfileOutlined />,
 } as const;
 
-const normalizeAgreementMarkdownValue = (value?: string) => value ?? '';
+const normalizeAgreementMarkdownValue = (value?: string) => sanitizeMarkdownInput(value ?? '');
 
 const getAgreementMarkdownTextArea = (textAreaRef: RefObject<TextAreaRef | null>) => textAreaRef.current?.resizableTextArea?.textArea;
 
@@ -83,7 +84,7 @@ const updateAgreementMarkdownValue = (
   nextSelectionStart?: number,
   nextSelectionEnd?: number,
 ) => {
-  onChange?.(nextValue);
+  onChange?.(sanitizeMarkdownInput(nextValue));
   window.setTimeout(() => {
     const textArea = getTextArea();
     textArea?.focus();
@@ -204,7 +205,7 @@ export const AgreementMarkdownEditor = ({ value, onChange, placeholder }: Agreem
             ref={textAreaRef}
             className="agreement-markdown-editor__input"
             value={markdown}
-            onChange={(event) => onChange?.(event.target.value)}
+            onChange={(event) => onChange?.(sanitizeMarkdownInput(event.target.value))}
             placeholder={placeholder}
             autoSize={{ minRows: 15, maxRows: 28 }}
           />

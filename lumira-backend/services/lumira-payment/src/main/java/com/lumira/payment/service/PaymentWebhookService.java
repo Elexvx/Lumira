@@ -5,10 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.web.TraceContext;
+import com.lumira.common.web.security.audit.SecurityAuditEvent;
+import com.lumira.common.web.security.audit.SecurityAuditEventService;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.payment.domain.model.PaymentDomainModels.PaymentOrderAggregate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -45,6 +49,26 @@ public class PaymentWebhookService {
     private final PaymentProviderCatalog providerCatalog;
     private final PaymentOutboxService outboxService;
     private final DomainEventPublisher domainEventPublisher;
+    private final SecurityAuditEventService securityAuditEventService;
+
+    @Autowired
+    public PaymentWebhookService(
+            JdbcTemplate jdbcTemplate,
+            ObjectMapper objectMapper,
+            PaymentManagementAppService paymentManagementAppService,
+            PaymentProviderCatalog providerCatalog,
+            PaymentOutboxService outboxService,
+            @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            SecurityAuditEventService securityAuditEventService
+    ) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.objectMapper = objectMapper;
+        this.paymentManagementAppService = paymentManagementAppService;
+        this.providerCatalog = providerCatalog;
+        this.outboxService = outboxService;
+        this.domainEventPublisher = domainEventPublisher;
+        this.securityAuditEventService = securityAuditEventService;
+    }
 
     public PaymentWebhookService(
             JdbcTemplate jdbcTemplate,
@@ -54,12 +78,7 @@ public class PaymentWebhookService {
             PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher
     ) {
-        this.jdbcTemplate = jdbcTemplate;
-        this.objectMapper = objectMapper;
-        this.paymentManagementAppService = paymentManagementAppService;
-        this.providerCatalog = providerCatalog;
-        this.outboxService = outboxService;
-        this.domainEventPublisher = domainEventPublisher;
+        this(jdbcTemplate, objectMapper, paymentManagementAppService, providerCatalog, outboxService, domainEventPublisher, null);
     }
 
     @Transactional
@@ -177,6 +196,22 @@ public class PaymentWebhookService {
                 sha256(payload),
                 headers == null ? java.util.Set.of() : headers.keySet()
         );
+        if (securityAuditEventService != null) {
+            securityAuditEventService.record(SecurityAuditEvent.builder("WEBHOOK_" + reason, "HIGH", "DENIED")
+                    .tenantId(tenantId)
+                    .requestId(TraceContext.getRequestId())
+                    .traceId(TraceContext.getTraceId())
+                    .resourceCode("payment_webhook")
+                    .actionCode("receive")
+                    .reasonCode(reason)
+                    .message("Payment webhook rejected")
+                    .metadata(Map.of(
+                            "providerCode", providerCatalog.normalize(providerCode),
+                            "payloadHash", sha256(payload),
+                            "headerKeys", headers == null ? java.util.Set.of() : headers.keySet()
+                    ))
+                    .build());
+        }
     }
 
     private String sha256(String value) {

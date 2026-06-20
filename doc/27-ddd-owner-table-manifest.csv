@@ -1,7 +1,7 @@
 context,owner_module,owned_table_patterns,compatible_writer_modules,notes
 AUTH,lumira-auth,sys_user_passkey_credential|sys_user_wechat_binding|sys_verification_binding|sys_verification_challenge,lumira-system,Authentication-owned credentials and challenges are still bootstrapped by the aggregate system migration.
-IAM,lumira-system,iam_user*|iam_subject*|iam_permission|iam_delegation_grant|sys_user|sys_role|sys_role_permission|sys_menu|sys_permission|sys_user_role|sys_user_tenant*|sys_department|sys_user_department|sys_role_data_scope|sys_tenant,,Identity and permission master data.
-PLATFORM,lumira-system,sys_config|sys_dict_*|audit_*|ddd_read_model_version|sys_export_task|sys_sensitive_word|platform_update_task,,Platform configuration, audit, read-model versioning, update orchestration, and governance data.
+IAM,lumira-system,iam_user*|iam_subject*|iam_permission|iam_delegation_grant|sys_user|sys_role|sys_role_permission|sys_menu|sys_permission|sys_user_role|sys_user_tenant*|sys_department|sys_department_closure|sys_user_department|sys_role_data_scope|sys_tenant,,Identity and permission master data.
+PLATFORM,lumira-system,sys_config|sys_dict_*|audit_*|security_audit_event|ddd_read_model_version|sys_export_task|sys_sensitive_word|platform_update_task,,Platform configuration, audit, read-model versioning, update orchestration, and governance data.
 MESSAGE,lumira-message,msg_*|platform_event_outbox,lumira-system,Message tables are owned by lumira-message; lumira-system keeps aggregate runtime compatibility migrations.
 FILE,lumira-file,file_object|file_storage_space|file_processing_task|file_processing_artifact|platform_event_outbox,lumira-system,File tables are owned by lumira-file; lumira-system keeps aggregate runtime compatibility migrations.
 PLUGIN,lumira-plugin,sys_plugin_*|plugin_event_outbox,lumira-system,Plugin lifecycle data is owned by lumira-plugin; lumira-system keeps catalog and aggregate compatibility.

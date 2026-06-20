@@ -7,6 +7,8 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.web.security.SensitiveErrorMessageSanitizer;
+import com.lumira.common.web.security.audit.SecurityAuditEvent;
+import com.lumira.common.web.security.audit.SecurityAuditEventService;
 import com.lumira.saas.modules.plugin.app.PluginManagementAppService;
 import com.lumira.saas.modules.plugin.registry.PluginRuntimeDescriptor;
 import com.lumira.saas.modules.plugin.runtime.PluginRuntimeSecurityPolicy;
@@ -36,19 +38,22 @@ public class PluginGatewayController {
     private final PermissionGuard permissionGuard;
     private final PluginRuntimeSecurityPolicy runtimeSecurityPolicy;
     private final SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer;
+    private final SecurityAuditEventService securityAuditEventService;
 
     public PluginGatewayController(
             PluginManagementAppService pluginManagementAppService,
             SecurityContextFacade securityContextFacade,
             PermissionGuard permissionGuard,
             PluginRuntimeSecurityPolicy runtimeSecurityPolicy,
-            SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer
+            SensitiveErrorMessageSanitizer sensitiveErrorMessageSanitizer,
+            SecurityAuditEventService securityAuditEventService
     ) {
         this.pluginManagementAppService = pluginManagementAppService;
         this.securityContextFacade = securityContextFacade;
         this.permissionGuard = permissionGuard;
         this.runtimeSecurityPolicy = runtimeSecurityPolicy;
         this.sensitiveErrorMessageSanitizer = sensitiveErrorMessageSanitizer;
+        this.securityAuditEventService = securityAuditEventService;
     }
 
     @RequestMapping("/api/p/{pluginCode}/**")
@@ -93,6 +98,15 @@ public class PluginGatewayController {
                     sanitizedReason,
                     exception
             );
+            securityAuditEventService.record(request, SecurityAuditEvent.builder("PLUGIN_EXCEPTION_SANITIZED", "WARN", "DENIED")
+                    .tenantId(tenantId)
+                    .userId(currentUser.getUserId())
+                    .resourceCode("plugin_gateway")
+                    .actionCode(request.getMethod())
+                    .targetId(pluginCode)
+                    .reasonCode(exception.getClass().getSimpleName())
+                    .message(sanitizedReason)
+                    .metadata(Map.of("path", pluginRequest.path(), "pluginCode", pluginCode)));
             throw new BizException(
                     ErrorCode.PLUGIN_RUNTIME_ERROR,
                     "Plugin request failed",

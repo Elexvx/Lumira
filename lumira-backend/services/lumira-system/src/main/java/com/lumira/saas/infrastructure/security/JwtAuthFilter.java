@@ -11,6 +11,8 @@ import com.lumira.saas.infrastructure.security.service.InitialPasswordChangeGuar
 import com.lumira.saas.infrastructure.security.service.SessionAuthenticationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
+import com.lumira.common.web.security.audit.SecurityAuditEvent;
+import com.lumira.common.web.security.audit.SecurityAuditEventService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,15 +43,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final InitialPasswordChangeGuard initialPasswordChangeGuard;
     private final ObjectMapper objectMapper;
     private final OwnerRuntimeMetrics ownerRuntimeMetrics;
+    private final SecurityAuditEventService securityAuditEventService;
 
     @Autowired
     public JwtAuthFilter(
             SessionAuthenticationService sessionAuthenticationService,
             AuthSessionStore authSessionStore,
             InitialPasswordChangeGuard initialPasswordChangeGuard,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            SecurityAuditEventService securityAuditEventService
     ) {
-        this(sessionAuthenticationService, authSessionStore, initialPasswordChangeGuard, objectMapper, null);
+        this(sessionAuthenticationService, authSessionStore, initialPasswordChangeGuard, objectMapper, null, securityAuditEventService);
     }
 
     public JwtAuthFilter(
@@ -59,11 +63,23 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             ObjectMapper objectMapper,
             OwnerRuntimeMetrics ownerRuntimeMetrics
     ) {
+        this(sessionAuthenticationService, authSessionStore, initialPasswordChangeGuard, objectMapper, ownerRuntimeMetrics, null);
+    }
+
+    public JwtAuthFilter(
+            SessionAuthenticationService sessionAuthenticationService,
+            AuthSessionStore authSessionStore,
+            InitialPasswordChangeGuard initialPasswordChangeGuard,
+            ObjectMapper objectMapper,
+            OwnerRuntimeMetrics ownerRuntimeMetrics,
+            SecurityAuditEventService securityAuditEventService
+    ) {
         this.sessionAuthenticationService = sessionAuthenticationService;
         this.authSessionStore = authSessionStore;
         this.initialPasswordChangeGuard = initialPasswordChangeGuard;
         this.objectMapper = objectMapper;
         this.ownerRuntimeMetrics = ownerRuntimeMetrics;
+        this.securityAuditEventService = securityAuditEventService;
     }
 
     @Override
@@ -115,6 +131,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         } catch (RuntimeException ex) {
             SecurityContextHolder.clearContext();
             log.warn("Access token parse failed requestId={} reason={}", TraceContext.getRequestId(), ex.getMessage(), ex);
+            recordTokenParseFailed(request, ex);
             BizException bizException = new BizException(
                     ErrorCode.SESSION_EXPIRED,
                     ErrorCode.SESSION_EXPIRED.getDefaultUserMessage(),
@@ -162,6 +179,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(authenticatedUser, null, Collections.emptyList());
         SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private void recordTokenParseFailed(HttpServletRequest request, RuntimeException exception) {
+        if (securityAuditEventService == null) {
+            return;
+        }
+        securityAuditEventService.record(request, SecurityAuditEvent.builder("TOKEN_PARSE_FAILED", "WARN", "DENIED")
+                .resourceCode("auth_session")
+                .actionCode("access_token_authenticate")
+                .reasonCode(exception.getClass().getSimpleName())
+                .message("Access token parse failed"));
     }
 
     private void writeUnauthorizedResponse(HttpServletRequest request, HttpServletResponse response, BizException exception)

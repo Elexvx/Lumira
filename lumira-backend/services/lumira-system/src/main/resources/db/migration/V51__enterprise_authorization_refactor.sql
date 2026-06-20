@@ -138,18 +138,18 @@ create table if not exists ai_tool_execution_audit (
 );
 
 alter table ai_tool_call_plan
-    add column if not exists arguments_hash varchar(128) null,
-    add column if not exists authorization_snapshot_json longtext null,
-    add column if not exists approval_required tinyint not null default 0,
-    add column if not exists approved_by bigint null,
-    add column if not exists approved_at datetime null;
+    add column arguments_hash varchar(128) null,
+    add column authorization_snapshot_json longtext null,
+    add column approval_required tinyint not null default 0,
+    add column approved_by bigint null,
+    add column approved_at datetime null;
 
 insert ignore into iam_subject (
     tenant_id, subject_type, ref_id, subject_code, display_name, status, created_by, updated_by, deleted
 )
-select u.tenant_id, 'HUMAN_USER', u.id, u.username, coalesce(u.nickname, u.username), u.status, 0, 0, 0
+select 1001, 'HUMAN_USER', u.id, u.username, coalesce(u.nickname, u.username), u.status, 0, 0, 0
 from sys_user u
-where u.is_deleted = 0;
+where u.deleted = 0;
 
 insert ignore into iam_subject_role (
     tenant_id, subject_id, role_id, created_by, updated_by, deleted
@@ -157,8 +157,8 @@ insert ignore into iam_subject_role (
 select s.tenant_id, s.id, ur.role_id, 0, 0, 0
 from iam_subject s
 join sys_user_role ur
-  on ur.user_id = s.ref_id
+ on ur.user_id = s.ref_id
  and ur.tenant_id = s.tenant_id
- and ur.is_deleted = 0
+ and ur.deleted = 0
 where s.subject_type = 'HUMAN_USER'
   and s.deleted = 0;
