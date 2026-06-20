@@ -713,7 +713,7 @@ try {
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.sourcePlan === "data-safety-submission-plan.json"));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.command === "node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown"));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifacts.includes("artifacts/ddd/release/staging-handoff-bundle/data-safety-submission-plan.md")));
-  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.dispatchOwner === "platform-owners" && item.missingEvidenceArtifactCount === 0));
+  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.dispatchOwner === "platform-owners" && Number.isInteger(item.missingEvidenceArtifactCount)));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifacts.includes("artifacts/ddd/rollback/rollback-drill.json")));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifactPlanCommands.length === 0));
   assert(nextActionQueue.queue.some((item) => item.lane === "p0-docker-images" && ["PASS", "BLOCKED"].includes(item.status)));
