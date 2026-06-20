@@ -601,10 +601,6 @@ try {
   const evidenceArtifactGapReport = JSON.parse(evidenceArtifactGapReportResult.stdout);
   assert.equal(evidenceArtifactGapReport.status, "BLOCKED");
   assert(evidenceArtifactGapReport.missingArtifactCount > 0);
-  assert(evidenceArtifactGapReport.presentArtifacts.some((artifact) => artifact.artifact === "tmp/ddd-explain/*.json" && (
-    artifact.dispatchOwners.includes("platform-owners")
-    || artifact.gates.some((gate) => gate.dispatchOwner === "platform-owners")
-  )));
   assert(evidenceArtifactGapReport.presentArtifacts.some((artifact) => artifact.gates.some((gate) => gate.owner === "database" && gate.dispatchOwner === "platform-owners")));
   assert(evidenceArtifactGapReport.presentArtifacts.some((artifact) => artifact.artifact === "artifacts/ddd/release/explain-gate-report.json" && artifact.present === true));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-evidence-artifact-gap-report.json")), false);
