@@ -203,6 +203,23 @@ class FileManagementAppServiceTest {
     }
 
     @Test
+    void testStorageSpace_shouldNotReturnLocalRootPathWhenWritable() {
+        CurrentUser currentUser = currentUser();
+        FileStorageSpaceEntity entity = storageSpaceEntities(1, 1001L).getFirst();
+        Path uploadRoot = tempDir.resolve("uploads");
+        Path localRoot = uploadRoot.resolve("tenant-local");
+        entity.setRootPath(localRoot.toString());
+        when(uploadProperties.getStorageRoot()).thenReturn(uploadRoot.toString());
+        when(fileStorageSpaceMapper.findByIdWithUsage(1001L, 5L)).thenReturn(entity);
+
+        var result = service.testStorageSpace(currentUser, 5L);
+
+        assertThat(result.getStatus()).isEqualTo("UP");
+        assertThat(result.getMessage()).isEqualTo("本地存储目录可写");
+        assertThat(result.getMessage()).doesNotContain(localRoot.toString());
+    }
+
+    @Test
     void safeUrlValidatorShouldRejectLocalhostEndpoint() {
         assertThatThrownBy(() -> new SafeUrlValidator().validateHttpUrl("http://localhost:8080/internal"))
                 .isInstanceOf(com.lumira.common.exception.BizException.class)

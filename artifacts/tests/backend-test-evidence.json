@@ -3,7 +3,7 @@
   "sourceEnvironment": "local-windows-powershell",
   "releaseCandidate": "main-security-hardening-2026-06-20",
   "evidenceOperator": "Codex",
-  "gitCommitSha": "485a78ca3b03cd9fb693d5c4b9ef497caf9862de",
+  "gitCommitSha": "2e8ba9e92116cb9bde18a87080625a412a24f4e9",
   "command": "./mvnw -pl libs/lumira-common-security,services/lumira-auth,services/lumira-system,services/lumira-file,services/lumira-payment -am test",
   "exitCode": 0,
   "status": "passed",

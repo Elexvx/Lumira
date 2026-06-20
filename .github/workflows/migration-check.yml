@@ -1,0 +1,15 @@
+name: Migration Check
+
+on:
+  pull_request:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  migration-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run migration check
+        shell: bash
+        run: bash scripts/migration-check.sh

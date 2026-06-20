@@ -1,0 +1,14 @@
+{
+  "generatedAt": "2026-06-20T17:16:30Z",
+  "gitCommitSha": "2e8ba9e92116cb9bde18a87080625a412a24f4e9",
+  "status": "PASS",
+  "checks": ["fresh migration","upgrade migration","repeat migration","critical tables","critical columns","critical indexes"],
+  "counts": {
+    "criticalTables": "3",
+    "fileProcessingClaimToken": "1",
+    "platformOutboxClaimToken": "1",
+    "criticalIndexes": "58"
+  },
+  "commands": ["docker run -d --name lumira-migration-check-mysql-1075 --network lumira-migration-check-1075 -e MYSQL_ROOT_PASSWORD=LumiraMigrationCheck_ChangeMe_123456! -e MYSQL_DATABASE=lumira_migration_check mysql:8.4","apply_migrations lumira_fresh","apply_migrations lumira_fresh","apply_migrations lumira_upgrade"],
+  "failedSteps": []
+}

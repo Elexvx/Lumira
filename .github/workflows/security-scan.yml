@@ -16,14 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Pull request secret and filesystem scan report mode
-        if: github.event_name == 'pull_request'
-        run: |
-          echo "::notice title=Security scan report mode::Secret and filesystem scans are non-blocking on pull requests. Blocking scans continue to run on main pushes and scheduled scans."
       - name: Gitleaks
-        if: github.event_name != 'pull_request'
         uses: gitleaks/gitleaks-action@v2
-        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Filesystem vulnerability scan advisory
@@ -53,12 +47,20 @@ jobs:
       - name: Frontend production audit
         working-directory: lumira-ui
         continue-on-error: true
-        run: pnpm audit --prod
+        run: |
+          set +e
+          pnpm audit --prod --json > ../security-risk-acceptance-pnpm-audit.json
+          status=$?
+          set -e
+          echo "pnpm audit exit status: ${status}"
+          exit 0
       - name: OSV scanner
         uses: google/osv-scanner-action/osv-scanner-action@v2.0.3
         continue-on-error: true
         with:
           scan-args: |-
+            --format=json
+            --output=security-risk-acceptance-osv.json
             --recursive
             .
       - name: Semgrep Java and TypeScript rules
@@ -69,3 +71,10 @@ jobs:
             p/java
             p/typescript
             p/secrets
+      - name: Upload dependency risk acceptance reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-risk-acceptance
+          path: |
+            security-risk-acceptance-*.json

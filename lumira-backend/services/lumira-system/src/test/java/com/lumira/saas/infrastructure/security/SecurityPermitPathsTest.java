@@ -30,12 +30,14 @@ class SecurityPermitPathsTest {
         Assertions.assertTrue(mainConfig.contains("- /api/v2/auth/login/code/challenge"), mainConfig);
         Assertions.assertTrue(mainConfig.contains("- /api/v2/auth/login/code/complete"), mainConfig);
         Assertions.assertTrue(mainConfig.contains("- /api/v2/auth/login-encryption-key"), mainConfig);
+        Assertions.assertTrue(mainConfig.contains("- /api/v2/auth/refresh-token"), mainConfig);
         Assertions.assertTrue(testConfig.contains("- /api/v1/auth/login/code/challenge"), testConfig);
         Assertions.assertTrue(testConfig.contains("- /api/v1/auth/login/code/complete"), testConfig);
         Assertions.assertTrue(testConfig.contains("- /api/v2/auth/login"), testConfig);
         Assertions.assertTrue(testConfig.contains("- /api/v2/auth/login/code/challenge"), testConfig);
         Assertions.assertTrue(testConfig.contains("- /api/v2/auth/login/code/complete"), testConfig);
         Assertions.assertTrue(testConfig.contains("- /api/v2/auth/login-encryption-key"), testConfig);
+        Assertions.assertTrue(testConfig.contains("- /api/v2/auth/refresh-token"), testConfig);
     }
 
     @Test

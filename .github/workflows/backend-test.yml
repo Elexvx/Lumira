@@ -18,11 +18,11 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Run algorithm and security regression tests
+      - name: Normalize Maven wrapper line endings
+        run: sed -i 's/\r$//' ./mvnw
+      - name: Run backend core tests
         run: >
           bash ./mvnw
-          -pl services/lumira-system,services/lumira-file
+          -pl libs/lumira-common-security,services/lumira-auth,services/lumira-system,services/lumira-file,services/lumira-payment
           -am
-          "-Dtest=SensitiveWordServiceTest,AiKnowledgeBaseAppServiceTest,FileProcessingTaskServiceTest,AiToolPolicyServiceTest,PlatformEventOutboxServiceTest,SystemDepartmentAppServiceTest"
-          "-Dsurefire.failIfNoSpecifiedTests=false"
           test

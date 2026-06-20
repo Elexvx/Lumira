@@ -641,7 +641,7 @@ public class FileManagementAppService {
                     throw new IOException("本地存储目录不可写: " + root);
                 }
                 result.setStatus("UP");
-                result.setMessage("本地存储目录可写: " + root);
+                result.setMessage("本地存储目录可写");
                 return result;
             }
             validateRemoteStorage(entity);

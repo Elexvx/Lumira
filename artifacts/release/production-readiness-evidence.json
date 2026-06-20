@@ -1,0 +1,62 @@
+﻿{
+    "generatedAt":  "2026-06-20T17:19:39Z",
+    "gitCommitSha":  "2e8ba9e92116cb9bde18a87080625a412a24f4e9",
+    "status":  "PASS",
+    "checks":  [
+                   {
+                       "pass":  true,
+                       "name":  "DB_PASSWORD required"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "JWT_SECRET required"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "FIELD_SECRET required"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "PLUGIN_SIGNATURE_SECRET required"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "SAAS_JOB_INTERNAL_TOKEN required"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "CORS required"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "CORS no wildcard default"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "CORS no localhost default"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "Swagger disabled or protected"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "Actuator not publicly bound by compose"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "Grafana password not change-me default"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "Upload root avoids sensitive host paths"
+                   },
+                   {
+                       "pass":  true,
+                       "name":  "Redis password required or local network accepted"
+                   }
+               ],
+    "failedSteps":  [
+
+                    ]
+}

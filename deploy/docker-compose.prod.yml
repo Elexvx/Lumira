@@ -264,7 +264,7 @@ services:
     logging: *id001
     environment:
       GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me-grafana-admin-password}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
       GF_USERS_ALLOW_SIGN_UP: 'false'
       GF_SMTP_ENABLED: ${GRAFANA_ALERT_EMAIL_ENABLED:-false}
       GF_SMTP_HOST: ${GRAFANA_SMTP_HOST:-}

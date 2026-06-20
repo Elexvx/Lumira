@@ -120,6 +120,7 @@ saas:
       - /api/v1/auth/passkeys/authentication/complete
       - /api/v1/auth/second-factor/complete
       - /api/v1/auth/refresh-token
+      - /api/v2/auth/refresh-token
       - /ws/message
       - /api/v1/public/bootstrap
       - /api/v1/public/branding-settings
