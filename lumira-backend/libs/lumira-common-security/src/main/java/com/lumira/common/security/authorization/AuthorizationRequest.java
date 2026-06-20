@@ -50,14 +50,24 @@ public record AuthorizationRequest(
     }
 
     public static AuthorizationRequest aiTool(CurrentUser currentUser, Long employeeId, String toolCode,
-                                              String permissionKey, String riskLevel, boolean confirmed,
-                                              boolean approvalGranted, Map<String, Object> arguments) {
+                                               String permissionKey, String riskLevel, boolean confirmed,
+                                               boolean approvalGranted, Map<String, Object> arguments) {
         Long tenantId = currentUser == null ? null : currentUser.getCurrentTenantId();
         Long userId = currentUser == null ? null : currentUser.getUserId();
         return new AuthorizationRequest(tenantId, SubjectRef.humanUser(tenantId, userId),
                 SubjectRef.digitalEmployee(tenantId, employeeId), userId, employeeId, "ai_tool", "execute",
                 permissionKey, toolCode, riskLevel, null, arguments == null ? Map.of() : Map.copyOf(arguments),
                 confirmed, approvalGranted, "AI_AGENT", null, null, currentUser);
+    }
+
+    public static AuthorizationRequest aiToolView(CurrentUser currentUser, Long employeeId, String toolCode,
+                                                  String permissionKey, String riskLevel, Map<String, Object> arguments) {
+        Long tenantId = currentUser == null ? null : currentUser.getCurrentTenantId();
+        Long userId = currentUser == null ? null : currentUser.getUserId();
+        return new AuthorizationRequest(tenantId, SubjectRef.humanUser(tenantId, userId),
+                SubjectRef.digitalEmployee(tenantId, employeeId), userId, employeeId, "ai_tool", "view",
+                permissionKey, toolCode, riskLevel, null, arguments == null ? Map.of() : Map.copyOf(arguments),
+                false, false, "AI_AGENT", null, null, currentUser);
     }
 
     public static AuthorizationRequest plugin(CurrentUser currentUser, String permissionKey, String pluginCode) {

@@ -58,6 +58,17 @@ class DefaultAuthorizationServiceTest {
     }
 
     @Test
+    void aiAgentRequiresDelegationGrant() {
+        DefaultAuthorizationService noDelegation = new DefaultAuthorizationService(
+                request -> allowGrant("ai:tool:file.delete", "HIGH", false, false),
+                request -> DelegationGrantDecision.deny("DELEGATION_GRANT_NOT_FOUND", "Delegation grant was not found")
+        );
+
+        assertThat(noDelegation.evaluate(aiRequest(user(1001L, "ai:tool:file.delete"), 300L, "file.delete",
+                "ai:tool:file.delete", "LOW", true, true, Map.of())).reasonCode()).isEqualTo("DELEGATION_GRANT_NOT_FOUND");
+    }
+
+    @Test
     void aiAgentEnforcesRiskConfirmAndApproval() {
         DefaultAuthorizationService service = service(allowGrant("ai:tool:file.delete", "HIGH", false, false));
 
@@ -93,7 +104,8 @@ class DefaultAuthorizationServiceTest {
     }
 
     private DefaultAuthorizationService service(AgentToolGrantDecision decision) {
-        return new DefaultAuthorizationService(request -> decision);
+        return new DefaultAuthorizationService(request -> decision,
+                request -> DelegationGrantDecision.allow("TENANT", "CRITICAL", false, false, List.of("TEST_DELEGATION")));
     }
 
     private AgentToolGrantDecision allowGrant(String permissionKey, String maxRisk, boolean confirm, boolean approval) {

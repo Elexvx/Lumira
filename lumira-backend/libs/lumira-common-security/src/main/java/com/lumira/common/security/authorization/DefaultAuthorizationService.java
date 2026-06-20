@@ -16,16 +16,26 @@ import java.util.Map;
 public class DefaultAuthorizationService implements AuthorizationService {
 
     private final AgentToolGrantEvaluator agentToolGrantEvaluator;
+    private final DelegationGrantEvaluator delegationGrantEvaluator;
 
     public DefaultAuthorizationService() {
-        this(request -> AgentToolGrantDecision.deny("AGENT_GRANT_EVALUATOR_MISSING"));
+        this(request -> AgentToolGrantDecision.deny("AGENT_GRANT_EVALUATOR_MISSING"),
+                request -> DelegationGrantDecision.deny("DELEGATION_GRANT_EVALUATOR_MISSING", "Delegation grant evaluator is missing"));
+    }
+
+    public DefaultAuthorizationService(AgentToolGrantEvaluator agentToolGrantEvaluator) {
+        this(agentToolGrantEvaluator, null);
     }
 
     @Autowired(required = false)
-    public DefaultAuthorizationService(AgentToolGrantEvaluator agentToolGrantEvaluator) {
+    public DefaultAuthorizationService(AgentToolGrantEvaluator agentToolGrantEvaluator,
+                                       DelegationGrantEvaluator delegationGrantEvaluator) {
         this.agentToolGrantEvaluator = agentToolGrantEvaluator == null
                 ? request -> AgentToolGrantDecision.deny("AGENT_GRANT_EVALUATOR_MISSING")
                 : agentToolGrantEvaluator;
+        this.delegationGrantEvaluator = delegationGrantEvaluator == null
+                ? request -> DelegationGrantDecision.deny("DELEGATION_GRANT_EVALUATOR_MISSING", "Delegation grant evaluator is missing")
+                : delegationGrantEvaluator;
     }
 
     @Override
@@ -137,7 +147,12 @@ public class DefaultAuthorizationService implements AuthorizationService {
             return deny(grant == null ? "AGENT_GRANT_DENIED" : grant.reasonCode(), "Agent grant denied", List.of());
         }
         String mode = normalizeText(grant.permissionMode());
-        if (!List.of("execute", "invoke").contains(mode)) {
+        boolean readOnlyCheck = !isWriteAction(request);
+        if (readOnlyCheck) {
+            if (!List.of("view", "visit", "execute", "invoke").contains(mode)) {
+                return deny("AGENT_GRANT_VIEW_DENIED", "Agent grant does not allow viewing this tool", grant.matchedPolicies());
+            }
+        } else if (!List.of("execute", "invoke").contains(mode)) {
             return deny("AGENT_GRANT_EXECUTE_DENIED", "Agent grant does not allow execution", grant.matchedPolicies());
         }
         if (StringUtils.hasText(grant.permissionKey()) && StringUtils.hasText(requiredPermission)
@@ -157,19 +172,49 @@ public class DefaultAuthorizationService implements AuthorizationService {
     }
 
     private AuthorizationDecision evaluateDelegation(AuthorizationRequest request) {
-        if (request.agentSubject() == null && request.employeeId() == null) {
+        if (!"AI_AGENT".equals(normalizeChannel(request.channel())) && request.employeeId() == null) {
             return AuthorizationDecision.allow("DELEGATION_NOT_IN_SCOPE", "No delegation required");
         }
-        Long humanUserId = request.humanUserId() == null && request.currentUser() != null
-                ? request.currentUser().getUserId()
-                : request.humanUserId();
-        if (humanUserId == null || humanUserId <= 0) {
-            return deny("DELEGATION_HUMAN_MISSING", "Delegating human subject is required", List.of());
+        DelegationGrantDecision grant = delegationGrantEvaluator.evaluate(request);
+        if (grant == null) {
+            return deny("DELEGATION_GRANT_DENIED", "Delegation grant denied", List.of());
         }
-        if (Boolean.FALSE.equals(argumentBoolean(request.arguments(), "delegationAllowed"))) {
-            return deny("DELEGATION_DENIED", "Delegation is not allowed", List.of());
+        if (grant.verdict() == AuthorizationVerdict.REQUIRE_APPROVAL) {
+            return AuthorizationDecision.requireApproval(grant.reasonCode(), grant.message(), grant.matchedPolicies());
         }
-        return AuthorizationDecision.allow("DELEGATION_ALLOW", "Delegation allowed");
+        if (grant.verdict() == AuthorizationVerdict.REQUIRE_CONFIRM) {
+            return AuthorizationDecision.requireConfirm(grant.reasonCode(), grant.message(), grant.matchedPolicies());
+        }
+        if (!grant.allowed()) {
+            return deny(grant.reasonCode(), grant.message(), grant.matchedPolicies());
+        }
+        if (riskExceeds(request.riskLevel(), grant.maxRiskLevel())) {
+            return deny("DELEGATION_RISK_EXCEEDS_GRANT", "Delegation grant risk limit exceeded", grant.matchedPolicies());
+        }
+        if (grant.requireApproval() && !request.approvalGranted()) {
+            return AuthorizationDecision.requireApproval("DELEGATION_APPROVAL_REQUIRED", "Delegation approval is required", grant.matchedPolicies());
+        }
+        if (grant.requireConfirm() && !request.confirmed()) {
+            return AuthorizationDecision.requireConfirm("DELEGATION_CONFIRM_REQUIRED", "Delegation confirmation is required", grant.matchedPolicies());
+        }
+        String scope = normalizeText(grant.scopeType());
+        if ("deny".equals(scope) || "none".equals(scope)) {
+            return deny("DELEGATION_SCOPE_DENIED", "Delegation scope denies this request", grant.matchedPolicies());
+        }
+        if ("custom".equals(scope)) {
+            return deny("DELEGATION_CUSTOM_SCOPE_UNRESOLVED", "Delegation custom scope is not resolvable", grant.matchedPolicies());
+        }
+        if ("self".equals(scope)) {
+            Long ownerUserId = argumentLong(request.arguments(), "ownerUserId", "createdBy", "userId");
+            Long humanUserId = request.humanUserId() == null && request.currentUser() != null
+                    ? request.currentUser().getUserId()
+                    : request.humanUserId();
+            if (ownerUserId != null && humanUserId != null && !ownerUserId.equals(humanUserId)) {
+                return deny("DELEGATION_SCOPE_SELF_DENIED", "Delegation scope is limited to self data", grant.matchedPolicies());
+            }
+        }
+        return new AuthorizationDecision(AuthorizationVerdict.ALLOW, grant.reasonCode(), grant.message(),
+                false, false, false, "default-enterprise-pdp", grant.matchedPolicies(), scope);
     }
 
     private AuthorizationDecision evaluateDataScope(AuthorizationRequest request, CurrentUser currentUser) {

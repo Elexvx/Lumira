@@ -861,6 +861,10 @@ public final class AiVO {
         private String policyMessage;
         private String status;
         private Map<String, Object> arguments;
+        private String argumentsHash;
+        private String authorizationSnapshotJson;
+        private Boolean approvalRequired;
+        private LocalDateTime approvedAt;
         private LocalDateTime expiresAt;
         private LocalDateTime createTime;
 
@@ -898,6 +902,14 @@ public final class AiVO {
         public void setStatus(String status) { this.status = status; }
         public Map<String, Object> getArguments() { return arguments; }
         public void setArguments(Map<String, Object> arguments) { this.arguments = arguments; }
+        public String getArgumentsHash() { return argumentsHash; }
+        public void setArgumentsHash(String argumentsHash) { this.argumentsHash = argumentsHash; }
+        public String getAuthorizationSnapshotJson() { return authorizationSnapshotJson; }
+        public void setAuthorizationSnapshotJson(String authorizationSnapshotJson) { this.authorizationSnapshotJson = authorizationSnapshotJson; }
+        public Boolean getApprovalRequired() { return approvalRequired; }
+        public void setApprovalRequired(Boolean approvalRequired) { this.approvalRequired = approvalRequired; }
+        public LocalDateTime getApprovedAt() { return approvedAt; }
+        public void setApprovedAt(LocalDateTime approvedAt) { this.approvedAt = approvedAt; }
         public LocalDateTime getExpiresAt() { return expiresAt; }
         public void setExpiresAt(LocalDateTime expiresAt) { this.expiresAt = expiresAt; }
         public LocalDateTime getCreateTime() { return createTime; }

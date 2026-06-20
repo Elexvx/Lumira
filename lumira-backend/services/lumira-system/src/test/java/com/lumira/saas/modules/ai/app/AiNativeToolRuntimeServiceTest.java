@@ -10,6 +10,8 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.vo.AiVO;
 import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.authorization.AuthorizationDecision;
+import com.lumira.common.security.authorization.AuthorizationService;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -121,6 +123,35 @@ class AiNativeToolRuntimeServiceTest {
         assertThat(jdbcTemplate.employeeExistsChecked).isFalse();
     }
 
+    @Test
+    void listToolsHidesPermissionedToolsFromUnauthorizedUser() {
+        DefaultAiNativeToolRuntimeService service = newService(new StubQueryOperations(), mock(AiSkillPermissionChecker.class));
+
+        List<AiVO.ToolVO> tools = service.listTools(new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, Set.of()));
+
+        assertThat(tools).extracting(AiVO.ToolVO::getToolCode)
+                .contains("system.permission.snapshot")
+                .doesNotContain("system.user.search", "system.user.create");
+    }
+
+    @Test
+    void listToolsFiltersEmployeeToolsThroughAuthorizationService() {
+        DefaultAiNativeToolRuntimeService service = newService(
+                new StubQueryOperations(),
+                mock(AiSkillPermissionChecker.class),
+                new StubFileInternalApi(),
+                authorization(request -> "system.user.create".equals(request.toolCode())
+                        ? AuthorizationDecision.requireConfirm("TEST_CONFIRM", "confirm", List.of("TEST_CONFIRM"))
+                        : AuthorizationDecision.deny("TEST_DENY", "deny"))
+        );
+
+        List<AiVO.ToolVO> tools = service.listTools(currentUser(), 1L);
+
+        assertThat(tools).extracting(AiVO.ToolVO::getToolCode)
+                .contains("system.user.create")
+                .doesNotContain("system.permission.snapshot", "system.user.delete");
+    }
+
     private DefaultAiNativeToolRuntimeService newService(
             MyBatisQueryOperations jdbcTemplate,
             AiSkillPermissionChecker permissionChecker
@@ -136,6 +167,7 @@ class AiNativeToolRuntimeServiceTest {
         return new DefaultAiNativeToolRuntimeService(
                 jdbcTemplate,
                 new PermissionGuard(),
+                authorization(request -> AuthorizationDecision.allow("TEST_ALLOW", "allow")),
                 permissionChecker,
                 new ObjectMapper(),
                 new StubPlatformQueryFacade(),
@@ -143,6 +175,42 @@ class AiNativeToolRuntimeServiceTest {
                 null,
                 fileInternalApi
         );
+    }
+
+    private DefaultAiNativeToolRuntimeService newService(
+            MyBatisQueryOperations jdbcTemplate,
+            AiSkillPermissionChecker permissionChecker,
+            FileInternalApi fileInternalApi,
+            AuthorizationService authorizationService
+    ) {
+        return new DefaultAiNativeToolRuntimeService(
+                jdbcTemplate,
+                new PermissionGuard(),
+                authorizationService,
+                permissionChecker,
+                new ObjectMapper(),
+                new StubPlatformQueryFacade(),
+                new StubIamQueryFacade(),
+                null,
+                fileInternalApi
+        );
+    }
+
+    private AuthorizationService authorization(java.util.function.Function<com.lumira.common.security.authorization.AuthorizationRequest, AuthorizationDecision> evaluator) {
+        return new AuthorizationService() {
+            @Override
+            public AuthorizationDecision evaluate(com.lumira.common.security.authorization.AuthorizationRequest request) {
+                return evaluator.apply(request);
+            }
+
+            @Override
+            public void require(com.lumira.common.security.authorization.AuthorizationRequest request) {
+                AuthorizationDecision decision = evaluate(request);
+                if (!decision.allowed()) {
+                    throw new BizException(com.lumira.common.enums.ErrorCode.FORBIDDEN, decision.message());
+                }
+            }
+        };
     }
 
     private CurrentUser currentUser() {

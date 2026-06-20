@@ -9,6 +9,10 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.authorization.AuthorizationDecision;
+import com.lumira.common.security.authorization.AuthorizationRequest;
+import com.lumira.common.security.authorization.AuthorizationService;
+import com.lumira.common.security.authorization.AuthorizationVerdict;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.vo.AiVO;
 import com.lumira.common.security.PermissionGuard;
@@ -33,6 +37,8 @@ public interface AiNativeToolRuntimeService {
 
     List<AiVO.ToolVO> listTools(CurrentUser currentUser);
 
+    List<AiVO.ToolVO> listTools(CurrentUser currentUser, Long employeeId);
+
     AiVO.ToolExecuteResultVO execute(CurrentUser currentUser, AiDTO.ToolExecuteRequest request);
 
     default boolean isDirectExecutable(CurrentUser currentUser, String toolCode) {
@@ -40,6 +46,17 @@ public interface AiNativeToolRuntimeService {
             return false;
         }
         return listTools(currentUser).stream()
+                .filter(tool -> toolCode.trim().equals(tool.getToolCode()))
+                .findFirst()
+                .map(tool -> Boolean.TRUE.equals(tool.getReadOnly()) && "LOW".equalsIgnoreCase(tool.getRiskLevel()))
+                .orElse(false);
+    }
+
+    default boolean isDirectExecutable(CurrentUser currentUser, Long employeeId, String toolCode) {
+        if (!StringUtils.hasText(toolCode)) {
+            return false;
+        }
+        return listTools(currentUser, employeeId).stream()
                 .filter(tool -> toolCode.trim().equals(tool.getToolCode()))
                 .findFirst()
                 .map(tool -> Boolean.TRUE.equals(tool.getReadOnly()) && "LOW".equalsIgnoreCase(tool.getRiskLevel()))
@@ -57,6 +74,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final PermissionGuard permissionGuard;
+    private final AuthorizationService authorizationService;
     private final AiSkillPermissionChecker aiSkillPermissionChecker;
     private final ObjectMapper objectMapper;
     private final SystemManagementAppService systemManagementAppService;
@@ -69,6 +87,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     DefaultAiNativeToolRuntimeService(
             MyBatisQueryOperations jdbcTemplate,
             PermissionGuard permissionGuard,
+            AuthorizationService authorizationService,
             AiSkillPermissionChecker aiSkillPermissionChecker,
             ObjectMapper objectMapper,
             AiPlatformQueryFacade platformQueryFacade,
@@ -78,6 +97,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionGuard = permissionGuard;
+        this.authorizationService = authorizationService;
         this.aiSkillPermissionChecker = aiSkillPermissionChecker;
         this.objectMapper = objectMapper;
         this.platformQueryFacade = platformQueryFacade == null ? new DefaultAiPlatformQueryFacade(jdbcTemplate) : platformQueryFacade;
@@ -331,10 +351,34 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     @Override
     public List<AiVO.ToolVO> listTools(CurrentUser currentUser) {
+        return listTools(currentUser, null);
+    }
+
+    @Override
+    public List<AiVO.ToolVO> listTools(CurrentUser currentUser, Long employeeId) {
         return tools.values().stream()
                 .sorted(Comparator.comparing(NativeTool::code))
+                .filter(tool -> visible(currentUser, employeeId, tool))
                 .map(NativeTool::toVO)
                 .toList();
+    }
+
+    private boolean visible(CurrentUser currentUser, Long employeeId, NativeTool tool) {
+        if (employeeId != null && employeeId > 0) {
+            AuthorizationDecision decision = authorizationService.evaluate(AuthorizationRequest.aiToolView(
+                    currentUser,
+                    employeeId,
+                    tool.code(),
+                    tool.requiredPermission(),
+                    tool.riskLevel(),
+                    Map.of("readOnly", tool.readOnly(), "permissionMode", tool.readOnly() ? "VIEW" : "EXECUTE")
+            ));
+            return decision.allowed() || decision.verdict() == AuthorizationVerdict.REQUIRE_CONFIRM;
+        }
+        if (!tool.readOnly() || !"LOW".equalsIgnoreCase(tool.riskLevel())) {
+            return false;
+        }
+        return !StringUtils.hasText(tool.requiredPermission()) || hasPermission(currentUser, tool.requiredPermission());
     }
 
     @Override
@@ -350,9 +394,21 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         }
         boolean confirmed = Boolean.TRUE.equals(request.getConfirmed());
         Map<String, Object> arguments = request.getArguments() == null ? Map.of() : request.getArguments();
+        boolean approvalGranted = Boolean.TRUE.equals(arguments.get("_authorizationApprovalGranted"));
+        Map<String, Object> executionArguments = stripInternalAuthorizationArguments(arguments);
 
         try {
             requireEmployee(tenantId, request.getEmployeeId());
+            authorizationService.require(AuthorizationRequest.aiTool(
+                    currentUser,
+                    request.getEmployeeId(),
+                    toolCode,
+                    tool.requiredPermission(),
+                    tool.riskLevel(),
+                    confirmed,
+                    approvalGranted,
+                    executionArguments
+            ));
             aiSkillPermissionChecker.verifyToolAllowed(
                     tenantId,
                     request.getEmployeeId(),
@@ -364,7 +420,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             if (StringUtils.hasText(tool.requiredPermission())) {
                 permissionGuard.requirePermission(currentUser, tool.requiredPermission());
             }
-            Map<String, Object> data = tool.executor().execute(new ToolExecutionContext(currentUser, tenantId, arguments));
+            Map<String, Object> data = tool.executor().execute(new ToolExecutionContext(currentUser, tenantId, executionArguments));
             AiVO.ToolExecuteResultVO result = new AiVO.ToolExecuteResultVO();
             result.setToolCode(toolCode);
             result.setResultStatus("SUCCESS");
@@ -377,6 +433,15 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             recordFailedToolAuditLog(tenantId, request, tool, confirmed, exception);
             throw exception;
         }
+    }
+
+    private Map<String, Object> stripInternalAuthorizationArguments(Map<String, Object> arguments) {
+        if (arguments == null || arguments.isEmpty() || !arguments.containsKey("_authorizationApprovalGranted")) {
+            return arguments == null ? Map.of() : arguments;
+        }
+        Map<String, Object> sanitized = new LinkedHashMap<>(arguments);
+        sanitized.remove("_authorizationApprovalGranted");
+        return sanitized;
     }
 
     private Map<String, Object> permissionSnapshot(ToolExecutionContext context) {
@@ -924,7 +989,11 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private boolean hasPermission(CurrentUser currentUser, String permissionKey) {
         return currentUser != null
                 && currentUser.getPermissions() != null
-                && (currentUser.getPermissions().contains("*") || currentUser.getPermissions().contains(permissionKey));
+                && (currentUser.getPermissions().contains("*")
+                || currentUser.getPermissions().contains(permissionKey)
+                || currentUser.getPermissions().stream()
+                .filter(permission -> StringUtils.hasText(permission) && permission.endsWith("*"))
+                .anyMatch(permission -> permissionKey.startsWith(permission.substring(0, permission.length() - 1))));
     }
 
     private String like(String value) {

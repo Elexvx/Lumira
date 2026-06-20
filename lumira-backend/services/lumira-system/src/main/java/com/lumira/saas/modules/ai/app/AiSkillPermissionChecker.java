@@ -211,7 +211,11 @@ class DefaultAgentToolGrantEvaluator implements AgentToolGrantEvaluator {
             return AgentToolGrantDecision.deny("AGENT_TOOL_DISABLED");
         }
         String permissionMode = normalizePermissionMode(grant.get("permissionMode"));
-        if (!List.of("invoke", "execute").contains(permissionMode)) {
+        if (isReadAction(request)) {
+            if (!List.of("view", "visit", "invoke", "execute").contains(permissionMode)) {
+                return AgentToolGrantDecision.deny("AGENT_GRANT_VIEW_DENIED");
+            }
+        } else if (!List.of("invoke", "execute").contains(permissionMode)) {
             return AgentToolGrantDecision.deny("AGENT_GRANT_EXECUTE_DENIED");
         }
         String maxRiskLevel = String.valueOf(grant.getOrDefault("maxRiskLevel", "LOW"));
@@ -225,6 +229,11 @@ class DefaultAgentToolGrantEvaluator implements AgentToolGrantEvaluator {
 
     private String normalizePermissionMode(Object value) {
         return value == null ? "" : value.toString().trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isReadAction(AuthorizationRequest request) {
+        String action = request == null || request.actionCode() == null ? "" : request.actionCode().trim().toLowerCase(Locale.ROOT);
+        return action.startsWith("read") || action.startsWith("view") || action.startsWith("list") || action.startsWith("search");
     }
 
     private boolean toBoolean(Object value) {
