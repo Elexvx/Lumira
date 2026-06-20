@@ -94,5 +94,5 @@ console.log(JSON.stringify({
   autofilled,
   blockedLaneCount: receipt.autofill.blockedLaneCount,
   receiptStatus: receipt.status,
-  nextCommand: `node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=${outputFile}`,
+  nextCommand: `node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=${outputFile}`,
 }, null, 2));

@@ -1,4 +1,4 @@
-﻿package com.lumira.job;
+package com.lumira.job;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

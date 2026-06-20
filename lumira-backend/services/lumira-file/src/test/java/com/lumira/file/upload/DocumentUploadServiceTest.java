@@ -71,6 +71,21 @@ class DocumentUploadServiceTest {
         assertEquals("application/vnd.openxmlformats-officedocument.wordprocessingml.document", storedDocument.contentType());
     }
 
+    @Test
+    void rejectsOpenXmlWithoutContentTypesEntry() throws Exception {
+        UploadProperties properties = new UploadProperties();
+        properties.setStorageRoot(Files.createTempDirectory("document-upload-test").toString());
+        DocumentUploadService service = service(properties);
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "report.docx",
+                "application/zip",
+                openXmlBytesWithoutContentTypes("word/document.xml")
+        );
+
+        assertThrows(BizException.class, () -> service.upload(file));
+    }
+
     private byte[] openXmlBytes(String entryName) throws Exception {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
@@ -84,7 +99,21 @@ class DocumentUploadServiceTest {
         return output.toByteArray();
     }
 
+    private byte[] openXmlBytesWithoutContentTypes(String entryName) throws Exception {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(output)) {
+            zip.putNextEntry(new ZipEntry(entryName));
+            zip.write("<document/>".getBytes());
+            zip.closeEntry();
+        }
+        return output.toByteArray();
+    }
+
     private DocumentUploadService service(UploadProperties properties) {
-        return new DocumentUploadService(properties, new FileStorageMetrics(new SimpleMeterRegistry()));
+        return new DocumentUploadService(
+                properties,
+                new FileStorageMetrics(new SimpleMeterRegistry()),
+                new ZipSafetyValidator(properties)
+        );
     }
 }

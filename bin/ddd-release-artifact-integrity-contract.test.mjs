@@ -84,7 +84,7 @@ function runContract(packet, pathLeakReport = null, ownerInputPacket = null) {
   if (ownerInputPacket) {
     fs.writeFileSync(path.join(directory, "release-env-owner-input-packet.json"), `${JSON.stringify(ownerInputPacket, null, 2)}\n`);
   }
-  return spawnSync("node", ["bin/ddd-release-artifact-integrity-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-artifact-integrity-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

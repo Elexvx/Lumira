@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,8 +19,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 @Service("fileDocumentUploadService")
 public class DocumentUploadService {
@@ -43,10 +40,12 @@ public class DocumentUploadService {
 
     private final UploadProperties uploadProperties;
     private final FileStorageMetrics storageMetrics;
+    private final ZipSafetyValidator zipSafetyValidator;
 
-    public DocumentUploadService(UploadProperties uploadProperties, FileStorageMetrics storageMetrics) {
+    public DocumentUploadService(UploadProperties uploadProperties, FileStorageMetrics storageMetrics, ZipSafetyValidator zipSafetyValidator) {
         this.uploadProperties = uploadProperties;
         this.storageMetrics = storageMetrics;
+        this.zipSafetyValidator = zipSafetyValidator;
     }
 
     public static boolean supports(String originalFilename, String contentType) {
@@ -283,26 +282,12 @@ public class DocumentUploadService {
     }
 
     private boolean isOpenXmlPackage(byte[] bytes, String expectedDirectory) {
-        boolean hasContentTypes = false;
-        boolean hasExpectedDirectory = false;
-        try (ZipInputStream zipInputStream = new ZipInputStream(new ByteArrayInputStream(bytes))) {
-            ZipEntry entry;
-            while ((entry = zipInputStream.getNextEntry()) != null) {
-                String name = entry.getName();
-                if ("[Content_Types].xml".equals(name)) {
-                    hasContentTypes = true;
-                }
-                if (name.startsWith(expectedDirectory)) {
-                    hasExpectedDirectory = true;
-                }
-                if (hasContentTypes && hasExpectedDirectory) {
-                    return true;
-                }
-            }
-        } catch (IOException exception) {
+        try {
+            zipSafetyValidator.validateOpenXmlPackage(bytes, expectedDirectory);
+            return true;
+        } catch (BizException exception) {
             return false;
         }
-        return false;
     }
 
     private boolean startsWith(byte[] bytes, int... prefix) {

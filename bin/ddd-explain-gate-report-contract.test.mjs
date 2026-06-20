@@ -80,7 +80,7 @@ assert.deepEqual(validateExplainGateReport(passingReport({
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-explain-gate-contract-"));
   const reportPath = path.join(tempDir, "report.json");
   fs.writeFileSync(reportPath, `${JSON.stringify(passingReport(), null, 2)}\n`);
-  const result = spawnSync("node", ["bin/ddd-explain-gate-report-contract.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-explain-gate-report-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_EXPLAIN_GATE_REPORT: reportPath },

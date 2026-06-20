@@ -16,7 +16,7 @@ function baseArtifacts() {
     owner: "release-infra",
     pendingItems: 1,
     dependsOn: [],
-    commands: ["node bin/ddd-release-env-file-lint.mjs"],
+    commands: ["node bin\/ddd-release-env-file-lint.mjs"],
     envKeys: ["DDD_RELEASE_ENV_FILE"],
     expectedArtifacts: ["artifacts/ddd/release/release-env-lint.json"],
     exitCriteria: ["release env lint passes"],
@@ -39,7 +39,7 @@ function baseArtifacts() {
         exitCriteria: ready.exitCriteria,
       },
     ],
-    commands: ["node bin/ddd-frontend-smoke-evidence.mjs"],
+    commands: ["node bin\/ddd-frontend-smoke-evidence.mjs"],
     envKeys: ["PLAYWRIGHT_BASE_URL"],
     expectedArtifacts: ["artifacts/ddd/lumira-ui/frontend-smoke.json"],
     exitCriteria: ["frontend smoke passes"],
@@ -85,7 +85,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-execution-queue-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-execution-queue-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

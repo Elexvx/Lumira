@@ -1,11 +1,11 @@
 # DDD Release Env Fill Priority
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Release gate blockers: 94
-Owners with unresolved keys: 16
+Owners with unresolved keys: 15
 Run now owners: 3
-Waiting owners: 13
+Waiting owners: 12
 Unique unresolved template env keys: 29
 Unresolved owner assignments: 65
 Filled owner assignments: 64
@@ -15,8 +15,8 @@ Missing owner assignments: 1
 ## 1. release-infra
 
 - Priority: RUN_NOW
-- Unresolved env keys: 4
-- Fill status: filled=4, placeholder=0, missing=0
+- Unresolved env keys: 5
+- Fill status: filled=5, placeholder=0, missing=0
 - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
 - Blocked batches: p3-orchestrator-release-infra
 - Fill keys:
@@ -24,12 +24,12 @@ Missing owner assignments: 1
   - `DDD_EVIDENCE_OPERATOR` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
   - `LUMIRA_BASE_URL` (filled)
+  - `PLAYWRIGHT_BASE_URL` (filled)
 - Rerun after fill:
-  - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-runtime-readiness-smoke.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 
 ## 2. release-performance
 
@@ -44,25 +44,23 @@ Missing owner assignments: 1
   - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-authenticated-performance-smoke.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
+  - `node bin/ddd-authenticated-performance-smoke.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
 
-## 3. release-owner
+## 3. lumira-ui
 
 - Priority: RUN_NOW
 - Unresolved env keys: 2
 - Fill status: filled=2, placeholder=0, missing=0
-- Ready batches: p0-manifest-release-owner
-- Blocked batches: p3-orchestrator-release-owner
+- Ready batches: p0-manifest-lumira-ui
+- Blocked batches: none
 - Fill keys:
-  - `DDD_EVIDENCE_OPERATOR` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
+  - `PLAYWRIGHT_BASE_URL` (filled)
 - Rerun after fill:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
 
 ## 4. database
 
@@ -85,10 +83,10 @@ Missing owner assignments: 1
   - `MYSQL_HOST` (filled)
   - `MYSQL_PORT` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-collect-explain.mjs`
-  - `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-collect-explain.mjs`
+  - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 
 ## 5. ai
 
@@ -108,7 +106,7 @@ Missing owner assignments: 1
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL` (filled)
   - `LUMIRA_BASE_URL` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-ai-runtime-drill.mjs`
+  - `node bin/ddd-ai-runtime-drill.mjs`
 
 ## 6. file-owner
 
@@ -126,10 +124,10 @@ Missing owner assignments: 1
   - `SAAS_JOB_INTERNAL_TOKEN` (filled)
   - `UPLOAD_STORAGE_ROOT` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-file-processing-e2e-smoke.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 ## 7. job-owner
 
@@ -146,10 +144,10 @@ Missing owner assignments: 1
   - `LUMIRA_BASE_URL` (filled)
   - `SAAS_JOB_INTERNAL_TOKEN` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-job-e2e-smoke.mjs`
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-job-e2e-smoke.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 ## 8. payment-owner
 
@@ -166,10 +164,10 @@ Missing owner assignments: 1
   - `LUMIRA_BASE_URL` (filled)
   - `PAYMENT_PUBLIC_BASE_URL` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-payment-webhook-e2e-smoke.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 ## 9. ai-owner
 
@@ -182,9 +180,9 @@ Missing owner assignments: 1
   - `DDD_EVIDENCE_OPERATOR` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 ## 10. auth-owner
 
@@ -197,9 +195,9 @@ Missing owner assignments: 1
   - `DDD_EVIDENCE_OPERATOR` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 ## 11. iam-owner
 
@@ -212,9 +210,9 @@ Missing owner assignments: 1
   - `DDD_EVIDENCE_OPERATOR` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 ## 12. localization-owner
 
@@ -227,9 +225,9 @@ Missing owner assignments: 1
   - `DDD_EVIDENCE_OPERATOR` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 ## 13. message-owner
 
@@ -242,9 +240,9 @@ Missing owner assignments: 1
   - `DDD_EVIDENCE_OPERATOR` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 ## 14. platform-owner
 
@@ -257,9 +255,9 @@ Missing owner assignments: 1
   - `DDD_EVIDENCE_OPERATOR` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 ## 15. plugin-owner
 
@@ -272,22 +270,7 @@ Missing owner assignments: 1
   - `DDD_EVIDENCE_OPERATOR` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
 - Rerun after fill:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
-
-## 16. frontend
-
-- Priority: WAITING
-- Unresolved env keys: 1
-- Fill status: filled=1, placeholder=0, missing=0
-- Ready batches: none
-- Blocked batches: p1-frontend-smoke-frontend, p3-orchestrator-frontend
-- Fill keys:
-  - `PLAYWRIGHT_BASE_URL` (filled)
-- Rerun after fill:
-  - `node scripts/ddd-frontend-playwright-smoke.mjs`
-  - `node scripts/ddd-frontend-smoke-evidence.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 

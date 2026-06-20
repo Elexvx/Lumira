@@ -39,7 +39,7 @@ const onlineDdlRequiredIndexes = Object.freeze([
 ]);
 
 function migrationFiles(location) {
-  const absolute = path.join(repoRoot, location);
+  const absolute = resolveRepoPath(location);
   if (!fs.existsSync(absolute)) {
     return [];
   }
@@ -47,6 +47,14 @@ function migrationFiles(location) {
     .filter((file) => /^V[^/]+__.+\.sql$/.test(file))
     .sort((left, right) => left.localeCompare(right, undefined, { numeric: true }))
     .map((file) => path.join(absolute, file));
+}
+
+function resolveRepoPath(relativePath) {
+  const primary = path.join(repoRoot, relativePath);
+  if (fs.existsSync(primary) || !relativePath.startsWith("services/")) {
+    return primary;
+  }
+  return path.join(repoRoot, "lumira-backend", relativePath);
 }
 
 function parseMigration(file) {
@@ -328,17 +336,17 @@ function sortedUniqueStrings(values = []) {
 
 function writeMigrationHandoff(readiness, file) {
   const validationCommands = [
-    "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-    "DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs",
-    "node bin/ddd-collect-explain.mjs",
-    "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
-    "node bin/ddd-release-readiness-summary.mjs",
+    "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+    "DDD_MIGRATION_STRICT=true node bin\/ddd-migration-evidence.mjs",
+    "node bin\/ddd-collect-explain.mjs",
+    "DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs",
+    "node bin\/ddd-release-readiness-summary.mjs",
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
   ];
   const fastPathCommands = [
-    "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-    "DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs",
-    "node bin/ddd-release-readiness-summary.mjs",
+    "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+    "DDD_MIGRATION_STRICT=true node bin\/ddd-migration-evidence.mjs",
+    "node bin\/ddd-release-readiness-summary.mjs",
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
   ];
   const ownerSummary = [...readiness.reduce((map, item) => {
@@ -370,8 +378,8 @@ function writeMigrationHandoff(readiness, file) {
       .filter((item) => item.owner === owner.owner)
       .flatMap((item) => item.requiredGroups.flatMap((group) => group))),
     nextCommand: owner.missing === 0
-      ? "DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs"
-      : "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+      ? "DDD_MIGRATION_STRICT=true node bin\/ddd-migration-evidence.mjs"
+      : "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
   }));
   const artifact = {
     generatedAt: new Date().toISOString(),
@@ -477,7 +485,7 @@ function writeMigrationHandoff(readiness, file) {
 }
 
 const locations = requiredMigrationLocations.map((location) => {
-  const absolute = path.join(repoRoot, location);
+  const absolute = resolveRepoPath(location);
   const exists = fs.existsSync(absolute);
   const migrations = migrationFiles(location).map(parseMigration);
   const onlineDdlCoverage = summarizeOnlineDdlCoverage(migrations);

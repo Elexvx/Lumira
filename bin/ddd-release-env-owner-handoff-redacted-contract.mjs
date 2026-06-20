@@ -92,15 +92,15 @@ const forbiddenValuePatterns = [
 const owners = Array.isArray(handoff.owners) ? handoff.owners : [];
 const readinessItems = Array.isArray(readiness.items) ? readiness.items : [];
 const requiredValidationCommands = [
-  "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+  "node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-safe-defaults.mjs",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-provenance-defaults.mjs",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-alias-sync.mjs",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+  "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
   "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-  "node bin/ddd-release-readiness-summary.mjs",
+  "node bin\/ddd-release-readiness-summary.mjs",
   "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
 ];
 const readinessOwnerMap = new Map();

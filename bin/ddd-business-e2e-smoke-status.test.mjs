@@ -6,9 +6,9 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const scripts = [
-  "bin/ddd-file-processing-e2e-smoke.mjs",
-  "bin/ddd-payment-webhook-e2e-smoke.mjs",
-  "bin/ddd-job-e2e-smoke.mjs",
+  "bin\/ddd-file-processing-e2e-smoke.mjs",
+  "bin\/ddd-payment-webhook-e2e-smoke.mjs",
+  "bin\/ddd-job-e2e-smoke.mjs",
 ];
 
 for (const script of scripts) {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "redacted": true,
   "valuePolicy": "No concrete environment values are emitted; only key names, ownership, validation metadata, and redacted fill status.",
@@ -1470,39 +1470,6 @@
       "fillOrder": 43,
       "owner": "release-infra",
       "owners": [
-        "frontend",
-        "release-infra"
-      ],
-      "group": "runtime",
-      "requirement": "frontend base url",
-      "canonicalKey": "PLAYWRIGHT_BASE_URL",
-      "status": "FILLED_REDACTED",
-      "required": true,
-      "secret": false,
-      "valueClass": "url",
-      "safeToPreFill": false,
-      "blocker": false,
-      "validation": {
-        "https": true,
-        "nonLocal": true,
-        "minLength": null,
-        "expectedValues": [],
-        "pattern": null,
-        "disallowValues": []
-      },
-      "aliases": [
-        "PLAYWRIGHT_BASE_URL",
-        "FRONTEND_BASE_URL"
-      ],
-      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
-      "safeDefaultAvailable": false,
-      "requiresOwnerInput": false,
-      "ownerInputReason": "not-blocking"
-    },
-    {
-      "fillOrder": 44,
-      "owner": "release-infra",
-      "owners": [
         "release-infra"
       ],
       "group": "runtime",
@@ -1527,6 +1494,39 @@
         "SAAS_SECURITY_JWT_SECRET"
       ],
       "fillGuidance": "Provide via approved secret manager or secure release channel; never commit.",
+      "safeDefaultAvailable": false,
+      "requiresOwnerInput": false,
+      "ownerInputReason": "not-blocking"
+    },
+    {
+      "fillOrder": 44,
+      "owner": "release-infra",
+      "owners": [
+        "lumira-ui",
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "lumira-ui base url",
+      "canonicalKey": "PLAYWRIGHT_BASE_URL",
+      "status": "FILLED_REDACTED",
+      "required": true,
+      "secret": false,
+      "valueClass": "url",
+      "safeToPreFill": false,
+      "blocker": false,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliases": [
+        "PLAYWRIGHT_BASE_URL",
+        "FRONTEND_BASE_URL"
+      ],
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
       "safeDefaultAvailable": false,
       "requiresOwnerInput": false,
       "ownerInputReason": "not-blocking"

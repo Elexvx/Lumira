@@ -1,13 +1,17 @@
 # DDD Staging Closure Plan
 
-Status: READY
+Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
-Accepted gates: 6/6
-ETA: ready for final go/no-go enforcement
+Accepted gates: 2/6
+ETA: fast path 0.5-1.5d with staging access and owner evidence ready; 1-3d if deployment, Docker, database, or approval evidence must be produced
 
 | Phase | Gate | Owner | ETA | Current blocker | Next command |
 | --- | --- | --- | --- | --- | --- |
+| P1 | `runtime-business` | release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner | 2-4h with staging URLs and deployment evidence; 0.5-1d if deployment must be provisioned | LUMIRA_BASE_URL is required | `node bin/ddd-staging-runtime-check.mjs` |
+| P1 | `rollback` | bounded-context owners | 2-4h with owner drill evidence; 0.5-1d if deferrals need review | rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE | `node bin/ddd-staging-data-safety-check.mjs` |
+| P2 | `explain` | database | 2-6h with database access; 0.5-1d if fresh/upgrade drills must be scheduled | DDD_EXPLAIN_DATABASE is required | `node bin/ddd-staging-data-safety-check.mjs` |
+| P2 | `migration` | database | 2-6h with database access; 0.5-1d if fresh/upgrade drills must be scheduled | DDD_MIGRATION_FRESH_DB_VALIDATED must be true | `node bin/ddd-staging-data-safety-check.mjs` |
 
 ## Critical Path
 
@@ -18,13 +22,24 @@ ETA: ready for final go/no-go enforcement
 
 ## Top Blocking Inputs
 
-- none
+- `DDD_EVIDENCE_ENVIRONMENT`: gates=3; owners=bounded-context owners, database; next=`node bin/ddd-staging-data-safety-check.mjs`
+- `DDD_EVIDENCE_OPERATOR`: gates=3; owners=bounded-context owners, database; next=`node bin/ddd-staging-data-safety-check.mjs`
+- `DDD_RELEASE_ENVIRONMENT`: gates=3; owners=bounded-context owners, database; next=`node bin/ddd-staging-data-safety-check.mjs`
+- `GITHUB_ACTOR`: gates=3; owners=bounded-context owners, database; next=`node bin/ddd-staging-data-safety-check.mjs`
+- `DDD_RELEASE_CANDIDATE`: gates=2; owners=bounded-context owners, database; next=`node bin/ddd-staging-data-safety-check.mjs`
+- `GITHUB_SHA`: gates=2; owners=bounded-context owners, database; next=`node bin/ddd-staging-data-safety-check.mjs`
+- `DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE`: gates=1; owners=ai, file-owner, job-owner, lumira-ui, payment-owner, release-infra; next=`node bin/ddd-staging-runtime-check.mjs`
+- `DDD_AI_EXPECT_PROVIDER_REMOTE`: gates=1; owners=ai, file-owner, job-owner, lumira-ui, payment-owner, release-infra; next=`node bin/ddd-staging-runtime-check.mjs`
+- `DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE`: gates=1; owners=ai, file-owner, job-owner, lumira-ui, payment-owner, release-infra; next=`node bin/ddd-staging-runtime-check.mjs`
+- `DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE`: gates=1; owners=ai, file-owner, job-owner, lumira-ui, payment-owner, release-infra; next=`node bin/ddd-staging-runtime-check.mjs`
+- `DDD_DEPLOYMENT_EVIDENCE`: gates=1; owners=ai, file-owner, job-owner, lumira-ui, payment-owner, release-infra; next=`node bin/ddd-staging-runtime-check.mjs`
+- `DDD_EXPLAIN_DATABASE`: gates=1; owners=database; next=`node bin/ddd-staging-data-safety-check.mjs`
 
 ## Verification
 
-- `node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`
-- `node scripts/ddd-staging-execution-checklist.mjs --rollup-enforce`
-- `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce`
+- `node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance`
+- `node bin/ddd-staging-execution-checklist.mjs --rollup-enforce`
+- `node bin/ddd-staging-execution-checklist.mjs --final-review-enforce`
 - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
-Next: `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce`
+Next: `node bin/ddd-staging-runtime-check.mjs`

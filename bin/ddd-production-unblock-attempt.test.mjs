@@ -5,7 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const scriptFile = path.join(repoRoot, "scripts", "ddd-production-unblock-attempt.mjs");
+const scriptFile = path.join(repoRoot, "bin", "ddd-production-unblock-attempt.mjs");
 const scriptText = fs.readFileSync(scriptFile, "utf8");
 
 assert(

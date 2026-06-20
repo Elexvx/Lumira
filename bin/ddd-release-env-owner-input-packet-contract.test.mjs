@@ -45,15 +45,15 @@ function baseArtifacts() {
     redacted: true,
     purpose: "Verify that collected owner values removed release env placeholders without exposing concrete values.",
     commands: [
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs",
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs",
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs",
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-safe-defaults.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-provenance-defaults.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-alias-sync.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
       "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
-      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-readiness-summary.mjs",
-      "node bin/ddd-release-config-owner-input-reconciliation.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs",
+      "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-readiness-summary.mjs",
+      "node bin\/ddd-release-config-owner-input-reconciliation.mjs",
       "DDD_RELEASE_ENV_FILE=<release-env-file> bash artifacts/ddd/release/release-preflight-gate.sh",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     ],
@@ -96,7 +96,7 @@ function baseArtifacts() {
         },
       },
       validationCommands: [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       ],
       postCollectionReceipt,
@@ -125,13 +125,13 @@ function baseArtifacts() {
       "",
       "Concrete values are intentionally omitted from this artifact.",
       "- `DB_PASSWORD` owner=release-infra reason=secret-manager",
-      "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`",
+      "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs`",
       "## Receipt Gate",
-      "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`",
+      "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs`",
       "- `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`",
-      "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs`",
-      "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-readiness-summary.mjs`",
-      "- `node bin/ddd-release-config-owner-input-reconciliation.mjs`",
+      "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs`",
+      "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-readiness-summary.mjs`",
+      "- `node bin\/ddd-release-config-owner-input-reconciliation.mjs`",
       "- `DDD_RELEASE_ENV_FILE=<release-env-file> bash artifacts/ddd/release/release-preflight-gate.sh`",
       "- `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`",
       "",
@@ -155,7 +155,7 @@ function baseArtifacts() {
         packetMarkdownPath: "artifacts/ddd/release/release-env-owner-input-packet/01-release-infra.md",
         handoffPath: "artifacts/ddd/release/release-env-owner-handoff-redacted/01-release-infra.md",
         validationCommands: [
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
           "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
         ],
         postCollectionReceipt,
@@ -166,13 +166,13 @@ function baseArtifacts() {
         "",
         "Concrete values are intentionally omitted from this artifact.",
         "- `DB_PASSWORD`: class=secret; reason=secret-manager",
-        "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`",
+        "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs`",
         "## Receipt Gate",
-        "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`",
+        "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs`",
         "- `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`",
-        "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs`",
-        "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-readiness-summary.mjs`",
-        "- `node bin/ddd-release-config-owner-input-reconciliation.mjs`",
+        "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs`",
+        "- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-readiness-summary.mjs`",
+        "- `node bin\/ddd-release-config-owner-input-reconciliation.mjs`",
         "- `DDD_RELEASE_ENV_FILE=<release-env-file> bash artifacts/ddd/release/release-preflight-gate.sh`",
         "- `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`",
         "",
@@ -200,7 +200,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-env-owner-input-packet-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-env-owner-input-packet-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_DIR: directory },
@@ -230,7 +230,7 @@ assert.notEqual(readinessMismatchResult.status, 0);
 assert.match(readinessMismatchResult.stderr, /ownerInputReason/);
 
 const concreteEnvFileResult = runContract((artifacts) => {
-  artifacts.packet.validationCommands[0] = "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs";
+  artifacts.packet.validationCommands[0] = "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs";
 });
 assert.notEqual(concreteEnvFileResult.status, 0);
 assert.match(concreteEnvFileResult.stderr, /validationCommands|concrete env/);

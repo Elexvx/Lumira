@@ -75,7 +75,7 @@ function baseArtifacts() {
       nextAction: "Produce missing artifact: tmp/ddd-explain/*.json",
       reason: "missingArtifact=tmp/ddd-explain/*.json",
       commandHint: "Run EXPLAIN collection.",
-      executableCommands: ["node bin/ddd-collect-explain.mjs"],
+      executableCommands: ["node bin\/ddd-collect-explain.mjs"],
       envKeys: ["MYSQL_HOST"],
     },
     {
@@ -190,7 +190,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-next-action-queue-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-next-action-queue-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -243,19 +243,19 @@ assert.notEqual(badEnvKeyResult.status, 0);
 assert.match(badEnvKeyResult.stderr, /envKeys\[1\] must be an uppercase env key/);
 
 const unsafeReleaseEnvCommandResult = runContract((artifacts) => {
-  artifacts.queue.items[0].executableCommands = ["DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-release-evidence-manifest.mjs"];
+  artifacts.queue.items[0].executableCommands = ["DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-release-evidence-manifest.mjs"];
 });
 assert.notEqual(unsafeReleaseEnvCommandResult.status, 0);
 assert.match(unsafeReleaseEnvCommandResult.stderr, /must not expose concrete secret values/);
 
 const unsafeSecretCommandResult = runContract((artifacts) => {
-  artifacts.queue.items[0].executableCommands = ["JWT_SECRET=super-secret node bin/ddd-release-evidence-manifest.mjs"];
+  artifacts.queue.items[0].executableCommands = ["JWT_SECRET=super-secret node bin\/ddd-release-evidence-manifest.mjs"];
 });
 assert.notEqual(unsafeSecretCommandResult.status, 0);
 assert.match(unsafeSecretCommandResult.stderr, /must not expose concrete secret values/);
 
 const unsafeRepoPathCommandResult = runContract((artifacts) => {
-  artifacts.queue.items[0].executableCommands = [`node ${path.join(repoRoot, "bin/ddd-release-evidence-manifest.mjs")}`];
+  artifacts.queue.items[0].executableCommands = [`node ${path.join(repoRoot, "bin\/ddd-release-evidence-manifest.mjs")}`];
 });
 assert.notEqual(unsafeRepoPathCommandResult.status, 0);
 assert.match(unsafeRepoPathCommandResult.stderr, /must not expose concrete secret values/);

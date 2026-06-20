@@ -139,13 +139,31 @@ class AiV2ControllerTest {
         AiDTO.ToolExecuteRequest request = mock(AiDTO.ToolExecuteRequest.class);
         AiVO.ToolExecuteResultVO result = mock(AiVO.ToolExecuteResultVO.class);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(request.getToolCode()).thenReturn("system.permission.snapshot");
+        when(aiNativeToolRuntimeService.isDirectExecutable(currentUser, "system.permission.snapshot")).thenReturn(true);
         when(aiNativeToolRuntimeService.execute(currentUser, request)).thenReturn(result);
 
         var response = controller.executeTool(request);
 
         assertThat(response.getData()).isSameAs(result);
         verify(permissionGuard).requirePermission(currentUser, "ai:tool:execute");
+        verify(request).setConfirmed(false);
         verify(aiNativeToolRuntimeService).execute(currentUser, request);
+    }
+
+    @Test
+    void executeTool_shouldRejectWriteOrElevatedRiskDirectExecution() {
+        CurrentUser currentUser = currentUser("ai:tool:execute");
+        AiDTO.ToolExecuteRequest request = mock(AiDTO.ToolExecuteRequest.class);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(request.getToolCode()).thenReturn("system.user.create");
+        when(aiNativeToolRuntimeService.isDirectExecutable(currentUser, "system.user.create")).thenReturn(false);
+
+        assertThatThrownBy(() -> controller.executeTool(request))
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("Direct AI tool execution is limited");
+
+        verify(permissionGuard).requirePermission(currentUser, "ai:tool:execute");
     }
 
     @Test

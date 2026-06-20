@@ -32,7 +32,7 @@ fs.writeFileSync(artifactFile, `${JSON.stringify({
   })),
 }, null, 2)}\n`);
 
-const result = spawnSync("node", ["bin/ddd-rollback-drill-evidence.mjs"], {
+const result = spawnSync("node", ["bin\/ddd-rollback-drill-evidence.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -83,7 +83,7 @@ const checkOnlyOriginal = {
   })),
 };
 fs.writeFileSync(checkOnlyArtifactFile, `${JSON.stringify(checkOnlyOriginal, null, 2)}\n`);
-const checkOnlyResult = spawnSync("node", ["bin/ddd-rollback-drill-evidence.mjs"], {
+const checkOnlyResult = spawnSync("node", ["bin\/ddd-rollback-drill-evidence.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -105,7 +105,7 @@ assert.match(checkOnlyHandoff, /pass-rollback-drill-evidence/);
 assert.match(checkOnlyHandoff, /deferred-risk-acceptance-evidence/);
 assert.match(checkOnlyHandoff, /\| iam-owner \| MISSING \| IAM \| IAM \|/);
 assert.match(checkOnlyHandoff, /Validation commands:/);
-assert.match(checkOnlyHandoff, /DDD_ROLLBACK_DRILL_STRICT=true node scripts\/ddd-rollback-drill-evidence\.mjs/);
+assert.match(checkOnlyHandoff, /DDD_ROLLBACK_DRILL_STRICT=true node bin\/ddd-rollback-drill-evidence\.mjs/);
 assert.match(checkOnlyHandoff, /DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts\/ddd\/release\/release-final-go-no-go-gate\.sh/);
 const checkOnlyHandoffJson = JSON.parse(fs.readFileSync(path.join(directory, "rollback-drill-handoff.json"), "utf8"));
 assert.equal(checkOnlyHandoffJson.redacted, true);
@@ -115,7 +115,7 @@ assert.equal(checkOnlyHandoffJson.summary.missing, requiredRollbackContexts.leng
 assert.deepEqual(checkOnlyHandoffJson.evidenceChecklist, requiredRollbackEvidenceChecklist);
 assert.equal(checkOnlyHandoffJson.fastPath.commands.at(-1), "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh");
 assert(checkOnlyHandoffJson.ownerRunbook.some((owner) => owner.owner === "iam-owner" && owner.status === "MISSING" && owner.missingContexts.includes("IAM")));
-assert(checkOnlyHandoffJson.validationCommands.includes("DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs"));
+assert(checkOnlyHandoffJson.validationCommands.includes("DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs"));
 assert(checkOnlyHandoffJson.validationCommands.includes("DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"));
 const checkOnlyHandoffCsv = fs.readFileSync(path.join(directory, "rollback-drill-handoff.csv"), "utf8");
 assert.match(checkOnlyHandoffCsv, /^owner,context,currentStatus,envStatus,requiredEnvKeys,missingEnvKeys,evidenceRequirements,nextCommand,action/m);
@@ -151,7 +151,7 @@ fs.writeFileSync(deferralFile, `${JSON.stringify({
   })),
 }, null, 2)}\n`);
 
-const deferredResult = spawnSync("node", ["bin/ddd-rollback-drill-evidence.mjs"], {
+const deferredResult = spawnSync("node", ["bin\/ddd-rollback-drill-evidence.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -177,7 +177,7 @@ assert.equal(deferredArtifact.summary.appliedDeferrals, requiredRollbackContexts
 assert.equal(deferredArtifact.summary.blockers, 0);
 
 const readyCheckOnlyHandoffFile = path.join(directory, "rollback-drill-ready-handoff.md");
-const readyCheckOnlyResult = spawnSync("node", ["bin/ddd-rollback-drill-evidence.mjs"], {
+const readyCheckOnlyResult = spawnSync("node", ["bin\/ddd-rollback-drill-evidence.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

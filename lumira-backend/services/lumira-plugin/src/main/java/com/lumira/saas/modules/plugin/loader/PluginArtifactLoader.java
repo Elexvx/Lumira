@@ -65,7 +65,7 @@ public class PluginArtifactLoader {
 
     public UploadedArtifact stage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件包不能为�?);
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin package must not be empty");
         }
         try {
             Path stagingRoot = Path.of(pluginProperties.getStagingRoot()).toAbsolutePath().normalize();
@@ -84,7 +84,7 @@ public class PluginArtifactLoader {
             Path packageRoot = resolvePackageRoot(extractedDir);
             for (String requiredPath : REQUIRED_PATHS) {
                 if (!Files.exists(packageRoot.resolve(requiredPath))) {
-                    throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "缺少插件制品文件: " + requiredPath);
+                    throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "missing plugin artifact file: " + requiredPath);
                 }
             }
             PluginDTO.PluginPackageMetadata metadata = objectMapper.readValue(
@@ -122,7 +122,7 @@ public class PluginArtifactLoader {
         } catch (BizException exception) {
             throw exception;
         } catch (Exception exception) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件包解析失�? " + exception.getMessage());
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin package parse failed: " + exception.getMessage());
         }
     }
 
@@ -154,7 +154,7 @@ public class PluginArtifactLoader {
             copyDirectory(extractedDir, versionHome);
             return versionHome;
         } catch (IOException exception) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件落盘失败: " + exception.getMessage());
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "plugin package persistence failed: " + exception.getMessage());
         }
     }
 
@@ -172,7 +172,7 @@ public class PluginArtifactLoader {
         try {
             deleteRecursively(resolveSafeRemovalPath(path));
         } catch (IOException exception) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件目录清理失败: " + exception.getMessage());
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "plugin directory cleanup failed: " + exception.getMessage());
         }
     }
 
@@ -194,25 +194,25 @@ public class PluginArtifactLoader {
 
     private void validateMetadata(PluginDTO.PluginPackageMetadata metadata) {
         if (metadata == null) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin.json 不存在或格式错误");
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin.json is missing or invalid");
         }
         validateSafePluginCode(metadata.getPluginCode());
-        pluginSemver.requireValid(metadata.getVersion(), "插件版本");
-        pluginSemver.requireValid(metadata.getPluginApiVersion(), "插件 API 版本");
-        pluginSemver.requireValid(metadata.getMinPlatformVersion(), "最小平台版�?);
+        pluginSemver.requireValid(metadata.getVersion(), "plugin version");
+        pluginSemver.requireValid(metadata.getPluginApiVersion(), "plugin API version");
+        pluginSemver.requireValid(metadata.getMinPlatformVersion(), "minimum platform version");
         if (!pluginSemver.isCompatible(pluginProperties.getPlatformVersion(), metadata.getMinPlatformVersion())) {
-            throw new BizException(ErrorCode.PLUGIN_VERSION_INCOMPATIBLE, "插件要求平台版本不低�?" + metadata.getMinPlatformVersion());
+            throw new BizException(ErrorCode.PLUGIN_VERSION_INCOMPATIBLE, "plugin requires platform version >= " + metadata.getMinPlatformVersion());
         }
         if (!pluginSemver.isCompatible(metadata.getPluginApiVersion(), pluginProperties.getApiVersion())
                 && !pluginSemver.isCompatible(pluginProperties.getApiVersion(), metadata.getPluginApiVersion())) {
-            throw new BizException(ErrorCode.PLUGIN_VERSION_INCOMPATIBLE, "插件 API 版本与平台不兼容");
+            throw new BizException(ErrorCode.PLUGIN_VERSION_INCOMPATIBLE, "plugin API version is not compatible with platform");
         }
         if (!CHECKSUM_ALGORITHM.equalsIgnoreCase(metadata.getChecksumAlgorithm())) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "当前仅支�?SHA-256 校验算法");
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "only SHA-256 checksum algorithm is supported");
         }
         if (metadata.getDependencyPlugins() != null) {
             for (PluginDTO.PluginDependencyDeclaration dependency : metadata.getDependencyPlugins()) {
-                pluginSemver.requireValid(dependency.getMinVersion(), "依赖插件最小版�?);
+                pluginSemver.requireValid(dependency.getMinVersion(), "dependency plugin minimum version");
             }
         }
     }
@@ -222,19 +222,19 @@ public class PluginArtifactLoader {
             PluginDTO.FrontendPluginManifest frontendManifest
     ) {
         if (frontendManifest == null) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "前端 manifest 缺失");
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "frontend manifest is missing");
         }
         if (!metadata.getPluginCode().equals(frontendManifest.getPluginCode())) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "前端 manifest �?pluginCode �?plugin.json 不一�?);
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "frontend manifest pluginCode does not match plugin.json");
         }
         if (!metadata.getVersion().equals(frontendManifest.getVersion())) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "前端 manifest �?version �?plugin.json 不一�?);
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "frontend manifest version does not match plugin.json");
         }
         if (!StringUtils.hasText(frontendManifest.getEntry())) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "前端 manifest 缺少 entry");
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "frontend manifest entry is missing");
         }
         if (frontendManifest.getSharedDeps() != null && frontendManifest.getSharedDeps().stream().noneMatch("react"::equalsIgnoreCase)) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "前端 manifest 必须声明 react 共享依赖");
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "frontend manifest must declare react shared dependency");
         }
     }
 
@@ -242,11 +242,11 @@ public class PluginArtifactLoader {
         for (Map.Entry<String, String> entry : checksums.entrySet()) {
             Path filePath = extractedDir.resolve(entry.getKey()).normalize();
             if (!filePath.startsWith(extractedDir) || !Files.exists(filePath)) {
-                throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "校验文件不存�? " + entry.getKey());
+                throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "checksum file does not exist: " + entry.getKey());
             }
             String actual = digest(Files.readAllBytes(filePath));
             if (!actual.equalsIgnoreCase(entry.getValue())) {
-                throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "校验和不匹配: " + entry.getKey());
+                throw new BizException(ErrorCode.PLUGIN_CHECKSUM_INVALID, "checksum mismatch: " + entry.getKey());
             }
         }
     }
@@ -256,7 +256,7 @@ public class PluginArtifactLoader {
         mac.init(new SecretKeySpec(pluginProperties.getSignatureSecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
         String expected = HexFormat.of().formatHex(mac.doFinal(checksumsRaw.getBytes(StandardCharsets.UTF_8)));
         if (!expected.equalsIgnoreCase(signature)) {
-            throw new BizException(ErrorCode.PLUGIN_SIGNATURE_INVALID, "插件签名校验失败");
+            throw new BizException(ErrorCode.PLUGIN_SIGNATURE_INVALID, "plugin signature verification failed");
         }
     }
 
@@ -275,23 +275,23 @@ public class PluginArtifactLoader {
                 validateZipEntry(entry);
                 Path resolved = targetDir.resolve(entry.getName()).normalize();
                 if (!resolved.startsWith(targetDir)) {
-                    throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包存在非法路�?);
+                    throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin archive contains illegal path");
                 }
                 if (entry.isDirectory()) {
                     Files.createDirectories(resolved);
                 } else {
                     fileCount++;
                     if (fileCount > MAX_EXTRACTED_FILES) {
-                        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包文件数量超过限�? " + MAX_EXTRACTED_FILES);
+                        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin archive file count exceeds limit: " + MAX_EXTRACTED_FILES);
                     }
                     Files.createDirectories(resolved.getParent());
                     long entryBytes = copyZipEntry(zipInputStream, resolved, buffer);
                     if (entryBytes > MAX_ENTRY_BYTES) {
-                        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包单文件超过限制: " + entry.getName());
+                        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin archive entry exceeds size limit: " + entry.getName());
                     }
                     totalBytes += entryBytes;
                     if (totalBytes > MAX_EXTRACTED_BYTES) {
-                        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包解压总大小超过限�?);
+                        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin archive total extracted size exceeds limit");
                     }
                 }
                 zipInputStream.closeEntry();
@@ -302,24 +302,24 @@ public class PluginArtifactLoader {
     private void validateZipEntry(ZipEntry entry) {
         String name = entry.getName();
         if (!StringUtils.hasText(name)) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包存在空文件�?);
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin archive contains empty file name");
         }
         String normalizedName = name.replace('\\', '/');
         if (normalizedName.startsWith("/") || normalizedName.contains("../")) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包存在非法路�? " + name);
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin archive contains illegal path: " + name);
         }
         if (entry.isDirectory()) {
             return;
         }
         String lowerName = normalizedName.toLowerCase();
         if (BLOCKED_ARCHIVE_EXTENSIONS.stream().anyMatch(lowerName::endsWith)) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包禁止包含嵌套压缩文�? " + name);
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin archive must not contain nested archive file: " + name);
         }
         if (ALLOWED_FILE_EXTENSIONS.stream().noneMatch(lowerName::endsWith)) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包包含不允许的文件类�? " + name);
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin archive contains disallowed file type: " + name);
         }
         if (entry.getSize() > MAX_ENTRY_BYTES) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包单文件超过限制: " + name);
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin archive entry exceeds size limit: " + name);
         }
     }
 
@@ -330,7 +330,7 @@ public class PluginArtifactLoader {
             while ((read = zipInputStream.read(buffer)) != -1) {
                 entryBytes += read;
                 if (entryBytes > MAX_ENTRY_BYTES) {
-                    throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件压缩包单文件超过限制: " + target.getFileName());
+                    throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "plugin archive entry exceeds size limit: " + target.getFileName());
                 }
                 outputStream.write(buffer, 0, read);
             }
@@ -353,7 +353,7 @@ public class PluginArtifactLoader {
                 return candidate;
             }
         }
-        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "缺少插件制品文件: plugin.json");
+        throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "missing plugin artifact file: plugin.json");
     }
 
     private void copyDirectory(Path source, Path target) throws IOException {

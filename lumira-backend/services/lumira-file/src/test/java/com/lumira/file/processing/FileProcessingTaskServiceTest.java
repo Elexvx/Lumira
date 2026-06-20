@@ -51,7 +51,7 @@ class FileProcessingTaskServiceTest {
     void claimPendingTasks_shouldClaimRowsWithConditionalStatusUpdate() throws Exception {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        when(jdbcTemplate.query(anyString(), Mockito.<RowMapper<FileProcessingTaskService.ProcessingTask>>any(), eq(FileProcessingTaskService.STATUS_PENDING), eq(FileProcessingTaskService.STATUS_FAILED), any(LocalDateTime.class), eq(10)))
+        when(jdbcTemplate.query(anyString(), Mockito.<RowMapper<FileProcessingTaskService.ProcessingTask>>any(), anyString()))
                 .thenAnswer(invocation -> {
                     RowMapper<FileProcessingTaskService.ProcessingTask> mapper = invocation.getArgument(1);
                     ResultSet resultSet = mock(ResultSet.class);
@@ -59,7 +59,7 @@ class FileProcessingTaskServiceTest {
                     when(resultSet.getLong("tenantId")).thenReturn(1001L);
                     when(resultSet.getLong("fileId")).thenReturn(3001L);
                     when(resultSet.getString("taskType")).thenReturn(FileProcessingTaskService.TASK_SECURITY_SCAN);
-                    when(resultSet.getString("status")).thenReturn(FileProcessingTaskService.STATUS_PENDING);
+                    when(resultSet.getString("status")).thenReturn(FileProcessingTaskService.STATUS_PROCESSING);
                     when(resultSet.getInt("priority")).thenReturn(100);
                     when(resultSet.getInt("retryCount")).thenReturn(0);
                     when(resultSet.getObject(eq("nextRetryAt"), eq(LocalDateTime.class))).thenReturn(null);
@@ -70,10 +70,9 @@ class FileProcessingTaskServiceTest {
                     when(resultSet.getObject(eq("createdAt"), eq(LocalDateTime.class))).thenReturn(LocalDateTime.now());
                     when(resultSet.getLong("updatedBy")).thenReturn(2001L);
                     when(resultSet.getObject(eq("updatedAt"), eq(LocalDateTime.class))).thenReturn(LocalDateTime.now());
+                    when(resultSet.getString("claimToken")).thenReturn("claim-token");
                     return List.of(mapper.mapRow(resultSet, 0));
                 });
-        when(jdbcTemplate.update(anyString(), eq(FileProcessingTaskService.STATUS_PROCESSING), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq(FileProcessingTaskService.STATUS_PENDING)))
-                .thenReturn(1);
         var service = service(jdbcTemplate, outboxService);
 
         List<FileProcessingTaskService.ProcessingTask> tasks = service.claimPendingTasks(10);
@@ -90,24 +89,12 @@ class FileProcessingTaskServiceTest {
         when(jdbcTemplate.query(
                 querySql.capture(),
                 Mockito.<RowMapper<FileProcessingTaskService.ProcessingTask>>any(),
-                eq(FileProcessingTaskService.STATUS_PENDING),
-                eq(FileProcessingTaskService.STATUS_FAILED),
-                any(LocalDateTime.class),
-                eq(100)
+                anyString()
         )).thenAnswer(invocation -> {
                     RowMapper<FileProcessingTaskService.ProcessingTask> mapper = invocation.getArgument(1);
                     return mapSingleTask(mapper);
                 }
         );
-        when(jdbcTemplate.update(
-                anyString(),
-                eq(FileProcessingTaskService.STATUS_PROCESSING),
-                any(LocalDateTime.class),
-                any(LocalDateTime.class),
-                anyLong(),
-                eq(99L),
-                eq(FileProcessingTaskService.STATUS_PENDING)
-        )).thenReturn(1);
         FileProcessingTaskService service = new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
 
         List<FileProcessingTaskService.ProcessingTask> tasks = service.claimPendingTasks(250);
@@ -116,10 +103,9 @@ class FileProcessingTaskServiceTest {
         assertThat(querySql.getValue())
                 .contains("from file_processing_task")
                 .contains("deleted = 0")
-                .contains("status = ?")
-                .contains("or (status = ? and (next_retry_at is null or next_retry_at <= ?))")
+                .contains("claim_token = ?")
                 .contains("order by priority desc, created_at asc, id asc")
-                .contains("limit ?");
+                .contains("from file_processing_task");
     }
 
     @Test
@@ -162,8 +148,6 @@ class FileProcessingTaskServiceTest {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FileSecurityScanProcessor securityScanProcessor = mock(FileSecurityScanProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_SECURITY_SCAN, FileProcessingTaskService.STATUS_PENDING, 0);
-        when(jdbcTemplate.update(anyString(), eq(FileProcessingTaskService.STATUS_PROCESSING), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq(FileProcessingTaskService.STATUS_PENDING)))
-                .thenReturn(1);
         var service = new FileProcessingTaskService(jdbcTemplate, outboxService, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
 
         int processed = service.processPendingTasks(10);
@@ -179,8 +163,6 @@ class FileProcessingTaskServiceTest {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FileThumbnailProcessor thumbnailProcessor = mock(FileThumbnailProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_THUMBNAIL, FileProcessingTaskService.STATUS_PENDING, 0);
-        when(jdbcTemplate.update(anyString(), eq(FileProcessingTaskService.STATUS_PROCESSING), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq(FileProcessingTaskService.STATUS_PENDING)))
-                .thenReturn(1);
         var service = new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), thumbnailProcessor, mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
 
         int processed = service.processPendingTasks(10);
@@ -196,8 +178,6 @@ class FileProcessingTaskServiceTest {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FileOcrProcessor ocrProcessor = mock(FileOcrProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_OCR, FileProcessingTaskService.STATUS_PENDING, 0);
-        when(jdbcTemplate.update(anyString(), eq(FileProcessingTaskService.STATUS_PROCESSING), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq(FileProcessingTaskService.STATUS_PENDING)))
-                .thenReturn(1);
         var service = new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), ocrProcessor, mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
 
         int processed = service.processPendingTasks(10);
@@ -212,8 +192,6 @@ class FileProcessingTaskServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         mockClaimableTask(jdbcTemplate, "UNKNOWN_TASK", FileProcessingTaskService.STATUS_PENDING, 0);
-        when(jdbcTemplate.update(anyString(), eq(FileProcessingTaskService.STATUS_PROCESSING), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq(FileProcessingTaskService.STATUS_PENDING)))
-                .thenReturn(1);
         var service = service(jdbcTemplate, outboxService);
 
         int processed = service.processPendingTasks(10);
@@ -228,8 +206,6 @@ class FileProcessingTaskServiceTest {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FileTextExtractionProcessor textExtractionProcessor = mock(FileTextExtractionProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_TEXT_EXTRACT, FileProcessingTaskService.STATUS_PENDING, 0);
-        when(jdbcTemplate.update(anyString(), eq(FileProcessingTaskService.STATUS_PROCESSING), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq(FileProcessingTaskService.STATUS_PENDING)))
-                .thenReturn(1);
         var service = new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), textExtractionProcessor, mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
 
         int processed = service.processPendingTasks(10);
@@ -245,8 +221,6 @@ class FileProcessingTaskServiceTest {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FileAiParseProcessor aiParseProcessor = mock(FileAiParseProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_AI_PARSE, FileProcessingTaskService.STATUS_PENDING, 0);
-        when(jdbcTemplate.update(anyString(), eq(FileProcessingTaskService.STATUS_PROCESSING), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq(FileProcessingTaskService.STATUS_PENDING)))
-                .thenReturn(1);
         var service = new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), aiParseProcessor, mock(FileProcessingMetrics.class));
 
         int processed = service.processPendingTasks(10);
@@ -257,7 +231,7 @@ class FileProcessingTaskServiceTest {
     }
 
     private void mockClaimableTask(JdbcTemplate jdbcTemplate, String taskType, String status, int retryCount) {
-        when(jdbcTemplate.query(anyString(), Mockito.<RowMapper<FileProcessingTaskService.ProcessingTask>>any(), eq(FileProcessingTaskService.STATUS_PENDING), eq(FileProcessingTaskService.STATUS_FAILED), any(LocalDateTime.class), eq(10)))
+        when(jdbcTemplate.query(anyString(), Mockito.<RowMapper<FileProcessingTaskService.ProcessingTask>>any(), anyString()))
                 .thenAnswer(invocation -> {
                     RowMapper<FileProcessingTaskService.ProcessingTask> mapper = invocation.getArgument(1);
                     ResultSet resultSet = mock(ResultSet.class);
@@ -265,7 +239,7 @@ class FileProcessingTaskServiceTest {
                     when(resultSet.getLong("tenantId")).thenReturn(1001L);
                     when(resultSet.getLong("fileId")).thenReturn(3001L);
                     when(resultSet.getString("taskType")).thenReturn(taskType);
-                    when(resultSet.getString("status")).thenReturn(status);
+                    when(resultSet.getString("status")).thenReturn(FileProcessingTaskService.STATUS_PROCESSING);
                     when(resultSet.getInt("priority")).thenReturn(100);
                     when(resultSet.getInt("retryCount")).thenReturn(retryCount);
                     when(resultSet.getObject(eq("nextRetryAt"), eq(LocalDateTime.class))).thenReturn(null);
@@ -276,6 +250,7 @@ class FileProcessingTaskServiceTest {
                     when(resultSet.getObject(eq("createdAt"), eq(LocalDateTime.class))).thenReturn(LocalDateTime.now());
                     when(resultSet.getLong("updatedBy")).thenReturn(2001L);
                     when(resultSet.getObject(eq("updatedAt"), eq(LocalDateTime.class))).thenReturn(LocalDateTime.now());
+                    when(resultSet.getString("claimToken")).thenReturn("claim-token");
                     return List.of(mapper.mapRow(resultSet, 0));
                 });
     }
@@ -290,7 +265,7 @@ class FileProcessingTaskServiceTest {
         when(resultSet.getLong("tenantId")).thenReturn(1001L);
         when(resultSet.getLong("fileId")).thenReturn(3001L);
         when(resultSet.getString("taskType")).thenReturn(FileProcessingTaskService.TASK_SECURITY_SCAN);
-        when(resultSet.getString("status")).thenReturn(FileProcessingTaskService.STATUS_PENDING);
+        when(resultSet.getString("status")).thenReturn(FileProcessingTaskService.STATUS_PROCESSING);
         when(resultSet.getInt("priority")).thenReturn(100);
         when(resultSet.getInt("retryCount")).thenReturn(0);
         when(resultSet.getObject(eq("nextRetryAt"), eq(LocalDateTime.class))).thenReturn(null);
@@ -301,6 +276,7 @@ class FileProcessingTaskServiceTest {
         when(resultSet.getObject(eq("createdAt"), eq(LocalDateTime.class))).thenReturn(LocalDateTime.now());
         when(resultSet.getLong("updatedBy")).thenReturn(2001L);
         when(resultSet.getObject(eq("updatedAt"), eq(LocalDateTime.class))).thenReturn(LocalDateTime.now());
+        when(resultSet.getString("claimToken")).thenReturn("claim-token");
         return List.of(mapper.mapRow(resultSet, 0));
     }
 

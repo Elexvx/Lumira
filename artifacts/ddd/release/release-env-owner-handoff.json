@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "envFile": ".env.release.local",
   "ownerCount": 6,
@@ -9,15 +9,15 @@
     "objective": "Fill canonical release env keys once, sync aliases, then rerun strict env and final go/no-go gates.",
     "blockedUntil": "All blocking release env placeholders are replaced in a permission-safe release env file.",
     "commands": [
-      "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
-      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
-      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
-      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
-      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-      "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
+      "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+      "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
       "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-      "node scripts/ddd-release-readiness-summary.mjs",
+      "node bin/ddd-release-readiness-summary.mjs",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
     ]
   },
@@ -34,7 +34,7 @@
       "blockedBatchIds": [
         "p3-orchestrator-release-infra"
       ],
-      "firstCommand": "node scripts/ddd-release-evidence-orchestrator.mjs",
+      "firstCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
       "canonicalFillItems": [
         {
           "fillOrder": 37,
@@ -69,7 +69,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 38,
@@ -100,7 +100,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 39,
@@ -137,7 +137,7 @@
               ""
             ]
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 40,
@@ -168,7 +168,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 41,
@@ -201,7 +201,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 42,
@@ -232,42 +232,10 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 43,
-          "owner": "release-infra",
-          "owners": [
-            "frontend",
-            "release-infra"
-          ],
-          "group": "runtime",
-          "requirement": "frontend base url",
-          "canonicalKey": "PLAYWRIGHT_BASE_URL",
-          "valueClass": "url",
-          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
-          "secret": false,
-          "safeToPreFill": false,
-          "aliasCount": 2,
-          "aliases": [
-            "PLAYWRIGHT_BASE_URL",
-            "FRONTEND_BASE_URL"
-          ],
-          "unresolvedAliasCount": 0,
-          "unresolvedAliases": [],
-          "required": true,
-          "validation": {
-            "https": true,
-            "nonLocal": true,
-            "minLength": null,
-            "expectedValues": [],
-            "pattern": null,
-            "disallowValues": []
-          },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
-        },
-        {
-          "fillOrder": 44,
           "owner": "release-infra",
           "owners": [
             "release-infra"
@@ -295,7 +263,39 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
+        },
+        {
+          "fillOrder": 44,
+          "owner": "release-infra",
+          "owners": [
+            "lumira-ui",
+            "release-infra"
+          ],
+          "group": "runtime",
+          "requirement": "lumira-ui base url",
+          "canonicalKey": "PLAYWRIGHT_BASE_URL",
+          "valueClass": "url",
+          "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+          "secret": false,
+          "safeToPreFill": false,
+          "aliasCount": 2,
+          "aliases": [
+            "PLAYWRIGHT_BASE_URL",
+            "FRONTEND_BASE_URL"
+          ],
+          "unresolvedAliasCount": 0,
+          "unresolvedAliases": [],
+          "required": true,
+          "validation": {
+            "https": true,
+            "nonLocal": true,
+            "minLength": null,
+            "expectedValues": [],
+            "pattern": null,
+            "disallowValues": []
+          },
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 45,
@@ -326,7 +326,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 46,
@@ -357,7 +357,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 47,
@@ -388,7 +388,7 @@
             "pattern": "^\\d{2,5}$",
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 48,
@@ -421,10 +421,10 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         }
       ],
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
       "canonicalFillItemCount": 12,
       "unresolvedAliasCount": 0,
       "secretCanonicalKeyCount": 4,
@@ -436,8 +436,8 @@
         "DB_URL",
         "DB_USERNAME",
         "FIELD_SECRET",
-        "PLAYWRIGHT_BASE_URL",
         "JWT_SECRET",
+        "PLAYWRIGHT_BASE_URL",
         "REDIS_HOST",
         "REDIS_PASSWORD",
         "REDIS_PORT",
@@ -459,25 +459,25 @@
         "DB_URL",
         "DB_USERNAME",
         "FIELD_SECRET",
-        "PLAYWRIGHT_BASE_URL",
         "JWT_SECRET",
+        "PLAYWRIGHT_BASE_URL",
         "REDIS_HOST",
         "REDIS_PORT",
         "TRUST_FORWARDED_HEADERS"
       ],
       "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       "postFillCommands": [
-        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
+        "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+        "node bin/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs",
+        "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "node bin/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ]
     },
@@ -490,7 +490,7 @@
       "blockedBatchIds": [
         "p1-rollback-ai-owner"
       ],
-      "firstCommand": "node scripts/ddd-rollback-deferral-template.mjs",
+      "firstCommand": "node bin/ddd-rollback-deferral-template.mjs",
       "canonicalFillItems": [
         {
           "fillOrder": 1,
@@ -521,7 +521,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 2,
@@ -552,7 +552,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 3,
@@ -584,7 +584,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 4,
@@ -616,7 +616,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 5,
@@ -648,7 +648,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 6,
@@ -680,7 +680,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 7,
@@ -714,7 +714,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 8,
@@ -746,7 +746,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 9,
@@ -778,7 +778,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 10,
@@ -810,7 +810,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 11,
@@ -842,7 +842,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 12,
@@ -875,10 +875,10 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         }
       ],
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
       "canonicalFillItemCount": 12,
       "unresolvedAliasCount": 0,
       "secretCanonicalKeyCount": 2,
@@ -925,17 +925,17 @@
       ],
       "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       "postFillCommands": [
-        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
+        "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+        "node bin/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs",
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "node bin/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ]
     },
@@ -949,7 +949,7 @@
         "p1-business-e2e-file-owner",
         "p1-rollback-file-owner"
       ],
-      "firstCommand": "node scripts/ddd-file-processing-e2e-smoke.mjs",
+      "firstCommand": "node bin/ddd-file-processing-e2e-smoke.mjs",
       "canonicalFillItems": [
         {
           "fillOrder": 13,
@@ -979,7 +979,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 14,
@@ -1009,7 +1009,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 15,
@@ -1040,10 +1040,10 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         }
       ],
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
       "canonicalFillItemCount": 3,
       "unresolvedAliasCount": 0,
       "secretCanonicalKeyCount": 0,
@@ -1066,23 +1066,23 @@
       ],
       "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       "postFillCommands": [
-        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
+        "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+        "node bin/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-        "node scripts/ddd-file-processing-e2e-smoke.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs",
+        "node bin/ddd-file-processing-e2e-smoke.mjs",
+        "node bin/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ]
     },
     {
       "owner": "payment-owner",
-      "queueOrder": 14,
+      "queueOrder": 13,
       "queueStatus": "WAITING",
       "canExecute": false,
       "readyBatchIds": [],
@@ -1090,7 +1090,7 @@
         "p1-business-e2e-payment-owner",
         "p1-rollback-payment-owner"
       ],
-      "firstCommand": "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
+      "firstCommand": "node bin/ddd-payment-webhook-e2e-smoke.mjs",
       "canonicalFillItems": [
         {
           "fillOrder": 16,
@@ -1120,7 +1120,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 17,
@@ -1152,10 +1152,10 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         }
       ],
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
       "canonicalFillItemCount": 2,
       "unresolvedAliasCount": 0,
       "secretCanonicalKeyCount": 1,
@@ -1173,17 +1173,17 @@
       ],
       "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       "postFillCommands": [
-        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
+        "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+        "node bin/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs",
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs",
+        "node bin/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ]
     },
@@ -1225,7 +1225,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 19,
@@ -1256,7 +1256,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 20,
@@ -1287,7 +1287,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 21,
@@ -1321,7 +1321,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 22,
@@ -1352,7 +1352,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 23,
@@ -1383,7 +1383,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 24,
@@ -1414,7 +1414,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 25,
@@ -1445,7 +1445,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 26,
@@ -1476,7 +1476,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 27,
@@ -1508,10 +1508,10 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         }
       ],
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
       "canonicalFillItemCount": 10,
       "unresolvedAliasCount": 0,
       "secretCanonicalKeyCount": 3,
@@ -1550,16 +1550,16 @@
       ],
       "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       "postFillCommands": [
-        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
+        "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+        "node bin/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-        "node scripts/ddd-release-readiness-summary.mjs",
+        "node bin/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ]
     },
@@ -1603,7 +1603,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 29,
@@ -1634,7 +1634,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 30,
@@ -1665,7 +1665,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 31,
@@ -1696,7 +1696,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 32,
@@ -1727,7 +1727,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 33,
@@ -1758,7 +1758,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 34,
@@ -1789,7 +1789,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 35,
@@ -1820,7 +1820,7 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         },
         {
           "fillOrder": 36,
@@ -1851,10 +1851,10 @@
             "pattern": null,
             "disallowValues": []
           },
-          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+          "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
         }
       ],
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
       "canonicalFillItemCount": 9,
       "unresolvedAliasCount": 0,
       "secretCanonicalKeyCount": 0,
@@ -1885,16 +1885,16 @@
       ],
       "nextCommand": "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
       "postFillCommands": [
-        "node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-safe-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-provenance-defaults.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-        "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs",
-        "node scripts/ddd-release-config-evidence.mjs",
+        "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-safe-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-provenance-defaults.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+        "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+        "node bin/ddd-release-config-evidence.mjs",
         "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
-        "node scripts/ddd-release-readiness-summary.mjs",
+        "node bin/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ]
     }

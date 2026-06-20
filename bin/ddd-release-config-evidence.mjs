@@ -27,7 +27,7 @@ const inputKind = generatedMissingTemplate
   : envFile
   ? (envFileExists ? "release-env-file" : "missing-release-env-file")
   : "process-environment-only";
-const templateFile = path.join(repoRoot, "docs", "36-ddd-release-env-template.env");
+const templateFile = path.join(repoRoot, "doc", "36-ddd-release-env-template.env");
 const workflowFile = path.join(repoRoot, ".github", "workflows", "ddd-release-evidence.yml");
 const strict = process.env.DDD_RELEASE_CONFIG_STRICT === "true" || process.env.DDD_RELEASE_EVIDENCE_STRICT === "true";
 

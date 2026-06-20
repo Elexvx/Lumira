@@ -46,7 +46,7 @@ class SensitiveWordServiceTest {
     }
 
     @Test
-    void importWordsShouldRejectExistingWordViaExistsCheck() throws Exception {
+    void importWordsShouldRejectExistingWordWithOneBatchLookup() throws Exception {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         queryOperations.wordExists = true;
         SensitiveWordService service = new SensitiveWordService(
@@ -62,7 +62,8 @@ class SensitiveWordServiceTest {
         SensitiveWordVO.ImportResult result = service.importWords(currentUser(), file);
 
         assertThat(result.getDuplicated()).isEqualTo(1);
-        assertThat(queryOperations.existsCallCount).isEqualTo(1);
+        assertThat(queryOperations.existsCallCount).isZero();
+        assertThat(queryOperations.batchLookupCallCount).isEqualTo(1);
         assertThat(queryOperations.countQueryCalled).isFalse();
     }
 
@@ -96,6 +97,7 @@ class SensitiveWordServiceTest {
         private boolean wordExists;
         private boolean countQueryCalled;
         private int existsCallCount;
+        private int batchLookupCallCount;
         private String lastListSql = "";
 
         @Override
@@ -117,6 +119,15 @@ class SensitiveWordServiceTest {
 
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
+            return List.of();
+        }
+
+        @Override
+        public <T> List<T> queryForList(String sql, Class<T> requiredType, Object... args) {
+            if (sql.contains("normalized_word in")) {
+                batchLookupCallCount += 1;
+                return wordExists ? List.of(requiredType.cast(args[1])) : List.of();
+            }
             return List.of();
         }
 

@@ -27,7 +27,7 @@ fs.writeFileSync(targetFile, [
 fs.chmodSync(sourceFile, 0o600);
 fs.chmodSync(targetFile, 0o600);
 
-const run = spawnSync("node", ["bin/ddd-release-env-canonical-merge.mjs", sourceFile, targetFile], {
+const run = spawnSync("node", ["bin\/ddd-release-env-canonical-merge.mjs", sourceFile, targetFile], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -56,7 +56,7 @@ fs.writeFileSync(conflictSource, "DB_URL=jdbc:mysql://one.internal:3306/lumira\n
 fs.writeFileSync(conflictTarget, "DB_URL=jdbc:mysql://two.internal:3306/lumira\n");
 fs.chmodSync(conflictSource, 0o600);
 fs.chmodSync(conflictTarget, 0o600);
-const conflictRun = spawnSync("node", ["bin/ddd-release-env-canonical-merge.mjs", conflictSource, conflictTarget], {
+const conflictRun = spawnSync("node", ["bin\/ddd-release-env-canonical-merge.mjs", conflictSource, conflictTarget], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -73,7 +73,7 @@ fs.writeFileSync(invalidSource, "LUMIRA_BASE_URL=http://localhost:8080\n");
 fs.writeFileSync(invalidTarget, "LUMIRA_BASE_URL=__REQUIRED__\n");
 fs.chmodSync(invalidSource, 0o600);
 fs.chmodSync(invalidTarget, 0o600);
-const invalidRun = spawnSync("node", ["bin/ddd-release-env-canonical-merge.mjs", invalidSource, invalidTarget], {
+const invalidRun = spawnSync("node", ["bin\/ddd-release-env-canonical-merge.mjs", invalidSource, invalidTarget], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -91,7 +91,7 @@ fs.writeFileSync(broadSecretSource, "JWT_SECRET=abcdefghijklmnopqrstuvwxyz123456
 fs.writeFileSync(broadSecretTarget, "JWT_SECRET=__REQUIRED__\n");
 fs.chmodSync(broadSecretSource, 0o644);
 fs.chmodSync(broadSecretTarget, 0o600);
-const broadSecretRun = spawnSync("node", ["bin/ddd-release-env-canonical-merge.mjs", broadSecretSource, broadSecretTarget], {
+const broadSecretRun = spawnSync("node", ["bin\/ddd-release-env-canonical-merge.mjs", broadSecretSource, broadSecretTarget], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

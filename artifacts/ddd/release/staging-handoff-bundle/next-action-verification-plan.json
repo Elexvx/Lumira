@@ -1,21 +1,21 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T18:17:45.175Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
   "queueStatus": "BLOCKED",
   "envFile": "<env-file>",
   "phaseCount": 6,
-  "blockedPhaseCount": 1,
+  "blockedPhaseCount": 4,
   "phases": [
     {
       "id": "verify-first-wave-env",
       "owner": "release-infra",
       "status": "BLOCKED",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
-      "followUpCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
-      "contractCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
+      "followUpCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
+      "contractCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
       "expectedStatus": "PASS",
       "sourcePlan": "next-action.template.env",
       "artifacts": [
@@ -31,7 +31,7 @@
       "id": "verify-release-env",
       "owner": "release-infra",
       "status": "PASS",
-      "command": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+      "command": "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
       "expectedStatus": "PASS",
       "sourcePlan": "release-env-plan.json",
       "artifacts": [
@@ -39,14 +39,14 @@
         "artifacts/ddd/release/release-config-evidence.json"
       ],
       "notes": [
-        "Run config evidence after lint passes: DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs"
+        "Run config evidence after lint passes: DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs"
       ]
     },
     {
       "id": "verify-docker-images",
       "owner": "release-infra",
       "status": "PASS",
-      "command": "node scripts/ddd-docker-build-evidence.mjs --check",
+      "command": "node bin/ddd-docker-build-evidence.mjs --check",
       "expectedStatus": "PASS",
       "sourcePlan": "docker-image-plan.json",
       "artifacts": [
@@ -58,14 +58,14 @@
     },
     {
       "id": "verify-runtime",
-      "owner": "release-infra, frontend, ai",
-      "status": "PASS",
-      "command": "node scripts/ddd-staging-runtime-check.mjs",
+      "owner": "release-infra, lumira-ui, ai",
+      "status": "BLOCKED",
+      "command": "node bin/ddd-staging-runtime-check.mjs",
       "expectedStatus": "PASS",
       "sourcePlan": "runtime-smoke-plan.json",
       "artifacts": [
         "artifacts/ddd/readiness/summary.json",
-        "artifacts/ddd/frontend/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
         "artifacts/ddd/ai/ai-runtime-drill.json"
       ],
       "notes": [
@@ -75,8 +75,8 @@
     {
       "id": "verify-data-safety",
       "owner": "bounded-context owners, database",
-      "status": "PASS",
-      "command": "node scripts/ddd-staging-data-safety-check.mjs",
+      "status": "BLOCKED",
+      "command": "node bin/ddd-staging-data-safety-check.mjs",
       "expectedStatus": "PASS",
       "sourcePlan": "data-safety-owner-plan.json",
       "artifacts": [
@@ -91,8 +91,8 @@
     {
       "id": "verify-final-acceptance",
       "owner": "release-infra",
-      "status": "PASS",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+      "status": "BLOCKED",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
       "expectedStatus": "PASS",
       "sourcePlan": "final-review.json",
       "artifacts": [
@@ -105,23 +105,23 @@
     }
   ],
   "commands": [
-    "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-    "node scripts/ddd-docker-build-evidence.mjs --check",
-    "node scripts/ddd-staging-runtime-check.mjs",
-    "node scripts/ddd-staging-data-safety-check.mjs",
-    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+    "node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+    "node bin/ddd-docker-build-evidence.mjs --check",
+    "node bin/ddd-staging-runtime-check.mjs",
+    "node bin/ddd-staging-data-safety-check.mjs",
+    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"
   ],
-  "receiptCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
-  "receiptMarkdownCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>",
-  "receiptContractCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+  "receiptCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
+  "receiptMarkdownCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>",
+  "receiptContractCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
   "nextPhase": {
     "id": "verify-first-wave-env",
     "owner": "release-infra",
     "status": "BLOCKED",
-    "command": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
-    "followUpCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
-    "contractCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+    "command": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
+    "followUpCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
+    "contractCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
     "expectedStatus": "PASS",
     "sourcePlan": "next-action.template.env",
     "artifacts": [
@@ -133,11 +133,11 @@
       "After it passes, generate the redacted receipt and run the receipt contract before release-owner evidence submission."
     ]
   },
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
   "safety": [
     "Do not run final review until every phase reports PASS from real staging evidence.",
     "Keep populated env files outside committed artifacts.",
-    "Use `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>` only for human-readable status; submit the JSON receipt written by receiptCommand.",
+    "Use `node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>` only for human-readable status; submit the JSON receipt written by receiptCommand.",
     "Use source plans for owner-specific smoke and evidence commands."
   ]
 }

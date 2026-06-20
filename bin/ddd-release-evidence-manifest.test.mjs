@@ -24,7 +24,7 @@ function sha256(file) {
 }
 
 function runManifest(root, explainDir) {
-  return spawnSync("node", ["bin/ddd-release-evidence-manifest.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-evidence-manifest.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -40,7 +40,7 @@ function runManifest(root, explainDir) {
 }
 
 function runManifestAllowBlockers(root, explainDir) {
-  return spawnSync("node", ["bin/ddd-release-evidence-manifest.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-evidence-manifest.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -57,7 +57,7 @@ function runManifestAllowBlockers(root, explainDir) {
 }
 
 function runManifestReportOnly(root, explainDir) {
-  return spawnSync("node", ["bin/ddd-release-evidence-manifest.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-evidence-manifest.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -71,7 +71,7 @@ function runManifestReportOnly(root, explainDir) {
 }
 
 function runManifestEnvCheck(root, env = {}) {
-  return spawnSync("node", ["bin/ddd-release-evidence-manifest.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-evidence-manifest.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -233,7 +233,7 @@ const explainDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-release-manifes
   assert.equal(preflight.summary.blockers, 0);
   assert.equal(preflight.summary.requiredArtifacts, requiredManifestArtifacts.length);
   assert.equal(preflight.summary.explainFiles, 1);
-  assert.equal(preflight.nextActions[0].command, "DDD_RELEASE_MANIFEST_STRICT=true node bin/ddd-release-evidence-manifest.mjs");
+  assert.equal(preflight.nextActions[0].command, "DDD_RELEASE_MANIFEST_STRICT=true node bin\/ddd-release-evidence-manifest.mjs");
 }
 
 {
@@ -310,7 +310,7 @@ writeJson(path.join(root, "release/release-next-action-run-report.json"), {
     order: 2,
     owner: "release-performance",
     receiptStatus: "ARTIFACT_MISSING",
-    command: "node bin/ddd-authenticated-performance-smoke.mjs",
+    command: "node bin\/ddd-authenticated-performance-smoke.mjs",
     status: 1,
     durationMs: 10,
     finishedAt: "2026-06-14T00:00:01.000Z",
@@ -332,7 +332,7 @@ writeJson(path.join(root, "release/release-execution-run-report.json"), {
     batchId: "p0-docker-release-infra",
     owner: "release-infra",
     priority: "P0",
-    command: "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+    command: "DDD_DOCKER_BUILD_STRICT=true node bin\/ddd-docker-build-evidence.mjs",
     status: 1,
     durationMs: 10,
     finishedAt: "2026-06-14T00:00:01.000Z",
@@ -430,7 +430,7 @@ writeJson(path.join(root, "release/release-owner-input-receipt.json"), {
     handoffPath: "artifacts/ddd/release/release-env-owner-handoff-redacted/01-release-infra.md",
   }],
   validationCommands: [
-    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
     "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh",
   ],
 });
@@ -517,14 +517,14 @@ writeJson(path.join(root, "release/release-unblock-brief.json"), {
     blockedUntil: "Required owner env keys and expected evidence artifacts are available in a permission-safe release env file.",
     owner: "database",
     queueOrder: 1,
-    firstCommand: "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+    firstCommand: "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
     envKeyCount: 20,
     missingArtifactCount: 6,
     releaseEnvFileRequired: true,
     finalGateCommand: "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     commands: [
-      "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-      "node bin/ddd-release-readiness-summary.mjs",
+      "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+      "node bin\/ddd-release-readiness-summary.mjs",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     ],
   },
@@ -547,7 +547,7 @@ writeJson(path.join(root, "release/release-unblock-brief.json"), {
     owner: "database",
     nextAction: "Run migration evidence check-env and attach fresh/upgrade Flyway evidence.",
     reason: "strictGate=migration-evidence status=FAIL",
-    command: "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+    command: "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
     envKeys: ["DDD_MIGRATION_FRESH_DB_VALIDATED", "DDD_MIGRATION_UPGRADE_DB_VALIDATED"],
   },
   orchestratorPreflight: {
@@ -577,7 +577,7 @@ writeJson(path.join(root, "release/release-unblock-brief.json"), {
       checkId: "migration-runtime-evidence",
       reason: "missing migration runtime evidence",
       envKeys: ["DDD_MIGRATION_FRESH_DB_VALIDATED", "DDD_MIGRATION_UPGRADE_DB_VALIDATED"],
-      command: "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+      command: "DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator.mjs --run --strict",
     },
   },
   ownerInputReceipt: {
@@ -614,7 +614,7 @@ writeJson(path.join(root, "release/release-unblock-brief.json"), {
       pendingItems: 1,
       canRunImmediately: true,
       dependsOn: [],
-      commands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs"],
+      commands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"],
       expectedArtifacts: ["artifacts/ddd/release/release-env-lint.json"],
     }],
     blockedBatches: [],
@@ -627,20 +627,20 @@ writeJson(path.join(root, "release/release-unblock-brief.json"), {
     blockedBatchIds: [],
     owners: ["release-infra"],
     dependsOn: [],
-    operatorCommands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs"],
+    operatorCommands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"],
   }],
   handoffReferences: [{
     id: "migration-evidence-handoff",
     label: "Migration evidence handoff",
     purpose: "Collect fresh DB and old-schema upgrade Flyway drill evidence.",
-    command: "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+    command: "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
     present: true,
     path: "artifacts/ddd/migration/migration-evidence-handoff.md",
   }, {
     id: "rollback-deferral-owner-handoff",
     label: "Rollback deferral owner handoff",
     purpose: "Prepare rollback drill PASS or approved DEFERRED records.",
-    command: "node bin/ddd-rollback-deferral-template.mjs",
+    command: "node bin\/ddd-rollback-deferral-template.mjs",
     present: true,
     path: "artifacts/ddd/rollback/rollback-drill-handoff.md",
   }, {
@@ -654,14 +654,14 @@ writeJson(path.join(root, "release/release-unblock-brief.json"), {
     id: "release-env-owner-input-packet",
     label: "Release env owner input packet",
     purpose: "Collect remaining owner values without exposing concrete values.",
-    command: "node bin/ddd-release-env-owner-input-packet-contract.mjs",
+    command: "node bin\/ddd-release-env-owner-input-packet-contract.mjs",
     present: true,
     path: "artifacts/ddd/release/release-env-owner-input-packet.md",
   }, {
     id: "release-owner-input-receipt",
     label: "Release owner input receipt",
     purpose: "Confirm owner inputs are reconciled before cutover.",
-    command: "node bin/ddd-release-owner-input-receipt-contract.mjs",
+    command: "node bin\/ddd-release-owner-input-receipt-contract.mjs",
     present: true,
     path: "artifacts/ddd/release/release-owner-input-receipt.md",
   }],
@@ -671,7 +671,7 @@ writeJson(path.join(root, "release/release-unblock-brief.json"), {
     blockerCount: 1,
     requiredEnvKeys: ["BASE_URL", "DDD_AUTH_USERNAME"],
     blockers: ["missing authenticated performance baseline"],
-    commands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-authenticated-performance-smoke.mjs"],
+    commands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-authenticated-performance-smoke.mjs"],
   },
   nextActions: [{
     order: 1,
@@ -681,10 +681,10 @@ writeJson(path.join(root, "release/release-unblock-brief.json"), {
     nextAction: "Produce missing artifact: artifacts/ddd/performance/authenticated-runtime-baseline.json",
     reason: "missingArtifact=artifacts/ddd/performance/authenticated-runtime-baseline.json",
     envKeys: ["BASE_URL"],
-    executableCommands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-authenticated-performance-smoke.mjs"],
+    executableCommands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-authenticated-performance-smoke.mjs"],
   }],
   stopReasons: ["strict release gate blockers=74"],
-  nextCommands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs"],
+  nextCommands: ["DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-canonical-lint.mjs"],
 });
 fs.writeFileSync(path.join(root, "release/release-unblock-brief.md"), [
   "# DDD Release Unblock Brief",
@@ -719,12 +719,12 @@ fs.writeFileSync(path.join(root, "release/release-unblock-brief.md"), [
   "- P0",
   "",
   "Wave operator commands:",
-  "- DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+  "- DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
   "",
   "## Final Owner Queue Fast Path",
   "",
-  "- DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-  "- node bin/ddd-release-readiness-summary.mjs",
+  "- DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+  "- node bin\/ddd-release-readiness-summary.mjs",
   "- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
   "",
   "## Fastest Safe Path",
@@ -735,11 +735,11 @@ fs.writeFileSync(path.join(root, "release/release-unblock-brief.md"), [
   "",
   "## Evidence Handoffs",
   "",
-  "- DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-  "- node bin/ddd-rollback-deferral-template.mjs",
+  "- DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+  "- node bin\/ddd-rollback-deferral-template.mjs",
   "- DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
-  "- node bin/ddd-release-env-owner-input-packet-contract.mjs",
-  "- node bin/ddd-release-owner-input-receipt-contract.mjs",
+  "- node bin\/ddd-release-env-owner-input-packet-contract.mjs",
+  "- node bin\/ddd-release-owner-input-receipt-contract.mjs",
   "",
   "## Performance Baseline",
   "",

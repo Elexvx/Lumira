@@ -26,6 +26,7 @@ export const executeRequest = async <T>(url: string, options: RequestOptions = {
           method: options.method || 'GET',
           headers: buildRequestHeaders(options, authSnapshot),
           body: buildRequestBody(options.data, options.method),
+          credentials: options.credentials,
         },
         options.timeoutMs,
       );

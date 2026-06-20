@@ -26,7 +26,7 @@ fs.writeFileSync(artifactFile, `${JSON.stringify({
   globalChecks: [],
 }, null, 2)}\n`);
 
-const result = spawnSync("node", ["bin/ddd-physical-split-gate.mjs"], {
+const result = spawnSync("node", ["bin\/ddd-physical-split-gate.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -69,7 +69,7 @@ assert.equal(artifact.summary.blockers, 0);
     globalChecks: [],
   }, null, 2)}\n`);
 
-  const advisoryResult = spawnSync("node", ["bin/ddd-physical-split-gate.mjs"], {
+  const advisoryResult = spawnSync("node", ["bin\/ddd-physical-split-gate.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

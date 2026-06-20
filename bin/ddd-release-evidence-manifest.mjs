@@ -415,12 +415,12 @@ function writePreflightReport({ envBlockers, requiredArtifacts, explain }) {
       ? [{
           owner: "release-owner",
           reason: "Manifest provenance, required artifacts, and EXPLAIN inputs are present; generate the checksum manifest.",
-          command: "DDD_RELEASE_MANIFEST_STRICT=true node bin/ddd-release-evidence-manifest.mjs",
+          command: "DDD_RELEASE_MANIFEST_STRICT=true node bin\/ddd-release-evidence-manifest.mjs",
         }]
       : [{
           owner: "release-owner",
           reason: "Set manifest provenance env and generate all required evidence artifacts before strict checksum manifest generation.",
-          command: "DDD_EVIDENCE_ENVIRONMENT=<environment> DDD_RELEASE_CANDIDATE=<sha-or-version> DDD_EVIDENCE_OPERATOR=<operator> DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+          command: "DDD_EVIDENCE_ENVIRONMENT=<environment> DDD_RELEASE_CANDIDATE=<sha-or-version> DDD_EVIDENCE_OPERATOR=<operator> DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin\/ddd-release-evidence-manifest.mjs",
         }],
   };
   const report = {

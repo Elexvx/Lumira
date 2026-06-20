@@ -1,6 +1,6 @@
 # DDD Release Performance Baseline Closure
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: BLOCKED
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -13,12 +13,12 @@ Next command: DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/rele
 - Blocked until: authenticated-runtime-actual.json is generated from HTTPS non-local deployment evidence and baseline promotion succeeds.
 - Commands:
   - `DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh`
-  - `DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-release-evidence-gate.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
+  - `node bin/ddd-release-evidence-gate.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## Production Equivalence Required
@@ -157,12 +157,12 @@ Post-promotion release gates rerun with the accepted baseline and no authenticat
 ## Commands
 
 - `DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh`
-- `DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs`
-- `node scripts/ddd-promote-performance-baseline.mjs`
-- `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-- `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-- `node scripts/ddd-release-evidence-gate.mjs`
-- `node scripts/ddd-release-readiness-summary.mjs`
+- `DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs`
+- `node bin/ddd-promote-performance-baseline.mjs`
+- `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+- `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
+- `node bin/ddd-release-evidence-gate.mjs`
+- `node bin/ddd-release-readiness-summary.mjs`
 - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 
 ## Expected Artifacts

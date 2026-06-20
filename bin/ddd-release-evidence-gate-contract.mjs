@@ -6,8 +6,8 @@ import { spawnSync } from "node:child_process";
 import { validateReleaseGateArtifact } from "./ddd-release-gate-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const scriptPath = path.join(repoRoot, "scripts", "ddd-release-evidence-gate.mjs");
-const testPath = path.join(repoRoot, "scripts", "ddd-release-evidence-gate.test.mjs");
+const scriptPath = path.join(repoRoot, "bin", "ddd-release-evidence-gate.mjs");
+const testPath = path.join(repoRoot, "bin", "ddd-release-evidence-gate.test.mjs");
 const reportPath = path.join(repoRoot, "artifacts", "ddd", "release", "release-evidence-gate.json");
 const failures = [];
 
@@ -52,7 +52,7 @@ for (const snippet of [
   if (!testSource.includes(snippet)) addFailure(`release evidence gate test must cover ${snippet}`);
 }
 
-const testRun = spawnSync("node", ["bin/ddd-release-evidence-gate.test.mjs"], {
+const testRun = spawnSync("node", ["bin\/ddd-release-evidence-gate.test.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: { ...process.env },
@@ -61,7 +61,7 @@ if (testRun.status !== 0) {
   addFailure(`release evidence gate behavior test must pass: ${testRun.stderr || testRun.stdout}`);
 }
 
-spawnSync("node", ["bin/ddd-release-evidence-gate.mjs"], {
+spawnSync("node", ["bin\/ddd-release-evidence-gate.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

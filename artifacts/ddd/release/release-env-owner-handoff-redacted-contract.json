@@ -1,26 +1,26 @@
 {
-  "generatedAt": "2026-06-19T06:38:12.408Z",
+  "generatedAt": "2026-06-19T18:34:10.236Z",
   "status": "PASS",
   "redacted": true,
   "contract": "ddd-release-env-owner-handoff-redacted-contract",
   "releaseDir": "artifacts/ddd/release",
   "ownerCount": 6,
-  "blockerOwnerCount": 5,
+  "blockerOwnerCount": 0,
   "expectedMarkdownFiles": [
-    "01-platform-events.md",
-    "02-platform-owners.md",
-    "03-release-infra.md",
-    "04-ai-owner.md",
-    "05-payment-owner.md",
-    "06-file-owner.md"
+    "01-ai-owner.md",
+    "02-file-owner.md",
+    "03-payment-owner.md",
+    "04-platform-events.md",
+    "05-platform-owners.md",
+    "06-release-infra.md"
   ],
   "actualMarkdownFiles": [
-    "01-platform-events.md",
-    "02-platform-owners.md",
-    "03-release-infra.md",
-    "04-ai-owner.md",
-    "05-payment-owner.md",
-    "06-file-owner.md"
+    "01-ai-owner.md",
+    "02-file-owner.md",
+    "03-payment-owner.md",
+    "04-platform-events.md",
+    "05-platform-owners.md",
+    "06-release-infra.md"
   ],
   "issueCount": 0,
   "issues": [],

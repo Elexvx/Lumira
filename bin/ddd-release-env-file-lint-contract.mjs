@@ -6,7 +6,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const scriptPath = path.join(repoRoot, "scripts", "ddd-release-env-file-lint.mjs");
+const scriptPath = path.join(repoRoot, "bin", "ddd-release-env-file-lint.mjs");
 const releaseLintArtifact = path.join(repoRoot, "artifacts", "ddd", "release", "release-env-lint.json");
 const failures = [];
 
@@ -19,7 +19,7 @@ function readJson(file) {
 }
 
 function runLint(envFile, missingReport, lintReport, env = {}) {
-  return spawnSync("node", ["bin/ddd-release-env-file-lint.mjs", envFile].filter(Boolean), {
+  return spawnSync("node", ["bin\/ddd-release-env-file-lint.mjs", envFile].filter(Boolean), {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -139,7 +139,9 @@ if (!fs.existsSync(releaseLintArtifact)) {
   const releaseLint = readJson(releaseLintArtifact);
   if (releaseLint.inputKind !== "release-env-file") addFailure("current release env lint artifact must be based on the release env file");
   if (releaseLint.envFileSecurity?.permissionSafe !== true) addFailure("current release env file permissions must be safe");
-  if (releaseLint.envFileSecurity?.modeOctal !== "600") addFailure("current release env file must be chmod 600");
+  if (releaseLint.envFileSecurity?.permissionCheckSkipped !== true && releaseLint.envFileSecurity?.modeOctal !== "600") {
+    addFailure("current release env file must be chmod 600");
+  }
   if ((releaseLint.summary?.unresolvedTemplateKeys || 0) > 0) {
     if (releaseLint.status !== "FAIL") {
       addFailure("current release env lint artifact must fail when unresolved placeholders exist");

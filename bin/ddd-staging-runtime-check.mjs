@@ -14,7 +14,7 @@ function printHelp() {
   console.log(`DDD staging runtime readiness check
 
 Usage:
-  node bin/ddd-staging-runtime-check.mjs [options]
+  node bin\/ddd-staging-runtime-check.mjs [options]
 
 Options:
   --help, -h    Show this help.
@@ -28,7 +28,7 @@ Environment:
   DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE    Set true before AI owner gateway drill evidence.
 
 Examples:
-  node bin/ddd-staging-runtime-check.mjs
+  node bin\/ddd-staging-runtime-check.mjs
 `);
 }
 
@@ -122,11 +122,11 @@ const result = {
   evidenceChecks,
   expectationChecks,
   nextCommands: [
-    "node bin/ddd-runtime-readiness-smoke.mjs",
-    "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
-    "node bin/ddd-ai-runtime-drill.mjs",
-    "node bin/ddd-frontend-playwright-smoke.mjs",
-    "node bin/ddd-frontend-smoke-evidence.mjs",
+    "node bin\/ddd-runtime-readiness-smoke.mjs",
+    "DDD_AUTH_PERF_STRICT=true node bin\/ddd-authenticated-performance-smoke.mjs",
+    "node bin\/ddd-ai-runtime-drill.mjs",
+    "node bin\/ddd-frontend-playwright-smoke.mjs",
+    "node bin\/ddd-frontend-smoke-evidence.mjs",
   ],
   issues,
 };

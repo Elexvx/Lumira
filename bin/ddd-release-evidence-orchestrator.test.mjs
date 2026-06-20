@@ -45,7 +45,7 @@ chmodSync(fakeDockerNoDaemonScript, 0o755);
 chmodSync(fakeDocker, 0o755);
 chmodSync(fakeDockerNoDaemon, 0o755);
 
-const result = spawnSync("node", ["bin/ddd-release-evidence-orchestrator.mjs", "--strict"], {
+const result = spawnSync("node", ["bin\/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -106,15 +106,15 @@ assert.ok(stepIds.indexOf("manifest-provenance-preflight") > stepIds.indexOf("ph
 assert.ok(stepIds.indexOf("manifest-provenance-preflight") < stepIds.indexOf("manifest"));
 
 const outbox = report.selectedSteps.find((step) => step.id === "outbox-replay-dead-letter");
-assert.equal(outbox.command, "node bin/ddd-outbox-replay-dead-letter-smoke.mjs");
+assert.equal(outbox.command, "node bin\/ddd-outbox-replay-dead-letter-smoke.mjs");
 assert.deepEqual(outbox.envKeys, ["DDD_OUTBOX_SMOKE_STRICT", "DDD_RELEASE_EVIDENCE_STRICT"]);
 
 const envLint = report.selectedSteps.find((step) => step.id === "release-env-file-lint");
-assert.equal(envLint.command, "node bin/ddd-release-env-file-lint.mjs");
+assert.equal(envLint.command, "node bin\/ddd-release-env-file-lint.mjs");
 assert.deepEqual(envLint.envKeys, ["DDD_RELEASE_EVIDENCE_STRICT"]);
 
 const baseline = report.selectedSteps.find((step) => step.id === "authenticated-performance-baseline");
-assert.equal(baseline.command, "node bin/ddd-promote-performance-baseline.mjs");
+assert.equal(baseline.command, "node bin\/ddd-promote-performance-baseline.mjs");
 assert.equal(baseline.optional, true);
 assert.equal(baseline.enabled, false);
 assert.deepEqual(baseline.envKeys, [
@@ -126,7 +126,7 @@ assert.deepEqual(baseline.envKeys, [
 ]);
 
 const manifestPreflight = report.selectedSteps.find((step) => step.id === "manifest-provenance-preflight");
-assert.equal(manifestPreflight.command, "node bin/ddd-release-evidence-manifest.mjs");
+assert.equal(manifestPreflight.command, "node bin\/ddd-release-evidence-manifest.mjs");
 assert.equal(manifestPreflight.always, true);
 assert.deepEqual(manifestPreflight.envKeys, [
   "DDD_RELEASE_EVIDENCE_STRICT",
@@ -134,7 +134,7 @@ assert.deepEqual(manifestPreflight.envKeys, [
 ]);
 
 const physicalSplit = report.selectedSteps.find((step) => step.id === "physical-split");
-assert.equal(physicalSplit.command, "node bin/ddd-physical-split-gate.mjs");
+assert.equal(physicalSplit.command, "node bin\/ddd-physical-split-gate.mjs");
 assert.deepEqual(physicalSplit.envKeys, [
   "DDD_RELEASE_EVIDENCE_STRICT",
   "DDD_SPLIT_STRICT",
@@ -146,7 +146,7 @@ for (const step of report.selectedSteps) {
 }
 
 const enabledOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-baseline-enabled-"));
-const enabledResult = spawnSync("node", ["bin/ddd-release-evidence-orchestrator.mjs", "--strict"], {
+const enabledResult = spawnSync("node", ["bin\/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -191,7 +191,7 @@ assert.deepEqual(enabledBaseline.envKeys, [
 ]);
 
 const nonHttpsOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-non-https-"));
-const nonHttpsResult = spawnSync("node", ["bin/ddd-release-evidence-orchestrator.mjs", "--strict"], {
+const nonHttpsResult = spawnSync("node", ["bin\/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -230,7 +230,7 @@ assert.ok(nonHttpsReport.preflight.checks.some((check) => (
 )));
 
 const dockerBlockedOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-docker-blocked-"));
-const dockerBlockedResult = spawnSync("node", ["bin/ddd-release-evidence-orchestrator.mjs", "--strict"], {
+const dockerBlockedResult = spawnSync("node", ["bin\/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -267,7 +267,7 @@ const unsafeEnvFileOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-u
 const unsafeEnvFile = join(unsafeEnvFileOutputDir, ".env.release.unsafe");
 writeFileSync(unsafeEnvFile, "LUMIRA_ENV=release\n");
 chmodSync(unsafeEnvFile, 0o644);
-const unsafeEnvFileResult = spawnSync("node", ["bin/ddd-release-evidence-orchestrator.mjs", "--strict"], {
+const unsafeEnvFileResult = spawnSync("node", ["bin\/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -313,7 +313,7 @@ const templateEnvFileOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator
 const templateEnvFile = join(templateEnvFileOutputDir, "release-env-missing.template.env");
 writeFileSync(templateEnvFile, "LUMIRA_ENV=release\n");
 chmodSync(templateEnvFile, 0o600);
-const templateEnvFileResult = spawnSync("node", ["bin/ddd-release-evidence-orchestrator.mjs", "--strict"], {
+const templateEnvFileResult = spawnSync("node", ["bin\/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -350,7 +350,7 @@ const safeEnvFileOutputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-saf
 const safeEnvFile = join(safeEnvFileOutputDir, ".env.release.safe");
 writeFileSync(safeEnvFile, "LUMIRA_ENV=release\n");
 chmodSync(safeEnvFile, 0o600);
-const safeEnvFileResult = spawnSync("node", ["bin/ddd-release-evidence-orchestrator.mjs", "--strict"], {
+const safeEnvFileResult = spawnSync("node", ["bin\/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -406,7 +406,7 @@ writeFileSync(fileDrivenEnv, [
   "",
 ].join("\n"));
 chmodSync(fileDrivenEnv, 0o600);
-const fileDrivenEnvResult = spawnSync("node", ["bin/ddd-release-evidence-orchestrator.mjs", "--strict"], {
+const fileDrivenEnvResult = spawnSync("node", ["bin\/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -471,7 +471,7 @@ writeFileSync(placeholderEnv, [
   "",
 ].join("\n"));
 chmodSync(placeholderEnv, 0o600);
-const placeholderEnvResult = spawnSync("node", ["bin/ddd-release-evidence-orchestrator.mjs", "--strict"], {
+const placeholderEnvResult = spawnSync("node", ["bin\/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

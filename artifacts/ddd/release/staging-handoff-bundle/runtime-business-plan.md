@@ -1,9 +1,9 @@
 # DDD P1 Runtime Business Plan
 
-Status: PASS
-Backend URL: `https://saas.elexvx.com`
-Frontend URL: `https://saas.elexvx.com`
-Current blocker: local-only runtime evidence must be replaced by HTTPS staging evidence
+Status: BLOCKED
+Backend URL: missing
+Frontend URL: missing
+Current blocker: LUMIRA_BASE_URL is required
 
 ## Required Inputs
 
@@ -15,25 +15,25 @@ Current blocker: local-only runtime evidence must be replaced by HTTPS staging e
 
 | Step | Owner | Command | Artifact |
 | --- | --- | --- | --- |
-| runtime-readiness | release-infra | `node scripts/ddd-runtime-readiness-smoke.mjs` | `artifacts/ddd/readiness/summary.json` |
-| authenticated-performance | release-performance | `DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs` | `artifacts/ddd/performance/authenticated-runtime-actual.json` |
-| ai-runtime | ai | `node scripts/ddd-ai-runtime-drill.mjs` | `artifacts/ddd/ai/ai-runtime-drill.json` |
-| frontend-smoke | frontend | `node scripts/ddd-frontend-playwright-smoke.mjs && node scripts/ddd-frontend-smoke-evidence.mjs` | `artifacts/ddd/frontend/frontend-smoke.json` |
-| file-processing-e2e | file-owner | `node scripts/ddd-file-processing-e2e-smoke.mjs` | `artifacts/ddd/file/file-processing-e2e.json` |
-| job-e2e | job-owner | `node scripts/ddd-job-e2e-smoke.mjs` | `artifacts/ddd/jobs/job-e2e-smoke.json` |
-| payment-webhook-e2e | payment-owner | `node scripts/ddd-payment-webhook-e2e-smoke.mjs` | `artifacts/ddd/payment/payment-webhook-e2e.json` |
+| runtime-readiness | release-infra | `node bin/ddd-runtime-readiness-smoke.mjs` | `artifacts/ddd/readiness/summary.json` |
+| authenticated-performance | release-performance | `DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs` | `artifacts/ddd/performance/authenticated-runtime-actual.json` |
+| ai-runtime | ai | `node bin/ddd-ai-runtime-drill.mjs` | `artifacts/ddd/ai/ai-runtime-drill.json` |
+| frontend-smoke | lumira-ui | `node bin/ddd-frontend-playwright-smoke.mjs && node bin/ddd-frontend-smoke-evidence.mjs` | `artifacts/ddd/lumira-ui/frontend-smoke.json` |
+| file-processing-e2e | file-owner | `node bin/ddd-file-processing-e2e-smoke.mjs` | `artifacts/ddd/file/file-processing-e2e.json` |
+| job-e2e | job-owner | `node bin/ddd-job-e2e-smoke.mjs` | `artifacts/ddd/jobs/job-e2e-smoke.json` |
+| payment-webhook-e2e | payment-owner | `node bin/ddd-payment-webhook-e2e-smoke.mjs` | `artifacts/ddd/payment/payment-webhook-e2e.json` |
 
 ## Validate
 
-- `node scripts/ddd-staging-runtime-check.mjs`
-- `node scripts/ddd-release-readiness-summary.mjs`
-- `node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`
-- `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce`
+- `node bin/ddd-staging-runtime-check.mjs`
+- `node bin/ddd-release-readiness-summary.mjs`
+- `node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance`
+- `node bin/ddd-staging-execution-checklist.mjs --final-review-enforce`
 
 ## Safety
 
 - Use HTTPS staging or production-equivalent URLs; localhost evidence is not accepted for strict release.
-- Attach deployment evidence for backend, frontend, AI runtime, authenticated performance, and business E2E flows.
+- Attach deployment evidence for backend, lumira-ui, AI runtime, authenticated performance, and business E2E flows.
 - Regenerate release readiness after every smoke artifact is refreshed.
 
-Next: `node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance`
+Next: `node bin/ddd-staging-runtime-check.mjs`

@@ -27,7 +27,7 @@ const report = {
       queueStatus: "ACTIONABLE",
       commandIndex: 1,
       commandCount: 2,
-      command: "node bin/ddd-authenticated-performance-smoke.mjs",
+      command: "node bin\/ddd-authenticated-performance-smoke.mjs",
       status: 0,
       durationMs: 120,
       finishedAt: "2026-06-14T00:00:01.000Z",
@@ -38,7 +38,7 @@ const report = {
       queueStatus: "ACTIONABLE",
       commandIndex: 2,
       commandCount: 2,
-      command: "node bin/ddd-migration-evidence.mjs",
+      command: "node bin\/ddd-migration-evidence.mjs",
       status: 2,
       durationMs: 80,
       finishedAt: "2026-06-14T00:00:02.000Z",
@@ -56,8 +56,8 @@ const report = {
   assert.match(markdown, /\| Succeeded entries \| 1 \|/);
   assert.match(markdown, /\| Failed entries \| 1 \|/);
   assert.match(markdown, /\| Owner \| Queue order \| Queue status \| Command \| Status \| Duration ms \| Command text \|/);
-  assert.match(markdown, /\| release-performance \| 1 \| ACTIONABLE \| 1\/2 \| PASS \| 120 \| `node scripts\/ddd-authenticated-performance-smoke.mjs` \|/);
-  assert.match(markdown, /\| database \| 2 \| ACTIONABLE \| 2\/2 \| FAIL\(2\) \| 80 \| `node scripts\/ddd-migration-evidence.mjs` \|/);
+  assert.match(markdown, /\| release-performance \| 1 \| ACTIONABLE \| 1\/2 \| PASS \| 120 \| `node bin\/ddd-authenticated-performance-smoke.mjs` \|/);
+  assert.match(markdown, /\| database \| 2 \| ACTIONABLE \| 2\/2 \| FAIL\(2\) \| 80 \| `node bin\/ddd-migration-evidence.mjs` \|/);
 }
 
 {
@@ -65,7 +65,7 @@ const report = {
     ...report,
     entries: [{
       ...report.entries[0],
-      command: `JWT_SECRET=real-secret DDD_RELEASE_ENV_FILE=/tmp/.env.release.local node ${path.join(repoRoot, "bin/ddd-release-readiness-summary.mjs")}`,
+      command: `JWT_SECRET=real-secret DDD_RELEASE_ENV_FILE=/tmp/.env.release.local node ${path.join(repoRoot, "bin\/ddd-release-readiness-summary.mjs")}`,
     }],
   });
   assert.doesNotMatch(markdown, /real-secret/);
@@ -74,7 +74,7 @@ const report = {
   assert(!markdown.includes(repoRoot), "summary must not expose the local repo path");
   assert.match(markdown, /JWT_SECRET=<redacted>/);
   assert.match(markdown, /DDD_RELEASE_ENV_FILE=<release-env-file>/);
-  assert.match(markdown, /node <repo>\/scripts\/ddd-release-readiness-summary\.mjs/);
+  assert.match(markdown, /node <repo>\/bin\/ddd-release-readiness-summary\.mjs/);
 }
 
 {
@@ -93,7 +93,7 @@ const report = {
   const outputPath = path.join(tempDir, "summary.md");
   fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
 
-  const result = spawnSync("node", ["bin/ddd-final-owner-queue-run-report-summary.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-final-owner-queue-run-report-summary.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

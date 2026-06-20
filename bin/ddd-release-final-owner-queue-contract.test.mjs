@@ -7,7 +7,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const finalReadinessSummaryCommand = "node bin/ddd-release-readiness-summary.mjs";
+const finalReadinessSummaryCommand = "node bin\/ddd-release-readiness-summary.mjs";
 const finalGoNoGoEnforceCommand = "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh";
 
 function baseArtifacts() {
@@ -24,9 +24,9 @@ function baseArtifacts() {
       queueStatus: "ACTIONABLE",
       canExecute: true,
       executionOrderHint: 1,
-      commands: ["node bin/ddd-release-env-file-lint.mjs", finalReadinessSummaryCommand, finalGoNoGoEnforceCommand],
+      commands: ["node bin\/ddd-release-env-file-lint.mjs", finalReadinessSummaryCommand, finalGoNoGoEnforceCommand],
       commandCount: 3,
-      firstCommand: "node bin/ddd-release-env-file-lint.mjs",
+      firstCommand: "node bin\/ddd-release-env-file-lint.mjs",
       envKeys: ["DDD_RELEASE_ENV_FILE"],
       envKeyCount: 1,
       missingArtifacts: ["artifacts/ddd/performance/authenticated-runtime-baseline.json"],
@@ -104,7 +104,7 @@ function baseArtifacts() {
         ownerInputReceiptMissingCriteriaCount: ownerInputReceipt.missingCriteria.length,
         nextExecutableOwner: "release-infra",
         nextExecutableQueueOrder: 1,
-        nextExecutableCommand: "node bin/ddd-release-env-file-lint.mjs",
+        nextExecutableCommand: "node bin\/ddd-release-env-file-lint.mjs",
         nextExecutableEnvKeyCount: 1,
         nextExecutableMissingArtifactCount: 1,
       },
@@ -128,7 +128,7 @@ function baseArtifacts() {
           missingCriteria: ownerInputReceipt.missingCriteria,
         },
       },
-      nextCommands: ["node bin/ddd-release-env-file-lint.mjs"],
+      nextCommands: ["node bin\/ddd-release-env-file-lint.mjs"],
     },
   };
 }
@@ -143,7 +143,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-final-owner-queue-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-final-owner-queue-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -185,7 +185,7 @@ assert.notEqual(missingFinalGateResult.status, 0);
 assert.match(missingFinalGateResult.stderr, /final go\/no-go enforce gate/);
 
 const unsafeReleaseEnvCommandResult = runContract((artifacts) => {
-  artifacts.queue.ownerQueues[0].commands.unshift("DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-release-env-file-lint.mjs");
+  artifacts.queue.ownerQueues[0].commands.unshift("DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-release-env-file-lint.mjs");
   artifacts.queue.ownerQueues[0].firstCommand = artifacts.queue.ownerQueues[0].commands[0];
   artifacts.queue.ownerQueues[0].commandCount = artifacts.queue.ownerQueues[0].commands.length;
   artifacts.queue.summary.nextExecutableCommand = artifacts.queue.ownerQueues[0].firstCommand;

@@ -2,29 +2,24 @@
 
 Status: PASS
 Target: `tmp/ddd-dispatch-check-env-init.env`
-Owners: 5
+Owners: 0
 Blockers: 0
 Placeholders: 0
-Secret keys: 10
+Secret keys: 0
 
 ## Owners
 
 | Owner | Blockers | Placeholders | Secret keys | Keys | First key | Env template |
 | --- | ---: | ---: | ---: | ---: | --- | --- |
-| platform-events | 0 | 0 | 3 | 10 | `SAAS_EVENT_REDIS_STREAM_KEY` | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-events` |
-| platform-owners | 0 | 0 | 0 | 9 | `AI_SERVICE_BASE_URL` | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=platform-owners` |
-| release-infra | 0 | 0 | 4 | 12 | `LUMIRA_BASE_URL` | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra` |
-| ai-owner | 0 | 0 | 2 | 12 | `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_CHAT_MODEL` | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=ai-owner` |
-| payment-owner | 0 | 0 | 1 | 2 | `PAYMENT_PUBLIC_BASE_URL` | `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=payment-owner` |
 
 ## Commands
 
-- Owner packets: `node scripts/ddd-staging-execution-checklist.mjs --owner-packets`
-- All inputs template: `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template`
-- Validate: `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-- Validate: `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs`
-- Validate: `node scripts/ddd-release-readiness-summary.mjs`
-- Validate: `node scripts/ddd-staging-execution-checklist.mjs --rollup`
-- Validate: `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce`
+- Owner packets: `node bin/ddd-staging-execution-checklist.mjs --owner-packets`
+- All inputs template: `node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template`
+- Validate: `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`
+- Validate: `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs`
+- Validate: `node bin/ddd-release-readiness-summary.mjs`
+- Validate: `node bin/ddd-staging-execution-checklist.mjs --rollup`
+- Validate: `node bin/ddd-staging-execution-checklist.mjs --final-review-enforce`
 
-Next: `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra`
+Next: `node bin/ddd-staging-execution-checklist.mjs --final-review-enforce`

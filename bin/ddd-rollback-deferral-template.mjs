@@ -25,7 +25,7 @@ if (fs.existsSync(outputFile) && !overwrite) {
 const artifact = {
   generatedAt: new Date().toISOString(),
   instructions: {
-    purpose: "Fill this file with real risk acceptance evidence, then pass it as DDD_ROLLBACK_DRILL_DEFERRAL_FILE to bin/ddd-rollback-drill-evidence.mjs.",
+    purpose: "Fill this file with real risk acceptance evidence, then pass it as DDD_ROLLBACK_DRILL_DEFERRAL_FILE to bin\/ddd-rollback-drill-evidence.mjs.",
     safety: "Do not use this template to bypass rollback drills. DEFERRED is accepted only with a real reason, named risk acceptor, concrete evidence reference, and future expiresAt.",
     evidence: "deferralEvidence must reference an approval ticket, change record, meeting note, artifact/log path, HTTPS link, or object URI.",
   },
@@ -90,7 +90,7 @@ function ownerMarkdown(owner, contexts) {
     "After filling the approved deferral file, run:",
     "",
     "```sh",
-    "DDD_ROLLBACK_DRILL_STRICT=true DDD_ROLLBACK_DRILL_DEFERRAL_FILE=<approved-deferrals.json> node bin/ddd-rollback-drill-evidence.mjs",
+    "DDD_ROLLBACK_DRILL_STRICT=true DDD_ROLLBACK_DRILL_DEFERRAL_FILE=<approved-deferrals.json> node bin\/ddd-rollback-drill-evidence.mjs",
     "```",
     "",
   ];
@@ -114,7 +114,7 @@ function summaryMarkdown(ownerRows) {
   lines.push("Strict validation command:");
   lines.push("");
   lines.push("```sh");
-  lines.push("DDD_ROLLBACK_DRILL_STRICT=true DDD_ROLLBACK_DRILL_DEFERRAL_FILE=<approved-deferrals.json> node bin/ddd-rollback-drill-evidence.mjs");
+  lines.push("DDD_ROLLBACK_DRILL_STRICT=true DDD_ROLLBACK_DRILL_DEFERRAL_FILE=<approved-deferrals.json> node bin\/ddd-rollback-drill-evidence.mjs");
   lines.push("```");
   lines.push("");
   return `${lines.join("\n")}\n`;

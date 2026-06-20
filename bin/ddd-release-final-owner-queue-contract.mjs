@@ -93,7 +93,7 @@ if (!queue.ownerInputReceipt || typeof queue.ownerInputReceipt !== "object" || A
 }
 
 const ownerQueues = Array.isArray(queue.ownerQueues) ? queue.ownerQueues : [];
-const finalReadinessSummaryCommand = "node bin/ddd-release-readiness-summary.mjs";
+const finalReadinessSummaryCommand = "node bin\/ddd-release-readiness-summary.mjs";
 const finalGoNoGoEnforceCommand = "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh";
 if (!Array.isArray(queue.ownerQueues)) addFailure("releaseFinalOwnerQueue ownerQueues must be an array");
 if (queue.summary?.ownerCount !== ownerQueues.length) addFailure("summary.ownerCount must match ownerQueues length");

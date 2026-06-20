@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-06-18T18:44:38.492Z",
+  "generatedAt": "2026-06-19T18:09:16.758Z",
   "status": "PASS",
   "redacted": true,
   "scannedFiles": 21,
-  "releaseEnvDisplayScannedFiles": 46,
+  "releaseEnvDisplayScannedFiles": 31,
   "leakCount": 0,
   "scanned": [
     {
@@ -97,8 +97,8 @@
       "leaks": 0
     },
     {
-      "file": "artifacts/ddd/frontend/frontend-smoke.json",
-      "present": true,
+      "file": "artifacts/ddd/lumira-ui/frontend-smoke.json",
+      "present": false,
       "leaks": 0
     },
     {
@@ -265,81 +265,6 @@
     },
     {
       "file": "artifacts/ddd/release/release-owner-input-receipt.md",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-env-owner-input-packet/01-platform-events.json",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-env-owner-input-packet/01-platform-events.md",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.json",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-env-owner-input-packet/02-platform-owners.md",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-env-owner-input-packet/03-release-infra.json",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-env-owner-input-packet/03-release-infra.md",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-env-owner-input-packet/04-ai-owner.json",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-env-owner-input-packet/04-ai-owner.md",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-env-owner-input-packet/05-payment-owner.json",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-env-owner-input-packet/05-payment-owner.md",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-owner-input-receipt-items/01-platform-events.md",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-owner-input-receipt-items/02-platform-owners.md",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-owner-input-receipt-items/03-release-infra.md",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-owner-input-receipt-items/04-ai-owner.md",
-      "present": true,
-      "leaks": 0
-    },
-    {
-      "file": "artifacts/ddd/release/release-owner-input-receipt-items/05-payment-owner.md",
       "present": true,
       "leaks": 0
     }

@@ -23,6 +23,7 @@ import com.lumira.file.entity.FileStorageSpaceEntity;
 import com.lumira.file.mapper.FileObjectMapper;
 import com.lumira.file.mapper.FileStorageSpaceMapper;
 import com.lumira.file.processing.FileProcessingTaskService;
+import com.lumira.file.security.SafeUrlValidator;
 import com.lumira.file.vo.FileVO;
 import com.lumira.file.upload.DocumentUploadService;
 import com.lumira.file.upload.FileStorageMetrics;
@@ -36,8 +37,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
@@ -89,8 +88,8 @@ public class FileManagementAppService {
     private final FileProcessingTaskService fileProcessingTaskService;
     private final FieldCryptoService fieldCryptoService;
     private final FileStorageMetrics storageMetrics;
+    private final SafeUrlValidator safeUrlValidator;
     private final Map<String, CachedFilePage> localFileListCache = new ConcurrentHashMap<>();
-    private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
     public FileManagementAppService(
             FileObjectMapper fileObjectMapper,
@@ -102,7 +101,8 @@ public class FileManagementAppService {
             @Qualifier("fileDomainEventPublisher") DomainEventPublisher domainEventPublisher,
             FileProcessingTaskService fileProcessingTaskService,
             FieldCryptoService fieldCryptoService,
-            FileStorageMetrics storageMetrics
+            FileStorageMetrics storageMetrics,
+            SafeUrlValidator safeUrlValidator
     ) {
         this.fileObjectMapper = fileObjectMapper;
         this.fileStorageSpaceMapper = fileStorageSpaceMapper;
@@ -114,6 +114,7 @@ public class FileManagementAppService {
         this.fileProcessingTaskService = fileProcessingTaskService;
         this.fieldCryptoService = fieldCryptoService;
         this.storageMetrics = storageMetrics;
+        this.safeUrlValidator = safeUrlValidator;
     }
 
     public PageResponse<FileObjectDTO> listFiles(
@@ -858,14 +859,24 @@ public class FileManagementAppService {
         if (!StringUtils.hasText(relativePath)) {
             return null;
         }
-        Path directPath = Path.of(relativePath);
+        String normalizedRelativePath = relativePath.trim().replace('\\', '/');
+        if (normalizedRelativePath.contains("%2e")
+                || normalizedRelativePath.contains("%2E")
+                || normalizedRelativePath.contains("%2f")
+                || normalizedRelativePath.contains("%2F")
+                || normalizedRelativePath.contains("..")
+                || normalizedRelativePath.startsWith("/")
+                || normalizedRelativePath.startsWith("~")) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Invalid file path", "File path is invalid");
+        }
+        Path directPath = Path.of(normalizedRelativePath);
         if (directPath.isAbsolute()) {
-            return directPath.normalize();
+            throw new BizException(ErrorCode.BAD_REQUEST, "Absolute file path is not allowed", "File path is invalid");
         }
         Path storageRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
-        Path target = storageRoot.resolve(relativePath).normalize();
+        Path target = storageRoot.resolve(directPath).normalize();
         if (!target.startsWith(storageRoot)) {
-            return null;
+            throw new BizException(ErrorCode.BAD_REQUEST, "File path escapes storage root", "File path is invalid");
         }
         return target;
     }
@@ -878,7 +889,7 @@ public class FileManagementAppService {
             FileStorageSpaceEntity storageSpace = fileStorageSpaceMapper.findByStorageKey(file.tenantId(), file.bucket());
             if (storageSpace != null) {
                 Path storageRoot = resolveStorageRoot(storageSpace);
-                Path target = storageRoot.resolve(file.storagePath()).normalize();
+                Path target = storageRoot.resolve(validateObjectKey(file.storagePath())).normalize();
                 if (target.startsWith(storageRoot)) {
                     return target;
                 }
@@ -888,31 +899,43 @@ public class FileManagementAppService {
         return resolveFilePath(file.storagePath());
     }
 
+    private Path validateObjectKey(String objectKey) {
+        Path target = resolveFilePath(objectKey);
+        Path storageRoot = Path.of(uploadProperties.getStorageRoot()).toAbsolutePath().normalize();
+        return storageRoot.relativize(target);
+    }
+
     private Path resolveStorageRoot(FileStorageSpaceEntity entity) {
         return resolveStorageRoot(StringUtils.hasText(entity.getRootPath()) ? entity.getRootPath() : uploadProperties.getStorageRoot());
     }
 
     private void validateRemoteStorage(FileStorageSpaceEntity entity) throws IOException, InterruptedException {
         if (!StringUtils.hasText(entity.getBucketName())) {
-            throw new IOException("Bucket 未配置");
+            throw new IOException("Bucket is required");
         }
         if (!StringUtils.hasText(entity.getEndpoint())) {
-            throw new IOException("Endpoint 未配置");
+            throw new IOException("Endpoint is required");
         }
         if (!StringUtils.hasText(entity.getAccessKeyId()) || !StringUtils.hasText(entity.getAccessKeySecret())) {
-            throw new IOException("访问密钥未配置完整");
+            throw new IOException("Access credentials are incomplete");
         }
-        URI endpoint = URI.create(entity.getEndpoint().trim());
+        java.net.URI endpoint = safeUrlValidator.validateHttpUrl(entity.getEndpoint());
+        java.net.http.HttpClient guardedClient = java.net.http.HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(3))
+                .followRedirects(java.net.http.HttpClient.Redirect.NEVER)
+                .build();
         HttpRequest request = HttpRequest.newBuilder(endpoint)
                 .timeout(Duration.ofSeconds(5))
                 .method("HEAD", HttpRequest.BodyPublishers.noBody())
                 .build();
-        HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+        HttpResponse<Void> response = guardedClient.send(request, HttpResponse.BodyHandlers.discarding());
+        if (response.statusCode() >= 300 && response.statusCode() < 400) {
+            throw new IOException("Remote storage redirect is not allowed");
+        }
         if (response.statusCode() >= 500) {
-            throw new IOException("Endpoint 服务异常: HTTP " + response.statusCode());
+            throw new IOException("Endpoint service unavailable");
         }
     }
-
     private Long insertFileObject(
             CurrentUser currentUser,
             Long tenantId,
@@ -1435,3 +1458,4 @@ public class FileManagementAppService {
     }
 
 }
+

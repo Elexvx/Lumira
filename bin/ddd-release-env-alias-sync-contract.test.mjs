@@ -6,7 +6,7 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 
-const result = spawnSync("node", ["bin/ddd-release-env-alias-sync-contract.mjs"], {
+const result = spawnSync("node", ["bin\/ddd-release-env-alias-sync-contract.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
 });

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -54,8 +54,8 @@
     "itemCount": 16,
     "runNowCount": 3,
     "waitingCount": 13,
-    "artifactMissingCount": 1,
-    "contentBlockedCount": 15,
+    "artifactMissingCount": 2,
+    "contentBlockedCount": 14,
     "readyForStrictGateRerunCount": 0,
     "strictGateBlockerOwnerCount": 9,
     "ownerInputReceiptStatus": "PENDING_OWNER_INPUT",
@@ -101,13 +101,12 @@
         "detail": "runtime readiness productionEquivalence.strict must be true for strict release evidence"
       },
       "missingArtifacts": [],
-      "pendingActionCount": 9,
+      "pendingActionCount": 10,
       "collapsedActionCount": 0,
       "nextAction": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.",
       "reason": "strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence",
       "commandHint": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.",
       "executableCommands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
@@ -141,8 +140,8 @@
       "reason": "strictGate=authenticated-performance-shape authenticated performance actual productionEquivalence.strict must be true for strict release evidence",
       "commandHint": "Regenerate authenticated performance actual against an HTTPS non-local production-equivalent backend URL, then rerun baseline comparison or promotion.",
       "executableCommands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
         "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
         "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
@@ -152,66 +151,66 @@
     },
     {
       "order": 3,
-      "owner": "release-owner",
+      "owner": "lumira-ui",
       "queueStatus": "RUN_NOW",
-      "receiptStatus": "CONTENT_BLOCKED",
+      "receiptStatus": "ARTIFACT_MISSING",
       "readyBatchIds": [
-        "p0-manifest-release-owner"
+        "p0-manifest-lumira-ui"
       ],
+      "blockedBatchIds": [],
+      "strictGateBlockerCount": 11,
+      "strictGateBlocker": {
+        "check": "frontend-smoke-freshness",
+        "category": "frontend-smoke",
+        "detail": "generatedAt is 57.8h old; limit=24h"
+      },
+      "missingArtifacts": [
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+      ],
+      "pendingActionCount": 3,
+      "collapsedActionCount": 0,
+      "nextAction": "Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.",
+      "reason": "strictGate=frontend-smoke-freshness generatedAt is 57.8h old; limit=24h",
+      "commandHint": "Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.",
+      "executableCommands": [
+        "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
+        "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
+      ],
+      "envKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
+      ]
+    },
+    {
+      "order": 4,
+      "owner": "release-owner",
+      "queueStatus": "WAIT_FOR_DEPENDENCIES",
+      "receiptStatus": "CONTENT_BLOCKED",
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-release-owner"
       ],
-      "strictGateBlockerCount": 13,
+      "strictGateBlockerCount": 14,
       "strictGateBlocker": {
         "check": "physical-split-readiness-freshness",
         "category": "other",
         "detail": "generatedAt is 57.7h old; limit=24h"
       },
       "missingArtifacts": [],
-      "pendingActionCount": 2,
+      "pendingActionCount": 1,
       "collapsedActionCount": 0,
       "nextAction": "Inspect the strict release gate blocker and attach an owner-specific remediation.",
       "reason": "strictGate=physical-split-readiness-freshness generatedAt is 57.7h old; limit=24h",
       "commandHint": "Inspect the strict release gate blocker and attach an owner-specific remediation.",
-      "executableCommands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_RELEASE_OWNER=release-owner DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh"
-      ],
+      "executableCommands": [],
       "envKeys": [
         "DDD_RELEASE_EVIDENCE_STRICT"
-      ]
-    },
-    {
-      "order": 4,
-      "owner": "frontend",
-      "queueStatus": "WAIT_FOR_DEPENDENCIES",
-      "receiptStatus": "CONTENT_BLOCKED",
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p1-frontend-smoke-frontend",
-        "p3-orchestrator-frontend"
-      ],
-      "strictGateBlockerCount": 12,
-      "strictGateBlocker": {
-        "check": "release-evidence-orchestrator-preflight-frontend-runtime-base-url",
-        "category": "frontend-smoke",
-        "detail": "missing deployed frontend base URL"
-      },
-      "missingArtifacts": [],
-      "pendingActionCount": 2,
-      "collapsedActionCount": 0,
-      "nextAction": "Set deployed HTTPS `PLAYWRIGHT_BASE_URL` and `DDD_FRONTEND_EXPECT_DEPLOYED=true`, then rerun the strict release orchestrator/frontend smoke.",
-      "reason": "strictGate=release-evidence-orchestrator-preflight-frontend-runtime-base-url missing deployed frontend base URL",
-      "commandHint": "Set deployed HTTPS `PLAYWRIGHT_BASE_URL` and `DDD_FRONTEND_EXPECT_DEPLOYED=true`, then rerun the strict release orchestrator/frontend smoke.",
-      "executableCommands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs"
-      ],
-      "envKeys": [
-        "FRONTEND_BASE_URL",
-        "PLAYWRIGHT_BASE_URL"
       ]
     },
     {
@@ -232,12 +231,10 @@
       "missingArtifacts": [],
       "pendingActionCount": 3,
       "collapsedActionCount": 1,
-      "nextAction": "Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node scripts/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime.",
+      "nextAction": "Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node bin/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime.",
       "reason": "strictGate=ai-runtime-drill AI runtime productionEquivalence.strict must be true for strict release evidence",
-      "commandHint": "Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node scripts/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime.",
-      "executableCommands": [
-        "DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node scripts/ddd-ai-runtime-drill.mjs"
-      ],
+      "commandHint": "Run `DDD_AI_EXPECT_PROVIDER_REMOTE=true DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true node bin/ddd-ai-runtime-drill.mjs` against production-equivalent AI runtime.",
+      "executableCommands": [],
       "envKeys": [
         "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
         "LUMIRA_AI_OWNER_FILE_BASE_URL",
@@ -267,9 +264,7 @@
       "nextAction": "Regenerate File processing E2E evidence within the release freshness window against the production-equivalent environment.",
       "reason": "strictGate=file-processing-freshness finishedAt is 131.7h old; limit=24h",
       "commandHint": "Regenerate File processing E2E evidence within the release freshness window against the production-equivalent environment.",
-      "executableCommands": [
-        "node scripts/ddd-file-processing-e2e-smoke.mjs"
-      ],
+      "executableCommands": [],
       "envKeys": [
         "BASE_URL",
         "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
@@ -301,9 +296,7 @@
       "nextAction": "Regenerate Job E2E evidence within the release freshness window against the production-equivalent environment.",
       "reason": "strictGate=job-e2e-freshness checkedAt is 131.4h old; limit=24h",
       "commandHint": "Regenerate Job E2E evidence within the release freshness window against the production-equivalent environment.",
-      "executableCommands": [
-        "node scripts/ddd-job-e2e-smoke.mjs"
-      ],
+      "executableCommands": [],
       "envKeys": [
         "BASE_URL",
         "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
@@ -334,9 +327,7 @@
       "nextAction": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.",
       "reason": "strictGate=payment-webhook-freshness finishedAt is 131.6h old; limit=24h",
       "commandHint": "Regenerate Payment webhook E2E evidence within the release freshness window against the production-equivalent environment.",
-      "executableCommands": [
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
-      ],
+      "executableCommands": [],
       "envKeys": [
         "BASE_URL",
         "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
@@ -364,15 +355,14 @@
       "missingArtifacts": [
         "tmp/ddd-explain/*.json"
       ],
-      "pendingActionCount": 9,
+      "pendingActionCount": 3,
       "collapsedActionCount": 0,
       "nextAction": "Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.",
       "reason": "strictGate=migration-evidence-freshness generatedAt is 57.7h old; limit=24h",
       "commandHint": "Run fresh database and old database upgrade Flyway drills, then regenerate migration evidence with fresh/upgrade flags.",
       "executableCommands": [
-        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
-        "node scripts/ddd-migration-evidence.mjs",
-        "node scripts/ddd-release-evidence-orchestrator.mjs"
+        "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        "node bin/ddd-migration-evidence.mjs"
       ],
       "envKeys": [
         "DDD_EVIDENCE_OPERATOR",
@@ -401,13 +391,10 @@
       "missingArtifacts": [],
       "pendingActionCount": 1,
       "collapsedActionCount": 0,
-      "nextAction": "Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "nextAction": "Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
       "reason": "rollback:AI AI rollback drill is DEFERRED with approved deferral evidence",
-      "commandHint": "Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
-      "executableCommands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
-      ],
+      "commandHint": "Exercise AI provider disablement, knowledge index job pause, and document index rebuild/degraded chat transcript evidence. Required evidence: AI provider disablement or fallback configuration evidence; knowledge index job pause/resume command or job output; document index rebuild or retry evidence; degraded chat/search transcript after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
@@ -433,13 +420,10 @@
       "missingArtifacts": [],
       "pendingActionCount": 1,
       "collapsedActionCount": 0,
-      "nextAction": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "nextAction": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
       "reason": "rollback:Auth Auth rollback drill is DEFERRED with approved deferral evidence",
-      "commandHint": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
-      "executableCommands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
-      ],
+      "commandHint": "Exercise auth adapter rollback with session TTL compatibility, login smoke, and forced logout/keepalive evidence. Required evidence: login smoke result after adapter rollback; session TTL compatibility evidence; forced logout or keepalive behavior evidence; auth readiness/health response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
@@ -465,13 +449,10 @@
       "missingArtifacts": [],
       "pendingActionCount": 1,
       "collapsedActionCount": 0,
-      "nextAction": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "nextAction": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
       "reason": "rollback:IAM IAM rollback drill is DEFERRED with approved deferral evidence",
-      "commandHint": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
-      "executableCommands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
-      ],
+      "commandHint": "Exercise permission snapshot rollback, cache invalidation, and IAM v2-to-v1 adapter fallback; attach readiness, audit, and cache evidence. Required evidence: permission snapshot version before and after rollback; cache invalidation or version bump evidence; IAM v2 readiness/health response after rollback; audit entry or command log for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
@@ -497,13 +478,10 @@
       "missingArtifacts": [],
       "pendingActionCount": 1,
       "collapsedActionCount": 0,
-      "nextAction": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "nextAction": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
       "reason": "rollback:Localization Localization rollback drill is DEFERRED with approved deferral evidence",
-      "commandHint": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
-      "executableCommands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
-      ],
+      "commandHint": "Exercise localization release rollback and runtime bundle cache clear; attach release id, bundle metrics, and audit evidence. Required evidence: localization release id before and after rollback; runtime bundle cache clear evidence; bundle request or metrics proving rolled-back release is served; localization audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
@@ -529,13 +507,10 @@
       "missingArtifacts": [],
       "pendingActionCount": 1,
       "collapsedActionCount": 0,
-      "nextAction": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "nextAction": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
       "reason": "rollback:Message Message rollback drill is DEFERRED with approved deferral evidence",
-      "commandHint": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
-      "executableCommands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
-      ],
+      "commandHint": "Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
@@ -561,13 +536,10 @@
       "missingArtifacts": [],
       "pendingActionCount": 1,
       "collapsedActionCount": 0,
-      "nextAction": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "nextAction": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
       "reason": "rollback:Platform Platform rollback drill is DEFERRED with approved deferral evidence",
-      "commandHint": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
-      "executableCommands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
-      ],
+      "commandHint": "Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
@@ -593,13 +565,10 @@
       "missingArtifacts": [],
       "pendingActionCount": 1,
       "collapsedActionCount": 0,
-      "nextAction": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
+      "nextAction": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
       "reason": "rollback:Plugin Plugin rollback drill is DEFERRED with approved deferral evidence",
-      "commandHint": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node scripts/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node scripts/ddd-rollback-drill-evidence.mjs`.",
-      "executableCommands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
-      ],
+      "commandHint": "Exercise tenant plugin disable/version rollback and bootstrap projection rebuild; attach audit and tenant projection evidence. Required evidence: tenant plugin disable or version rollback command output; bootstrap projection rebuild evidence; tenant plugin projection row before and after rollback; plugin audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.",
+      "executableCommands": [],
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",

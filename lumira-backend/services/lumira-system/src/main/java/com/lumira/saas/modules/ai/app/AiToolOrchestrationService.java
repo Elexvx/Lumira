@@ -109,7 +109,11 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         }
 
         AiDTO.ToolExecuteRequest executeRequest = new AiDTO.ToolExecuteRequest();
-        executeRequest.setEmployeeId(0L);
+        if (plan.getEmployeeId() == null || plan.getEmployeeId() <= 0) {
+            updatePlanStatus(tenantId, plan.getId(), "BLOCKED", currentUser.getUserId());
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool confirmation requires the original digital employee");
+        }
+        executeRequest.setEmployeeId(plan.getEmployeeId());
         executeRequest.setConversationId(plan.getConversationId());
         executeRequest.setToolCode(plan.getToolCode());
         executeRequest.setArguments(plan.getArguments());

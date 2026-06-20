@@ -376,7 +376,7 @@ const physicalSplitArtifact = {
 physicalSplitArtifact.summary = buildPhysicalSplitSummary(physicalSplitArtifact);
 writeJson("split/physical-split-readiness.json", physicalSplitArtifact);
 
-const result = spawnSync("node", ["bin/ddd-release-evidence-gate.mjs"], {
+const result = spawnSync("node", ["bin\/ddd-release-evidence-gate.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -496,7 +496,7 @@ fs.writeFileSync(advisoryFrontendFile, `${JSON.stringify({
   ],
 }, null, 2)}\n`);
 
-const advisoryResult = spawnSync("node", ["bin/ddd-release-evidence-gate.mjs"], {
+const advisoryResult = spawnSync("node", ["bin\/ddd-release-evidence-gate.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

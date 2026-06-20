@@ -1,6 +1,6 @@
 # DDD Release Blocker Map
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Release gate mode: strict
 Release gate blockers: 94
@@ -17,11 +17,10 @@ Total blockers: 94
 - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
 - Blocked batches: p3-orchestrator-release-infra
 - Commands:
-  - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-runtime-readiness-smoke.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
@@ -37,18 +36,14 @@ Total blockers: 94
 
 ### release-owner
 
-- Blockers: 13
-- Categories: manifest=2, manifest-provenance=3, orchestrator=2, other=5, rollback-drill=1
-- Ready batches: p0-manifest-release-owner
+- Blockers: 14
+- Categories: manifest=2, manifest-provenance=3, orchestrator=3, other=5, rollback-drill=1
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
@@ -57,7 +52,7 @@ Total blockers: 94
   - [other] backend-test-evidence-freshness: generatedAt is 57.7h old; limit=24h
   - [other] backend-build-evidence-freshness: generatedAt is 57.7h old; limit=24h
   - [orchestrator] release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h
-  - [orchestrator] release-evidence-orchestrator: strict release requires run mode report, got plan
+  - [orchestrator] release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
 
 ### release-performance
 
@@ -66,8 +61,8 @@ Total blockers: 94
 - Ready batches: p0-authenticated-performance-release-performance
 - Blocked batches: none
 - Commands:
-  - `node scripts/ddd-authenticated-performance-smoke.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
+  - `node bin/ddd-authenticated-performance-smoke.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
 - Expected artifacts:
   - `artifacts/ddd/performance/authenticated-runtime-actual.json`
   - `artifacts/ddd/performance/authenticated-runtime-baseline.json`
@@ -79,29 +74,27 @@ Total blockers: 94
   - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.deploymentEvidence is required
   - [performance-freshness] authenticated-performance-freshness: checkedAt is 57.8h old; limit=24h
 
-### frontend
+### lumira-ui
 
-- Blockers: 12
-- Categories: frontend-smoke=12
-- Ready batches: none
-- Blocked batches: p1-frontend-smoke-frontend, p3-orchestrator-frontend
+- Blockers: 11
+- Categories: frontend-smoke=11
+- Ready batches: p0-manifest-lumira-ui
+- Blocked batches: none
 - Commands:
-  - `node scripts/ddd-frontend-playwright-smoke.mjs`
-  - `node scripts/ddd-frontend-smoke-evidence.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
 - Expected artifacts:
-  - `artifacts/ddd/frontend/frontend-smoke.json`
-  - `artifacts/ddd/frontend/playwright-smoke-results.json`
-  - `artifacts/ddd/release/orchestrator-report.json`
-  - `artifacts/ddd/release/release-evidence-gate.json`
-  - `artifacts/ddd/release/readiness-summary.json`
+  - `artifacts/ddd/release/evidence-manifest.json`
+  - `artifacts/ddd/lumira-ui/frontend-smoke.json`
+  - `artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json`
+  - `artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json`
 - Sample blockers:
-  - [frontend-smoke] release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
   - [frontend-smoke] frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h
   - [frontend-smoke] frontend-smoke-production-equivalence: strict frontend smoke deploymentEvidence is required
   - [frontend-smoke] frontend-smoke-environment-strict: strict release requires production-equivalent non-local evidence
   - [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.strict must be true for strict release evidence
+  - [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.https must be true for strict release evidence
 
 ### ai
 
@@ -110,7 +103,7 @@ Total blockers: 94
 - Ready batches: none
 - Blocked batches: p1-ai-runtime-ai
 - Commands:
-  - `node scripts/ddd-ai-runtime-drill.mjs`
+  - `node bin/ddd-ai-runtime-drill.mjs`
 - Expected artifacts:
   - `artifacts/ddd/ai/ai-runtime-drill.json`
 - Sample blockers:
@@ -127,10 +120,10 @@ Total blockers: 94
 - Ready batches: none
 - Blocked batches: p1-business-e2e-file-owner, p1-rollback-file-owner
 - Commands:
-  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-file-processing-e2e-smoke.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/file/file-processing-e2e.json`
   - `artifacts/ddd/rollback/rollback-drill.json`
@@ -148,10 +141,10 @@ Total blockers: 94
 - Ready batches: none
 - Blocked batches: p1-business-e2e-job-owner, p1-rollback-job-owner
 - Commands:
-  - `node scripts/ddd-job-e2e-smoke.mjs`
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-job-e2e-smoke.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/jobs/job-e2e-smoke.json`
   - `artifacts/ddd/rollback/rollback-drill.json`
@@ -169,10 +162,10 @@ Total blockers: 94
 - Ready batches: none
 - Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
 - Commands:
-  - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-payment-webhook-e2e-smoke.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/payment/payment-webhook-e2e.json`
   - `artifacts/ddd/rollback/rollback-drill.json`
@@ -190,10 +183,10 @@ Total blockers: 94
 - Ready batches: none
 - Blocked batches: p2-explain-database, p3-orchestrator-database
 - Commands:
-  - `node scripts/ddd-collect-explain.mjs`
-  - `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-collect-explain.mjs`
+  - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `tmp/ddd-explain/*.json`
   - `artifacts/ddd/release/explain-gate-report.json`
@@ -223,19 +216,18 @@ Total blockers: 94
 - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-authenticated-performance-release-performance
 - Blocked batches: p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-file-owner, p1-rollback-job-owner, p1-rollback-payment-owner, p3-orchestrator-release-infra
 - Commands:
-  - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-runtime-readiness-smoke.mjs`
-  - `node scripts/ddd-authenticated-performance-smoke.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
-  - `node scripts/ddd-job-e2e-smoke.mjs`
-  - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
+  - `node bin/ddd-authenticated-performance-smoke.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
+  - `node bin/ddd-file-processing-e2e-smoke.mjs`
+  - `node bin/ddd-job-e2e-smoke.mjs`
+  - `node bin/ddd-payment-webhook-e2e-smoke.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
@@ -258,27 +250,25 @@ Total blockers: 94
 
 ### frontend-smoke
 
-- Blockers: 12
-- Owners: frontend=12
-- Ready batches: none
-- Blocked batches: p1-frontend-smoke-frontend, p3-orchestrator-frontend
+- Blockers: 11
+- Owners: lumira-ui=11
+- Ready batches: p0-manifest-lumira-ui
+- Blocked batches: none
 - Commands:
-  - `node scripts/ddd-frontend-playwright-smoke.mjs`
-  - `node scripts/ddd-frontend-smoke-evidence.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
 - Expected artifacts:
-  - `artifacts/ddd/frontend/frontend-smoke.json`
-  - `artifacts/ddd/frontend/playwright-smoke-results.json`
-  - `artifacts/ddd/release/orchestrator-report.json`
-  - `artifacts/ddd/release/release-evidence-gate.json`
-  - `artifacts/ddd/release/readiness-summary.json`
+  - `artifacts/ddd/release/evidence-manifest.json`
+  - `artifacts/ddd/lumira-ui/frontend-smoke.json`
+  - `artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json`
+  - `artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json`
 - Sample blockers:
-  - [frontend] release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
-  - [frontend] frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h
-  - [frontend] frontend-smoke-production-equivalence: strict frontend smoke deploymentEvidence is required
-  - [frontend] frontend-smoke-environment-strict: strict release requires production-equivalent non-local evidence
-  - [frontend] frontend-smoke-environment: frontend smoke productionEquivalence.strict must be true for strict release evidence
+  - [lumira-ui] frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h
+  - [lumira-ui] frontend-smoke-production-equivalence: strict frontend smoke deploymentEvidence is required
+  - [lumira-ui] frontend-smoke-environment-strict: strict release requires production-equivalent non-local evidence
+  - [lumira-ui] frontend-smoke-environment: frontend smoke productionEquivalence.strict must be true for strict release evidence
+  - [lumira-ui] frontend-smoke-environment: frontend smoke productionEquivalence.https must be true for strict release evidence
 
 ### ai-runtime
 
@@ -287,7 +277,7 @@ Total blockers: 94
 - Ready batches: none
 - Blocked batches: p1-ai-runtime-ai
 - Commands:
-  - `node scripts/ddd-ai-runtime-drill.mjs`
+  - `node bin/ddd-ai-runtime-drill.mjs`
 - Expected artifacts:
   - `artifacts/ddd/ai/ai-runtime-drill.json`
 - Sample blockers:
@@ -304,8 +294,8 @@ Total blockers: 94
 - Ready batches: p0-authenticated-performance-release-performance
 - Blocked batches: none
 - Commands:
-  - `node scripts/ddd-authenticated-performance-smoke.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
+  - `node bin/ddd-authenticated-performance-smoke.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
 - Expected artifacts:
   - `artifacts/ddd/performance/authenticated-runtime-actual.json`
   - `artifacts/ddd/performance/authenticated-runtime-baseline.json`
@@ -324,11 +314,10 @@ Total blockers: 94
 - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
 - Blocked batches: p3-orchestrator-release-infra
 - Commands:
-  - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-runtime-readiness-smoke.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
@@ -346,16 +335,12 @@ Total blockers: 94
 
 - Blockers: 5
 - Owners: release-owner=5
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
@@ -373,12 +358,12 @@ Total blockers: 94
 - Ready batches: none
 - Blocked batches: p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-file-owner, p1-rollback-job-owner, p1-rollback-payment-owner
 - Commands:
-  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
-  - `node scripts/ddd-job-e2e-smoke.mjs`
-  - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-file-processing-e2e-smoke.mjs`
+  - `node bin/ddd-job-e2e-smoke.mjs`
+  - `node bin/ddd-payment-webhook-e2e-smoke.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/file/file-processing-e2e.json`
   - `artifacts/ddd/jobs/job-e2e-smoke.json`
@@ -396,11 +381,10 @@ Total blockers: 94
 - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
 - Blocked batches: p3-orchestrator-release-infra
 - Commands:
-  - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-runtime-readiness-smoke.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`
@@ -416,16 +400,12 @@ Total blockers: 94
 
 - Blockers: 3
 - Owners: release-owner=3
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
@@ -434,20 +414,34 @@ Total blockers: 94
   - [release-owner] release-evidence-manifest-provenance: manifest provenance releaseCandidate is required
   - [release-owner] release-evidence-manifest-provenance: manifest provenance evidenceOperator is required
 
+### orchestrator
+
+- Blockers: 3
+- Owners: release-owner=3
+- Ready batches: none
+- Blocked batches: p3-orchestrator-release-owner
+- Commands:
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
+- Expected artifacts:
+  - `artifacts/ddd/release/orchestrator-report.json`
+  - `artifacts/ddd/release/release-evidence-gate.json`
+  - `artifacts/ddd/release/readiness-summary.json`
+- Sample blockers:
+  - [release-owner] release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h
+  - [release-owner] release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
+  - [release-owner] release-evidence-orchestrator: strict release requires run mode report, got plan
+
 ### manifest
 
 - Blockers: 2
 - Owners: release-owner=2
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
@@ -462,10 +456,10 @@ Total blockers: 94
 - Ready batches: none
 - Blocked batches: p2-explain-database, p3-orchestrator-database
 - Commands:
-  - `node scripts/ddd-collect-explain.mjs`
-  - `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-collect-explain.mjs`
+  - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `tmp/ddd-explain/*.json`
   - `artifacts/ddd/release/explain-gate-report.json`
@@ -476,27 +470,6 @@ Total blockers: 94
   - [database] migration-evidence-freshness: generatedAt is 57.7h old; limit=24h
   - [database] release-evidence-orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
 
-### orchestrator
-
-- Blockers: 2
-- Owners: release-owner=2
-- Ready batches: p0-manifest-release-owner
-- Blocked batches: p3-orchestrator-release-owner
-- Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
-- Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
-  - `artifacts/ddd/release/orchestrator-report.json`
-  - `artifacts/ddd/release/release-evidence-gate.json`
-  - `artifacts/ddd/release/readiness-summary.json`
-- Sample blockers:
-  - [release-owner] release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h
-  - [release-owner] release-evidence-orchestrator: strict release requires run mode report, got plan
-
 ### explain-plan
 
 - Blockers: 1
@@ -504,10 +477,10 @@ Total blockers: 94
 - Ready batches: none
 - Blocked batches: p2-explain-database, p3-orchestrator-database
 - Commands:
-  - `node scripts/ddd-collect-explain.mjs`
-  - `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-collect-explain.mjs`
+  - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `tmp/ddd-explain/*.json`
   - `artifacts/ddd/release/explain-gate-report.json`
@@ -533,8 +506,8 @@ Total blockers: 94
 - Ready batches: p0-authenticated-performance-release-performance
 - Blocked batches: none
 - Commands:
-  - `node scripts/ddd-authenticated-performance-smoke.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
+  - `node bin/ddd-authenticated-performance-smoke.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
 - Expected artifacts:
   - `artifacts/ddd/performance/authenticated-runtime-actual.json`
   - `artifacts/ddd/performance/authenticated-runtime-baseline.json`
@@ -546,16 +519,12 @@ Total blockers: 94
 
 - Blockers: 1
 - Owners: release-owner=1
-- Ready batches: p0-manifest-release-owner
+- Ready batches: none
 - Blocked batches: p3-orchestrator-release-owner
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
-  - `artifacts/ddd/release/evidence-manifest.json`
   - `artifacts/ddd/release/orchestrator-report.json`
   - `artifacts/ddd/release/release-evidence-gate.json`
   - `artifacts/ddd/release/readiness-summary.json`
@@ -569,11 +538,10 @@ Total blockers: 94
 - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra
 - Blocked batches: p3-orchestrator-release-infra
 - Commands:
-  - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-runtime-readiness-smoke.mjs`
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
   - `artifacts/ddd/readiness/summary.json`

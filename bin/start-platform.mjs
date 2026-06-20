@@ -11,7 +11,7 @@ const translatedArgs = skipBuild
 
 const result = spawnSync(
   process.execPath,
-  ['bin/deploy-container.mjs', ...translatedArgs],
+  ['bin\/deploy-container.mjs', ...translatedArgs],
   {
     cwd: new URL('..', import.meta.url),
     stdio: 'inherit',

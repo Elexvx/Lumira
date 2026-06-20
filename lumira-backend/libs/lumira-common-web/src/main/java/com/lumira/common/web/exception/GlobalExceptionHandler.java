@@ -4,6 +4,7 @@ import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.web.TraceContext;
+import com.lumira.common.web.security.ErrorResponseSanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,11 +26,19 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final ErrorResponseSanitizer errorResponseSanitizer;
+
+    public GlobalExceptionHandler(ErrorResponseSanitizer errorResponseSanitizer) {
+        this.errorResponseSanitizer = errorResponseSanitizer;
+    }
 
     @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class, HttpMessageNotReadableException.class})
     public ResponseEntity<ApiResponse<Void>> handleValidationException(Exception exception, HttpServletRequest request) {
         log.warn("Validation failed requestId={} traceId={}", TraceContext.getRequestId(), TraceContext.getTraceId(), exception);
-        String validationMessage = extractValidationMessage(exception);
+        String validationMessage = errorResponseSanitizer.sanitizeValidationMessage(
+                extractValidationMessage(exception),
+                ErrorCode.VALIDATION_ERROR
+        );
         ApiResponse<Void> response = ApiResponse.fail(
                 ErrorCode.VALIDATION_ERROR,
                 validationMessage,
@@ -67,10 +76,11 @@ public class GlobalExceptionHandler {
                 request.getRequestURI(),
                 exception.getErrorCode().getCode()
         );
+        ErrorResponseSanitizer.SanitizedError sanitized = errorResponseSanitizer.sanitize(exception);
         ApiResponse<Void> response = ApiResponse.fail(
                 exception.getErrorCode(),
-                exception.getMessage(),
-                exception.getUserMessage(),
+                sanitized.message(),
+                sanitized.userMessage(),
                 TraceContext.getRequestId(),
                 request.getRequestURI()
         );

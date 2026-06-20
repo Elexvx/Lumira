@@ -30,7 +30,7 @@ function printHelp() {
   console.log(`DDD production readiness preflight
 
 Usage:
-  node bin/ddd-production-readiness-preflight.mjs [options]
+  node bin\/ddd-production-readiness-preflight.mjs [options]
 
 Options:
   --quick                               Run local operator checks; skips heavyweight backend architecture tests and lumira-ui production build.
@@ -49,12 +49,12 @@ Environment:
   DDD_PRODUCTION_PREFLIGHT_STEP_TIMEOUT_MS Override default per-step timeout in milliseconds.
 
 Examples:
-  node bin/ddd-production-readiness-preflight.mjs --quick
-  node bin/ddd-production-readiness-preflight.mjs --static-only
-  node bin/ddd-production-readiness-preflight.mjs --static-only --no-report
-  node bin/ddd-production-readiness-preflight.mjs --quick --no-report --list
-  node bin/ddd-production-readiness-preflight.mjs --quick --include-backend-architecture-tests
-  node bin/ddd-production-readiness-preflight.mjs --static-only --include-staging-checklist-contract
+  node bin\/ddd-production-readiness-preflight.mjs --quick
+  node bin\/ddd-production-readiness-preflight.mjs --static-only
+  node bin\/ddd-production-readiness-preflight.mjs --static-only --no-report
+  node bin\/ddd-production-readiness-preflight.mjs --quick --no-report --list
+  node bin\/ddd-production-readiness-preflight.mjs --quick --include-backend-architecture-tests
+  node bin\/ddd-production-readiness-preflight.mjs --static-only --include-staging-checklist-contract
 `);
 }
 
@@ -134,44 +134,44 @@ const commands = [
   {
     id: "migration-evidence-sync",
     command: "node",
-    args: ["bin/ddd-migration-evidence-sync.test.mjs"],
+    args: ["bin\/ddd-migration-evidence-sync.test.mjs"],
   },
   {
     id: "release-config-sync",
     command: "node",
-    args: ["bin/ddd-release-config-sync.test.mjs"],
+    args: ["bin\/ddd-release-config-sync.test.mjs"],
   },
   {
     id: "dockerfile-contract",
     command: "node",
-    args: ["bin/ddd-dockerfile-contract.test.mjs"],
+    args: ["bin\/ddd-dockerfile-contract.test.mjs"],
   },
   {
     id: "final-go-no-go-contract",
     command: "node",
-    args: ["bin/ddd-release-final-go-no-go-gate-contract.test.mjs"],
+    args: ["bin\/ddd-release-final-go-no-go-gate-contract.test.mjs"],
   },
   {
     id: "staging-execution-checklist-contract",
     command: "node",
-    args: ["bin/ddd-staging-execution-checklist.test.mjs"],
+    args: ["bin\/ddd-staging-execution-checklist.test.mjs"],
     skip: !includeStagingChecklistContract,
     skipReason: "heavy-contract",
   },
   {
     id: "staging-runtime-check-contract",
     command: "node",
-    args: ["bin/ddd-staging-runtime-check.test.mjs"],
+    args: ["bin\/ddd-staging-runtime-check.test.mjs"],
   },
   {
     id: "staging-data-safety-check-contract",
     command: "node",
-    args: ["bin/ddd-staging-data-safety-check.test.mjs"],
+    args: ["bin\/ddd-staging-data-safety-check.test.mjs"],
   },
   {
     id: "staging-dispatch-check",
     command: "node",
-    args: ["bin/ddd-staging-execution-checklist.mjs", "--dispatch-check"],
+    args: ["bin\/ddd-staging-execution-checklist.mjs", "--dispatch-check"],
     skip: staticOnly,
     skipReason: "static-only",
   },

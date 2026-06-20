@@ -34,13 +34,15 @@ public class InitialPasswordChangeGuard {
     }
 
     public boolean requiresPasswordChange(CurrentUser currentUser) {
-        if (currentUser != null && currentUser.getRequiresPasswordChange() != null) {
-            return Boolean.TRUE.equals(currentUser.getRequiresPasswordChange());
-        }
-        if (currentUser == null || !DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(currentUser.getUsername())) {
+        if (currentUser == null) {
             return false;
         }
-
+        if (Boolean.FALSE.equals(currentUser.getRequiresPasswordChange())) {
+            return false;
+        }
+        if (!DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(currentUser.getUsername())) {
+            return false;
+        }
         InitialPasswordCacheKey cacheKey = InitialPasswordCacheKey.from(currentUser);
         try {
             return initialPasswordCache.get(cacheKey, this::loadRequiresPasswordChange);

@@ -100,10 +100,10 @@ for (const owner of owners) {
   if (!sameStringSet(owner.secretCanonicalKeys || [], handoffOwner.secretCanonicalKeys || [])) addFailure(`${label}.secretCanonicalKeys must match owner handoff`);
   if (!sameStringSet(owner.safeToPreFillCanonicalKeys || [], handoffOwner.safeToPreFillCanonicalKeys || [])) addFailure(`${label}.safeToPreFillCanonicalKeys must match owner handoff`);
   if (!sameStringSet(owner.postFillCommands || [], handoffOwner.postFillCommands || [])) addFailure(`${label}.postFillCommands must match owner handoff`);
-  if ((owner.postFillCommands || [])[0] !== "node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env") {
+  if ((owner.postFillCommands || [])[0] !== "node bin\/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env") {
     addFailure(`${label}.postFillCommands must start with owner template merge`);
   }
-  if (!(owner.postFillCommands || []).some((command) => command === `DDD_RELEASE_ENV_FILE=${templates.envFile || ".env.release.local"} node bin/ddd-release-env-file-lint.mjs`)) {
+  if (!(owner.postFillCommands || []).some((command) => command === `DDD_RELEASE_ENV_FILE=${templates.envFile || ".env.release.local"} node bin\/ddd-release-env-file-lint.mjs`)) {
     addFailure(`${label}.postFillCommands must run env file lint against the explicit release env file`);
   }
   if (!(owner.postFillCommands || []).some((command) => command === "DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh")) {

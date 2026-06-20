@@ -1,4 +1,4 @@
-﻿package com.lumira.saas.modules.plugin.entity;
+package com.lumira.saas.modules.plugin.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;

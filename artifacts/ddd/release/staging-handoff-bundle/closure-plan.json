@@ -1,17 +1,341 @@
 {
-  "status": "READY",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T18:17:45.175Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
   "cutoverReady": false,
-  "blockedGateCount": 0,
-  "acceptedGateCount": 6,
+  "blockedGateCount": 4,
+  "acceptedGateCount": 2,
   "acceptedGateTotal": 6,
-  "phases": [],
-  "items": [],
-  "topBlockingInputs": [],
-  "eta": "ready for final go/no-go enforcement",
+  "phases": [
+    {
+      "phase": "P1",
+      "gates": [
+        "runtime-business",
+        "rollback"
+      ],
+      "owners": [
+        "ai",
+        "bounded-context owners",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "parallelGroups": [
+        "data-safety",
+        "runtime-validation"
+      ]
+    },
+    {
+      "phase": "P2",
+      "gates": [
+        "explain",
+        "migration"
+      ],
+      "owners": [
+        "database"
+      ],
+      "parallelGroups": [
+        "data-safety"
+      ]
+    }
+  ],
+  "items": [
+    {
+      "order": 3,
+      "phase": "P1",
+      "gate": "runtime-business",
+      "track": "p1-runtime-business",
+      "title": "P1 runtime and business acceptance",
+      "owner": "release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner",
+      "status": "BLOCKED",
+      "blocker": "LUMIRA_BASE_URL is required",
+      "blockingInputs": [
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL",
+        "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
+        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_AI_EXPECT_PROVIDER_REMOTE",
+        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
+      ],
+      "setupCommands": [
+        "node bin/ddd-staging-runtime-check.mjs"
+      ],
+      "evidenceCommands": [
+        "node bin/ddd-runtime-readiness-smoke.mjs",
+        "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-ai-runtime-drill.mjs",
+        "node bin/ddd-frontend-playwright-smoke.mjs",
+        "node bin/ddd-frontend-smoke-evidence.mjs",
+        "node bin/ddd-file-processing-e2e-smoke.mjs",
+        "node bin/ddd-job-e2e-smoke.mjs",
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs"
+      ],
+      "acceptanceCommand": "node bin/ddd-staging-runtime-check.mjs",
+      "expectedArtifacts": [
+        "artifacts/ddd/readiness/summary.json",
+        "artifacts/ddd/performance/authenticated-runtime-actual.json",
+        "artifacts/ddd/ai/ai-runtime-drill.json",
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/file/file-processing-e2e.json",
+        "artifacts/ddd/jobs/job-e2e-smoke.json",
+        "artifacts/ddd/payment/payment-webhook-e2e.json"
+      ],
+      "eta": "2-4h with staging URLs and deployment evidence; 0.5-1d if deployment must be provisioned",
+      "parallelGroup": "runtime-validation"
+    },
+    {
+      "order": 4,
+      "phase": "P1",
+      "gate": "rollback",
+      "track": "p1-rollback",
+      "title": "P1 rollback safety",
+      "owner": "bounded-context owners",
+      "status": "BLOCKED",
+      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+      "blockingInputs": [
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR"
+      ],
+      "setupCommands": [
+        "node bin/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "acceptanceCommand": "node bin/ddd-staging-data-safety-check.mjs",
+      "expectedArtifacts": [
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "eta": "2-4h with owner drill evidence; 0.5-1d if deferrals need review",
+      "parallelGroup": "data-safety"
+    },
+    {
+      "order": 5,
+      "phase": "P2",
+      "gate": "explain",
+      "track": "p2-database-performance",
+      "title": "P2 database migration and EXPLAIN",
+      "owner": "database",
+      "status": "BLOCKED",
+      "blocker": "DDD_EXPLAIN_DATABASE is required",
+      "blockingInputs": [
+        "DDD_EXPLAIN_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PORT",
+        "MYSQL_USER",
+        "MYSQL_PASSWORD",
+        "DDD_EXPLAIN_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR"
+      ],
+      "setupCommands": [
+        "node bin/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs",
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
+      ],
+      "acceptanceCommand": "node bin/ddd-staging-data-safety-check.mjs",
+      "expectedArtifacts": [
+        "artifacts/ddd/migration/migration-evidence.json",
+        "tmp/ddd-explain/*.json",
+        "artifacts/ddd/release/explain-gate-report.json"
+      ],
+      "eta": "2-6h with database access; 0.5-1d if fresh/upgrade drills must be scheduled",
+      "parallelGroup": "data-safety"
+    },
+    {
+      "order": 5,
+      "phase": "P2",
+      "gate": "migration",
+      "track": "p2-database-performance",
+      "title": "P2 database migration and EXPLAIN",
+      "owner": "database",
+      "status": "BLOCKED",
+      "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+      "blockingInputs": [
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_MIGRATION_OPERATOR",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR",
+        "DDD_MIGRATION_COMPLETED_AT"
+      ],
+      "setupCommands": [
+        "node bin/ddd-staging-data-safety-check.mjs"
+      ],
+      "evidenceCommands": [
+        "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs",
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
+      ],
+      "acceptanceCommand": "node bin/ddd-staging-data-safety-check.mjs",
+      "expectedArtifacts": [
+        "artifacts/ddd/migration/migration-evidence.json",
+        "tmp/ddd-explain/*.json",
+        "artifacts/ddd/release/explain-gate-report.json"
+      ],
+      "eta": "2-6h with database access; 0.5-1d if fresh/upgrade drills must be scheduled",
+      "parallelGroup": "data-safety"
+    }
+  ],
+  "topBlockingInputs": [
+    {
+      "input": "DDD_EVIDENCE_ENVIRONMENT",
+      "gateCount": 3,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "input": "DDD_EVIDENCE_OPERATOR",
+      "gateCount": 3,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "input": "DDD_RELEASE_ENVIRONMENT",
+      "gateCount": 3,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "input": "GITHUB_ACTOR",
+      "gateCount": 3,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "input": "DDD_RELEASE_CANDIDATE",
+      "gateCount": 2,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "input": "GITHUB_SHA",
+      "gateCount": 2,
+      "owners": [
+        "bounded-context owners",
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    },
+    {
+      "input": "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
+      "gateCount": 1,
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_AI_EXPECT_PROVIDER_REMOTE",
+      "gateCount": 1,
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
+      "gateCount": 1,
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+      "gateCount": 1,
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_DEPLOYMENT_EVIDENCE",
+      "gateCount": 1,
+      "owners": [
+        "ai",
+        "file-owner",
+        "job-owner",
+        "lumira-ui",
+        "payment-owner",
+        "release-infra"
+      ],
+      "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
+    },
+    {
+      "input": "DDD_EXPLAIN_DATABASE",
+      "gateCount": 1,
+      "owners": [
+        "database"
+      ],
+      "nextCommand": "node bin/ddd-staging-data-safety-check.mjs"
+    }
+  ],
+  "eta": "fast path 0.5-1.5d with staging access and owner evidence ready; 1-3d if deployment, Docker, database, or approval evidence must be produced",
   "criticalPath": [
     "P0 release env and image evidence must close before expensive staging validation is trusted.",
     "P1 runtime and rollback checks can run in parallel after P0 inputs are available.",
@@ -19,10 +343,10 @@
     "Final cutover requires --final-review-enforce and release-final-go-no-go-gate.sh to pass."
   ],
   "verificationCommands": [
-    "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-    "node scripts/ddd-staging-execution-checklist.mjs --rollup-enforce",
-    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "node bin/ddd-staging-execution-checklist.mjs --rollup-enforce",
+    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce"
+  "nextCommand": "node bin/ddd-staging-runtime-check.mjs"
 }

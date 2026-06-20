@@ -66,7 +66,7 @@ function baseArtifacts() {
             pattern: null,
             disallowValues: [],
           },
-          aliasSyncCommand: "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
+          aliasSyncCommand: "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-alias-sync.mjs",
         },
         {
           fillOrder: 2,
@@ -92,14 +92,14 @@ function baseArtifacts() {
             pattern: null,
             disallowValues: [],
           },
-          aliasSyncCommand: "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
+          aliasSyncCommand: "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-alias-sync.mjs",
         },
       ],
     },
     template: [
       "# Lumira DDD canonical release environment fill template.",
-      "# DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
-      "# DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs",
+      "# DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env .env.release.local",
+      "# DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-alias-sync.mjs",
       "DB_PASSWORD=__REQUIRED__",
       "TRUST_FORWARDED_HEADERS=true",
       "",
@@ -119,7 +119,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-env-canonical-fill-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-env-canonical-fill-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_DIR: directory },

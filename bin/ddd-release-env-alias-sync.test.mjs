@@ -22,7 +22,7 @@ fs.writeFileSync(envFile, [
 ].join("\n"));
 fs.chmodSync(envFile, 0o600);
 
-const run = spawnSync("node", ["bin/ddd-release-env-alias-sync.mjs", envFile], {
+const run = spawnSync("node", ["bin\/ddd-release-env-alias-sync.mjs", envFile], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -52,7 +52,7 @@ fs.writeFileSync(conflictEnvFile, [
   "",
 ].join("\n"));
 fs.chmodSync(conflictEnvFile, 0o600);
-const conflictRun = spawnSync("node", ["bin/ddd-release-env-alias-sync.mjs", conflictEnvFile], {
+const conflictRun = spawnSync("node", ["bin\/ddd-release-env-alias-sync.mjs", conflictEnvFile], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

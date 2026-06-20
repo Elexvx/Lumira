@@ -26,7 +26,7 @@ const server = http.createServer((request, response) => {
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 try {
   const { port } = server.address();
-  const result = await spawnNode(["bin/ddd-runtime-readiness-smoke.mjs"], {
+  const result = await spawnNode(["bin\/ddd-runtime-readiness-smoke.mjs"], {
     cwd: repoRoot,
     env: {
       ...process.env,
@@ -65,7 +65,7 @@ const repoServer = http.createServer((request, response) => {
 await new Promise((resolve) => repoServer.listen(0, "127.0.0.1", resolve));
 try {
   const { port } = repoServer.address();
-  const result = await spawnNode(["bin/ddd-runtime-readiness-smoke.mjs"], {
+  const result = await spawnNode(["bin\/ddd-runtime-readiness-smoke.mjs"], {
     cwd: repoRoot,
     env: {
       ...process.env,

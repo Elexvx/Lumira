@@ -23,7 +23,7 @@ function passingReport(overrides = {}) {
         queueStatus: "ACTIONABLE",
         commandIndex: 1,
         commandCount: 1,
-        command: "node bin/ddd-release-readiness-summary.mjs",
+        command: "node bin\/ddd-release-readiness-summary.mjs",
         status: 0,
         durationMs: 120,
         finishedAt: "2026-06-14T00:00:01.000Z",
@@ -156,16 +156,16 @@ assert.deepEqual(validateFinalOwnerQueueRunReport(passingReport({
 {
   const unsafeCommandIssue = "final owner queue run report entries[0].command must not expose concrete secret values, release env files, or local repo paths";
   assert(validateFinalOwnerQueueRunReport(passingReport({
-    entries: [{ ...passingReport().entries[0], command: "JWT_SECRET=real-secret node bin/ddd-release-readiness-summary.mjs" }],
+    entries: [{ ...passingReport().entries[0], command: "JWT_SECRET=real-secret node bin\/ddd-release-readiness-summary.mjs" }],
   })).includes(unsafeCommandIssue));
   assert(validateFinalOwnerQueueRunReport(passingReport({
-    entries: [{ ...passingReport().entries[0], command: "DDD_RELEASE_ENV_FILE=/tmp/.env.release.local node bin/ddd-release-env-file-lint.mjs" }],
+    entries: [{ ...passingReport().entries[0], command: "DDD_RELEASE_ENV_FILE=/tmp/.env.release.local node bin\/ddd-release-env-file-lint.mjs" }],
   })).includes(unsafeCommandIssue));
   assert(validateFinalOwnerQueueRunReport(passingReport({
-    entries: [{ ...passingReport().entries[0], command: `node ${path.join(repoRoot, "bin/ddd-release-readiness-summary.mjs")}` }],
+    entries: [{ ...passingReport().entries[0], command: `node ${path.join(repoRoot, "bin\/ddd-release-readiness-summary.mjs")}` }],
   })).includes(unsafeCommandIssue));
   assert.deepEqual(validateFinalOwnerQueueRunReport(passingReport({
-    entries: [{ ...passingReport().entries[0], command: "JWT_SECRET=<redacted> DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-readiness-summary.mjs" }],
+    entries: [{ ...passingReport().entries[0], command: "JWT_SECRET=<redacted> DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-readiness-summary.mjs" }],
   })), []);
 }
 
@@ -173,7 +173,7 @@ assert.deepEqual(validateFinalOwnerQueueRunReport(passingReport({
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-owner-queue-report-"));
   const reportPath = path.join(tempDir, "report.json");
   fs.writeFileSync(reportPath, `${JSON.stringify(passingReport(), null, 2)}\n`);
-  const result = spawnSync("node", ["bin/ddd-final-owner-queue-run-report-contract.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-final-owner-queue-run-report-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -188,7 +188,7 @@ assert.deepEqual(validateFinalOwnerQueueRunReport(passingReport({
 {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-owner-queue-report-"));
   const missingPath = path.join(tempDir, "missing.json");
-  const result = spawnSync("node", ["bin/ddd-final-owner-queue-run-report-contract.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-final-owner-queue-run-report-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

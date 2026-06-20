@@ -1,10 +1,10 @@
 # DDD Release Env Merge Plan
 
 Status: PASS
-Owners: 5
+Owners: 0
 Blockers: 0
 Placeholders: 0
-Secret keys: 10
+Secret keys: 0
 Canonical template: `artifacts/ddd/release/release-env-canonical-fill.template.env`
 Release env file: `<release-env-file>`
 
@@ -14,9 +14,9 @@ Owner: release-owner
 
 Commands:
 
-- `node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix`
-- `node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template`
-- `node scripts/ddd-staging-execution-checklist.mjs --owner-packets`
+- `node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix`
+- `node bin/ddd-staging-execution-checklist.mjs --release-env-next-owner-template`
+- `node bin/ddd-staging-execution-checklist.mjs --owner-packets`
 
 Artifacts:
 
@@ -29,11 +29,11 @@ Owner: release-infra
 
 Commands:
 
-- `node scripts/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-safe-defaults.mjs`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-provenance-defaults.mjs`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-alias-sync.mjs`
+- `node bin/ddd-release-env-owner-templates-merge.mjs artifacts/ddd/release/release-env-owner-templates artifacts/ddd/release/release-env-canonical-fill.template.env`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env <release-env-file>`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-safe-defaults.mjs`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-provenance-defaults.mjs`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs`
 
 Artifacts:
 
@@ -46,12 +46,12 @@ Owner: release-infra
 
 Commands:
 
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs`
-- `DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs`
-- `node scripts/ddd-release-readiness-summary.mjs`
-- `node scripts/ddd-staging-execution-checklist.mjs --rollup`
-- `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs`
+- `DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs`
+- `node bin/ddd-release-readiness-summary.mjs`
+- `node bin/ddd-staging-execution-checklist.mjs --rollup`
+- `node bin/ddd-staging-execution-checklist.mjs --final-review-enforce`
 
 Artifacts:
 
@@ -66,4 +66,4 @@ Artifacts:
 - Run canonical lint and env-file lint before config evidence.
 - Rerun final review only after readiness summary is regenerated from the completed env file.
 
-Next: `node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template --owner=release-infra`
+Next: `node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix`

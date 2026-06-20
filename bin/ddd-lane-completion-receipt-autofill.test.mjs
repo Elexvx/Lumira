@@ -8,7 +8,7 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-lane-receipt-autofill-"));
-const autofillCommand = "node bin/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>";
+const autofillCommand = "node bin\/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>";
 
 try {
   const receiptFile = path.join(tmpDir, "receipt.json");
@@ -65,7 +65,7 @@ try {
   }, null, 2)}\n`);
 
   const result = spawnSync("node", [
-    "bin/ddd-lane-completion-receipt-autofill.mjs",
+    "bin\/ddd-lane-completion-receipt-autofill.mjs",
     `--receipt-file=${receiptFile}`,
     `--owner-evidence-intake-file=${intakeFile}`,
     `--output=${outputFile}`,
@@ -95,7 +95,7 @@ try {
   assert.equal(releaseEnvLane.completedAt, null);
 
   const overwriteResult = spawnSync("node", [
-    "bin/ddd-lane-completion-receipt-autofill.mjs",
+    "bin\/ddd-lane-completion-receipt-autofill.mjs",
     `--receipt-file=${receiptFile}`,
     `--owner-evidence-intake-file=${intakeFile}`,
     `--output=${outputFile}`,
@@ -107,7 +107,7 @@ try {
   assert.notEqual(overwriteResult.status, 0, "autofill should refuse to overwrite without --force");
   assert.match(overwriteResult.stderr, /refusing to overwrite/);
 
-  const commandsResult = spawnSync("node", ["bin/ddd-staging-execution-checklist.mjs", "--commands"], {
+  const commandsResult = spawnSync("node", ["bin\/ddd-staging-execution-checklist.mjs", "--commands"], {
     cwd: repoRoot,
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
@@ -115,7 +115,7 @@ try {
   assert.equal(commandsResult.status, 0, commandsResult.stderr || commandsResult.stdout);
   assert.match(commandsResult.stdout, new RegExp(`^${autofillCommand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
 
-  const submissionPlanResult = spawnSync("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-plan"], {
+  const submissionPlanResult = spawnSync("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
@@ -124,7 +124,7 @@ try {
   const submissionPlan = JSON.parse(submissionPlanResult.stdout);
   assert(submissionPlan.commands.includes(autofillCommand));
 
-  const ownerEvidenceIntakeResult = spawnSync("node", ["bin/ddd-staging-execution-checklist.mjs", "--owner-evidence-intake"], {
+  const ownerEvidenceIntakeResult = spawnSync("node", ["bin\/ddd-staging-execution-checklist.mjs", "--owner-evidence-intake"], {
     cwd: repoRoot,
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,

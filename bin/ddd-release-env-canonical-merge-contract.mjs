@@ -6,7 +6,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const scriptPath = path.join(repoRoot, "scripts", "ddd-release-env-canonical-merge.mjs");
+const scriptPath = path.join(repoRoot, "bin", "ddd-release-env-canonical-merge.mjs");
 const failures = [];
 
 function addFailure(message) {
@@ -18,7 +18,7 @@ function readJson(file) {
 }
 
 function runMerge(sourceFile, targetFile, reportFile, env = {}) {
-  return spawnSync("node", ["bin/ddd-release-env-canonical-merge.mjs", sourceFile, targetFile], {
+  return spawnSync("node", ["bin\/ddd-release-env-canonical-merge.mjs", sourceFile, targetFile], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_ENV_CANONICAL_MERGE_REPORT: reportFile, ...env },

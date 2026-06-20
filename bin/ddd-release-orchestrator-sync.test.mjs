@@ -13,7 +13,7 @@ import {
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const outputDir = mkdtempSync(join(tmpdir(), "lumira-orchestrator-sync-"));
-const result = spawnSync("node", ["bin/ddd-release-evidence-orchestrator.mjs", "--strict"], {
+const result = spawnSync("node", ["bin\/ddd-release-evidence-orchestrator.mjs", "--strict"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

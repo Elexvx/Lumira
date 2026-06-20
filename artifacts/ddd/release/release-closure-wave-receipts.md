@@ -1,13 +1,13 @@
 # DDD Release Closure Wave Receipts
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
 Ready for strict gate rerun: 3
-Artifact missing: 0
-Content blocked: 1
-Missing artifacts: 0
+Artifact missing: 1
+Content blocked: 0
+Missing artifacts: 3
 
 ## Wave 1. release-infra / p0-docker-release-infra
 
@@ -17,8 +17,8 @@ Missing artifacts: 0
 - Missing artifacts: 0
 - Next check: Rerun strict release gate and readiness summary; this wave's expected artifacts are present.
 - Rerun commands:
-  - `node scripts/ddd-release-evidence-gate.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `node bin/ddd-release-evidence-gate.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
 
 ## Wave 2. release-infra / p0-runtime-readiness-release-infra
 
@@ -28,21 +28,23 @@ Missing artifacts: 0
 - Missing artifacts: 0
 - Next check: Rerun strict release gate and readiness summary; this wave's expected artifacts are present.
 - Rerun commands:
-  - `node scripts/ddd-release-evidence-gate.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `node bin/ddd-release-evidence-gate.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
 
-## Wave 3. release-owner / p0-manifest-release-owner
+## Wave 3. lumira-ui / p0-manifest-lumira-ui
 
-- Receipt status: CONTENT_BLOCKED
-- Expected artifacts: 1
+- Receipt status: ARTIFACT_MISSING
+- Expected artifacts: 4
 - Present artifacts: 1
-- Missing artifacts: 0
-- Blocker hints:
-  - artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\ddd-explain
-- Next check: Regenerate this wave's content/provenance evidence, then rerun strict release gate and readiness summary.
+- Missing artifacts: 3
+- Missing artifact paths:
+  - `artifacts/ddd/lumira-ui/frontend-smoke.json`
+  - `artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json`
+  - `artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json`
+- Next check: Run this wave in a production-equivalent environment, then rerun strict release gate and readiness summary.
 - Rerun commands:
-  - `node scripts/ddd-release-evidence-gate.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `node bin/ddd-release-evidence-gate.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
 
 ## Wave 4. release-performance / p0-authenticated-performance-release-performance
 
@@ -52,6 +54,6 @@ Missing artifacts: 0
 - Missing artifacts: 0
 - Next check: Rerun strict release gate and readiness summary; this wave's expected artifacts are present.
 - Rerun commands:
-  - `node scripts/ddd-release-evidence-gate.mjs`
-  - `node scripts/ddd-release-readiness-summary.mjs`
+  - `node bin/ddd-release-evidence-gate.mjs`
+  - `node bin/ddd-release-readiness-summary.mjs`
 

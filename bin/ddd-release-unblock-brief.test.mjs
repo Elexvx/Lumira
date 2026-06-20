@@ -52,7 +52,7 @@ const finalGoNoGo = {
       reason: "strictGate=migration-evidence status=FAIL",
       envKeys: ["DDD_MIGRATION_PREVIOUS_SCHEMA_EVIDENCE", "DDD_MIGRATION_FRESH_DB_EVIDENCE"],
     },
-    firstOwnerActionCommand: "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+    firstOwnerActionCommand: "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
     orchestratorPreflight: {
       artifact: "artifacts/ddd/release/orchestrator-report.json",
       mode: "plan",
@@ -99,7 +99,7 @@ const finalGoNoGo = {
       checkId: "ai-runtime-base-url",
       reason: "missing AI runtime base URL",
       envKeys: ["LUMIRA_AI_BASE_URL", "LUMIRA_BASE_URL", "BASE_URL"],
-      command: "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+      command: "DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator.mjs --run --strict",
     },
     ownerInputReceipt: {
       artifact: "artifacts/ddd/release/release-owner-input-receipt.json",
@@ -140,10 +140,10 @@ const finalGoNoGo = {
     },
   },
   nextCommands: [
-    "DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
-    `DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${path.join(repoRoot, ".env.release.local")}`,
-    "JWT_SECRET=super-secret node bin/ddd-release-evidence-manifest.mjs",
-    "node bin/ddd-authenticated-performance-smoke.mjs",
+    "DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
+    `DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-release-env-canonical-merge.mjs artifacts/ddd/release/release-env-canonical-fill.template.env ${path.join(repoRoot, ".env.release.local")}`,
+    "JWT_SECRET=super-secret node bin\/ddd-release-evidence-manifest.mjs",
+    "node bin\/ddd-authenticated-performance-smoke.mjs",
   ],
 };
 
@@ -179,8 +179,8 @@ const performanceClosure = {
   ],
   requiredEnvKeys: ["DDD_AUTH_USERNAME", "DDD_AUTH_PASSWORD", "BASE_URL", "DDD_AUTH_USERNAME"],
   commands: [
-    "DDD_AUTH_PERF_STRICT=true DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-authenticated-performance-smoke.mjs",
-    "node bin/ddd-promote-performance-baseline.mjs",
+    "DDD_AUTH_PERF_STRICT=true DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-authenticated-performance-smoke.mjs",
+    "node bin\/ddd-promote-performance-baseline.mjs",
   ],
 };
 
@@ -195,8 +195,8 @@ const nextActionQueue = {
       reason: `missingArtifact=${path.join(repoRoot, "artifacts/ddd/performance/authenticated-runtime-baseline.json")}`,
       envKeys: ["DDD_AUTH_USERNAME", "BASE_URL", "DDD_AUTH_USERNAME"],
       executableCommands: [
-        "DDD_RELEASE_ENV_FILE=/secure/.env.release.local DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
-        `node ${path.join(repoRoot, "bin/ddd-promote-performance-baseline.mjs")}`,
+        "DDD_RELEASE_ENV_FILE=/secure/.env.release.local DDD_AUTH_PERF_STRICT=true node bin\/ddd-authenticated-performance-smoke.mjs",
+        `node ${path.join(repoRoot, "bin\/ddd-promote-performance-baseline.mjs")}`,
       ],
     },
     {
@@ -216,7 +216,7 @@ const finalOwnerQueue = {
   summary: {
     nextExecutableOwner: "database",
     nextExecutableQueueOrder: 1,
-    nextExecutableCommand: "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+    nextExecutableCommand: "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
     nextExecutableEnvKeyCount: 20,
     nextExecutableMissingArtifactCount: 6,
   },
@@ -225,15 +225,15 @@ const finalOwnerQueue = {
     blockedUntil: "Required owner env keys and expected evidence artifacts are available in a permission-safe release env file.",
     owner: "database",
     queueOrder: 1,
-    firstCommand: "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+    firstCommand: "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
     envKeyCount: 20,
     missingArtifactCount: 6,
     releaseEnvFileRequired: true,
     finalGateCommand: "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     commands: [
-      "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-      "node bin/ddd-migration-evidence.mjs",
-      "node bin/ddd-release-readiness-summary.mjs",
+      "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+      "node bin\/ddd-migration-evidence.mjs",
+      "node bin\/ddd-release-readiness-summary.mjs",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     ],
   },
@@ -250,8 +250,8 @@ const actionBatches = {
       canRunImmediately: true,
       dependsOn: [],
       commands: [
-        "DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin/ddd-release-env-file-lint.mjs",
-        "node bin/ddd-release-config-evidence.mjs",
+        "DDD_RELEASE_ENV_FILE=/secure/.env.release.local node bin\/ddd-release-env-file-lint.mjs",
+        "node bin\/ddd-release-config-evidence.mjs",
       ],
       expectedArtifacts: [
         path.join(repoRoot, "artifacts/ddd/release/release-config-evidence.json"),
@@ -265,7 +265,7 @@ const actionBatches = {
       pendingItems: 3,
       canRunImmediately: false,
       dependsOn: ["p0-release-env-lint-release-infra", "p0-docker-release-infra"],
-      commands: ["node bin/ddd-ai-runtime-drill.mjs"],
+      commands: ["node bin\/ddd-ai-runtime-drill.mjs"],
       expectedArtifacts: ["artifacts/ddd/ai/ai-runtime-drill.json"],
     },
   ],
@@ -330,8 +330,8 @@ assert.deepEqual(brief.blockedCutoverItems, [
         canRunImmediately: true,
         dependsOn: [],
         commands: [
-          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
-          "node bin/ddd-release-config-evidence.mjs",
+          "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs",
+          "node bin\/ddd-release-config-evidence.mjs",
         ],
         expectedArtifacts: ["artifacts/ddd/release/release-config-evidence.json"],
       },
@@ -354,7 +354,7 @@ assert.deepEqual(brief.blockedCutoverItems, [
         pendingItems: 3,
         canRunImmediately: false,
         dependsOn: ["p0-docker-release-infra", "p0-release-env-lint-release-infra"],
-        commands: ["node bin/ddd-ai-runtime-drill.mjs"],
+        commands: ["node bin\/ddd-ai-runtime-drill.mjs"],
         expectedArtifacts: ["artifacts/ddd/ai/ai-runtime-drill.json"],
       },
       {
@@ -429,7 +429,7 @@ assert.deepEqual(brief.releaseEnvSafety.pendingActionIds, ["release-env-lint-pla
 assert.equal(brief.firstOwnerAction.owner, "database");
 assert.equal(brief.firstOwnerAction.order, 1);
 assert.equal(brief.firstOwnerAction.reason, "strictGate=migration-evidence status=FAIL");
-assert.equal(brief.firstOwnerAction.command, "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs");
+assert.equal(brief.firstOwnerAction.command, "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs");
 assert.deepEqual(brief.firstOwnerAction.envKeys, ["DDD_MIGRATION_FRESH_DB_EVIDENCE", "DDD_MIGRATION_PREVIOUS_SCHEMA_EVIDENCE"]);
 assert.equal(brief.orchestratorPreflight.artifact, "artifacts/ddd/release/orchestrator-report.json");
 assert.equal(brief.orchestratorPreflight.mode, "plan");
@@ -452,10 +452,10 @@ assert.equal(brief.ownerInputReceipt.pendingOwners[0].packetPath, "artifacts/ddd
 assert.equal(brief.finalOwnerQueueFastPath.owner, "database");
 assert.equal(brief.finalOwnerQueueFastPath.queueOrder, 1);
 assert.equal(brief.finalOwnerQueueFastPath.releaseEnvFileRequired, true);
-assert.equal(brief.finalOwnerQueueFastPath.firstCommand, "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs");
+assert.equal(brief.finalOwnerQueueFastPath.firstCommand, "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs");
 assert.equal(brief.finalOwnerQueueFastPath.finalGateCommand, "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh");
 assert.deepEqual(brief.finalOwnerQueueFastPath.commands.slice(-2), [
-  "node bin/ddd-release-readiness-summary.mjs",
+  "node bin\/ddd-release-readiness-summary.mjs",
   "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
 ]);
 assert.deepEqual(
@@ -463,12 +463,12 @@ assert.deepEqual(
   ["migration-evidence-handoff", "rollback-deferral-owner-handoff", "performance-baseline-handoff", "release-env-owner-input-packet", "release-owner-input-receipt"],
 );
 assert(brief.handoffReferences.every((reference) => !path.isAbsolute(reference.path)));
-assert.equal(brief.handoffReferences[0].command, "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs");
-assert.equal(brief.handoffReferences[1].command, "node bin/ddd-rollback-deferral-template.mjs");
+assert.equal(brief.handoffReferences[0].command, "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs");
+assert.equal(brief.handoffReferences[1].command, "node bin\/ddd-rollback-deferral-template.mjs");
 assert.equal(brief.handoffReferences[2].command, "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh");
-assert.equal(brief.handoffReferences[3].command, "node bin/ddd-release-env-owner-input-packet-contract.mjs");
+assert.equal(brief.handoffReferences[3].command, "node bin\/ddd-release-env-owner-input-packet-contract.mjs");
 assert.equal(brief.handoffReferences[3].path, "artifacts/ddd/release/release-env-owner-input-packet.md");
-assert.equal(brief.handoffReferences[4].command, "node bin/ddd-release-owner-input-receipt-contract.mjs");
+assert.equal(brief.handoffReferences[4].command, "node bin\/ddd-release-owner-input-receipt-contract.mjs");
 assert.equal(brief.handoffReferences[4].path, "artifacts/ddd/release/release-owner-input-receipt.md");
 assert.equal(brief.performanceBaseline.readyToPromote, false);
 assert.equal(brief.performanceBaseline.blockerCount, 2);
@@ -501,14 +501,14 @@ assert.match(markdown, /production-endpoint: 1/);
 assert.match(markdown, /release-infra: requiresOwnerInput=2, safeDefaultAvailable=1/);
 assert.match(markdown, /release-env-lint-placeholders/);
 assert.match(markdown, /## First Owner Action/);
-assert.match(markdown, /Owner: sql/);
-assert.match(markdown, /DDD_MIGRATION_CHECK_ENV=true node scripts\/ddd-migration-evidence\.mjs/);
+assert.match(markdown, /Owner: database/);
+assert.match(markdown, /DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence\.mjs/);
 assert.match(markdown, /Orchestrator preflight blockers: 4/);
 assert.match(markdown, /## Orchestrator Preflight/);
 assert.match(markdown, /Mode: plan/);
 assert.match(markdown, /First preflight action:/);
 assert.match(markdown, /Check: ai-runtime-base-url/);
-assert.match(markdown, /DDD_RELEASE_EVIDENCE_STRICT=true node scripts\/ddd-release-evidence-orchestrator\.mjs --run --strict/);
+assert.match(markdown, /DDD_RELEASE_EVIDENCE_STRICT=true node bin\/ddd-release-evidence-orchestrator\.mjs --run --strict/);
 assert.match(markdown, /\| ai \| 1 \| BASE_URL,LUMIRA_AI_BASE_URL,LUMIRA_BASE_URL \| ai-runtime-base-url \| missing AI runtime base URL \|/);
 assert.match(markdown, /missing migration evidence artifacts\/ddd\/migration\/runtime\.json/);
 assert.match(markdown, /## Owner Input Receipt/);
@@ -520,8 +520,8 @@ assert.match(markdown, /## Blocked Cutover Items/);
 assert.match(markdown, /\| release-environment \| 3 \| p0-release-env-lint-release-infra \| none \| Completed release env file and config matrix are valid\. \|/);
 assert.match(markdown, /\| production-equivalence \| 5 \| none \| p1-ai-runtime-ai,p1-frontend-smoke-lumira-ui \| Runtime acceptance evidence is production-equivalent\. \|/);
 assert.match(markdown, /Cutover batch details:/);
-assert.match(markdown, /\| release-environment \| p0-release-env-lint-release-infra \| release-infra \| P0 \| true \| none \| DDD_RELEASE_ENV_FILE=<release-env-file> node scripts\/ddd-release-env-file-lint\.mjs<br>node scripts\/ddd-release-config-evidence\.mjs \|/);
-assert.match(markdown, /\| production-equivalence \| p1-ai-runtime-ai \| ai \| P1 \| false \| p0-docker-release-infra,p0-release-env-lint-release-infra \| node scripts\/ddd-ai-runtime-drill\.mjs \|/);
+assert.match(markdown, /\| release-environment \| p0-release-env-lint-release-infra \| release-infra \| P0 \| true \| none \| DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint\.mjs<br>node bin\/ddd-release-config-evidence\.mjs \|/);
+assert.match(markdown, /\| production-equivalence \| p1-ai-runtime-ai \| ai \| P1 \| false \| p0-docker-release-infra,p0-release-env-lint-release-infra \| node bin\/ddd-ai-runtime-drill\.mjs \|/);
 assert.match(markdown, /Execution waves:/);
 assert.match(markdown, /\| P0 \| 1 \| p0-release-env-lint-release-infra \| none \| release-infra \| none \| 2 \|/);
 assert.match(markdown, /\| P1 \| 1 \| none \| p1-ai-runtime-ai \| ai \| p0-docker-release-infra,p0-release-env-lint-release-infra \| 1 \|/);
@@ -531,7 +531,7 @@ assert.match(markdown, /DDD_RELEASE_ENV_FILE=<release-env-file> DDD_RELEASE_PRIO
 assert.match(markdown, /DDD_RELEASE_PRIORITY=P1: blocked until p0-docker-release-infra,p0-release-env-lint-release-infra|P1: blocked until p0-docker-release-infra,p0-release-env-lint-release-infra/);
 assert.match(markdown, /## Final Owner Queue Fast Path/);
 assert.match(markdown, /Final gate command: `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts\/ddd\/release\/release-final-go-no-go-gate\.sh`/);
-assert.match(markdown, /node scripts\/ddd-release-readiness-summary\.mjs/);
+assert.match(markdown, /node bin\/ddd-release-readiness-summary\.mjs/);
 assert.match(markdown, /\| release-infra \| 10 \| 10 \| 4 \|/);
 assert.match(markdown, /## Performance Baseline/);
 assert.match(markdown, /## Evidence Handoffs/);
@@ -539,8 +539,8 @@ assert.match(markdown, /Migration evidence handoff/);
 assert.match(markdown, /Rollback deferral owner handoff/);
 assert.match(markdown, /Authenticated performance baseline handoff/);
 assert.match(markdown, /Release owner input receipt/);
-assert.match(markdown, /DDD_MIGRATION_CHECK_ENV=true node scripts\/ddd-migration-evidence\.mjs/);
-assert.match(markdown, /node scripts\/ddd-rollback-deferral-template\.mjs/);
+assert.match(markdown, /DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence\.mjs/);
+assert.match(markdown, /node bin\/ddd-rollback-deferral-template\.mjs/);
 assert.match(markdown, /DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts\/ddd\/release\/release-performance-baseline-commands\.sh/);
 assert.match(markdown, /Status: BLOCKED/);
 assert.match(markdown, /## Next Action Queue/);
@@ -559,7 +559,7 @@ assert.doesNotMatch(markdown, /\/secure\/\.env\.release\.local/);
   fs.writeFileSync(path.join(tempDir, "release-owner-input-receipt.json"), `${JSON.stringify(ownerInputReceipt, null, 2)}\n`);
   const jsonOutput = path.join(tempDir, "brief.json");
   const markdownOutput = path.join(tempDir, "brief.md");
-  const result = spawnSync("node", ["bin/ddd-release-unblock-brief.mjs"], {
+  const result = spawnSync("node", ["bin\/ddd-release-unblock-brief.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

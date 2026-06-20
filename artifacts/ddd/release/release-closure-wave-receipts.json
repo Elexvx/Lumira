@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "summary": {
     "waveCount": 4,
     "readyForStrictGateRerunCount": 3,
-    "artifactMissingCount": 0,
-    "contentBlockedCount": 1,
-    "expectedArtifactCount": 6,
+    "artifactMissingCount": 1,
+    "contentBlockedCount": 0,
+    "expectedArtifactCount": 9,
     "presentArtifactCount": 6,
-    "missingArtifactCount": 0
+    "missingArtifactCount": 3
   },
   "waves": [
     {
@@ -40,18 +40,17 @@
       "missingArtifacts": [],
       "blockerHints": [],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
       ],
       "exitCriteria": [
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
-        "Required lumira-server and frontend images are built, inspected, and not skipped."
+        "Required lumira-server and lumira-ui images are built, inspected, and not skipped."
       ],
       "nextCheck": "Rerun strict release gate and readiness summary; this wave's expected artifacts are present.",
       "rerunCommands": [
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ]
     },
     {
@@ -81,7 +80,7 @@
       "missingArtifacts": [],
       "blockerHints": [],
       "commands": [
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node bin/ddd-runtime-readiness-smoke.mjs"
       ],
       "exitCriteria": [
         "All 30 owner readiness/health/metrics checks pass.",
@@ -90,45 +89,51 @@
       ],
       "nextCheck": "Rerun strict release gate and readiness summary; this wave's expected artifacts are present.",
       "rerunCommands": [
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ]
     },
     {
       "wave": 3,
-      "owner": "release-owner",
-      "batchId": "p0-manifest-release-owner",
+      "owner": "lumira-ui",
+      "batchId": "p0-manifest-lumira-ui",
       "priority": "P0",
-      "receiptStatus": "CONTENT_BLOCKED",
+      "receiptStatus": "ARTIFACT_MISSING",
       "itemOrders": [
-        9
+        9,
+        10,
+        11
       ],
       "itemIds": [
-        "manifest-missing-no-explain-json-files-in-tmp-ddd-explain"
+        "manifest-missing-lumira-ui-frontend-smoke-json",
+        "manifest-missing-lumira-ui-lumira-ui-build-evidence-json",
+        "manifest-missing-lumira-ui-lumira-ui-static-evidence-json"
       ],
-      "expectedArtifactCount": 1,
+      "expectedArtifactCount": 4,
       "presentArtifactCount": 1,
-      "missingArtifactCount": 0,
+      "missingArtifactCount": 3,
       "presentArtifacts": [
         "artifacts/ddd/release/evidence-manifest.json"
       ],
-      "missingArtifacts": [],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain"
+      "missingArtifacts": [
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
       ],
+      "blockerHints": [],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
       ],
       "exitCriteria": [
         "All required release evidence artifacts are present and checksummed.",
         "Clear this batch before running downstream runtime-heavy evidence."
       ],
-      "nextCheck": "Regenerate this wave's content/provenance evidence, then rerun strict release gate and readiness summary.",
+      "nextCheck": "Run this wave in a production-equivalent environment, then rerun strict release gate and readiness summary.",
       "rerunCommands": [
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ]
     },
     {
@@ -138,15 +143,15 @@
       "priority": "P0",
       "receiptStatus": "READY_FOR_STRICT_GATE_RERUN",
       "itemOrders": [
-        10,
-        11,
         12,
         13,
         14,
         15,
         16,
         17,
-        18
+        18,
+        19,
+        20
       ],
       "itemIds": [
         "performance-actual-shape-1",
@@ -170,8 +175,8 @@
       "missingArtifacts": [],
       "blockerHints": [],
       "commands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs"
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs"
       ],
       "exitCriteria": [
         "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
@@ -180,8 +185,8 @@
       ],
       "nextCheck": "Rerun strict release gate and readiness summary; this wave's expected artifacts are present.",
       "rerunCommands": [
-        "node scripts/ddd-release-evidence-gate.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "node bin/ddd-release-evidence-gate.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ]
     }
   ]

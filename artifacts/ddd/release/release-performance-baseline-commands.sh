@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # Lumira DDD authenticated performance baseline closure commands.
-# Generated at: 2026-06-19T13:42:59.865Z
+# Generated at: 2026-06-19T18:19:45.629Z
 # Status: BLOCKED
 # Ready to promote: false
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then
-  if [[ -f "scripts/ddd-release-readiness-summary.mjs" ]]; then
+  if [[ -f "bin/ddd-release-readiness-summary.mjs" ]]; then
     LUMIRA_REPO_ROOT=$(pwd)
   else
     LUMIRA_REPO_ROOT=$(cd "${SCRIPT_DIR}/../../.." && pwd)
@@ -107,12 +107,12 @@ if [[ "${DDD_AUTH_PERF_BASELINE_DETAIL}" == "1" || "${DDD_AUTH_PERF_BASELINE_DET
   echo '- strict release baseline requires baselineType=authenticated-runtime'
   echo "commands:"
   echo '- DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh'
-  echo '- DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs'
-  echo '- node scripts/ddd-promote-performance-baseline.mjs'
-  echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
-  echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
-  echo '- node scripts/ddd-release-evidence-gate.mjs'
-  echo '- node scripts/ddd-release-readiness-summary.mjs'
+  echo '- DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs'
+  echo '- node bin/ddd-promote-performance-baseline.mjs'
+  echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  echo '- node bin/ddd-release-evidence-gate.mjs'
+  echo '- node bin/ddd-release-readiness-summary.mjs'
   echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
   if [[ "${DDD_AUTH_PERF_BASELINE_DETAIL}" == "1" || "${DDD_AUTH_PERF_BASELINE_DETAIL}" == "true" ]]; then exit 0; fi
 fi
@@ -124,20 +124,20 @@ fi
 
 if [[ "${DDD_AUTH_PERF_BASELINE_EXECUTE}" != "1" && "${DDD_AUTH_PERF_BASELINE_EXECUTE}" != "true" ]]; then
   run_command 'DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh'
-  run_command 'DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs'
-  run_command 'node scripts/ddd-promote-performance-baseline.mjs'
-  run_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
-  run_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
-  run_command 'node scripts/ddd-release-evidence-gate.mjs'
-  run_command 'node scripts/ddd-release-readiness-summary.mjs'
+  run_command 'DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs'
+  run_command 'node bin/ddd-promote-performance-baseline.mjs'
+  run_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  run_command 'node bin/ddd-release-evidence-gate.mjs'
+  run_command 'node bin/ddd-release-readiness-summary.mjs'
   run_command 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
   exit 0
 fi
 run_command 'DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh'
-run_command 'DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs'
-run_command 'node scripts/ddd-promote-performance-baseline.mjs'
-run_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs'
-run_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs'
-run_command 'node scripts/ddd-release-evidence-gate.mjs'
-run_command 'node scripts/ddd-release-readiness-summary.mjs'
+run_command 'DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs'
+run_command 'node bin/ddd-promote-performance-baseline.mjs'
+run_command 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+run_command 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+run_command 'node bin/ddd-release-evidence-gate.mjs'
+run_command 'node bin/ddd-release-readiness-summary.mjs'
 run_command 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'

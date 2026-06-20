@@ -10,7 +10,7 @@ import {
 } from "./ddd-release-evidence-manifest-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const checklistPath = path.join(repoRoot, "docs", "34-ddd-release-evidence-checklist.md");
+const checklistPath = path.join(repoRoot, "doc", "34-ddd-release-evidence-checklist.md");
 const checklist = fs.readFileSync(checklistPath, "utf8");
 const requiredSet = new Set(requiredManifestArtifacts);
 const optionalSet = new Set(optionalManifestArtifacts);

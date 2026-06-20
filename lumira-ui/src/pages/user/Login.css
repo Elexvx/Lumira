@@ -371,13 +371,27 @@ html[data-theme='dark'] .saas-login-page__actions {
 }
 
 .saas-login-page__agreement-modal .ant-modal-body {
-  max-height: min(var(--saas-spacing-64), var(--saas-spacing-560));
-  padding-top: var(--saas-spacing-xs);
+  max-height: min(560px, calc(100vh - 180px));
+  padding: var(--saas-spacing-sm) var(--saas-spacing-lg) var(--saas-spacing-lg);
   overflow-y: auto;
 }
 
 .saas-login-page__agreement-modal .ant-modal-content {
   max-height: calc(100vh - var(--saas-spacing-64));
+  overflow: hidden;
+}
+
+.saas-login-page__agreement-modal .ant-modal-header {
+  padding: var(--saas-spacing-lg) var(--saas-spacing-lg) 0;
+}
+
+.saas-login-page__agreement-modal .ant-modal-close {
+  top: var(--saas-spacing-md);
+  inset-inline-end: var(--saas-spacing-md);
+}
+
+.saas-login-page__agreement-modal .ant-modal-body > div {
+  min-height: 240px;
 }
 
 .saas-login-page__agreement-modal .wmde-markdown {
@@ -431,6 +445,23 @@ html[data-theme='dark'] .saas-login-page__actions {
     flex-basis: var(--saas-spacing-110);
     width: var(--saas-spacing-110);
     padding-inline: var(--saas-spacing-xs);
+  }
+
+  .saas-login-page__agreement-modal {
+    max-width: calc(100vw - var(--saas-spacing-24));
+  }
+
+  .saas-login-page__agreement-modal .ant-modal-body {
+    max-height: calc(100vh - 160px);
+    padding: var(--saas-spacing-sm) var(--saas-spacing-md) var(--saas-spacing-md);
+  }
+
+  .saas-login-page__agreement-modal .ant-modal-header {
+    padding: var(--saas-spacing-md) var(--saas-spacing-md) 0;
+  }
+
+  .saas-login-page__agreement-modal .ant-modal-body > div {
+    min-height: 220px;
   }
 }
 

@@ -78,7 +78,7 @@ function sha256(file) {
 }
 
 function runPromote(env) {
-  return spawnSync("node", ["bin/ddd-promote-performance-baseline.mjs"], {
+  return spawnSync("node", ["bin\/ddd-promote-performance-baseline.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

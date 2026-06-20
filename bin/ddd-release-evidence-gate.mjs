@@ -373,7 +373,7 @@ function validateOutbox() {
 function validateAiRuntimeDrill() {
   const ai = readJson("ai/ai-runtime-drill.json");
   if (ai.missing) {
-    record("ai-runtime-drill", "warning", "missing local AI runtime drill artifact; run bin/ddd-ai-runtime-drill.mjs", ai.file);
+    record("ai-runtime-drill", "warning", "missing local AI runtime drill artifact; run bin\/ddd-ai-runtime-drill.mjs", ai.file);
     if (strict) {
       record("ai-runtime-drill-strict", "blocker", "strict release requires AI runtime drill artifact", ai.file);
     }
@@ -449,7 +449,7 @@ function validatePhysicalSplit() {
 function validateBackendTestEvidence() {
   const tests = readJson("tests/backend-test-evidence.json");
   if (tests.missing) {
-    record("backend-test-evidence", "warning", "missing backend test evidence artifact; run bin/ddd-backend-test-evidence.mjs after Maven tests", tests.file);
+    record("backend-test-evidence", "warning", "missing backend test evidence artifact; run bin\/ddd-backend-test-evidence.mjs after Maven tests", tests.file);
     if (strict) {
       record("backend-test-evidence-strict", "blocker", "strict release requires backend architecture and owner contract test evidence", tests.file);
     }
@@ -470,7 +470,7 @@ function validateBackendTestEvidence() {
 function validateBackendBuildEvidence() {
   const build = readJson("build/backend-build-evidence.json");
   if (build.missing) {
-    record("backend-build-evidence", "warning", "missing backend build evidence artifact; run bin/ddd-backend-build-evidence.mjs", build.file);
+    record("backend-build-evidence", "warning", "missing backend build evidence artifact; run bin\/ddd-backend-build-evidence.mjs", build.file);
     if (strict) {
       record("backend-build-evidence-strict", "blocker", "strict release requires backend package/build evidence", build.file);
     }
@@ -491,7 +491,7 @@ function validateBackendBuildEvidence() {
 function validateDockerBuildEvidence() {
   const build = readJson("build/docker-image-evidence.json");
   if (build.missing) {
-    record("docker-build-evidence", "warning", "missing Docker image evidence artifact; run bin/ddd-docker-build-evidence.mjs", build.file);
+    record("docker-build-evidence", "warning", "missing Docker image evidence artifact; run bin\/ddd-docker-build-evidence.mjs", build.file);
     if (strict) {
       record("docker-build-evidence-strict", "blocker", "strict release requires deployable Docker image build evidence", build.file);
     }
@@ -549,7 +549,7 @@ function isDockerAggregateIssue(issue) {
 function validateMigrationEvidence() {
   const migration = readJson("migration/migration-evidence.json");
   if (migration.missing) {
-    record("migration-evidence", "warning", "missing migration evidence artifact; run bin/ddd-migration-evidence.mjs", migration.file);
+    record("migration-evidence", "warning", "missing migration evidence artifact; run bin\/ddd-migration-evidence.mjs", migration.file);
     if (strict) {
       record("migration-evidence-strict", "blocker", "strict release requires Flyway migration evidence", migration.file);
     }
@@ -582,7 +582,7 @@ function validateMigrationEvidence() {
 function validateReleaseConfigEvidence() {
   const config = readJson("config/release-config-evidence.json");
   if (config.missing) {
-    record("release-config-evidence", "warning", "missing release config evidence artifact; run bin/ddd-release-config-evidence.mjs with DDD_RELEASE_ENV_FILE", config.file);
+    record("release-config-evidence", "warning", "missing release config evidence artifact; run bin\/ddd-release-config-evidence.mjs with DDD_RELEASE_ENV_FILE", config.file);
     if (strict) {
       record("release-config-evidence-strict", "blocker", "strict release requires production-equivalent configuration evidence", config.file);
     }
@@ -610,7 +610,7 @@ function validateReleaseConfigEvidence() {
 function validateReleaseEnvLintEvidence() {
   const lint = readJson("release/release-env-lint.json");
   if (lint.missing) {
-    record("release-env-lint", "warning", "missing release env lint artifact; run bin/ddd-release-env-file-lint.mjs with DDD_RELEASE_ENV_FILE", lint.file);
+    record("release-env-lint", "warning", "missing release env lint artifact; run bin\/ddd-release-env-file-lint.mjs with DDD_RELEASE_ENV_FILE", lint.file);
     if (strict) {
       record("release-env-lint-strict", "blocker", "strict release requires release env lint evidence", lint.file);
     }
@@ -649,7 +649,7 @@ function validateReleaseEnvLintEvidence() {
 function validateEvidenceManifest() {
   const manifest = readJson("release/evidence-manifest.json");
   if (manifest.missing) {
-    record("release-evidence-manifest", "warning", "missing evidence manifest; run bin/ddd-release-evidence-manifest.mjs before strict release gate", manifest.file);
+    record("release-evidence-manifest", "warning", "missing evidence manifest; run bin\/ddd-release-evidence-manifest.mjs before strict release gate", manifest.file);
     if (strict) {
       record("release-evidence-manifest-strict", "blocker", "strict release requires checksummed evidence manifest", manifest.file);
     }
@@ -675,7 +675,7 @@ function validateEvidenceManifest() {
 function validateReleaseOrchestrator() {
   const orchestrator = readJson("release/orchestrator-report.json");
   if (orchestrator.missing) {
-    record("release-evidence-orchestrator", "warning", "missing orchestrator report; run bin/ddd-release-evidence-orchestrator.mjs --run --strict", orchestrator.file);
+    record("release-evidence-orchestrator", "warning", "missing orchestrator report; run bin\/ddd-release-evidence-orchestrator.mjs --run --strict", orchestrator.file);
     if (strict) {
       record("release-evidence-orchestrator-strict", "blocker", "strict release requires orchestrator execution report", orchestrator.file);
     }
@@ -712,7 +712,7 @@ function validateReleaseOrchestrator() {
 function validateFrontendSmoke() {
   const frontendSmoke = readJson("lumira-ui/frontend-smoke.json");
   if (frontendSmoke.missing) {
-    record("frontend-smoke", "warning", "missing frontend smoke artifact; run bin/ddd-frontend-smoke-evidence.mjs", frontendSmoke.file);
+    record("frontend-smoke", "warning", "missing frontend smoke artifact; run bin\/ddd-frontend-smoke-evidence.mjs", frontendSmoke.file);
     if (strict) {
       record("frontend-smoke-strict", "blocker", "strict release requires deployed frontend smoke evidence", frontendSmoke.file);
     }
@@ -751,7 +751,7 @@ function validateFrontendSmoke() {
 function validateFrontendBuildEvidence() {
   const frontendBuild = readJson("lumira-ui/lumira-ui-build-evidence.json");
   if (frontendBuild.missing) {
-    record("lumira-ui-build-evidence", "warning", "missing lumira-ui build evidence artifact; run bin/ddd-frontend-build-evidence.mjs", frontendBuild.file);
+    record("lumira-ui-build-evidence", "warning", "missing lumira-ui build evidence artifact; run bin\/ddd-frontend-build-evidence.mjs", frontendBuild.file);
     if (strict) {
       record("lumira-ui-build-evidence-strict", "blocker", "strict release requires lumira-ui production build evidence", frontendBuild.file);
     }
@@ -772,7 +772,7 @@ function validateFrontendBuildEvidence() {
 function validateFrontendStaticEvidence() {
   const frontendStatic = readJson("lumira-ui/lumira-ui-static-evidence.json");
   if (frontendStatic.missing) {
-    record("lumira-ui-static-evidence", "warning", "missing lumira-ui static evidence artifact; run bin/ddd-frontend-static-evidence.mjs", frontendStatic.file);
+    record("lumira-ui-static-evidence", "warning", "missing lumira-ui static evidence artifact; run bin\/ddd-frontend-static-evidence.mjs", frontendStatic.file);
     if (strict) {
       record("lumira-ui-static-evidence-strict", "blocker", "strict release requires lumira-ui lint/typecheck/unit evidence", frontendStatic.file);
     }

@@ -670,3 +670,9 @@ artifacts/ddd/runbook/YYYY-MM-DD.md
 - 每个上下文的回滚动作至少演练一次或有明确不可演练原因�?
 - `artifacts/ddd/rollback/rollback-drill.json` 覆盖十个上下文，并进�?release evidence gate�?
 - 前端 smoke 来自 HTTPS 部署 baseURL，设�?`DDD_FRONTEND_EXPECT_DEPLOYED=true`，并覆盖登录、首页、用户角色、消息、上传、插件、国际化、支付回调模拟、AI 会话�?
+
+
+<!-- release-unblock-brief documents the first 前 5 个 RUN_NOW owner actions. -->
+
+
+<!-- release-unblock-brief documents the first 前 5 个 `RUN_NOW` owner actions. -->

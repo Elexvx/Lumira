@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
   "summary": {
     "waveCount": 4,
-    "uniqueEnvKeyCount": 10,
+    "uniqueEnvKeyCount": 11,
     "ownerCount": 3
   },
   "uniqueEnvKeys": [
@@ -16,9 +16,10 @@
     "DDD_DOCKER_COMMAND",
     "DDD_EVIDENCE_ENVIRONMENT",
     "DDD_EVIDENCE_OPERATOR",
+    "DDD_FRONTEND_EXPECT_DEPLOYED",
     "DDD_RELEASE_CANDIDATE",
-    "DDD_RELEASE_MANIFEST_STRICT",
-    "LUMIRA_BASE_URL"
+    "LUMIRA_BASE_URL",
+    "PLAYWRIGHT_BASE_URL"
   ],
   "waves": [
     {
@@ -47,8 +48,7 @@
         "DDD_DOCKER_COMMAND"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
@@ -57,7 +57,7 @@
       "exitCriteria": [
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
-        "Required lumira-server and frontend images are built, inspected, and not skipped."
+        "Required lumira-server and lumira-ui images are built, inspected, and not skipped."
       ]
     },
     {
@@ -88,7 +88,7 @@
         "LUMIRA_BASE_URL"
       ],
       "commands": [
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node bin/ddd-runtime-readiness-smoke.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/readiness/summary.json"
@@ -102,36 +102,41 @@
     },
     {
       "wave": 3,
-      "owner": "release-owner",
-      "batchId": "p0-manifest-release-owner",
+      "owner": "lumira-ui",
+      "batchId": "p0-manifest-lumira-ui",
       "priority": "P0",
       "closureKinds": [
         "RUN_NOW_WITH_REAL_ENV"
       ],
       "itemOrders": [
-        9
+        9,
+        10,
+        11
       ],
       "itemIds": [
-        "manifest-missing-no-explain-json-files-in-tmp-ddd-explain"
+        "manifest-missing-lumira-ui-frontend-smoke-json",
+        "manifest-missing-lumira-ui-lumira-ui-build-evidence-json",
+        "manifest-missing-lumira-ui-lumira-ui-static-evidence-json"
       ],
       "envKeyCount": 4,
       "envKeys": [
         "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
         "DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT"
+        "PLAYWRIGHT_BASE_URL"
       ],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
       ],
       "expectedArtifacts": [
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json",
         "artifacts/ddd/release/evidence-manifest.json"
       ],
-      "blockerHints": [
-        "artifacts/ddd/release/evidence-manifest.json blocker: artifacts/ddd/no explain JSON files in tmp\\ddd-explain"
-      ],
+      "blockerHints": [],
       "exitCriteria": [
         "All required release evidence artifacts are present and checksummed.",
         "Clear this batch before running downstream runtime-heavy evidence."
@@ -147,15 +152,15 @@
         "RUN_NOW_WITH_REAL_ENV"
       ],
       "itemOrders": [
-        10,
-        11,
         12,
         13,
         14,
         15,
         16,
         17,
-        18
+        18,
+        19,
+        20
       ],
       "itemIds": [
         "performance-actual-shape-1",
@@ -176,8 +181,8 @@
         "DDD_RELEASE_CANDIDATE"
       ],
       "commands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs"
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/performance/authenticated-runtime-actual.json",

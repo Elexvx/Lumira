@@ -1,6 +1,6 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T18:17:45.175Z",
   "willWriteFiles": false,
   "redacted": false,
   "receiptFile": null,
@@ -20,39 +20,13 @@
   "coverage": {
     "status": "BLOCKED",
     "coveredLaneCount": 0,
-    "expectedLaneCount": 5,
-    "missingLanes": [
-      {
-        "key": "release-infra:p0-release-env",
-        "owner": "release-infra",
-        "lane": "p0-release-env"
-      },
-      {
-        "key": "release-infra:p0-docker-images",
-        "owner": "release-infra",
-        "lane": "p0-docker-images"
-      },
-      {
-        "key": "release-infra:p1-p2-data-safety",
-        "owner": "release-infra",
-        "lane": "p1-p2-data-safety"
-      },
-      {
-        "key": "release-infra:final-review",
-        "owner": "release-infra",
-        "lane": "final-review"
-      },
-      {
-        "key": "ai-owner:p1-runtime-business",
-        "owner": "ai-owner",
-        "lane": "p1-runtime-business"
-      }
-    ]
+    "expectedLaneCount": 0,
+    "missingLanes": []
   },
   "base64": {
     "status": "SKIPPED",
     "ready": false,
-    "command": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+    "command": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
     "printsValue": true
   },
   "dispatch": {
@@ -65,7 +39,7 @@
   "issues": [
     "lane completion receipt file not provided",
     "DDD_LANE_COMPLETION_RECEIPT_FILE or --lane-completion-receipt-file is required",
-    "missing lanes=release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-p2-data-safety, release-infra:final-review, ai-owner:p1-runtime-business"
+    "receiptStatus=missing"
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"
 }

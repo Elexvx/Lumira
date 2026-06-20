@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -96,21 +97,54 @@ public class FileProcessingTaskService {
     public List<ProcessingTask> claimPendingTasks(int limit) {
         int normalizedLimit = Math.max(1, Math.min(limit, MAX_CLAIM_LIMIT));
         LocalDateTime now = LocalDateTime.now();
-        List<ProcessingTask> candidates = jdbcTemplate.query(
+        String claimToken = UUID.randomUUID().toString();
+        LocalDateTime claimExpiresAt = now.plusMinutes(15);
+        jdbcTemplate.update(
+                """
+                        update file_processing_task t
+                        join (
+                            select id
+                            from file_processing_task
+                            where deleted = 0
+                              and (
+                                    status = ?
+                                    or (status = ? and (next_retry_at is null or next_retry_at <= ?))
+                                    or (status = ? and claim_expires_at is not null and claim_expires_at <= ?)
+                              )
+                            order by priority desc, created_at asc, id asc
+                            limit ?
+                        ) picked on picked.id = t.id
+                        set t.status = ?,
+                            t.claimed_at = ?,
+                            t.claimed_by = ?,
+                            t.claim_token = ?,
+                            t.claim_expires_at = ?,
+                            t.updated_at = ?
+                        where t.deleted = 0
+                        """,
+                STATUS_PENDING,
+                STATUS_FAILED,
+                now,
+                STATUS_PROCESSING,
+                now,
+                normalizedLimit,
+                STATUS_PROCESSING,
+                now,
+                workerId(),
+                claimToken,
+                claimExpiresAt,
+                now
+        );
+        return jdbcTemplate.query(
                 """
                         select id, tenant_id as tenantId, file_id as fileId, task_type as taskType,
                                status, priority, retry_count as retryCount, next_retry_at as nextRetryAt,
                                claimed_at as claimedAt, completed_at as completedAt, last_error as lastError,
                                created_by as createdBy, created_at as createdAt, updated_by as updatedBy,
-                               updated_at as updatedAt
+                               updated_at as updatedAt, claim_token as claimToken
                         from file_processing_task
-                        where deleted = 0
-                          and (
-                                status = ?
-                                or (status = ? and (next_retry_at is null or next_retry_at <= ?))
-                          )
+                        where deleted = 0 and claim_token = ?
                         order by priority desc, created_at asc, id asc
-                        limit ?
                         """,
                 (rs, rowNum) -> new ProcessingTask(
                         rs.getLong("id"),
@@ -127,20 +161,11 @@ public class FileProcessingTaskService {
                         rs.getLong("createdBy"),
                         rs.getObject("createdAt", LocalDateTime.class),
                         rs.getLong("updatedBy"),
-                        rs.getObject("updatedAt", LocalDateTime.class)
+                        rs.getObject("updatedAt", LocalDateTime.class),
+                        rs.getString("claimToken")
                 ),
-                STATUS_PENDING,
-                STATUS_FAILED,
-                now,
-                normalizedLimit
+                claimToken
         );
-        List<ProcessingTask> claimed = new ArrayList<>();
-        for (ProcessingTask task : candidates) {
-            if (claim(task)) {
-                claimed.add(task.withStatus(STATUS_PROCESSING));
-            }
-        }
-        return claimed;
     }
 
     public void markSucceeded(Long taskId, Long userId) {
@@ -152,7 +177,7 @@ public class FileProcessingTaskService {
                 """
                         update file_processing_task
                         set status = ?, completed_at = ?, last_error = null, next_retry_at = null,
-                            updated_at = ?, updated_by = ?
+                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
                         where id = ? and deleted = 0
                         """,
                 STATUS_SUCCEEDED,
@@ -175,7 +200,7 @@ public class FileProcessingTaskService {
                 """
                         update file_processing_task
                         set status = ?, retry_count = ?, next_retry_at = ?, last_error = ?,
-                            updated_at = ?, updated_by = ?
+                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
                         where id = ? and deleted = 0
                         """,
                 deadLetter ? STATUS_DEAD_LETTER : STATUS_FAILED,
@@ -186,23 +211,6 @@ public class FileProcessingTaskService {
                 task.updatedBy() == null ? 0L : task.updatedBy(),
                 task.id()
         );
-    }
-
-    private boolean claim(ProcessingTask task) {
-        int updated = jdbcTemplate.update(
-                """
-                        update file_processing_task
-                        set status = ?, claimed_at = ?, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0 and status = ?
-                        """,
-                STATUS_PROCESSING,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                task.updatedBy() == null ? 0L : task.updatedBy(),
-                task.id(),
-                task.status()
-        );
-        return updated > 0;
     }
 
     private void process(ProcessingTask task) {
@@ -347,6 +355,10 @@ public class FileProcessingTaskService {
         return message.length() <= MAX_ERROR_LENGTH ? message : message.substring(0, MAX_ERROR_LENGTH);
     }
 
+    private String workerId() {
+        return System.getProperty("lumira.worker.id", java.net.InetAddress.getLoopbackAddress().getHostName());
+    }
+
     public record ProcessingTask(
             Long id,
             Long tenantId,
@@ -362,11 +374,33 @@ public class FileProcessingTaskService {
             Long createdBy,
             LocalDateTime createdAt,
             Long updatedBy,
-            LocalDateTime updatedAt
+            LocalDateTime updatedAt,
+            String claimToken
     ) {
+        public ProcessingTask(
+                Long id,
+                Long tenantId,
+                Long fileId,
+                String taskType,
+                String status,
+                Integer priority,
+                Integer retryCount,
+                LocalDateTime nextRetryAt,
+                LocalDateTime claimedAt,
+                LocalDateTime completedAt,
+                String lastError,
+                Long createdBy,
+                LocalDateTime createdAt,
+                Long updatedBy,
+                LocalDateTime updatedAt
+        ) {
+            this(id, tenantId, fileId, taskType, status, priority, retryCount, nextRetryAt,
+                    claimedAt, completedAt, lastError, createdBy, createdAt, updatedBy, updatedAt, null);
+        }
+
         ProcessingTask withStatus(String status) {
             return new ProcessingTask(id, tenantId, fileId, taskType, status, priority, retryCount,
-                    nextRetryAt, claimedAt, completedAt, lastError, createdBy, createdAt, updatedBy, updatedAt);
+                    nextRetryAt, claimedAt, completedAt, lastError, createdBy, createdAt, updatedBy, updatedAt, claimToken);
         }
     }
 }

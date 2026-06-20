@@ -19,7 +19,7 @@ fs.writeFileSync(missingReport, `${JSON.stringify({
 }, null, 2)}\n`);
 
 function runLint(envFile, extraEnv = {}) {
-  return spawnSync("node", ["bin/ddd-release-env-file-lint.mjs", envFile].filter(Boolean), {
+  return spawnSync("node", ["bin\/ddd-release-env-file-lint.mjs", envFile].filter(Boolean), {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -63,7 +63,7 @@ assert.equal(report.evidenceOperator, "lint-test-runner");
 assert(!report.blockers.some((blocker) => blocker.includes("DDD_RELEASE_ENV_FILE or positional env file path is required")));
 
 const inferredProvenanceReport = path.join(tmpDir, "release-env-lint-inferred-provenance.json");
-const inferredProvenance = spawnSync("node", ["bin/ddd-release-env-file-lint.mjs"], {
+const inferredProvenance = spawnSync("node", ["bin\/ddd-release-env-file-lint.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

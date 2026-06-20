@@ -1,10 +1,10 @@
 # DDD Staging Handoff Bundle
 
-Generated at: 2026-06-19T14:23:18.022Z
-Status: PASS
+Generated at: 2026-06-19T18:17:45.175Z
+Status: BLOCKED
 Final recommendation: NO_GO_STRICT
 Cutover allowed: false
-Blocked gates: 0/6
+Blocked gates: 4/6
 
 ## Operator Quick Start
 
@@ -14,16 +14,16 @@ Blocked gates: 0/6
 4. Use `owner-evidence-intake.md` to send each owner exactly their packet, env template, missing artifacts, and submission commands.
 5. Use `next-action-queue.md` and `owner-lane-matrix.md` to route the first owner lane.
 6. Copy `next-action.template.env` to a secure local env file and replace every placeholder.
-7. Validate that file with `node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>`.
+7. Validate that file with `node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>`.
 8. Use `next-action-verification-plan.md` as the ordered route after the first-wave env check passes.
-9. Validate owner lane receipt coverage with `node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>` and require `Coverage: 5/5`.
+9. Validate owner lane receipt coverage with `node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>` and require `Coverage: 5/5`.
 10. Use `lane-receipt-fragments.md` as the 5-lane receipt assembly index before submitting the redacted receipt.
 11. Read `production-cutover-audit.md` before final approval; every audit item must be PASS.
 12. Start from `production-unblock-quickstart.md` when the audit is still `NO_GO_STRICT`.
 13. Use `production-unblock-plan.md` as the focused production unblock checklist when the quickstart needs detail.
 14. Use `production-evidence-readiness.md` to verify env receipt, lane receipt, owner evidence, production audit, and final go/no-go evidence in one table.
-15. Run `node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` before final go/no-go; it must exit 0.
-16. Re-run `node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.
+15. Run `node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce` before final go/no-go; it must exit 0.
+16. Re-run `node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>` only after all evidence-producing checks pass.
 
 ## Status Views
 
@@ -150,56 +150,56 @@ Blocked gates: 0/6
 ## First Commands
 
 ```sh
-node scripts/ddd-staging-execution-checklist.mjs --rollup-markdown
-node scripts/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown
-node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance-markdown
-node scripts/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown
-node scripts/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --closure-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --next-action-queue-markdown
-node scripts/ddd-staging-execution-checklist.mjs --owner-lane-matrix-markdown
-node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>
-node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown
-node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>
-node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>
-node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown
-node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>
-node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv
-node scripts/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv --lane-completion-receipt-file=<receipt-file>
-node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>
-node scripts/ddd-staging-execution-checklist.mjs --next-action-env-template
-node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>
-node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>
-node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>
-node scripts/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown
-node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>
-node scripts/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>
-node scripts/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown
-node scripts/ddd-staging-execution-checklist.mjs --release-env-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown
-node scripts/ddd-staging-execution-checklist.mjs --release-env-next-owner-template
-node scripts/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown
-node scripts/ddd-release-env-fill-checklist.mjs --markdown
-node scripts/ddd-release-env-fill-checklist.mjs --env-template
-node scripts/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown
-node scripts/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template
-node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown
-node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs
-node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command
-node scripts/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>
-node scripts/ddd-staging-execution-checklist.mjs --final-review-markdown
-node scripts/ddd-staging-execution-checklist.mjs --evidence-env-template
-node scripts/ddd-staging-execution-checklist.mjs --owner-packets
+node bin/ddd-staging-execution-checklist.mjs --rollup-markdown
+node bin/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown
+node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance-markdown
+node bin/ddd-staging-execution-checklist.mjs --evidence-artifact-gap-report-markdown
+node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --closure-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --next-action-queue-markdown
+node bin/ddd-staging-execution-checklist.mjs --owner-lane-matrix-markdown
+node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>
+node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-template-markdown
+node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>
+node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>
+node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown
+node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>
+node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv
+node bin/ddd-staging-execution-checklist.mjs --evidence-closure-board-csv --lane-completion-receipt-file=<receipt-file>
+node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>
+node bin/ddd-staging-execution-checklist.mjs --next-action-env-template
+node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>
+node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>
+node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>
+node bin/ddd-staging-execution-checklist.mjs --next-action-verification-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown
+node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>
+node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>
+node bin/ddd-staging-execution-checklist.mjs --release-owner-daily-brief-markdown
+node bin/ddd-staging-execution-checklist.mjs --release-env-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --release-env-owner-matrix-markdown
+node bin/ddd-staging-execution-checklist.mjs --release-env-next-owner-template
+node bin/ddd-staging-execution-checklist.mjs --release-env-merge-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan-markdown
+node bin/ddd-release-env-fill-checklist.mjs --markdown
+node bin/ddd-release-env-fill-checklist.mjs --env-template
+node bin/ddd-staging-execution-checklist.mjs --docker-image-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --runtime-business-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --runtime-smoke-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --data-safety-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --data-safety-owner-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --cutover-rehearsal-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-markdown
+node bin/ddd-staging-execution-checklist.mjs --blocking-inputs-env-template
+node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-plan-markdown
+node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs
+node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-command
+node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>
+node bin/ddd-staging-execution-checklist.mjs --final-review-markdown
+node bin/ddd-staging-execution-checklist.mjs --evidence-env-template
+node bin/ddd-staging-execution-checklist.mjs --owner-packets
 ```

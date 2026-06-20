@@ -27,11 +27,11 @@ const forbiddenPatterns = [
 ];
 
 const requiredHandoffReferences = new Map([
-  ["migration-evidence-handoff", "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs"],
-  ["rollback-deferral-owner-handoff", "node bin/ddd-rollback-deferral-template.mjs"],
+  ["migration-evidence-handoff", "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs"],
+  ["rollback-deferral-owner-handoff", "node bin\/ddd-rollback-deferral-template.mjs"],
   ["performance-baseline-handoff", "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh"],
-  ["release-env-owner-input-packet", "node bin/ddd-release-env-owner-input-packet-contract.mjs"],
-  ["release-owner-input-receipt", "node bin/ddd-release-owner-input-receipt-contract.mjs"],
+  ["release-env-owner-input-packet", "node bin\/ddd-release-env-owner-input-packet-contract.mjs"],
+  ["release-owner-input-receipt", "node bin\/ddd-release-owner-input-receipt-contract.mjs"],
 ]);
 
 function readJson(file) {
@@ -274,7 +274,7 @@ function validateReleaseUnblockBrief(brief, markdown = "") {
     if (!Array.isArray(finalOwnerQueueFastPath.commands) || finalOwnerQueueFastPath.commands.length === 0) {
       issues.push("finalOwnerQueueFastPath.commands must be a non-empty array");
     } else {
-      if (!finalOwnerQueueFastPath.commands.includes("node bin/ddd-release-readiness-summary.mjs")) {
+      if (!finalOwnerQueueFastPath.commands.includes("node bin\/ddd-release-readiness-summary.mjs")) {
         issues.push("finalOwnerQueueFastPath.commands must include readiness summary refresh");
       }
       if (!finalOwnerQueueFastPath.commands.includes("DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh")) {

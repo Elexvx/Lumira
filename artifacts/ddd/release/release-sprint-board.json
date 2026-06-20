@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -9,10 +9,10 @@
     "warnings": 8
   },
   "summary": {
-    "batchCount": 24,
+    "batchCount": 22,
     "readyBatchCount": 4,
-    "blockedBatchCount": 20,
-    "pendingItems": 47,
+    "blockedBatchCount": 18,
+    "pendingItems": 42,
     "priorityCount": 4,
     "ownerCount": 16,
     "blockedCutoverItems": 7
@@ -20,19 +20,22 @@
   "nextWave": {
     "priority": "P0",
     "batchIds": [
+      "p0-manifest-lumira-ui",
       "p0-docker-release-infra",
       "p0-runtime-readiness-release-infra",
-      "p0-manifest-release-owner",
       "p0-authenticated-performance-release-performance"
     ],
     "owners": [
+      "lumira-ui",
       "release-infra",
-      "release-owner",
       "release-performance"
     ],
-    "commandCount": 8,
+    "commandCount": 7,
     "expectedArtifacts": [
       "artifacts/ddd/build/docker-image-evidence.json",
+      "artifacts/ddd/lumira-ui/frontend-smoke.json",
+      "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+      "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json",
       "artifacts/ddd/performance/authenticated-runtime-actual.json",
       "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
       "artifacts/ddd/performance/authenticated-runtime-baseline.json",
@@ -46,32 +49,31 @@
       "batchCount": 4,
       "readyBatchCount": 4,
       "blockedBatchCount": 0,
-      "pendingItems": 18,
+      "pendingItems": 20,
       "owners": [
+        "lumira-ui",
         "release-infra",
-        "release-owner",
         "release-performance"
       ],
       "readyBatchIds": [
+        "p0-manifest-lumira-ui",
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
         "p0-authenticated-performance-release-performance"
       ],
       "blockedBatchIds": []
     },
     {
       "priority": "P1",
-      "batchCount": 15,
+      "batchCount": 14,
       "readyBatchCount": 0,
-      "blockedBatchCount": 15,
-      "pendingItems": 17,
+      "blockedBatchCount": 14,
+      "pendingItems": 16,
       "owners": [
         "ai",
         "ai-owner",
         "auth-owner",
         "file-owner",
-        "frontend",
         "iam-owner",
         "job-owner",
         "localization-owner",
@@ -87,7 +89,6 @@
         "p1-rollback-auth-owner",
         "p1-business-e2e-file-owner",
         "p1-rollback-file-owner",
-        "p1-frontend-smoke-frontend",
         "p1-rollback-iam-owner",
         "p1-business-e2e-job-owner",
         "p1-rollback-job-owner",
@@ -104,7 +105,7 @@
       "batchCount": 1,
       "readyBatchCount": 0,
       "blockedBatchCount": 1,
-      "pendingItems": 8,
+      "pendingItems": 2,
       "owners": [
         "database"
       ],
@@ -115,20 +116,18 @@
     },
     {
       "priority": "P3",
-      "batchCount": 4,
+      "batchCount": 3,
       "readyBatchCount": 0,
-      "blockedBatchCount": 4,
+      "blockedBatchCount": 3,
       "pendingItems": 4,
       "owners": [
         "database",
-        "frontend",
         "release-infra",
         "release-owner"
       ],
       "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-database",
-        "p3-orchestrator-frontend",
         "p3-orchestrator-release-infra",
         "p3-orchestrator-release-owner"
       ]
@@ -140,7 +139,7 @@
       "batchCount": 3,
       "readyBatchCount": 2,
       "blockedBatchCount": 1,
-      "pendingItems": 9,
+      "pendingItems": 10,
       "priorities": [
         "P0",
         "P3"
@@ -168,37 +167,18 @@
       "blockedBatchIds": []
     },
     {
-      "owner": "release-owner",
-      "batchCount": 2,
+      "owner": "lumira-ui",
+      "batchCount": 1,
       "readyBatchCount": 1,
-      "blockedBatchCount": 1,
-      "pendingItems": 2,
+      "blockedBatchCount": 0,
+      "pendingItems": 3,
       "priorities": [
-        "P0",
-        "P3"
+        "P0"
       ],
       "nextReadyBatchIds": [
-        "p0-manifest-release-owner"
+        "p0-manifest-lumira-ui"
       ],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
-      ]
-    },
-    {
-      "owner": "database",
-      "batchCount": 2,
-      "readyBatchCount": 0,
-      "blockedBatchCount": 2,
-      "pendingItems": 9,
-      "priorities": [
-        "P2",
-        "P3"
-      ],
-      "nextReadyBatchIds": [],
-      "blockedBatchIds": [
-        "p2-explain-database",
-        "p3-orchestrator-database"
-      ]
+      "blockedBatchIds": []
     },
     {
       "owner": "ai",
@@ -215,6 +195,22 @@
       ]
     },
     {
+      "owner": "database",
+      "batchCount": 2,
+      "readyBatchCount": 0,
+      "blockedBatchCount": 2,
+      "pendingItems": 3,
+      "priorities": [
+        "P2",
+        "P3"
+      ],
+      "nextReadyBatchIds": [],
+      "blockedBatchIds": [
+        "p2-explain-database",
+        "p3-orchestrator-database"
+      ]
+    },
+    {
       "owner": "file-owner",
       "batchCount": 2,
       "readyBatchCount": 0,
@@ -227,22 +223,6 @@
       "blockedBatchIds": [
         "p1-business-e2e-file-owner",
         "p1-rollback-file-owner"
-      ]
-    },
-    {
-      "owner": "frontend",
-      "batchCount": 2,
-      "readyBatchCount": 0,
-      "blockedBatchCount": 2,
-      "pendingItems": 2,
-      "priorities": [
-        "P1",
-        "P3"
-      ],
-      "nextReadyBatchIds": [],
-      "blockedBatchIds": [
-        "p1-frontend-smoke-frontend",
-        "p3-orchestrator-frontend"
       ]
     },
     {
@@ -372,9 +352,65 @@
       "blockedBatchIds": [
         "p1-rollback-plugin-owner"
       ]
+    },
+    {
+      "owner": "release-owner",
+      "batchCount": 1,
+      "readyBatchCount": 0,
+      "blockedBatchCount": 1,
+      "pendingItems": 1,
+      "priorities": [
+        "P3"
+      ],
+      "nextReadyBatchIds": [],
+      "blockedBatchIds": [
+        "p3-orchestrator-release-owner"
+      ]
     }
   ],
   "batchCards": [
+    {
+      "id": "p0-manifest-lumira-ui",
+      "priority": "P0",
+      "status": "READY",
+      "source": "manifest",
+      "owner": "lumira-ui",
+      "pendingItems": 3,
+      "dependsOn": [],
+      "unmetDependencies": [],
+      "lanes": [
+        "evidence-integrity"
+      ],
+      "cutoverChecklistIds": [
+        "evidence-integrity"
+      ],
+      "commands": [
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
+      ],
+      "envCheckGroups": [
+        "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/release/evidence-manifest.json",
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+        "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
+      ],
+      "exitCriteria": [
+        "All required release evidence artifacts are present and checksummed.",
+        "Clear this batch before running downstream runtime-heavy evidence."
+      ],
+      "itemIds": [
+        "manifest-missing-lumira-ui-frontend-smoke-json",
+        "manifest-missing-lumira-ui-lumira-ui-build-evidence-json",
+        "manifest-missing-lumira-ui-lumira-ui-static-evidence-json"
+      ]
+    },
     {
       "id": "p0-docker-release-infra",
       "priority": "P0",
@@ -391,8 +427,7 @@
         "deployable-images"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_DOCKER_BUILD_STRICT=DDD_DOCKER_BUILD_STRICT",
@@ -403,7 +438,7 @@
       ],
       "exitCriteria": [
         "Docker CLI and daemon are available in the evidence runner.",
-        "Required lumira-server and frontend images are built, inspected, and not skipped.",
+        "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
         "Clear this batch before running downstream runtime-heavy evidence."
       ],
       "itemIds": [
@@ -429,7 +464,7 @@
         "production-equivalence"
       ],
       "commands": [
-        "node scripts/ddd-runtime-readiness-smoke.mjs"
+        "node bin/ddd-runtime-readiness-smoke.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -453,43 +488,6 @@
       ]
     },
     {
-      "id": "p0-manifest-release-owner",
-      "priority": "P0",
-      "status": "READY",
-      "source": "manifest",
-      "owner": "release-owner",
-      "pendingItems": 1,
-      "dependsOn": [],
-      "unmetDependencies": [],
-      "lanes": [
-        "evidence-integrity"
-      ],
-      "cutoverChecklistIds": [
-        "evidence-integrity"
-      ],
-      "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs"
-      ],
-      "envCheckGroups": [
-        "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
-        "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/evidence-manifest.json"
-      ],
-      "exitCriteria": [
-        "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence."
-      ],
-      "itemIds": [
-        "manifest-missing-no-explain-json-files-in-tmp-ddd-explain"
-      ]
-    },
-    {
       "id": "p0-authenticated-performance-release-performance",
       "priority": "P0",
       "status": "READY",
@@ -505,8 +503,8 @@
         "production-equivalence"
       ],
       "commands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs"
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs"
       ],
       "envCheckGroups": [
         "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",
@@ -546,7 +544,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -557,7 +555,7 @@
         "runtime-business-acceptance"
       ],
       "commands": [
-        "node scripts/ddd-ai-runtime-drill.mjs"
+        "node bin/ddd-ai-runtime-drill.mjs"
       ],
       "envCheckGroups": [
         "BASE_URL=BASE_URL",
@@ -595,7 +593,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -606,9 +604,9 @@
         "rollback-safety"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -640,7 +638,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -651,9 +649,9 @@
         "rollback-safety"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -685,7 +683,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -696,7 +694,7 @@
         "runtime-business-acceptance"
       ],
       "commands": [
-        "node scripts/ddd-file-processing-e2e-smoke.mjs"
+        "node bin/ddd-file-processing-e2e-smoke.mjs"
       ],
       "envCheckGroups": [
         "BASE_URL=BASE_URL",
@@ -726,7 +724,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -737,9 +735,9 @@
         "rollback-safety"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -762,45 +760,6 @@
       ]
     },
     {
-      "id": "p1-frontend-smoke-frontend",
-      "priority": "P1",
-      "status": "BLOCKED",
-      "source": "frontend-smoke",
-      "owner": "frontend",
-      "pendingItems": 1,
-      "dependsOn": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance"
-      ],
-      "unmetDependencies": [],
-      "lanes": [
-        "frontend-acceptance"
-      ],
-      "cutoverChecklistIds": [
-        "runtime-business-acceptance"
-      ],
-      "commands": [
-        "node scripts/ddd-frontend-playwright-smoke.mjs",
-        "node scripts/ddd-frontend-smoke-evidence.mjs"
-      ],
-      "envCheckGroups": [
-        "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/frontend/frontend-smoke.json",
-        "artifacts/ddd/frontend/playwright-smoke-results.json"
-      ],
-      "exitCriteria": [
-        "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-        "Required Playwright smoke flows all pass and produce a JSON report."
-      ],
-      "itemIds": [
-        "frontend-deployed-expectation"
-      ]
-    },
-    {
       "id": "p1-rollback-iam-owner",
       "priority": "P1",
       "status": "BLOCKED",
@@ -810,7 +769,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -821,9 +780,9 @@
         "rollback-safety"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -855,7 +814,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -866,7 +825,7 @@
         "runtime-business-acceptance"
       ],
       "commands": [
-        "node scripts/ddd-job-e2e-smoke.mjs"
+        "node bin/ddd-job-e2e-smoke.mjs"
       ],
       "envCheckGroups": [
         "BASE_URL=BASE_URL",
@@ -895,7 +854,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -906,9 +865,9 @@
         "rollback-safety"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -940,7 +899,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -951,9 +910,9 @@
         "rollback-safety"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -985,7 +944,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -996,9 +955,9 @@
         "rollback-safety"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -1030,7 +989,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1041,7 +1000,7 @@
         "runtime-business-acceptance"
       ],
       "commands": [
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs"
       ],
       "envCheckGroups": [
         "BASE_URL=BASE_URL",
@@ -1070,7 +1029,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1081,9 +1040,9 @@
         "rollback-safety"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -1115,7 +1074,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1126,9 +1085,9 @@
         "rollback-safety"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -1160,7 +1119,7 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance"
       ],
       "unmetDependencies": [],
@@ -1171,9 +1130,9 @@
         "rollback-safety"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -1201,14 +1160,13 @@
       "status": "BLOCKED",
       "source": "explain",
       "owner": "database",
-      "pendingItems": 8,
+      "pendingItems": 2,
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -1225,7 +1183,6 @@
       ],
       "unmetDependencies": [
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -1247,8 +1204,8 @@
         "database-performance"
       ],
       "commands": [
-        "node scripts/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
       ],
       "envCheckGroups": [
         "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
@@ -1273,14 +1230,8 @@
         "Strict explain gate has no full scans, legacy imports, missing indexes, or contract issues."
       ],
       "itemIds": [
-        "ai-knowledge-index-retry.json",
         "message-archive-total.json",
-        "message-unread-count.json",
-        "message-visible-list.json",
-        "platform-outbox-owner-relay-file.json",
-        "platform-outbox-owner-relay-message.json",
-        "platform-runtime-appearance.json",
-        "plugin-bootstrap.json"
+        "message-unread-count.json"
       ]
     },
     {
@@ -1293,10 +1244,9 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -1314,7 +1264,6 @@
       ],
       "unmetDependencies": [
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -1337,8 +1286,8 @@
         "evidence-integrity"
       ],
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "envCheckGroups": [
         "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE",
@@ -1361,19 +1310,18 @@
       ]
     },
     {
-      "id": "p3-orchestrator-frontend",
+      "id": "p3-orchestrator-release-infra",
       "priority": "P3",
       "status": "BLOCKED",
       "source": "orchestrator",
-      "owner": "frontend",
-      "pendingItems": 1,
+      "owner": "release-infra",
+      "pendingItems": 2,
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -1391,7 +1339,6 @@
       ],
       "unmetDependencies": [
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -1414,10 +1361,12 @@
         "evidence-integrity"
       ],
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "envCheckGroups": [
+        "BASE_URL=BASE_URL",
+        "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL",
         "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
       ],
       "expectedArtifacts": [
@@ -1431,82 +1380,8 @@
         "Run only after all prerequisite evidence batches are clean."
       ],
       "itemIds": [
+        "orchestrator-preflight-backend-runtime-base-url",
         "orchestrator-preflight-frontend-runtime-base-url"
-      ]
-    },
-    {
-      "id": "p3-orchestrator-release-infra",
-      "priority": "P3",
-      "status": "BLOCKED",
-      "source": "orchestrator",
-      "owner": "release-infra",
-      "pendingItems": 1,
-      "dependsOn": [
-        "p0-docker-release-infra",
-        "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
-        "p0-authenticated-performance-release-performance",
-        "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
-        "p1-business-e2e-file-owner",
-        "p1-business-e2e-job-owner",
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-ai-owner",
-        "p1-rollback-auth-owner",
-        "p1-rollback-file-owner",
-        "p1-rollback-iam-owner",
-        "p1-rollback-job-owner",
-        "p1-rollback-localization-owner",
-        "p1-rollback-message-owner",
-        "p1-rollback-payment-owner",
-        "p1-rollback-platform-owner",
-        "p1-rollback-plugin-owner",
-        "p2-explain-database"
-      ],
-      "unmetDependencies": [
-        "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
-        "p1-business-e2e-file-owner",
-        "p1-business-e2e-job-owner",
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-ai-owner",
-        "p1-rollback-auth-owner",
-        "p1-rollback-file-owner",
-        "p1-rollback-iam-owner",
-        "p1-rollback-job-owner",
-        "p1-rollback-localization-owner",
-        "p1-rollback-message-owner",
-        "p1-rollback-payment-owner",
-        "p1-rollback-platform-owner",
-        "p1-rollback-plugin-owner",
-        "p2-explain-database"
-      ],
-      "lanes": [
-        "final-verification"
-      ],
-      "cutoverChecklistIds": [
-        "evidence-integrity"
-      ],
-      "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
-      ],
-      "envCheckGroups": [
-        "BASE_URL=BASE_URL",
-        "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/release/orchestrator-report.json",
-        "artifacts/ddd/release/release-evidence-gate.json",
-        "artifacts/ddd/release/readiness-summary.json"
-      ],
-      "exitCriteria": [
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Run only after all prerequisite evidence batches are clean."
-      ],
-      "itemIds": [
-        "orchestrator-preflight-backend-runtime-base-url"
       ]
     },
     {
@@ -1519,10 +1394,9 @@
       "dependsOn": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
-        "p0-manifest-release-owner",
+        "p0-manifest-lumira-ui",
         "p0-authenticated-performance-release-performance",
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -1540,7 +1414,6 @@
       ],
       "unmetDependencies": [
         "p1-ai-runtime-ai",
-        "p1-frontend-smoke-frontend",
         "p1-business-e2e-file-owner",
         "p1-business-e2e-job-owner",
         "p1-business-e2e-payment-owner",
@@ -1563,8 +1436,8 @@
         "evidence-integrity"
       ],
       "commands": [
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "envCheckGroups": [
         "DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT"

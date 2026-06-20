@@ -8,13 +8,13 @@ import path from "node:path";
 import { requiredRollbackContexts } from "./ddd-rollback-drill-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const templateFile = path.join(repoRoot, "docs", "35-ddd-rollback-drill-template.json");
+const templateFile = path.join(repoRoot, "doc", "35-ddd-rollback-drill-template.json");
 const deferralTemplateScript = fs.readFileSync(
-  path.join(repoRoot, "scripts", "ddd-rollback-deferral-template.mjs"),
+  path.join(repoRoot, "bin", "ddd-rollback-deferral-template.mjs"),
   "utf8",
 );
 const rollbackEvidenceScript = fs.readFileSync(
-  path.join(repoRoot, "scripts", "ddd-rollback-drill-evidence.mjs"),
+  path.join(repoRoot, "bin", "ddd-rollback-drill-evidence.mjs"),
   "utf8",
 );
 
@@ -35,7 +35,7 @@ for (const entry of template.contexts) {
 
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-rollback-init-"));
 const outputFile = path.join(directory, "rollback-drill.json");
-const result = spawnSync("node", ["bin/ddd-init-rollback-drill.mjs"], {
+const result = spawnSync("node", ["bin\/ddd-init-rollback-drill.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {
@@ -95,7 +95,7 @@ assert.match(
 
 const deferralOutputFile = path.join(directory, "rollback-deferrals.template.json");
 const deferralHandoffDir = path.join(directory, "rollback-deferrals-owner-handoff");
-const deferralResult = spawnSync("node", ["bin/ddd-rollback-deferral-template.mjs"], {
+const deferralResult = spawnSync("node", ["bin\/ddd-rollback-deferral-template.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

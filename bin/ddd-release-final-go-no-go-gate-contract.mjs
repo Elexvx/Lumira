@@ -18,8 +18,8 @@ const gatePath = path.join(releaseDir, "release-final-go-no-go-gate.sh");
 const failures = [];
 const tempFiles = [];
 const requiredHandoffCommands = [
-  "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
-  "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+  "DDD_MIGRATION_CHECK_ENV=true node bin\/ddd-migration-evidence.mjs",
+  "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin\/ddd-rollback-drill-evidence.mjs",
   "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
 ];
 const unsafeDisplayCommandPatterns = [
@@ -105,7 +105,7 @@ if (!fs.existsSync(gatePath)) {
     "DDD_STAGING_FINAL_REVIEW_ENFORCE",
     "DDD_NODE_BIN",
     "DDD_FINAL_GO_NO_GO_PACKET",
-    "\"${DDD_NODE_BIN}\" bin/ddd-staging-execution-checklist.mjs --final-review-enforce",
+    "\"${DDD_NODE_BIN}\" bin\/ddd-staging-execution-checklist.mjs --final-review-enforce",
     "staging-final-review-blocked",
     "finalRecommendation",
     "cutoverAllowed",
@@ -125,7 +125,7 @@ if (!fs.existsSync(gatePath)) {
     "releaseEnvFile must be PASS release-env-file with checked chmod 600 permissions before cutoverAllowed can be true",
     "exit 10",
     "exit 0",
-    "Run: node bin/ddd-release-readiness-summary.mjs",
+    "Run: node bin\/ddd-release-readiness-summary.mjs",
   ]) {
     if (!source.includes(snippet)) addFailure(`final go/no-go gate script must include ${snippet}`);
   }
@@ -173,7 +173,7 @@ if (!fs.existsSync(packetPath)) {
   if (packet.cutoverAllowed === false && (!Array.isArray(packet.currentStopReasons) || packet.currentStopReasons.length === 0)) {
     addFailure("NO-GO final packet must include stop reasons");
   }
-  if (!Array.isArray(packet.nextCommands) || !packet.nextCommands.includes("node bin/ddd-release-readiness-summary.mjs")) {
+  if (!Array.isArray(packet.nextCommands) || !packet.nextCommands.includes("node bin\/ddd-release-readiness-summary.mjs")) {
     addFailure("final go/no-go packet must include readiness summary rerun command");
   }
   for (const [index, command] of (packet.nextCommands || []).entries()) {
@@ -259,7 +259,7 @@ try {
     noAutoWaivers: true,
     gate: { blockers: 1, warnings: 0 },
     currentStopReasons: ["strict release gate blockers=1"],
-    nextCommands: ["node bin/ddd-release-readiness-summary.mjs"],
+    nextCommands: ["node bin\/ddd-release-readiness-summary.mjs"],
     ciSummary: {
       stopOwners: ["release-owner"],
       blockedArtifactPaths: [],
@@ -298,7 +298,7 @@ try {
         pendingOwnerCount: 1,
         missingCriteria: ["releaseEnvReadinessStatus"],
       },
-      firstNextCommand: "node bin/ddd-release-readiness-summary.mjs",
+      firstNextCommand: "node bin\/ddd-release-readiness-summary.mjs",
     },
     safetySignals: {
       releaseEnvFile: {

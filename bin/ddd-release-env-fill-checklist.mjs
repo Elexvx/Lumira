@@ -103,10 +103,10 @@ function renderMarkdown(checklist) {
     "## Validation Commands",
     "",
     "```bash",
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-config-evidence.mjs",
-    "node bin/ddd-release-readiness-summary.mjs",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-config-evidence.mjs",
+    "node bin\/ddd-release-readiness-summary.mjs",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan",
     "```",
     "",
     "## Acceptance Rule",
@@ -180,10 +180,10 @@ const checklist = {
   keys,
   groups: groupKeys(keys),
   validationCommands: [
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
-    "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-config-evidence.mjs",
-    "node bin/ddd-release-readiness-summary.mjs",
-    "node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
+    "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-config-evidence.mjs",
+    "node bin\/ddd-release-readiness-summary.mjs",
+    "node bin\/ddd-staging-execution-checklist.mjs --release-env-submission-plan",
   ],
 };
 
@@ -218,5 +218,5 @@ console.log(JSON.stringify({
   keyCount: checklist.keyCount,
   primaryBlockerCount: checklist.primaryBlockerCount,
   configBlockerCount: checklist.configBlockerCount,
-  nextCommand: "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs",
+  nextCommand: "DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs",
 }, null, 2));

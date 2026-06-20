@@ -7,7 +7,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
-const scriptPath = path.join(repoRoot, "scripts", "ddd-release-env-alias-sync.mjs");
+const scriptPath = path.join(repoRoot, "bin", "ddd-release-env-alias-sync.mjs");
 const failures = [];
 
 function addFailure(message) {
@@ -15,7 +15,7 @@ function addFailure(message) {
 }
 
 function runAliasSync(args = [], env = {}) {
-  return spawnSync("node", ["bin/ddd-release-env-alias-sync.mjs", ...args], {
+  return spawnSync("node", ["bin\/ddd-release-env-alias-sync.mjs", ...args], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, ...env },

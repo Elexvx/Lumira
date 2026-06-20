@@ -148,12 +148,12 @@ async function runInstall(task, request) {
     GIT_COMMIT: request.targetCommit,
   });
   try {
-    await runCommand(task, 'node', ['bin/deploy-container.mjs', '--pull']);
-    await runCommand(task, 'node', ['bin/check-deployment.mjs']);
+    await runCommand(task, 'node', ['bin\/deploy-container.mjs', '--pull']);
+    await runCommand(task, 'node', ['bin\/check-deployment.mjs']);
   } catch (error) {
     appendLog(task, `install failed, rolling back: ${error.message}`);
     restoreEnvFile(task);
-    await runCommand(task, 'node', ['bin/deploy-container.mjs', '--pull']).catch((rollbackError) => {
+    await runCommand(task, 'node', ['bin\/deploy-container.mjs', '--pull']).catch((rollbackError) => {
       appendLog(task, `rollback deploy failed: ${rollbackError.message}`);
     });
     throw error;
@@ -172,8 +172,8 @@ async function runRollback(task) {
   }
   task.envBackupPath = backup;
   restoreEnvFile(task);
-  await runCommand(task, 'node', ['bin/deploy-container.mjs', '--pull']);
-  await runCommand(task, 'node', ['bin/check-deployment.mjs']);
+  await runCommand(task, 'node', ['bin\/deploy-container.mjs', '--pull']);
+  await runCommand(task, 'node', ['bin\/check-deployment.mjs']);
 }
 
 function startTask(type, request) {

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -36,7 +36,7 @@
     "blockedOwnerCount": 16,
     "cutoverChecklistItems": 9,
     "blockedCutoverItems": 7,
-    "totalOwnerItems": 26
+    "totalOwnerItems": 25
   },
   "owners": [
     {
@@ -58,7 +58,7 @@
       "items": [
         {
           "checklistId": "deployable-images",
-          "title": "Deployable backend/frontend images are built and inspected.",
+          "title": "Deployable backend/lumira-ui images are built and inspected.",
           "required": true,
           "status": "BLOCKED",
           "pendingItems": 4,
@@ -73,8 +73,7 @@
           ],
           "blockedBatchIds": [],
           "commands": [
-            "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-            "node scripts/ddd-docker-build-evidence.mjs"
+            "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_DOCKER_BUILD_STRICT=DDD_DOCKER_BUILD_STRICT",
@@ -86,7 +85,7 @@
           "exitCriteria": [
             "Clear this batch before running downstream runtime-heavy evidence.",
             "Docker CLI and daemon are available in the evidence runner.",
-            "Required lumira-server and frontend images are built, inspected, and not skipped."
+            "Required lumira-server and lumira-ui images are built, inspected, and not skipped."
           ]
         },
         {
@@ -94,7 +93,7 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 5,
+          "pendingItems": 7,
           "lanes": [
             "evidence-integrity",
             "final-verification"
@@ -107,12 +106,13 @@
             "p3-orchestrator-release-infra"
           ],
           "commands": [
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict",
-            "node scripts/ddd-release-evidence-orchestrator.mjs"
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+            "node bin/ddd-release-evidence-orchestrator.mjs"
           ],
           "envCheckGroups": [
             "BASE_URL=BASE_URL",
-            "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+            "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL",
+            "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/release/orchestrator-report.json",
@@ -143,7 +143,7 @@
           ],
           "blockedBatchIds": [],
           "commands": [
-            "node scripts/ddd-runtime-readiness-smoke.mjs"
+            "node bin/ddd-runtime-readiness-smoke.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -181,7 +181,7 @@
           "title": "Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 8,
+          "pendingItems": 2,
           "lanes": [
             "database-performance"
           ],
@@ -193,8 +193,8 @@
             "p2-explain-database"
           ],
           "commands": [
-            "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
-            "node scripts/ddd-collect-explain.mjs"
+            "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
+            "node bin/ddd-collect-explain.mjs"
           ],
           "envCheckGroups": [
             "DB_PASSWORD=DB_PASSWORD|MYSQL_PASSWORD|SPRING_DATASOURCE_PASSWORD",
@@ -224,7 +224,7 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 5,
+          "pendingItems": 7,
           "lanes": [
             "evidence-integrity",
             "final-verification"
@@ -237,8 +237,8 @@
             "p3-orchestrator-database"
           ],
           "commands": [
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict",
-            "node scripts/ddd-release-evidence-orchestrator.mjs"
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+            "node bin/ddd-release-evidence-orchestrator.mjs"
           ],
           "envCheckGroups": [
             "DDD_MIGRATION_FRESH_DB_EVIDENCE=DDD_MIGRATION_FRESH_DB_EVIDENCE",
@@ -290,9 +290,9 @@
             "p1-rollback-file-owner"
           ],
           "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -313,13 +313,13 @@
         },
         {
           "checklistId": "runtime-business-acceptance",
-          "title": "AI, frontend, file, job, and payment acceptance evidence is complete.",
+          "title": "AI, lumira-ui, file, job, and payment acceptance evidence is complete.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 7,
+          "pendingItems": 6,
           "lanes": [
             "runtime-acceptance",
-            "frontend-acceptance",
+            "lumira-ui-acceptance",
             "business-acceptance"
           ],
           "batchIds": [
@@ -330,7 +330,7 @@
             "p1-business-e2e-file-owner"
           ],
           "commands": [
-            "node scripts/ddd-file-processing-e2e-smoke.mjs"
+            "node bin/ddd-file-processing-e2e-smoke.mjs"
           ],
           "envCheckGroups": [
             "BASE_URL=BASE_URL",
@@ -345,91 +345,6 @@
           "exitCriteria": [
             "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
             "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
-          ]
-        }
-      ]
-    },
-    {
-      "owner": "frontend",
-      "blockedItems": 2,
-      "totalItems": 2,
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p1-frontend-smoke-frontend",
-        "p3-orchestrator-frontend"
-      ],
-      "batchIds": [
-        "p1-frontend-smoke-frontend",
-        "p3-orchestrator-frontend"
-      ],
-      "items": [
-        {
-          "checklistId": "evidence-integrity",
-          "title": "Evidence manifest and final orchestrator strict rerun are clean.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 5,
-          "lanes": [
-            "evidence-integrity",
-            "final-verification"
-          ],
-          "batchIds": [
-            "p3-orchestrator-frontend"
-          ],
-          "readyBatchIds": [],
-          "blockedBatchIds": [
-            "p3-orchestrator-frontend"
-          ],
-          "commands": [
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict",
-            "node scripts/ddd-release-evidence-orchestrator.mjs"
-          ],
-          "envCheckGroups": [
-            "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/release/orchestrator-report.json",
-            "artifacts/ddd/release/readiness-summary.json",
-            "artifacts/ddd/release/release-evidence-gate.json"
-          ],
-          "exitCriteria": [
-            "Final strict release gate and readiness summary report zero blockers.",
-            "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-            "Run only after all prerequisite evidence batches are clean."
-          ]
-        },
-        {
-          "checklistId": "runtime-business-acceptance",
-          "title": "AI, frontend, file, job, and payment acceptance evidence is complete.",
-          "required": true,
-          "status": "BLOCKED",
-          "pendingItems": 7,
-          "lanes": [
-            "runtime-acceptance",
-            "frontend-acceptance",
-            "business-acceptance"
-          ],
-          "batchIds": [
-            "p1-frontend-smoke-frontend"
-          ],
-          "readyBatchIds": [],
-          "blockedBatchIds": [
-            "p1-frontend-smoke-frontend"
-          ],
-          "commands": [
-            "node scripts/ddd-frontend-playwright-smoke.mjs",
-            "node scripts/ddd-frontend-smoke-evidence.mjs"
-          ],
-          "envCheckGroups": [
-            "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/frontend/frontend-smoke.json",
-            "artifacts/ddd/frontend/playwright-smoke-results.json"
-          ],
-          "exitCriteria": [
-            "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-            "Required Playwright smoke flows all pass and produce a JSON report."
           ]
         }
       ]
@@ -465,9 +380,9 @@
             "p1-rollback-job-owner"
           ],
           "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -488,13 +403,13 @@
         },
         {
           "checklistId": "runtime-business-acceptance",
-          "title": "AI, frontend, file, job, and payment acceptance evidence is complete.",
+          "title": "AI, lumira-ui, file, job, and payment acceptance evidence is complete.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 7,
+          "pendingItems": 6,
           "lanes": [
             "runtime-acceptance",
-            "frontend-acceptance",
+            "lumira-ui-acceptance",
             "business-acceptance"
           ],
           "batchIds": [
@@ -505,7 +420,7 @@
             "p1-business-e2e-job-owner"
           ],
           "commands": [
-            "node scripts/ddd-job-e2e-smoke.mjs"
+            "node bin/ddd-job-e2e-smoke.mjs"
           ],
           "envCheckGroups": [
             "BASE_URL=BASE_URL",
@@ -554,9 +469,9 @@
             "p1-rollback-payment-owner"
           ],
           "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -577,13 +492,13 @@
         },
         {
           "checklistId": "runtime-business-acceptance",
-          "title": "AI, frontend, file, job, and payment acceptance evidence is complete.",
+          "title": "AI, lumira-ui, file, job, and payment acceptance evidence is complete.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 7,
+          "pendingItems": 6,
           "lanes": [
             "runtime-acceptance",
-            "frontend-acceptance",
+            "lumira-ui-acceptance",
             "business-acceptance"
           ],
           "batchIds": [
@@ -594,7 +509,7 @@
             "p1-business-e2e-payment-owner"
           ],
           "commands": [
-            "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+            "node bin/ddd-payment-webhook-e2e-smoke.mjs"
           ],
           "envCheckGroups": [
             "BASE_URL=BASE_URL",
@@ -616,14 +531,11 @@
       "owner": "release-owner",
       "blockedItems": 2,
       "totalItems": 4,
-      "readyBatchIds": [
-        "p0-manifest-release-owner"
-      ],
+      "readyBatchIds": [],
       "blockedBatchIds": [
         "p3-orchestrator-release-owner"
       ],
       "batchIds": [
-        "p0-manifest-release-owner",
         "p3-orchestrator-release-owner"
       ],
       "items": [
@@ -632,44 +544,31 @@
           "title": "Evidence manifest and final orchestrator strict rerun are clean.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 5,
+          "pendingItems": 7,
           "lanes": [
             "evidence-integrity",
             "final-verification"
           ],
           "batchIds": [
-            "p0-manifest-release-owner",
             "p3-orchestrator-release-owner"
           ],
-          "readyBatchIds": [
-            "p0-manifest-release-owner"
-          ],
+          "readyBatchIds": [],
           "blockedBatchIds": [
             "p3-orchestrator-release-owner"
           ],
           "commands": [
-            "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict",
-            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs",
-            "node scripts/ddd-promote-performance-baseline.mjs",
-            "node scripts/ddd-release-evidence-orchestrator.mjs"
+            "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
+            "node bin/ddd-release-evidence-orchestrator.mjs"
           ],
           "envCheckGroups": [
-            "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR",
-            "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
-            "DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT",
-            "DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT"
+            "DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT"
           ],
           "expectedArtifacts": [
-            "artifacts/ddd/release/evidence-manifest.json",
             "artifacts/ddd/release/orchestrator-report.json",
             "artifacts/ddd/release/readiness-summary.json",
             "artifacts/ddd/release/release-evidence-gate.json"
           ],
           "exitCriteria": [
-            "All required release evidence artifacts are present and checksummed.",
-            "Clear this batch before running downstream runtime-heavy evidence.",
             "Final strict release gate and readiness summary report zero blockers.",
             "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
             "Run only after all prerequisite evidence batches are clean."
@@ -740,13 +639,13 @@
       "items": [
         {
           "checklistId": "runtime-business-acceptance",
-          "title": "AI, frontend, file, job, and payment acceptance evidence is complete.",
+          "title": "AI, lumira-ui, file, job, and payment acceptance evidence is complete.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 7,
+          "pendingItems": 6,
           "lanes": [
             "runtime-acceptance",
-            "frontend-acceptance",
+            "lumira-ui-acceptance",
             "business-acceptance"
           ],
           "batchIds": [
@@ -757,7 +656,7 @@
             "p1-ai-runtime-ai"
           ],
           "commands": [
-            "node scripts/ddd-ai-runtime-drill.mjs"
+            "node bin/ddd-ai-runtime-drill.mjs"
           ],
           "envCheckGroups": [
             "AI_SERVICE_BASE_URL=AI_SERVICE_BASE_URL|LUMIRA_AI_BASE_URL|LUMIRA_AI_SERVICE_BASE_URL",
@@ -811,9 +710,9 @@
             "p1-rollback-ai-owner"
           ],
           "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -863,9 +762,9 @@
             "p1-rollback-auth-owner"
           ],
           "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -915,9 +814,9 @@
             "p1-rollback-iam-owner"
           ],
           "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -967,9 +866,9 @@
             "p1-rollback-localization-owner"
           ],
           "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -986,6 +885,59 @@
           ],
           "exitCriteria": [
             "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+          ]
+        }
+      ]
+    },
+    {
+      "owner": "lumira-ui",
+      "blockedItems": 1,
+      "totalItems": 1,
+      "readyBatchIds": [
+        "p0-manifest-lumira-ui"
+      ],
+      "blockedBatchIds": [],
+      "batchIds": [
+        "p0-manifest-lumira-ui"
+      ],
+      "items": [
+        {
+          "checklistId": "evidence-integrity",
+          "title": "Evidence manifest and final orchestrator strict rerun are clean.",
+          "required": true,
+          "status": "BLOCKED",
+          "pendingItems": 7,
+          "lanes": [
+            "evidence-integrity",
+            "final-verification"
+          ],
+          "batchIds": [
+            "p0-manifest-lumira-ui"
+          ],
+          "readyBatchIds": [
+            "p0-manifest-lumira-ui"
+          ],
+          "blockedBatchIds": [],
+          "commands": [
+            "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+            "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
+            "node bin/ddd-promote-performance-baseline.mjs"
+          ],
+          "envCheckGroups": [
+            "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED",
+            "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE",
+            "PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/lumira-ui/frontend-smoke.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
+            "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json",
+            "artifacts/ddd/release/evidence-manifest.json"
+          ],
+          "exitCriteria": [
+            "All required release evidence artifacts are present and checksummed.",
+            "Clear this batch before running downstream runtime-heavy evidence."
           ]
         }
       ]
@@ -1019,9 +971,9 @@
             "p1-rollback-message-owner"
           ],
           "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -1071,9 +1023,9 @@
             "p1-rollback-platform-owner"
           ],
           "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -1123,9 +1075,9 @@
             "p1-rollback-plugin-owner"
           ],
           "commands": [
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-            "node scripts/ddd-rollback-deferral-template.mjs",
-            "node scripts/ddd-rollback-drill-evidence.mjs"
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT",
@@ -1176,8 +1128,8 @@
           ],
           "blockedBatchIds": [],
           "commands": [
-            "node scripts/ddd-authenticated-performance-smoke.mjs",
-            "node scripts/ddd-promote-performance-baseline.mjs"
+            "node bin/ddd-authenticated-performance-smoke.mjs",
+            "node bin/ddd-promote-performance-baseline.mjs"
           ],
           "envCheckGroups": [
             "DDD_AUTH_PERF_BASELINE_ACCEPTED_BY=DDD_AUTH_PERF_BASELINE_ACCEPTED_BY",

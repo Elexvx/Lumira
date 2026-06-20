@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T06:38:14.272Z",
-      "generatedAt": "2026-06-19T06:38:14.269Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 1,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -32,8 +32,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:42:37.440Z",
-      "generatedAt": "2026-06-19T13:42:37.438Z",
+      "modifiedAt": "2026-06-19T14:43:03.927Z",
+      "generatedAt": "2026-06-19T14:43:03.923Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -44,8 +44,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:42:37.550Z",
-      "generatedAt": "2026-06-19T13:42:37.547Z",
+      "modifiedAt": "2026-06-19T14:43:04.048Z",
+      "generatedAt": "2026-06-19T14:43:04.044Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -159,15 +159,15 @@
       "warnings": null
     },
     "frontendSmoke": {
-      "file": "artifacts\\ddd\\frontend\\frontend-smoke.json",
-      "relativePath": "frontend/frontend-smoke.json",
-      "present": true,
-      "missing": false,
+      "file": "artifacts\\ddd\\lumira-ui\\frontend-smoke.json",
+      "relativePath": "lumira-ui/frontend-smoke.json",
+      "present": false,
+      "missing": true,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.198Z",
-      "generatedAt": "2026-06-16T20:51:08.151Z",
-      "status": "PASS",
-      "blockers": 0,
+      "modifiedAt": null,
+      "generatedAt": null,
+      "status": null,
+      "blockers": null,
       "warnings": null
     },
     "aiRuntime": {
@@ -188,8 +188,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.312Z",
-      "generatedAt": "2026-06-16T06:24:20.373Z",
+      "modifiedAt": "2026-06-19T13:59:31.821Z",
+      "generatedAt": "2026-06-19T13:59:31.816Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -236,8 +236,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.219Z",
-      "generatedAt": "2026-06-15T20:41:37.875Z",
+      "modifiedAt": "2026-06-19T14:43:03.893Z",
+      "generatedAt": "2026-06-19T14:43:03.891Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
@@ -277,7 +277,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 2,
@@ -308,7 +308,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 3,
@@ -340,7 +340,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 4,
@@ -372,7 +372,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 5,
@@ -404,7 +404,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 6,
@@ -436,7 +436,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 7,
@@ -470,7 +470,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 8,
@@ -502,7 +502,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 9,
@@ -534,7 +534,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 10,
@@ -566,7 +566,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 11,
@@ -598,7 +598,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 12,
@@ -631,7 +631,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 13,
@@ -661,7 +661,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 14,
@@ -691,7 +691,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 15,
@@ -722,7 +722,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 16,
@@ -752,7 +752,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 17,
@@ -784,7 +784,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 18,
@@ -815,7 +815,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 19,
@@ -846,7 +846,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 20,
@@ -877,7 +877,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 21,
@@ -911,7 +911,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 22,
@@ -942,7 +942,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 23,
@@ -973,7 +973,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 24,
@@ -1004,7 +1004,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 25,
@@ -1035,7 +1035,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 26,
@@ -1066,7 +1066,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 27,
@@ -1098,7 +1098,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 28,
@@ -1131,7 +1131,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 29,
@@ -1162,7 +1162,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 30,
@@ -1193,7 +1193,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 31,
@@ -1224,7 +1224,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 32,
@@ -1255,7 +1255,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 33,
@@ -1286,7 +1286,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 34,
@@ -1317,7 +1317,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 35,
@@ -1348,7 +1348,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 36,
@@ -1379,7 +1379,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 37,
@@ -1414,7 +1414,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 38,
@@ -1445,7 +1445,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 39,
@@ -1482,7 +1482,7 @@
           ""
         ]
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 40,
@@ -1513,7 +1513,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 41,
@@ -1546,7 +1546,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 42,
@@ -1577,42 +1577,10 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 43,
-      "owner": "release-infra",
-      "owners": [
-        "frontend",
-        "release-infra"
-      ],
-      "group": "runtime",
-      "requirement": "frontend base url",
-      "canonicalKey": "PLAYWRIGHT_BASE_URL",
-      "valueClass": "url",
-      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
-      "secret": false,
-      "safeToPreFill": false,
-      "aliasCount": 2,
-      "aliases": [
-        "PLAYWRIGHT_BASE_URL",
-        "FRONTEND_BASE_URL"
-      ],
-      "unresolvedAliasCount": 0,
-      "unresolvedAliases": [],
-      "required": true,
-      "validation": {
-        "https": true,
-        "nonLocal": true,
-        "minLength": null,
-        "expectedValues": [],
-        "pattern": null,
-        "disallowValues": []
-      },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
-    },
-    {
-      "fillOrder": 44,
       "owner": "release-infra",
       "owners": [
         "release-infra"
@@ -1640,7 +1608,39 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
+    },
+    {
+      "fillOrder": 44,
+      "owner": "release-infra",
+      "owners": [
+        "lumira-ui",
+        "release-infra"
+      ],
+      "group": "runtime",
+      "requirement": "lumira-ui base url",
+      "canonicalKey": "PLAYWRIGHT_BASE_URL",
+      "valueClass": "url",
+      "fillGuidance": "Use the production-equivalent HTTPS endpoint; localhost, example, and test domains are rejected.",
+      "secret": false,
+      "safeToPreFill": false,
+      "aliasCount": 2,
+      "aliases": [
+        "PLAYWRIGHT_BASE_URL",
+        "FRONTEND_BASE_URL"
+      ],
+      "unresolvedAliasCount": 0,
+      "unresolvedAliases": [],
+      "required": true,
+      "validation": {
+        "https": true,
+        "nonLocal": true,
+        "minLength": null,
+        "expectedValues": [],
+        "pattern": null,
+        "disallowValues": []
+      },
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 45,
@@ -1671,7 +1671,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 46,
@@ -1702,7 +1702,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 47,
@@ -1733,7 +1733,7 @@
         "pattern": "^\\d{2,5}$",
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     },
     {
       "fillOrder": 48,
@@ -1766,7 +1766,7 @@
         "pattern": null,
         "disallowValues": []
       },
-      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-alias-sync.mjs"
+      "aliasSyncCommand": "DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-alias-sync.mjs"
     }
   ]
 }

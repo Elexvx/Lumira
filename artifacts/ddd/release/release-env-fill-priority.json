@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T13:42:59.865Z",
+  "generatedAt": "2026-06-19T18:19:45.629Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -20,10 +20,10 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T06:38:14.272Z",
-      "generatedAt": "2026-06-19T06:38:14.269Z",
+      "modifiedAt": "2026-06-19T18:19:44.004Z",
+      "generatedAt": "2026-06-19T18:19:44.003Z",
       "status": "FAIL",
-      "blockers": 1,
+      "blockers": 3,
       "warnings": null
     },
     "releaseEnvLint": {
@@ -32,8 +32,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:42:37.440Z",
-      "generatedAt": "2026-06-19T13:42:37.438Z",
+      "modifiedAt": "2026-06-19T14:43:03.927Z",
+      "generatedAt": "2026-06-19T14:43:03.923Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -44,8 +44,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:42:37.550Z",
-      "generatedAt": "2026-06-19T13:42:37.547Z",
+      "modifiedAt": "2026-06-19T14:43:04.048Z",
+      "generatedAt": "2026-06-19T14:43:04.044Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -159,15 +159,15 @@
       "warnings": null
     },
     "frontendSmoke": {
-      "file": "artifacts\\ddd\\frontend\\frontend-smoke.json",
-      "relativePath": "frontend/frontend-smoke.json",
-      "present": true,
-      "missing": false,
+      "file": "artifacts\\ddd\\lumira-ui\\frontend-smoke.json",
+      "relativePath": "lumira-ui/frontend-smoke.json",
+      "present": false,
+      "missing": true,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.198Z",
-      "generatedAt": "2026-06-16T20:51:08.151Z",
-      "status": "PASS",
-      "blockers": 0,
+      "modifiedAt": null,
+      "generatedAt": null,
+      "status": null,
+      "blockers": null,
       "warnings": null
     },
     "aiRuntime": {
@@ -188,8 +188,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.312Z",
-      "generatedAt": "2026-06-16T06:24:20.373Z",
+      "modifiedAt": "2026-06-19T13:59:31.821Z",
+      "generatedAt": "2026-06-19T13:59:31.816Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": 0
@@ -236,8 +236,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.219Z",
-      "generatedAt": "2026-06-15T20:41:37.875Z",
+      "modifiedAt": "2026-06-19T14:43:03.893Z",
+      "generatedAt": "2026-06-19T14:43:03.891Z",
       "status": "PASS",
       "blockers": 0,
       "warnings": null
@@ -248,9 +248,9 @@
     "blockers": 94,
     "warnings": 8
   },
-  "ownerCount": 16,
+  "ownerCount": 15,
   "runNowOwnerCount": 3,
-  "waitingOwnerCount": 13,
+  "waitingOwnerCount": 12,
   "uniqueUnresolvedTemplateKeyCount": 29,
   "unresolvedOwnerAssignmentCount": 65,
   "filledOwnerAssignmentCount": 64,
@@ -263,21 +263,23 @@
       "priority": "RUN_NOW",
       "readyGroupCount": 2,
       "blockedGroupCount": 1,
-      "unresolvedTemplateKeyCount": 4,
+      "unresolvedTemplateKeyCount": 5,
       "unresolvedTemplateKeys": [
         "BASE_URL",
         "DDD_EVIDENCE_OPERATOR",
         "DDD_RELEASE_CANDIDATE",
-        "LUMIRA_BASE_URL"
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL"
       ],
-      "filledTemplateKeyCount": 4,
+      "filledTemplateKeyCount": 5,
       "placeholderTemplateKeyCount": 0,
       "missingTemplateKeyCount": 0,
       "filledTemplateKeys": [
         "BASE_URL",
         "DDD_EVIDENCE_OPERATOR",
         "DDD_RELEASE_CANDIDATE",
-        "LUMIRA_BASE_URL"
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL"
       ],
       "placeholderTemplateKeys": [],
       "missingTemplateKeys": [],
@@ -297,6 +299,10 @@
         {
           "envKey": "LUMIRA_BASE_URL",
           "status": "filled"
+        },
+        {
+          "envKey": "PLAYWRIGHT_BASE_URL",
+          "status": "filled"
         }
       ],
       "readyBatchIds": [
@@ -307,18 +313,17 @@
         "p3-orchestrator-release-infra"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-runtime-readiness-smoke.mjs",
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-runtime-readiness-smoke.mjs",
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "exitCriteria": [
         "All 30 owner readiness/health/metrics checks pass.",
         "Clear this batch before running downstream runtime-heavy evidence.",
         "Docker CLI and daemon are available in the evidence runner.",
         "Final strict release gate and readiness summary report zero blockers.",
-        "Required lumira-server and frontend images are built, inspected, and not skipped.",
+        "Required lumira-server and lumira-ui images are built, inspected, and not skipped.",
         "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
         "Run only after all prerequisite evidence batches are clean.",
         "Runtime readiness is generated from an HTTPS non-local backend base URL."
@@ -371,8 +376,8 @@
       ],
       "blockedBatchIds": [],
       "commands": [
-        "node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs"
+        "node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs"
       ],
       "exitCriteria": [
         "Accepted baseline exists and current p95/upload metrics do not regress beyond the configured threshold.",
@@ -381,54 +386,47 @@
       ]
     },
     {
-      "owner": "release-owner",
+      "owner": "lumira-ui",
       "fillOrder": 3,
       "priority": "RUN_NOW",
       "readyGroupCount": 1,
-      "blockedGroupCount": 1,
+      "blockedGroupCount": 0,
       "unresolvedTemplateKeyCount": 2,
       "unresolvedTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
       ],
       "filledTemplateKeyCount": 2,
       "placeholderTemplateKeyCount": 0,
       "missingTemplateKeyCount": 0,
       "filledTemplateKeys": [
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE"
+        "DDD_RELEASE_CANDIDATE",
+        "PLAYWRIGHT_BASE_URL"
       ],
       "placeholderTemplateKeys": [],
       "missingTemplateKeys": [],
       "fillStatusByKey": [
         {
-          "envKey": "DDD_EVIDENCE_OPERATOR",
+          "envKey": "DDD_RELEASE_CANDIDATE",
           "status": "filled"
         },
         {
-          "envKey": "DDD_RELEASE_CANDIDATE",
+          "envKey": "PLAYWRIGHT_BASE_URL",
           "status": "filled"
         }
       ],
       "readyBatchIds": [
-        "p0-manifest-release-owner"
+        "p0-manifest-lumira-ui"
       ],
-      "blockedBatchIds": [
-        "p3-orchestrator-release-owner"
-      ],
+      "blockedBatchIds": [],
       "commands": [
-        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-promote-performance-baseline.mjs",
-        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs",
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+        "node bin/ddd-promote-performance-baseline.mjs",
+        "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs"
       ],
       "exitCriteria": [
         "All required release evidence artifacts are present and checksummed.",
-        "Clear this batch before running downstream runtime-heavy evidence.",
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Run only after all prerequisite evidence batches are clean."
+        "Clear this batch before running downstream runtime-heavy evidence."
       ]
     },
     {
@@ -527,10 +525,10 @@
         "p3-orchestrator-database"
       ],
       "commands": [
-        "node scripts/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs",
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
+        "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
       ],
       "exitCriteria": [
         "Final strict release gate and readiness summary report zero blockers.",
@@ -618,7 +616,7 @@
         "p1-ai-runtime-ai"
       ],
       "commands": [
-        "node scripts/ddd-ai-runtime-drill.mjs"
+        "node bin/ddd-ai-runtime-drill.mjs"
       ],
       "exitCriteria": [
         "AI runtime drill uses HTTPS non-local base URL with remote provider and owner gateway expectations enabled.",
@@ -691,10 +689,10 @@
         "p1-rollback-file-owner"
       ],
       "commands": [
-        "node scripts/ddd-file-processing-e2e-smoke.mjs",
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-file-processing-e2e-smoke.mjs",
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
@@ -762,10 +760,10 @@
         "p1-rollback-job-owner"
       ],
       "commands": [
-        "node scripts/ddd-job-e2e-smoke.mjs",
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-job-e2e-smoke.mjs",
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
@@ -833,10 +831,10 @@
         "p1-rollback-payment-owner"
       ],
       "commands": [
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs",
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs",
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
@@ -879,9 +877,9 @@
         "p1-rollback-ai-owner"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
@@ -922,9 +920,9 @@
         "p1-rollback-auth-owner"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
@@ -965,9 +963,9 @@
         "p1-rollback-iam-owner"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
@@ -1008,9 +1006,9 @@
         "p1-rollback-localization-owner"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
@@ -1051,9 +1049,9 @@
         "p1-rollback-message-owner"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
@@ -1094,9 +1092,9 @@
         "p1-rollback-platform-owner"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
@@ -1137,55 +1135,12 @@
         "p1-rollback-plugin-owner"
       ],
       "commands": [
-        "node scripts/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "exitCriteria": [
         "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-      ]
-    },
-    {
-      "owner": "frontend",
-      "fillOrder": 16,
-      "priority": "WAITING",
-      "readyGroupCount": 0,
-      "blockedGroupCount": 2,
-      "unresolvedTemplateKeyCount": 1,
-      "unresolvedTemplateKeys": [
-        "PLAYWRIGHT_BASE_URL"
-      ],
-      "filledTemplateKeyCount": 1,
-      "placeholderTemplateKeyCount": 0,
-      "missingTemplateKeyCount": 0,
-      "filledTemplateKeys": [
-        "PLAYWRIGHT_BASE_URL"
-      ],
-      "placeholderTemplateKeys": [],
-      "missingTemplateKeys": [],
-      "fillStatusByKey": [
-        {
-          "envKey": "PLAYWRIGHT_BASE_URL",
-          "status": "filled"
-        }
-      ],
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p1-frontend-smoke-frontend",
-        "p3-orchestrator-frontend"
-      ],
-      "commands": [
-        "node scripts/ddd-frontend-playwright-smoke.mjs",
-        "node scripts/ddd-frontend-smoke-evidence.mjs",
-        "node scripts/ddd-release-evidence-orchestrator.mjs",
-        "DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict"
-      ],
-      "exitCriteria": [
-        "Final strict release gate and readiness summary report zero blockers.",
-        "Frontend smoke runs against a deployed HTTPS frontend with DDD_FRONTEND_EXPECT_DEPLOYED=true.",
-        "Required Playwright smoke flows all pass and produce a JSON report.",
-        "Rerun release evidence orchestrator in strict run mode after P0/P1/P2 batches are clean.",
-        "Run only after all prerequisite evidence batches are clean."
       ]
     }
   ]

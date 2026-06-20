@@ -1,6 +1,6 @@
 # P0 Release Env Fill Checklist
 
-Generated at: 2026-06-19T14:23:18.022Z
+Generated at: 2026-06-19T18:17:45.175Z
 
 Lint status: PASS
 Env file: .env.release.local
@@ -12,10 +12,10 @@ Config blocker count: 0
 ## Validation Commands
 
 ```bash
-DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-env-file-lint.mjs
-DDD_RELEASE_ENV_FILE=.env.release.local node scripts/ddd-release-config-evidence.mjs
-node scripts/ddd-release-readiness-summary.mjs
-node scripts/ddd-staging-execution-checklist.mjs --release-env-submission-plan
+DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs
+DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-config-evidence.mjs
+node bin/ddd-release-readiness-summary.mjs
+node bin/ddd-staging-execution-checklist.mjs --release-env-submission-plan
 ```
 
 ## Acceptance Rule

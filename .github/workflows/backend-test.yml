@@ -1,0 +1,28 @@
+name: Backend Test
+
+on:
+  pull_request:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: lumira-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Run algorithm and security regression tests
+        run: >
+          bash ./mvnw
+          -pl services/lumira-system,services/lumira-file
+          -am
+          "-Dtest=SensitiveWordServiceTest,AiKnowledgeBaseAppServiceTest,FileProcessingTaskServiceTest,AiToolPolicyServiceTest,PlatformEventOutboxServiceTest,SystemDepartmentAppServiceTest"
+          "-Dsurefire.failIfNoSpecifiedTests=false"
+          test

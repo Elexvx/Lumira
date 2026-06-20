@@ -1,12 +1,12 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T18:17:45.175Z",
   "willWriteFiles": false,
   "workflow": ".github/workflows/ddd-release-evidence.yml",
   "workflowDispatch": true,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "blockedInputCount": 2,
+  "blockedInputCount": 6,
   "inputs": [
     {
       "input": "mode",
@@ -53,7 +53,7 @@
       "required": true,
       "suggestedValue": "__REQUIRED_HTTPS__",
       "source": "LUMIRA_BASE_URL",
-      "status": "READY",
+      "status": "BLOCKED",
       "notes": [
         "Maps to LUMIRA_BASE_URL for runtime and backend evidence."
       ]
@@ -63,7 +63,7 @@
       "required": true,
       "suggestedValue": "__REQUIRED_HTTPS__",
       "source": "PLAYWRIGHT_BASE_URL",
-      "status": "READY",
+      "status": "BLOCKED",
       "notes": [
         "Maps to PLAYWRIGHT_BASE_URL and CORS_ALLOWED_ORIGIN_PATTERNS."
       ]
@@ -93,7 +93,7 @@
       "required": true,
       "suggestedValue": true,
       "source": "DDD_AI_EXPECT_PROVIDER_REMOTE, DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE",
-      "status": "READY",
+      "status": "BLOCKED",
       "notes": [
         "Keep true for production-equivalent remote AI evidence."
       ]
@@ -103,7 +103,7 @@
       "required": true,
       "suggestedValue": true,
       "source": "DDD_FRONTEND_EXPECT_DEPLOYED",
-      "status": "READY",
+      "status": "BLOCKED",
       "notes": [
         "Keep true for deployed frontend smoke evidence."
       ]
@@ -142,7 +142,7 @@
       "input": "lane_completion_receipt_base64",
       "required": false,
       "suggestedValue": "__REQUIRED_AFTER_COVERAGE_5_OF_5__",
-      "source": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+      "source": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
       "status": "BLOCKED",
       "notes": [
         "Preferred workflow_dispatch path after receipt contract and coverage pass."
@@ -150,10 +150,10 @@
     }
   ],
   "requiredBeforeRun": [
-    "node scripts/ddd-staging-execution-checklist.mjs --evidence-acceptance",
-    "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
-    "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
-    "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"
+    "node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance",
+    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>",
+    "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>",
+    "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown"
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown"
 }

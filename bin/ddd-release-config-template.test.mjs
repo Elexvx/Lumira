@@ -8,9 +8,9 @@ import path from "node:path";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-release-config-template-"));
-const templateFile = path.join(repoRoot, "docs", "36-ddd-release-env-template.env");
+const templateFile = path.join(repoRoot, "doc", "36-ddd-release-env-template.env");
 
-const result = spawnSync("node", ["bin/ddd-release-config-evidence.mjs"], {
+const result = spawnSync("node", ["bin\/ddd-release-config-evidence.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
   env: {

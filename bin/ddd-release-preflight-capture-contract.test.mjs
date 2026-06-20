@@ -42,7 +42,7 @@ function preflightSteps(overrides = {}) {
 }
 
 function runContract(directory) {
-  return spawnSync("node", ["bin/ddd-release-preflight-capture-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-preflight-capture-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {

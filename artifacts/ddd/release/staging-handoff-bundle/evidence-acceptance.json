@@ -1,14 +1,14 @@
 {
-  "status": "PASS",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "status": "BLOCKED",
+  "generatedAt": "2026-06-19T18:17:45.175Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "acceptedCount": 6,
+  "acceptedCount": 2,
   "itemCount": 6,
-  "blockedCount": 0,
-  "presentArtifactCount": 18,
-  "missingArtifactCount": 0,
+  "blockedCount": 4,
+  "presentArtifactCount": 17,
+  "missingArtifactCount": 1,
   "items": [
     {
       "order": 1,
@@ -20,11 +20,11 @@
       "accepted": true,
       "blocker": null,
       "blockingInputs": [],
-      "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
+      "acceptanceCommand": "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
       "evidenceCommands": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs",
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-config-evidence.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/release/release-env-lint.json",
@@ -72,7 +72,7 @@
         "DDD_MIGRATION_UPGRADE_DB_EVIDENCE"
       ],
       "criteria": [
-        "DDD_RELEASE_ENV_FILE=<release-env-file> node scripts/ddd-release-env-file-lint.mjs returns PASS",
+        "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs returns PASS",
         "expected artifacts are produced from HTTPS staging or production-equivalent evidence",
         "release evidence summary is regenerated after this gate passes"
       ]
@@ -89,12 +89,12 @@
       "blockingInputs": [
         "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE",
         "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE",
-        "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"
+        "DDD_DOCKER_EXISTING_LUMIRA_UI_IMAGE"
       ],
-      "acceptanceCommand": "node scripts/ddd-docker-build-evidence.mjs --check",
+      "acceptanceCommand": "node bin/ddd-docker-build-evidence.mjs --check",
       "evidenceCommands": [
-        "DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs",
-        "node scripts/ddd-release-readiness-summary.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-release-readiness-summary.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
@@ -118,7 +118,7 @@
         "DDD_DOCKER_EXISTING_FRONTEND_IMAGE"
       ],
       "criteria": [
-        "node scripts/ddd-docker-build-evidence.mjs --check returns PASS",
+        "node bin/ddd-docker-build-evidence.mjs --check returns PASS",
         "expected artifacts are produced from HTTPS staging or production-equivalent evidence",
         "release evidence summary is regenerated after this gate passes"
       ]
@@ -128,27 +128,37 @@
       "gate": "runtime-business",
       "track": "p1-runtime-business",
       "title": "P1 runtime and business acceptance",
-      "owner": "release-infra, frontend, ai, file-owner, job-owner, payment-owner",
-      "status": "PASS",
-      "accepted": true,
-      "blocker": null,
-      "blockingInputs": [],
-      "acceptanceCommand": "node scripts/ddd-staging-runtime-check.mjs",
+      "owner": "release-infra, lumira-ui, ai, file-owner, job-owner, payment-owner",
+      "status": "BLOCKED",
+      "accepted": false,
+      "blocker": "LUMIRA_BASE_URL is required",
+      "blockingInputs": [
+        "LUMIRA_BASE_URL",
+        "PLAYWRIGHT_BASE_URL",
+        "DDD_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_DEPLOYMENT_EVIDENCE",
+        "DDD_AI_RUNTIME_DEPLOYMENT_EVIDENCE",
+        "DDD_AUTH_PERF_DEPLOYMENT_EVIDENCE",
+        "DDD_FRONTEND_EXPECT_DEPLOYED",
+        "DDD_AI_EXPECT_PROVIDER_REMOTE",
+        "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
+      ],
+      "acceptanceCommand": "node bin/ddd-staging-runtime-check.mjs",
       "evidenceCommands": [
-        "node scripts/ddd-runtime-readiness-smoke.mjs",
-        "DDD_AUTH_PERF_STRICT=true node scripts/ddd-authenticated-performance-smoke.mjs",
-        "node scripts/ddd-ai-runtime-drill.mjs",
-        "node scripts/ddd-frontend-playwright-smoke.mjs",
-        "node scripts/ddd-frontend-smoke-evidence.mjs",
-        "node scripts/ddd-file-processing-e2e-smoke.mjs",
-        "node scripts/ddd-job-e2e-smoke.mjs",
-        "node scripts/ddd-payment-webhook-e2e-smoke.mjs"
+        "node bin/ddd-runtime-readiness-smoke.mjs",
+        "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
+        "node bin/ddd-ai-runtime-drill.mjs",
+        "node bin/ddd-frontend-playwright-smoke.mjs",
+        "node bin/ddd-frontend-smoke-evidence.mjs",
+        "node bin/ddd-file-processing-e2e-smoke.mjs",
+        "node bin/ddd-job-e2e-smoke.mjs",
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/readiness/summary.json",
         "artifacts/ddd/performance/authenticated-runtime-actual.json",
         "artifacts/ddd/ai/ai-runtime-drill.json",
-        "artifacts/ddd/frontend/frontend-smoke.json",
+        "artifacts/ddd/lumira-ui/frontend-smoke.json",
         "artifacts/ddd/file/file-processing-e2e.json",
         "artifacts/ddd/jobs/job-e2e-smoke.json",
         "artifacts/ddd/payment/payment-webhook-e2e.json"
@@ -179,12 +189,10 @@
           ]
         },
         {
-          "artifact": "artifacts/ddd/frontend/frontend-smoke.json",
-          "present": true,
-          "matchCount": 1,
-          "matches": [
-            "artifacts/ddd/frontend/frontend-smoke.json"
-          ]
+          "artifact": "artifacts/ddd/lumira-ui/frontend-smoke.json",
+          "present": false,
+          "matchCount": 0,
+          "matches": []
         },
         {
           "artifact": "artifacts/ddd/file/file-processing-e2e.json",
@@ -211,8 +219,8 @@
           ]
         }
       ],
-      "presentArtifactCount": 7,
-      "missingArtifactCount": 0,
+      "presentArtifactCount": 6,
+      "missingArtifactCount": 1,
       "envKeys": [
         "LUMIRA_BASE_URL",
         "PLAYWRIGHT_BASE_URL",
@@ -221,7 +229,7 @@
         "DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE"
       ],
       "criteria": [
-        "node scripts/ddd-staging-runtime-check.mjs returns PASS",
+        "node bin/ddd-staging-runtime-check.mjs returns PASS",
         "expected artifacts are produced from HTTPS staging or production-equivalent evidence",
         "release evidence summary is regenerated after this gate passes"
       ]
@@ -232,14 +240,24 @@
       "track": "p1-rollback",
       "title": "P1 rollback safety",
       "owner": "bounded-context owners",
-      "status": "PASS",
-      "accepted": true,
-      "blocker": null,
-      "blockingInputs": [],
-      "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
+      "status": "BLOCKED",
+      "accepted": false,
+      "blocker": "rollback-evidence-source requires one of DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+      "blockingInputs": [
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR"
+      ],
+      "acceptanceCommand": "node bin/ddd-staging-data-safety-check.mjs",
       "evidenceCommands": [
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs",
-        "node scripts/ddd-rollback-drill-evidence.mjs"
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/rollback/rollback-drill.json"
@@ -262,7 +280,7 @@
         "DDD_ROLLBACK_DRILL_FILE"
       ],
       "criteria": [
-        "node scripts/ddd-staging-data-safety-check.mjs returns PASS",
+        "node bin/ddd-staging-data-safety-check.mjs returns PASS",
         "expected artifacts are produced from HTTPS staging or production-equivalent evidence",
         "release evidence summary is regenerated after this gate passes"
       ]
@@ -273,16 +291,28 @@
       "track": "p2-database-performance",
       "title": "P2 database migration and EXPLAIN",
       "owner": "database",
-      "status": "PASS",
-      "accepted": true,
-      "blocker": null,
-      "blockingInputs": [],
-      "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
+      "status": "BLOCKED",
+      "accepted": false,
+      "blocker": "DDD_MIGRATION_FRESH_DB_VALIDATED must be true",
+      "blockingInputs": [
+        "DDD_MIGRATION_FRESH_DB_VALIDATED",
+        "DDD_MIGRATION_FRESH_DB_EVIDENCE",
+        "DDD_MIGRATION_UPGRADE_DB_VALIDATED",
+        "DDD_MIGRATION_UPGRADE_DB_EVIDENCE",
+        "DDD_MIGRATION_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_MIGRATION_OPERATOR",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR",
+        "DDD_MIGRATION_COMPLETED_AT"
+      ],
+      "acceptanceCommand": "node bin/ddd-staging-data-safety-check.mjs",
       "evidenceCommands": [
-        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
-        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
-        "node scripts/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+        "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs",
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/migration/migration-evidence.json",
@@ -331,7 +361,7 @@
         "DDD_EXPLAIN_ENVIRONMENT"
       ],
       "criteria": [
-        "node scripts/ddd-staging-data-safety-check.mjs returns PASS",
+        "node bin/ddd-staging-data-safety-check.mjs returns PASS",
         "expected artifacts are produced from HTTPS staging or production-equivalent evidence",
         "release evidence summary is regenerated after this gate passes"
       ]
@@ -342,16 +372,29 @@
       "track": "p2-database-performance",
       "title": "P2 database migration and EXPLAIN",
       "owner": "database",
-      "status": "PASS",
-      "accepted": true,
-      "blocker": null,
-      "blockingInputs": [],
-      "acceptanceCommand": "node scripts/ddd-staging-data-safety-check.mjs",
+      "status": "BLOCKED",
+      "accepted": false,
+      "blocker": "DDD_EXPLAIN_DATABASE is required",
+      "blockingInputs": [
+        "DDD_EXPLAIN_DATABASE",
+        "MYSQL_HOST",
+        "MYSQL_PORT",
+        "MYSQL_USER",
+        "MYSQL_PASSWORD",
+        "DDD_EXPLAIN_ENVIRONMENT",
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_RELEASE_ENVIRONMENT",
+        "DDD_RELEASE_CANDIDATE",
+        "GITHUB_SHA",
+        "DDD_EVIDENCE_OPERATOR",
+        "GITHUB_ACTOR"
+      ],
+      "acceptanceCommand": "node bin/ddd-staging-data-safety-check.mjs",
       "evidenceCommands": [
-        "DDD_MIGRATION_CHECK_ENV=true node scripts/ddd-migration-evidence.mjs",
-        "DDD_MIGRATION_STRICT=true node scripts/ddd-migration-evidence.mjs",
-        "node scripts/ddd-collect-explain.mjs",
-        "DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs"
+        "DDD_MIGRATION_CHECK_ENV=true node bin/ddd-migration-evidence.mjs",
+        "DDD_MIGRATION_STRICT=true node bin/ddd-migration-evidence.mjs",
+        "node bin/ddd-collect-explain.mjs",
+        "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/migration/migration-evidence.json",
@@ -400,11 +443,11 @@
         "DDD_EXPLAIN_ENVIRONMENT"
       ],
       "criteria": [
-        "node scripts/ddd-staging-data-safety-check.mjs returns PASS",
+        "node bin/ddd-staging-data-safety-check.mjs returns PASS",
         "expected artifacts are produced from HTTPS staging or production-equivalent evidence",
         "release evidence summary is regenerated after this gate passes"
       ]
     }
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --rollup-enforce"
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --evidence-runbook-markdown"
 }

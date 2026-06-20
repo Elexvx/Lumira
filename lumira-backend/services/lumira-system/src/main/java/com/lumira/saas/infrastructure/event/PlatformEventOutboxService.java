@@ -16,6 +16,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class PlatformEventOutboxService {
@@ -70,15 +71,15 @@ public class PlatformEventOutboxService {
     private static final String SQL_MARK_DELIVERED = """
             update platform_event_outbox
             set dispatch_status = ?, delivered_at = ?, next_retry_at = null, last_error = null,
-                updated_at = ?, updated_by = ?
-            where deleted = 0 and source_type = ? and id = ?
+                claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
+            where deleted = 0 and source_type = ? and id = ? and (? is null or claim_token = ?)
             """;
 
     private static final String SQL_MARK_FAILED = """
             update platform_event_outbox
             set dispatch_status = ?, retry_count = ?, next_retry_at = ?, last_error = ?,
-                updated_at = ?, updated_by = ?
-            where deleted = 0 and source_type = ? and id = ?
+                claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
+            where deleted = 0 and source_type = ? and id = ? and (? is null or claim_token = ?)
             """;
 
     private static final String SQL_RESET_FOR_REPLAY = """
@@ -255,7 +256,9 @@ public class PlatformEventOutboxService {
                     now,
                     event.getUpdatedBy() == null ? 0L : event.getUpdatedBy(),
                     SYSTEM_SOURCE_TYPE,
-                    event.getId()
+                    event.getId(),
+                    event.getClaimToken(),
+                    event.getClaimToken()
             );
             return;
         }
@@ -292,7 +295,9 @@ public class PlatformEventOutboxService {
                     now,
                     event.getUpdatedBy() == null ? 0L : event.getUpdatedBy(),
                     SYSTEM_SOURCE_TYPE,
-                    event.getId()
+                    event.getId(),
+                    event.getClaimToken(),
+                    event.getClaimToken()
             );
             return;
         }
@@ -315,11 +320,7 @@ public class PlatformEventOutboxService {
         }
 
         int delivered = 0;
-        for (PlatformEventOutboxEntity event : listDispatchable(limit)) {
-            if (!claimForDispatch(event)) {
-                continue;
-            }
-
+        for (PlatformEventOutboxEntity event : claimForDispatchBatch(limit)) {
             try {
                 dispatcher.dispatch(event);
                 markDelivered(event);
@@ -331,6 +332,100 @@ public class PlatformEventOutboxService {
             }
         }
         return delivered;
+    }
+
+    public List<PlatformEventOutboxEntity> claimForDispatchBatch(int limit) {
+        int normalizedLimit = Math.max(1, Math.min(limit, 200));
+        if (queryOperations == null) {
+            List<PlatformEventOutboxEntity> events = listDispatchable(normalizedLimit);
+            return events.stream().filter(this::claimForDispatch).toList();
+        }
+        LocalDateTime now = LocalDateTime.now();
+        String claimToken = UUID.randomUUID().toString();
+        LocalDateTime claimExpiresAt = now.plusMinutes(5);
+        queryOperations.update(
+                """
+                        update platform_event_outbox t
+                        join (
+                            select id
+                            from platform_event_outbox force index (idx_platform_event_outbox_owner_queue)
+                            where deleted = 0
+                              and source_type = ?
+                              and (
+                                    dispatch_status = ?
+                                    or (dispatch_status = ? and (next_retry_at is null or next_retry_at <= ?))
+                                    or (dispatch_status = ? and claim_expires_at is not null and claim_expires_at <= ?)
+                              )
+                            order by created_at asc, id asc
+                            limit ?
+                        ) picked on picked.id = t.id
+                        set t.dispatch_status = ?,
+                            t.claimed_by = ?,
+                            t.claim_token = ?,
+                            t.claim_expires_at = ?,
+                            t.updated_at = ?
+                        where t.deleted = 0 and t.source_type = ?
+                        """,
+                SYSTEM_SOURCE_TYPE,
+                STATUS_RECORDED,
+                STATUS_FAILED,
+                now,
+                STATUS_DISPATCHING,
+                now,
+                normalizedLimit,
+                STATUS_DISPATCHING,
+                workerId(),
+                claimToken,
+                claimExpiresAt,
+                now,
+                SYSTEM_SOURCE_TYPE
+        );
+        return queryOperations.query(
+                """
+                        select id, tenant_id as tenantId, user_id as userId, source_type as sourceType,
+                               event_type as eventType, event_key as eventKey, payload_json as payloadJson,
+                               dispatch_status as dispatchStatus, retry_count as retryCount,
+                               next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
+                               trace_id as traceId, request_id as requestId, created_by as createdBy,
+                               created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted,
+                               claimed_by as claimedBy, claim_token as claimToken, claim_expires_at as claimExpiresAt
+                        from platform_event_outbox
+                        where deleted = 0
+                          and source_type = ?
+                          and claim_token = ?
+                        order by created_at asc, id asc
+                        """,
+                rowMapper,
+                SYSTEM_SOURCE_TYPE,
+                claimToken
+        );
+    }
+
+    public int recoverStuckDispatchingEvents() {
+        if (queryOperations == null) {
+            return 0;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        return queryOperations.update(
+                """
+                        update platform_event_outbox
+                        set dispatch_status = ?, next_retry_at = ?, claim_token = null, claim_expires_at = null,
+                            updated_at = ?
+                        where deleted = 0
+                          and source_type = ?
+                          and dispatch_status = ?
+                          and claim_expires_at is not null
+                          and claim_expires_at <= ?
+                          and retry_count < ?
+                        """,
+                STATUS_FAILED,
+                now,
+                now,
+                SYSTEM_SOURCE_TYPE,
+                STATUS_DISPATCHING,
+                now,
+                MAX_RETRY_COUNT
+        );
     }
 
     public boolean replayById(Long eventId, PlatformEventDispatcher dispatcher) {
@@ -413,6 +508,10 @@ public class PlatformEventOutboxService {
             return null;
         }
         return message.length() <= MAX_ERROR_LENGTH ? message : message.substring(0, MAX_ERROR_LENGTH);
+    }
+
+    private String workerId() {
+        return System.getProperty("lumira.worker.id", java.net.InetAddress.getLoopbackAddress().getHostName());
     }
 
     private void ensureSystemSource(String sourceType) {

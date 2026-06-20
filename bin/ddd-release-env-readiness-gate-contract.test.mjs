@@ -79,7 +79,7 @@ function writeArtifacts(directory, mutator = () => {}) {
 function runContract(mutator = () => {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "lumira-env-readiness-gate-contract-"));
   writeArtifacts(directory, mutator);
-  return spawnSync("node", ["bin/ddd-release-env-readiness-gate-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-env-readiness-gate-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_DIR: directory },

@@ -44,7 +44,7 @@ function maybeStopAfter(checkpoint) {
 }
 
 try {
-  const preflightHelpResult = spawnSyncWithTimeout("node", ["bin/ddd-production-readiness-preflight.mjs", "--help"], {
+  const preflightHelpResult = spawnSyncWithTimeout("node", ["bin\/ddd-production-readiness-preflight.mjs", "--help"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -63,7 +63,7 @@ try {
   assert.equal(fs.existsSync(path.join(tmpDir, "preflight-help.json")), false, "preflight help should not write a report");
 
   const preflightListResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-production-readiness-preflight.mjs",
+    "bin\/ddd-production-readiness-preflight.mjs",
     "--quick",
     "--no-report",
     "--list",
@@ -88,7 +88,7 @@ try {
   assert(preflightPlan.steps.some((step) => step.id === "staging-dispatch-check" && step.skip === false));
   assert.equal(fs.existsSync(path.join(tmpDir, "preflight-list.json")), false, "preflight --list should not write a report");
 
-  const checklistHelpResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--help"], {
+  const checklistHelpResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--help"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -171,7 +171,7 @@ try {
   assert.match(checklistHelpResult.stdout, /DDD_STAGING_HANDOFF_BUNDLE_DIR/);
   assert.equal(fs.existsSync(`${helpOutputBase}.json`), false, "checklist help should not write JSON");
 
-  const envInitHelpResult = spawnSyncWithTimeout("node", ["bin/ddd-release-env-init.mjs", "--help"], {
+  const envInitHelpResult = spawnSyncWithTimeout("node", ["bin\/ddd-release-env-init.mjs", "--help"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -180,7 +180,7 @@ try {
   assert.match(envInitHelpResult.stdout, /--check/);
   assert.match(envInitHelpResult.stdout, /DDD_FINAL_OWNER_QUEUE_ENV_TARGET/);
 
-  const runtimeCheckHelpResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-runtime-check.mjs", "--help"], {
+  const runtimeCheckHelpResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-runtime-check.mjs", "--help"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -188,7 +188,7 @@ try {
   assert.match(runtimeCheckHelpResult.stdout, /DDD staging runtime readiness check/);
   assert.match(runtimeCheckHelpResult.stdout, /PLAYWRIGHT_BASE_URL/);
 
-  const dataSafetyCheckHelpResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-data-safety-check.mjs", "--help"], {
+  const dataSafetyCheckHelpResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-data-safety-check.mjs", "--help"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -196,7 +196,7 @@ try {
   assert.match(dataSafetyCheckHelpResult.stdout, /DDD staging data safety check/);
   assert.match(dataSafetyCheckHelpResult.stdout, /DDD_EXPLAIN_DATABASE/);
 
-  const envInitCheckResult = spawnSyncWithTimeout("node", ["bin/ddd-release-env-init.mjs", "--check"], {
+  const envInitCheckResult = spawnSyncWithTimeout("node", ["bin\/ddd-release-env-init.mjs", "--check"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -210,10 +210,10 @@ try {
   assert.equal(envInitCheck.status, "PASS");
   assert.equal(envInitCheck.willWriteFiles, false);
   assert.equal(envInitCheck.initializerExists, true);
-  assert.match(envInitCheck.nextCommand, /node scripts\/ddd-release-env-init\.mjs/);
+  assert.match(envInitCheck.nextCommand, /node bin\/ddd-release-env-init\.mjs/);
   assert.equal(fs.existsSync(path.join(repoRoot, `tmp/staging-checklist-env-init-check-${process.pid}.env`)), false);
 
-  const dispatchCheckResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--dispatch-check"], {
+  const dispatchCheckResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--dispatch-check"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -221,15 +221,17 @@ try {
       DDD_STAGING_CHECKLIST_OUTPUT: path.join(tmpDir, "staging-checklist-dispatch-check"),
     },
   });
-  assert.equal(dispatchCheckResult.status, 0, dispatchCheckResult.stderr || dispatchCheckResult.stdout);
+  assert.notEqual(dispatchCheckResult.status, 0, dispatchCheckResult.stderr || dispatchCheckResult.stdout);
   const dispatchCheck = JSON.parse(dispatchCheckResult.stdout);
-  assert.equal(dispatchCheck.status, "PASS");
+  assert.equal(dispatchCheck.status, "BLOCKED");
   assert.equal(dispatchCheck.willWriteFiles, false);
   assert.equal(dispatchCheck.cutoverAllowed, false);
-  assert.equal(dispatchCheck.ownerCount, 5);
-  assert.equal(dispatchCheck.releaseEnvCheck.status, "BLOCKED");
-  assert.equal(dispatchCheck.releaseEnvCheck.ready, false);
-  assert.equal(dispatchCheck.releaseEnvCheck.nextCommand, "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs");
+  assert.equal(dispatchCheck.ownerCount, 0);
+  assert(dispatchCheck.expectedOwners.includes("release-infra"));
+  assert(dispatchCheck.issues.some((issue) => issue.includes("missing owner handoff")));
+  assert.equal(dispatchCheck.releaseEnvCheck.status, "PASS");
+  assert.equal(dispatchCheck.releaseEnvCheck.ready, true);
+  assert.equal(dispatchCheck.releaseEnvCheck.nextCommand, "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs");
   assert.equal(dispatchCheck.envInitCheck.status, "PASS");
   assert.equal(dispatchCheck.envInitCheck.willWriteFiles, false);
   assert.equal(dispatchCheck.envInitCheck.target, "tmp/ddd-dispatch-check-env-init.env");
@@ -238,22 +240,22 @@ try {
   assert.match(dispatchCheck.dockerEvidenceCheck.nextCommand, /ddd-docker-build-evidence\.mjs/);
   assert.equal(dispatchCheck.runtimeStagingCheck.willWriteFiles, false);
   assert(["PASS", "BLOCKED"].includes(dispatchCheck.runtimeStagingCheck.status));
-  assert(dispatchCheck.runtimeStagingCheck.nextCommands.includes("node bin/ddd-runtime-readiness-smoke.mjs"));
+  assert(dispatchCheck.runtimeStagingCheck.nextCommands.includes("node bin\/ddd-runtime-readiness-smoke.mjs"));
   assert.equal(dispatchCheck.dataSafetyCheck.willWriteFiles, false);
   assert(["PASS", "BLOCKED"].includes(dispatchCheck.dataSafetyCheck.status));
-  assert(dispatchCheck.dataSafetyCheck.tracks.rollback.nextCommands.includes("DDD_ROLLBACK_DRILL_STRICT=true node bin/ddd-rollback-drill-evidence.mjs"));
-  assert.equal(dispatchCheck.readinessRollupCommand, "node bin/ddd-staging-execution-checklist.mjs --rollup");
-  assert.equal(dispatchCheck.copyReadyCommand, "node bin/ddd-staging-execution-checklist.mjs --commands");
+  assert(dispatchCheck.dataSafetyCheck.tracks.rollback.nextCommands.includes("DDD_ROLLBACK_DRILL_STRICT=true node bin\/ddd-rollback-drill-evidence.mjs"));
+  assert.equal(dispatchCheck.readinessRollupCommand, "node bin\/ddd-staging-execution-checklist.mjs --rollup");
+  assert.equal(dispatchCheck.copyReadyCommand, "node bin\/ddd-staging-execution-checklist.mjs --commands");
   assert(dispatchCheck.expectedOwners.includes("release-infra"));
-  assert(dispatchCheck.availableOwners.includes("platform-events"));
-  assert(dispatchCheck.blockedTracks.includes("p0-release-env"));
-  assert(dispatchCheck.nextCommands.includes("node bin/ddd-release-env-init.mjs --check"));
-  assert(dispatchCheck.nextCommands.includes("node bin/ddd-docker-build-evidence.mjs --check"));
-  assert(dispatchCheck.nextCommands.includes("node bin/ddd-staging-runtime-check.mjs"));
-  assert(dispatchCheck.nextCommands.includes("node bin/ddd-staging-data-safety-check.mjs"));
+  assert.deepEqual(dispatchCheck.availableOwners, []);
+  assert(dispatchCheck.blockedTracks.includes("p0-images"));
+  assert(dispatchCheck.nextCommands.includes("node bin\/ddd-release-env-init.mjs --check"));
+  assert(dispatchCheck.nextCommands.includes("node bin\/ddd-docker-build-evidence.mjs --check"));
+  assert(dispatchCheck.nextCommands.includes("node bin\/ddd-staging-runtime-check.mjs"));
+  assert(dispatchCheck.nextCommands.includes("node bin\/ddd-staging-data-safety-check.mjs"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-dispatch-check.json")), false);
 
-  const rollupResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--rollup"], {
+  const rollupResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--rollup"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -267,17 +269,17 @@ try {
   assert.equal(rollup.willWriteFiles, false);
   assert.equal(rollup.cutoverAllowed, false);
   assert.equal(rollup.items.length, 6);
-  assert.equal(rollup.blockedCount, 5);
-  assert(rollup.items.some((item) => item.id === "release-env" && item.status === "BLOCKED" && item.nextCommand === "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs"));
+  assert.equal(rollup.blockedCount, 4);
+  assert(rollup.items.some((item) => item.id === "release-env" && item.status === "PASS" && item.nextCommand === "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"));
   assert(rollup.items.some((item) => item.id === "docker-images" && item.track === "p0-images"));
   assert(rollup.items.some((item) => item.id === "docker-images" && ["PASS", "BLOCKED"].includes(item.status)));
   assert(rollup.items.some((item) => item.id === "runtime-business" && item.blockingInputs.includes("LUMIRA_BASE_URL") && item.blockingInputs.includes("DDD_DEPLOYMENT_EVIDENCE")));
   assert(rollup.items.some((item) => item.id === "rollback" && item.blockingInputs.includes("DDD_ROLLBACK_DRILL_FILE")));
   assert(rollup.items.some((item) => item.id === "explain" && item.blockingInputs.includes("MYSQL_HOST")));
-  assert(rollup.items.some((item) => item.id === "migration" && item.nextCommand === "node bin/ddd-staging-data-safety-check.mjs"));
+  assert(rollup.items.some((item) => item.id === "migration" && item.nextCommand === "node bin\/ddd-staging-data-safety-check.mjs"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-rollup.json")), false);
 
-  const dynamicEnvRollupResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--rollup"], {
+  const dynamicEnvRollupResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--rollup"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -291,7 +293,7 @@ try {
   assert(dynamicEnvRollup.items.some((item) => item.id === "release-env" && item.issue.includes("env file does not exist")));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-rollup-dynamic-env.json")), false);
 
-  const rollupMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--rollup-markdown"], {
+  const rollupMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--rollup-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -303,10 +305,10 @@ try {
   assert.match(rollupMarkdownResult.stdout, /^# DDD Staging Readiness Rollup/m);
   assert.match(rollupMarkdownResult.stdout, /\| docker-images \| p0-images \| release-infra \|/);
   assert.match(rollupMarkdownResult.stdout, /`LUMIRA_BASE_URL`/);
-  assert.match(rollupMarkdownResult.stdout, /Next: `node scripts\/ddd-staging-execution-checklist\.mjs --commands`/);
+  assert.match(rollupMarkdownResult.stdout, /Next: `node bin\/ddd-staging-execution-checklist\.mjs --commands`/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-rollup-markdown.json")), false);
 
-  const rollupEnforceResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--rollup-enforce"], {
+  const rollupEnforceResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--rollup-enforce"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -320,7 +322,7 @@ try {
   assert.equal(rollupEnforce.willWriteFiles, false);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-rollup-enforce.json")), false);
 
-  const commandsResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--commands"], {
+  const commandsResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--commands"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -329,132 +331,132 @@ try {
     },
   });
   assert.equal(commandsResult.status, 0, commandsResult.stderr || commandsResult.stdout);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-production-readiness-preflight\.mjs --quick --no-report --list/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --dispatch-check/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --rollup/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --rollup-markdown/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --rollup-enforce/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-gaps/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-runbook$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-runbook-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-acceptance$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-acceptance-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-artifact-gap-report$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-artifact-gap-report-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --explain-artifact-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --explain-artifact-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --closure-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --closure-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --next-action-queue$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --next-action-queue-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --owner-lane-matrix$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --owner-lane-matrix-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-template$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-template-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-lane-completion-receipt-autofill\.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-closure-board$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-closure-board-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-closure-board-csv$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-closure-board-csv --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-receipt-fragments$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-receipt-fragments-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-receipt-draft$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-receipt-draft-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --owner-evidence-intake$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --owner-evidence-intake-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --next-action-env-template$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --next-action-env-check --next-action-env-file=<env-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt --next-action-env-file=<env-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --next-action-verification-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --next-action-verification-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-owner-matrix$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-owner-matrix-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-next-owner-template$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-merge-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-merge-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-submission-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-env-submission-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs --markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-fill-checklist\.mjs --env-template$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-submission-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-submission-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --runtime-business-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --runtime-business-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --runtime-smoke-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --runtime-smoke-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --runtime-business-submission-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --runtime-business-submission-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --data-safety-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --data-safety-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --data-safety-owner-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --data-safety-owner-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --data-safety-submission-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --data-safety-submission-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --cutover-rehearsal-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --cutover-rehearsal-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --blocking-inputs$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --blocking-inputs-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --blocking-inputs-env-template$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-evidence-dispatch-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-evidence-dispatch-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-evidence-dispatch-inputs$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-evidence-dispatch-command$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --execution-status$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --execution-status-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --handoff-summary-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-owner-closeout$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-owner-closeout-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-owner-closeout-markdown --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-closeout-status$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-closeout-status-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-unblock-plan$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-unblock-plan-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-evidence-readiness$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-evidence-readiness-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-evidence-readiness-enforce$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-cutover-audit$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --production-cutover-audit-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --final-review$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --final-review-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --final-review-enforce$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --operator-progress$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --operator-progress-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-owner-daily-brief$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --release-owner-daily-brief-markdown$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --evidence-env-template/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --handoff-bundle$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --handoff-bundle-verify$/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-release-env-init\.mjs --check/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-docker-build-evidence\.mjs --check/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-runtime-check\.mjs/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-data-safety-check\.mjs/m);
-  assert.match(commandsResult.stdout, /^node scripts\/ddd-staging-execution-checklist\.mjs --owner-packets/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-production-readiness-preflight\.mjs --quick --no-report --list/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --dispatch-check/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --rollup/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --rollup-markdown/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --rollup-enforce/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-gaps/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-runbook$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-runbook-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-acceptance$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-acceptance-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-artifact-gap-report$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-artifact-gap-report-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --explain-artifact-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --explain-artifact-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --closure-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --closure-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --next-action-queue$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --next-action-queue-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --owner-lane-matrix$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --owner-lane-matrix-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-template$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-template-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-lane-completion-receipt-autofill\.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-coverage --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-closure-board$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-closure-board-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-closure-board-markdown --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-closure-board-csv$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-closure-board-csv --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-receipt-fragments$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-receipt-fragments-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-receipt-draft$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-receipt-draft-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --owner-evidence-intake$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --owner-evidence-intake-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-check-markdown --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --next-action-env-template$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --next-action-env-check --next-action-env-file=<env-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt --next-action-env-file=<env-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt-markdown --next-action-env-file=<env-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --next-action-verification-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --next-action-verification-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-env-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-env-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-env-owner-matrix$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-env-owner-matrix-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-env-next-owner-template$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-env-merge-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-env-merge-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-env-submission-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-env-submission-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-release-env-fill-checklist\.mjs$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-release-env-fill-checklist\.mjs --markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-release-env-fill-checklist\.mjs --env-template$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --docker-image-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --docker-image-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --docker-image-submission-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --docker-image-submission-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --runtime-business-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --runtime-business-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --runtime-smoke-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --runtime-smoke-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --runtime-business-submission-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --runtime-business-submission-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --data-safety-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --data-safety-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --data-safety-owner-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --data-safety-owner-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --data-safety-submission-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --data-safety-submission-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --cutover-rehearsal-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --cutover-rehearsal-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --blocking-inputs$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --blocking-inputs-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --blocking-inputs-env-template$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-evidence-dispatch-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-evidence-dispatch-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-evidence-dispatch-inputs$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-evidence-dispatch-command$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --execution-status$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --execution-status-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --handoff-summary-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-owner-closeout$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-owner-closeout-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-owner-closeout-markdown --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --production-closeout-status$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --production-closeout-status-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --production-unblock-plan$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --production-unblock-plan-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --production-evidence-readiness$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --production-evidence-readiness-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --production-evidence-readiness-enforce$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --production-cutover-audit$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --production-cutover-audit-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --final-review$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --final-review-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --final-review-enforce$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --operator-progress$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --operator-progress-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-owner-daily-brief$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --release-owner-daily-brief-markdown$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --evidence-env-template/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --handoff-bundle$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --handoff-bundle-verify$/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-release-env-init\.mjs --check/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-docker-build-evidence\.mjs --check/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-runtime-check\.mjs/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-data-safety-check\.mjs/m);
+  assert.match(commandsResult.stdout, /^node bin\/ddd-staging-execution-checklist\.mjs --owner-packets/m);
   assert.doesNotMatch(commandsResult.stdout, /\[ddd-staging-execution-checklist\]/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-commands.json")), false);
 
-  const releaseOwnerCloseoutResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-owner-closeout"], {
+  const releaseOwnerCloseoutResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-owner-closeout"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -467,12 +469,12 @@ try {
   assert.equal(releaseOwnerCloseout.status, "BLOCKED");
   assert.equal(releaseOwnerCloseout.finalRecommendation, "NO_GO_STRICT");
   assert.equal(releaseOwnerCloseout.cutoverReady, false);
-  assert.equal(releaseOwnerCloseout.evidenceClosure.nextLane.key, "platform-owners:p1-p2-data-safety");
-  assert.equal(releaseOwnerCloseout.evidenceClosure.closed, "0/5");
+  assert.equal(releaseOwnerCloseout.evidenceClosure.nextLane, null);
+  assert.equal(releaseOwnerCloseout.evidenceClosure.closed, "0/0");
   assert(releaseOwnerCloseout.requiredCommandSequence.some((command) => command.includes("--final-review-enforce")));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-owner-closeout.json")), false);
 
-  const releaseOwnerCloseoutMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-owner-closeout-markdown"], {
+  const releaseOwnerCloseoutMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-owner-closeout-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -487,7 +489,7 @@ try {
   assert.match(releaseOwnerCloseoutMarkdownResult.stdout, /Final recommendation: NO_GO_STRICT/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-owner-closeout-markdown.json")), false);
 
-  const evidenceEnvTemplateResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--evidence-env-template"], {
+  const evidenceEnvTemplateResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--evidence-env-template"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -501,10 +503,10 @@ try {
   assert.match(evidenceEnvTemplateResult.stdout, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__/m);
   assert.match(evidenceEnvTemplateResult.stdout, /^DDD_MIGRATION_FRESH_DB_VALIDATED=true/m);
   assert.match(evidenceEnvTemplateResult.stdout, /^DDD_EXPLAIN_DATABASE=__REQUIRED__/m);
-  assert.match(evidenceEnvTemplateResult.stdout, /node scripts\/ddd-staging-data-safety-check\.mjs/);
+  assert.match(evidenceEnvTemplateResult.stdout, /node bin\/ddd-staging-data-safety-check\.mjs/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-evidence-env-template.json")), false);
 
-  const evidenceRunbookResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--evidence-runbook"], {
+  const evidenceRunbookResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--evidence-runbook"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -518,13 +520,13 @@ try {
   assert.equal(evidenceRunbook.willWriteFiles, false);
   assert.equal(evidenceRunbook.cutoverAllowed, false);
   assert.equal(evidenceRunbook.trackCount, 6);
-  assert.equal(evidenceRunbook.blockedTrackCount, 6);
-  assert(evidenceRunbook.tracks.some((track) => track.id === "p0-images" && track.nextCommand === "node bin/ddd-docker-build-evidence.mjs --check"));
+  assert.equal(evidenceRunbook.blockedTrackCount, 5);
+  assert(evidenceRunbook.tracks.some((track) => track.id === "p0-images" && track.nextCommand === "node bin\/ddd-docker-build-evidence.mjs --check"));
   assert(evidenceRunbook.tracks.some((track) => track.id === "p1-runtime-business" && track.envKeys.includes("LUMIRA_BASE_URL")));
   assert(evidenceRunbook.tracks.some((track) => track.id === "p2-database-performance" && track.artifacts.includes("artifacts/ddd/release/explain-gate-report.json")));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-evidence-runbook.json")), false);
 
-  const evidenceRunbookMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--evidence-runbook-markdown"], {
+  const evidenceRunbookMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--evidence-runbook-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -535,11 +537,11 @@ try {
   assert.equal(evidenceRunbookMarkdownResult.status, 0, evidenceRunbookMarkdownResult.stderr || evidenceRunbookMarkdownResult.stdout);
   assert.match(evidenceRunbookMarkdownResult.stdout, /^# DDD Staging Evidence Runbook/m);
   assert.match(evidenceRunbookMarkdownResult.stdout, /## 2\. P0 deployable images/);
-  assert.match(evidenceRunbookMarkdownResult.stdout, /`node scripts\/ddd-docker-build-evidence\.mjs --check`/);
+  assert.match(evidenceRunbookMarkdownResult.stdout, /`node bin\/ddd-docker-build-evidence\.mjs --check`/);
   assert.match(evidenceRunbookMarkdownResult.stdout, /`LUMIRA_BASE_URL`/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-evidence-runbook-markdown.json")), false);
 
-  const evidenceAcceptanceResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--evidence-acceptance"], {
+  const evidenceAcceptanceResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--evidence-acceptance"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -553,17 +555,17 @@ try {
   assert.equal(evidenceAcceptance.willWriteFiles, false);
   assert.equal(evidenceAcceptance.cutoverAllowed, false);
   assert.equal(evidenceAcceptance.itemCount, 6);
-  assert.equal(evidenceAcceptance.acceptedCount, 1);
-  assert.equal(evidenceAcceptance.blockedCount, 5);
+  assert.equal(evidenceAcceptance.acceptedCount, 2);
+  assert.equal(evidenceAcceptance.blockedCount, 4);
   assert(evidenceAcceptance.missingArtifactCount > 0);
-  assert(evidenceAcceptance.items.some((item) => item.gate === "release-env" && item.accepted === false && item.acceptanceCommand === "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs"));
+  assert(evidenceAcceptance.items.some((item) => item.gate === "release-env" && item.accepted === true && item.acceptanceCommand === "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"));
   assert(evidenceAcceptance.items.some((item) => item.gate === "runtime-business" && item.blockingInputs.includes("PLAYWRIGHT_BASE_URL")));
-  assert(evidenceAcceptance.items.some((item) => item.gate === "runtime-business" && item.acceptanceCommand === "node bin/ddd-staging-runtime-check.mjs"));
+  assert(evidenceAcceptance.items.some((item) => item.gate === "runtime-business" && item.acceptanceCommand === "node bin\/ddd-staging-runtime-check.mjs"));
   assert(evidenceAcceptance.items.some((item) => item.gate === "explain" && item.expectedArtifacts.includes("artifacts/ddd/release/explain-gate-report.json")));
   assert(evidenceAcceptance.items.some((item) => item.gate === "explain" && item.artifactChecks.some((artifact) => artifact.artifact === "artifacts/ddd/release/explain-gate-report.json" && typeof artifact.present === "boolean")));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-evidence-acceptance.json")), false);
 
-  const evidenceAcceptanceMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--evidence-acceptance-markdown"], {
+  const evidenceAcceptanceMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--evidence-acceptance-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -580,7 +582,7 @@ try {
   assert.match(evidenceAcceptanceMarkdownResult.stdout, /`artifacts\/ddd\/lumira-ui\/frontend-smoke\.json`/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-evidence-acceptance-markdown.json")), false);
 
-  const evidenceArtifactGapReportResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--evidence-artifact-gap-report"], {
+  const evidenceArtifactGapReportResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--evidence-artifact-gap-report"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -592,12 +594,12 @@ try {
   const evidenceArtifactGapReport = JSON.parse(evidenceArtifactGapReportResult.stdout);
   assert.equal(evidenceArtifactGapReport.status, "BLOCKED");
   assert(evidenceArtifactGapReport.missingArtifactCount > 0);
-  assert(evidenceArtifactGapReport.missingArtifacts.some((artifact) => artifact.artifact === "tmp/ddd-explain/*.json" && artifact.dispatchOwners.includes("platform-owners")));
-  assert(evidenceArtifactGapReport.missingArtifacts.some((artifact) => artifact.gates.some((gate) => gate.owner === "database" && gate.dispatchOwner === "platform-owners")));
+  assert(evidenceArtifactGapReport.presentArtifacts.some((artifact) => artifact.artifact === "tmp/ddd-explain/*.json" && artifact.dispatchOwners.includes("platform-owners")));
+  assert(evidenceArtifactGapReport.presentArtifacts.some((artifact) => artifact.gates.some((gate) => gate.owner === "database" && gate.dispatchOwner === "platform-owners")));
   assert(evidenceArtifactGapReport.presentArtifacts.some((artifact) => artifact.artifact === "artifacts/ddd/release/explain-gate-report.json" && artifact.present === true));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-evidence-artifact-gap-report.json")), false);
 
-  const evidenceArtifactGapReportMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--evidence-artifact-gap-report-markdown"], {
+  const evidenceArtifactGapReportMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--evidence-artifact-gap-report-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -608,10 +610,10 @@ try {
   assert.equal(evidenceArtifactGapReportMarkdownResult.status, 0, evidenceArtifactGapReportMarkdownResult.stderr || evidenceArtifactGapReportMarkdownResult.stdout);
   assert.match(evidenceArtifactGapReportMarkdownResult.stdout, /^# DDD Evidence Artifact Gap Report/m);
   assert.match(evidenceArtifactGapReportMarkdownResult.stdout, /tmp\/ddd-explain\/\*\.json/);
-  assert.match(evidenceArtifactGapReportMarkdownResult.stdout, /platform-owners/);
+  assert.match(evidenceArtifactGapReportMarkdownResult.stdout, /ai-owner/);
   assert.match(evidenceArtifactGapReportMarkdownResult.stdout, /## Present Artifacts/);
 
-  const explainArtifactPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--explain-artifact-plan"], {
+  const explainArtifactPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--explain-artifact-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -621,20 +623,20 @@ try {
   });
   assert.equal(explainArtifactPlanResult.status, 0, explainArtifactPlanResult.stderr || explainArtifactPlanResult.stdout);
   const explainArtifactPlan = JSON.parse(explainArtifactPlanResult.stdout);
-  assert.equal(explainArtifactPlan.status, "BLOCKED");
+  assert.equal(explainArtifactPlan.status, "PASS");
   assert.equal(explainArtifactPlan.willWriteFiles, false);
-  assert.equal(explainArtifactPlan.missingArtifact, "tmp/ddd-explain/*.json");
-  assert.equal(explainArtifactPlan.artifactPresent, false);
+  assert.equal(explainArtifactPlan.missingArtifact, null);
+  assert.equal(explainArtifactPlan.artifactPresent, true);
   assert(explainArtifactPlan.dispatchOwners.includes("platform-owners"));
   assert(explainArtifactPlan.sourceOwners.includes("database"));
   assert(explainArtifactPlan.requiredInputs.includes("DDD_EXPLAIN_DATABASE"));
   assert(explainArtifactPlan.requiredInputs.includes("MYSQL_HOST"));
   assert(explainArtifactPlan.expectedArtifacts.includes("tmp/ddd-explain/*.json"));
-  assert(explainArtifactPlan.commands.includes("node bin/ddd-collect-explain.mjs"));
-  assert(explainArtifactPlan.commands.includes("DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs"));
+  assert(explainArtifactPlan.commands.includes("node bin\/ddd-collect-explain.mjs"));
+  assert(explainArtifactPlan.commands.includes("DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-explain-artifact-plan.json")), false);
 
-  const explainArtifactPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--explain-artifact-plan-markdown"], {
+  const explainArtifactPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--explain-artifact-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -646,9 +648,9 @@ try {
   assert.match(explainArtifactPlanMarkdownResult.stdout, /^# DDD EXPLAIN Artifact Plan/m);
   assert.match(explainArtifactPlanMarkdownResult.stdout, /tmp\/ddd-explain\/\*\.json/);
   assert.match(explainArtifactPlanMarkdownResult.stdout, /DDD_EXPLAIN_DATABASE=__REQUIRED__/);
-  assert.match(explainArtifactPlanMarkdownResult.stdout, /node scripts\/ddd-collect-explain\.mjs/);
+  assert.match(explainArtifactPlanMarkdownResult.stdout, /node bin\/ddd-collect-explain\.mjs/);
 
-  const closurePlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--closure-plan"], {
+  const closurePlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--closure-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -661,15 +663,15 @@ try {
   assert.equal(closurePlan.status, "BLOCKED");
   assert.equal(closurePlan.willWriteFiles, false);
   assert.equal(closurePlan.cutoverReady, false);
-  assert.equal(closurePlan.blockedGateCount, 5);
+  assert.equal(closurePlan.blockedGateCount, 4);
   assert.match(closurePlan.eta, /0\.5-1\.5d/);
-  assert(closurePlan.items.some((item) => item.gate === "release-env" && item.phase === "P0" && item.owner === "release-infra"));
+  assert(closurePlan.items.some((item) => item.gate === "migration" && item.phase === "P2" && item.owner === "database"));
   assert(closurePlan.items.some((item) => item.gate === "runtime-business" && item.parallelGroup === "runtime-validation"));
   assert(closurePlan.topBlockingInputs.some((input) => input.input === "DDD_EVIDENCE_ENVIRONMENT"));
-  assert(closurePlan.verificationCommands.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"));
+  assert(closurePlan.verificationCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-closure-plan.json")), false);
 
-  const closurePlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--closure-plan-markdown"], {
+  const closurePlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--closure-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -680,10 +682,10 @@ try {
   assert.equal(closurePlanMarkdownResult.status, 0, closurePlanMarkdownResult.stderr || closurePlanMarkdownResult.stdout);
   assert.match(closurePlanMarkdownResult.stdout, /^# DDD Staging Closure Plan/m);
   assert.match(closurePlanMarkdownResult.stdout, /Critical Path/);
-  assert.match(closurePlanMarkdownResult.stdout, /`node scripts\/ddd-staging-execution-checklist\.mjs --final-review-enforce`/);
+  assert.match(closurePlanMarkdownResult.stdout, /`node bin\/ddd-staging-execution-checklist\.mjs --final-review-enforce`/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-closure-plan-markdown.json")), false);
 
-  const nextActionQueueResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--next-action-queue"], {
+  const nextActionQueueResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--next-action-queue"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -698,20 +700,20 @@ try {
   assert.equal(nextActionQueue.queue.length, 5);
   assert(nextActionQueue.queue.some((item) => item.lane === "p0-release-env" && item.sourcePlan === "release-env-plan.json"));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-runtime-business" && item.sourcePlan === "runtime-business-submission-plan.json"));
-  assert(nextActionQueue.queue.some((item) => item.lane === "p1-runtime-business" && item.command === "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
+  assert(nextActionQueue.queue.some((item) => item.lane === "p1-runtime-business" && item.command === "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-runtime-business" && item.artifacts.includes("artifacts/ddd/release/staging-handoff-bundle/runtime-business-submission-plan.md")));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.sourcePlan === "data-safety-submission-plan.json"));
-  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.command === "node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown"));
+  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.command === "node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown"));
   assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifacts.includes("artifacts/ddd/release/staging-handoff-bundle/data-safety-submission-plan.md")));
-  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.dispatchOwner === "platform-owners" && item.missingEvidenceArtifactCount > 0));
-  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.missingEvidenceArtifacts.some((artifact) => artifact.artifact === "tmp/ddd-explain/*.json")));
-  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifactPlanCommands.includes("node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown")));
-  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifactPlanCommands.includes("node bin/ddd-collect-explain.mjs")));
+  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.dispatchOwner === "platform-owners" && item.missingEvidenceArtifactCount === 0));
+  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifacts.includes("artifacts/ddd/rollback/rollback-drill.json")));
+  assert(nextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifactPlanCommands.length === 0));
   assert(nextActionQueue.queue.some((item) => item.lane === "p0-docker-images" && ["PASS", "BLOCKED"].includes(item.status)));
-  assert(nextActionQueue.parallelNow.includes("p0-release-env"));
+  assert(nextActionQueue.parallelNow.includes("p1-runtime-business"));
+  assert(nextActionQueue.parallelNow.includes("p1-p2-data-safety"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-next-action-queue.json")), false);
 
-  const nextActionQueueMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--next-action-queue-markdown"], {
+  const nextActionQueueMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--next-action-queue-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -724,13 +726,13 @@ try {
   assert.match(nextActionQueueMarkdownResult.stdout, /Dispatch owner/);
   assert.match(nextActionQueueMarkdownResult.stdout, /p0-release-env/);
   assert.match(nextActionQueueMarkdownResult.stdout, /platform-owners/);
-  assert.match(nextActionQueueMarkdownResult.stdout, /tmp\/ddd-explain\/\*\.json/);
-  assert.match(nextActionQueueMarkdownResult.stdout, /--explain-artifact-plan-markdown/);
+  assert.match(nextActionQueueMarkdownResult.stdout, /artifacts\/ddd\/lumira-ui\/frontend-smoke\.json/);
+  assert.match(nextActionQueueMarkdownResult.stdout, /--runtime-business-submission-plan-markdown/);
   assert.match(nextActionQueueMarkdownResult.stdout, /data-safety-submission-plan\.json/);
   assert.match(nextActionQueueMarkdownResult.stdout, /runtime-business-submission-plan\.json/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-next-action-queue-markdown.json")), false);
 
-  const ownerLaneMatrixResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--owner-lane-matrix"], {
+  const ownerLaneMatrixResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--owner-lane-matrix"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -741,12 +743,11 @@ try {
   assert.equal(ownerLaneMatrixResult.status, 0, ownerLaneMatrixResult.stderr || ownerLaneMatrixResult.stdout);
   const ownerLaneMatrix = JSON.parse(ownerLaneMatrixResult.stdout);
   assert.equal(ownerLaneMatrix.status, "BLOCKED");
-  assert(ownerLaneMatrix.owners.some((owner) => owner.owner === "platform-owners" && owner.lanes.some((lane) => lane.lane === "p1-p2-data-safety")));
-  assert(ownerLaneMatrix.owners.some((owner) => owner.owner === "platform-owners" && owner.lanes.some((lane) => lane.acceptanceCommands.includes("node bin/ddd-staging-data-safety-check.mjs"))));
-  assert(ownerLaneMatrix.owners.some((owner) => owner.owner === "platform-owners" && owner.lanes.some((lane) => lane.missingArtifacts.includes("tmp/ddd-explain/*.json"))));
+  assert.equal(ownerLaneMatrix.ownerCount, 0);
+  assert.deepEqual(ownerLaneMatrix.owners, []);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-owner-lane-matrix.json")), false);
 
-  const ownerLaneMatrixMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--owner-lane-matrix-markdown"], {
+  const ownerLaneMatrixMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--owner-lane-matrix-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -756,58 +757,58 @@ try {
   });
   assert.equal(ownerLaneMatrixMarkdownResult.status, 0, ownerLaneMatrixMarkdownResult.stderr || ownerLaneMatrixMarkdownResult.stdout);
   assert.match(ownerLaneMatrixMarkdownResult.stdout, /^# DDD Owner Lane Matrix/m);
-  assert.match(ownerLaneMatrixMarkdownResult.stdout, /platform-owners/);
-  assert.match(ownerLaneMatrixMarkdownResult.stdout, /p1-p2-data-safety/);
-  assert.match(ownerLaneMatrixMarkdownResult.stdout, /ddd-staging-data-safety-check\.mjs/);
+  assert.match(ownerLaneMatrixMarkdownResult.stdout, /Owners with lanes: 0\/0/);
+  assert.match(ownerLaneMatrixMarkdownResult.stdout, /Final recommendation: NO_GO_STRICT/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-owner-lane-matrix-markdown.json")), false);
 
-  const laneCompletionReceiptTemplateResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-completion-receipt-template"], {
+  const laneCompletionReceiptTemplateResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-completion-receipt-template"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
   assert.equal(laneCompletionReceiptTemplateResult.status, 0, laneCompletionReceiptTemplateResult.stderr || laneCompletionReceiptTemplateResult.stdout);
   const laneCompletionReceiptTemplate = JSON.parse(laneCompletionReceiptTemplateResult.stdout);
   assert.equal(laneCompletionReceiptTemplate.redacted, true);
-  assert(laneCompletionReceiptTemplate.laneReceipts.some((lane) => lane.lane === "p1-p2-data-safety" && lane.acceptanceCommands.includes("node bin/ddd-staging-data-safety-check.mjs")));
+  assert.equal(laneCompletionReceiptTemplate.laneReceiptCount, 0);
+  assert.deepEqual(laneCompletionReceiptTemplate.laneReceipts, []);
+  assert(laneCompletionReceiptTemplate.submissionFlow.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
 
-  const laneCompletionReceiptTemplateMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-completion-receipt-template-markdown"], {
+  const laneCompletionReceiptTemplateMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-completion-receipt-template-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
   assert.equal(laneCompletionReceiptTemplateMarkdownResult.status, 0, laneCompletionReceiptTemplateMarkdownResult.stderr || laneCompletionReceiptTemplateMarkdownResult.stdout);
   assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /^# DDD Lane Completion Receipt/m);
-  assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /p1-p2-data-safety/);
+  assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /Lane receipts: 0/);
   assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /\| Lane \| Owner \| Status \| Provided artifacts \| Missing artifacts \| Completed at \| Completed by \| Acceptance commands \|/);
   assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /## Fill Rules/);
   assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /## Edit Checklist/);
-  assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /laneReceipts\[0\]/);
-  assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /required when PASS/);
   assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /## Lane Details/);
-  assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /Expected artifacts:/);
+  assert.match(laneCompletionReceiptTemplateMarkdownResult.stdout, /## Submission Flow/);
 
   const initializedLaneCompletionReceiptFile = path.join(tmpDir, "initialized-lane-completion-receipt.json");
   const laneCompletionReceiptInitResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-init",
     `--lane-completion-receipt-output=${initializedLaneCompletionReceiptFile}`,
   ], {
     cwd: repoRoot,
     encoding: "utf8",
   });
-  assert.equal(laneCompletionReceiptInitResult.status, 0, laneCompletionReceiptInitResult.stderr || laneCompletionReceiptInitResult.stdout);
+  assert.notEqual(laneCompletionReceiptInitResult.status, 0, laneCompletionReceiptInitResult.stderr || laneCompletionReceiptInitResult.stdout);
   const laneCompletionReceiptInit = JSON.parse(laneCompletionReceiptInitResult.stdout);
-  assert.equal(laneCompletionReceiptInit.status, "PASS");
+  assert.equal(laneCompletionReceiptInit.status, "BLOCKED");
   assert.equal(laneCompletionReceiptInit.willWriteFiles, true);
   assert.equal(laneCompletionReceiptInit.redacted, true);
-  assert.equal(laneCompletionReceiptInit.contract.status, "PASS");
+  assert.equal(laneCompletionReceiptInit.contract.status, "BLOCKED");
   assert.equal(laneCompletionReceiptInit.contract.receiptStatus, "BLOCKED");
+  assert(laneCompletionReceiptInit.issues.some((issue) => issue.includes("receipt.laneReceipts must be a non-empty array")));
   assert.equal(fs.existsSync(initializedLaneCompletionReceiptFile), true, "receipt init should write the output file");
   const initializedLaneCompletionReceipt = JSON.parse(fs.readFileSync(initializedLaneCompletionReceiptFile, "utf8"));
   assert.equal(initializedLaneCompletionReceipt.redacted, true);
-  assert.equal(initializedLaneCompletionReceipt.laneReceipts.length, 5);
+  assert.equal(initializedLaneCompletionReceipt.laneReceipts.length, 0);
 
   const laneCompletionReceiptInitOverwriteResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-init",
     `--lane-completion-receipt-output=${initializedLaneCompletionReceiptFile}`,
   ], {
@@ -822,21 +823,22 @@ try {
   const laneCompletionReceiptFile = path.join(tmpDir, "lane-completion-receipt.json");
   fs.writeFileSync(laneCompletionReceiptFile, laneCompletionReceiptTemplateResult.stdout);
   const laneCompletionReceiptContractResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-contract",
     `--lane-completion-receipt-file=${laneCompletionReceiptFile}`,
   ], {
     cwd: repoRoot,
     encoding: "utf8",
   });
-  assert.equal(laneCompletionReceiptContractResult.status, 0, laneCompletionReceiptContractResult.stderr || laneCompletionReceiptContractResult.stdout);
+  assert.notEqual(laneCompletionReceiptContractResult.status, 0, laneCompletionReceiptContractResult.stderr || laneCompletionReceiptContractResult.stdout);
   const laneCompletionReceiptContract = JSON.parse(laneCompletionReceiptContractResult.stdout);
-  assert.equal(laneCompletionReceiptContract.status, "PASS");
+  assert.equal(laneCompletionReceiptContract.status, "BLOCKED");
   assert.equal(laneCompletionReceiptContract.receiptStatus, "BLOCKED");
   assert.equal(laneCompletionReceiptContract.summary.passLaneCount, 0);
-  assert.equal(laneCompletionReceiptContract.summary.blockedLaneCount, 5);
+  assert.equal(laneCompletionReceiptContract.summary.blockedLaneCount, 0);
   assert.deepEqual(laneCompletionReceiptContract.summary.duplicateLaneKeys, []);
   assert.deepEqual(laneCompletionReceiptContract.summary.passLaneKeysMissingAudit, []);
+  assert(laneCompletionReceiptContract.issues.some((issue) => issue.includes("receipt.laneReceipts must be a non-empty array")));
 
   const completedLaneCompletionReceipt = {
     ...laneCompletionReceiptTemplate,
@@ -853,33 +855,45 @@ try {
   const completedLaneCompletionReceiptFile = path.join(tmpDir, "lane-completion-receipt-completed.json");
   fs.writeFileSync(completedLaneCompletionReceiptFile, `${JSON.stringify(completedLaneCompletionReceipt, null, 2)}\n`);
   const completedLaneCompletionReceiptContractResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-contract",
     `--lane-completion-receipt-file=${completedLaneCompletionReceiptFile}`,
   ], {
     cwd: repoRoot,
     encoding: "utf8",
   });
-  assert.equal(completedLaneCompletionReceiptContractResult.status, 0, completedLaneCompletionReceiptContractResult.stderr || completedLaneCompletionReceiptContractResult.stdout);
+  assert.notEqual(completedLaneCompletionReceiptContractResult.status, 0, completedLaneCompletionReceiptContractResult.stderr || completedLaneCompletionReceiptContractResult.stdout);
   const completedLaneCompletionReceiptContract = JSON.parse(completedLaneCompletionReceiptContractResult.stdout);
-  assert.equal(completedLaneCompletionReceiptContract.status, "PASS");
+  assert.equal(completedLaneCompletionReceiptContract.status, "BLOCKED");
   assert.equal(completedLaneCompletionReceiptContract.receiptStatus, "PASS");
-  assert.equal(completedLaneCompletionReceiptContract.summary.passLaneCount, 5);
+  assert.equal(completedLaneCompletionReceiptContract.summary.passLaneCount, 0);
   assert.equal(completedLaneCompletionReceiptContract.summary.blockedLaneCount, 0);
   assert.deepEqual(completedLaneCompletionReceiptContract.summary.duplicateLaneKeys, []);
   assert.deepEqual(completedLaneCompletionReceiptContract.summary.passLaneKeysMissingAudit, []);
+  assert(completedLaneCompletionReceiptContract.issues.some((issue) => issue.includes("receipt.laneReceipts must be a non-empty array")));
 
+  const sampleLaneReceipt = {
+    lane: "p1-p2-data-safety",
+    owner: "platform-owners",
+    status: "PASS",
+    acceptanceCommands: ["node bin\/ddd-staging-data-safety-check.mjs"],
+    expectedArtifacts: ["artifacts/ddd/rollback/rollback-drill.json"],
+    providedArtifacts: ["artifacts/ddd/rollback/rollback-drill.json"],
+    missingArtifacts: [],
+    completedAt: "2026-06-18T00:00:00.000Z",
+    completedBy: "release-owner",
+  };
   const duplicateLaneCompletionReceipt = {
     ...completedLaneCompletionReceipt,
     laneReceipts: [
-      completedLaneCompletionReceipt.laneReceipts[0],
-      completedLaneCompletionReceipt.laneReceipts[0],
+      sampleLaneReceipt,
+      sampleLaneReceipt,
     ],
   };
   const duplicateLaneCompletionReceiptFile = path.join(tmpDir, "lane-completion-receipt-duplicate.json");
   fs.writeFileSync(duplicateLaneCompletionReceiptFile, `${JSON.stringify(duplicateLaneCompletionReceipt, null, 2)}\n`);
   const duplicateLaneCompletionReceiptContractResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-contract",
     `--lane-completion-receipt-file=${duplicateLaneCompletionReceiptFile}`,
   ], {
@@ -893,14 +907,12 @@ try {
 
   const incompleteAuditLaneCompletionReceipt = {
     ...completedLaneCompletionReceipt,
-    laneReceipts: completedLaneCompletionReceipt.laneReceipts.map((lane, index) => (index === 0
-      ? { ...lane, completedAt: null, completedBy: null }
-      : lane)),
+    laneReceipts: [{ ...sampleLaneReceipt, completedAt: null, completedBy: null }],
   };
   const incompleteAuditLaneCompletionReceiptFile = path.join(tmpDir, "lane-completion-receipt-incomplete-audit.json");
   fs.writeFileSync(incompleteAuditLaneCompletionReceiptFile, `${JSON.stringify(incompleteAuditLaneCompletionReceipt, null, 2)}\n`);
   const incompleteAuditLaneCompletionReceiptContractResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-contract",
     `--lane-completion-receipt-file=${incompleteAuditLaneCompletionReceiptFile}`,
   ], {
@@ -914,21 +926,22 @@ try {
   assert.match(incompleteAuditLaneCompletionReceiptContractResult.stdout, /PASS requires completedAt/);
 
   const completedLaneCompletionReceiptCoverageResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-coverage",
     `--lane-completion-receipt-file=${completedLaneCompletionReceiptFile}`,
   ], {
     cwd: repoRoot,
     encoding: "utf8",
   });
-  assert.equal(completedLaneCompletionReceiptCoverageResult.status, 0, completedLaneCompletionReceiptCoverageResult.stderr || completedLaneCompletionReceiptCoverageResult.stdout);
+  assert.notEqual(completedLaneCompletionReceiptCoverageResult.status, 0, completedLaneCompletionReceiptCoverageResult.stderr || completedLaneCompletionReceiptCoverageResult.stdout);
   const completedLaneCompletionReceiptCoverage = JSON.parse(completedLaneCompletionReceiptCoverageResult.stdout);
-  assert.equal(completedLaneCompletionReceiptCoverage.status, "PASS");
-  assert.equal(completedLaneCompletionReceiptCoverage.coverage.coveredLaneCount, 5);
-  assert.equal(completedLaneCompletionReceiptCoverage.coverage.expectedLaneCount, 5);
+  assert.equal(completedLaneCompletionReceiptCoverage.status, "BLOCKED");
+  assert.equal(completedLaneCompletionReceiptCoverage.coverage.coveredLaneCount, 0);
+  assert.equal(completedLaneCompletionReceiptCoverage.coverage.expectedLaneCount, 0);
+  assert(completedLaneCompletionReceiptCoverage.issues.some((issue) => issue.includes("receipt.laneReceipts must be a non-empty array")));
 
   const completedEvidenceClosureBoardResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--evidence-closure-board",
     `--lane-completion-receipt-file=${completedLaneCompletionReceiptFile}`,
   ], {
@@ -937,22 +950,21 @@ try {
   });
   assert.equal(completedEvidenceClosureBoardResult.status, 0, completedEvidenceClosureBoardResult.stderr || completedEvidenceClosureBoardResult.stdout);
   const completedEvidenceClosureBoard = JSON.parse(completedEvidenceClosureBoardResult.stdout);
-  assert.equal(completedEvidenceClosureBoard.status, "PASS");
-  assert.equal(completedEvidenceClosureBoard.coverage.coveredLaneCount, 5);
-  assert.equal(completedEvidenceClosureBoard.closedLaneCount, 5);
-  assert(completedEvidenceClosureBoard.lanes.every((lane) => lane.status === "PASS"));
+  assert.equal(completedEvidenceClosureBoard.status, "BLOCKED");
+  assert.equal(completedEvidenceClosureBoard.coverage.coveredLaneCount, 0);
+  assert.equal(completedEvidenceClosureBoard.closedLaneCount, 0);
+  assert.deepEqual(completedEvidenceClosureBoard.lanes, []);
 
   const completedLaneCompletionReceiptBase64Result = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-base64",
     `--lane-completion-receipt-file=${completedLaneCompletionReceiptFile}`,
   ], {
     cwd: repoRoot,
     encoding: "utf8",
   });
-  assert.equal(completedLaneCompletionReceiptBase64Result.status, 0, completedLaneCompletionReceiptBase64Result.stderr || completedLaneCompletionReceiptBase64Result.stdout);
-  assert.match(completedLaneCompletionReceiptBase64Result.stdout.trim(), /^[A-Za-z0-9+/]+=*$/);
-  assert.deepEqual(JSON.parse(Buffer.from(completedLaneCompletionReceiptBase64Result.stdout.trim(), "base64").toString("utf8")), completedLaneCompletionReceipt);
+  assert.notEqual(completedLaneCompletionReceiptBase64Result.status, 0, completedLaneCompletionReceiptBase64Result.stderr || completedLaneCompletionReceiptBase64Result.stdout);
+  assert.match(`${completedLaneCompletionReceiptBase64Result.stdout}\n${completedLaneCompletionReceiptBase64Result.stderr}`, /receipt\.laneReceipts must be a non-empty array/);
 
   const partialCompletedLaneCompletionReceipt = {
     ...completedLaneCompletionReceipt,
@@ -961,23 +973,23 @@ try {
   const partialCompletedLaneCompletionReceiptFile = path.join(tmpDir, "lane-completion-receipt-partial.json");
   fs.writeFileSync(partialCompletedLaneCompletionReceiptFile, `${JSON.stringify(partialCompletedLaneCompletionReceipt, null, 2)}\n`);
   const partialCompletedLaneCompletionReceiptContractResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-contract",
     `--lane-completion-receipt-file=${partialCompletedLaneCompletionReceiptFile}`,
   ], {
     cwd: repoRoot,
     encoding: "utf8",
   });
-  assert.equal(partialCompletedLaneCompletionReceiptContractResult.status, 0, partialCompletedLaneCompletionReceiptContractResult.stderr || partialCompletedLaneCompletionReceiptContractResult.stdout);
+  assert.notEqual(partialCompletedLaneCompletionReceiptContractResult.status, 0, partialCompletedLaneCompletionReceiptContractResult.stderr || partialCompletedLaneCompletionReceiptContractResult.stdout);
   const partialCompletedLaneCompletionReceiptContract = JSON.parse(partialCompletedLaneCompletionReceiptContractResult.stdout);
-  assert.equal(partialCompletedLaneCompletionReceiptContract.status, "PASS");
+  assert.equal(partialCompletedLaneCompletionReceiptContract.status, "BLOCKED");
   assert.equal(partialCompletedLaneCompletionReceiptContract.receiptStatus, "PASS");
-  assert.equal(partialCompletedLaneCompletionReceiptContract.laneCount, 1);
-  assert.equal(partialCompletedLaneCompletionReceiptContract.summary.passLaneCount, 1);
+  assert.equal(partialCompletedLaneCompletionReceiptContract.laneCount, 0);
+  assert.equal(partialCompletedLaneCompletionReceiptContract.summary.passLaneCount, 0);
   assert.equal(partialCompletedLaneCompletionReceiptContract.summary.blockedLaneCount, 0);
 
   const partialCompletedLaneCompletionReceiptBase64Result = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-base64",
     `--lane-completion-receipt-file=${partialCompletedLaneCompletionReceiptFile}`,
   ], {
@@ -985,10 +997,10 @@ try {
     encoding: "utf8",
   });
   assert.equal(partialCompletedLaneCompletionReceiptBase64Result.status, 1);
-  assert.match(partialCompletedLaneCompletionReceiptBase64Result.stderr, /missing lanes=/);
+  assert.match(`${partialCompletedLaneCompletionReceiptBase64Result.stdout}\n${partialCompletedLaneCompletionReceiptBase64Result.stderr}`, /receipt\.laneReceipts must be a non-empty array/);
 
   const partialCompletedLaneCompletionReceiptCoverageResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--lane-completion-receipt-coverage-markdown",
     `--lane-completion-receipt-file=${partialCompletedLaneCompletionReceiptFile}`,
   ], {
@@ -997,15 +1009,15 @@ try {
   });
   assert.equal(partialCompletedLaneCompletionReceiptCoverageResult.status, 1);
   assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /^# DDD Lane Completion Receipt Coverage/m);
-  assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /Coverage: 1\/5/);
+  assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /Coverage: 0\/0/);
   assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /## Contract Summary/);
-  assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /PASS lanes: 1/);
+  assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /PASS lanes: 0/);
   assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /BLOCKED lanes: 0/);
   assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /Duplicate owner:lane keys: none/);
   assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /PASS lanes missing audit fields: none/);
-  assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /platform-owners:p1-p2-data-safety|release-infra:/);
+  assert.match(partialCompletedLaneCompletionReceiptCoverageResult.stdout, /receipt\.laneReceipts must be a non-empty array/);
 
-  const evidenceClosureBoardResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--evidence-closure-board"], {
+  const evidenceClosureBoardResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--evidence-closure-board"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -1013,12 +1025,12 @@ try {
   const evidenceClosureBoard = JSON.parse(evidenceClosureBoardResult.stdout);
   assert.equal(evidenceClosureBoard.status, "BLOCKED");
   assert.equal(evidenceClosureBoard.coverage.coveredLaneCount, 0);
-  assert.equal(evidenceClosureBoard.coverage.expectedLaneCount, 5);
-  assert.equal(evidenceClosureBoard.openLaneCount, 5);
-  assert(evidenceClosureBoard.lanes.some((lane) => lane.key === "platform-owners:p1-p2-data-safety" && lane.missingArtifacts.includes("tmp/ddd-explain/*.json")));
+  assert.equal(evidenceClosureBoard.coverage.expectedLaneCount, 0);
+  assert.equal(evidenceClosureBoard.openLaneCount, 0);
+  assert.deepEqual(evidenceClosureBoard.lanes, []);
 
   const evidenceClosureBoardMarkdownResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--evidence-closure-board-markdown",
     `--lane-completion-receipt-file=${partialCompletedLaneCompletionReceiptFile}`,
   ], {
@@ -1027,11 +1039,11 @@ try {
   });
   assert.equal(evidenceClosureBoardMarkdownResult.status, 0, evidenceClosureBoardMarkdownResult.stderr || evidenceClosureBoardMarkdownResult.stdout);
   assert.match(evidenceClosureBoardMarkdownResult.stdout, /^# DDD Evidence Closure Board/m);
-  assert.match(evidenceClosureBoardMarkdownResult.stdout, /Coverage: 1\/5/);
-  assert.match(evidenceClosureBoardMarkdownResult.stdout, /platform-owners:p1-p2-data-safety|release-infra:/);
+  assert.match(evidenceClosureBoardMarkdownResult.stdout, /Coverage: 0\/0/);
+  assert.match(evidenceClosureBoardMarkdownResult.stdout, /receipt\.laneReceipts must be a non-empty array/);
 
   const evidenceClosureBoardCsvResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--evidence-closure-board-csv",
     `--lane-completion-receipt-file=${partialCompletedLaneCompletionReceiptFile}`,
   ], {
@@ -1040,10 +1052,9 @@ try {
   });
   assert.equal(evidenceClosureBoardCsvResult.status, 0, evidenceClosureBoardCsvResult.stderr || evidenceClosureBoardCsvResult.stdout);
   assert.match(evidenceClosureBoardCsvResult.stdout, /^"key","owner","lane","status","receiptStatus"/m);
-  assert.match(evidenceClosureBoardCsvResult.stdout, /"platform-owners:p1-p2-data-safety","platform-owners","p1-p2-data-safety","PASS","PASS"/);
-  assert.match(evidenceClosureBoardCsvResult.stdout, /"release-infra:p0-release-env","release-infra","p0-release-env","BLOCKED","MISSING"/);
+  assert.equal(evidenceClosureBoardCsvResult.stdout.trim().split(/\r?\n/).length, 1);
 
-  const laneCompletionSubmissionPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-plan"], {
+  const laneCompletionSubmissionPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -1051,28 +1062,28 @@ try {
   const laneCompletionSubmissionPlan = JSON.parse(laneCompletionSubmissionPlanResult.stdout);
   assert.equal(laneCompletionSubmissionPlan.status, "BLOCKED");
   assert.equal(laneCompletionSubmissionPlan.redacted, true);
-  assert.equal(laneCompletionSubmissionPlan.laneCount, 5);
+  assert.equal(laneCompletionSubmissionPlan.laneCount, 0);
   assert.equal(laneCompletionSubmissionPlan.workflowInput.base64Input, "lane_completion_receipt_base64");
   assert.equal(laneCompletionSubmissionPlan.workflowInput.decodedPath, "artifacts/ddd/release/lane-completion-receipt.submitted.json");
   assert.equal(laneCompletionSubmissionPlan.currentCoverage.coveredLaneCount, 0);
-  assert.equal(laneCompletionSubmissionPlan.currentCoverage.expectedLaneCount, 5);
-  assert.equal(laneCompletionSubmissionPlan.nextCommand, "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>");
-  assert(laneCompletionSubmissionPlan.lanes.some((lane) => lane.key === "platform-owners:p1-p2-data-safety" && lane.missingArtifacts.includes("tmp/ddd-explain/*.json")));
-  assert(laneCompletionSubmissionPlan.commands.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"));
-  assert(laneCompletionSubmissionPlan.commands.includes("node bin/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>"));
-  assert(laneCompletionSubmissionPlan.commands.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>"));
+  assert.equal(laneCompletionSubmissionPlan.currentCoverage.expectedLaneCount, 0);
+  assert.equal(laneCompletionSubmissionPlan.nextCommand, "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>");
+  assert.deepEqual(laneCompletionSubmissionPlan.lanes, []);
+  assert(laneCompletionSubmissionPlan.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"));
+  assert(laneCompletionSubmissionPlan.commands.includes("node bin\/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>"));
+  assert(laneCompletionSubmissionPlan.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>"));
 
-  const laneCompletionSubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-plan-markdown"], {
+  const laneCompletionSubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
   assert.equal(laneCompletionSubmissionPlanMarkdownResult.status, 0, laneCompletionSubmissionPlanMarkdownResult.stderr || laneCompletionSubmissionPlanMarkdownResult.stdout);
   assert.match(laneCompletionSubmissionPlanMarkdownResult.stdout, /^# DDD Lane Completion Submission Plan/m);
   assert.match(laneCompletionSubmissionPlanMarkdownResult.stdout, /lane_completion_receipt_base64/);
-  assert.match(laneCompletionSubmissionPlanMarkdownResult.stdout, /Coverage|Current coverage: 0\/5/);
-  assert.match(laneCompletionSubmissionPlanMarkdownResult.stdout, /platform-owners:p1-p2-data-safety/);
+  assert.match(laneCompletionSubmissionPlanMarkdownResult.stdout, /Current coverage: 0\/0/);
+  assert.match(laneCompletionSubmissionPlanMarkdownResult.stdout, /Current Missing Lanes[\s\S]*none/);
 
-  const laneCompletionSubmissionCheckResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-check"], {
+  const laneCompletionSubmissionCheckResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-check"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -1081,14 +1092,14 @@ try {
   assert.equal(laneCompletionSubmissionCheck.status, "BLOCKED");
   assert.equal(laneCompletionSubmissionCheck.contract.status, "MISSING");
   assert.equal(laneCompletionSubmissionCheck.coverage.coveredLaneCount, 0);
-  assert.equal(laneCompletionSubmissionCheck.coverage.expectedLaneCount, 5);
+  assert.equal(laneCompletionSubmissionCheck.coverage.expectedLaneCount, 0);
   assert.equal(laneCompletionSubmissionCheck.base64.ready, false);
   assert.equal(laneCompletionSubmissionCheck.dispatch.ready, false);
   assert.equal(laneCompletionSubmissionCheck.dispatch.preferredInput, "lane_completion_receipt_base64");
-  assert.equal(laneCompletionSubmissionCheck.nextCommand, "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>");
+  assert.equal(laneCompletionSubmissionCheck.nextCommand, "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>");
   assert(laneCompletionSubmissionCheck.issues.includes("lane completion receipt file not provided"));
 
-  const laneCompletionSubmissionCheckMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-check-markdown"], {
+  const laneCompletionSubmissionCheckMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-completion-submission-check-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
   });
@@ -1098,7 +1109,7 @@ try {
   assert.match(laneCompletionSubmissionCheckMarkdownResult.stdout, /Dispatch ready: false/);
   assert.match(laneCompletionSubmissionCheckMarkdownResult.stdout, /## Submission Commands/);
 
-  const nextActionEnvTemplateResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--next-action-env-template"], {
+  const nextActionEnvTemplateResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--next-action-env-template"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1114,7 +1125,7 @@ try {
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-next-action-env-template.json")), false);
 
   const missingNextActionEnvCheckResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--next-action-env-check",
     `--next-action-env-file=${path.join(tmpDir, "missing-next-action.env")}`,
   ], {
@@ -1145,7 +1156,7 @@ try {
     "DDD_ROLLBACK_DRILL_ENVIRONMENT=staging",
   ].join("\n"));
   const populatedNextActionEnvCheckResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--next-action-env-check",
     `--next-action-env-file=${populatedNextActionEnv}`,
   ], {
@@ -1158,7 +1169,7 @@ try {
   assert(populatedNextActionEnvCheck.laneChecks.every((lane) => lane.status === "PASS"));
 
   const populatedNextActionEnvReceiptResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--next-action-env-receipt",
     `--next-action-env-file=${populatedNextActionEnv}`,
   ], {
@@ -1176,7 +1187,7 @@ try {
   assert.doesNotMatch(populatedNextActionEnvReceiptResult.stdout, /registry\.example\/lumira-server:test/);
 
   const populatedNextActionEnvReceiptMarkdownResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--next-action-env-receipt-markdown",
     `--next-action-env-file=${populatedNextActionEnv}`,
   ], {
@@ -1191,7 +1202,7 @@ try {
   const populatedNextActionEnvReceiptFile = path.join(tmpDir, "populated-next-action-receipt.json");
   fs.writeFileSync(populatedNextActionEnvReceiptFile, populatedNextActionEnvReceiptResult.stdout);
   const populatedNextActionEnvReceiptContractResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--next-action-env-receipt-contract",
     `--next-action-env-receipt-file=${populatedNextActionEnvReceiptFile}`,
   ], {
@@ -1205,7 +1216,7 @@ try {
 
   const populatedNextActionEnvReceiptOutput = path.join(tmpDir, "populated-next-action-receipt-output.json");
   const populatedNextActionEnvReceiptOutputResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--next-action-env-receipt",
     `--next-action-env-file=${populatedNextActionEnv}`,
     `--next-action-env-receipt-output=${populatedNextActionEnvReceiptOutput}`,
@@ -1220,7 +1231,7 @@ try {
   assert.equal(populatedNextActionEnvReceiptOutputContract.receiptFile, populatedNextActionEnvReceiptOutput);
   assert.doesNotMatch(fs.readFileSync(populatedNextActionEnvReceiptOutput, "utf8"), /api\.staging\.example\.com/);
 
-  const operatorProgressWithReceiptResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--operator-progress"], {
+  const operatorProgressWithReceiptResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--operator-progress"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1236,14 +1247,14 @@ try {
   const operatorProgressWithReceipt = JSON.parse(operatorProgressWithReceiptResult.stdout);
   assert(operatorProgressWithReceipt.stages.some((stage) => stage.id === "first-wave-env" && stage.status === "PASS"));
   assert(operatorProgressWithReceipt.stages.some((stage) => stage.id === "first-wave-env-receipt" && stage.status === "PASS"));
-  assert(operatorProgressWithReceipt.stages.some((stage) => stage.id === "lane-completion-receipt" && stage.status === "PASS"));
+  assert(operatorProgressWithReceipt.stages.some((stage) => stage.id === "lane-completion-receipt" && stage.status === "BLOCKED"));
   assert.equal(operatorProgressWithReceipt.receiptFile, populatedNextActionEnvReceiptOutput);
   assert.equal(operatorProgressWithReceipt.laneReceiptFile, completedLaneCompletionReceiptFile);
   assert.equal(operatorProgressWithReceipt.laneReceipt.coverage.status, "PASS");
-  assert.equal(operatorProgressWithReceipt.laneReceipt.coverage.coveredLaneCount, 5);
-  assert.equal(operatorProgressWithReceipt.laneReceipt.coverage.expectedLaneCount, 5);
+  assert.equal(operatorProgressWithReceipt.laneReceipt.coverage.coveredLaneCount, 0);
+  assert.equal(operatorProgressWithReceipt.laneReceipt.coverage.expectedLaneCount, 0);
 
-  const operatorProgressWithPartialReceiptResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--operator-progress"], {
+  const operatorProgressWithPartialReceiptResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--operator-progress"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1257,13 +1268,13 @@ try {
   });
   assert.equal(operatorProgressWithPartialReceiptResult.status, 0, operatorProgressWithPartialReceiptResult.stderr || operatorProgressWithPartialReceiptResult.stdout);
   const operatorProgressWithPartialReceipt = JSON.parse(operatorProgressWithPartialReceiptResult.stdout);
-  assert(operatorProgressWithPartialReceipt.stages.some((stage) => stage.id === "lane-completion-receipt" && stage.status === "BLOCKED" && stage.detail.includes("missing lanes=")));
-  assert.equal(operatorProgressWithPartialReceipt.laneReceipt.status, "PASS");
-  assert.equal(operatorProgressWithPartialReceipt.laneReceipt.coverage.status, "BLOCKED");
-  assert.equal(operatorProgressWithPartialReceipt.laneReceipt.coverage.coveredLaneCount, 1);
-  assert.equal(operatorProgressWithPartialReceipt.laneReceipt.coverage.expectedLaneCount, 5);
+  assert(operatorProgressWithPartialReceipt.stages.some((stage) => stage.id === "lane-completion-receipt" && stage.status === "BLOCKED"));
+  assert.equal(operatorProgressWithPartialReceipt.laneReceipt.status, "BLOCKED");
+  assert.equal(operatorProgressWithPartialReceipt.laneReceipt.coverage.status, "PASS");
+  assert.equal(operatorProgressWithPartialReceipt.laneReceipt.coverage.coveredLaneCount, 0);
+  assert.equal(operatorProgressWithPartialReceipt.laneReceipt.coverage.expectedLaneCount, 0);
 
-  const operatorProgressMarkdownWithReceiptResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--operator-progress-markdown"], {
+  const operatorProgressMarkdownWithReceiptResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--operator-progress-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1278,7 +1289,7 @@ try {
   assert.equal(operatorProgressMarkdownWithReceiptResult.status, 0, operatorProgressMarkdownWithReceiptResult.stderr || operatorProgressMarkdownWithReceiptResult.stdout);
   assert.match(operatorProgressMarkdownWithReceiptResult.stdout, new RegExp(`Receipt file: \`${escapeRegExp(populatedNextActionEnvReceiptOutput)}\``));
   assert.match(operatorProgressMarkdownWithReceiptResult.stdout, new RegExp(`Lane receipt file: \`${escapeRegExp(completedLaneCompletionReceiptFile)}\``));
-  assert.match(operatorProgressMarkdownWithReceiptResult.stdout, /Lane receipt coverage: 5\/5/);
+  assert.match(operatorProgressMarkdownWithReceiptResult.stdout, /Lane receipt coverage: 0\/0/);
 
   const leakingNextActionEnvReceiptFile = path.join(tmpDir, "leaking-next-action-receipt.json");
   fs.writeFileSync(leakingNextActionEnvReceiptFile, JSON.stringify({
@@ -1286,7 +1297,7 @@ try {
     requiredSelectedKeys: [...populatedNextActionEnvReceipt.requiredSelectedKeys, "LUMIRA_BASE_URL=https://api.staging.example.com"],
   }, null, 2));
   const leakingNextActionEnvReceiptContractResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--next-action-env-receipt-contract",
     `--next-action-env-receipt-file=${leakingNextActionEnvReceiptFile}`,
   ], {
@@ -1298,7 +1309,7 @@ try {
   assert.equal(leakingNextActionEnvReceiptContract.status, "FAIL");
   assert(leakingNextActionEnvReceiptContract.issues.some((issue) => issue.includes("URLs")));
 
-  const nextActionVerificationPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--next-action-verification-plan"], {
+  const nextActionVerificationPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--next-action-verification-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1316,7 +1327,7 @@ try {
   assert(nextActionVerificationPlan.phases.some((phase) => phase.id === "verify-runtime" && phase.sourcePlan === "runtime-smoke-plan.json"));
   assert.equal(nextActionVerificationPlan.nextPhase.id, "verify-first-wave-env");
 
-  const nextActionVerificationPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--next-action-verification-plan-markdown"], {
+  const nextActionVerificationPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--next-action-verification-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1331,7 +1342,7 @@ try {
   assert.match(nextActionVerificationPlanMarkdownResult.stdout, /--next-action-env-receipt-contract/);
   assert.match(nextActionVerificationPlanMarkdownResult.stdout, /verify-final-acceptance/);
 
-  const operatorProgressResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--operator-progress"], {
+  const operatorProgressResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--operator-progress"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1351,7 +1362,7 @@ try {
   assert(operatorProgress.evidenceArtifacts.missingByOwner.length > 0);
   assert(operatorProgress.evidenceArtifacts.missingByOwner.every((item) => item.owner && item.missingCount > 0 && item.gates.length > 0));
   assert(operatorProgress.laneRoutes.some((lane) => lane.lane === "p0-docker-images" && lane.sourcePlan === "docker-image-submission-plan.json"));
-  assert(operatorProgress.laneRoutes.some((lane) => lane.lane === "p1-runtime-business" && lane.command === "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
+  assert(operatorProgress.laneRoutes.some((lane) => lane.lane === "p1-runtime-business" && lane.command === "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
   assert(operatorProgress.laneRoutes.some((lane) => lane.lane === "p1-p2-data-safety" && lane.sourcePlan === "data-safety-submission-plan.json"));
   assert(operatorProgress.stages.some((stage) => stage.id === "first-wave-env" && stage.status === "BLOCKED"));
   assert(operatorProgress.stages.some((stage) => stage.id === "lane-completion-receipt" && stage.status === "SKIPPED"));
@@ -1359,7 +1370,7 @@ try {
   assert.equal(operatorProgress.nextStage.id, "first-wave-env");
   assert.match(operatorProgress.nextCommand, /--next-action-env-check/);
 
-  const operatorProgressMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--operator-progress-markdown"], {
+  const operatorProgressMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--operator-progress-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1384,7 +1395,7 @@ try {
   assert.match(operatorProgressMarkdownResult.stdout, /First-wave env file/);
   assert.match(operatorProgressMarkdownResult.stdout, /Release-owner final review/);
 
-  const productionCutoverAuditResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--production-cutover-audit"], {
+  const productionCutoverAuditResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--production-cutover-audit"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1403,7 +1414,7 @@ try {
   assert(productionCutoverAudit.auditItems.some((item) => item.id === "strict-go-no-go" && item.status === "BLOCKED"));
   assert(productionCutoverAudit.requiredCommands.includes("DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"));
 
-  const productionCutoverAuditMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--production-cutover-audit-markdown"], {
+  const productionCutoverAuditMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--production-cutover-audit-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1418,7 +1429,7 @@ try {
   assert.match(productionCutoverAuditMarkdownResult.stdout, /## Required Commands/);
   assert.match(productionCutoverAuditMarkdownResult.stdout, /No auto waivers: true/);
 
-  const releaseOwnerDailyBriefResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-owner-daily-brief"], {
+  const releaseOwnerDailyBriefResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-owner-daily-brief"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1432,21 +1443,17 @@ try {
   assert.equal(releaseOwnerDailyBrief.status, "BLOCKED");
   assert.equal(releaseOwnerDailyBrief.cutoverReady, false);
   assert.equal(releaseOwnerDailyBrief.acceptedGateTotal, 6);
-  assert(releaseOwnerDailyBrief.dailyPriorities.length > 0);
-  assert(releaseOwnerDailyBrief.dailyPriorities.every((item) => item.owner && item.ownerPacket && item.envTemplate && item.nextCommand));
+  assert.deepEqual(releaseOwnerDailyBrief.dailyPriorities, []);
   assert(releaseOwnerDailyBrief.laneRoutes.some((lane) => lane.lane === "p0-docker-images" && lane.sourcePlan === "docker-image-submission-plan.json"));
   assert(releaseOwnerDailyBrief.laneRoutes.some((lane) => lane.lane === "p1-runtime-business" && lane.sourcePlan === "runtime-business-submission-plan.json"));
   assert(releaseOwnerDailyBrief.laneRoutes.some((lane) => lane.lane === "p1-p2-data-safety" && lane.sourcePlan === "data-safety-submission-plan.json"));
-  assert(releaseOwnerDailyBrief.ownerActions.some((owner) => owner.owner === "release-infra" && owner.blockingInputCount > 0));
-  assert(releaseOwnerDailyBrief.ownerActions.some((owner) => owner.owner === "platform-owners" && owner.missingEvidenceArtifactCount > 0));
-  assert(releaseOwnerDailyBrief.ownerActions.some((owner) => owner.owner === "platform-owners" && owner.sourceOwners.includes("database")));
-  assert(releaseOwnerDailyBrief.ownerActions.some((owner) => owner.owner === "platform-owners" && owner.missingEvidenceArtifacts.some((artifact) => artifact.owner === "database" && artifact.dispatchOwner === "platform-owners")));
+  assert.deepEqual(releaseOwnerDailyBrief.ownerActions, []);
   assert(releaseOwnerDailyBrief.acceptanceCommands.some((item) => item.gate === "release-env" && item.command.includes("ddd-release-env-file-lint")));
   assert(releaseOwnerDailyBrief.topBlockingInputs.length > 0);
   assert.equal(typeof releaseOwnerDailyBrief.nextCommand, "string");
   assert(releaseOwnerDailyBrief.nextCommand.length > 0);
 
-  const releaseOwnerDailyBriefMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-owner-daily-brief-markdown"], {
+  const releaseOwnerDailyBriefMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-owner-daily-brief-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1464,10 +1471,9 @@ try {
   assert.match(releaseOwnerDailyBriefMarkdownResult.stdout, /data-safety-submission-plan\.json/);
   assert.match(releaseOwnerDailyBriefMarkdownResult.stdout, /## Owner Actions/);
   assert.match(releaseOwnerDailyBriefMarkdownResult.stdout, /## Acceptance Commands/);
-  assert.match(releaseOwnerDailyBriefMarkdownResult.stdout, /owner-packets\/release-infra\.md/);
-  assert.match(releaseOwnerDailyBriefMarkdownResult.stdout, /platform-owners \| .*sql/);
+  assert.match(releaseOwnerDailyBriefMarkdownResult.stdout, /## Today[\s\S]*- none/);
 
-  const releaseEnvPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-env-plan"], {
+  const releaseEnvPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1477,18 +1483,19 @@ try {
   });
   assert.equal(releaseEnvPlanResult.status, 0, releaseEnvPlanResult.stderr || releaseEnvPlanResult.stdout);
   const releaseEnvPlan = JSON.parse(releaseEnvPlanResult.stdout);
-  assert.equal(releaseEnvPlan.status, "BLOCKED");
+  assert.equal(releaseEnvPlan.status, "PASS");
   assert.equal(releaseEnvPlan.willWriteFiles, false);
   assert.equal(releaseEnvPlan.target, "tmp/ddd-dispatch-check-env-init.env");
   assert.equal(releaseEnvPlan.envInitCheck.status, "PASS");
-  assert.equal(releaseEnvPlan.releaseEnvGate.acceptanceCommand, "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs");
-  assert(releaseEnvPlan.ownerSteps.some((owner) => owner.owner === "release-infra"));
-  assert(releaseEnvPlan.commands.preflight.includes("node bin/ddd-release-env-init.mjs --check"));
-  assert(releaseEnvPlan.commands.preflight.includes("node bin/ddd-staging-execution-checklist.mjs --owner-packets"));
-  assert(releaseEnvPlan.commands.validate.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs"));
+  assert.equal(releaseEnvPlan.releaseEnvGate.acceptanceCommand, "DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs");
+  assert.equal(releaseEnvPlan.ownerCount, 0);
+  assert.deepEqual(releaseEnvPlan.ownerSteps, []);
+  assert(releaseEnvPlan.commands.preflight.includes("node bin\/ddd-release-env-init.mjs --check"));
+  assert(releaseEnvPlan.commands.preflight.includes("node bin\/ddd-staging-execution-checklist.mjs --owner-packets"));
+  assert(releaseEnvPlan.commands.validate.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-plan.json")), false);
 
-  const releaseEnvPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-env-plan-markdown"], {
+  const releaseEnvPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1498,11 +1505,11 @@ try {
   });
   assert.equal(releaseEnvPlanMarkdownResult.status, 0, releaseEnvPlanMarkdownResult.stderr || releaseEnvPlanMarkdownResult.stdout);
   assert.match(releaseEnvPlanMarkdownResult.stdout, /^# DDD P0 Release Env Plan/m);
-  assert.match(releaseEnvPlanMarkdownResult.stdout, /node scripts\/ddd-release-env-init\.mjs --check/);
-  assert.match(releaseEnvPlanMarkdownResult.stdout, /DDD_RELEASE_ENV_FILE=<release-env-file> node scripts\/ddd-release-env-file-lint\.mjs/);
+  assert.match(releaseEnvPlanMarkdownResult.stdout, /node bin\/ddd-release-env-init\.mjs --check/);
+  assert.match(releaseEnvPlanMarkdownResult.stdout, /DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint\.mjs/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-plan-markdown.json")), false);
 
-  const releaseEnvOwnerMatrixResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-env-owner-matrix"], {
+  const releaseEnvOwnerMatrixResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-owner-matrix"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1512,15 +1519,15 @@ try {
   });
   assert.equal(releaseEnvOwnerMatrixResult.status, 0, releaseEnvOwnerMatrixResult.stderr || releaseEnvOwnerMatrixResult.stdout);
   const releaseEnvOwnerMatrix = JSON.parse(releaseEnvOwnerMatrixResult.stdout);
-  assert.equal(releaseEnvOwnerMatrix.status, "BLOCKED");
+  assert.equal(releaseEnvOwnerMatrix.status, "PASS");
   assert.equal(releaseEnvOwnerMatrix.willWriteFiles, false);
-  assert.equal(releaseEnvOwnerMatrix.ownerCount, 5);
-  assert(releaseEnvOwnerMatrix.totals.blockers > 0);
-  assert(releaseEnvOwnerMatrix.owners.some((owner) => owner.owner === "release-infra" && owner.keys.includes("LUMIRA_BASE_URL")));
-  assert.match(releaseEnvOwnerMatrix.nextCommand, /--blocking-inputs-env-template --owner=/);
+  assert.equal(releaseEnvOwnerMatrix.ownerCount, 0);
+  assert.equal(releaseEnvOwnerMatrix.totals.blockers, 0);
+  assert.deepEqual(releaseEnvOwnerMatrix.owners, []);
+  assert.equal(releaseEnvOwnerMatrix.nextCommand, "node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce");
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-owner-matrix.json")), false);
 
-  const releaseEnvOwnerMatrixMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-env-owner-matrix-markdown"], {
+  const releaseEnvOwnerMatrixMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-owner-matrix-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1530,11 +1537,11 @@ try {
   });
   assert.equal(releaseEnvOwnerMatrixMarkdownResult.status, 0, releaseEnvOwnerMatrixMarkdownResult.stderr || releaseEnvOwnerMatrixMarkdownResult.stdout);
   assert.match(releaseEnvOwnerMatrixMarkdownResult.stdout, /^# DDD Release Env Owner Matrix/m);
-  assert.match(releaseEnvOwnerMatrixMarkdownResult.stdout, /release-infra/);
-  assert.match(releaseEnvOwnerMatrixMarkdownResult.stdout, /LUMIRA_BASE_URL/);
+  assert.match(releaseEnvOwnerMatrixMarkdownResult.stdout, /Status: PASS/);
+  assert.match(releaseEnvOwnerMatrixMarkdownResult.stdout, /Owners: 0/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-owner-matrix-markdown.json")), false);
 
-  const releaseEnvNextOwnerTemplateResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-env-next-owner-template"], {
+  const releaseEnvNextOwnerTemplateResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-next-owner-template"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1543,12 +1550,12 @@ try {
     },
   });
   assert.equal(releaseEnvNextOwnerTemplateResult.status, 0, releaseEnvNextOwnerTemplateResult.stderr || releaseEnvNextOwnerTemplateResult.stdout);
-  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^# Current top release-env owner template\./);
-  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^# Owner: release-infra$/m);
-  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
+  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^# Lumira DDD staging blocking input environment template\./);
+  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^# Status: PASS$/m);
+  assert.match(releaseEnvNextOwnerTemplateResult.stdout, /^# Blocking inputs: 0$/m);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-next-owner-template.json")), false);
 
-  const releaseEnvMergePlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-env-merge-plan"], {
+  const releaseEnvMergePlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-merge-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1558,14 +1565,14 @@ try {
   });
   assert.equal(releaseEnvMergePlanResult.status, 0, releaseEnvMergePlanResult.stderr || releaseEnvMergePlanResult.stdout);
   const releaseEnvMergePlan = JSON.parse(releaseEnvMergePlanResult.stdout);
-  assert.equal(releaseEnvMergePlan.status, "BLOCKED");
+  assert.equal(releaseEnvMergePlan.status, "PASS");
   assert.equal(releaseEnvMergePlan.willWriteFiles, false);
   assert(releaseEnvMergePlan.phases.some((phase) => phase.id === "merge-owner-values" && phase.commands.some((command) => command.includes("ddd-release-env-canonical-merge.mjs"))));
-  assert(releaseEnvMergePlan.phases.some((phase) => phase.id === "validate-release-env" && phase.commands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs")));
+  assert(releaseEnvMergePlan.phases.some((phase) => phase.id === "validate-release-env" && phase.commands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs")));
   assert(releaseEnvMergePlan.safety.some((item) => item.includes("Do not use release-env-next-owner.template.env")));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-merge-plan.json")), false);
 
-  const releaseEnvMergePlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-env-merge-plan-markdown"], {
+  const releaseEnvMergePlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-merge-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1579,7 +1586,7 @@ try {
   assert.match(releaseEnvMergePlanMarkdownResult.stdout, /ddd-release-env-file-lint\.mjs/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-merge-plan-markdown.json")), false);
 
-  const releaseEnvSubmissionPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-env-submission-plan"], {
+  const releaseEnvSubmissionPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-submission-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1589,18 +1596,19 @@ try {
   });
   assert.equal(releaseEnvSubmissionPlanResult.status, 0, releaseEnvSubmissionPlanResult.stderr || releaseEnvSubmissionPlanResult.stdout);
   const releaseEnvSubmissionPlan = JSON.parse(releaseEnvSubmissionPlanResult.stdout);
-  assert.equal(releaseEnvSubmissionPlan.status, "BLOCKED");
-  assert.equal(releaseEnvSubmissionPlan.ownerCount, 5);
-  assert(releaseEnvSubmissionPlan.ownerSubmissions.some((owner) => owner.owner === "release-infra" && owner.keys.includes("LUMIRA_BASE_URL")));
-  assert(releaseEnvSubmissionPlan.receipt.commands.includes("node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>"));
+  assert.equal(releaseEnvSubmissionPlan.status, "PASS");
+  assert.equal(releaseEnvSubmissionPlan.ownerCount, 0);
+  assert.deepEqual(releaseEnvSubmissionPlan.ownerSubmissions, []);
+  assert(releaseEnvSubmissionPlan.receipt.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>"));
   assert.equal(releaseEnvSubmissionPlan.laneReceiptFragment.owner, "release-infra");
   assert.equal(releaseEnvSubmissionPlan.laneReceiptFragment.lane, "p0-release-env");
   assert(releaseEnvSubmissionPlan.laneReceiptFragment.providedArtifacts.includes("artifacts/ddd/release/release-env-lint.json"));
-  assert(releaseEnvSubmissionPlan.laneReceiptFragment.missingArtifacts.includes("artifacts/ddd/config/release-config-evidence.json"));
-  assert(releaseEnvSubmissionPlan.validationCommands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs"));
+  assert(releaseEnvSubmissionPlan.laneReceiptFragment.providedArtifacts.includes("artifacts/ddd/config/release-config-evidence.json"));
+  assert.deepEqual(releaseEnvSubmissionPlan.laneReceiptFragment.missingArtifacts, []);
+  assert(releaseEnvSubmissionPlan.validationCommands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-submission-plan.json")), false);
 
-  const releaseEnvSubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-env-submission-plan-markdown"], {
+  const releaseEnvSubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-env-submission-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1617,7 +1625,7 @@ try {
   assert.match(releaseEnvSubmissionPlanMarkdownResult.stdout, /ddd-release-env-file-lint\.mjs/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-env-submission-plan-markdown.json")), false);
 
-  const dockerImagePlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--docker-image-plan"], {
+  const dockerImagePlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--docker-image-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1634,7 +1642,7 @@ try {
   assert(dockerImagePlan.requiredInputs.includes("DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-docker-image-plan.json")), false);
 
-  const dockerImagePlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--docker-image-plan-markdown"], {
+  const dockerImagePlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--docker-image-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1648,7 +1656,7 @@ try {
   assert.match(dockerImagePlanMarkdownResult.stdout, /existing-image-inspect/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-docker-image-plan-markdown.json")), false);
 
-  const dockerImageSubmissionPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--docker-image-submission-plan"], {
+  const dockerImageSubmissionPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--docker-image-submission-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1664,7 +1672,7 @@ try {
   assert(dockerImageSubmissionPlan.submissionModes.some((item) => item.id === "docker-runner-build" && item.command.includes("DDD_DOCKER_BUILD_STRICT=true")));
   assert(dockerImageSubmissionPlan.submissionModes.some((item) => item.id === "existing-image-inspect" && item.workflowInputs.includes("DDD_DOCKER_EXISTING_FRONTEND_IMAGE")));
   assert(dockerImageSubmissionPlan.staticDockerfiles.some((item) => item.dockerfile === "deploy/docker/lumira-ui.Dockerfile"));
-  assert(dockerImageSubmissionPlan.validationCommands.includes("node bin/ddd-docker-build-evidence.mjs --check"));
+  assert(dockerImageSubmissionPlan.validationCommands.includes("node bin\/ddd-docker-build-evidence.mjs --check"));
   assert.equal(dockerImageSubmissionPlan.laneReceiptFragment.owner, "release-infra");
   assert.equal(dockerImageSubmissionPlan.laneReceiptFragment.lane, "p0-docker-images");
   assert.equal(dockerImageSubmissionPlan.laneReceiptFragment.status, "PASS");
@@ -1673,7 +1681,7 @@ try {
   assert(dockerImageSubmissionPlan.passCriteria.some((item) => item.includes("docker-images gate")));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-docker-image-submission-plan.json")), false);
 
-  const dockerImageSubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--docker-image-submission-plan-markdown"], {
+  const dockerImageSubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--docker-image-submission-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1690,7 +1698,7 @@ try {
   assert.match(dockerImageSubmissionPlanMarkdownResult.stdout, /"lane": "p0-docker-images"/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-docker-image-submission-plan-markdown.json")), false);
 
-  const runtimeBusinessPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--runtime-business-plan"], {
+  const runtimeBusinessPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--runtime-business-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1706,10 +1714,10 @@ try {
   assert(runtimeBusinessPlan.requiredEnv.urls.includes("LUMIRA_BASE_URL"));
   assert(runtimeBusinessPlan.requiredEnv.deploymentEvidence.includes("DDD_DEPLOYMENT_EVIDENCE"));
   assert(runtimeBusinessPlan.smokeSteps.some((step) => step.id === "frontend-smoke" && step.artifact === "artifacts/ddd/lumira-ui/frontend-smoke.json"));
-  assert(runtimeBusinessPlan.commands.validate.includes("node bin/ddd-staging-execution-checklist.mjs --evidence-acceptance"));
+  assert(runtimeBusinessPlan.commands.validate.includes("node bin\/ddd-staging-execution-checklist.mjs --evidence-acceptance"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-runtime-business-plan.json")), false);
 
-  const runtimeBusinessPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--runtime-business-plan-markdown"], {
+  const runtimeBusinessPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--runtime-business-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1723,7 +1731,7 @@ try {
   assert.match(runtimeBusinessPlanMarkdownResult.stdout, /frontend-smoke/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-runtime-business-plan-markdown.json")), false);
 
-  const runtimeSmokePlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--runtime-smoke-plan"], {
+  const runtimeSmokePlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--runtime-smoke-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1739,10 +1747,10 @@ try {
   assert(runtimeSmokePlan.phases.some((phase) => phase.id === "ai-runtime-evidence" && phase.owner === "ai"));
   assert(runtimeSmokePlan.phases.some((phase) => phase.id === "business-payment-smoke" && phase.artifacts.includes("artifacts/ddd/payment/payment-webhook-e2e.json")));
   assert(runtimeSmokePlan.parallelAfterDeployment.includes("lumira-ui-runtime-smoke"));
-  assert(runtimeSmokePlan.validationCommands.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"));
+  assert(runtimeSmokePlan.validationCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-runtime-smoke-plan.json")), false);
 
-  const runtimeSmokePlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--runtime-smoke-plan-markdown"], {
+  const runtimeSmokePlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--runtime-smoke-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1756,7 +1764,7 @@ try {
   assert.match(runtimeSmokePlanMarkdownResult.stdout, /business-payment-smoke/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-runtime-smoke-plan-markdown.json")), false);
 
-  const runtimeBusinessSubmissionPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--runtime-business-submission-plan"], {
+  const runtimeBusinessSubmissionPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--runtime-business-submission-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1780,7 +1788,7 @@ try {
   assert(runtimeBusinessSubmissionPlan.passCriteria.some((item) => item.includes("runtime-business gate")));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-runtime-business-submission-plan.json")), false);
 
-  const runtimeBusinessSubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--runtime-business-submission-plan-markdown"], {
+  const runtimeBusinessSubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--runtime-business-submission-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1797,7 +1805,7 @@ try {
   assert.match(runtimeBusinessSubmissionPlanMarkdownResult.stdout, /"lane": "p1-runtime-business"/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-runtime-business-submission-plan-markdown.json")), false);
 
-  const dataSafetyPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--data-safety-plan"], {
+  const dataSafetyPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--data-safety-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1811,11 +1819,11 @@ try {
   assert.equal(dataSafetyPlan.willWriteFiles, false);
   assert(dataSafetyPlan.trackPlans.some((track) => track.id === "rollback" && track.requiredInputs.includes("DDD_ROLLBACK_DRILL_FILE")));
   assert(dataSafetyPlan.trackPlans.some((track) => track.id === "migration" && track.artifacts.includes("artifacts/ddd/migration/migration-evidence.json")));
-  assert(dataSafetyPlan.trackPlans.some((track) => track.id === "explain" && track.commands.includes("DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs")));
-  assert(dataSafetyPlan.commands.validate.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"));
+  assert(dataSafetyPlan.trackPlans.some((track) => track.id === "explain" && track.commands.includes("DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs")));
+  assert(dataSafetyPlan.commands.validate.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-data-safety-plan.json")), false);
 
-  const dataSafetyPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--data-safety-plan-markdown"], {
+  const dataSafetyPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--data-safety-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1829,7 +1837,7 @@ try {
   assert.match(dataSafetyPlanMarkdownResult.stdout, /DDD_EXPLAIN_DATABASE/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-data-safety-plan-markdown.json")), false);
 
-  const dataSafetyOwnerPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--data-safety-owner-plan"], {
+  const dataSafetyOwnerPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--data-safety-owner-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1843,12 +1851,12 @@ try {
   assert.equal(dataSafetyOwnerPlan.willWriteFiles, false);
   assert(dataSafetyOwnerPlan.phases.some((phase) => phase.id === "rollback-evidence-source" && phase.requiredInputs.some((input) => input.includes("DDD_ROLLBACK_DRILL_FILE"))));
   assert(dataSafetyOwnerPlan.phases.some((phase) => phase.id === "migration-upgrade-drill" && phase.dependencies.includes("migration-fresh-drill")));
-  assert(dataSafetyOwnerPlan.phases.some((phase) => phase.id === "explain-gate" && phase.commands.includes("DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs")));
+  assert(dataSafetyOwnerPlan.phases.some((phase) => phase.id === "explain-gate" && phase.commands.includes("DDD_EXPLAIN_STRICT=true node bin\/ddd-explain-gate.mjs")));
   assert(dataSafetyOwnerPlan.parallelStart.includes("rollback-evidence-source"));
-  assert(dataSafetyOwnerPlan.validationCommands.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"));
+  assert(dataSafetyOwnerPlan.validationCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-data-safety-owner-plan.json")), false);
 
-  const dataSafetyOwnerPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--data-safety-owner-plan-markdown"], {
+  const dataSafetyOwnerPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--data-safety-owner-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1862,7 +1870,7 @@ try {
   assert.match(dataSafetyOwnerPlanMarkdownResult.stdout, /explain-gate/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-data-safety-owner-plan-markdown.json")), false);
 
-  const dataSafetySubmissionPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--data-safety-submission-plan"], {
+  const dataSafetySubmissionPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--data-safety-submission-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1884,11 +1892,11 @@ try {
   assert.equal(dataSafetySubmissionPlan.laneReceiptFragment.status, "BLOCKED");
   assert(dataSafetySubmissionPlan.laneReceiptFragment.providedArtifacts.includes("artifacts/ddd/release/explain-gate-report.json"));
   assert(dataSafetySubmissionPlan.laneReceiptFragment.missingArtifacts.includes("tmp/ddd-explain/*.json"));
-  assert(dataSafetySubmissionPlan.laneReceiptFragment.acceptanceCommands.includes("node bin/ddd-staging-data-safety-check.mjs"));
+  assert(dataSafetySubmissionPlan.laneReceiptFragment.acceptanceCommands.includes("node bin\/ddd-staging-data-safety-check.mjs"));
   assert(dataSafetySubmissionPlan.passCriteria.some((item) => item.includes("rollback, migration, or explain gates")));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-data-safety-submission-plan.json")), false);
 
-  const dataSafetySubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--data-safety-submission-plan-markdown"], {
+  const dataSafetySubmissionPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--data-safety-submission-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1906,7 +1914,7 @@ try {
   assert.match(dataSafetySubmissionPlanMarkdownResult.stdout, /"completedAt": "<ISO-8601 timestamp after validation commands pass>"/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-data-safety-submission-plan-markdown.json")), false);
 
-  const cutoverRehearsalPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--cutover-rehearsal-plan"], {
+  const cutoverRehearsalPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--cutover-rehearsal-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1919,13 +1927,13 @@ try {
   assert.equal(cutoverRehearsalPlan.status, "BLOCKED");
   assert.equal(cutoverRehearsalPlan.cutoverReady, false);
   assert.equal(cutoverRehearsalPlan.willWriteFiles, false);
-  assert(cutoverRehearsalPlan.phases.some((phase) => phase.id === "p0-release-env" && phase.commands.includes("node bin/ddd-release-env-init.mjs --check")));
+  assert(cutoverRehearsalPlan.phases.some((phase) => phase.id === "p0-release-env" && phase.commands.includes("node bin\/ddd-release-env-init.mjs --check")));
   assert(cutoverRehearsalPlan.phases.some((phase) => phase.id === "p2-explain" && phase.artifacts.includes("artifacts/ddd/release/explain-gate-report.json")));
-  assert(cutoverRehearsalPlan.validationCommands.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce"));
+  assert(cutoverRehearsalPlan.validationCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce"));
   assert.equal(cutoverRehearsalPlan.nextPhase.id, "p0-release-env");
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-cutover-rehearsal-plan.json")), false);
 
-  const cutoverRehearsalPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--cutover-rehearsal-plan-markdown"], {
+  const cutoverRehearsalPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--cutover-rehearsal-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1939,7 +1947,7 @@ try {
   assert.match(cutoverRehearsalPlanMarkdownResult.stdout, /final-review-enforce/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-cutover-rehearsal-plan-markdown.json")), false);
 
-  const blockingInputsResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--blocking-inputs"], {
+  const blockingInputsResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--blocking-inputs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1956,7 +1964,7 @@ try {
   assert(blockingInputs.inputs.some((input) => input.input === "DDD_EVIDENCE_OPERATOR" && input.gateCount >= 2));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-blocking-inputs.json")), false);
 
-  const blockingInputsMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--blocking-inputs-markdown"], {
+  const blockingInputsMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--blocking-inputs-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1970,7 +1978,7 @@ try {
   assert.match(blockingInputsMarkdownResult.stdout, /runtime-business/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-blocking-inputs-markdown.json")), false);
 
-  const blockingInputsEnvTemplateResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--blocking-inputs-env-template"], {
+  const blockingInputsEnvTemplateResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--blocking-inputs-env-template"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -1986,7 +1994,7 @@ try {
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-blocking-inputs-env-template.json")), false);
 
   const ownerBlockingInputsResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--blocking-inputs",
     "--owner=release-infra",
   ], {
@@ -2006,7 +2014,7 @@ try {
   assert.equal(ownerBlockingInputs.inputs.some((input) => input.input === "MYSQL_PASSWORD"), false);
 
   const ownerBlockingInputsEnvTemplateResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--blocking-inputs-env-template",
     "--owner=release-infra",
   ], {
@@ -2023,7 +2031,7 @@ try {
   assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
   assert.doesNotMatch(ownerBlockingInputsEnvTemplateResult.stdout, /^MYSQL_PASSWORD=/m);
 
-  const releaseEvidenceDispatchPlanResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-evidence-dispatch-plan"], {
+  const releaseEvidenceDispatchPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-evidence-dispatch-plan"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2039,7 +2047,7 @@ try {
   assert(releaseEvidenceDispatchPlan.inputs.some((input) => input.input === "lane_completion_receipt_base64" && input.status === "BLOCKED"));
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-evidence-dispatch-plan.json")), false);
 
-  const releaseEvidenceDispatchPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-evidence-dispatch-plan-markdown"], {
+  const releaseEvidenceDispatchPlanMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-evidence-dispatch-plan-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2053,7 +2061,7 @@ try {
   assert.match(releaseEvidenceDispatchPlanMarkdownResult.stdout, /lane_completion_receipt_base64/);
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-evidence-dispatch-plan-markdown.json")), false);
 
-  const releaseEvidenceDispatchInputsResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-evidence-dispatch-inputs"], {
+  const releaseEvidenceDispatchInputsResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-evidence-dispatch-inputs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2067,11 +2075,11 @@ try {
   assert.equal(releaseEvidenceDispatchInputs.payload.mode, "plan");
   assert.equal(releaseEvidenceDispatchInputs.payload.backend_base_url, "__REQUIRED_HTTPS__");
   assert.equal(releaseEvidenceDispatchInputs.payload.lane_completion_receipt_base64, "__REQUIRED_AFTER_COVERAGE_5_OF_5__");
-  assert(releaseEvidenceDispatchInputs.validationCommands.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
-  assert.equal(releaseEvidenceDispatchInputs.dispatchInputValidationCommand, "node bin/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>");
+  assert(releaseEvidenceDispatchInputs.validationCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
+  assert.equal(releaseEvidenceDispatchInputs.dispatchInputValidationCommand, "node bin\/ddd-staging-execution-checklist.mjs --release-evidence-dispatch-inputs-contract --release-evidence-dispatch-inputs-file=<inputs-file>");
   assert.equal(fs.existsSync(path.join(tmpDir, "staging-checklist-release-evidence-dispatch-inputs.json")), false);
 
-  const releaseEvidenceDispatchCommandResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--release-evidence-dispatch-command"], {
+  const releaseEvidenceDispatchCommandResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-evidence-dispatch-command"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2087,7 +2095,7 @@ try {
   const dispatchInputsTemplateFile = path.join(tmpDir, "release-evidence-dispatch-inputs.template.json");
   fs.writeFileSync(dispatchInputsTemplateFile, releaseEvidenceDispatchInputsResult.stdout);
   const releaseEvidenceDispatchInputsTemplateContractResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--release-evidence-dispatch-inputs-contract",
     `--release-evidence-dispatch-inputs-file=${dispatchInputsTemplateFile}`,
   ], {
@@ -2110,7 +2118,7 @@ try {
     },
   }, null, 2));
   const releaseEvidenceDispatchInputsReadyContractResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--release-evidence-dispatch-inputs-contract",
     `--release-evidence-dispatch-inputs-file=${dispatchInputsReadyFile}`,
   ], {
@@ -2121,7 +2129,7 @@ try {
   const releaseEvidenceDispatchInputsReadyContract = JSON.parse(releaseEvidenceDispatchInputsReadyContractResult.stdout);
   assert.equal(releaseEvidenceDispatchInputsReadyContract.status, "PASS");
 
-  const executionStatusMissingBundleResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--execution-status"], {
+  const executionStatusMissingBundleResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--execution-status"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2136,7 +2144,7 @@ try {
   assert.equal(executionStatusMissingBundle.handoffBundle.status, "BLOCKED");
   assert.match(executionStatusMissingBundle.handoffBundle.issues[0], /missing or invalid manifest/);
 
-  const handoffBundleResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle"], {
+  const handoffBundleResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2159,7 +2167,7 @@ try {
   const bundleReleaseInfraDispatch = bundleOwnerDispatch.owners.find((owner) => owner.owner === "release-infra");
   assert.equal(bundleReleaseInfraDispatch.laneCount, 4);
   assert(bundleReleaseInfraDispatch.lanes.some((lane) => lane.lane === "p0-docker-images" && lane.sourcePlan === "docker-image-submission-plan.json"));
-  assert(bundleReleaseInfraDispatch.lanes.some((lane) => lane.lane === "p1-runtime-business" && lane.command === "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
+  assert(bundleReleaseInfraDispatch.lanes.some((lane) => lane.lane === "p1-runtime-business" && lane.command === "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
   const bundlePlatformOwnersDispatch = bundleOwnerDispatch.owners.find((owner) => owner.owner === "platform-owners");
   assert.equal(bundlePlatformOwnersDispatch.laneCount, 1);
   assert(bundlePlatformOwnersDispatch.lanes.some((lane) => lane.lane === "p1-p2-data-safety" && lane.sourcePlan === "data-safety-submission-plan.json"));
@@ -2173,8 +2181,8 @@ try {
   assert.match(bundlePlatformOwnersPacket, /--lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>/);
   const bundleReleaseInfraPacket = JSON.parse(fs.readFileSync(path.join(bundleOwnerPacketDir, "release-infra.json"), "utf8"));
   assert(bundleReleaseInfraPacket.receiptWorkflow.laneKeys.includes("release-infra:final-review"));
-  assert(bundleReleaseInfraPacket.commands.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"));
-  assert(bundleReleaseInfraPacket.commands.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>"));
+  assert(bundleReleaseInfraPacket.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"));
+  assert(bundleReleaseInfraPacket.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>"));
   const bundleReadme = fs.readFileSync(path.join(handoffBundleDir, "README.md"), "utf8");
   assert.match(bundleReadme, /owner-packets\//);
   assert.match(bundleReadme, /owner-scoped missing artifact handoff packets/);
@@ -2191,7 +2199,7 @@ try {
   assert.match(bundleReleaseEnvFillTemplatePreview, /^# P0 release env fill template\./m);
   assert.match(bundleReleaseEnvFillTemplatePreview, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
   assert.match(bundleReleaseEnvFillTemplatePreview, /^JWT_SECRET=__REQUIRED_SECRET_REF__$/m);
-  assert.match(bundleReleaseEnvFillTemplatePreview, /^# DDD_RELEASE_ENV_FILE=.env.release.local node scripts\/ddd-release-env-file-lint\.mjs$/m);
+  assert.match(bundleReleaseEnvFillTemplatePreview, /^# DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint\.mjs$/m);
   assert.doesNotMatch(bundleReleaseEnvFillTemplatePreview, /real-/);
   assert.match(bundleReadme, /production-cutover-audit\.json/);
   assert.match(bundleReadme, /operator-progress\.json/);
@@ -2320,7 +2328,7 @@ try {
   assert(bundleLaneReceiptFragments.fragments.some((fragment) => fragment.key === "release-infra:p1-runtime-business"));
   assert(bundleLaneReceiptFragments.fragments.some((fragment) => fragment.key === "platform-owners:p1-p2-data-safety" && fragment.missingArtifacts.includes("tmp/ddd-explain/*.json")));
   assert(bundleLaneReceiptFragments.fragments.some((fragment) => fragment.key === "release-infra:final-review" && fragment.providedArtifacts.includes("artifacts/ddd/release/staging-handoff-bundle/final-review.json")));
-  assert.equal(bundleLaneReceiptFragments.receiptAssembly.base64Command, "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>");
+  assert.equal(bundleLaneReceiptFragments.receiptAssembly.base64Command, "node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>");
   const bundleLaneReceiptFragmentsMarkdown = fs.readFileSync(path.join(handoffBundleDir, "lane-receipt-fragments.md"), "utf8");
   assert.match(bundleLaneReceiptFragmentsMarkdown, /^# DDD Lane Receipt Fragments/m);
   assert.match(bundleLaneReceiptFragmentsMarkdown, /## Receipt JSON Skeleton/);
@@ -2335,7 +2343,7 @@ try {
   assert.equal(bundleLaneReceiptDraft.laneReceiptCount, 5);
   assert(bundleLaneReceiptDraft.laneReceipts.some((lane) => lane.owner === "release-infra" && lane.lane === "p0-docker-images" && lane.expectedArtifacts.includes("artifacts/ddd/build/docker-image-evidence.json")));
   assert(bundleLaneReceiptDraft.laneReceipts.some((lane) => lane.owner === "platform-owners" && lane.lane === "p1-p2-data-safety" && lane.missingArtifacts.includes("tmp/ddd-explain/*.json")));
-  assert(bundleLaneReceiptDraft.validationCommands.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>"));
+  assert(bundleLaneReceiptDraft.validationCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>"));
   const bundleLaneReceiptDraftMarkdown = fs.readFileSync(path.join(handoffBundleDir, "lane-receipt-draft.md"), "utf8");
   assert.match(bundleLaneReceiptDraftMarkdown, /^# DDD Lane Receipt Draft/m);
   assert.match(bundleLaneReceiptDraftMarkdown, /## Validation Commands/);
@@ -2384,7 +2392,7 @@ try {
   assert.equal(bundleReleaseOwnerCloseout.finalRecommendation, "NO_GO_STRICT");
   assert.equal(bundleReleaseOwnerCloseout.evidenceClosure.closed, "0/5");
   assert.equal(bundleReleaseOwnerCloseout.evidenceClosure.nextLane.key, "platform-owners:p1-p2-data-safety");
-  assert(bundleReleaseOwnerCloseout.requiredCommandSequence.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
+  assert(bundleReleaseOwnerCloseout.requiredCommandSequence.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
   const bundleReleaseOwnerCloseoutMarkdown = fs.readFileSync(path.join(handoffBundleDir, "release-owner-closeout.md"), "utf8");
   assert.match(bundleReleaseOwnerCloseoutMarkdown, /^# DDD Release Owner Closeout/m);
   assert.match(bundleReleaseOwnerCloseoutMarkdown, /## Immediate Next Lane/);
@@ -2411,7 +2419,7 @@ try {
   const bundleProductionCloseoutStatusMarkdown = fs.readFileSync(path.join(handoffBundleDir, "production-closeout-status.md"), "utf8");
   assert.match(bundleProductionCloseoutStatusMarkdown, /^# DDD Production Closeout Status/m);
   assert.match(bundleProductionCloseoutStatusMarkdown, /## Lane Completion Submission/);
-  assert.match(bundleProductionCloseoutStatusMarkdown, /Next receipt command: `node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`/);
+  assert.match(bundleProductionCloseoutStatusMarkdown, /Next receipt command: `node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>`/);
   assert.match(bundleProductionCloseoutStatusMarkdown, /## Parallel Next Actions/);
   assert.match(bundleProductionCloseoutStatusMarkdown, /Validate first-wave secure env file/);
   assert.match(bundleProductionCloseoutStatusMarkdown, /Initialize or validate lane completion receipt/);
@@ -2421,7 +2429,7 @@ try {
   assert.match(bundleProductionUnblockQuickstart, /^# DDD Production Unblock Quickstart/m);
   assert.match(bundleProductionUnblockQuickstart, /## Fast Path/);
   assert.match(bundleProductionUnblockQuickstart, /release-env-fill\.template\.env/);
-  assert.match(bundleProductionUnblockQuickstart, /DDD_RELEASE_ENV_FILE=.env.release.local node scripts\/ddd-release-env-file-lint\.mjs/);
+  assert.match(bundleProductionUnblockQuickstart, /DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint\.mjs/);
   assert.match(bundleProductionUnblockQuickstart, /## Final Gate/);
   assert.match(bundleProductionUnblockQuickstart, /production-evidence-readiness-enforce/);
   const bundleProductionUnblockPlan = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "production-unblock-plan.json"), "utf8"));
@@ -2438,14 +2446,14 @@ try {
   assert(bundleProductionUnblockPlan.parallelWorkstreams.some((workstream) => workstream.id === "owner-evidence" && workstream.verifyCommand.includes("--owner-evidence-intake-markdown")));
   assert(bundleProductionUnblockPlan.parallelWorkstreams.every((workstream) => workstream.completionSignal));
   assert(bundleProductionUnblockPlan.exitCriteria.some((criterion) => criterion.includes("GO_STRICT")));
-  assert(bundleProductionUnblockPlan.verificationCommands.includes("node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown"));
+  assert(bundleProductionUnblockPlan.verificationCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown"));
   const bundleProductionUnblockPlanMarkdown = fs.readFileSync(path.join(handoffBundleDir, "production-unblock-plan.md"), "utf8");
   assert.match(bundleProductionUnblockPlanMarkdown, /^# DDD Production Unblock Plan/m);
   assert.match(bundleProductionUnblockPlanMarkdown, /## Parallel Workstreams/);
   assert.match(bundleProductionUnblockPlanMarkdown, /Validate first-wave secure env file/);
   assert.match(bundleProductionUnblockPlanMarkdown, /Initialize or validate lane completion receipt/);
-  assert.match(bundleProductionUnblockPlanMarkdown, /verify=`node scripts\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>`/);
-  assert.match(bundleProductionUnblockPlanMarkdown, /verify=`node scripts\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`/);
+  assert.match(bundleProductionUnblockPlanMarkdown, /verify=`node bin\/ddd-staging-execution-checklist\.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>`/);
+  assert.match(bundleProductionUnblockPlanMarkdown, /verify=`node bin\/ddd-staging-execution-checklist\.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>`/);
   assert.match(bundleProductionUnblockPlanMarkdown, /## Exit Criteria/);
   assert.match(bundleProductionUnblockPlanMarkdown, /GO_STRICT/);
   const bundleProductionEvidenceReadiness = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "production-evidence-readiness.json"), "utf8"));
@@ -2454,7 +2462,7 @@ try {
   assert.equal(bundleProductionEvidenceReadiness.evidenceGateCount, 5);
   assert.equal(bundleProductionEvidenceReadiness.readyEvidenceCount, 0);
   assert.equal(bundleProductionEvidenceReadiness.blockedAuditItemCount, 5);
-  assert(bundleProductionEvidenceReadiness.verificationCommands.includes("node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce"));
+  assert(bundleProductionEvidenceReadiness.verificationCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce"));
   assert(bundleProductionEvidenceReadiness.evidenceGates.some((gate) => gate.id === "first-wave-env-receipt" && gate.status === "MISSING" && gate.verifyCommand.includes("--next-action-env-receipt-contract")));
   assert(bundleProductionEvidenceReadiness.evidenceGates.some((gate) => gate.id === "lane-completion-receipt" && gate.verifyCommand.includes("--lane-completion-submission-check")));
   assert(bundleProductionEvidenceReadiness.evidenceGates.some((gate) => gate.id === "owner-evidence" && gate.command.includes("--data-safety-submission-plan-markdown")));
@@ -2469,7 +2477,7 @@ try {
   assert.match(bundleProductionEvidenceReadinessMarkdown, /## Verification Commands/);
   assert.match(bundleProductionEvidenceReadinessMarkdown, /--production-evidence-readiness-enforce/);
   assert.match(bundleProductionEvidenceReadinessMarkdown, /final-go-no-go/);
-  const productionEvidenceReadinessEnforceResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--production-evidence-readiness-enforce"], {
+  const productionEvidenceReadinessEnforceResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--production-evidence-readiness-enforce"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2494,8 +2502,8 @@ try {
   assert(bundleProductionCutoverAudit.parallelNextActions.some((action) => action.id === "lane-completion-receipt" && action.command.includes("--lane-completion-receipt-init")));
   assert(bundleProductionCutoverAudit.parallelNextActions.some((action) => action.id === "owner-evidence" && action.owner === "platform-owners"));
   assert(bundleProductionCutoverAudit.auditItems.some((item) => item.id === "strict-go-no-go" && item.command.includes("release-final-go-no-go-gate.sh")));
-  assert(bundleProductionCutoverAudit.requiredCommands.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"));
-  assert(bundleProductionCutoverAudit.requiredCommands.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
+  assert(bundleProductionCutoverAudit.requiredCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>"));
+  assert(bundleProductionCutoverAudit.requiredCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
   const bundleProductionCutoverAuditMarkdown = fs.readFileSync(path.join(handoffBundleDir, "production-cutover-audit.md"), "utf8");
   assert.match(bundleProductionCutoverAuditMarkdown, /^# DDD Production Cutover Audit/m);
   assert.match(bundleProductionCutoverAuditMarkdown, /## Audit Items/);
@@ -2551,16 +2559,16 @@ try {
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "closure-plan.md"), "utf8"), /^# DDD Staging Closure Plan/m);
   const bundleNextActionQueue = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "next-action-queue.json"), "utf8"));
   assert.equal(bundleNextActionQueue.status, "BLOCKED");
-  assert(bundleNextActionQueue.queue.some((item) => item.lane === "p0-docker-images" && item.command === "node bin/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown"));
+  assert(bundleNextActionQueue.queue.some((item) => item.lane === "p0-docker-images" && item.command === "node bin\/ddd-staging-execution-checklist.mjs --docker-image-submission-plan-markdown"));
   assert(bundleNextActionQueue.queue.some((item) => item.lane === "p0-docker-images" && item.sourcePlan === "docker-image-submission-plan.json"));
   assert(bundleNextActionQueue.queue.some((item) => item.lane === "p0-docker-images" && item.artifacts.includes("artifacts/ddd/build/docker-image-evidence.json")));
-  assert(bundleNextActionQueue.queue.some((item) => item.lane === "p0-docker-images" && item.followUpCommands.includes("node bin/ddd-docker-build-evidence.mjs --check")));
+  assert(bundleNextActionQueue.queue.some((item) => item.lane === "p0-docker-images" && item.followUpCommands.includes("node bin\/ddd-docker-build-evidence.mjs --check")));
   assert(bundleNextActionQueue.queue.some((item) => item.lane === "p1-runtime-business" && item.sourcePlan === "runtime-business-submission-plan.json"));
-  assert(bundleNextActionQueue.queue.some((item) => item.lane === "p1-runtime-business" && item.command === "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
+  assert(bundleNextActionQueue.queue.some((item) => item.lane === "p1-runtime-business" && item.command === "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
   assert(bundleNextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.sourcePlan === "data-safety-submission-plan.json"));
-  assert(bundleNextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.command === "node bin/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown"));
+  assert(bundleNextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.command === "node bin\/ddd-staging-execution-checklist.mjs --data-safety-submission-plan-markdown"));
   assert(bundleNextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.missingEvidenceArtifacts.some((artifact) => artifact.artifact === "tmp/ddd-explain/*.json")));
-  assert(bundleNextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifactPlanCommands.includes("node bin/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown")));
+  assert(bundleNextActionQueue.queue.some((item) => item.lane === "p1-p2-data-safety" && item.artifactPlanCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --explain-artifact-plan-markdown")));
   const bundleNextActionQueueMarkdown = fs.readFileSync(path.join(handoffBundleDir, "next-action-queue.md"), "utf8");
   assert.match(bundleNextActionQueueMarkdown, /^# DDD Staging Next Action Queue/m);
   assert.match(bundleNextActionQueueMarkdown, /tmp\/ddd-explain\/\*\.json/);
@@ -2573,9 +2581,9 @@ try {
   const bundleLaneCompletionReceiptTemplate = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "lane-completion-receipt.template.json"), "utf8"));
   assert.equal(bundleLaneCompletionReceiptTemplate.redacted, true);
   assert(bundleLaneCompletionReceiptTemplate.laneReceipts.some((lane) => lane.lane === "p1-p2-data-safety"));
-  assert(bundleLaneCompletionReceiptTemplate.submissionFlow.includes("node bin/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>"));
-  assert(bundleLaneCompletionReceiptTemplate.submissionFlow.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>"));
-  assert(bundleLaneCompletionReceiptTemplate.submissionFlow.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
+  assert(bundleLaneCompletionReceiptTemplate.submissionFlow.includes("node bin\/ddd-lane-completion-receipt-autofill.mjs --receipt-file=<receipt-file> --output=<autofilled-receipt-file>"));
+  assert(bundleLaneCompletionReceiptTemplate.submissionFlow.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>"));
+  assert(bundleLaneCompletionReceiptTemplate.submissionFlow.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
   const bundleLaneCompletionReceiptTemplateMarkdown = fs.readFileSync(path.join(handoffBundleDir, "lane-completion-receipt.template.md"), "utf8");
   assert.match(bundleLaneCompletionReceiptTemplateMarkdown, /^# DDD Lane Completion Receipt/m);
   assert.match(bundleLaneCompletionReceiptTemplateMarkdown, /## Fill Rules/);
@@ -2610,7 +2618,7 @@ try {
   assert.equal(bundleNextActionEnvReceiptSample.status, "BLOCKED");
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "next-action-env-receipt.sample.md"), "utf8"), /^# DDD Next Action Env Receipt/m);
   const bundleNextActionEnvReceiptSampleContractResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--next-action-env-receipt-contract",
     `--next-action-env-receipt-file=${path.join(handoffBundleDir, "next-action-env-receipt.sample.json")}`,
   ], {
@@ -2625,7 +2633,7 @@ try {
   const bundleReleaseEnvPlan = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "release-env-plan.json"), "utf8"));
   assert.equal(bundleReleaseEnvPlan.status, "BLOCKED");
   assert.equal(bundleReleaseEnvPlan.envInitCheck.status, "PASS");
-  assert(bundleReleaseEnvPlan.commands.validate.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-config-evidence.mjs"));
+  assert(bundleReleaseEnvPlan.commands.validate.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-config-evidence.mjs"));
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "release-env-plan.md"), "utf8"), /^# DDD P0 Release Env Plan/m);
   const bundleReleaseEnvOwnerMatrix = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "release-env-owner-matrix.json"), "utf8"));
   assert.equal(bundleReleaseEnvOwnerMatrix.status, "BLOCKED");
@@ -2642,13 +2650,13 @@ try {
   const bundleReleaseEnvSubmissionPlan = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "release-env-submission-plan.json"), "utf8"));
   assert.equal(bundleReleaseEnvSubmissionPlan.status, "BLOCKED");
   assert.equal(bundleReleaseEnvSubmissionPlan.ownerCount, 5);
-  assert(bundleReleaseEnvSubmissionPlan.receipt.commands.includes("node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>"));
+  assert(bundleReleaseEnvSubmissionPlan.receipt.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>"));
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "release-env-submission-plan.md"), "utf8"), /^# DDD Release Env Submission Plan/m);
   const bundleReleaseEnvFillChecklist = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "release-env-fill-checklist.json"), "utf8"));
   assert.equal(bundleReleaseEnvFillChecklist.status, "FAIL");
   assert(bundleReleaseEnvFillChecklist.primaryBlockerCount > 0);
   assert(bundleReleaseEnvFillChecklist.groups.runtime.includes("LUMIRA_BASE_URL"));
-  assert(bundleReleaseEnvFillChecklist.validationCommands.includes("DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs"));
+  assert(bundleReleaseEnvFillChecklist.validationCommands.includes("DDD_RELEASE_ENV_FILE=.env.release.local node bin\/ddd-release-env-file-lint.mjs"));
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "release-env-fill-checklist.md"), "utf8"), /^# P0 Release Env Fill Checklist/m);
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "release-env-fill-checklist.md"), "utf8"), /## Required Keys By Group/);
   const bundleReleaseEnvFillTemplate = fs.readFileSync(path.join(handoffBundleDir, "release-env-fill.template.env"), "utf8");
@@ -2731,7 +2739,7 @@ try {
   assert.equal(bundleReleaseEvidenceDispatchPlan.status, "BLOCKED");
   assert.equal(bundleReleaseEvidenceDispatchPlan.workflow, ".github/workflows/ddd-release-evidence.yml");
   assert(bundleReleaseEvidenceDispatchPlan.inputs.some((input) => input.input === "backend_base_url" && input.source === "LUMIRA_BASE_URL"));
-  assert(bundleReleaseEvidenceDispatchPlan.requiredBeforeRun.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>"));
+  assert(bundleReleaseEvidenceDispatchPlan.requiredBeforeRun.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>"));
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "release-evidence-dispatch-plan.md"), "utf8"), /^# DDD Release Evidence Dispatch Plan/m);
   const bundleReleaseEvidenceDispatchInputs = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "release-evidence-dispatch-inputs.json"), "utf8"));
   assert.equal(bundleReleaseEvidenceDispatchInputs.payload.mode, "plan");
@@ -2744,7 +2752,7 @@ try {
   assert.match(releaseInfraEnvTemplate, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
   assert.doesNotMatch(releaseInfraEnvTemplate, /^MYSQL_PASSWORD=/m);
   assert.match(fs.readFileSync(path.join(handoffBundleDir, "evidence-env.template.env"), "utf8"), /^DDD_DOCKER_BUILD_STRICT=true/m);
-  assert.match(fs.readFileSync(path.join(handoffBundleDir, "commands.txt"), "utf8"), /node scripts\/ddd-staging-execution-checklist\.mjs --rollup-markdown/);
+  assert.match(fs.readFileSync(path.join(handoffBundleDir, "commands.txt"), "utf8"), /node bin\/ddd-staging-execution-checklist\.mjs --rollup-markdown/);
   const ownerDispatch = JSON.parse(fs.readFileSync(path.join(handoffBundleDir, "owner-dispatch.json"), "utf8"));
   assert.equal(ownerDispatch.ownerCount, 5);
   assert(ownerDispatch.owners.some((owner) => owner.owner === "release-infra" && owner.json === "owner-packets/release-infra.json" && owner.blockingInputsEnvTemplate === "owner-packets/release-infra.blocking-inputs.template.env" && owner.blockingInputCount > 0));
@@ -2771,14 +2779,14 @@ try {
   const platformOwnersJsonPacket = JSON.parse(fs.readFileSync(path.join(bundleOwnerPacketDir, "platform-owners.json"), "utf8"));
   assert.equal(releaseInfraJsonPacket.owner, "release-infra");
   assert(platformOwnersJsonPacket.queueLanes.some((lane) => lane.lane === "p1-p2-data-safety" && lane.dispatchOwner === "platform-owners" && lane.missingEvidenceArtifactCount > 0));
-  assert(releaseInfraJsonPacket.commands.includes("node bin/ddd-release-env-init.mjs --check"));
-  assert(releaseInfraJsonPacket.commands.includes("node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>"));
-  assert(releaseInfraJsonPacket.commands.includes("node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>"));
-  assert(releaseInfraJsonPacket.commands.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
-  assert(platformOwnersJsonPacket.commands.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>"));
-  assert(platformOwnersJsonPacket.commands.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>"));
-  assert(platformOwnersJsonPacket.commands.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>"));
-  assert(platformOwnersJsonPacket.commands.includes("node bin/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>"));
+  assert(releaseInfraJsonPacket.commands.includes("node bin\/ddd-release-env-init.mjs --check"));
+  assert(releaseInfraJsonPacket.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>"));
+  assert(releaseInfraJsonPacket.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --next-action-env-receipt-file=<receipt-file>"));
+  assert(releaseInfraJsonPacket.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
+  assert(platformOwnersJsonPacket.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-contract --lane-completion-receipt-file=<receipt-file>"));
+  assert(platformOwnersJsonPacket.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-coverage-markdown --lane-completion-receipt-file=<receipt-file>"));
+  assert(platformOwnersJsonPacket.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-receipt-base64 --lane-completion-receipt-file=<receipt-file>"));
+  assert(platformOwnersJsonPacket.commands.includes("node bin\/ddd-staging-execution-checklist.mjs --operator-progress-markdown --lane-completion-receipt-file=<receipt-file>"));
   assert(releaseInfraJsonPacket.evidenceGaps.some((gap) => gap.id === "p0-images" && gap.envKeys.includes("DDD_DOCKER_BUILD_STRICT")));
   assert(releaseInfraJsonPacket.blockingInputGates.some((gate) => gate.gate === "runtime-business" && gate.blockingInputs.includes("LUMIRA_BASE_URL")));
   assert(releaseInfraJsonPacket.blockingInputs.includes("DDD_RELEASE_ENV_FILE"));
@@ -2875,7 +2883,7 @@ try {
   assert(bundleManifest.files.some((item) => item.file === "owner-packets/release-infra.json" && /^[a-f0-9]{64}$/.test(item.sha256)));
   assert(bundleManifest.files.some((item) => item.file === "owner-packets/release-infra.blocking-inputs.template.env" && /^[a-f0-9]{64}$/.test(item.sha256)));
 
-  const handoffBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const handoffBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2893,7 +2901,7 @@ try {
   assert(handoffBundleVerify.checkedFiles.some((item) => item.file === "lane-receipt-fragments.json" && /^[a-f0-9]{64}$/.test(item.sha256)));
   maybeStopAfter("handoff-bundle-verify");
 
-  const laneReceiptFragmentsResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-receipt-fragments"], {
+  const laneReceiptFragmentsResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-receipt-fragments"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2907,7 +2915,7 @@ try {
   assert.equal(laneReceiptFragments.laneCount, 5);
   assert(laneReceiptFragments.fragments.some((fragment) => fragment.key === "release-infra:final-review"));
 
-  const laneReceiptFragmentsMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-receipt-fragments-markdown"], {
+  const laneReceiptFragmentsMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-receipt-fragments-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2923,7 +2931,7 @@ try {
   assert.match(laneReceiptFragmentsMarkdownResult.stdout, /release-infra:p0-docker-images/);
   assert.match(laneReceiptFragmentsMarkdownResult.stdout, /acceptanceCommands/);
 
-  const laneReceiptDraftResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-receipt-draft"], {
+  const laneReceiptDraftResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-receipt-draft"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2937,7 +2945,7 @@ try {
   assert.equal(laneReceiptDraft.laneReceiptCount, 5);
   assert(laneReceiptDraft.laneReceipts.some((lane) => lane.owner === "release-infra" && lane.lane === "final-review"));
 
-  const laneReceiptDraftMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--lane-receipt-draft-markdown"], {
+  const laneReceiptDraftMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--lane-receipt-draft-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2949,7 +2957,7 @@ try {
   assert.match(laneReceiptDraftMarkdownResult.stdout, /^# DDD Lane Receipt Draft/m);
   assert.match(laneReceiptDraftMarkdownResult.stdout, /## Validation Commands/);
 
-  const ownerEvidenceIntakeResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--owner-evidence-intake"], {
+  const ownerEvidenceIntakeResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--owner-evidence-intake"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2965,9 +2973,9 @@ try {
   assert(ownerEvidenceIntake.owners.some((owner) => owner.owner === "release-infra" && owner.receiptWorkflow.laneKeys.includes("release-infra:final-review")));
   assert(ownerEvidenceIntake.owners.every((owner) => owner.receiptWorkflow.initCommand.includes("--lane-completion-receipt-init")));
   assert(ownerEvidenceIntake.owners.every((owner) => owner.receiptWorkflow.autofillCommand.includes("ddd-lane-completion-receipt-autofill.mjs")));
-  assert(ownerEvidenceIntake.owners.every((owner) => owner.submissionCommands.includes("node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>")));
+  assert(ownerEvidenceIntake.owners.every((owner) => owner.submissionCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>")));
 
-  const ownerEvidenceIntakeMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--owner-evidence-intake-markdown", "--owner=platform-owners"], {
+  const ownerEvidenceIntakeMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--owner-evidence-intake-markdown", "--owner=platform-owners"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -2988,7 +2996,7 @@ try {
   const brokenManifest = JSON.parse(fs.readFileSync(brokenManifestFile, "utf8"));
   brokenManifest.files = brokenManifest.files.filter((item) => item.file !== "owner-dispatch.json");
   fs.writeFileSync(brokenManifestFile, `${JSON.stringify(brokenManifest, null, 2)}\n`);
-  const brokenBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3008,7 +3016,7 @@ try {
     brokenOperatorProgressFile,
     fs.readFileSync(brokenOperatorProgressFile, "utf8").replace("## Lane Routes", "## Routes Removed"),
   );
-  const brokenMarkerBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenMarkerBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3028,7 +3036,7 @@ try {
     brokenAuditFile,
     fs.readFileSync(brokenAuditFile, "utf8").replace("## Parallel Next Actions", "## Parallel Actions Removed"),
   );
-  const brokenAuditBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenAuditBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3047,7 +3055,7 @@ try {
   const brokenAuditActions = JSON.parse(fs.readFileSync(brokenAuditActionsFile, "utf8"));
   brokenAuditActions.parallelNextActions = brokenAuditActions.parallelNextActions.filter((action) => action.id !== "lane-completion-receipt");
   fs.writeFileSync(brokenAuditActionsFile, `${JSON.stringify(brokenAuditActions, null, 2)}\n`);
-  const brokenAuditActionsBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenAuditActionsBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3068,7 +3076,7 @@ try {
     workstream.id === "lane-completion-receipt" ? { ...workstream, verifyCommand: "" } : workstream
   ));
   fs.writeFileSync(brokenUnblockPlanFile, `${JSON.stringify(brokenUnblockPlan, null, 2)}\n`);
-  const brokenUnblockPlanBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenUnblockPlanBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3087,7 +3095,7 @@ try {
   const brokenEvidenceReadiness = JSON.parse(fs.readFileSync(brokenEvidenceReadinessFile, "utf8"));
   brokenEvidenceReadiness.evidenceGates = brokenEvidenceReadiness.evidenceGates.filter((gate) => gate.id !== "final-go-no-go");
   fs.writeFileSync(brokenEvidenceReadinessFile, `${JSON.stringify(brokenEvidenceReadiness, null, 2)}\n`);
-  const brokenEvidenceReadinessBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenEvidenceReadinessBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3106,7 +3114,7 @@ try {
   const brokenClosureBoard = JSON.parse(fs.readFileSync(brokenClosureBoardFile, "utf8"));
   brokenClosureBoard.laneCount = 999;
   fs.writeFileSync(brokenClosureBoardFile, `${JSON.stringify(brokenClosureBoard, null, 2)}\n`);
-  const brokenClosureBoardVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenClosureBoardVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3129,7 +3137,7 @@ try {
     lanes: [],
   }));
   fs.writeFileSync(brokenOwnerDispatchFile, `${JSON.stringify(brokenOwnerDispatch, null, 2)}\n`);
-  const brokenDispatchBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenDispatchBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3149,7 +3157,7 @@ try {
     brokenReleaseInfraPacketFile,
     fs.readFileSync(brokenReleaseInfraPacketFile, "utf8").replaceAll("Expected artifacts:", "Expected artifact list removed:"),
   );
-  const brokenOwnerPacketBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenOwnerPacketBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3169,7 +3177,7 @@ try {
     brokenPlatformOwnersPacketFile,
     fs.readFileSync(brokenPlatformOwnersPacketFile, "utf8").replaceAll("tmp/ddd-explain/*.json", "tmp/ddd-explain/removed.json"),
   );
-  const brokenOwnerPacketArtifactBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenOwnerPacketArtifactBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3190,7 +3198,7 @@ try {
     lane.lane === "p0-docker-images" ? { ...lane, sourcePlan: "wrong-plan.json" } : lane
   ));
   fs.writeFileSync(brokenReleaseInfraJsonPacketFile, `${JSON.stringify(brokenReleaseInfraJsonPacket, null, 2)}\n`);
-  const brokenOwnerPacketJsonBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenOwnerPacketJsonBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3207,9 +3215,9 @@ try {
   fs.cpSync(handoffBundleDir, brokenOwnerPacketSummaryBundleDir, { recursive: true });
   const brokenPlatformEventsJsonPacketFile = path.join(brokenOwnerPacketSummaryBundleDir, "owner-packets", "platform-events.json");
   const brokenPlatformEventsJsonPacket = JSON.parse(fs.readFileSync(brokenPlatformEventsJsonPacketFile, "utf8"));
-  brokenPlatformEventsJsonPacket.nextCommand = "node bin/ddd-staging-execution-checklist.mjs --wrong-command";
+  brokenPlatformEventsJsonPacket.nextCommand = "node bin\/ddd-staging-execution-checklist.mjs --wrong-command";
   fs.writeFileSync(brokenPlatformEventsJsonPacketFile, `${JSON.stringify(brokenPlatformEventsJsonPacket, null, 2)}\n`);
-  const brokenOwnerPacketSummaryBundleVerifyResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
+  const brokenOwnerPacketSummaryBundleVerifyResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-bundle-verify"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3222,7 +3230,7 @@ try {
   assert.equal(brokenOwnerPacketSummaryBundleVerify.status, "BLOCKED");
   assert(brokenOwnerPacketSummaryBundleVerify.issues.some((issue) => issue === "owner packet JSON nextCommand mismatch for platform-events"));
 
-  const executionStatusResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--execution-status"], {
+  const executionStatusResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--execution-status"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3237,11 +3245,11 @@ try {
   assert.equal(executionStatus.blockedGateCount, 5);
   assert.equal(executionStatus.handoffBundle.status, "PASS");
   assert(executionStatus.laneRoutes.some((lane) => lane.lane === "p0-docker-images" && lane.sourcePlan === "docker-image-submission-plan.json"));
-  assert(executionStatus.laneRoutes.some((lane) => lane.lane === "p1-runtime-business" && lane.command === "node bin/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
+  assert(executionStatus.laneRoutes.some((lane) => lane.lane === "p1-runtime-business" && lane.command === "node bin\/ddd-staging-execution-checklist.mjs --runtime-business-submission-plan-markdown"));
   assert(executionStatus.laneRoutes.some((lane) => lane.lane === "p1-p2-data-safety" && lane.sourcePlan === "data-safety-submission-plan.json"));
-  assert.equal(executionStatus.nextCommand, "node bin/ddd-staging-execution-checklist.mjs --commands");
+  assert.equal(executionStatus.nextCommand, "node bin\/ddd-staging-execution-checklist.mjs --commands");
 
-  const executionStatusMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--execution-status-markdown"], {
+  const executionStatusMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--execution-status-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3258,7 +3266,7 @@ try {
   assert.match(executionStatusMarkdownResult.stdout, /runtime-business-submission-plan\.json/);
   assert.match(executionStatusMarkdownResult.stdout, /data-safety-submission-plan\.json/);
 
-  const handoffSummaryMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--handoff-summary-markdown"], {
+  const handoffSummaryMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--handoff-summary-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3273,7 +3281,7 @@ try {
   assert.match(handoffSummaryMarkdownResult.stdout, /^# DDD Staging Execution Status/m);
   assert.match(handoffSummaryMarkdownResult.stdout, /Handoff bundle: PASS/);
 
-  const finalReviewResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--final-review"], {
+  const finalReviewResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--final-review"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3299,14 +3307,14 @@ try {
   assert.equal(finalReview.laneReceiptFragment.status, "BLOCKED");
   assert(finalReview.laneReceiptFragment.providedArtifacts.includes("artifacts/ddd/release/staging-handoff-bundle/final-review.json"));
   assert(finalReview.laneReceiptFragment.missingArtifacts.includes("tmp/ddd-explain/*.json"));
-  assert(finalReview.laneReceiptFragment.acceptanceCommands.includes("node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
+  assert(finalReview.laneReceiptFragment.acceptanceCommands.includes("node bin\/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>"));
   assert(finalReview.checklist.some((item) => item.id === "handoff-bundle-integrity" && item.passed === true));
   assert(finalReview.checklist.some((item) => item.id === "owner-lane-completion-receipt" && item.passed === false));
   assert(finalReview.checklist.some((item) => item.id === "cutover-allowed" && item.passed === false));
   assert.equal(finalReview.blockers.some((gate) => gate.gate === "docker-images"), false);
-  assert.equal(finalReview.nextCommand, "node bin/ddd-staging-execution-checklist.mjs --commands");
+  assert.equal(finalReview.nextCommand, "node bin\/ddd-staging-execution-checklist.mjs --commands");
 
-  const finalReviewWithPartialLaneReceiptResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--final-review"], {
+  const finalReviewWithPartialLaneReceiptResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--final-review"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3326,7 +3334,7 @@ try {
   assert(finalReviewWithPartialLaneReceipt.laneCompletionReceipt.coverage.missingLanes.length > 0);
   assert(finalReviewWithPartialLaneReceipt.checklist.some((item) => item.id === "owner-lane-completion-receipt" && item.passed === false && item.blocker.includes("missing lanes=")));
 
-  const finalReviewWithLaneReceiptResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--final-review"], {
+  const finalReviewWithLaneReceiptResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--final-review"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3349,7 +3357,7 @@ try {
   assert(finalReviewWithLaneReceipt.checklist.some((item) => item.id === "owner-lane-completion-receipt" && item.passed === true));
   assert(finalReviewWithLaneReceipt.checklist.some((item) => item.id === "cutover-allowed" && item.passed === false));
 
-  const finalReviewMarkdownResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--final-review-markdown"], {
+  const finalReviewMarkdownResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--final-review-markdown"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3371,7 +3379,7 @@ try {
   assert.match(finalReviewMarkdownResult.stdout, /"lane": "final-review"/);
   assert.match(finalReviewMarkdownResult.stdout, /--final-review-enforce --lane-completion-receipt-file=<receipt-file>/);
 
-  const finalReviewEnforceResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--final-review-enforce"], {
+  const finalReviewEnforceResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--final-review-enforce"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3385,7 +3393,7 @@ try {
   assert.equal(finalReviewEnforce.cutoverReady, false);
   assert.equal(finalReviewEnforce.handoffBundle.status, "PASS");
 
-  const evidenceGapsResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--evidence-gaps"], {
+  const evidenceGapsResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--evidence-gaps"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3399,10 +3407,10 @@ try {
   assert.equal(evidenceGaps.cutoverAllowed, false);
   assert.equal(evidenceGaps.willWriteFiles, false);
   assert.equal(evidenceGaps.gapCount, 6);
-  assert(evidenceGaps.gaps.some((gap) => gap.id === "p0-release-env" && gap.nextCommand === "node bin/ddd-release-env-init.mjs --check"));
-  assert(evidenceGaps.gaps.some((gap) => gap.id === "p1-runtime-business" && gap.nextCommand === "node bin/ddd-staging-runtime-check.mjs"));
-  assert(evidenceGaps.gaps.some((gap) => gap.id === "p1-rollback" && gap.nextCommand === "node bin/ddd-staging-data-safety-check.mjs"));
-  assert(evidenceGaps.gaps.some((gap) => gap.id === "p2-database-performance" && gap.nextCommand === "node bin/ddd-staging-data-safety-check.mjs"));
+  assert(evidenceGaps.gaps.some((gap) => gap.id === "p0-release-env" && gap.nextCommand === "node bin\/ddd-release-env-init.mjs --check"));
+  assert(evidenceGaps.gaps.some((gap) => gap.id === "p1-runtime-business" && gap.nextCommand === "node bin\/ddd-staging-runtime-check.mjs"));
+  assert(evidenceGaps.gaps.some((gap) => gap.id === "p1-rollback" && gap.nextCommand === "node bin\/ddd-staging-data-safety-check.mjs"));
+  assert(evidenceGaps.gaps.some((gap) => gap.id === "p2-database-performance" && gap.nextCommand === "node bin\/ddd-staging-data-safety-check.mjs"));
   assert(evidenceGaps.gaps.some((gap) => gap.id === "p1-runtime-business" && gap.artifacts.includes("artifacts/ddd/lumira-ui/frontend-smoke.json")));
   assert.equal(fs.existsSync(`${evidenceGapsOutputBase}.json`), false, "evidence gaps mode should not write checklist JSON");
 
@@ -3413,7 +3421,7 @@ try {
   if (bashCheck.status === 0) {
     const envInitTarget = `tmp/staging-checklist-env-init-${process.pid}.env`;
     const envInitReceipt = `tmp/staging-checklist-env-init-${process.pid}-receipt.json`;
-    const envInitResult = spawnSyncWithTimeout("node", ["bin/ddd-release-env-init.mjs"], {
+    const envInitResult = spawnSyncWithTimeout("node", ["bin\/ddd-release-env-init.mjs"], {
       cwd: repoRoot,
       encoding: "utf8",
       env: {
@@ -3437,7 +3445,7 @@ try {
     fs.rmSync(path.join(repoRoot, envInitReceipt), { force: true });
   }
 
-  const summaryResult = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--summary"], {
+  const summaryResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--summary"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3452,12 +3460,12 @@ try {
   assert.match(summaryResult.stdout, /^blockedTracks=6/m);
   assert.match(summaryResult.stdout, /- p0-release-env\trelease-infra\t/);
   assert.match(summaryResult.stdout, /- platform-events\tblockers=9\tsecretKeys=3\tkeys=10/);
-  assert.match(summaryResult.stdout, /node scripts\/ddd-release-env-init\.mjs/);
-  assert.match(summaryResult.stdout, /node scripts\/ddd-release-env-init\.mjs --check/);
-  assert.match(summaryResult.stdout, /node scripts\/ddd-staging-execution-checklist\.mjs --owner-packets/);
+  assert.match(summaryResult.stdout, /node bin\/ddd-release-env-init\.mjs/);
+  assert.match(summaryResult.stdout, /node bin\/ddd-release-env-init\.mjs --check/);
+  assert.match(summaryResult.stdout, /node bin\/ddd-staging-execution-checklist\.mjs --owner-packets/);
   assert.equal(fs.existsSync(`${summaryOutputBase}.json`), false, "summary mode should not write checklist JSON");
 
-  const result = spawnSyncWithTimeout("node", ["bin/ddd-staging-execution-checklist.mjs", "--owner-packets"], {
+  const result = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--owner-packets"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
@@ -3507,34 +3515,34 @@ try {
   const releaseEnvTrack = checklist.tracks.find((track) => track.id === "p0-release-env");
   assert(releaseEnvTrack.envKeys.includes("LUMIRA_BASE_URL"), "release env track should surface backend URL env keys");
   assert(
-    releaseEnvTrack.commands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs"),
+    releaseEnvTrack.commands.includes("DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint.mjs"),
     "release env track should include lint command",
   );
   assert(
-    releaseEnvTrack.setupCommands.includes("node bin/ddd-release-env-init.mjs --check")
-      && releaseEnvTrack.setupCommands.includes("node bin/ddd-release-env-init.mjs"),
+    releaseEnvTrack.setupCommands.includes("node bin\/ddd-release-env-init.mjs --check")
+      && releaseEnvTrack.setupCommands.includes("node bin\/ddd-release-env-init.mjs"),
     "release env track should include env init check and setup commands",
   );
   const imageTrack = checklist.tracks.find((track) => track.id === "p0-images");
   assert(
-    imageTrack.setupCommands.includes("node bin/ddd-docker-build-evidence.mjs --check"),
+    imageTrack.setupCommands.includes("node bin\/ddd-docker-build-evidence.mjs --check"),
     "image track should include Docker evidence check setup command",
   );
 
   const finalTrack = checklist.tracks.find((track) => track.id === "p3-final-strict");
   const runtimeTrack = checklist.tracks.find((track) => track.id === "p1-runtime-business");
   assert(
-    runtimeTrack.setupCommands.includes("node bin/ddd-staging-runtime-check.mjs"),
+    runtimeTrack.setupCommands.includes("node bin\/ddd-staging-runtime-check.mjs"),
     "runtime track should include staging runtime check setup command",
   );
   const rollbackTrack = checklist.tracks.find((track) => track.id === "p1-rollback");
   assert(
-    rollbackTrack.setupCommands.includes("node bin/ddd-staging-data-safety-check.mjs"),
+    rollbackTrack.setupCommands.includes("node bin\/ddd-staging-data-safety-check.mjs"),
     "rollback track should include staging data safety check setup command",
   );
   const databaseTrack = checklist.tracks.find((track) => track.id === "p2-database-performance");
   assert(
-    databaseTrack.setupCommands.includes("node bin/ddd-staging-data-safety-check.mjs"),
+    databaseTrack.setupCommands.includes("node bin\/ddd-staging-data-safety-check.mjs"),
     "database track should include staging data safety check setup command",
   );
   assert(
@@ -3545,7 +3553,7 @@ try {
   assert.match(markdown, /^# DDD Staging Execution Checklist/m);
   assert.match(markdown, /Status: STAGING_REQUIRED/);
   assert.match(markdown, /## First Move/);
-  assert.match(markdown, /node scripts\/ddd-release-env-init\.mjs/);
+  assert.match(markdown, /node bin\/ddd-release-env-init\.mjs/);
   assert.match(markdown, /## Release Env Owner Handoff/);
   assert.match(markdown, /platform-events: blockers=/);
   assert.match(markdown, /keys: .*SAAS_EVENT_REDIS_STREAM_KEY/);
@@ -3575,12 +3583,12 @@ try {
   assert.match(platformEventsPacket, /## Required Keys/);
   assert.match(platformEventsPacket, /SAAS_EVENT_REDIS_STREAM_KEY/);
   assert.match(platformEventsPacket, /## Post-Fill Validation/);
-  assert.match(platformEventsPacket, /DDD_RELEASE_ENV_FILE=<release-env-file> node scripts\/ddd-release-env-file-lint\.mjs/);
+  assert.match(platformEventsPacket, /DDD_RELEASE_ENV_FILE=<release-env-file> node bin\/ddd-release-env-file-lint\.mjs/);
   assert.match(platformEventsPacket, /## Staging Evidence Gaps/);
   assert.match(platformEventsPacket, /p0-release-env: P0 release env and config/);
   const releaseInfraPacket = fs.readFileSync(path.join(ownerPacketDir, "release-infra.md"), "utf8");
-  assert.match(releaseInfraPacket, /node scripts\/ddd-release-env-init\.mjs --check/);
-  assert.match(releaseInfraPacket, /node scripts\/ddd-release-env-init\.mjs/);
+  assert.match(releaseInfraPacket, /node bin\/ddd-release-env-init\.mjs --check/);
+  assert.match(releaseInfraPacket, /node bin\/ddd-release-env-init\.mjs/);
   assert.match(releaseInfraPacket, /--next-action-env-receipt-output=<receipt-file>/);
   assert.match(releaseInfraPacket, /--operator-progress-markdown --next-action-env-receipt-file=<receipt-file>/);
   assert.match(releaseInfraPacket, /## Current Blocking Inputs/);
@@ -3588,15 +3596,15 @@ try {
   assert.match(releaseInfraPacket, /### p0-docker-images[\s\S]*Currently missing artifacts: none/);
   assert.match(releaseInfraPacket, /## Submission Routes/);
   assert.match(releaseInfraPacket, /Source plan: `docker-image-submission-plan\.json`/);
-  assert.match(releaseInfraPacket, /Next command: `node scripts\/ddd-staging-execution-checklist\.mjs --docker-image-submission-plan-markdown`/);
+  assert.match(releaseInfraPacket, /Next command: `node bin\/ddd-staging-execution-checklist\.mjs --docker-image-submission-plan-markdown`/);
   assert.match(releaseInfraPacket, /Expected artifacts: `artifacts\/ddd\/build\/docker-image-evidence\.json`/);
   assert.match(releaseInfraPacket, /Source plan: `runtime-business-submission-plan\.json`/);
-  assert.match(releaseInfraPacket, /Next command: `node scripts\/ddd-staging-execution-checklist\.mjs --runtime-business-submission-plan-markdown`/);
+  assert.match(releaseInfraPacket, /Next command: `node bin\/ddd-staging-execution-checklist\.mjs --runtime-business-submission-plan-markdown`/);
   assert.match(releaseInfraPacket, /Expected artifacts: .*`artifacts\/ddd\/lumira-ui\/frontend-smoke\.json`/);
   assert.match(releaseInfraPacket, /p0-images: P0 deployable images/);
-  assert.match(releaseInfraPacket, /Next command: `node scripts\/ddd-docker-build-evidence\.mjs --check`/);
+  assert.match(releaseInfraPacket, /Next command: `node bin\/ddd-docker-build-evidence\.mjs --check`/);
   assert.match(releaseInfraPacket, /p1-runtime-business: P1 runtime and business acceptance/);
-  assert.match(releaseInfraPacket, /Next command: `node scripts\/ddd-staging-runtime-check\.mjs`/);
+  assert.match(releaseInfraPacket, /Next command: `node bin\/ddd-staging-runtime-check\.mjs`/);
   const platformOwnersPacket = fs.readFileSync(path.join(ownerPacketDir, "platform-owners.md"), "utf8");
   assert.match(platformOwnersPacket, /Source plan: `data-safety-submission-plan\.json`/);
   assert.match(platformOwnersPacket, /Expected artifacts: .*`tmp\/ddd-explain\/\*\.json`/);
@@ -3606,7 +3614,7 @@ try {
   assert.match(aiOwnerPacket, /p1-runtime-business: P1 runtime and business acceptance/);
 
   const ownerOnlyResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--owner-packets",
     "--owner=ai-owner",
   ], {
@@ -3629,7 +3637,7 @@ try {
   assert.doesNotMatch(ownerOnlyIndex, /platform-events\.md/);
 
   const unknownOwnerResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--owner-packets",
     "--owner=unknown-owner",
   ], {
@@ -3645,7 +3653,7 @@ try {
   assert.match(unknownOwnerResult.stderr, /available owners: .*ai-owner/);
 
   const listOwnersResult = spawnSyncWithTimeout("node", [
-    "bin/ddd-staging-execution-checklist.mjs",
+    "bin\/ddd-staging-execution-checklist.mjs",
     "--list-owners",
   ], {
     cwd: repoRoot,

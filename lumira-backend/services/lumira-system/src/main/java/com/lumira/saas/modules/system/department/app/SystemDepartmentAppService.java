@@ -104,6 +104,7 @@ public class SystemDepartmentAppService {
             throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门编码已存在，请更换后重试");
         }
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        rebuildClosureForSubtree(tenantId, id);
         permissionSnapshotService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "department", "create", "CREATE", "SUCCESS", "创建部门: " + request.getDeptName());
         return getDepartment(currentUser, id);
@@ -242,6 +243,83 @@ public class SystemDepartmentAppService {
             DepartmentVO ancestor = queryDepartment(tenantId, cursor);
             cursor = ancestor == null ? null : ancestor.getParentId();
         }
+    }
+
+    private void rebuildClosureForSubtree(Long tenantId, Long rootDepartmentId) {
+        if (rootDepartmentId == null) {
+            return;
+        }
+        List<Long> subtreeIds = jdbcTemplate.queryForList(
+                """
+                        with recursive dept_tree as (
+                            select id
+                            from sys_department
+                            where tenant_id = ? and id = ? and deleted = 0
+                            union all
+                            select child.id
+                            from sys_department child
+                            join dept_tree parent on parent.id = child.parent_id
+                            where child.tenant_id = ? and child.deleted = 0
+                        )
+                        select id from dept_tree
+                        """,
+                Long.class,
+                tenantId,
+                rootDepartmentId,
+                tenantId
+        );
+        if (subtreeIds == null || subtreeIds.isEmpty()) {
+            return;
+        }
+        String placeholders = "?,".repeat(subtreeIds.size()).replaceFirst(",$", "");
+        List<Object> deleteArgs = new ArrayList<>();
+        deleteArgs.add(tenantId);
+        deleteArgs.addAll(subtreeIds);
+        jdbcTemplate.update(
+                "delete from sys_department_closure where tenant_id = ? and descendant_id in (" + placeholders + ")",
+                deleteArgs.toArray()
+        );
+        for (Long descendantId : subtreeIds) {
+            insertClosureForDepartment(tenantId, descendantId);
+        }
+    }
+
+    private void insertClosureForDepartment(Long tenantId, Long departmentId) {
+        DepartmentVO department = queryDepartment(tenantId, departmentId);
+        if (department == null) {
+            return;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        jdbcTemplate.update(
+                """
+                        insert into sys_department_closure (tenant_id, ancestor_id, descendant_id, depth, deleted, created_at)
+                        values (?, ?, ?, 0, 0, ?)
+                        on duplicate key update deleted = 0, depth = values(depth)
+                        """,
+                tenantId,
+                departmentId,
+                departmentId,
+                now
+        );
+        Long parentId = normalizeParentId(department.getParentId());
+        if (parentId == null) {
+            return;
+        }
+        jdbcTemplate.update(
+                """
+                        insert into sys_department_closure (tenant_id, ancestor_id, descendant_id, depth, deleted, created_at)
+                        select tenant_id, ancestor_id, ?, depth + 1, 0, ?
+                        from sys_department_closure
+                        where tenant_id = ?
+                          and descendant_id = ?
+                          and deleted = 0
+                        on duplicate key update deleted = 0, depth = values(depth)
+                        """,
+                departmentId,
+                now,
+                tenantId,
+                parentId
+        );
     }
 
     private void validateDeptCodeUnique(Long tenantId, Long currentId, String deptCode) {

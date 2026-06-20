@@ -26,7 +26,7 @@ function baseArtifacts() {
           unresolvedTemplateKeys: ["LUMIRA_BASE_URL", "JWT_SECRET"],
           readyBatchIds: ["p0-release-env-lint-release-infra"],
           blockedBatchIds: [],
-          commands: ["node bin/ddd-release-env-file-lint.mjs"],
+          commands: ["node bin\/ddd-release-env-file-lint.mjs"],
           exitCriteria: ["env lint passes"],
         },
         {
@@ -37,7 +37,7 @@ function baseArtifacts() {
           unresolvedTemplateKeys: ["DDD_AUTH_USERNAME"],
           readyBatchIds: [],
           blockedBatchIds: ["p1-auth-baseline-auth"],
-          commands: ["node bin/ddd-auth-performance-baseline.mjs"],
+          commands: ["node bin\/ddd-auth-performance-baseline.mjs"],
           exitCriteria: ["auth baseline captured"],
         },
       ],
@@ -73,7 +73,7 @@ function baseArtifacts() {
           ],
           readyBatchIds: ["p0-release-env-lint-release-infra"],
           blockedBatchIds: [],
-          commands: ["node bin/ddd-release-env-file-lint.mjs"],
+          commands: ["node bin\/ddd-release-env-file-lint.mjs"],
           exitCriteria: ["env lint passes"],
         },
         {
@@ -95,7 +95,7 @@ function baseArtifacts() {
           ],
           readyBatchIds: [],
           blockedBatchIds: ["p1-auth-baseline-auth"],
-          commands: ["node bin/ddd-auth-performance-baseline.mjs"],
+          commands: ["node bin\/ddd-auth-performance-baseline.mjs"],
           exitCriteria: ["auth baseline captured"],
         },
       ],
@@ -113,7 +113,7 @@ function runContract(mutator = () => {}) {
   const artifacts = baseArtifacts();
   mutator(artifacts);
   writeArtifacts(directory, artifacts);
-  return spawnSync("node", ["bin/ddd-release-env-fill-priority-contract.mjs"], {
+  return spawnSync("node", ["bin\/ddd-release-env-fill-priority-contract.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: { ...process.env, DDD_RELEASE_DIR: directory },

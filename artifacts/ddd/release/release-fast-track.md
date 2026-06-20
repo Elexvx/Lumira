@@ -1,6 +1,6 @@
 # DDD Fast Track Release Decision
 
-Generated at: 2026-06-19T13:42:59.865Z
+Generated at: 2026-06-19T18:19:45.629Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -22,11 +22,11 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 
 - [BLOCKED] strict-release-gate: Strict release gate has zero blockers and no contract issues.
   - Pending items: 94
-  - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-release-owner, p0-authenticated-performance-release-performance
-  - Blocked batches: p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database, p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-infra, p3-orchestrator-release-owner
+  - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
+  - Blocked batches: p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database, p3-orchestrator-database, p3-orchestrator-release-infra, p3-orchestrator-release-owner
 - [PASS] release-environment: Completed release env file and config matrix are valid.
   - Pending items: 0
-- [BLOCKED] deployable-images: Deployable backend/frontend images are built and inspected.
+- [BLOCKED] deployable-images: Deployable backend/lumira-ui images are built and inspected.
   - Pending items: 4
   - Ready batches: p0-docker-release-infra
 - [BLOCKED] production-equivalence: Runtime and performance evidence use HTTPS non-local production-equivalent endpoints.
@@ -34,19 +34,19 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - Ready batches: p0-runtime-readiness-release-infra, p0-authenticated-performance-release-performance
 - [PASS] data-safety: Fresh and upgrade migrations are proven with runtime metadata.
   - Pending items: 0
-- [BLOCKED] runtime-business-acceptance: AI, frontend, file, job, and payment acceptance evidence is complete.
-  - Pending items: 7
-  - Blocked batches: p1-ai-runtime-ai, p1-frontend-smoke-frontend, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner
+- [BLOCKED] runtime-business-acceptance: AI, lumira-ui, file, job, and payment acceptance evidence is complete.
+  - Pending items: 6
+  - Blocked batches: p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner
 - [BLOCKED] rollback-safety: Every bounded context has rollback PASS or approved unexpired DEFERRED risk acceptance.
   - Pending items: 10
   - Blocked batches: p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner
 - [BLOCKED] database-performance: Fresh production-equivalent EXPLAIN evidence has no scan/index blockers.
-  - Pending items: 8
+  - Pending items: 2
   - Blocked batches: p2-explain-database
 - [BLOCKED] evidence-integrity: Evidence manifest and final orchestrator strict rerun are clean.
-  - Pending items: 5
-  - Ready batches: p0-manifest-release-owner
-  - Blocked batches: p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-infra, p3-orchestrator-release-owner
+  - Pending items: 7
+  - Ready batches: p0-manifest-lumira-ui
+  - Blocked batches: p3-orchestrator-database, p3-orchestrator-release-infra, p3-orchestrator-release-owner
 
 ## Safety Signals
 
@@ -69,8 +69,7 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - `DDD_DOCKER_BUILD_STRICT=DDD_DOCKER_BUILD_STRICT`
   - `DDD_DOCKER_COMMAND=DDD_DOCKER_COMMAND`
 - Commands:
-  - `DDD_DOCKER_BUILD_STRICT=true node scripts/ddd-docker-build-evidence.mjs`
-  - `node scripts/ddd-docker-build-evidence.mjs`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
 
 ### production-equivalence
 
@@ -87,7 +86,7 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
   - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
 - Commands:
-  - `node scripts/ddd-runtime-readiness-smoke.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
 
 ### performance
 
@@ -104,8 +103,8 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - `DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT=DDD_AUTH_PERF_BASELINE_SOURCE_ARTIFACT`
   - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
 - Commands:
-  - `node scripts/ddd-authenticated-performance-smoke.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
+  - `node bin/ddd-authenticated-performance-smoke.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
 
 ### runtime-acceptance
 
@@ -129,22 +128,7 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - `LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL=LUMIRA_AI_PROVIDER_BASE_URL|LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL`
   - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
 - Commands:
-  - `node scripts/ddd-ai-runtime-drill.mjs`
-
-### frontend-acceptance
-
-- Safety class: required-before-cutover
-- Pending items: 1
-- Sources: frontend-smoke
-- Owners: frontend
-- Ready batches: none
-- Blocked batches: p1-frontend-smoke-frontend
-- Acceleration: Run deployed Playwright smoke and evidence conversion from the deployed frontend URL.
-- Env check groups:
-  - `DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED`
-- Commands:
-  - `node scripts/ddd-frontend-playwright-smoke.mjs`
-  - `node scripts/ddd-frontend-smoke-evidence.mjs`
+  - `node bin/ddd-ai-runtime-drill.mjs`
 
 ### business-acceptance
 
@@ -163,9 +147,9 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - `SAAS_JOB_INTERNAL_TOKEN=DDD_JOB_INTERNAL_TOKEN|LUMIRA_JOB_INTERNAL_TOKEN|SAAS_JOB_INTERNAL_TOKEN`
   - `UPLOAD_STORAGE_ROOT=LUMIRA_UPLOAD_STORAGE_ROOT|UPLOAD_STORAGE_ROOT`
 - Commands:
-  - `node scripts/ddd-file-processing-e2e-smoke.mjs`
-  - `node scripts/ddd-job-e2e-smoke.mjs`
-  - `node scripts/ddd-payment-webhook-e2e-smoke.mjs`
+  - `node bin/ddd-file-processing-e2e-smoke.mjs`
+  - `node bin/ddd-job-e2e-smoke.mjs`
+  - `node bin/ddd-payment-webhook-e2e-smoke.mjs`
 
 ### rollback-safety
 
@@ -186,14 +170,14 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT`
 - Commands:
-  - `node scripts/ddd-rollback-deferral-template.mjs`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node scripts/ddd-rollback-drill-evidence.mjs`
-  - `node scripts/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-deferral-template.mjs`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs`
+  - `node bin/ddd-rollback-drill-evidence.mjs`
 
 ### database-performance
 
 - Safety class: non-waivable
-- Pending items: 8
+- Pending items: 2
 - Sources: explain
 - Owners: database
 - Ready batches: none
@@ -213,36 +197,36 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - `MYSQL_HOST=MYSQL_HOST`
   - `MYSQL_PORT=MYSQL_PORT`
 - Commands:
-  - `node scripts/ddd-collect-explain.mjs`
-  - `DDD_EXPLAIN_STRICT=true node scripts/ddd-explain-gate.mjs`
+  - `node bin/ddd-collect-explain.mjs`
+  - `DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs`
 
 ### evidence-integrity
 
 - Safety class: required-before-cutover
-- Pending items: 1
+- Pending items: 3
 - Sources: manifest
-- Owners: release-owner
-- Ready batches: p0-manifest-release-owner
+- Owners: lumira-ui
+- Ready batches: p0-manifest-lumira-ui
 - Blocked batches: none
 - Acceleration: Regenerate the manifest after all prerequisite artifacts exist.
 - Env check groups:
   - `DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT`
-  - `DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR`
+  - `DDD_FRONTEND_EXPECT_DEPLOYED=DDD_FRONTEND_EXPECT_DEPLOYED`
   - `DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE`
-  - `DDD_RELEASE_MANIFEST_STRICT=DDD_RELEASE_MANIFEST_STRICT`
+  - `PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL`
 - Commands:
-  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node scripts/ddd-release-evidence-manifest.mjs`
-  - `node scripts/ddd-promote-performance-baseline.mjs`
-  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node scripts/ddd-release-evidence-manifest.mjs`
+  - `DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs`
+  - `node bin/ddd-promote-performance-baseline.mjs`
+  - `DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs`
 
 ### final-verification
 
 - Safety class: final-recheck
 - Pending items: 4
 - Sources: orchestrator
-- Owners: database, frontend, release-infra, release-owner
+- Owners: database, release-infra, release-owner
 - Ready batches: none
-- Blocked batches: p3-orchestrator-database, p3-orchestrator-frontend, p3-orchestrator-release-infra, p3-orchestrator-release-owner
+- Blocked batches: p3-orchestrator-database, p3-orchestrator-release-infra, p3-orchestrator-release-owner
 - Acceleration: Run strict orchestrator only after P0/P1/P2 evidence batches are clean.
 - Env check groups:
   - `BASE_URL=BASE_URL`
@@ -254,6 +238,6 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
   - `PLAYWRIGHT_BASE_URL=FRONTEND_BASE_URL|PLAYWRIGHT_BASE_URL`
 - Commands:
-  - `node scripts/ddd-release-evidence-orchestrator.mjs`
-  - `DDD_RELEASE_EVIDENCE_STRICT=true node scripts/ddd-release-evidence-orchestrator.mjs --run --strict`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
 

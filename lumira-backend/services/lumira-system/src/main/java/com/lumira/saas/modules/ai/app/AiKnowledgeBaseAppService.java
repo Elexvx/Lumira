@@ -473,10 +473,31 @@ public class AiKnowledgeBaseAppService {
             args.addAll(safeKbIds);
         }
 
-        int candidateLimit = Math.min(120, Math.max(safeLimit * 8, safeLimit));
-        args.add(candidateLimit);
+        int lexicalLimit = Math.max(300, safeLimit * 30);
+        int recentLimit = Math.max(50, safeLimit * 5);
         AiEmbeddingVector queryVector = vectorService.embedQuery(query);
-        List<VectorSearchCandidate> candidates = jdbcTemplate.query(
+        List<VectorSearchCandidate> candidates = new ArrayList<>();
+        List<Object> lexicalArgs = new ArrayList<>(args);
+        String lexicalPredicate = buildLexicalPredicate(query, lexicalArgs);
+        lexicalArgs.add(lexicalLimit);
+        candidates.addAll(jdbcTemplate.query(
+                """
+                        select c.id as chunk_id, c.knowledge_base_id, kb.name as knowledge_base_name,
+                               c.document_id, d.title as document_title, d.file_id, d.original_file_name,
+                               c.chunk_index, c.content, c.embedding_vector_json
+                        from ai_knowledge_chunk c
+                        join ai_knowledge_document d on d.tenant_id = c.tenant_id and d.id = c.document_id
+                        join ai_knowledge_base kb on kb.tenant_id = c.tenant_id and kb.id = c.knowledge_base_id
+                        """ + sqlClause(where) + lexicalPredicate + """
+                        order by c.update_time desc, c.id desc
+                        limit ?
+                        """,
+                (row, rowNum) -> mapVectorSearchCandidate(row, query, queryVector),
+                lexicalArgs.toArray()
+        ));
+        List<Object> recentArgs = new ArrayList<>(args);
+        recentArgs.add(recentLimit);
+        candidates.addAll(jdbcTemplate.query(
                 """
                         select c.id as chunk_id, c.knowledge_base_id, kb.name as knowledge_base_name,
                                c.document_id, d.title as document_title, d.file_id, d.original_file_name,
@@ -489,8 +510,9 @@ public class AiKnowledgeBaseAppService {
                         limit ?
                         """,
                 (row, rowNum) -> mapVectorSearchCandidate(row, query, queryVector),
-                args.toArray()
-        );
+                recentArgs.toArray()
+        ));
+        candidates = dedupeCandidates(candidates);
         return vectorService.top(candidates, safeLimit).stream()
                 .map(VectorSearchCandidate::reference)
                 .toList();
@@ -556,6 +578,52 @@ public class AiKnowledgeBaseAppService {
         return true;
     }
 
+    private String buildLexicalPredicate(String query, List<Object> args) {
+        List<String> tokens = tokenizeQuery(query);
+        if (tokens.isEmpty()) {
+            return "";
+        }
+        StringBuilder predicate = new StringBuilder(" and (");
+        for (int i = 0; i < tokens.size(); i += 1) {
+            if (i > 0) {
+                predicate.append(" or ");
+            }
+            predicate.append("c.search_text like ?");
+            args.add("%" + tokens.get(i) + "%");
+        }
+        predicate.append(")");
+        return predicate.toString();
+    }
+
+    private List<String> tokenizeQuery(String query) {
+        if (!StringUtils.hasText(query)) {
+            return List.of();
+        }
+        String[] parts = query.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+");
+        LinkedHashSet<String> tokens = new LinkedHashSet<>();
+        for (String part : parts) {
+            if (StringUtils.hasText(part)) {
+                tokens.add(part);
+            }
+        }
+        if (tokens.isEmpty() && StringUtils.hasText(query)) {
+            tokens.add(query.trim().toLowerCase(Locale.ROOT));
+        }
+        return tokens.stream().limit(8).toList();
+    }
+
+    private List<VectorSearchCandidate> dedupeCandidates(List<VectorSearchCandidate> candidates) {
+        Map<Long, VectorSearchCandidate> byChunkId = new LinkedHashMap<>();
+        for (VectorSearchCandidate candidate : candidates) {
+            if (candidate == null || candidate.reference() == null || candidate.reference().getChunkId() == null) {
+                continue;
+            }
+            byChunkId.merge(candidate.reference().getChunkId(), candidate,
+                    (left, right) -> left.score() >= right.score() ? left : right);
+        }
+        return new ArrayList<>(byChunkId.values());
+    }
+
     public List<AiVO.KnowledgeReferenceVO> retrieveForEmployee(CurrentUser currentUser, Long employeeId, String query, int limit) {
         Long tenantId = currentTenantId(currentUser);
         List<Long> boundIds = jdbcTemplate.queryForList(
@@ -578,33 +646,8 @@ public class AiKnowledgeBaseAppService {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update("update ai_knowledge_chunk set is_deleted = 1, update_time = ? where tenant_id = ? and knowledge_base_id = ? and document_id = ? and is_deleted = 0", now, tenantId, knowledgeBaseId, documentId);
         List<String> chunks = splitChunks(text);
-        int index = 0;
-        for (String chunk : chunks) {
-            AiKnowledgeVectorService.VectorProjection projection = vectorService.project(chunk);
-            jdbcTemplate.update(
-                    """
-                            insert into ai_knowledge_chunk (
-                                tenant_id, knowledge_base_id, document_id, chunk_index, content, search_text,
-                                token_count, embedding_model, embedding_dim, embedding_vector_json, vector_indexed_at,
-                                is_deleted, create_time, update_time
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-                            """,
-                    tenantId,
-                    knowledgeBaseId,
-                    documentId,
-                    index,
-                    chunk,
-                    chunk.toLowerCase(Locale.ROOT),
-                    Math.max(1, chunk.length() / 2),
-                    projection.model(),
-                    projection.dimensions(),
-                    projection.vectorJson(),
-                    now,
-                    now,
-                    now
-            );
-            index++;
-        }
+        List<AiKnowledgeVectorService.VectorProjection> projections = vectorService.projectBatch(chunks);
+        batchInsertChunks(tenantId, knowledgeBaseId, documentId, chunks, projections, now);
         jdbcTemplate.update(
                 """
                         update ai_knowledge_document
@@ -619,6 +662,55 @@ public class AiKnowledgeBaseAppService {
                 documentId
         );
         return chunks.size();
+    }
+
+    private void batchInsertChunks(
+            Long tenantId,
+            Long knowledgeBaseId,
+            Long documentId,
+            List<String> chunks,
+            List<AiKnowledgeVectorService.VectorProjection> projections,
+            LocalDateTime now
+    ) {
+        if (chunks == null || chunks.isEmpty()) {
+            return;
+        }
+        int batchSize = 100;
+        for (int start = 0; start < chunks.size(); start += batchSize) {
+            int end = Math.min(chunks.size(), start + batchSize);
+            StringBuilder sql = new StringBuilder("""
+                    insert into ai_knowledge_chunk (
+                        tenant_id, knowledge_base_id, document_id, chunk_index, content, search_text,
+                        token_count, embedding_model, embedding_dim, embedding_vector_json, vector_indexed_at,
+                        is_deleted, create_time, update_time
+                    ) values
+                    """);
+            List<Object> args = new ArrayList<>((end - start) * 13);
+            for (int index = start; index < end; index += 1) {
+                if (index > start) {
+                    sql.append(", ");
+                }
+                sql.append("(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)");
+                String chunk = chunks.get(index);
+                AiKnowledgeVectorService.VectorProjection projection = index < projections.size()
+                        ? projections.get(index)
+                        : vectorService.project(chunk);
+                args.add(tenantId);
+                args.add(knowledgeBaseId);
+                args.add(documentId);
+                args.add(index);
+                args.add(chunk);
+                args.add(chunk.toLowerCase(Locale.ROOT));
+                args.add(Math.max(1, chunk.length() / 2));
+                args.add(projection.model());
+                args.add(projection.dimensions());
+                args.add(projection.vectorJson());
+                args.add(now);
+                args.add(now);
+                args.add(now);
+            }
+            jdbcTemplate.update(sql.toString(), args.toArray());
+        }
     }
 
     private void processKnowledgeDocumentIndex(PendingIndexTask task) {

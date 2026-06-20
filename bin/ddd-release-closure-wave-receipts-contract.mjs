@@ -92,7 +92,7 @@ for (const [index, wave] of receiptWaves.entries()) {
   if (wave.receiptStatus !== expectedStatus) {
     addFailure(`${label}.receiptStatus must be ${expectedStatus}, got ${wave.receiptStatus || "missing"}`);
   }
-  if (!Array.isArray(wave.rerunCommands) || !wave.rerunCommands.includes("node bin/ddd-release-readiness-summary.mjs")) {
+  if (!Array.isArray(wave.rerunCommands) || !wave.rerunCommands.includes("node bin\/ddd-release-readiness-summary.mjs")) {
     addFailure(`${label}.rerunCommands must include readiness summary rerun`);
   }
   if (wave.expectedArtifactCount !== (wave.presentArtifacts || []).length + (wave.missingArtifacts || []).length) {

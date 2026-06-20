@@ -4,7 +4,7 @@ Status: BLOCKED
 Receipt file: not provided
 Receipt status: missing
 Contract status: BLOCKED
-Coverage: 0/5
+Coverage: 0/0
 Provided lanes: 0
 
 ## Contract Summary
@@ -16,11 +16,7 @@ PASS lanes missing audit fields: none
 
 ## Missing Lanes
 
-- `release-infra:p0-release-env`
-- `release-infra:p0-docker-images`
-- `release-infra:p1-p2-data-safety`
-- `release-infra:final-review`
-- `ai-owner:p1-runtime-business`
+- none
 
 ## Unexpected Lanes
 
@@ -29,4 +25,4 @@ PASS lanes missing audit fields: none
 ## Issues
 
 - DDD_LANE_COMPLETION_RECEIPT_FILE or --lane-completion-receipt-file is required
-- missing lanes=release-infra:p0-release-env, release-infra:p0-docker-images, release-infra:p1-p2-data-safety, release-infra:final-review, ai-owner:p1-runtime-business
+- receiptStatus=missing

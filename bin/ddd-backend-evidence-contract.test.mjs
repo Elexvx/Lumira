@@ -37,7 +37,7 @@ function testClassName(file) {
 
 function testClassesMatching(predicate) {
   return walk(
-    path.join(repoRoot, "services"),
+    path.join(repoRoot, "lumira-backend", "services"),
     predicate,
   ).map(testClassName).sort();
 }

@@ -1,12 +1,12 @@
 {
   "status": "BLOCKED",
-  "generatedAt": "2026-06-19T14:23:18.022Z",
+  "generatedAt": "2026-06-19T18:17:45.175Z",
   "willWriteFiles": false,
   "finalRecommendation": "NO_GO_STRICT",
   "cutoverAllowed": false,
-  "blockedAuditItemCount": 4,
-  "passedAuditItemCount": 3,
-  "readyEvidenceCount": 0,
+  "blockedAuditItemCount": 5,
+  "passedAuditItemCount": 2,
+  "readyEvidenceCount": 1,
   "evidenceGateCount": 5,
   "evidenceGates": [
     {
@@ -14,8 +14,8 @@
       "label": "First-wave env receipt contract",
       "status": "MISSING",
       "evidence": "redacted next-action env receipt file not provided",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
+      "verifyCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
       "blocker": "next-action env receipt file not provided"
     },
     {
@@ -23,34 +23,34 @@
       "label": "Lane completion receipt dispatch readiness",
       "status": "BLOCKED",
       "evidence": "redacted lane completion receipt file not provided",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+      "verifyCommand": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
       "blocker": "lane completion receipt file not provided"
     },
     {
       "id": "owner-evidence",
       "label": "Owner evidence intake",
-      "status": "BLOCKED",
+      "status": "PASS",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
-      "blocker": "missingArtifacts=0; blockingInputs=0"
+      "command": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "verifyCommand": "node bin/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
+      "blocker": null
     },
     {
       "id": "production-audit",
       "label": "Production cutover audit",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/production-cutover-audit.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit",
-      "blocker": "blockedAuditItems=4"
+      "command": "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
+      "verifyCommand": "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit",
+      "blocker": "blockedAuditItems=5"
     },
     {
       "id": "final-go-no-go",
       "label": "Strict final go/no-go",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/release-final-go-no-go.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
       "verifyCommand": "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
       "blocker": "cutoverAllowed=false; finalRecommendation=NO_GO_STRICT"
     }
@@ -61,8 +61,8 @@
       "label": "First-wave env receipt contract",
       "status": "MISSING",
       "evidence": "redacted next-action env receipt file not provided",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
+      "verifyCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
       "blocker": "next-action env receipt file not provided"
     },
     {
@@ -70,34 +70,25 @@
       "label": "Lane completion receipt dispatch readiness",
       "status": "BLOCKED",
       "evidence": "redacted lane completion receipt file not provided",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+      "verifyCommand": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
       "blocker": "lane completion receipt file not provided"
-    },
-    {
-      "id": "owner-evidence",
-      "label": "Owner evidence intake",
-      "status": "BLOCKED",
-      "evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
-      "blocker": "missingArtifacts=0; blockingInputs=0"
     },
     {
       "id": "production-audit",
       "label": "Production cutover audit",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/staging-handoff-bundle/production-cutover-audit.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit",
-      "blocker": "blockedAuditItems=4"
+      "command": "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit-markdown",
+      "verifyCommand": "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit",
+      "blocker": "blockedAuditItems=5"
     },
     {
       "id": "final-go-no-go",
       "label": "Strict final go/no-go",
       "status": "BLOCKED",
       "evidence": "artifacts/ddd/release/release-final-go-no-go.json",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --final-review-enforce --lane-completion-receipt-file=<receipt-file>",
       "verifyCommand": "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
       "blocker": "cutoverAllowed=false; finalRecommendation=NO_GO_STRICT"
     }
@@ -110,8 +101,8 @@
       "owner": "release-infra",
       "status": "ACTION_REQUIRED",
       "reason": "DDD_NEXT_ACTION_ENV_FILE or --next-action-env-file is required",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-check --next-action-env-file=<env-file>",
+      "verifyCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt-contract --next-action-env-receipt-file=<receipt-file>",
       "evidence": "redacted next-action env receipt",
       "completionSignal": "next-action env receipt contract passes"
     },
@@ -121,31 +112,19 @@
       "label": "Initialize or validate lane completion receipt",
       "owner": "release-owner",
       "status": "ACTION_REQUIRED",
-      "reason": "receipt=MISSING; coverage=0/5; dispatchReady=false",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
+      "reason": "receipt=MISSING; coverage=0/0; dispatchReady=false",
+      "command": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-receipt-init --lane-completion-receipt-output=<receipt-file>",
+      "verifyCommand": "node bin/ddd-staging-execution-checklist.mjs --lane-completion-submission-check --lane-completion-receipt-file=<receipt-file>",
       "evidence": "redacted lane completion receipt with 5/5 coverage",
       "completionSignal": "lane completion submission check reports dispatchReady=true"
-    },
-    {
-      "order": 3,
-      "id": "owner-evidence",
-      "label": "Close next owner evidence lane",
-      "owner": "release-infra",
-      "status": "ACTION_REQUIRED",
-      "reason": "missingArtifacts=0; blockingInputs=0; lanes=4",
-      "command": "node scripts/ddd-staging-execution-checklist.mjs --final-review-enforce",
-      "verifyCommand": "node scripts/ddd-staging-execution-checklist.mjs --owner-evidence-intake-markdown",
-      "evidence": "artifacts/ddd/release/staging-handoff-bundle/owner-evidence-intake.json",
-      "completionSignal": "owner evidence intake has 0 missing required artifacts"
     }
   ],
   "verificationCommands": [
-    "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness",
-    "node scripts/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce",
-    "node scripts/ddd-staging-execution-checklist.mjs --production-cutover-audit",
+    "node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness",
+    "node bin/ddd-staging-execution-checklist.mjs --production-evidence-readiness-enforce",
+    "node bin/ddd-staging-execution-checklist.mjs --production-cutover-audit",
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
   ],
-  "nextCommand": "node scripts/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
+  "nextCommand": "node bin/ddd-staging-execution-checklist.mjs --next-action-env-receipt --next-action-env-file=<env-file> --next-action-env-receipt-output=<receipt-file>",
   "noAutoWaivers": true
 }

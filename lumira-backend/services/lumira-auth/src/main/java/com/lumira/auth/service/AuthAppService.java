@@ -261,23 +261,25 @@ public class AuthAppService {
             }
             if (user == null) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(null, null, account, "PASSWORD", "FAIL", "用户不存在", loginIp, userAgent);
-                throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "登录失败，账号不存在: " + account, ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
+                recordLoginAudit(null, null, account, "PASSWORD", "FAIL", "ACCOUNT_NOT_FOUND", loginIp, userAgent);
+                throw loginFailed();
             }
             if (!"ENABLED".equalsIgnoreCase(user.status())) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "账号已禁用", loginIp, userAgent);
-                throw new BizException(ErrorCode.ACCOUNT_DISABLED, "登录失败，账号已禁用: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
+                recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "ACCOUNT_DISABLED", loginIp, userAgent);
+                throw loginFailed();
             }
 
             String loginPassword = loginEncryptionService.decryptPassword(request.password());
             if (!passwordEncoder.matches(loginPassword, user.passwordHash())) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "密码错误", loginIp, userAgent);
-                throw new BizException(ErrorCode.PASSWORD_ERROR, "登录失败，密码错误: " + user.username(), ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
+                recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "PASSWORD_MISMATCH", loginIp, userAgent);
+                throw loginFailed();
             }
             boolean requiresPasswordChange = requiresInitialAdminPasswordChange(account, user, loginPassword);
-            rejectUnsafeDefaultAdminLogin(account, user, loginPassword, loginIp, userAgent);
+            if (!requiresPasswordChange) {
+                rejectUnsafeDefaultAdminLogin(account, user, loginPassword, loginIp, userAgent);
+            }
 
             Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
             List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = systemInternalApi.listLoginSecondFactorOptions(currentTenantId, user.userId());
@@ -305,6 +307,14 @@ public class AuthAppService {
     private boolean requiresInitialAdminPasswordChange(String account, SystemUserSnapshotDTO user, String loginPassword) {
         boolean adminAccount = DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(account) || DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username());
         return adminAccount && INITIAL_ADMIN_PASSWORD.equals(loginPassword);
+    }
+
+    private BizException loginFailed() {
+        return new BizException(
+                ErrorCode.LOGIN_FAILED,
+                ErrorCode.LOGIN_FAILED.getDefaultUserMessage(),
+                ErrorCode.LOGIN_FAILED.getDefaultUserMessage()
+        );
     }
 
     private boolean hasCaptchaEvidence(LoginRequest request) {
@@ -478,6 +488,7 @@ public class AuthAppService {
             AuthSession session = authSessionStore.findBySessionId(currentUser.getSessionId())
                     .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "会话已失效"));
 
+            reconcileInitialPasswordState(session);
             AuthBootstrapDTO cachedBootstrap = getAuthBootstrap(session);
             if (cachedBootstrap != null) {
                 return cachedBootstrap;
@@ -495,6 +506,7 @@ public class AuthAppService {
     }
 
     private CurrentUserDTO resolveCurrentUserFromSession(AuthSession session) {
+        reconcileInitialPasswordState(session);
         if (hasCurrentUserSnapshot(session) && refreshPermissionSnapshotVersionIfNeeded(session)) {
             return currentUserFromSession(session);
         }
@@ -837,6 +849,9 @@ public class AuthAppService {
     }
 
     private CurrentUserDTO getCachedCurrentUser(CurrentUser currentUser) {
+        if (currentUser != null && Boolean.TRUE.equals(currentUser.getRequiresPasswordChange())) {
+            return null;
+        }
         String key = currentUserCacheKey(currentUser);
         if (!StringUtils.hasText(key)) {
             return null;
@@ -974,6 +989,19 @@ public class AuthAppService {
             return null;
         }
         return session.getSessionId() + "#" + session.getPermissionsVersion();
+    }
+
+    private void reconcileInitialPasswordState(AuthSession session) {
+        if (session == null || !Boolean.TRUE.equals(session.getRequiresPasswordChange())) {
+            return;
+        }
+        SystemUserSnapshotDTO user = systemInternalApi.findUserById(session.getUserId());
+        if (user == null || requiresInitialAdminPasswordChange(user)) {
+            return;
+        }
+        session.setRequiresPasswordChange(Boolean.FALSE);
+        authSessionStore.save(session, false);
+        invalidateAuthBootstrapCache(session);
     }
 
     private CurrentUserDTO currentUserFromSession(AuthSession session) {
