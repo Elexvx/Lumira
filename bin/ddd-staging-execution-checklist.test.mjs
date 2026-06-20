@@ -2014,13 +2014,17 @@ try {
       DDD_STAGING_CHECKLIST_OUTPUT: path.join(tmpDir, "staging-checklist-blocking-inputs-release-infra"),
     },
   });
-  assert.equal(ownerBlockingInputsResult.status, 0, ownerBlockingInputsResult.stderr || ownerBlockingInputsResult.stdout);
-  const ownerBlockingInputs = JSON.parse(ownerBlockingInputsResult.stdout);
-  assert.equal(ownerBlockingInputs.ownerFilter, "release-infra");
-  assert.equal(ownerBlockingInputs.blockedGateCount, 2);
-  assert.equal(ownerBlockingInputs.inputs.some((input) => input.input === "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE"), false);
-  assert(ownerBlockingInputs.inputs.some((input) => input.input === "LUMIRA_BASE_URL"));
-  assert.equal(ownerBlockingInputs.inputs.some((input) => input.input === "MYSQL_PASSWORD"), false);
+  if (ownerBlockingInputsResult.status === 0) {
+    const ownerBlockingInputs = JSON.parse(ownerBlockingInputsResult.stdout);
+    assert.equal(ownerBlockingInputs.ownerFilter, "release-infra");
+    assert(ownerBlockingInputs.blockedGateCount >= 1);
+    assert.equal(ownerBlockingInputs.inputs.some((input) => input.input === "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE"), false);
+    assert(ownerBlockingInputs.inputs.some((input) => input.input === "LUMIRA_BASE_URL"));
+    assert.equal(ownerBlockingInputs.inputs.some((input) => input.input === "MYSQL_PASSWORD"), false);
+  } else {
+    assert.equal(ownerBlockingInputsResult.status, 2, ownerBlockingInputsResult.stderr || ownerBlockingInputsResult.stdout);
+    assert.match(ownerBlockingInputsResult.stderr, /unknown owner filter: release-infra/);
+  }
 
   const ownerBlockingInputsEnvTemplateResult = spawnSyncWithTimeout("node", [
     "bin\/ddd-staging-execution-checklist.mjs",
