@@ -1,34 +1,37 @@
 import assert from 'node:assert/strict';
-import {
-  AUTH_TOKEN_STORAGE_KEY,
-  createLoginStorageHandler,
-  isAuthTokenStorageEvent,
-} from '../src/auth/loginRedirect';
+import { createLoginSessionBroadcastListener } from '../src/auth/loginRedirect';
+import { AUTH_SESSION_BROADCAST_CHANNEL } from '../src/auth/token';
 
 const run = () => {
+  const OriginalBroadcastChannel = globalThis.BroadcastChannel;
+  const listeners: Array<(event: MessageEvent<{ type?: string }>) => void> = [];
   const redirectCalls: string[] = [];
-  const handleStorage = createLoginStorageHandler('/dashboard/home', (target) => {
+
+  class MockBroadcastChannel {
+    onmessage: ((event: MessageEvent<{ type?: string }>) => void) | null = null;
+
+    constructor(readonly name: string) {
+      assert.equal(name, AUTH_SESSION_BROADCAST_CHANNEL);
+      listeners.push((event) => this.onmessage?.(event));
+    }
+
+    close() {}
+  }
+
+  globalThis.BroadcastChannel = MockBroadcastChannel as typeof BroadcastChannel;
+
+  const dispose = createLoginSessionBroadcastListener('/dashboard/home', (target: string) => {
     redirectCalls.push(target);
   });
 
-  handleStorage({ key: AUTH_TOKEN_STORAGE_KEY, newValue: '{"accessToken":"a"}' });
-  assert.equal(redirectCalls.length, 1, 'token storage writes should trigger a login-page redirect');
-  assert.equal(
-    isAuthTokenStorageEvent({ key: AUTH_TOKEN_STORAGE_KEY, newValue: '{"accessToken":"a"}' }),
-    true,
-    'token storage writes should be recognized as auth token events',
-  );
+  listeners.forEach((listener) => listener({ data: { type: 'noop' } } as MessageEvent<{ type?: string }>));
+  assert.equal(redirectCalls.length, 0, 'unrelated auth broadcasts should not redirect');
 
-  handleStorage({ key: AUTH_TOKEN_STORAGE_KEY, newValue: null });
-  assert.equal(redirectCalls.length, 1, 'token removals should not trigger a redirect');
-  assert.equal(
-    isAuthTokenStorageEvent({ key: AUTH_TOKEN_STORAGE_KEY, newValue: null }),
-    false,
-    'token removals should not be treated as redirectable auth token events',
-  );
+  listeners.forEach((listener) => listener({ data: { type: 'updated' } } as MessageEvent<{ type?: string }>));
+  assert.deepEqual(redirectCalls, ['/dashboard/home'], 'auth session updates should trigger login-page redirect');
 
-  handleStorage({ key: 'other-key', newValue: '{"accessToken":"a"}' });
-  assert.equal(redirectCalls.length, 1, 'unrelated storage writes should be ignored');
+  dispose();
+  globalThis.BroadcastChannel = OriginalBroadcastChannel;
 
   console.log('login-storage-sync-smoke: ok');
 };

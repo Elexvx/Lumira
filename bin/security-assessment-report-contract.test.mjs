@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 
 import assert from "node:assert/strict";
 import fs from "node:fs";
