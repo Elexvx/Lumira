@@ -131,7 +131,9 @@ function runPromote(env) {
 }
 
 {
-  const directory = fs.mkdtempSync(path.join(repoRoot, "tmp", "lumira-auth-perf-baseline-"));
+  const tmpRoot = path.join(repoRoot, "tmp");
+  fs.mkdirSync(tmpRoot, { recursive: true });
+  const directory = fs.mkdtempSync(path.join(tmpRoot, "lumira-auth-perf-baseline-"));
   const source = path.join(directory, "actual.json");
   const output = path.join(directory, "baseline.json");
   const audit = path.join(directory, "promotion.json");
