@@ -1,6 +1,6 @@
 # DDD Release Env Readiness Redacted
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Env file: .env.release.local
 Value policy: No concrete environment values are emitted; only key names, ownership, validation metadata, and redacted fill status.

@@ -1,9 +1,9 @@
 # DDD Release Execution Queue
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Release gate mode: strict
-Release gate blockers: 94
+Release gate blockers: 148
 Ready batches: 4
 Blocked batches: 18
 Next priority: P0
@@ -27,6 +27,7 @@ Next priority: P0
   - `DDD_DOCKER_COMMAND=DDD_DOCKER_COMMAND`
 - Commands:
   - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
 - Exit criteria:

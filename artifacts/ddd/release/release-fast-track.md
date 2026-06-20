@@ -1,10 +1,10 @@
 # DDD Fast Track Release Decision
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
-Release gate blockers: 94
+Release gate blockers: 148
 
 ## Reason
 
@@ -21,7 +21,7 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
 ## Cutover Checklist
 
 - [BLOCKED] strict-release-gate: Strict release gate has zero blockers and no contract issues.
-  - Pending items: 94
+  - Pending items: 148
   - Ready batches: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
   - Blocked batches: p1-ai-runtime-ai, p1-business-e2e-file-owner, p1-business-e2e-job-owner, p1-business-e2e-payment-owner, p1-rollback-ai-owner, p1-rollback-auth-owner, p1-rollback-file-owner, p1-rollback-iam-owner, p1-rollback-job-owner, p1-rollback-localization-owner, p1-rollback-message-owner, p1-rollback-payment-owner, p1-rollback-platform-owner, p1-rollback-plugin-owner, p2-explain-database, p3-orchestrator-database, p3-orchestrator-release-infra, p3-orchestrator-release-owner
 - [PASS] release-environment: Completed release env file and config matrix are valid.
@@ -70,6 +70,7 @@ Cutover still has required safety or evidence items blocked; fastest safe path i
   - `DDD_DOCKER_COMMAND=DDD_DOCKER_COMMAND`
 - Commands:
   - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
 
 ### production-equivalence
 

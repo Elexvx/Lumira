@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Lumira DDD release next-action commands.
-# Generated at: 2026-06-19T18:19:45.629Z
+# Generated at: 2026-06-20T19:42:26.704Z
 # Status: NOT_READY
-# Release gate blockers: 94
+# Release gate blockers: 148
 # Default mode lists RUN_NOW items. Set DDD_RELEASE_NEXT_ACTION_EXECUTE=1 to execute commands.
 # Use DDD_RELEASE_NEXT_ACTION_ORDER or DDD_RELEASE_NEXT_ACTION_OWNER to narrow execution.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -186,6 +186,7 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL}" == "1" || "${DDD_RELEASE_NEXT_ACTION_D
     echo 'missingArtifacts=none'
     echo 'envKeys=BASE_URL;DEPLOY_CHECK_BASE_URL;LUMIRA_BASE_URL'
     echo "commands:"
+    echo '- node bin/ddd-release-evidence-orchestrator.mjs'
     echo '- DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
@@ -216,12 +217,16 @@ if [[ "${DDD_RELEASE_NEXT_ACTION_DETAIL}" == "1" || "${DDD_RELEASE_NEXT_ACTION_D
     echo 'owner=lumira-ui'
     echo 'receiptStatus=ARTIFACT_MISSING'
     echo 'next=Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.'
-    echo 'reason=strictGate=frontend-smoke-freshness generatedAt is 57.8h old; limit=24h'
+    echo 'reason=strictGate=release-evidence-manifest missing artifact lumira-ui/frontend-smoke.json'
     echo 'readyBatches=p0-manifest-lumira-ui'
     echo 'blockedBatches=none'
-    echo 'missingArtifacts=artifacts/ddd/lumira-ui/frontend-smoke.json;artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json;artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json'
+    echo 'missingArtifacts=artifacts/ddd/lumira-ui/frontend-smoke.json;artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json'
     echo 'envKeys=DDD_EVIDENCE_ENVIRONMENT;DDD_FRONTEND_EXPECT_DEPLOYED;DDD_RELEASE_CANDIDATE;PLAYWRIGHT_BASE_URL'
     echo "commands:"
+    echo '- DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-promote-performance-baseline.mjs'
+    echo '- DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+    echo '- node bin/ddd-frontend-smoke-evidence.mjs'
     echo '- DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
     echo '- DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
@@ -263,6 +268,7 @@ maybe_run_next_action '1' 'release-infra' 'CONTENT_BLOCKED' 'Regenerate runtime 
 if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '1' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'release-infra' ) ]]; then
 # -----
 # Reason: strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence
+  run_next_action_command '1' 'release-infra' 'CONTENT_BLOCKED' 'node bin/ddd-release-evidence-orchestrator.mjs'
   run_next_action_command '1' 'release-infra' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
   run_next_action_command '1' 'release-infra' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
   run_next_action_command '1' 'release-infra' 'CONTENT_BLOCKED' 'DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'
@@ -284,8 +290,12 @@ fi
 maybe_run_next_action '3' 'lumira-ui' 'ARTIFACT_MISSING' 'Run deployed frontend smoke with HTTPS `PLAYWRIGHT_BASE_URL`, `DDD_FRONTEND_EXPECT_DEPLOYED=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`; then convert it with `node bin/ddd-frontend-smoke-evidence.mjs`.'
 if [[ "${DDD_RELEASE_NEXT_ACTION_MATCHED}" == "1" && ( -z "${DDD_RELEASE_NEXT_ACTION_ORDER}" || "${DDD_RELEASE_NEXT_ACTION_ORDER}" == '3' ) && ( -z "${DDD_RELEASE_NEXT_ACTION_OWNER}" || "${DDD_RELEASE_NEXT_ACTION_OWNER}" == 'lumira-ui' ) ]]; then
 # -----
-# Reason: strictGate=frontend-smoke-freshness generatedAt is 57.8h old; limit=24h
-# Missing artifacts: artifacts/ddd/lumira-ui/frontend-smoke.json; artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json; artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json
+# Reason: strictGate=release-evidence-manifest missing artifact lumira-ui/frontend-smoke.json
+# Missing artifacts: artifacts/ddd/lumira-ui/frontend-smoke.json; artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json
+  run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs'
+  run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'node bin/ddd-promote-performance-baseline.mjs'
+  run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs'
+  run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'node bin/ddd-frontend-smoke-evidence.mjs'
   run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
   run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh'
   run_next_action_command '3' 'lumira-ui' 'ARTIFACT_MISSING' 'DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh'

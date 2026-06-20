@@ -1,6 +1,6 @@
 # DDD Release Blocker Closure Plan
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -37,6 +37,7 @@ Owner input receipt pending owners: 0
 - Env keys: DDD_DOCKER_BUILD_STRICT, DDD_DOCKER_COMMAND
 - Commands:
   - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
 
@@ -176,6 +177,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - Env keys: DDD_DOCKER_BUILD_STRICT, DDD_DOCKER_COMMAND
 - Commands:
   - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
 
@@ -191,6 +193,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - Env keys: DDD_DOCKER_BUILD_STRICT, DDD_DOCKER_COMMAND
 - Commands:
   - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
 
@@ -206,6 +209,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - Env keys: DDD_DOCKER_BUILD_STRICT, DDD_DOCKER_COMMAND
 - Commands:
   - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
 
@@ -299,6 +303,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - Env keys: DDD_DOCKER_BUILD_STRICT, DDD_DOCKER_COMMAND
 - Commands:
   - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
 
@@ -655,16 +660,16 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - Expected artifacts:
   - `artifacts/ddd/jobs/job-e2e-smoke.json`
 
-## 26. payment-owner / payment-webhook-production-equivalence
+## 26. payment-owner / payment-webhook-artifact
 
 - Closure kind: WAIT_FOR_DEPENDENCIES
 - Priority: P1
 - Source: business-e2e
 - Batch: p1-business-e2e-payment-owner (blocked)
 - Dependencies: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
-- Reason: strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080
-- Action: Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node bin/ddd-payment-webhook-e2e-smoke.mjs`.
-- Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
+- Reason: missing payment webhook artifact artifacts\ddd\payment\payment-webhook-e2e.json
+- Action: Run payment webhook E2E smoke with `node bin/ddd-payment-webhook-e2e-smoke.mjs` and attach payment-webhook-e2e.json evidence.
+- Env keys: LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
 - Commands:
   - `node bin/ddd-payment-webhook-e2e-smoke.mjs`
 - Expected artifacts:

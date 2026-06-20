@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:19:45.629Z",
+  "generatedAt": "2026-06-20T19:42:26.704Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -48,7 +48,8 @@
         "DDD_DOCKER_COMMAND"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-docker-build-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"

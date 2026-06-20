@@ -1,6 +1,6 @@
 # DDD Release Env Owner Handoff
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Env file: .env.release.local
 Owners: 6
@@ -58,7 +58,7 @@ Unresolved aliases covered: 0
   - `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`
   - `node bin/ddd-release-config-evidence.mjs`
   - `DDD_RELEASE_ENV_READINESS_ENFORCE=1 bash artifacts/ddd/release/release-env-readiness-gate.sh`
-  - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+  - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
 

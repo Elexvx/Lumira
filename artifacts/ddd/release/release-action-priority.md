@@ -1,9 +1,9 @@
 # DDD Release Action Priority
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Release gate mode: strict
-Release gate blockers: 94
+Release gate blockers: 148
 Total pending items: 42
 
 ## Policy
@@ -510,13 +510,13 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - Structured: false
   - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, LUMIRA_JOB_INTERNAL_TOKEN
   - Action: Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token using `node bin/ddd-job-e2e-smoke.mjs`.
-- [P1] [business-e2e] payment-owner: payment-webhook-production-equivalence
-  - Check: payment-webhook-production-equivalence
-  - Reason: strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080
-  - Detail: strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080
+- [P1] [business-e2e] payment-owner: payment-webhook-artifact
+  - Check: payment-webhook-artifact
+  - Reason: missing payment webhook artifact artifacts\ddd\payment\payment-webhook-e2e.json
+  - Detail: missing payment webhook artifact artifacts\ddd\payment\payment-webhook-e2e.json
   - Structured: false
-  - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
-  - Action: Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node bin/ddd-payment-webhook-e2e-smoke.mjs`.
+  - Env keys: LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
+  - Action: Run payment webhook E2E smoke with `node bin/ddd-payment-webhook-e2e-smoke.mjs` and attach payment-webhook-e2e.json evidence.
 - [P1] [rollback] ai-owner: AI
   - Check: AI
   - Reason: AI rollback drill is DEFERRED with approved deferral evidence

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:19:45.629Z",
+  "generatedAt": "2026-06-20T19:42:26.704Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "finalRecommendation": "NO_GO_STRICT",
@@ -41,7 +41,7 @@
     "ownerInputReceiptMissingCriteriaCount": 1,
     "nextExecutableOwner": "release-infra",
     "nextExecutableQueueOrder": 1,
-    "nextExecutableCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "nextExecutableCommand": "node bin/ddd-release-evidence-orchestrator.mjs",
     "nextExecutableEnvKeyCount": 10,
     "nextExecutableMissingArtifactCount": 5
   },
@@ -67,14 +67,14 @@
     "blockedUntil": "Required owner env keys and expected evidence artifacts are available in a permission-safe release env file.",
     "owner": "release-infra",
     "queueOrder": 1,
-    "firstCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "firstCommand": "node bin/ddd-release-evidence-orchestrator.mjs",
     "envKeyCount": 10,
     "missingArtifactCount": 5,
     "commands": [
-      "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-      "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
-      "node bin/ddd-runtime-readiness-smoke.mjs",
       "node bin/ddd-release-evidence-orchestrator.mjs",
+      "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+      "node bin/ddd-docker-build-evidence.mjs",
+      "node bin/ddd-runtime-readiness-smoke.mjs",
       "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
       "node bin/ddd-release-readiness-summary.mjs",
       "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
@@ -131,16 +131,16 @@
       "contentBlockers": [],
       "contentBlockerCount": 0,
       "commands": [
-        "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
-        "node bin/ddd-runtime-readiness-smoke.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-runtime-readiness-smoke.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict",
         "node bin/ddd-release-readiness-summary.mjs",
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh"
       ],
       "commandCount": 7,
-      "firstCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+      "firstCommand": "node bin/ddd-release-evidence-orchestrator.mjs",
       "rerunCommands": [
         "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
         "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
@@ -825,8 +825,6 @@
       ],
       "closureWaves": [],
       "envKeys": [
-        "BASE_URL",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
         "DDD_EVIDENCE_ENVIRONMENT",
         "DDD_EVIDENCE_OPERATOR",
         "DDD_RELEASE_CANDIDATE",
@@ -835,11 +833,10 @@
         "DDD_ROLLBACK_DRILL_FILE",
         "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
         "DDD_ROLLBACK_DRILL_STRICT",
-        "DEPLOY_CHECK_BASE_URL",
         "LUMIRA_BASE_URL",
         "PAYMENT_PUBLIC_BASE_URL"
       ],
-      "envKeyCount": 13,
+      "envKeyCount": 10,
       "missingArtifacts": [
         "artifacts/ddd/payment/payment-webhook-e2e.json",
         "artifacts/ddd/rollback/rollback-drill.json"

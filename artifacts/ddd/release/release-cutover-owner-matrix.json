@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:19:45.629Z",
+  "generatedAt": "2026-06-20T19:42:26.704Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -28,8 +28,8 @@
   },
   "gate": {
     "strict": true,
-    "blockers": 94,
-    "warnings": 8
+    "blockers": 148,
+    "warnings": 9
   },
   "summary": {
     "ownerCount": 16,
@@ -73,7 +73,8 @@
           ],
           "blockedBatchIds": [],
           "commands": [
-            "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
+            "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+            "node bin/ddd-docker-build-evidence.mjs"
           ],
           "envCheckGroups": [
             "DDD_DOCKER_BUILD_STRICT=DDD_DOCKER_BUILD_STRICT",
@@ -512,8 +513,6 @@
             "node bin/ddd-payment-webhook-e2e-smoke.mjs"
           ],
           "envCheckGroups": [
-            "BASE_URL=BASE_URL",
-            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
             "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL",
             "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
           ],
@@ -579,7 +578,7 @@
           "title": "Strict release gate has zero blockers and no contract issues.",
           "required": true,
           "status": "BLOCKED",
-          "pendingItems": 94,
+          "pendingItems": 148,
           "lanes": [],
           "batchIds": [],
           "readyBatchIds": [],

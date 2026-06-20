@@ -1,6 +1,6 @@
 # DDD Release Closure Wave Env Matrix
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -17,6 +17,7 @@ Unique env keys: 11
   - `DDD_DOCKER_COMMAND`
 - Commands:
   - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
 

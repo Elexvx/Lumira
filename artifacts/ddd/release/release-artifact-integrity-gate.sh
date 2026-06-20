@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD release artifact integrity gate.
-# Generated at: 2026-06-19T18:19:45.629Z
+# Generated at: 2026-06-20T19:42:26.704Z
 # Exit code 12 means the integrity packet is invalid or at least one artifact hash no longer matches.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then

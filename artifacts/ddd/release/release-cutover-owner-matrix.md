@@ -1,6 +1,6 @@
 # DDD Cutover Owner Matrix
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -106,7 +106,7 @@ Blocked owners: 16
   - Pending items: 6
   - Lanes: runtime-acceptance, lumira-ui-acceptance, business-acceptance
   - Batches: p1-business-e2e-payment-owner
-  - Env check groups: BASE_URL=BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL
+  - Env check groups: LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL
   - Expected artifacts: artifacts/ddd/payment/payment-webhook-e2e.json
 
 ## release-owner
@@ -122,7 +122,7 @@ Blocked owners: 16
   - Env check groups: DDD_RELEASE_EVIDENCE_STRICT=DDD_RELEASE_EVIDENCE_STRICT
   - Expected artifacts: artifacts/ddd/release/orchestrator-report.json, artifacts/ddd/release/readiness-summary.json, artifacts/ddd/release/release-evidence-gate.json
 - [BLOCKED] strict-release-gate: Strict release gate has zero blockers and no contract issues.
-  - Pending items: 94
+  - Pending items: 148
   - Lanes: none
   - Batches: none
 - [PASS] data-safety: Fresh and upgrade migrations are proven with runtime metadata.

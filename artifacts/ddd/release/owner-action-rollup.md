@@ -1,9 +1,9 @@
 # DDD Owner Action Rollup
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Release gate mode: strict
-Release gate blockers: 94
+Release gate blockers: 148
 
 ## ai
 
@@ -187,16 +187,15 @@ Release gate blockers: 94
 - Pending items: 2
 - Collapsed duplicates: 0
 - Sources: business-e2e=1, rollback=1
-- Env keys: 13 keys
-  - BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR
-  - DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE
-  - DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL
-  - PAYMENT_PUBLIC_BASE_URL
+- Env keys: 10 keys
+  - DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV
+  - DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT
+  - LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
 
-- [business-e2e] payment-webhook-production-equivalence
-  - Reason: strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080
-  - Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
-  - Action: Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node bin/ddd-payment-webhook-e2e-smoke.mjs`.
+- [business-e2e] payment-webhook-artifact
+  - Reason: missing payment webhook artifact artifacts\ddd\payment\payment-webhook-e2e.json
+  - Env keys: LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
+  - Action: Run payment webhook E2E smoke with `node bin/ddd-payment-webhook-e2e-smoke.mjs` and attach payment-webhook-e2e.json evidence.
 - [rollback] Payment
   - Reason: Payment rollback drill is DEFERRED with approved deferral evidence
   - Env keys: DDD_EVIDENCE_ENVIRONMENT, DDD_EVIDENCE_OPERATOR, DDD_RELEASE_CANDIDATE, DDD_ROLLBACK_DRILL_CHECK_ENV, DDD_ROLLBACK_DRILL_DEFERRAL_FILE, DDD_ROLLBACK_DRILL_FILE, DDD_ROLLBACK_DRILL_HANDOFF_FILE, DDD_ROLLBACK_DRILL_STRICT

@@ -1,13 +1,13 @@
 # DDD Release Closure Wave Receipts
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
 Ready for strict gate rerun: 3
 Artifact missing: 1
 Content blocked: 0
-Missing artifacts: 3
+Missing artifacts: 2
 
 ## Wave 1. release-infra / p0-docker-release-infra
 
@@ -35,11 +35,10 @@ Missing artifacts: 3
 
 - Receipt status: ARTIFACT_MISSING
 - Expected artifacts: 4
-- Present artifacts: 1
-- Missing artifacts: 3
+- Present artifacts: 2
+- Missing artifacts: 2
 - Missing artifact paths:
   - `artifacts/ddd/lumira-ui/frontend-smoke.json`
-  - `artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json`
   - `artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json`
 - Next check: Run this wave in a production-equivalent environment, then rerun strict release gate and readiness summary.
 - Rerun commands:

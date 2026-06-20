@@ -1,6 +1,6 @@
 # DDD Release Owner Handoff
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -15,7 +15,7 @@ Blocked owners: 13
 - finalRecommendation: NO_GO_STRICT
 - cutoverAllowed: false
 - releaseEnvFileCutoverSafe: false
-- gateBlockers: 94
+- gateBlockers: 148
 - blockedCutoverItems: 7
 - stopReasonCount: 8
 - stopReasonCoverage: catalog-snapshot
@@ -33,7 +33,7 @@ Blocked owners: 13
 - cutover checklist blocked: rollback-safety
 - cutover checklist blocked: runtime-business-acceptance
 - cutover checklist blocked: strict-release-gate
-- strict release gate blockers=94
+- strict release gate blockers=148
 
 ## release-infra
 
@@ -239,11 +239,9 @@ Blocked owners: 13
 - Ready batches: none
 - Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
 - Blocked by: none
-- Env keys: 12
+- Env keys: 10
 - Expected artifacts: artifacts/ddd/payment/payment-webhook-e2e.json, artifacts/ddd/rollback/rollback-drill.json
 - Template env keys:
-  - `BASE_URL`
-  - `DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE`
   - `DDD_EVIDENCE_ENVIRONMENT`
   - `DDD_EVIDENCE_OPERATOR`
   - `DDD_RELEASE_CANDIDATE`

@@ -1,9 +1,9 @@
 # DDD Release Action Batches
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Release gate mode: strict
-Release gate blockers: 94
+Release gate blockers: 148
 Batch count: 22
 Total pending items: 42
 
@@ -29,6 +29,7 @@ Total pending items: 42
   - `DDD_DOCKER_COMMAND=DDD_DOCKER_COMMAND`
 - Commands:
   - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
 - Expected artifacts:
   - `artifacts/ddd/build/docker-image-evidence.json`
 - Exit criteria:
@@ -371,10 +372,8 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - Depends on: p0-docker-release-infra, p0-runtime-readiness-release-infra, p0-manifest-lumira-ui, p0-authenticated-performance-release-performance
 - Can run immediately: false
 - Pending items: 1
-- Env keys: BASE_URL, DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE, DEPLOY_CHECK_BASE_URL, LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
+- Env keys: LUMIRA_BASE_URL, PAYMENT_PUBLIC_BASE_URL
 - Env check groups:
-  - `BASE_URL=BASE_URL`
-  - `DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE`
   - `LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL`
   - `PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL`
 - Commands:
@@ -385,7 +384,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   - File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.
   - Owner-specific task/webhook/job contract checks pass with production-equivalence metadata.
 
-- payment-webhook-production-equivalence: strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080
+- payment-webhook-artifact: missing payment webhook artifact artifacts\ddd\payment\payment-webhook-e2e.json
 
 ### 9. P1 rollback -> ai-owner
 

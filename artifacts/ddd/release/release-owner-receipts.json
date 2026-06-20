@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:19:45.629Z",
+  "generatedAt": "2026-06-20T19:42:26.704Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -11,8 +11,8 @@
     "artifactMissingOwnerCount": 2,
     "waitingOnDependenciesOwnerCount": 0,
     "expectedArtifactCount": 34,
-    "presentArtifactCount": 30,
-    "missingArtifactCount": 4,
+    "presentArtifactCount": 31,
+    "missingArtifactCount": 3,
     "pendingActionCount": 42
   },
   "owners": [
@@ -309,8 +309,8 @@
       ],
       "blockedBatchIds": [],
       "expectedArtifactCount": 4,
-      "presentArtifactCount": 1,
-      "missingArtifactCount": 3,
+      "presentArtifactCount": 2,
+      "missingArtifactCount": 2,
       "pendingActionCount": 3,
       "collapsedActionCount": 0,
       "pendingActions": [
@@ -355,11 +355,11 @@
         }
       ],
       "presentArtifacts": [
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
         "artifacts/ddd/release/evidence-manifest.json"
       ],
       "missingArtifacts": [
         "artifacts/ddd/lumira-ui/frontend-smoke.json",
-        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
         "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
       ],
       "exitCriteria": [
@@ -662,15 +662,12 @@
       "pendingActions": [
         {
           "source": "business-e2e",
-          "id": "payment-webhook-production-equivalence",
-          "reason": "strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080",
-          "action": "Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node bin/ddd-payment-webhook-e2e-smoke.mjs`.",
+          "id": "payment-webhook-artifact",
+          "reason": "missing payment webhook artifact artifacts\\ddd\\payment\\payment-webhook-e2e.json",
+          "action": "Run payment webhook E2E smoke with `node bin/ddd-payment-webhook-e2e-smoke.mjs` and attach payment-webhook-e2e.json evidence.",
           "envKeys": [
             "LUMIRA_BASE_URL",
-            "DEPLOY_CHECK_BASE_URL",
-            "BASE_URL",
-            "PAYMENT_PUBLIC_BASE_URL",
-            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
+            "PAYMENT_PUBLIC_BASE_URL"
           ],
           "artifact": null
         },

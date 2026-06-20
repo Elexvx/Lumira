@@ -1,12 +1,12 @@
 # DDD Release Env Owner Matrix
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
-Release gate blockers: 94
+Release gate blockers: 148
 Owners: 16
 Template env keys: 45
 Unique unresolved template env keys: 29
-Unresolved owner assignments: 65
+Unresolved owner assignments: 63
 
 ## release-infra
 
@@ -174,36 +174,6 @@ Unresolved owner assignments: 65
   - `DEPLOY_CHECK_BASE_URL` -> `LUMIRA_BASE_URL`
   - `LUMIRA_JOB_INTERNAL_TOKEN` -> `SAAS_JOB_INTERNAL_TOKEN`
 
-## payment-owner
-
-- Env keys: 12
-- Unresolved env keys: 6
-- Ready batches: none
-- Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
-- Expected artifacts: artifacts/ddd/payment/payment-webhook-e2e.json, artifacts/ddd/rollback/rollback-drill.json
-- Unresolved template env keys:
-  - `BASE_URL`
-  - `DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE`
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_RELEASE_CANDIDATE`
-  - `LUMIRA_BASE_URL`
-  - `PAYMENT_PUBLIC_BASE_URL`
-- Template env keys:
-  - `BASE_URL`
-  - `DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE`
-  - `DDD_EVIDENCE_ENVIRONMENT`
-  - `DDD_EVIDENCE_OPERATOR`
-  - `DDD_RELEASE_CANDIDATE`
-  - `DDD_ROLLBACK_DRILL_CHECK_ENV`
-  - `DDD_ROLLBACK_DRILL_DEFERRAL_FILE`
-  - `DDD_ROLLBACK_DRILL_FILE`
-  - `DDD_ROLLBACK_DRILL_HANDOFF_FILE`
-  - `DDD_ROLLBACK_DRILL_STRICT`
-  - `LUMIRA_BASE_URL`
-  - `PAYMENT_PUBLIC_BASE_URL`
-- Alias mappings:
-  - `DEPLOY_CHECK_BASE_URL` -> `LUMIRA_BASE_URL`
-
 ## ai
 
 - Env keys: 11
@@ -239,6 +209,30 @@ Unresolved owner assignments: 65
   - `LUMIRA_AI_OWNER_IAM_BASE_URL` -> `LUMIRA_AI_OWNER_INTEGRATIONS_IAM_BASE_URL`
   - `LUMIRA_AI_OWNER_PLATFORM_BASE_URL` -> `LUMIRA_AI_OWNER_INTEGRATIONS_PLATFORM_BASE_URL`
   - `DEPLOY_CHECK_BASE_URL` -> `LUMIRA_BASE_URL`
+
+## payment-owner
+
+- Env keys: 10
+- Unresolved env keys: 4
+- Ready batches: none
+- Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
+- Expected artifacts: artifacts/ddd/payment/payment-webhook-e2e.json, artifacts/ddd/rollback/rollback-drill.json
+- Unresolved template env keys:
+  - `DDD_EVIDENCE_OPERATOR`
+  - `DDD_RELEASE_CANDIDATE`
+  - `LUMIRA_BASE_URL`
+  - `PAYMENT_PUBLIC_BASE_URL`
+- Template env keys:
+  - `DDD_EVIDENCE_ENVIRONMENT`
+  - `DDD_EVIDENCE_OPERATOR`
+  - `DDD_RELEASE_CANDIDATE`
+  - `DDD_ROLLBACK_DRILL_CHECK_ENV`
+  - `DDD_ROLLBACK_DRILL_DEFERRAL_FILE`
+  - `DDD_ROLLBACK_DRILL_FILE`
+  - `DDD_ROLLBACK_DRILL_HANDOFF_FILE`
+  - `DDD_ROLLBACK_DRILL_STRICT`
+  - `LUMIRA_BASE_URL`
+  - `PAYMENT_PUBLIC_BASE_URL`
 
 ## ai-owner
 

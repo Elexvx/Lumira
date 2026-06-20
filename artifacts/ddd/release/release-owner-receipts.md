@@ -1,13 +1,13 @@
 # DDD Release Owner Receipts
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
 Ready for strict gate rerun owners: 0
 Content blocked owners: 14
 Artifact missing owners: 2
-Missing artifacts: 4
+Missing artifacts: 3
 Pending actions: 42
 
 ## release-infra
@@ -200,12 +200,11 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 - Receipt status: ARTIFACT_MISSING
 - Ready batches: p0-manifest-lumira-ui
-- Present artifacts: 1
-- Missing artifacts: 3
+- Present artifacts: 2
+- Missing artifacts: 2
 - Pending actions: 3
 - Missing artifact paths:
   - `artifacts/ddd/lumira-ui/frontend-smoke.json`
-  - `artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json`
   - `artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json`
 - Pending action reasons:
   - [manifest] manifest-missing-lumira-ui-frontend-smoke-json: missing artifact lumira-ui/frontend-smoke.json
@@ -273,7 +272,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - Missing artifacts: 0
 - Pending actions: 2
 - Pending action reasons:
-  - [business-e2e] payment-webhook-production-equivalence: strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080
+  - [business-e2e] payment-webhook-artifact: missing payment webhook artifact artifacts\ddd\payment\payment-webhook-e2e.json
   - [rollback] Payment: Payment rollback drill is DEFERRED with approved deferral evidence
 - Next check: Rerun strict release gate and readiness summary after all missing artifacts are present.
 

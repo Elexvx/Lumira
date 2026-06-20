@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # Lumira DDD release execution commands.
-# Generated at: 2026-06-19T18:19:45.629Z
+# Generated at: 2026-06-20T19:42:26.704Z
 # Status: NOT_READY
-# Release gate blockers: 94
+# Release gate blockers: 148
 # This file contains command hints only. Provide a real DDD_RELEASE_ENV_FILE before running evidence commands.
 # Do not use release-env-missing.template.env as release evidence.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -212,6 +212,7 @@ if [[ "${DDD_RELEASE_BATCH_MATCHED}" == "1" && ( -z "${DDD_RELEASE_BATCH}" || "$
 # - Required lumira-server and lumira-ui images are built, inspected, and not skipped.
 # - Clear this batch before running downstream runtime-heavy evidence.
 run_command 'p0-docker-release-infra' 'release-infra' 'P0' 'DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
+run_command 'p0-docker-release-infra' 'release-infra' 'P0' 'node bin/ddd-docker-build-evidence.mjs'
 fi
 
 run_batch 'p0-runtime-readiness-release-infra' 'release-infra' 'P0'

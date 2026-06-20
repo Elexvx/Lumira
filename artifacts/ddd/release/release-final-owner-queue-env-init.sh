@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD final owner queue env initializer.
-# Generated at: 2026-06-19T18:19:45.629Z
+# Generated at: 2026-06-20T19:42:26.704Z
 # Creates a local release env file from the generated template without overwriting existing secrets.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ -z "${LUMIRA_REPO_ROOT:-}" ]]; then

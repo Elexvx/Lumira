@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:19:45.629Z",
+  "generatedAt": "2026-06-20T19:42:26.704Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -105,7 +105,8 @@
         "DDD_DOCKER_COMMAND"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-docker-build-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
@@ -269,7 +270,8 @@
         "DDD_DOCKER_COMMAND"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-docker-build-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
@@ -298,7 +300,8 @@
         "DDD_DOCKER_COMMAND"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-docker-build-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
@@ -327,7 +330,8 @@
         "DDD_DOCKER_COMMAND"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-docker-build-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
@@ -356,7 +360,8 @@
         "DDD_DOCKER_COMMAND"
       ],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-docker-build-evidence.mjs"
       ],
       "expectedArtifacts": [
         "artifacts/ddd/build/docker-image-evidence.json"
@@ -1067,9 +1072,9 @@
       "priority": "P1",
       "source": "business-e2e",
       "owner": "payment-owner",
-      "id": "payment-webhook-production-equivalence",
-      "reason": "strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080",
-      "action": "Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node bin/ddd-payment-webhook-e2e-smoke.mjs`.",
+      "id": "payment-webhook-artifact",
+      "reason": "missing payment webhook artifact artifacts\\ddd\\payment\\payment-webhook-e2e.json",
+      "action": "Run payment webhook E2E smoke with `node bin/ddd-payment-webhook-e2e-smoke.mjs` and attach payment-webhook-e2e.json evidence.",
       "batchId": "p1-business-e2e-payment-owner",
       "batchReady": false,
       "dependencies": [
@@ -1079,9 +1084,6 @@
         "p0-authenticated-performance-release-performance"
       ],
       "envKeys": [
-        "BASE_URL",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DEPLOY_CHECK_BASE_URL",
         "LUMIRA_BASE_URL",
         "PAYMENT_PUBLIC_BASE_URL"
       ],

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:19:45.629Z",
+  "generatedAt": "2026-06-20T19:42:26.704Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "finalRecommendation": "NO_GO_STRICT",
@@ -7,8 +7,8 @@
   "noAutoWaivers": true,
   "gate": {
     "strict": true,
-    "blockers": 94,
-    "warnings": 8
+    "blockers": 148,
+    "warnings": 9
   },
   "summary": {
     "cutoverChecklistItems": 9,
@@ -18,7 +18,7 @@
     "receiptMissingArtifactWaves": 1,
     "receiptContentBlockedWaves": 0,
     "mappedClosureActions": 20,
-    "candidateBlockerHints": 14,
+    "candidateBlockerHints": 15,
     "performanceBaselineStatus": "BLOCKED",
     "ownerInputReceiptStatus": "PENDING_OWNER_INPUT",
     "ownerInputReceiptCutoverReady": false,
@@ -56,7 +56,6 @@
     ],
     "blockedArtifactPaths": [
       "artifacts/ddd/lumira-ui/frontend-smoke.json",
-      "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
       "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json",
       "artifacts/ddd/performance/authenticated-runtime-actual.json",
       "artifacts/ddd/performance/authenticated-runtime-baseline-promotion.json",
@@ -261,18 +260,18 @@
       "strictGateBlockerCount": 21,
       "nextAction": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.",
       "reason": "strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence",
-      "command": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+      "command": "node bin/ddd-release-evidence-orchestrator.mjs",
       "displayNextAction": "Regenerate runtime readiness against an HTTPS non-local production-equivalent backend URL so the artifact includes structured `productionEquivalence` evidence.",
       "displayReason": "strictGate=runtime-readiness-summary runtime readiness productionEquivalence.strict must be true for strict release evidence",
-      "displayCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+      "displayCommand": "node bin/ddd-release-evidence-orchestrator.mjs",
       "envKeys": [
         "BASE_URL",
         "DEPLOY_CHECK_BASE_URL",
         "LUMIRA_BASE_URL"
       ]
     },
-    "firstOwnerActionCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
-    "firstOwnerActionDisplayCommand": "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
+    "firstOwnerActionCommand": "node bin/ddd-release-evidence-orchestrator.mjs",
+    "firstOwnerActionDisplayCommand": "node bin/ddd-release-evidence-orchestrator.mjs",
     "rerunCommands": [
       "bash artifacts/ddd/release/release-preflight-gate.sh",
       "bash artifacts/ddd/release/release-artifact-integrity-gate.sh",
@@ -315,7 +314,7 @@
     "cutover checklist blocked: runtime-business-acceptance",
     "cutover checklist blocked: strict-release-gate",
     "owner input receipt pending: releaseEnvReadinessStatus",
-    "strict release gate blockers=94"
+    "strict release gate blockers=148"
   ],
   "decisionRules": [
     "GO only when strict release gate has zero blockers.",
@@ -337,7 +336,7 @@
     {
       "id": "strict-release-gate",
       "title": "Strict release gate has zero blockers and no contract issues.",
-      "pendingItems": 94,
+      "pendingItems": 148,
       "readyBatchIds": [
         "p0-docker-release-infra",
         "p0-runtime-readiness-release-infra",
@@ -448,7 +447,8 @@
       "missingArtifacts": [],
       "blockerHints": [],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-docker-build-evidence.mjs"
       ],
       "rerunCommands": [
         "node bin/ddd-release-evidence-gate.mjs",
@@ -478,10 +478,9 @@
       "batchId": "p0-manifest-lumira-ui",
       "priority": "P0",
       "receiptStatus": "ARTIFACT_MISSING",
-      "missingArtifactCount": 3,
+      "missingArtifactCount": 2,
       "missingArtifacts": [
         "artifacts/ddd/lumira-ui/frontend-smoke.json",
-        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
         "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
       ],
       "blockerHints": [],
@@ -565,6 +564,7 @@
     "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-alias-sync.mjs",
     "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-canonical-lint.mjs artifacts/ddd/release/release-env-canonical-fill.template.env",
     "DDD_RELEASE_ENV_FILE=<release-env-file> node bin/ddd-release-env-file-lint.mjs",
+    "node bin/ddd-release-evidence-orchestrator.mjs",
     "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
@@ -575,18 +575,20 @@
     "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=release-performance DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
+    "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
+    "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
+    "node bin/ddd-frontend-smoke-evidence.mjs",
     "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_CHECK_ENV_ONLY=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_DRY_RUN=1 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_RELEASE_OWNER=lumira-ui DDD_RELEASE_PRIORITY=P0 bash artifacts/ddd/release/release-execution-commands.sh",
     "DDD_AUTH_PERF_BASELINE_CHECK_ENV=1 bash artifacts/ddd/release/release-performance-baseline-commands.sh",
     "DDD_AUTH_PERF_STRICT=true node bin/ddd-authenticated-performance-smoke.mjs",
-    "DDD_RELEASE_MANIFEST_CHECK_ENV=true node bin/ddd-release-evidence-manifest.mjs",
-    "DDD_RELEASE_MANIFEST_STRICT=true DDD_RELEASE_MANIFEST_EXIT_ON_BLOCKERS=false node bin/ddd-release-evidence-manifest.mjs",
     "node bin/ddd-release-evidence-gate.mjs",
     "node bin/ddd-release-readiness-summary.mjs",
     "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh",
     "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+    "node bin/ddd-docker-build-evidence.mjs",
     "node bin/ddd-runtime-readiness-smoke.mjs",
     "node bin/ddd-ai-runtime-drill.mjs",
     "node bin/ddd-file-processing-e2e-smoke.mjs",
@@ -597,7 +599,6 @@
     "node bin/ddd-rollback-drill-evidence.mjs",
     "node bin/ddd-collect-explain.mjs",
     "DDD_EXPLAIN_STRICT=true node bin/ddd-explain-gate.mjs",
-    "node bin/ddd-release-evidence-orchestrator.mjs",
     "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
   ],
   "evidenceArtifacts": [

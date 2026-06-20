@@ -1,10 +1,10 @@
 # DDD Release Readiness Summary
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Release gate mode: strict
-Release gate blockers: 94
-Release gate warnings: 8
+Release gate blockers: 148
+Release gate warnings: 9
 
 ## Missing Manifest Artifacts
 
@@ -51,8 +51,8 @@ Release gate warnings: 8
   - ownerAction: source=manifest; id=manifest-missing-lumira-ui-lumira-ui-static-evidence-json; reason=missing artifact lumira-ui/lumira-ui-static-evidence.json; envKeys=PLAYWRIGHT_BASE_URL,DDD_FRONTEND_EXPECT_DEPLOYED,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE; action=Run deployed frontend smoke and regenerate lumira-ui evidence before rebuilding the release manifest.
 - owner=message-owner pendingItems=1 collapsedItems=0 sources=rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT
   - ownerAction: source=rollback; id=Message; reason=Message rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise message relay pause, monolith-compatible delivery fallback, and idempotent replay; attach relay and message state evidence. Required evidence: message relay pause/resume command or job output; delivery fallback evidence for at least one notice; idempotent replay result with duplicate-safe state; message readiness/metrics response after rollback. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.
-- owner=payment-owner pendingItems=2 collapsedItems=0 sources=business-e2e=1,rollback=1 collapsedSources=none envKeys=BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT,DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL,PAYMENT_PUBLIC_BASE_URL
-  - ownerAction: source=business-e2e; id=payment-webhook-production-equivalence; reason=strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL,PAYMENT_PUBLIC_BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE; action=Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node bin/ddd-payment-webhook-e2e-smoke.mjs`.
+- owner=payment-owner pendingItems=2 collapsedItems=0 sources=business-e2e=1,rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT,LUMIRA_BASE_URL,PAYMENT_PUBLIC_BASE_URL
+  - ownerAction: source=business-e2e; id=payment-webhook-artifact; reason=missing payment webhook artifact artifacts\ddd\payment\payment-webhook-e2e.json; envKeys=LUMIRA_BASE_URL,PAYMENT_PUBLIC_BASE_URL; action=Run payment webhook E2E smoke with `node bin/ddd-payment-webhook-e2e-smoke.mjs` and attach payment-webhook-e2e.json evidence.
   - ownerAction: source=rollback; id=Payment; reason=Payment rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise payment webhook route fallback and idempotent event replay; attach provider routing, webhook metrics, and order trace evidence. Required evidence: payment provider route fallback configuration evidence; webhook idempotent replay result; order status trace before and after replay; webhook metrics or audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.
 - owner=platform-owner pendingItems=1 collapsedItems=0 sources=rollback=1 collapsedSources=none envKeys=DDD_EVIDENCE_ENVIRONMENT,DDD_EVIDENCE_OPERATOR,DDD_RELEASE_CANDIDATE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_STRICT
   - ownerAction: source=rollback; id=Platform; reason=Platform rollback drill is DEFERRED with approved deferral evidence; envKeys=DDD_ROLLBACK_DRILL_FILE,DDD_ROLLBACK_DRILL_CHECK_ENV,DDD_ROLLBACK_DRILL_HANDOFF_FILE,DDD_ROLLBACK_DRILL_DEFERRAL_FILE,DDD_ROLLBACK_DRILL_STRICT,DDD_EVIDENCE_ENVIRONMENT,DDD_RELEASE_CANDIDATE,DDD_EVIDENCE_OPERATOR; action=Exercise platform config/runtime appearance rollback and cache clear; attach bootstrap/config version and audit evidence. Required evidence: runtime appearance/config version before and after rollback; cache clear or version invalidation evidence; bootstrap response using the rolled-back config; platform audit entry for the rollback action. If the drill is not safely exercisable, generate a reviewed deferral input with `node bin/ddd-rollback-deferral-template.mjs`, fill real approval evidence, then run `node bin/ddd-rollback-drill-evidence.mjs`.
@@ -254,13 +254,15 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 
 ### configuration
 - Owner: release-infra
-  Action: Replace all release env placeholders in `DDD_RELEASE_ENV_FILE`, run `DDD_RELEASE_ENV_FILE=.env.release.local node bin/ddd-release-env-file-lint.mjs`, then regenerate config evidence with `node bin/ddd-release-config-evidence.mjs`.
-- Owner: release-infra
   Action: Generate production-equivalent config evidence with `DDD_RELEASE_ENV_FILE=.env.release DDD_RELEASE_CONFIG_STRICT=true node bin/ddd-release-config-evidence.mjs`.
 
 ### docker
 - Owner: release-infra
   Action: Start Docker daemon or run `node bin/ddd-docker-build-evidence.mjs` in CI with Docker Buildx available.
+
+### docker-provenance
+- Owner: release-infra
+  Action: Regenerate Docker image evidence with `DDD_DOCKER_BUILD_STRICT=true`, `DDD_EVIDENCE_ENVIRONMENT`, `DDD_RELEASE_CANDIDATE`, and `DDD_EVIDENCE_OPERATOR`.
 
 ### explain-plan
 - Owner: database
@@ -317,10 +319,6 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
   Action: Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token.
 - Owner: release-infra
   Action: Set `LUMIRA_BASE_URL`, `DEPLOY_CHECK_BASE_URL`, or `BASE_URL` to an HTTPS non-local backend URL before running the strict release orchestrator.
-
-### rollback-drill
-- Owner: release-owner
-  Action: Run `node bin/ddd-init-rollback-drill.mjs`, fill real PASS/DEFERRED evidence for every context, then run `node bin/ddd-rollback-drill-evidence.mjs`.
 
 ### runtime-freshness
 - Owner: release-infra
@@ -426,18 +424,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - fileIssue: file processing productionEquivalence.localOnly must be false for strict release evidence
 - fileIssue: file processing productionEquivalence.deploymentEvidence is required
 - fileIssue: file processing productionEquivalence.issues must be empty for strict release evidence
-- paymentWebhook: status=PASS localOnly=true orderStatus=PAID providerConfigured=true
-- paymentWebhookProductionEquivalence: strict=true https=false localOnly=true deploymentEvidence=missing
-- paymentWebhookProductionEquivalenceIssue: strict payment webhook E2E requires HTTPS baseUrl evidence
-- paymentWebhookProductionEquivalenceIssue: strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080
-- paymentWebhook.first: processed=true signatureValid=true elapsedMs=21.63
-- paymentWebhook.duplicate: processed=true signatureValid=true elapsedMs=7.05
-- paymentWebhook.nonceReplay: processed=false signatureValid=false elapsedMs=10.08
-- paymentWebhook.badSignature: processed=false signatureValid=false elapsedMs=13.19
-- paymentIssue: payment webhook productionEquivalence.https must be true for strict release evidence
-- paymentIssue: payment webhook productionEquivalence.localOnly must be false for strict release evidence
-- paymentIssue: payment webhook productionEquivalence.deploymentEvidence is required
-- paymentIssue: payment webhook productionEquivalence.issues must be empty for strict release evidence
+- paymentWebhook: missing; file=artifacts\ddd\payment\payment-webhook-e2e.json
 - jobE2e: localOnly=true unauthorizedStatus=401 failed=0 endpointCount=9
 - jobE2eProductionEquivalence: strict=true https=false localOnly=true deploymentEvidence=missing
 - jobE2eProductionEquivalenceIssue: strict job E2E requires HTTPS baseUrl evidence
@@ -460,8 +447,8 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - businessAction: file-processing-production-equivalence; owner=file-owner; reason=strict file processing E2E requires HTTPS baseUrl evidence; strict file processing E2E requires non-local baseUrl, got http://127.0.0.1:8080; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,LUMIRA_UPLOAD_STORAGE_ROOT,LUMIRA_JOB_INTERNAL_TOKEN; action=Regenerate File processing E2E smoke against an HTTPS non-local production-equivalent backend with real storage and job token evidence using `node bin/ddd-file-processing-e2e-smoke.mjs`.
 - actionPlan: owner=job-owner pendingItems=1 envKeys=BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL,LUMIRA_JOB_INTERNAL_TOKEN
 - businessAction: job-e2e-production-equivalence; owner=job-owner; reason=strict job E2E requires HTTPS baseUrl evidence; strict job E2E requires non-local baseUrl, got http://127.0.0.1:8080; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL,LUMIRA_JOB_INTERNAL_TOKEN,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE; action=Regenerate Job/internal E2E smoke against HTTPS non-local owner endpoints with the release job token using `node bin/ddd-job-e2e-smoke.mjs`.
-- actionPlan: owner=payment-owner pendingItems=1 envKeys=BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE,DEPLOY_CHECK_BASE_URL,LUMIRA_BASE_URL,PAYMENT_PUBLIC_BASE_URL
-- businessAction: payment-webhook-production-equivalence; owner=payment-owner; reason=strict payment webhook E2E requires HTTPS baseUrl evidence; strict payment webhook E2E requires non-local baseUrl, got http://127.0.0.1:8080; envKeys=LUMIRA_BASE_URL,DEPLOY_CHECK_BASE_URL,BASE_URL,PAYMENT_PUBLIC_BASE_URL,DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE; action=Regenerate Payment webhook E2E smoke against an HTTPS non-local webhook URL with provider sandbox or deployment evidence using `node bin/ddd-payment-webhook-e2e-smoke.mjs`.
+- actionPlan: owner=payment-owner pendingItems=1 envKeys=LUMIRA_BASE_URL,PAYMENT_PUBLIC_BASE_URL
+- businessAction: payment-webhook-artifact; owner=payment-owner; reason=missing payment webhook artifact artifacts\ddd\payment\payment-webhook-e2e.json; envKeys=LUMIRA_BASE_URL,PAYMENT_PUBLIC_BASE_URL; action=Run payment webhook E2E smoke with `node bin/ddd-payment-webhook-e2e-smoke.mjs` and attach payment-webhook-e2e.json evidence.
 
 ## Docker Diagnostics
 
@@ -866,14 +853,14 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.https must be true for strict release evidence
 - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.localOnly must be false for strict release evidence
 - [production-equivalent-runtime] runtime-readiness-summary: runtime readiness productionEquivalence.deploymentEvidence is required
-- [runtime-freshness] runtime-readiness-freshness: checkedAt is 72.3h old; limit=24h
+- [runtime-freshness] runtime-readiness-freshness: checkedAt is 84h old; limit=24h
 - [production-equivalent-runtime] runtime-readiness-production-equivalence: strict runtime readiness deploymentEvidence is required
 - [production-equivalent-runtime] runtime-readiness-environment-strict: strict release requires production-equivalent non-local evidence
 - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.strict must be true for strict release evidence
 - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.https must be true for strict release evidence
 - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.localOnly must be false for strict release evidence
 - [production-equivalent-runtime] authenticated-performance-shape: authenticated performance actual productionEquivalence.deploymentEvidence is required
-- [performance-freshness] authenticated-performance-freshness: checkedAt is 57.8h old; limit=24h
+- [performance-freshness] authenticated-performance-freshness: checkedAt is 69.5h old; limit=24h
 - [production-equivalent-runtime] authenticated-performance-production-equivalence: strict authenticated performance actual deploymentEvidence is required
 - [production-equivalent-runtime] authenticated-performance-environment-strict: strict release requires production-equivalent non-local evidence
 - [performance-baseline] authenticated-performance-baseline-environment: strict release requires a non-local baseline baseUrl, got http://127.0.0.1:8080
@@ -883,7 +870,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - [performance-baseline] authenticated-performance-baseline-metadata: sourceArtifact is required
 - [performance-baseline] authenticated-performance-baseline-metadata: sourceSha256 must be a SHA-256 hex digest
 - [performance-baseline] authenticated-performance-baseline-strict: strict release requires authenticated performance baseline comparison
-- [business-e2e-freshness] file-processing-freshness: finishedAt is 131.7h old; limit=24h
+- [business-e2e-freshness] file-processing-freshness: finishedAt is 143.5h old; limit=24h
 - [production-equivalent-runtime] file-processing-production-equivalence: strict file processing E2E requires HTTPS baseUrl evidence
 - [production-equivalent-runtime] file-processing-production-equivalence: strict file processing E2E deploymentEvidence is required
 - [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.https must be true for strict release evidence
@@ -891,7 +878,7 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.deploymentEvidence is required
 - [production-equivalent-runtime] file-processing-e2e: file processing productionEquivalence.issues must be empty for strict release evidence
 - [production-equivalent-runtime] file-processing-environment-strict: strict release requires production-equivalent non-local evidence
-- [business-e2e-freshness] payment-webhook-freshness: finishedAt is 131.6h old; limit=24h
+- [business-e2e-freshness] payment-webhook-freshness: finishedAt is 143.3h old; limit=24h
 - [production-equivalent-runtime] payment-webhook-production-equivalence: strict payment webhook E2E requires HTTPS baseUrl evidence
 - [production-equivalent-runtime] payment-webhook-production-equivalence: strict payment webhook E2E deploymentEvidence is required
 - [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.https must be true for strict release evidence
@@ -899,8 +886,8 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.deploymentEvidence is required
 - [production-equivalent-runtime] payment-webhook-e2e: payment webhook productionEquivalence.issues must be empty for strict release evidence
 - [production-equivalent-runtime] payment-webhook-environment-strict: strict release requires production-equivalent non-local evidence
-- [outbox-state-machine] outbox-replay-dead-letter-freshness: generatedAt is 91.7h old; limit=24h
-- [business-e2e-freshness] job-e2e-freshness: checkedAt is 131.4h old; limit=24h
+- [outbox-state-machine] outbox-replay-dead-letter-freshness: generatedAt is 103.4h old; limit=24h
+- [business-e2e-freshness] job-e2e-freshness: checkedAt is 143.1h old; limit=24h
 - [production-equivalent-runtime] job-e2e-production-equivalence: strict job E2E requires HTTPS baseUrl evidence
 - [production-equivalent-runtime] job-e2e-production-equivalence: strict job E2E deploymentEvidence is required
 - [production-equivalent-runtime] job-e2e-smoke: job E2E productionEquivalence.https must be true for strict release evidence
@@ -912,47 +899,179 @@ ERROR: failed to build: failed to solve: failed to compute cache key: short read
 - [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.https must be true for strict release evidence
 - [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.localOnly must be false for strict release evidence
 - [ai-runtime] ai-runtime-drill: AI runtime productionEquivalence.deploymentEvidence is required
-- [ai-runtime] ai-runtime-freshness: checkedAt is 57.8h old; limit=24h
+- [ai-runtime] ai-runtime-freshness: checkedAt is 69.5h old; limit=24h
 - [ai-runtime] ai-runtime-production-equivalence: strict AI runtime drill deploymentEvidence is required
 - [ai-runtime] ai-runtime-environment-strict: strict release requires production-equivalent non-local evidence
 - [ai-runtime] ai-runtime-drill-provider: strict release requires DDD_AI_EXPECT_PROVIDER_REMOTE=true evidence
 - [ai-runtime] ai-runtime-drill-owner-gateway: strict release requires DDD_AI_EXPECT_OWNER_GATEWAY_REMOTE=true evidence
-- [other] physical-split-readiness-freshness: generatedAt is 57.7h old; limit=24h
-- [other] backend-test-evidence-freshness: generatedAt is 57.7h old; limit=24h
-- [other] backend-build-evidence-freshness: generatedAt is 57.7h old; limit=24h
-- [docker] docker-build-evidence-freshness: generatedAt is 56.9h old; limit=24h
-- [docker] docker-build-evidence: lumira-server: docker build failed after 3 attempt(s) with transient registry/network error status 1
-- [docker] docker-build-evidence: frontend: docker build failed after 3 attempt(s) with transient registry/network error status 1
-- [migration] migration-evidence-freshness: generatedAt is 57.7h old; limit=24h
-- [configuration] release-env-lint-freshness: generatedAt is 48.9h old; limit=24h
-- [configuration] release-env-lint: status=FAIL, blockers=156
-- [configuration] release-env-lint-placeholders: unresolvedTemplateKeys=93
-- [configuration] release-env-lint-config: releaseConfigBlockers=63
-- [configuration] release-config-evidence-freshness: generatedAt is 48.2h old; limit=24h
-- [configuration] release-config-evidence: status=FAIL, blockers=63
-- [orchestrator] release-evidence-orchestrator-freshness: generatedAt is 57.1h old; limit=24h
+- [other] physical-split-readiness: IAM module must be services/lumira-system, got services/system-service
+- [other] physical-split-readiness: Auth module must be services/lumira-auth, got services/auth-service
+- [other] physical-split-readiness: Platform module must be services/lumira-system, got services/system-service
+- [other] physical-split-readiness: Message module must be services/lumira-message, got services/message-service
+- [other] physical-split-readiness: File module must be services/lumira-file, got services/file-service
+- [other] physical-split-readiness: Plugin module must be services/lumira-plugin, got services/plugin-service
+- [other] physical-split-readiness: Localization module must be services/lumira-localization, got services/localization-service
+- [other] physical-split-readiness: Payment module must be services/lumira-payment, got services/payment-service
+- [other] physical-split-readiness: AI module must be services/lumira-ai, got services/ai-service
+- [other] physical-split-readiness: Job module must be services/lumira-quartz, got services/job-executor
+- [other] physical-split-readiness-freshness: generatedAt is 69.5h old; limit=24h
+- [other] backend-test-evidence-freshness: generatedAt is 69.5h old; limit=24h
+- [other] backend-build-evidence-freshness: generatedAt is 69.5h old; limit=24h
+- [other] backend-build-evidence: missing module report services/lumira-admin
+- [other] backend-build-evidence: missing module report services/lumira-auth
+- [other] backend-build-evidence: missing module report services/lumira-message
+- [other] backend-build-evidence: missing module report services/lumira-file
+- [other] backend-build-evidence: missing module report services/lumira-plugin
+- [other] backend-build-evidence: missing module report services/lumira-localization
+- [other] backend-build-evidence: missing module report services/lumira-payment
+- [other] backend-build-evidence: missing module report services/lumira-ai
+- [other] backend-build-evidence: missing module report services/lumira-quartz
+- [other] backend-build-evidence: missing module report services/lumira-system
+- [other] backend-build-evidence: unknown module report services/lumira-server
+- [other] backend-build-evidence: unknown module report services/auth-service
+- [other] backend-build-evidence: unknown module report services/message-service
+- [other] backend-build-evidence: unknown module report services/file-service
+- [other] backend-build-evidence: unknown module report services/plugin-service
+- [other] backend-build-evidence: unknown module report services/localization-service
+- [other] backend-build-evidence: unknown module report services/payment-service
+- [other] backend-build-evidence: unknown module report services/ai-service
+- [other] backend-build-evidence: unknown module report services/job-executor
+- [other] backend-build-evidence: unknown module report services/system-service
+- [docker-provenance] docker-build-evidence-provenance: sourceEnvironment is required
+- [docker-provenance] docker-build-evidence-provenance: releaseCandidate is required
+- [docker-provenance] docker-build-evidence-provenance: evidenceOperator is required
+- [docker] docker-build-evidence: lumira-server: docker build failed: #5 DONE 0.3s
+
+#4 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre
+#4 DONE 0.8s
+
+#6 [internal] load .dockerignore
+#6 transferring context: 309B 0.0s done
+#6 DONE 0.1s
+
+#7 [stage-1 1/5] FROM docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603
+#7 resolve docker.io/library/eclipse-temurin:21-jre@sha256:8ec353b20d3aab0758572236b81b967c7077c40c4d0819ce97f9a1329d684603 0.1s done
+#7 sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 2.28kB / 2.28kB 1.7s done
+#7 sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 159B / 159B 3.6s done
+#7 sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 388B / 388B 2.0s done
+#7 sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 20.12MB / 20.12MB 6.9s done
+#7 sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 53.12MB / 53.12MB 9.0s done
+#7 sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 41.56MB / 41.56MB 7.8s done
+#7 extracting sha256:81e2f2053c8fa702b6863110b55c09e67f6adeb78b4672745958c4d8b3d056c5 1.1s done
+#7 extracting sha256:d1f56e4c7f2f2a1415c59803638274d488a73b61a8e1f9cbd9cb280327e8d21e 0.1s done
+#7 extracting sha256:615a4ff2c6307fd0c5e826eee696ae3f0033453e344616ea7fb5f682b3ccfb9d 0.5s done
+#7 extracting sha256:7852e663f18cd4bf5da0f535caacba2bd355d89d8b4df3868e0b59dba43d2cf5 0.9s done
+#7 extracting sha256:860799bd61a18c5249afc515d19d73e68f1a67387c6d87f7bc06d1a09ec03694 0.0s done
+#7 extracting sha256:dde47f424aaad69abbdd8df6625b8780c63c1ae7ab0cda40553c8afb70ab0a0a 0.0s done
+#7 DONE 14.7s
+
+#8 [stage-1 2/5] WORKDIR /app
+#8 DONE 0.3s
+
+#9 [stage-1 3/5] RUN addgroup --system app     && adduser --system --ingroup app app     && mkdir -p /tmp/nacos /tmp/sentinel /data/uploads /data/plugins /data/plugin-staging     && chown -R app:app /tmp/nacos /tmp/sentinel /data
+#9 DONE 3.3s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 resolve docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237 0.1s done
+#10 sha256:583816d0be0cf3bcb3dfd452a52a7616ed7d9f22fe7f9c7be06c6d39baf0dd92 155B / 155B 1.9s done
+#10 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 2.0s done
+#10 sha256:8167b4f972e8721f72bf03a1fdc669b803dfc262b27a60d62ee7486548e1c565 853B / 853B 2.0s done
+#10 sha256:8583823b44413993005cb4de17065cb25a621db74ca76da9e356a8cbe97a6ff9 9.24MB / 9.24MB 5.0s done
+#10 sha256:54b92ed1102d0a97c89567511b8a3e40e6283e43958991cc108b411f7eec78e4 158B / 158B 1.9s done
+#10 sha256:8349365ad94cf3ebc9ff663af386f8e662102fd7528d7d5638df47ab9d044df7 22.54MB / 22.54MB 9.4s done
+#10 sha256:b7f312f519fbac7fa8ab5e034ea3afc3f2f0e15c1b4f93c20f0ef6bdf5e3ba72 22.96MB / 22.96MB 11.3s done
+#10 sha256:388658fb69f54e5682104e6b0cf9b8753587e33278a43c2254254fb595999c52 157.84MB / 157.84MB 26.3s done
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 96.5s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 87.2s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 101.6s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 92.3s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 20.64MB 10.0s
+#11 ...
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 106.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 97.4s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 114.7s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 105.4s
+#10 ...
+
+#11 [internal] load build context
+#11 transferring context: 338.84MB 18.4s done
+#11 DONE 18.4s
+
+#10 [builder  1/21] FROM docker.io/library/maven:3.9.11-eclipse-temurin-21@sha256:6fdc855a6ed81d288ca7ca37ac6ff5e9308b612485c0801d70b25a858c83d237
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 119.8s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 110.5s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 124.9s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 115.6s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 130.0s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 120.7s
+#10 sha256:919c22d58535d0a293684e9385c199a76f0a3c4cdfdb02257191974dc2dabfa1 0B / 2.28kB 135.1s
+#10 sha256:20043066d3d5c78b45520c5707319835ac7d1f3d7f0dded0138ea0897d6a3188 0B / 29.72MB 125.8s
+#10 DONE 145.1s
+
+#12 [builder  2/21] WORKDIR /workspace
+#12 ERROR: short read: expected 29724688 bytes but got 0: unexpected EOF
+------
+ > [builder  2/21] WORKDIR /workspace:
+------
+ERROR: failed to build: failed to solve: failed to compute cache key: short read: expected 29724688 bytes but got 0: unexpected EOF
+- [docker] docker-build-evidence: frontend: docker build failed after 3 attempt(s) with transient registry/network error: spawnSync cmd.exe ETIMEDOUT
+- [docker] docker-build-evidence: missing image report lumira-ui
+- [docker] docker-build-evidence: unknown image report frontend
+- [migration] migration-evidence-freshness: generatedAt is 69.4h old; limit=24h
+- [migration] migration-evidence: unknown migration location services/system-service/src/main/resources/db/migration
+- [migration] migration-evidence: unknown migration location services/auth-service/src/main/resources/db/migration/auth
+- [migration] migration-evidence: unknown migration location services/message-service/src/main/resources/db/migration/message
+- [migration] migration-evidence: unknown migration location services/file-service/src/main/resources/db/migration/file
+- [migration] migration-evidence: unknown migration location services/plugin-service/src/main/resources/db/migration/plugin
+- [migration] migration-evidence: unknown migration location services/localization-service/src/main/resources/db/migration/localization
+- [migration] migration-evidence: unknown migration location services/payment-service/src/main/resources/db/migration/payment
+- [migration] migration-evidence: unknown migration location services/ai-service/src/main/resources/db/migration/ai
+- [migration] migration-evidence: missing required migration location report services/lumira-system/src/main/resources/db/migration
+- [migration] migration-evidence: missing required migration location report services/lumira-auth/src/main/resources/db/migration/auth
+- [migration] migration-evidence: missing required migration location report services/lumira-message/src/main/resources/db/migration/message
+- [migration] migration-evidence: missing required migration location report services/lumira-file/src/main/resources/db/migration/file
+- [migration] migration-evidence: missing required migration location report services/lumira-plugin/src/main/resources/db/migration/plugin
+- [migration] migration-evidence: missing required migration location report services/lumira-localization/src/main/resources/db/migration/localization
+- [migration] migration-evidence: missing required migration location report services/lumira-payment/src/main/resources/db/migration/payment
+- [migration] migration-evidence: missing required migration location report services/lumira-ai/src/main/resources/db/migration/ai
+- [configuration] release-config-evidence: release config coverageMatrix missing runtime.lumira-ui base url
+- [configuration] release-config-evidence: release config coverageMatrix unknown runtime.frontend base url
+- [orchestrator] release-evidence-orchestrator-freshness: generatedAt is 68.8h old; limit=24h
 - [production-equivalent-runtime] release-evidence-orchestrator-preflight-backend-runtime-base-url: missing backend runtime base URL
 - [ai-runtime] release-evidence-orchestrator-preflight-ai-runtime-base-url: missing AI runtime base URL
 - [orchestrator] release-evidence-orchestrator-preflight-frontend-runtime-base-url: missing deployed frontend base URL
 - [migration] release-evidence-orchestrator-preflight-migration-runtime-evidence: missing migration drill env: DDD_MIGRATION_FRESH_DB_VALIDATED, DDD_MIGRATION_UPGRADE_DB_VALIDATED, DDD_MIGRATION_FRESH_DB_EVIDENCE, DDD_MIGRATION_UPGRADE_DB_EVIDENCE
 - [orchestrator] release-evidence-orchestrator: strict release requires run mode report, got plan
+- [orchestrator] release-evidence-orchestrator: unexpected orchestrator preflight check frontend-runtime-base-url
+- [orchestrator] release-evidence-orchestrator: unexpected orchestrator preflight check frontend-deployed-expectation
+- [orchestrator] release-evidence-orchestrator: missing orchestrator preflight check lumira-ui-runtime-base-url
+- [orchestrator] release-evidence-orchestrator: missing orchestrator preflight check lumira-ui-deployed-expectation
+- [orchestrator] release-evidence-orchestrator: unexpected orchestrator selected step frontend-static-evidence
+- [orchestrator] release-evidence-orchestrator: unexpected orchestrator selected step frontend-build-evidence
+- [orchestrator] release-evidence-orchestrator: unexpected orchestrator selected step frontend-playwright-smoke
+- [orchestrator] release-evidence-orchestrator: missing orchestrator step lumira-ui-static-evidence
+- [orchestrator] release-evidence-orchestrator: missing orchestrator step lumira-ui-build-evidence
+- [orchestrator] release-evidence-orchestrator: missing orchestrator step lumira-ui-playwright-smoke
+- [orchestrator] release-evidence-orchestrator: orchestrator step 7 must be lumira-ui-static-evidence, got frontend-static-evidence
+- [orchestrator] release-evidence-orchestrator: orchestrator step 8 must be lumira-ui-build-evidence, got frontend-build-evidence
+- [orchestrator] release-evidence-orchestrator: orchestrator step 18 must be lumira-ui-playwright-smoke, got frontend-playwright-smoke
 - [manifest-provenance] release-evidence-manifest-provenance: manifest provenance sourceEnvironment is required
 - [manifest-provenance] release-evidence-manifest-provenance: manifest provenance releaseCandidate is required
 - [manifest-provenance] release-evidence-manifest-provenance: manifest provenance evidenceOperator is required
-- [manifest] release-evidence-manifest: manifest blockers length mismatch: declared=1, actual=4
-- [manifest] release-evidence-manifest: missing EXPLAIN files in evidence manifest
-- [other] frontend-build-evidence-freshness: generatedAt is 91.8h old; limit=24h
-- [other] frontend-static-evidence-freshness: generatedAt is 91.8h old; limit=24h
-- [frontend-smoke] frontend-smoke-freshness: generatedAt is 57.8h old; limit=24h
-- [frontend-smoke] frontend-smoke-production-equivalence: strict frontend smoke deploymentEvidence is required
-- [frontend-smoke] frontend-smoke-environment-strict: strict release requires production-equivalent non-local evidence
-- [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.strict must be true for strict release evidence
-- [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.https must be true for strict release evidence
-- [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.localOnly must be false for strict release evidence
-- [frontend-smoke] frontend-smoke-environment: frontend smoke productionEquivalence.deploymentEvidence is required
-- [frontend-smoke] frontend-smoke-environment: strict release requires DDD_FRONTEND_EXPECT_DEPLOYED=true evidence
-- [frontend-smoke] frontend-smoke-environment: strict release requires HTTPS frontend baseURL evidence
-- [frontend-smoke] frontend-smoke-environment: artifact is local-only: http://127.0.0.1:8000
-- [frontend-smoke] frontend-smoke: frontend smoke blockers length mismatch: declared=0, actual=7
-- [rollback-drill] rollback-drill-freshness: generatedAt is 72.2h old; limit=24h
-- [explain-plan] explain-evidence-strict: strict release requires production-scale EXPLAIN artifacts
+- [manifest] release-evidence-manifest: missing artifact lumira-ui/lumira-ui-build-evidence.json
+- [manifest] release-evidence-manifest: missing artifact lumira-ui/lumira-ui-static-evidence.json
+- [frontend-smoke] release-evidence-manifest: missing artifact lumira-ui/frontend-smoke.json
+- [manifest] release-evidence-manifest: manifest blockers length mismatch: declared=3, actual=9
+- [manifest-provenance] release-evidence-manifest: artifact provenance issues=1
+- [other] lumira-ui-build-evidence-strict: strict release requires lumira-ui production build evidence
+- [other] lumira-ui-static-evidence-strict: strict release requires lumira-ui lint/typecheck/unit evidence
+- [frontend-smoke] frontend-smoke-strict: strict release requires deployed frontend smoke evidence
+- [explain-plan] explain-evidence: message-archive-total.json: archive_candidates uses full scan access_type=ALL
+- [explain-plan] explain-evidence: message-archive-total.json: archive_candidates does not report an index key for access_type=ALL
+- [explain-plan] explain-evidence: message-unread-count.json: unread_candidates uses full scan access_type=ALL
+- [explain-plan] explain-evidence: message-unread-count.json: unread_candidates does not report an index key for access_type=ALL

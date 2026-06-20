@@ -1,6 +1,6 @@
 # DDD Release Command Catalog
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 No auto waivers: true
@@ -14,7 +14,7 @@ Next priority: P0
 - finalRecommendation: NO_GO_STRICT
 - cutoverAllowed: false
 - releaseEnvFileCutoverSafe: false
-- gateBlockers: 94
+- gateBlockers: 148
 - blockedCutoverItems: 7
 - stopReasonCount: 8
 - stopReasonCoverage: catalog-snapshot
@@ -32,7 +32,7 @@ Next priority: P0
 - cutover checklist blocked: rollback-safety
 - cutover checklist blocked: runtime-business-acceptance
 - cutover checklist blocked: strict-release-gate
-- strict release gate blockers=94
+- strict release gate blockers=148
 
 ## Safety Signals
 

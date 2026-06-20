@@ -1,6 +1,6 @@
 # DDD Final Owner Queue
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
 Recommendation: NO_GO_STRICT
 Cutover allowed: false
@@ -16,7 +16,7 @@ Owner input receipt required inputs: 0
 Owner input receipt pending owners: 0
 Owner input receipt missing criteria: 1
 Next executable owner: release-infra
-Next executable command: DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh
+Next executable command: node bin/ddd-release-evidence-orchestrator.mjs
 Queue order: ACTIONABLE owners first, then WAITING owners.
 
 ## Fast Path
@@ -25,15 +25,15 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Blocked until: Required owner env keys and expected evidence artifacts are available in a permission-safe release env file.
 - Owner: release-infra
 - Queue order: 1
-- First command: `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- First command: `node bin/ddd-release-evidence-orchestrator.mjs`
 - Release env file required: true
 - Env keys: 10
 - Missing artifacts: 5
 - Commands:
-  - `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
-  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
-  - `node bin/ddd-runtime-readiness-smoke.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
+  - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-runtime-readiness-smoke.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
   - `node bin/ddd-release-readiness-summary.mjs`
   - `DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh`
@@ -75,7 +75,7 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Missing artifacts: 5
 - Content blockers: 0
 - Stop reasons: 4
-- First command: `DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh`
+- First command: `node bin/ddd-release-evidence-orchestrator.mjs`
 - Env key names:
   - `BASE_URL`
   - `DDD_DOCKER_BUILD_STRICT`
@@ -519,14 +519,12 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
 - Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
 - Closure waves: none
 - Commands: 4
-- Env keys: 13
+- Env keys: 10
 - Missing artifacts: 2
 - Content blockers: 0
 - Stop reasons: 3
 - First command: `node bin/ddd-payment-webhook-e2e-smoke.mjs`
 - Env key names:
-  - `BASE_URL`
-  - `DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE`
   - `DDD_EVIDENCE_ENVIRONMENT`
   - `DDD_EVIDENCE_OPERATOR`
   - `DDD_RELEASE_CANDIDATE`
@@ -535,7 +533,6 @@ Queue order: ACTIONABLE owners first, then WAITING owners.
   - `DDD_ROLLBACK_DRILL_FILE`
   - `DDD_ROLLBACK_DRILL_HANDOFF_FILE`
   - `DDD_ROLLBACK_DRILL_STRICT`
-  - `DEPLOY_CHECK_BASE_URL`
   - `LUMIRA_BASE_URL`
   - `PAYMENT_PUBLIC_BASE_URL`
 - Missing artifacts:

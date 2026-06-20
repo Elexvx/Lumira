@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:19:45.629Z",
+  "generatedAt": "2026-06-20T19:42:26.704Z",
   "status": "NOT_READY",
   "inputArtifacts": {
     "releaseGate": {
@@ -8,11 +8,11 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T06:37:35.118Z",
-      "generatedAt": "2026-06-19T06:37:35.112Z",
+      "modifiedAt": "2026-06-20T17:35:34.138Z",
+      "generatedAt": "2026-06-19T18:21:44.432Z",
       "status": null,
-      "blockers": 94,
-      "warnings": 8
+      "blockers": 148,
+      "warnings": 9
     },
     "manifest": {
       "file": "artifacts\\ddd\\release\\evidence-manifest.json",
@@ -20,8 +20,8 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T18:19:44.004Z",
-      "generatedAt": "2026-06-19T18:19:44.003Z",
+      "modifiedAt": "2026-06-20T17:35:33.922Z",
+      "generatedAt": "2026-06-19T18:34:12.192Z",
       "status": "FAIL",
       "blockers": 3,
       "warnings": null
@@ -32,7 +32,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T14:43:03.927Z",
+      "modifiedAt": "2026-06-20T17:35:34.071Z",
       "generatedAt": "2026-06-19T14:43:03.923Z",
       "status": "PASS",
       "blockers": 0,
@@ -44,7 +44,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T14:43:04.048Z",
+      "modifiedAt": "2026-06-20T17:35:33.686Z",
       "generatedAt": "2026-06-19T14:43:04.044Z",
       "status": "PASS",
       "blockers": 0,
@@ -56,7 +56,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T08:02:24.849Z",
+      "modifiedAt": "2026-06-20T17:35:33.681Z",
       "generatedAt": "2026-06-19T08:02:24.846Z",
       "status": "FAIL",
       "blockers": 2,
@@ -68,7 +68,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.202Z",
+      "modifiedAt": "2026-06-20T17:35:33.723Z",
       "generatedAt": "2026-06-16T20:56:46.902Z",
       "status": "PASS",
       "blockers": 0,
@@ -80,7 +80,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.218Z",
+      "modifiedAt": "2026-06-20T17:35:33.912Z",
       "generatedAt": "2026-06-16T06:22:07.611Z",
       "status": null,
       "blockers": null,
@@ -92,7 +92,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.205Z",
+      "modifiedAt": "2026-06-20T17:35:33.745Z",
       "generatedAt": "2026-06-16T20:51:41.443Z",
       "status": null,
       "blockers": null,
@@ -104,7 +104,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.206Z",
+      "modifiedAt": "2026-06-20T17:35:33.753Z",
       "generatedAt": "2026-06-13T18:38:43.975Z",
       "status": null,
       "blockers": null,
@@ -116,7 +116,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.205Z",
+      "modifiedAt": "2026-06-20T17:35:33.749Z",
       "generatedAt": "2026-06-13T18:38:43.975Z",
       "status": null,
       "blockers": null,
@@ -128,7 +128,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.197Z",
+      "modifiedAt": "2026-06-20T17:35:33.690Z",
       "generatedAt": null,
       "status": "PASS",
       "blockers": null,
@@ -137,12 +137,12 @@
     "paymentWebhook": {
       "file": "artifacts\\ddd\\payment\\payment-webhook-e2e.json",
       "relativePath": "payment/payment-webhook-e2e.json",
-      "present": true,
+      "present": false,
       "missing": false,
-      "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.204Z",
+      "invalid": "Bad control character in string literal in JSON at position 900 (line 36 column 41)",
+      "modifiedAt": "2026-06-20T17:35:33.741Z",
       "generatedAt": null,
-      "status": "PASS",
+      "status": null,
       "blockers": null,
       "warnings": null
     },
@@ -152,7 +152,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.200Z",
+      "modifiedAt": "2026-06-20T17:35:33.709Z",
       "generatedAt": "2026-06-13T19:15:58.531Z",
       "status": null,
       "blockers": null,
@@ -176,7 +176,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.194Z",
+      "modifiedAt": "2026-06-20T17:35:33.661Z",
       "generatedAt": "2026-06-16T20:51:41.726Z",
       "status": "PASS",
       "blockers": null,
@@ -188,7 +188,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T13:59:31.821Z",
+      "modifiedAt": "2026-06-20T17:35:34.540Z",
       "generatedAt": "2026-06-19T13:59:31.816Z",
       "status": "PASS",
       "blockers": 0,
@@ -200,7 +200,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.220Z",
+      "modifiedAt": "2026-06-20T17:35:33.929Z",
       "generatedAt": "2026-06-16T21:33:57.249Z",
       "status": null,
       "blockers": null,
@@ -224,7 +224,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-17T09:46:50.284Z",
+      "modifiedAt": "2026-06-20T17:35:34.173Z",
       "generatedAt": "2026-06-15T00:59:03.187Z",
       "status": null,
       "blockers": null,
@@ -236,7 +236,7 @@
       "present": true,
       "missing": false,
       "invalid": null,
-      "modifiedAt": "2026-06-19T14:43:03.893Z",
+      "modifiedAt": "2026-06-20T17:35:33.925Z",
       "generatedAt": "2026-06-19T14:43:03.891Z",
       "status": "PASS",
       "blockers": 0,
@@ -245,14 +245,14 @@
   },
   "gate": {
     "strict": true,
-    "blockers": 94,
-    "warnings": 8
+    "blockers": 148,
+    "warnings": 9
   },
   "ownerCount": 16,
   "readyOwnerCount": 3,
   "templateEnvKeyCount": 45,
   "uniqueUnresolvedTemplateKeyCount": 29,
-  "unresolvedOwnerAssignmentCount": 65,
+  "unresolvedOwnerAssignmentCount": 63,
   "groupCount": 22,
   "owners": [
     {
@@ -294,6 +294,7 @@
       ],
       "commands": [
         "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-docker-build-evidence.mjs",
         "node bin/ddd-runtime-readiness-smoke.mjs",
         "node bin/ddd-release-evidence-orchestrator.mjs",
         "DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict"
@@ -350,7 +351,8 @@
           ],
           "aliasMappings": [],
           "commands": [
-            "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
+            "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+            "node bin/ddd-docker-build-evidence.mjs"
           ],
           "expectedArtifacts": [
             "artifacts/ddd/build/docker-image-evidence.json"
@@ -1648,251 +1650,6 @@
       ]
     },
     {
-      "owner": "payment-owner",
-      "groupCount": 2,
-      "readyGroupCount": 0,
-      "blockedGroupCount": 2,
-      "templateEnvKeys": [
-        "BASE_URL",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_EVIDENCE_ENVIRONMENT",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV",
-        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-        "DDD_ROLLBACK_DRILL_FILE",
-        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-        "DDD_ROLLBACK_DRILL_STRICT",
-        "LUMIRA_BASE_URL",
-        "PAYMENT_PUBLIC_BASE_URL"
-      ],
-      "aliasMappings": [
-        {
-          "alias": "DEPLOY_CHECK_BASE_URL",
-          "canonical": "LUMIRA_BASE_URL"
-        }
-      ],
-      "batchIds": [
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-payment-owner"
-      ],
-      "readyBatchIds": [],
-      "blockedBatchIds": [
-        "p1-business-e2e-payment-owner",
-        "p1-rollback-payment-owner"
-      ],
-      "commands": [
-        "node bin/ddd-payment-webhook-e2e-smoke.mjs",
-        "node bin/ddd-rollback-deferral-template.mjs",
-        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-        "node bin/ddd-rollback-drill-evidence.mjs"
-      ],
-      "expectedArtifacts": [
-        "artifacts/ddd/payment/payment-webhook-e2e.json",
-        "artifacts/ddd/rollback/rollback-drill.json"
-      ],
-      "exitCriteria": [
-        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
-        "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
-        "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
-      ],
-      "groups": [
-        {
-          "batchId": "p1-business-e2e-payment-owner",
-          "priority": "P1",
-          "source": "business-e2e",
-          "owner": "payment-owner",
-          "pendingItems": 1,
-          "dependsOn": [
-            "p0-docker-release-infra",
-            "p0-runtime-readiness-release-infra",
-            "p0-manifest-lumira-ui",
-            "p0-authenticated-performance-release-performance"
-          ],
-          "canRunImmediately": false,
-          "envKeys": [
-            "BASE_URL",
-            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-            "DEPLOY_CHECK_BASE_URL",
-            "LUMIRA_BASE_URL",
-            "PAYMENT_PUBLIC_BASE_URL"
-          ],
-          "envCheckGroups": [
-            {
-              "label": "BASE_URL",
-              "keys": [
-                "BASE_URL"
-              ],
-              "spec": "BASE_URL=BASE_URL"
-            },
-            {
-              "label": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-              "keys": [
-                "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
-              ],
-              "spec": "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE=DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE"
-            },
-            {
-              "label": "LUMIRA_BASE_URL",
-              "keys": [
-                "DEPLOY_CHECK_BASE_URL",
-                "LUMIRA_BASE_URL"
-              ],
-              "spec": "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
-            },
-            {
-              "label": "PAYMENT_PUBLIC_BASE_URL",
-              "keys": [
-                "PAYMENT_PUBLIC_BASE_URL"
-              ],
-              "spec": "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
-            }
-          ],
-          "templateEnvKeys": [
-            "BASE_URL",
-            "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-            "LUMIRA_BASE_URL",
-            "PAYMENT_PUBLIC_BASE_URL"
-          ],
-          "aliasMappings": [
-            {
-              "alias": "DEPLOY_CHECK_BASE_URL",
-              "canonical": "LUMIRA_BASE_URL"
-            }
-          ],
-          "commands": [
-            "node bin/ddd-payment-webhook-e2e-smoke.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/payment/payment-webhook-e2e.json"
-          ],
-          "exitCriteria": [
-            "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
-            "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
-          ],
-          "itemIds": [
-            "payment-webhook-production-equivalence"
-          ]
-        },
-        {
-          "batchId": "p1-rollback-payment-owner",
-          "priority": "P1",
-          "source": "rollback",
-          "owner": "payment-owner",
-          "pendingItems": 1,
-          "dependsOn": [
-            "p0-docker-release-infra",
-            "p0-runtime-readiness-release-infra",
-            "p0-manifest-lumira-ui",
-            "p0-authenticated-performance-release-performance"
-          ],
-          "canRunImmediately": false,
-          "envKeys": [
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_EVIDENCE_OPERATOR",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV",
-            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-            "DDD_ROLLBACK_DRILL_FILE",
-            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-            "DDD_ROLLBACK_DRILL_STRICT"
-          ],
-          "envCheckGroups": [
-            {
-              "label": "DDD_EVIDENCE_ENVIRONMENT",
-              "keys": [
-                "DDD_EVIDENCE_ENVIRONMENT"
-              ],
-              "spec": "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT"
-            },
-            {
-              "label": "DDD_EVIDENCE_OPERATOR",
-              "keys": [
-                "DDD_EVIDENCE_OPERATOR"
-              ],
-              "spec": "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR"
-            },
-            {
-              "label": "DDD_RELEASE_CANDIDATE",
-              "keys": [
-                "DDD_RELEASE_CANDIDATE"
-              ],
-              "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
-            },
-            {
-              "label": "DDD_ROLLBACK_DRILL_CHECK_ENV",
-              "keys": [
-                "DDD_ROLLBACK_DRILL_CHECK_ENV"
-              ],
-              "spec": "DDD_ROLLBACK_DRILL_CHECK_ENV=DDD_ROLLBACK_DRILL_CHECK_ENV"
-            },
-            {
-              "label": "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-              "keys": [
-                "DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
-              ],
-              "spec": "DDD_ROLLBACK_DRILL_DEFERRAL_FILE=DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
-            },
-            {
-              "label": "DDD_ROLLBACK_DRILL_FILE",
-              "keys": [
-                "DDD_ROLLBACK_DRILL_FILE"
-              ],
-              "spec": "DDD_ROLLBACK_DRILL_FILE=DDD_ROLLBACK_DRILL_FILE"
-            },
-            {
-              "label": "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-              "keys": [
-                "DDD_ROLLBACK_DRILL_HANDOFF_FILE"
-              ],
-              "spec": "DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE"
-            },
-            {
-              "label": "DDD_ROLLBACK_DRILL_STRICT",
-              "keys": [
-                "DDD_ROLLBACK_DRILL_STRICT"
-              ],
-              "spec": "DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT"
-            }
-          ],
-          "templateEnvKeys": [
-            "DDD_EVIDENCE_ENVIRONMENT",
-            "DDD_EVIDENCE_OPERATOR",
-            "DDD_RELEASE_CANDIDATE",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV",
-            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
-            "DDD_ROLLBACK_DRILL_FILE",
-            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
-            "DDD_ROLLBACK_DRILL_STRICT"
-          ],
-          "aliasMappings": [],
-          "commands": [
-            "node bin/ddd-rollback-deferral-template.mjs",
-            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
-            "node bin/ddd-rollback-drill-evidence.mjs"
-          ],
-          "expectedArtifacts": [
-            "artifacts/ddd/rollback/rollback-drill.json"
-          ],
-          "exitCriteria": [
-            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
-          ],
-          "itemIds": [
-            "Payment"
-          ]
-        }
-      ],
-      "unresolvedTemplateKeyCount": 6,
-      "unresolvedTemplateKeys": [
-        "BASE_URL",
-        "DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE",
-        "DDD_EVIDENCE_OPERATOR",
-        "DDD_RELEASE_CANDIDATE",
-        "LUMIRA_BASE_URL",
-        "PAYMENT_PUBLIC_BASE_URL"
-      ]
-    },
-    {
       "owner": "ai",
       "groupCount": 1,
       "readyGroupCount": 0,
@@ -2127,6 +1884,218 @@
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_API_KEY",
         "LUMIRA_AI_PROVIDER_OPENAI_COMPATIBLE_BASE_URL",
         "LUMIRA_BASE_URL"
+      ]
+    },
+    {
+      "owner": "payment-owner",
+      "groupCount": 2,
+      "readyGroupCount": 0,
+      "blockedGroupCount": 2,
+      "templateEnvKeys": [
+        "DDD_EVIDENCE_ENVIRONMENT",
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV",
+        "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+        "DDD_ROLLBACK_DRILL_FILE",
+        "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+        "DDD_ROLLBACK_DRILL_STRICT",
+        "LUMIRA_BASE_URL",
+        "PAYMENT_PUBLIC_BASE_URL"
+      ],
+      "aliasMappings": [],
+      "batchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ],
+      "readyBatchIds": [],
+      "blockedBatchIds": [
+        "p1-business-e2e-payment-owner",
+        "p1-rollback-payment-owner"
+      ],
+      "commands": [
+        "node bin/ddd-payment-webhook-e2e-smoke.mjs",
+        "node bin/ddd-rollback-deferral-template.mjs",
+        "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+        "node bin/ddd-rollback-drill-evidence.mjs"
+      ],
+      "expectedArtifacts": [
+        "artifacts/ddd/payment/payment-webhook-e2e.json",
+        "artifacts/ddd/rollback/rollback-drill.json"
+      ],
+      "exitCriteria": [
+        "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance.",
+        "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
+        "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
+      ],
+      "groups": [
+        {
+          "batchId": "p1-business-e2e-payment-owner",
+          "priority": "P1",
+          "source": "business-e2e",
+          "owner": "payment-owner",
+          "pendingItems": 1,
+          "dependsOn": [
+            "p0-docker-release-infra",
+            "p0-runtime-readiness-release-infra",
+            "p0-manifest-lumira-ui",
+            "p0-authenticated-performance-release-performance"
+          ],
+          "canRunImmediately": false,
+          "envKeys": [
+            "LUMIRA_BASE_URL",
+            "PAYMENT_PUBLIC_BASE_URL"
+          ],
+          "envCheckGroups": [
+            {
+              "label": "LUMIRA_BASE_URL",
+              "keys": [
+                "DEPLOY_CHECK_BASE_URL",
+                "LUMIRA_BASE_URL"
+              ],
+              "spec": "LUMIRA_BASE_URL=DEPLOY_CHECK_BASE_URL|LUMIRA_BASE_URL"
+            },
+            {
+              "label": "PAYMENT_PUBLIC_BASE_URL",
+              "keys": [
+                "PAYMENT_PUBLIC_BASE_URL"
+              ],
+              "spec": "PAYMENT_PUBLIC_BASE_URL=PAYMENT_PUBLIC_BASE_URL"
+            }
+          ],
+          "templateEnvKeys": [
+            "LUMIRA_BASE_URL",
+            "PAYMENT_PUBLIC_BASE_URL"
+          ],
+          "aliasMappings": [],
+          "commands": [
+            "node bin/ddd-payment-webhook-e2e-smoke.mjs"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/payment/payment-webhook-e2e.json"
+          ],
+          "exitCriteria": [
+            "File, Job, and Payment business E2E artifacts are generated from HTTPS non-local runtime endpoints.",
+            "Owner-specific task/webhook/job contract checks pass with production-equivalence metadata."
+          ],
+          "itemIds": [
+            "payment-webhook-artifact"
+          ]
+        },
+        {
+          "batchId": "p1-rollback-payment-owner",
+          "priority": "P1",
+          "source": "rollback",
+          "owner": "payment-owner",
+          "pendingItems": 1,
+          "dependsOn": [
+            "p0-docker-release-infra",
+            "p0-runtime-readiness-release-infra",
+            "p0-manifest-lumira-ui",
+            "p0-authenticated-performance-release-performance"
+          ],
+          "canRunImmediately": false,
+          "envKeys": [
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_EVIDENCE_OPERATOR",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT"
+          ],
+          "envCheckGroups": [
+            {
+              "label": "DDD_EVIDENCE_ENVIRONMENT",
+              "keys": [
+                "DDD_EVIDENCE_ENVIRONMENT"
+              ],
+              "spec": "DDD_EVIDENCE_ENVIRONMENT=DDD_EVIDENCE_ENVIRONMENT"
+            },
+            {
+              "label": "DDD_EVIDENCE_OPERATOR",
+              "keys": [
+                "DDD_EVIDENCE_OPERATOR"
+              ],
+              "spec": "DDD_EVIDENCE_OPERATOR=DDD_EVIDENCE_OPERATOR"
+            },
+            {
+              "label": "DDD_RELEASE_CANDIDATE",
+              "keys": [
+                "DDD_RELEASE_CANDIDATE"
+              ],
+              "spec": "DDD_RELEASE_CANDIDATE=DDD_RELEASE_CANDIDATE"
+            },
+            {
+              "label": "DDD_ROLLBACK_DRILL_CHECK_ENV",
+              "keys": [
+                "DDD_ROLLBACK_DRILL_CHECK_ENV"
+              ],
+              "spec": "DDD_ROLLBACK_DRILL_CHECK_ENV=DDD_ROLLBACK_DRILL_CHECK_ENV"
+            },
+            {
+              "label": "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+              "keys": [
+                "DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
+              ],
+              "spec": "DDD_ROLLBACK_DRILL_DEFERRAL_FILE=DDD_ROLLBACK_DRILL_DEFERRAL_FILE"
+            },
+            {
+              "label": "DDD_ROLLBACK_DRILL_FILE",
+              "keys": [
+                "DDD_ROLLBACK_DRILL_FILE"
+              ],
+              "spec": "DDD_ROLLBACK_DRILL_FILE=DDD_ROLLBACK_DRILL_FILE"
+            },
+            {
+              "label": "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+              "keys": [
+                "DDD_ROLLBACK_DRILL_HANDOFF_FILE"
+              ],
+              "spec": "DDD_ROLLBACK_DRILL_HANDOFF_FILE=DDD_ROLLBACK_DRILL_HANDOFF_FILE"
+            },
+            {
+              "label": "DDD_ROLLBACK_DRILL_STRICT",
+              "keys": [
+                "DDD_ROLLBACK_DRILL_STRICT"
+              ],
+              "spec": "DDD_ROLLBACK_DRILL_STRICT=DDD_ROLLBACK_DRILL_STRICT"
+            }
+          ],
+          "templateEnvKeys": [
+            "DDD_EVIDENCE_ENVIRONMENT",
+            "DDD_EVIDENCE_OPERATOR",
+            "DDD_RELEASE_CANDIDATE",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV",
+            "DDD_ROLLBACK_DRILL_DEFERRAL_FILE",
+            "DDD_ROLLBACK_DRILL_FILE",
+            "DDD_ROLLBACK_DRILL_HANDOFF_FILE",
+            "DDD_ROLLBACK_DRILL_STRICT"
+          ],
+          "aliasMappings": [],
+          "commands": [
+            "node bin/ddd-rollback-deferral-template.mjs",
+            "DDD_ROLLBACK_DRILL_CHECK_ENV=true node bin/ddd-rollback-drill-evidence.mjs",
+            "node bin/ddd-rollback-drill-evidence.mjs"
+          ],
+          "expectedArtifacts": [
+            "artifacts/ddd/rollback/rollback-drill.json"
+          ],
+          "exitCriteria": [
+            "Each bounded context has PASS rollback drill evidence or approved unexpired DEFERRED risk acceptance."
+          ],
+          "itemIds": [
+            "Payment"
+          ]
+        }
+      ],
+      "unresolvedTemplateKeyCount": 4,
+      "unresolvedTemplateKeys": [
+        "DDD_EVIDENCE_OPERATOR",
+        "DDD_RELEASE_CANDIDATE",
+        "LUMIRA_BASE_URL",
+        "PAYMENT_PUBLIC_BASE_URL"
       ]
     },
     {

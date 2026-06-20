@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-19T18:19:45.629Z",
+  "generatedAt": "2026-06-20T19:42:26.704Z",
   "status": "NOT_READY",
   "recommendation": "NO_GO_STRICT",
   "noAutoWaivers": true,
@@ -9,8 +9,8 @@
     "artifactMissingCount": 1,
     "contentBlockedCount": 0,
     "expectedArtifactCount": 9,
-    "presentArtifactCount": 6,
-    "missingArtifactCount": 3
+    "presentArtifactCount": 7,
+    "missingArtifactCount": 2
   },
   "waves": [
     {
@@ -40,7 +40,8 @@
       "missingArtifacts": [],
       "blockerHints": [],
       "commands": [
-        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs"
+        "DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs",
+        "node bin/ddd-docker-build-evidence.mjs"
       ],
       "exitCriteria": [
         "Clear this batch before running downstream runtime-heavy evidence.",
@@ -110,14 +111,14 @@
         "manifest-missing-lumira-ui-lumira-ui-static-evidence-json"
       ],
       "expectedArtifactCount": 4,
-      "presentArtifactCount": 1,
-      "missingArtifactCount": 3,
+      "presentArtifactCount": 2,
+      "missingArtifactCount": 2,
       "presentArtifacts": [
+        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
         "artifacts/ddd/release/evidence-manifest.json"
       ],
       "missingArtifacts": [
         "artifacts/ddd/lumira-ui/frontend-smoke.json",
-        "artifacts/ddd/lumira-ui/lumira-ui-build-evidence.json",
         "artifacts/ddd/lumira-ui/lumira-ui-static-evidence.json"
       ],
       "blockerHints": [],

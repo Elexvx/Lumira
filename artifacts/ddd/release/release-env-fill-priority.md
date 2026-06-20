@@ -1,14 +1,14 @@
 # DDD Release Env Fill Priority
 
-Generated at: 2026-06-19T18:19:45.629Z
+Generated at: 2026-06-20T19:42:26.704Z
 Status: NOT_READY
-Release gate blockers: 94
+Release gate blockers: 148
 Owners with unresolved keys: 15
 Run now owners: 3
 Waiting owners: 12
 Unique unresolved template env keys: 29
-Unresolved owner assignments: 65
-Filled owner assignments: 64
+Unresolved owner assignments: 63
+Filled owner assignments: 62
 Placeholder owner assignments: 0
 Missing owner assignments: 1
 
@@ -27,6 +27,7 @@ Missing owner assignments: 1
   - `PLAYWRIGHT_BASE_URL` (filled)
 - Rerun after fill:
   - `DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs`
+  - `node bin/ddd-docker-build-evidence.mjs`
   - `node bin/ddd-runtime-readiness-smoke.mjs`
   - `node bin/ddd-release-evidence-orchestrator.mjs`
   - `DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict`
@@ -152,13 +153,11 @@ Missing owner assignments: 1
 ## 8. payment-owner
 
 - Priority: WAITING
-- Unresolved env keys: 6
-- Fill status: filled=6, placeholder=0, missing=0
+- Unresolved env keys: 4
+- Fill status: filled=4, placeholder=0, missing=0
 - Ready batches: none
 - Blocked batches: p1-business-e2e-payment-owner, p1-rollback-payment-owner
 - Fill keys:
-  - `BASE_URL` (filled)
-  - `DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE` (filled)
   - `DDD_EVIDENCE_OPERATOR` (filled)
   - `DDD_RELEASE_CANDIDATE` (filled)
   - `LUMIRA_BASE_URL` (filled)

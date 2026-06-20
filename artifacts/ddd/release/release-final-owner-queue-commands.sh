@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Lumira DDD final owner queue commands.
-# Generated at: 2026-06-19T18:19:45.629Z
+# Generated at: 2026-06-20T19:42:26.704Z
 # Recommendation: NO_GO_STRICT
 # Default mode lists actionable owners. Set DDD_FINAL_OWNER_QUEUE_EXECUTE=1 to run commands.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -159,7 +159,7 @@ if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" != "1" && "${DDD_FINAL_OWNER_QUEUE_DETAI
   echo "Final owner queue:"
   if matches_owner_queue_filter 'release-infra' 'ACTIONABLE'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
-    echo '[ddd-final-owner-queue] order=1 owner=release-infra status=ACTIONABLE ready=2 blocked=1 missingArtifacts=5 contentBlockers=0 first=DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
+    echo '[ddd-final-owner-queue] order=1 owner=release-infra status=ACTIONABLE ready=2 blocked=1 missingArtifacts=5 contentBlockers=0 first=node bin/ddd-release-evidence-orchestrator.mjs'
   fi
   if matches_owner_queue_filter 'lumira-ui' 'ACTIONABLE'; then
     DDD_FINAL_OWNER_QUEUE_MATCHED=1
@@ -232,10 +232,10 @@ if matches_owner_queue_filter 'release-infra' 'ACTIONABLE'; then
   DDD_FINAL_OWNER_QUEUE_MATCHED=1
   echo '[ddd-final-owner-queue] order=1 owner=release-infra status=ACTIONABLE'
   echo "commands:"
-  echo '- DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
-  echo '- DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
-  echo '- node bin/ddd-runtime-readiness-smoke.mjs'
   echo '- node bin/ddd-release-evidence-orchestrator.mjs'
+  echo '- DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
+  echo '- node bin/ddd-docker-build-evidence.mjs'
+  echo '- node bin/ddd-runtime-readiness-smoke.mjs'
   echo '- DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict'
   echo '- node bin/ddd-release-readiness-summary.mjs'
   echo '- DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
@@ -268,10 +268,10 @@ if matches_owner_queue_filter 'release-infra' 'ACTIONABLE'; then
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
     check_owner_queue_env 'BASE_URL' 'DDD_DOCKER_BUILD_STRICT' 'DDD_DOCKER_COMMAND' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DEPLOY_CHECK_BASE_URL' 'FRONTEND_BASE_URL' 'LUMIRA_BASE_URL' 'PLAYWRIGHT_BASE_URL'
   else
-    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '1' '7' 'DDD_RELEASE_OWNER=release-infra DDD_RELEASE_PRIORITY=P0 DDD_RELEASE_LIST_BATCHES=1 bash artifacts/ddd/release/release-execution-commands.sh'
+    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '1' '7' 'node bin/ddd-release-evidence-orchestrator.mjs'
     run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '2' '7' 'DDD_DOCKER_BUILD_STRICT=true node bin/ddd-docker-build-evidence.mjs'
-    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '3' '7' 'node bin/ddd-runtime-readiness-smoke.mjs'
-    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '4' '7' 'node bin/ddd-release-evidence-orchestrator.mjs'
+    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '3' '7' 'node bin/ddd-docker-build-evidence.mjs'
+    run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '4' '7' 'node bin/ddd-runtime-readiness-smoke.mjs'
     run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '5' '7' 'DDD_RELEASE_EVIDENCE_STRICT=true node bin/ddd-release-evidence-orchestrator.mjs --run --strict'
     run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '6' '7' 'node bin/ddd-release-readiness-summary.mjs'
     run_owner_queue_command 'release-infra' '1' 'ACTIONABLE' '7' '7' 'DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh'
@@ -753,8 +753,6 @@ if matches_owner_queue_filter 'payment-owner' 'WAITING'; then
   echo '- node bin/ddd-rollback-drill-evidence.mjs'
   if [[ "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "1" || "${DDD_FINAL_OWNER_QUEUE_DETAIL}" == "true" ]]; then
     echo "envKeys:"
-    echo '- BASE_URL'
-    echo '- DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE'
     echo '- DDD_EVIDENCE_ENVIRONMENT'
     echo '- DDD_EVIDENCE_OPERATOR'
     echo '- DDD_RELEASE_CANDIDATE'
@@ -763,7 +761,6 @@ if matches_owner_queue_filter 'payment-owner' 'WAITING'; then
     echo '- DDD_ROLLBACK_DRILL_FILE'
     echo '- DDD_ROLLBACK_DRILL_HANDOFF_FILE'
     echo '- DDD_ROLLBACK_DRILL_STRICT'
-    echo '- DEPLOY_CHECK_BASE_URL'
     echo '- LUMIRA_BASE_URL'
     echo '- PAYMENT_PUBLIC_BASE_URL'
     echo "missingArtifacts:"
@@ -778,7 +775,7 @@ if matches_owner_queue_filter 'payment-owner' 'WAITING'; then
     echo '- node bin/ddd-release-readiness-summary.mjs'
   fi
   if [[ "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "1" || "${DDD_FINAL_OWNER_QUEUE_CHECK_ENV}" == "true" ]]; then
-    check_owner_queue_env 'BASE_URL' 'DDD_BUSINESS_E2E_DEPLOYMENT_EVIDENCE' 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT' 'DEPLOY_CHECK_BASE_URL' 'LUMIRA_BASE_URL' 'PAYMENT_PUBLIC_BASE_URL'
+    check_owner_queue_env 'DDD_EVIDENCE_ENVIRONMENT' 'DDD_EVIDENCE_OPERATOR' 'DDD_RELEASE_CANDIDATE' 'DDD_ROLLBACK_DRILL_CHECK_ENV' 'DDD_ROLLBACK_DRILL_DEFERRAL_FILE' 'DDD_ROLLBACK_DRILL_FILE' 'DDD_ROLLBACK_DRILL_HANDOFF_FILE' 'DDD_ROLLBACK_DRILL_STRICT' 'LUMIRA_BASE_URL' 'PAYMENT_PUBLIC_BASE_URL'
   else
     if [[ "${DDD_FINAL_OWNER_QUEUE_EXECUTE}" == "1" || "${DDD_FINAL_OWNER_QUEUE_EXECUTE}" == "true" ]]; then
       echo '[ddd-final-owner-queue][blocked] owner=payment-owner status=WAITING; resolve dependencies before executing this owner queue.' >&2
