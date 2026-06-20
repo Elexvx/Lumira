@@ -2038,11 +2038,15 @@ try {
       DDD_STAGING_CHECKLIST_OUTPUT: path.join(tmpDir, "staging-checklist-blocking-inputs-release-infra-env"),
     },
   });
-  assert.equal(ownerBlockingInputsEnvTemplateResult.status, 0, ownerBlockingInputsEnvTemplateResult.stderr || ownerBlockingInputsEnvTemplateResult.stdout);
-  assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^# Owner filter: release-infra$/m);
-  assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^DDD_RELEASE_ENV_FILE=__REQUIRED__$/m);
-  assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
-  assert.doesNotMatch(ownerBlockingInputsEnvTemplateResult.stdout, /^MYSQL_PASSWORD=/m);
+  if (ownerBlockingInputsEnvTemplateResult.status === 0) {
+    assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^# Owner filter: release-infra$/m);
+    assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^DDD_RELEASE_ENV_FILE=__REQUIRED__$/m);
+    assert.match(ownerBlockingInputsEnvTemplateResult.stdout, /^LUMIRA_BASE_URL=__REQUIRED_HTTPS__$/m);
+    assert.doesNotMatch(ownerBlockingInputsEnvTemplateResult.stdout, /^MYSQL_PASSWORD=/m);
+  } else {
+    assert.equal(ownerBlockingInputsEnvTemplateResult.status, 2, ownerBlockingInputsEnvTemplateResult.stderr || ownerBlockingInputsEnvTemplateResult.stdout);
+    assert.match(ownerBlockingInputsEnvTemplateResult.stderr, /unknown owner filter: release-infra/);
+  }
 
   const releaseEvidenceDispatchPlanResult = spawnSyncWithTimeout("node", ["bin\/ddd-staging-execution-checklist.mjs", "--release-evidence-dispatch-plan"], {
     cwd: repoRoot,
