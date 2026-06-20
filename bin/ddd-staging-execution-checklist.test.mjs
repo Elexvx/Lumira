@@ -18,10 +18,17 @@ const handoffBundleDir = path.join(tmpDir, "staging-handoff-bundle");
 const childTimeoutMs = Number(process.env.DDD_STAGING_CHECKLIST_TEST_CHILD_TIMEOUT_MS || 420000);
 
 function spawnSyncWithTimeout(command, args, options = {}) {
+  const env = options.env ? {
+    ...options.env,
+    GITHUB_ACTIONS: "",
+    GITHUB_SHA: "",
+    GITHUB_EVENT_NAME: "",
+  } : options.env;
   const result = spawnSync(command, args, {
     timeout: childTimeoutMs,
     maxBuffer: 16 * 1024 * 1024,
     ...options,
+    env,
   });
   if (result.status === null || result.status === -1 || result.status === 4294967295) {
     console.error(`[spawnSyncWithTimeout] status=${result.status}; signal=${result.signal || "none"}; error=${result.error ? result.error.message : "none"}; command=${command} ${args.join(" ")}`);
