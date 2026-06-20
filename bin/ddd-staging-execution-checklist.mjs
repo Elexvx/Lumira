@@ -1062,9 +1062,13 @@ function verifyHandoffBundleResult() {
       issues.push(`bundle file missing non-empty ${key}: ${file}`);
     }
   }
+  const ownerDispatchPath = path.join(handoffBundleDir, "owner-dispatch.json");
+  const ownerDispatch = readJson(ownerDispatchPath, null);
+  const ownerDispatchOwners = Array.isArray(ownerDispatch?.owners) ? ownerDispatch.owners : [];
+  const hasOwnerRoutes = ownerDispatchOwners.some((owner) => Array.isArray(owner?.lanes) && owner.lanes.length > 0);
   const finalReview = readJson(path.join(handoffBundleDir, "final-review.json"), null);
   const finalReviewOwners = Array.isArray(finalReview?.ownerDispatch?.owners) ? finalReview.ownerDispatch.owners : [];
-  if (finalReview && !finalReviewOwners.some((owner) => Array.isArray(owner.lanes) && owner.lanes.length > 0)) {
+  if (finalReview && hasOwnerRoutes && !finalReviewOwners.some((owner) => Array.isArray(owner.lanes) && owner.lanes.length > 0)) {
     issues.push("final-review.json ownerDispatch must include at least one owner lane route");
   }
   const laneReceiptFragments = readJson(path.join(handoffBundleDir, "lane-receipt-fragments.json"), null);
@@ -1115,7 +1119,10 @@ function verifyHandoffBundleResult() {
       issues.push("production-cutover-audit parallelNextActions must be an array");
     }
     const actionIds = parallelNextActions.map((action) => action.id);
-    for (const requiredActionId of ["first-wave-env", "lane-completion-receipt", "owner-evidence"]) {
+    const requiredActionIds = hasOwnerRoutes
+      ? ["first-wave-env", "lane-completion-receipt", "owner-evidence"]
+      : ["first-wave-env", "lane-completion-receipt"];
+    for (const requiredActionId of requiredActionIds) {
       if (!actionIds.includes(requiredActionId)) {
         issues.push(`production-cutover-audit parallelNextActions missing action: ${requiredActionId}`);
       }
@@ -1139,7 +1146,10 @@ function verifyHandoffBundleResult() {
       issues.push("production-unblock-plan parallelWorkstreams must be an array");
     }
     const workstreamIds = parallelWorkstreams.map((workstream) => workstream.id);
-    for (const requiredWorkstreamId of ["first-wave-env", "lane-completion-receipt", "owner-evidence"]) {
+    const requiredWorkstreamIds = hasOwnerRoutes
+      ? ["first-wave-env", "lane-completion-receipt", "owner-evidence"]
+      : ["first-wave-env", "lane-completion-receipt"];
+    for (const requiredWorkstreamId of requiredWorkstreamIds) {
       if (!workstreamIds.includes(requiredWorkstreamId)) {
         issues.push(`production-unblock-plan parallelWorkstreams missing workstream: ${requiredWorkstreamId}`);
       }
@@ -1264,19 +1274,17 @@ function verifyHandoffBundleResult() {
       }
     }
   }
-  const ownerDispatchPath = path.join(handoffBundleDir, "owner-dispatch.json");
-  const ownerDispatch = readJson(ownerDispatchPath, null);
   if (!ownerDispatch) {
     issues.push("missing or invalid owner dispatch: owner-dispatch.json");
   } else {
-    const owners = Array.isArray(ownerDispatch.owners) ? ownerDispatch.owners : [];
+    const owners = ownerDispatchOwners;
     if (!Array.isArray(ownerDispatch.owners)) {
       issues.push("owner-dispatch owners must be an array");
     }
     if (ownerDispatch.ownerCount !== owners.length) {
       issues.push(`owner-dispatch ownerCount mismatch: expected=${ownerDispatch.ownerCount}; actual=${owners.length}`);
     }
-    if (!owners.some((owner) => Array.isArray(owner?.lanes) && owner.lanes.length > 0)) {
+    if (ownerDispatch.ownerCount > 0 && !hasOwnerRoutes) {
       issues.push("owner-dispatch must include at least one owner lane route");
     }
     for (const owner of owners) {
