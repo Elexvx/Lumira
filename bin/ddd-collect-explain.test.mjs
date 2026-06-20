@@ -12,6 +12,22 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 const collectScript = fs.readFileSync(path.join(repoRoot, "bin", "ddd-collect-explain.mjs"), "utf8");
 const normalizeScript = fs.readFileSync(path.join(repoRoot, "bin", "ddd-normalize-explain-artifacts.mjs"), "utf8");
 
+function testEnv(overrides) {
+  const baseEnv = Object.fromEntries([
+    "PATH",
+    "Path",
+    "HOME",
+    "USERPROFILE",
+    "SystemRoot",
+    "TEMP",
+    "TMP",
+  ].flatMap((key) => process.env[key] ? [[key, process.env[key]]] : []));
+  return {
+    ...baseEnv,
+    ...overrides,
+  };
+}
+
 assert.equal(explainQueries.length, requiredExplainFilesWhenPresent.length);
 
 for (const fileName of requiredExplainFilesWhenPresent) {
@@ -58,18 +74,17 @@ assert(
   "strict collector should reject localhost database evidence",
 );
 
-const strictMissingProvenance = spawnSync("node", ["bin\/ddd-collect-explain.mjs"], {
+const strictMissingProvenance = spawnSync(process.execPath, ["bin\/ddd-collect-explain.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
-  env: {
-    ...process.env,
+  env: testEnv({
     DDD_EXPLAIN_STRICT: "true",
     DDD_EVIDENCE_ENVIRONMENT: "",
     DDD_RELEASE_CANDIDATE: "",
     DDD_EVIDENCE_OPERATOR: "",
     DDD_EXPLAIN_DATABASE: "",
     MYSQL_HOST: "127.0.0.1",
-  },
+  }),
 });
 assert.notEqual(strictMissingProvenance.status, 0);
 assert.match(
@@ -77,18 +92,17 @@ assert.match(
   /strict explain collection requires DDD_EVIDENCE_ENVIRONMENT, DDD_RELEASE_CANDIDATE, DDD_EVIDENCE_OPERATOR, DDD_EXPLAIN_DATABASE/u,
 );
 
-const strictLocalHost = spawnSync("node", ["bin\/ddd-collect-explain.mjs"], {
+const strictLocalHost = spawnSync(process.execPath, ["bin\/ddd-collect-explain.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
-  env: {
-    ...process.env,
+  env: testEnv({
     DDD_EXPLAIN_STRICT: "true",
     DDD_EVIDENCE_ENVIRONMENT: "staging",
     DDD_RELEASE_CANDIDATE: "abc123",
     DDD_EVIDENCE_OPERATOR: "release-bot",
     DDD_EXPLAIN_DATABASE: "lumira",
     MYSQL_HOST: "127.0.0.1",
-  },
+  }),
 });
 assert.notEqual(strictLocalHost.status, 0);
 assert.match(
@@ -113,11 +127,10 @@ console.log(JSON.stringify({
 `);
 fs.chmodSync(fakeMysqlPath, 0o700);
 
-const strictSuccessfulCollection = spawnSync("node", ["bin\/ddd-collect-explain.mjs"], {
+const strictSuccessfulCollection = spawnSync(process.execPath, ["bin\/ddd-collect-explain.mjs"], {
   cwd: repoRoot,
   encoding: "utf8",
-  env: {
-    ...process.env,
+  env: testEnv({
     DDD_EXPLAIN_STRICT: "true",
     DDD_EXPLAIN_DIR: explainOutputDir,
     DDD_EVIDENCE_ENVIRONMENT: "staging-prod-equivalent",
@@ -126,7 +139,7 @@ const strictSuccessfulCollection = spawnSync("node", ["bin\/ddd-collect-explain.
     DDD_EXPLAIN_DATABASE: "lumira",
     MYSQL_HOST: "mysql.staging.internal",
     MYSQL_CLI_NODE_SCRIPT: fakeMysqlPath,
-  },
+  }),
 });
 assert.equal(strictSuccessfulCollection.status, 0, strictSuccessfulCollection.stderr);
 assert.match(strictSuccessfulCollection.stdout, new RegExp(`wrote ${explainQueries.length} explain json file`));
