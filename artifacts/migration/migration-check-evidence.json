@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-06-20T17:16:30Z",
-  "gitCommitSha": "2e8ba9e92116cb9bde18a87080625a412a24f4e9",
+  "gitCommitSha": "510ab1e37c68039df0ec1346b3545470db356cab",
   "status": "PASS",
   "checks": ["fresh migration","upgrade migration","repeat migration","critical tables","critical columns","critical indexes"],
   "counts": {

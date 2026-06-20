@@ -33,7 +33,7 @@
       "eventType": "payment.succeeded",
       "signatureValid": true,
       "processed": true,
-      "processMessage": "支付 webhook 已处理"
+      "processMessage": "支付 webhook 已处�?
     },
     "duplicate": {
       "elapsedMs": 7.05,
@@ -41,7 +41,7 @@
       "eventType": "payment.succeeded",
       "signatureValid": true,
       "processed": true,
-      "processMessage": "支付 webhook 已处理"
+      "processMessage": "支付 webhook 已处�?
     },
     "nonceReplay": {
       "elapsedMs": 10.08,
@@ -78,7 +78,7 @@
         "processed": 1,
         "receivedAt": "2026-06-14T03:03:20",
         "processedAt": "2026-06-14T03:03:20",
-        "processMessage": "支付 webhook 已处理",
+        "processMessage": "支付 webhook 已处�?,
         "signatureValid": 1
       },
       {
