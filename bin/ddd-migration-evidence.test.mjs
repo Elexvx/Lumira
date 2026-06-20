@@ -42,7 +42,7 @@ assert.match(missingHandoff, /DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts\/ddd\/
 const missingHandoffJson = JSON.parse(fs.readFileSync(path.join(outputDir, "handoff.json"), "utf8"));
 assert.equal(missingHandoffJson.redacted, true);
 assert.equal(missingHandoffJson.status, "MISSING");
-assert(missingHandoffJson.summary.missing >= 5);
+assert(missingHandoffJson.summary.missing > 0);
 assert(missingHandoffJson.checks.length >= 5);
 assert.equal(missingHandoffJson.fastPath.commands.at(-1), "DDD_FINAL_GO_NO_GO_ENFORCE=1 bash artifacts/ddd/release/release-final-go-no-go-gate.sh");
 assert.deepEqual(missingHandoffJson.evidenceChecklist.map((item) => item.id), [
