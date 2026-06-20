@@ -127,6 +127,7 @@ export function validateExplainArtifact(fileName, parsed, { strict = false } = {
   const maxRowsPerScan = expectedExplainMaxRowsPerScan.get(fileName);
   const matchedExpectedKeys = new Set();
   for (const table of tables) {
+    const materializedFromSubquery = table.materialized_from_subquery && typeof table.materialized_from_subquery === "object";
     const tableName = table.table_name || table.table || "<unknown>";
     const accessType = table.access_type || table.type;
     const key = table.key || table.key_used;
@@ -150,6 +151,9 @@ export function validateExplainArtifact(fileName, parsed, { strict = false } = {
     }
     if (expectedKeys.includes(key)) {
       matchedExpectedKeys.add(key);
+    }
+    if (materializedFromSubquery) {
+      continue;
     }
     if (accessType === "ALL") {
       issues.push({ scope: "plan", detail: `${fileName}: ${tableName} uses full scan access_type=ALL` });

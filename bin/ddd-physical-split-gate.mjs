@@ -177,6 +177,17 @@ const serviceArtifacts = new Set([
   "system-service",
   "ai-service",
 ]);
+const moduleOwnArtifacts = new Map([
+  ["services/lumira-auth", "auth-service"],
+  ["services/lumira-file", "file-service"],
+  ["services/lumira-quartz", "job-executor"],
+  ["services/lumira-localization", "localization-service"],
+  ["services/lumira-message", "message-service"],
+  ["services/lumira-payment", "payment-service"],
+  ["services/lumira-plugin", "plugin-service"],
+  ["services/lumira-system", "system-service"],
+  ["services/lumira-ai", "ai-service"],
+]);
 
 const failures = [];
 const report = {
@@ -231,7 +242,7 @@ function exists(relativePath) {
 
 function resolveRepoPath(relativePath) {
   const primary = path.join(repoRoot, relativePath);
-  if (fs.existsSync(primary) || !relativePath.startsWith("services/")) {
+  if (fs.existsSync(primary) || !relativePath.replaceAll("\\", "/").startsWith("services/")) {
     return primary;
   }
   return path.join(repoRoot, "lumira-backend", relativePath);
@@ -306,8 +317,10 @@ function hasSpringBootApplication(modulePath) {
 }
 
 function moduleCrossServiceDependencies(modulePath) {
+  const ownArtifact = moduleOwnArtifacts.get(modulePath);
   return pomArtifactIds(modulePath)
     .filter((artifactId) => serviceArtifacts.has(artifactId))
+    .filter((artifactId) => artifactId !== ownArtifact)
     .filter((artifactId) => !allowedServiceDependencies.has(path.basename(modulePath)))
     .filter((artifactId) => artifactId !== path.basename(modulePath));
 }
