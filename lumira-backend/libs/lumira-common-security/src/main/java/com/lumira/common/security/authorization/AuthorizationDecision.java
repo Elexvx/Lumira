@@ -8,15 +8,25 @@ public record AuthorizationDecision(
         String message,
         boolean auditRequired,
         boolean approvalRequired,
+        boolean confirmRequired,
         String policyId,
-        List<String> matchedPolicies
+        List<String> matchedPolicies,
+        String dataScopeSummary
 ) {
     public static AuthorizationDecision allow(String reasonCode, String message) {
-        return new AuthorizationDecision(AuthorizationVerdict.ALLOW, reasonCode, message, false, false, null, List.of(reasonCode));
+        return new AuthorizationDecision(AuthorizationVerdict.ALLOW, reasonCode, message, false, false, false, null, List.of(reasonCode), "tenant");
     }
 
     public static AuthorizationDecision deny(String reasonCode, String message) {
-        return new AuthorizationDecision(AuthorizationVerdict.DENY, reasonCode, message, true, false, null, List.of(reasonCode));
+        return new AuthorizationDecision(AuthorizationVerdict.DENY, reasonCode, message, true, false, false, null, List.of(reasonCode), "none");
+    }
+
+    public static AuthorizationDecision requireConfirm(String reasonCode, String message, List<String> matchedPolicies) {
+        return new AuthorizationDecision(AuthorizationVerdict.REQUIRE_CONFIRM, reasonCode, message, true, false, true, null, matchedPolicies, "tenant");
+    }
+
+    public static AuthorizationDecision requireApproval(String reasonCode, String message, List<String> matchedPolicies) {
+        return new AuthorizationDecision(AuthorizationVerdict.REQUIRE_APPROVAL, reasonCode, message, true, true, false, null, matchedPolicies, "tenant");
     }
 
     public boolean allowed() {

@@ -2,6 +2,9 @@ package com.lumira.saas.modules.ai.app;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.authorization.AgentToolGrantDecision;
+import com.lumira.common.security.authorization.AgentToolGrantEvaluator;
+import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -25,9 +28,11 @@ public interface AiSkillPermissionChecker {
 class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
 
     private final MyBatisQueryOperations jdbcTemplate;
+    private final AgentToolGrantEvaluator agentToolGrantEvaluator;
 
-    DefaultAiSkillPermissionChecker(MyBatisQueryOperations jdbcTemplate) {
+    DefaultAiSkillPermissionChecker(MyBatisQueryOperations jdbcTemplate, AgentToolGrantEvaluator agentToolGrantEvaluator) {
         this.jdbcTemplate = jdbcTemplate;
+        this.agentToolGrantEvaluator = agentToolGrantEvaluator;
     }
 
     @Override
@@ -87,10 +92,91 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
         if (tenantId == null || employeeId == null || employeeId <= 0 || !StringUtils.hasText(toolCode)) {
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool permission context is incomplete");
         }
+        AgentToolGrantDecision grant = agentToolGrantEvaluator.evaluate(new AuthorizationRequest(
+                tenantId,
+                null,
+                com.lumira.common.security.authorization.SubjectRef.digitalEmployee(tenantId, employeeId),
+                null,
+                employeeId,
+                "ai_tool",
+                "execute",
+                permissionKey,
+                toolCode,
+                riskLevel,
+                null,
+                Map.of(),
+                confirmed,
+                false,
+                "AI_AGENT",
+                null,
+                null,
+                null
+        ));
+        if (grant == null || !grant.allowed()) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool grant denied");
+        }
+        if (!List.of("invoke", "execute").contains(normalizePermissionMode(grant.permissionMode()))) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool grant does not allow execution: " + toolCode);
+        }
+        if (riskExceeds(riskLevel, grant.maxRiskLevel())) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool risk exceeds employee grant: " + toolCode);
+        }
+        if (grant.requireConfirm() && !confirmed) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "AI tool requires confirmation: " + toolCode);
+        }
+        if (grant.requireApproval()) {
+            throw new BizException(ErrorCode.FORBIDDEN, "AI tool requires approval: " + toolCode);
+        }
+    }
+
+    private String normalizePermissionMode(Object value) {
+        return value == null ? "" : value.toString().trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean toBoolean(Object value) {
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue;
+        }
+        if (value instanceof Number number) {
+            return number.intValue() != 0;
+        }
+        return value != null && "true".equalsIgnoreCase(value.toString());
+    }
+
+    private boolean riskExceeds(String actualRisk, String maxRisk) {
+        return riskRank(actualRisk) > riskRank(maxRisk);
+    }
+
+    private int riskRank(String risk) {
+        return switch (risk == null ? "LOW" : risk.trim().toUpperCase(Locale.ROOT)) {
+            case "CRITICAL" -> 4;
+            case "HIGH" -> 3;
+            case "MEDIUM" -> 2;
+            default -> 1;
+        };
+    }
+}
+
+@Service
+class DefaultAgentToolGrantEvaluator implements AgentToolGrantEvaluator {
+
+    private final MyBatisQueryOperations jdbcTemplate;
+
+    DefaultAgentToolGrantEvaluator(MyBatisQueryOperations jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
+
+    @Override
+    public AgentToolGrantDecision evaluate(AuthorizationRequest request) {
+        if (request == null || request.tenantId() == null || request.employeeId() == null
+                || request.employeeId() <= 0 || !StringUtils.hasText(request.toolCode())) {
+            return AgentToolGrantDecision.deny("AGENT_CONTEXT_INCOMPLETE");
+        }
         Map<String, Object> grant = jdbcTemplate.queryForList(
                 """
                         select k.skill_code as skillCode, k.skill_name as skillName, k.read_only as readOnly,
                                k.need_confirm as needConfirm, k.enabled as skillEnabled,
+                               coalesce(g.permission_key, ?) as permissionKey,
                                coalesce(g.permission_mode, r.permission_mode, case when k.read_only = 1 then 'VIEW' else 'DENY' end) as permissionMode,
                                coalesce(g.max_risk_level, k.risk_level, 'LOW') as maxRiskLevel,
                                coalesce(g.require_confirm, k.need_confirm, 0) as requireConfirm,
@@ -111,31 +197,30 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
                           and k.skill_code = ?
                         limit 1
                         """,
-                tenantId,
-                employeeId,
-                tenantId,
-                employeeId,
-                toolCode.trim()
+                request.permissionKey(),
+                request.tenantId(),
+                request.employeeId(),
+                request.tenantId(),
+                request.employeeId(),
+                request.toolCode().trim()
         ).stream().findFirst().orElse(null);
         if (grant == null) {
-            throw new BizException(ErrorCode.FORBIDDEN, "AI tool is not registered or not granted: " + toolCode);
+            return AgentToolGrantDecision.deny("AGENT_TOOL_NOT_REGISTERED");
         }
         if (!toBoolean(grant.get("skillEnabled"))) {
-            throw new BizException(ErrorCode.FORBIDDEN, "AI tool is disabled: " + toolCode);
+            return AgentToolGrantDecision.deny("AGENT_TOOL_DISABLED");
         }
         String permissionMode = normalizePermissionMode(grant.get("permissionMode"));
         if (!List.of("invoke", "execute").contains(permissionMode)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "AI tool grant does not allow execution: " + toolCode);
+            return AgentToolGrantDecision.deny("AGENT_GRANT_EXECUTE_DENIED");
         }
-        if (riskExceeds(riskLevel, String.valueOf(grant.getOrDefault("maxRiskLevel", "LOW")))) {
-            throw new BizException(ErrorCode.FORBIDDEN, "AI tool risk exceeds employee grant: " + toolCode);
+        String maxRiskLevel = String.valueOf(grant.getOrDefault("maxRiskLevel", "LOW"));
+        if (riskExceeds(request.riskLevel(), maxRiskLevel)) {
+            return AgentToolGrantDecision.deny("AGENT_RISK_EXCEEDS_GRANT");
         }
-        if (toBoolean(grant.get("requireConfirm")) && !confirmed) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "AI tool requires confirmation: " + toolCode);
-        }
-        if (toBoolean(grant.get("requireApproval"))) {
-            throw new BizException(ErrorCode.FORBIDDEN, "AI tool requires approval: " + toolCode);
-        }
+        return AgentToolGrantDecision.allow(permissionMode, String.valueOf(grant.getOrDefault("permissionKey", "")),
+                maxRiskLevel, toBoolean(grant.get("requireConfirm")), toBoolean(grant.get("requireApproval")),
+                List.of("AGENT_TOOL_GRANT_MATCH"));
     }
 
     private String normalizePermissionMode(Object value) {

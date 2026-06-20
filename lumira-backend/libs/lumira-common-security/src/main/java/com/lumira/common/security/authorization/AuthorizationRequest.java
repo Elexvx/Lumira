@@ -48,4 +48,29 @@ public record AuthorizationRequest(
                 currentUser
         );
     }
+
+    public static AuthorizationRequest aiTool(CurrentUser currentUser, Long employeeId, String toolCode,
+                                              String permissionKey, String riskLevel, boolean confirmed,
+                                              boolean approvalGranted, Map<String, Object> arguments) {
+        Long tenantId = currentUser == null ? null : currentUser.getCurrentTenantId();
+        Long userId = currentUser == null ? null : currentUser.getUserId();
+        return new AuthorizationRequest(tenantId, SubjectRef.humanUser(tenantId, userId),
+                SubjectRef.digitalEmployee(tenantId, employeeId), userId, employeeId, "ai_tool", "execute",
+                permissionKey, toolCode, riskLevel, null, arguments == null ? Map.of() : Map.copyOf(arguments),
+                confirmed, approvalGranted, "AI_AGENT", null, null, currentUser);
+    }
+
+    public static AuthorizationRequest plugin(CurrentUser currentUser, String permissionKey, String pluginCode) {
+        Long tenantId = currentUser == null ? null : currentUser.getCurrentTenantId();
+        Long userId = currentUser == null ? null : currentUser.getUserId();
+        return new AuthorizationRequest(tenantId, SubjectRef.humanUser(tenantId, userId), null, userId, null,
+                "plugin", "invoke", permissionKey, pluginCode, "LOW", null, Map.of(), false, false,
+                "PLUGIN", null, null, currentUser);
+    }
+
+    public static AuthorizationRequest systemJob(Long tenantId, String resourceCode, String actionCode, String requestId) {
+        return new AuthorizationRequest(tenantId, null, null, null, null, resourceCode, actionCode,
+                null, null, "LOW", null, Map.of("systemPrincipal", Boolean.TRUE), false, true,
+                "SYSTEM_JOB", requestId, null, null);
+    }
 }

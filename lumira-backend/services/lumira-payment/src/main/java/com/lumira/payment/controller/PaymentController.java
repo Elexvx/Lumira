@@ -144,7 +144,6 @@ public class PaymentController {
         Map<String, String> headers = extractHeaders(request);
         return ApiResponse.success(
                 paymentWebhookService.handleWebhook(
-                        paymentManagementAppService.resolveWebhookTenantId(providerCode, payload, headers),
                         providerCode,
                         payload,
                         headers

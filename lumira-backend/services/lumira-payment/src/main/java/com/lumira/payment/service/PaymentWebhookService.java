@@ -50,6 +50,7 @@ public class PaymentWebhookService {
     private final PaymentOutboxService outboxService;
     private final DomainEventPublisher domainEventPublisher;
     private final SecurityAuditEventService securityAuditEventService;
+    private final PaymentWebhookTenantResolver tenantResolver;
 
     @Autowired
     public PaymentWebhookService(
@@ -59,7 +60,8 @@ public class PaymentWebhookService {
             PaymentProviderCatalog providerCatalog,
             PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            SecurityAuditEventService securityAuditEventService
+            SecurityAuditEventService securityAuditEventService,
+            PaymentWebhookTenantResolver tenantResolver
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -68,6 +70,7 @@ public class PaymentWebhookService {
         this.outboxService = outboxService;
         this.domainEventPublisher = domainEventPublisher;
         this.securityAuditEventService = securityAuditEventService;
+        this.tenantResolver = tenantResolver;
     }
 
     public PaymentWebhookService(
@@ -78,9 +81,19 @@ public class PaymentWebhookService {
             PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher
     ) {
-        this(jdbcTemplate, objectMapper, paymentManagementAppService, providerCatalog, outboxService, domainEventPublisher, null);
+        this(jdbcTemplate, objectMapper, paymentManagementAppService, providerCatalog, outboxService, domainEventPublisher, null, null);
     }
 
+    @Transactional
+    public PaymentWebhookEventDTO handleWebhook(String providerCode, String payload, Map<String, String> headers) {
+        if (tenantResolver == null) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook tenant cannot be resolved", "Webhook request is invalid");
+        }
+        Long tenantId = tenantResolver.resolveTenantId(providerCode, payload, headers);
+        return handleWebhook(tenantId, providerCode, payload, headers);
+    }
+
+    @Deprecated
     @Transactional
     public PaymentWebhookEventDTO handleWebhook(Long tenantId, String providerCode, String payload, Map<String, String> headers) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);

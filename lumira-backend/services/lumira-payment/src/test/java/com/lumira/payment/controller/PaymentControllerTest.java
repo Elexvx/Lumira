@@ -16,7 +16,10 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -49,14 +52,13 @@ class PaymentControllerTest {
                 LocalDateTime.now(),
                 LocalDateTime.now()
         );
-        when(paymentManagementAppService.resolveWebhookTenantId("stripe", "{}", headers)).thenReturn(2002L);
-        when(paymentWebhookService.handleWebhook(2002L, "stripe", "{}", headers)).thenReturn(event);
+        when(paymentWebhookService.handleWebhook("stripe", "{}", headers)).thenReturn(event);
 
         var response = controller.webhook("stripe", "{}", request);
 
         assertThat(response.getData()).isSameAs(event);
-        verify(paymentManagementAppService).resolveWebhookTenantId("stripe", "{}", headers);
-        verify(paymentWebhookService).handleWebhook(2002L, "stripe", "{}", headers);
+        verify(paymentManagementAppService, never()).resolveWebhookTenantId(anyString(), anyString(), anyMap());
+        verify(paymentWebhookService).handleWebhook("stripe", "{}", headers);
     }
 
     private HttpServletRequest requestWithHeaders(Map<String, String> headers) {

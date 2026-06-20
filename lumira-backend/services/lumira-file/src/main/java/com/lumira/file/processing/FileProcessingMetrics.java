@@ -13,6 +13,7 @@ public class FileProcessingMetrics {
     public static final String TASK_DURATION = "file.processing_task.duration";
     public static final String TASK_TOTAL = "file.processing_task.total";
     public static final String TASK_FAILURE_TOTAL = "file.processing_task.failure.total";
+    public static final String CLAIM_MISMATCH_TOTAL = "file.processing_task.claim_mismatch.total";
     private static final String TAG_TASK_TYPE = "task_type";
     private static final String TAG_RESULT = "result";
     private static final String TAG_ERROR = "error";
@@ -60,6 +61,15 @@ public class FileProcessingMetrics {
                 .description("File processing task failure total.")
                 .tag(TAG_TASK_TYPE, normalizedTaskType)
                 .tag(TAG_ERROR, errorType)
+                .register(meterRegistry)
+                .increment();
+    }
+
+    public void recordClaimMismatch(String taskType, String operation) {
+        Counter.builder(CLAIM_MISMATCH_TOTAL)
+                .description("File processing task claim token mismatch total.")
+                .tag(TAG_TASK_TYPE, normalizeTaskType(taskType))
+                .tag("operation", StringUtils.hasText(operation) ? operation : "unknown")
                 .register(meterRegistry)
                 .increment();
     }

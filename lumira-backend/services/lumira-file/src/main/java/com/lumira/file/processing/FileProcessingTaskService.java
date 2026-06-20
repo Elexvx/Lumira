@@ -13,11 +13,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
 public class FileProcessingTaskService {
+    private static final Logger log = LoggerFactory.getLogger(FileProcessingTaskService.class);
 
     public static final String TASK_SECURITY_SCAN = "SECURITY_SCAN";
     public static final String TASK_THUMBNAIL = "THUMBNAIL";
@@ -173,12 +176,12 @@ public class FileProcessingTaskService {
             return;
         }
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update file_processing_task
                         set status = ?, completed_at = ?, last_error = null, next_retry_at = null,
                             claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
-                        where id = ? and claim_token = ? and deleted = 0
+                        where id = ? and claim_token = ? and deleted = 0 and status = 'PROCESSING'
                         """,
                 STATUS_SUCCEEDED,
                 now,
@@ -187,6 +190,7 @@ public class FileProcessingTaskService {
                 task.id(),
                 task.claimToken()
         );
+        recordClaimMismatchIfNeeded(updated, task, "markSucceeded");
     }
 
     public void markSucceeded(Long taskId, Long userId) {
@@ -198,12 +202,12 @@ public class FileProcessingTaskService {
             return;
         }
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update file_processing_task
                         set status = ?, completed_at = ?, last_error = null, next_retry_at = null,
                             claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
-                        where id = ? and claim_token = ? and deleted = 0
+                        where id = ? and claim_token = ? and deleted = 0 and status = 'PROCESSING'
                         """,
                 STATUS_SUCCEEDED,
                 now,
@@ -212,6 +216,10 @@ public class FileProcessingTaskService {
                 taskId,
                 claimToken
         );
+        if (updated == 0) {
+            log.warn("File processing task markSucceeded claim mismatch taskId={}", taskId);
+            processingMetrics.recordClaimMismatch("UNKNOWN", "markSucceeded");
+        }
     }
 
     public void markFailed(ProcessingTask task, String errorMessage) {
@@ -222,12 +230,12 @@ public class FileProcessingTaskService {
         int nextRetryCount = retryCount + 1;
         boolean deadLetter = nextRetryCount >= MAX_RETRY_COUNT;
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update file_processing_task
                         set status = ?, retry_count = ?, next_retry_at = ?, last_error = ?,
                             claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
-                        where id = ? and claim_token = ? and deleted = 0
+                        where id = ? and claim_token = ? and deleted = 0 and status = 'PROCESSING'
                         """,
                 deadLetter ? STATUS_DEAD_LETTER : STATUS_FAILED,
                 nextRetryCount,
@@ -238,6 +246,16 @@ public class FileProcessingTaskService {
                 task.id(),
                 task.claimToken()
         );
+        recordClaimMismatchIfNeeded(updated, task, "markFailed");
+    }
+
+    private void recordClaimMismatchIfNeeded(int updated, ProcessingTask task, String operation) {
+        if (updated > 0) {
+            return;
+        }
+        log.warn("File processing task claim mismatch operation={} taskId={} tenantId={} taskType={}",
+                operation, task.id(), task.tenantId(), task.taskType());
+        processingMetrics.recordClaimMismatch(task.taskType(), operation);
     }
 
     private void process(ProcessingTask task) {

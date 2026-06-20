@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-06-20T22:54:02+08:00",
+  "sourceEnvironment": "local-windows-powershell",
+  "releaseCandidate": "main-security-hardening-2026-06-20",
+  "evidenceOperator": "Codex",
+  "gitCommitSha": "485a78ca3b03cd9fb693d5c4b9ef497caf9862de",
+  "command": "./mvnw -pl libs/lumira-common-security,services/lumira-auth,services/lumira-system,services/lumira-file,services/lumira-payment -am test",
+  "exitCode": 0,
+  "status": "passed",
+  "testSummary": {
+    "reactor": "BUILD SUCCESS",
+    "modules": [
+      "common-security",
+      "auth-service",
+      "system-service",
+      "file-service",
+      "payment-service"
+    ],
+    "notableSuites": [
+      "DefaultAuthorizationServiceTest: 7 tests passed",
+      "FileProcessingTaskServiceTest: 13 tests passed",
+      "PlatformEventOutboxRelayServiceTest: 5 tests passed",
+      "PaymentV2ControllerTest: 7 tests passed",
+      "PaymentWebhookServiceTest: 3 tests passed"
+    ]
+  }
+}

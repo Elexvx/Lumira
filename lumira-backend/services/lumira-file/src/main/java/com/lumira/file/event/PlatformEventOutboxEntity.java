@@ -24,6 +24,8 @@ public class PlatformEventOutboxEntity {
     private String lastError;
     private String traceId;
     private String requestId;
+    private String claimToken;
+    private LocalDateTime claimExpiresAt;
     private Long createdBy;
     private LocalDateTime createdAt;
     private Long updatedBy;
@@ -58,6 +60,10 @@ public class PlatformEventOutboxEntity {
     public void setTraceId(String traceId) { this.traceId = traceId; }
     public String getRequestId() { return requestId; }
     public void setRequestId(String requestId) { this.requestId = requestId; }
+    public String getClaimToken() { return claimToken; }
+    public void setClaimToken(String claimToken) { this.claimToken = claimToken; }
+    public LocalDateTime getClaimExpiresAt() { return claimExpiresAt; }
+    public void setClaimExpiresAt(LocalDateTime claimExpiresAt) { this.claimExpiresAt = claimExpiresAt; }
     public Long getCreatedBy() { return createdBy; }
     public void setCreatedBy(Long createdBy) { this.createdBy = createdBy; }
     public LocalDateTime getCreatedAt() { return createdAt; }

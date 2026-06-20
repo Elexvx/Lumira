@@ -35,6 +35,8 @@ class PlatformEventOutboxRelayServiceTest {
                 any(),
                 any(),
                 any(),
+                any(),
+                any(),
                 any()
         )).thenReturn(List.of(row));
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
@@ -58,6 +60,8 @@ class PlatformEventOutboxRelayServiceTest {
                 eq(PlatformEventOutboxService.STATUS_RECORDED),
                 eq(PlatformEventOutboxService.STATUS_FAILED),
                 any(LocalDateTime.class),
+                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                any(LocalDateTime.class),
                 eq(200)
         );
     }
@@ -73,6 +77,8 @@ class PlatformEventOutboxRelayServiceTest {
                 any(),
                 any(),
                 any(),
+                any(),
+                any(),
                 any()
         );
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
@@ -84,22 +90,28 @@ class PlatformEventOutboxRelayServiceTest {
         assertThat(delivered).isEqualTo(1);
         verify(dispatcher).dispatch(row);
         verify(jdbcTemplate).update(
-                contains("and dispatch_status = ?"),
+                contains("set dispatch_status = ?, claim_token = ?"),
                 eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                anyString(),
+                any(LocalDateTime.class),
                 any(),
                 eq(9L),
                 eq(10L),
                 eq(FilePlatformEventTypes.SOURCE_FILE),
-                eq(PlatformEventOutboxService.STATUS_RECORDED)
+                eq(PlatformEventOutboxService.STATUS_RECORDED),
+                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                any(LocalDateTime.class)
         );
         verify(jdbcTemplate).update(
-                contains("last_error = null"),
+                contains("claim_token = ?"),
                 eq(PlatformEventOutboxService.STATUS_DELIVERED),
                 any(),
                 any(),
                 eq(9L),
                 eq(10L),
-                eq(FilePlatformEventTypes.SOURCE_FILE)
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                anyString()
         );
     }
 
@@ -114,6 +126,8 @@ class PlatformEventOutboxRelayServiceTest {
                 any(),
                 any(),
                 any(),
+                any(),
+                any(),
                 any()
         );
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
@@ -123,16 +137,20 @@ class PlatformEventOutboxRelayServiceTest {
 
         assertThat(delivered).isZero();
         verify(jdbcTemplate).update(
-                contains("and dispatch_status = ?"),
+                contains("set dispatch_status = ?, claim_token = ?"),
                 eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                anyString(),
+                any(LocalDateTime.class),
                 any(),
                 eq(9L),
                 eq(11L),
                 eq(FilePlatformEventTypes.SOURCE_FILE),
-                eq(PlatformEventOutboxService.STATUS_FAILED)
+                eq(PlatformEventOutboxService.STATUS_FAILED),
+                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                any(LocalDateTime.class)
         );
         verify(jdbcTemplate).update(
-                contains("retry_count = ?"),
+                contains("claim_token = ?"),
                 eq(PlatformEventOutboxService.STATUS_DEAD_LETTER),
                 eq(8),
                 eq(null),
@@ -140,7 +158,9 @@ class PlatformEventOutboxRelayServiceTest {
                 any(),
                 eq(9L),
                 eq(11L),
-                eq(FilePlatformEventTypes.SOURCE_FILE)
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                anyString()
         );
     }
 
@@ -157,6 +177,8 @@ class PlatformEventOutboxRelayServiceTest {
         doReturn(List.of(outboxRow(99L, PlatformEventOutboxService.STATUS_RECORDED, 0), outboxRow(12L, PlatformEventOutboxService.STATUS_RECORDED, 0))).when(jdbcTemplate).query(
                 anyString(),
                 any(BeanPropertyRowMapper.class),
+                any(),
+                any(),
                 any(),
                 any(),
                 any(),
@@ -189,6 +211,8 @@ class PlatformEventOutboxRelayServiceTest {
         when(jdbcTemplate.query(
                 anyString(),
                 any(BeanPropertyRowMapper.class),
+                any(),
+                any(),
                 any(),
                 any(),
                 any(),

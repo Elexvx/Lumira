@@ -27,6 +27,8 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -147,12 +149,7 @@ class PaymentV2ControllerTest {
                 "X-Nonce", "nonce-1"
         ));
         PaymentWebhookEventDTO event = new PaymentWebhookEventDTO("stripe", "evt-1", "payment.succeeded", true, true, "ok", LocalDateTime.now(), LocalDateTime.now());
-        when(paymentManagementAppService.resolveWebhookTenantId("stripe", "{\"eventId\":\"evt-1\"}", Map.of(
-                "X-Tenant-Id", "2002",
-                "X-Signature", "sig",
-                "X-Nonce", "nonce-1"
-        ))).thenReturn(2002L);
-        when(paymentWebhookService.handleWebhook(2002L, "stripe", "{\"eventId\":\"evt-1\"}", Map.of(
+        when(paymentWebhookService.handleWebhook("stripe", "{\"eventId\":\"evt-1\"}", Map.of(
                 "X-Tenant-Id", "2002",
                 "X-Signature", "sig",
                 "X-Nonce", "nonce-1"
@@ -161,12 +158,8 @@ class PaymentV2ControllerTest {
         var response = controller.webhook("stripe", "{\"eventId\":\"evt-1\"}", request);
 
         assertThat(response.getData()).isSameAs(event);
-        verify(paymentManagementAppService).resolveWebhookTenantId("stripe", "{\"eventId\":\"evt-1\"}", Map.of(
-                "X-Tenant-Id", "2002",
-                "X-Signature", "sig",
-                "X-Nonce", "nonce-1"
-        ));
-        verify(paymentWebhookService).handleWebhook(2002L, "stripe", "{\"eventId\":\"evt-1\"}", Map.of(
+        verify(paymentManagementAppService, never()).resolveWebhookTenantId(anyString(), anyString(), anyMap());
+        verify(paymentWebhookService).handleWebhook("stripe", "{\"eventId\":\"evt-1\"}", Map.of(
                 "X-Tenant-Id", "2002",
                 "X-Signature", "sig",
                 "X-Nonce", "nonce-1"
@@ -177,14 +170,13 @@ class PaymentV2ControllerTest {
     void webhook_shouldNotUseTenantHeaderAsTrustSource() {
         HttpServletRequest request = requestWithHeaders(Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"));
         PaymentWebhookEventDTO event = new PaymentWebhookEventDTO("paypal", "evt-2", "payment", false, false, "签名校验失败", LocalDateTime.now(), null);
-        when(paymentManagementAppService.resolveWebhookTenantId("paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"))).thenReturn(2002L);
-        when(paymentWebhookService.handleWebhook(2002L, "paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"))).thenReturn(event);
+        when(paymentWebhookService.handleWebhook("paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"))).thenReturn(event);
 
         var response = controller.webhook("paypal", "{}", request);
 
         assertThat(response.getData()).isSameAs(event);
-        verify(paymentManagementAppService).resolveWebhookTenantId("paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"));
-        verify(paymentWebhookService).handleWebhook(2002L, "paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"));
+        verify(paymentManagementAppService, never()).resolveWebhookTenantId(anyString(), anyString(), anyMap());
+        verify(paymentWebhookService).handleWebhook("paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"));
     }
 
     private CurrentUser currentUser(Long userId, String username, String permission) {

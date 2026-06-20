@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-06-20T22:54:02+08:00",
+  "sourceEnvironment": "local-windows-powershell",
+  "releaseCandidate": "main-security-hardening-2026-06-20",
+  "evidenceOperator": "Codex",
+  "gitCommitSha": "485a78ca3b03cd9fb693d5c4b9ef497caf9862de",
+  "status": "passed",
+  "command": "./mvnw -pl libs/lumira-common-security,services/lumira-auth,services/lumira-system,services/lumira-file,services/lumira-payment -am test && pnpm build && pnpm test",
+  "exitCode": 0,
+  "testSummary": {
+    "backend": "specified backend reactor completed with BUILD SUCCESS",
+    "frontendBuild": "pnpm build completed successfully",
+    "frontendTests": "vitest run: 12 files passed, 37 tests passed"
+  },
+  "securitySummary": {
+    "authorization": "DefaultAuthorizationService now validates channel, tenant, user permission, agent grant intersection, risk confirmation and approval, plugin permission and system principal.",
+    "paymentWebhook": "PaymentController and PaymentV2Controller delegate public webhook tenant resolution to PaymentWebhookService and PaymentWebhookTenantResolver; X-Tenant-Id is not trusted as the source of tenant truth.",
+    "frontendTokens": "accessToken remains memory-only; refresh uses HttpOnly cookie flow with credentials include; CSRF header is read from csrf_token cookie.",
+    "storageSpaceTest": "failure responses use a fixed public error message and security audit records reason code without payload secrets.",
+    "processingTasks": "markSucceeded and markFailed require matching claim_token and PROCESSING status, and record claim mismatch metrics.",
+    "fileOutbox": "file-service platform_event_outbox now has claim_token and claim_expires_at migration; delivered/failed updates require DISPATCHING plus matching claim_token."
+  }
+}

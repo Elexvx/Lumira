@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-06-20T21:12:34+08:00",
+  "sourceEnvironment": "local-windows-powershell",
+  "releaseCandidate": "main-security-hardening-2026-06-20",
+  "evidenceOperator": "Codex",
+  "gitCommitSha": "485a78ca3b03cd9fb693d5c4b9ef497caf9862de",
+  "commands": [
+    {
+      "command": "pnpm install --frozen-lockfile",
+      "exitCode": 0,
+      "status": "passed",
+      "testSummary": "lockfile up to date"
+    },
+    {
+      "command": "pnpm build",
+      "exitCode": 0,
+      "status": "passed",
+      "testSummary": "max setup && max build && adapt-cdn-assets completed; dist generated"
+    },
+    {
+      "command": "pnpm test",
+      "exitCode": 0,
+      "status": "passed",
+      "testSummary": "vitest run: 12 files passed, 37 tests passed"
+    }
+  ],
+  "status": "passed",
+  "testSummary": {
+    "build": "passed",
+    "tests": "12 files passed, 37 tests passed"
+  }
+}

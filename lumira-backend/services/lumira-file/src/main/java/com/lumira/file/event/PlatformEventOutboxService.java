@@ -15,6 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service("filePlatformEventOutboxService")
 public class PlatformEventOutboxService {
@@ -132,6 +133,7 @@ public class PlatformEventOutboxService {
                                dispatch_status as dispatchStatus, retry_count as retryCount,
                                next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
                                trace_id as traceId, request_id as requestId, created_by as createdBy,
+                               claim_token as claimToken, claim_expires_at as claimExpiresAt,
                                created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
                         from platform_event_outbox force index (idx_platform_event_outbox_owner_queue)
                         where deleted = 0
@@ -139,6 +141,7 @@ public class PlatformEventOutboxService {
                           and (
                                 dispatch_status = ?
                                 or (dispatch_status = ? and (next_retry_at is null or next_retry_at <= ?))
+                                or (dispatch_status = ? and claim_expires_at is not null and claim_expires_at <= ?)
                           )
                         order by created_at asc, id asc
                         limit ?
@@ -147,6 +150,8 @@ public class PlatformEventOutboxService {
                 FilePlatformEventTypes.SOURCE_FILE,
                 STATUS_RECORDED,
                 STATUS_FAILED,
+                now,
+                STATUS_DISPATCHING,
                 now,
                 normalizedLimit
         );
@@ -161,6 +166,7 @@ public class PlatformEventOutboxService {
                                    dispatch_status as dispatchStatus, retry_count as retryCount,
                                    next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
                                    trace_id as traceId, request_id as requestId, created_by as createdBy,
+                                   claim_token as claimToken, claim_expires_at as claimExpiresAt,
                                    created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
                             from platform_event_outbox
                             where id = ? and deleted = 0 and source_type = ?
@@ -176,37 +182,55 @@ public class PlatformEventOutboxService {
     }
 
     private boolean claimForDispatch(PlatformEventOutboxEntity row) {
+        String claimToken = UUID.randomUUID().toString();
+        LocalDateTime now = LocalDateTime.now();
         int updated = jdbcTemplate.update(
                 """
                         update platform_event_outbox
-                        set dispatch_status = ?, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0 and source_type = ? and dispatch_status = ?
+                        set dispatch_status = ?, claim_token = ?, claim_expires_at = ?, updated_at = ?, updated_by = ?
+                        where id = ? and deleted = 0 and source_type = ?
+                          and (
+                                dispatch_status = ?
+                                or (dispatch_status = ? and claim_expires_at is not null and claim_expires_at <= ?)
+                          )
                         """,
                 STATUS_DISPATCHING,
-                LocalDateTime.now(),
+                claimToken,
+                now.plusMinutes(15),
+                now,
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
                 row.getId(),
                 FilePlatformEventTypes.SOURCE_FILE,
-                row.getDispatchStatus()
+                row.getDispatchStatus(),
+                STATUS_DISPATCHING,
+                now
         );
+        if (updated > 0) {
+            row.setClaimToken(claimToken);
+            row.setClaimExpiresAt(now.plusMinutes(15));
+            row.setDispatchStatus(STATUS_DISPATCHING);
+        }
         return updated > 0;
     }
 
     private void markDelivered(PlatformEventOutboxEntity row) {
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update platform_event_outbox
                         set dispatch_status = ?, delivered_at = ?, next_retry_at = null, last_error = null,
-                            updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0 and source_type = ?
+                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
+                        where id = ? and deleted = 0 and source_type = ? and dispatch_status = ? and claim_token = ?
                         """,
                 STATUS_DELIVERED,
                 LocalDateTime.now(),
                 LocalDateTime.now(),
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
                 row.getId(),
-                FilePlatformEventTypes.SOURCE_FILE
+                FilePlatformEventTypes.SOURCE_FILE,
+                STATUS_DISPATCHING,
+                row.getClaimToken()
         );
+        logClaimMismatchIfNeeded(updated, row, "markDelivered");
     }
 
     private void markFailed(PlatformEventOutboxEntity row, RuntimeException exception) {
@@ -214,12 +238,12 @@ public class PlatformEventOutboxService {
         int nextRetryCount = retryCount + 1;
         boolean deadLetter = nextRetryCount >= MAX_RETRY_COUNT;
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update platform_event_outbox
                         set dispatch_status = ?, retry_count = ?, next_retry_at = ?, last_error = ?,
-                            updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0 and source_type = ?
+                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
+                        where id = ? and deleted = 0 and source_type = ? and dispatch_status = ? and claim_token = ?
                         """,
                 deadLetter ? STATUS_DEAD_LETTER : STATUS_FAILED,
                 nextRetryCount,
@@ -228,8 +252,11 @@ public class PlatformEventOutboxService {
                 now,
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
                 row.getId(),
-                FilePlatformEventTypes.SOURCE_FILE
+                FilePlatformEventTypes.SOURCE_FILE,
+                STATUS_DISPATCHING,
+                row.getClaimToken()
         );
+        logClaimMismatchIfNeeded(updated, row, "markFailed");
     }
 
     private void resetForReplay(PlatformEventOutboxEntity row) {
@@ -237,7 +264,7 @@ public class PlatformEventOutboxService {
                 """
                         update platform_event_outbox
                         set dispatch_status = ?, retry_count = 0, next_retry_at = null, last_error = null,
-                            updated_at = ?, updated_by = ?
+                            claim_token = null, claim_expires_at = null, updated_at = ?, updated_by = ?
                         where id = ? and deleted = 0 and source_type = ?
                         """,
                 STATUS_RECORDED,
@@ -278,6 +305,13 @@ public class PlatformEventOutboxService {
             return null;
         }
         return message.length() <= MAX_ERROR_LENGTH ? message : message.substring(0, MAX_ERROR_LENGTH);
+    }
+
+    private void logClaimMismatchIfNeeded(int updated, PlatformEventOutboxEntity row, String operation) {
+        if (updated > 0) {
+            return;
+        }
+        logger.warn("File outbox claim mismatch operation={} id={} eventType={}", operation, row.getId(), row.getEventType());
     }
 
     private String serialize(Object payload) {
