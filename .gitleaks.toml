@@ -1,0 +1,7 @@
+[allowlist]
+description = "Allow documented placeholders and test-only strong-secret fixtures."
+paths = [
+  '''deploy/\.env\.example$''',
+  '''doc/36-ddd-release-env-template\.env$''',
+  '''lumira-backend/libs/lumira-common-security/src/test/java/com/lumira/common/security/ProductionSecurityPropertiesValidatorTest\.java$'''
+]
