@@ -277,7 +277,9 @@ public class AuthAppService {
                 throw loginFailed();
             }
             boolean requiresPasswordChange = requiresInitialAdminPasswordChange(account, user, loginPassword);
-            rejectUnsafeDefaultAdminLogin(account, user, loginPassword, loginIp, userAgent);
+            if (!requiresPasswordChange) {
+                rejectUnsafeDefaultAdminLogin(account, user, loginPassword, loginIp, userAgent);
+            }
 
             Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
             List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = systemInternalApi.listLoginSecondFactorOptions(currentTenantId, user.userId());
