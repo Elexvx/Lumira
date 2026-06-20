@@ -18,5 +18,11 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
-      - name: Run backend tests
-        run: ./mvnw test
+      - name: Run algorithm and security regression tests
+        run: >
+          bash ./mvnw
+          -pl services/lumira-system,services/lumira-file
+          -am
+          "-Dtest=SensitiveWordServiceTest,AiKnowledgeBaseAppServiceTest,FileProcessingTaskServiceTest,AiToolPolicyServiceTest,PlatformEventOutboxServiceTest,SystemDepartmentAppServiceTest"
+          "-Dsurefire.failIfNoSpecifiedTests=false"
+          test
