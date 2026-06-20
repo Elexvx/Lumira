@@ -365,12 +365,13 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     private boolean visible(CurrentUser currentUser, Long employeeId, NativeTool tool) {
         if (employeeId != null && employeeId > 0) {
-            AuthorizationDecision decision = authorizationService.evaluate(AuthorizationRequest.aiToolView(
+            AuthorizationDecision decision = authorizationService.evaluate(AuthorizationRequest.aiToolAccess(
                     currentUser,
                     employeeId,
                     tool.code(),
                     tool.requiredPermission(),
                     tool.riskLevel(),
+                    tool.readOnly() ? "view" : "execute",
                     Map.of("readOnly", tool.readOnly(), "permissionMode", tool.readOnly() ? "VIEW" : "EXECUTE")
             ));
             return decision.allowed() || decision.verdict() == AuthorizationVerdict.REQUIRE_CONFIRM;

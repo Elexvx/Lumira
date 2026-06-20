@@ -62,10 +62,16 @@ public record AuthorizationRequest(
 
     public static AuthorizationRequest aiToolView(CurrentUser currentUser, Long employeeId, String toolCode,
                                                   String permissionKey, String riskLevel, Map<String, Object> arguments) {
+        return aiToolAccess(currentUser, employeeId, toolCode, permissionKey, riskLevel, "view", arguments);
+    }
+
+    public static AuthorizationRequest aiToolAccess(CurrentUser currentUser, Long employeeId, String toolCode,
+                                                    String permissionKey, String riskLevel, String actionCode,
+                                                    Map<String, Object> arguments) {
         Long tenantId = currentUser == null ? null : currentUser.getCurrentTenantId();
         Long userId = currentUser == null ? null : currentUser.getUserId();
         return new AuthorizationRequest(tenantId, SubjectRef.humanUser(tenantId, userId),
-                SubjectRef.digitalEmployee(tenantId, employeeId), userId, employeeId, "ai_tool", "view",
+                SubjectRef.digitalEmployee(tenantId, employeeId), userId, employeeId, "ai_tool", actionCode,
                 permissionKey, toolCode, riskLevel, null, arguments == null ? Map.of() : Map.copyOf(arguments),
                 false, false, "AI_AGENT", null, null, currentUser);
     }

@@ -1,32 +1,32 @@
-{
-  "generatedAt": "2026-06-20T21:12:34+08:00",
-  "sourceEnvironment": "local-windows-powershell",
-  "releaseCandidate": "main-security-hardening-2026-06-20",
-  "evidenceOperator": "Codex",
-  "gitCommitSha": "9ef059a68a9d9e5eb8ddcc2f3f8b169b0e73764f",
-  "commands": [
-    {
-      "command": "pnpm install --frozen-lockfile",
-      "exitCode": 0,
-      "status": "passed",
-      "testSummary": "lockfile up to date"
-    },
-    {
-      "command": "pnpm build",
-      "exitCode": 0,
-      "status": "passed",
-      "testSummary": "max setup && max build && adapt-cdn-assets completed; dist generated"
-    },
-    {
-      "command": "pnpm test",
-      "exitCode": 0,
-      "status": "passed",
-      "testSummary": "vitest run: 12 files passed, 37 tests passed"
-    }
-  ],
-  "status": "passed",
-  "testSummary": {
-    "build": "passed",
-    "tests": "12 files passed, 37 tests passed"
-  }
+﻿{
+    "generatedAt":  "2026-06-20T23:06:16Z",
+    "sourceEnvironment":  "local-windows-powershell",
+    "releaseCandidate":  "enterprise-ai-authorization-closure",
+    "evidenceOperator":  "Codex",
+    "gitCommitSha":  "71bd25a1a1811a9c95c03d0c2a049ba3a33fb58a",
+    "commands":  [
+                     {
+                         "command":  "corepack pnpm install --frozen-lockfile",
+                         "exitCode":  0,
+                         "status":  "passed",
+                         "testSummary":  "lockfile up to date"
+                     },
+                     {
+                         "command":  "corepack pnpm build",
+                         "exitCode":  0,
+                         "status":  "passed",
+                         "testSummary":  "max setup \u0026\u0026 max build \u0026\u0026 adapt-cdn-assets completed; dist generated"
+                     },
+                     {
+                         "command":  "corepack pnpm test",
+                         "exitCode":  0,
+                         "status":  "passed",
+                         "testSummary":  "vitest run: 12 files passed, 37 tests passed"
+                     }
+                 ],
+    "status":  "passed",
+    "testSummary":  {
+                        "build":  "passed",
+                        "tests":  "12 files passed, 37 tests passed"
+                    }
 }

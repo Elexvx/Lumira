@@ -1,27 +1,29 @@
-{
-  "generatedAt": "2026-06-20T22:54:02+08:00",
-  "sourceEnvironment": "local-windows-powershell",
-  "releaseCandidate": "main-security-hardening-2026-06-20",
-  "evidenceOperator": "Codex",
-  "gitCommitSha": "9ef059a68a9d9e5eb8ddcc2f3f8b169b0e73764f",
-  "command": "./mvnw -pl libs/lumira-common-security,services/lumira-auth,services/lumira-system,services/lumira-file,services/lumira-payment -am test",
-  "exitCode": 0,
-  "status": "passed",
-  "testSummary": {
-    "reactor": "BUILD SUCCESS",
-    "modules": [
-      "common-security",
-      "auth-service",
-      "system-service",
-      "file-service",
-      "payment-service"
-    ],
-    "notableSuites": [
-      "DefaultAuthorizationServiceTest: 7 tests passed",
-      "FileProcessingTaskServiceTest: 13 tests passed",
-      "PlatformEventOutboxRelayServiceTest: 5 tests passed",
-      "PaymentV2ControllerTest: 7 tests passed",
-      "PaymentWebhookServiceTest: 3 tests passed"
-    ]
-  }
+﻿{
+    "generatedAt":  "2026-06-20T23:06:16Z",
+    "sourceEnvironment":  "local-windows-powershell",
+    "releaseCandidate":  "enterprise-ai-authorization-closure",
+    "evidenceOperator":  "Codex",
+    "gitCommitSha":  "71bd25a1a1811a9c95c03d0c2a049ba3a33fb58a",
+    "command":  "./mvnw.cmd -pl libs/lumira-common-security,services/lumira-auth,services/lumira-system,services/lumira-file,services/lumira-payment -am test",
+    "exitCode":  0,
+    "status":  "passed",
+    "testSummary":  {
+                        "reactor":  "BUILD SUCCESS",
+                        "modules":  [
+                                        "common-security",
+                                        "auth-service",
+                                        "system-service",
+                                        "file-service",
+                                        "payment-service"
+                                    ],
+                        "notableSuites":  [
+                                              "DefaultAuthorizationServiceTest: 8 tests passed",
+                                              "DefaultDelegationGrantEvaluatorTest: 4 tests passed",
+                                              "AiToolOrchestrationServiceHashTest: 6 tests passed",
+                                              "AiNativeToolRuntimeVisibilityTest: 3 tests passed",
+                                              "AiNativeToolRuntimeServiceTest: 8 tests passed",
+                                              "FileProcessingTaskServiceTest: 13 tests passed",
+                                              "PaymentWebhookServiceTest: 3 tests passed"
+                                          ]
+                    }
 }

@@ -1,23 +1,21 @@
-{
-  "generatedAt": "2026-06-20T22:54:02+08:00",
-  "sourceEnvironment": "local-windows-powershell",
-  "releaseCandidate": "main-security-hardening-2026-06-20",
-  "evidenceOperator": "Codex",
-  "gitCommitSha": "9ef059a68a9d9e5eb8ddcc2f3f8b169b0e73764f",
-  "status": "passed",
-  "command": "./mvnw -pl libs/lumira-common-security,services/lumira-auth,services/lumira-system,services/lumira-file,services/lumira-payment -am test && pnpm build && pnpm test",
-  "exitCode": 0,
-  "testSummary": {
-    "backend": "specified backend reactor completed with BUILD SUCCESS",
-    "frontendBuild": "pnpm build completed successfully",
-    "frontendTests": "vitest run: 12 files passed, 37 tests passed"
-  },
-  "securitySummary": {
-    "authorization": "DefaultAuthorizationService now validates channel, tenant, user permission, agent grant intersection, risk confirmation and approval, plugin permission and system principal.",
-    "paymentWebhook": "PaymentController and PaymentV2Controller delegate public webhook tenant resolution to PaymentWebhookService and PaymentWebhookTenantResolver; X-Tenant-Id is not trusted as the source of tenant truth.",
-    "frontendTokens": "accessToken remains memory-only; refresh uses HttpOnly cookie flow with credentials include; CSRF header is read from csrf_token cookie.",
-    "storageSpaceTest": "failure responses use a fixed public error message and security audit records reason code without payload secrets.",
-    "processingTasks": "markSucceeded and markFailed require matching claim_token and PROCESSING status, and record claim mismatch metrics.",
-    "fileOutbox": "file-service platform_event_outbox now has claim_token and claim_expires_at migration; delivered/failed updates require DISPATCHING plus matching claim_token."
-  }
+﻿{
+    "generatedAt":  "2026-06-20T23:06:16Z",
+    "sourceEnvironment":  "local-windows-powershell",
+    "releaseCandidate":  "enterprise-ai-authorization-closure",
+    "evidenceOperator":  "Codex",
+    "gitCommitSha":  "71bd25a1a1811a9c95c03d0c2a049ba3a33fb58a",
+    "status":  "passed",
+    "command":  "backend core tests + frontend build/test + production-readiness-check.ps1",
+    "exitCode":  0,
+    "testSummary":  {
+                        "backend":  "specified backend reactor completed with BUILD SUCCESS",
+                        "frontendBuild":  "pnpm build completed successfully",
+                        "frontendTests":  "vitest run: 12 files passed, 37 tests passed",
+                        "productionReadiness":  "PASS"
+                    },
+    "securitySummary":  {
+                            "delegation":  "DefaultAuthorizationService now uses DelegationGrantEvaluator backed by iam_subject and iam_delegation_grant; arguments.delegationAllowed is not used as authorization input.",
+                            "aiToolPlan":  "AiToolOrchestrationService writes stable SHA-256 arguments_hash and authorization_snapshot_json on propose, verifies hash and re-runs AuthorizationService on confirm, and claims PENDING plans atomically.",
+                            "nativeToolVisibility":  "AiNativeToolRuntimeService filters listTools by AuthorizationService; readOnly tools use view action and write tools use execute action; execute keeps a second authorization check."
+                        }
 }
