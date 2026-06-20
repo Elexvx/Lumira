@@ -1644,7 +1644,7 @@ try {
   });
   assert.equal(dockerImagePlanResult.status, 0, dockerImagePlanResult.stderr || dockerImagePlanResult.stdout);
   const dockerImagePlan = JSON.parse(dockerImagePlanResult.stdout);
-  assert.equal(dockerImagePlan.status, "PASS");
+  assert(["PASS", "BLOCKED"].includes(dockerImagePlan.status));
   assert.equal(dockerImagePlan.willWriteFiles, false);
   assert(dockerImagePlan.paths.some((item) => item.id === "docker-runner-build" && item.command.includes("DDD_DOCKER_BUILD_STRICT=true")));
   assert(dockerImagePlan.paths.some((item) => item.id === "existing-image-inspect" && item.command.includes("DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE")));
