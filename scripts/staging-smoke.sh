@@ -37,6 +37,48 @@ json_array() {
 
 mkdir -p "${OUT_DIR}"
 
+load_env_file() {
+  local env_file="$1"
+  if [ -f "${env_file}" ]; then
+    local line key value
+    while IFS= read -r line || [ -n "${line}" ]; do
+      line="${line%$'\r'}"
+      case "${line}" in
+        ''|\#*) continue ;;
+        *=*) ;;
+        *) continue ;;
+      esac
+      key="${line%%=*}"
+      value="${line#*=}"
+      case "${key}" in
+        *[!A-Za-z0-9_]*|'') continue ;;
+      esac
+      if [ -z "${!key:-}" ]; then
+        export "${key}=${value}"
+      fi
+    done < "${env_file}"
+  fi
+}
+
+load_env_file "${ROOT_DIR}/deploy/.env"
+
+require_env_for_start() {
+  local missing=()
+  for key in DB_PASSWORD JWT_SECRET FIELD_SECRET PLUGIN_SIGNATURE_SECRET SAAS_JOB_INTERNAL_TOKEN CORS_ALLOWED_ORIGIN_PATTERNS; do
+    if [ -z "${!key:-}" ]; then
+      missing+=("${key}")
+    fi
+  done
+  if [ -z "${REDIS_PASSWORD:-}" ]; then
+    missing+=("REDIS_PASSWORD")
+  fi
+  if [ "${#missing[@]}" -gt 0 ]; then
+    add_result "staging-env" "FAIL" "missing required staging environment variables: ${missing[*]}"
+    write_evidence
+    exit 1
+  fi
+}
+
 add_result() {
   local step="$1"; local status="$2"; local detail="$3"
   detail="$(printf '%s' "${detail}" | tr '\r\n' '  ')"
@@ -45,6 +87,26 @@ add_result() {
     STATUS="FAIL"
     FAILED_STEPS+=("${step}")
   fi
+}
+
+write_evidence() {
+  local git_commit_sha commands_json failed_json results_json
+  git_commit_sha="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
+  commands_json="$(printf '%s\n' "${COMMANDS[@]:-}" | sed '/^$/d' | json_array)"
+  failed_json="$(printf '%s\n' "${FAILED_STEPS[@]:-}" | sed '/^$/d' | json_array)"
+  results_json="$(printf '[%s]' "$(IFS=,; echo "${RESULTS[*]}")")"
+  cat > "${OUT_FILE}" <<EOF
+{
+  "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "gitCommitSha": "${git_commit_sha}",
+  "composeFile": "${COMPOSE_FILE}",
+  "envProfile": "${ENV_PROFILE:-staging}",
+  "commands": ${commands_json},
+  "results": ${results_json},
+  "failedSteps": ${failed_json},
+  "status": "${STATUS}"
+}
+EOF
 }
 
 run_check() {
@@ -144,6 +206,7 @@ auth_curl() {
 run_check "compose-config" docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" config
 
 if [ "${START_STAGING:-0}" = "1" ]; then
+  require_env_for_start
   run_check "ensure-1panel-network" sh -c "docker network inspect 1panel-network >/dev/null 2>&1 || docker network create 1panel-network"
   if [ "${RESET_STAGING:-0}" = "1" ]; then
     run_check "compose-reset" docker compose -f "${ROOT_DIR}/${COMPOSE_FILE}" down -v --remove-orphans
@@ -168,7 +231,7 @@ if [ "${START_STAGING:-0}" = "1" ]; then
     else
       add_result "wait-db-ready" "FAIL" "auth credential tables did not become ready within 120 seconds"
     fi
-    admin_hash="${STAGING_ADMIN_BCRYPT_HASH:-\$2a\$10\$dxw53ThYEb3a2eSFWj2jrOY1dkVK6RhbZej.9OLE9PCM3C2z17Vp6}"
+    admin_hash="${STAGING_ADMIN_BCRYPT_HASH:-\$2a\$10\$ufuQpmoCjT6yjVAerVxiIudII/X4XpwAkSv2ZnQUzSuy0pIhf/JyK}"
     admin_hash_sql="$(printf '%s' "${admin_hash}" | sed 's/\$/\\$/g')"
     COMMANDS+=("docker exec lumira-mysql mysql -uroot -p<redacted> saas -e <seed-staging-admin-password>")
     if output="$(sh -c "docker exec lumira-mysql mysql -uroot -p\"${DB_PASSWORD}\" saas -e \"UPDATE sys_user SET password_hash='${admin_hash_sql}', updated_at=CURRENT_TIMESTAMP WHERE username='admin'; UPDATE iam_user_credential SET credential_secret='${admin_hash_sql}', updated_at=CURRENT_TIMESTAMP WHERE user_id=1001 AND credential_type='PASSWORD';\"" 2>&1)"; then
@@ -241,21 +304,6 @@ run_check "ai-readonly-propose" auth_curl -fsS -X POST "${API_BASE_URL}/api/v2/a
 run_expect_http_status "payment-webhook-invalid-signature" "400,401,403" curl -sS -X POST "${API_BASE_URL}/api/v2/payment/webhooks/stripe" -H "Content-Type: application/json" -H "Stripe-Signature: invalid" -d '{"appId":"staging-smoke","id":"evt_staging_smoke","type":"payment_intent.succeeded"}'
 run_expect_http_status "plugin-gateway-without-permission" "401,403" curl -sS "${API_BASE_URL}/api/p/smoke/health"
 
-GIT_COMMIT_SHA="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
-COMMANDS_JSON="$(printf '%s\n' "${COMMANDS[@]:-}" | sed '/^$/d' | json_array)"
-FAILED_JSON="$(printf '%s\n' "${FAILED_STEPS[@]:-}" | sed '/^$/d' | json_array)"
-RESULTS_JSON="$(printf '[%s]' "$(IFS=,; echo "${RESULTS[*]}")")"
-cat > "${OUT_FILE}" <<EOF
-{
-  "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "gitCommitSha": "${GIT_COMMIT_SHA}",
-  "composeFile": "${COMPOSE_FILE}",
-  "envProfile": "${ENV_PROFILE:-staging}",
-  "commands": ${COMMANDS_JSON},
-  "results": ${RESULTS_JSON},
-  "failedSteps": ${FAILED_JSON},
-  "status": "${STATUS}"
-}
-EOF
+write_evidence
 
 [ "${STATUS}" = "PASS" ]

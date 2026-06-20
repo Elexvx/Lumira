@@ -1,17 +1,17 @@
 {
-  "generatedAt": "2026-06-20T05:34:53.203Z",
-  "sourceEnvironment": "local-security-fix-validation",
-  "releaseCandidate": "local-security-hardening",
-  "evidenceOperator": "codex-local-audit",
+  "generatedAt": "2026-06-20T18:55:33.132Z",
+  "sourceEnvironment": null,
+  "releaseCandidate": null,
+  "evidenceOperator": null,
   "status": "PASS",
   "reportRoot": ".",
   "summary": {
     "suites": 186,
-    "tests": 608,
+    "tests": 609,
     "failures": 0,
     "errors": 0,
     "skipped": 4,
-    "timeSeconds": 64.914,
+    "timeSeconds": 68.546,
     "required": 38,
     "requiredPresent": 38,
     "requiredMissing": 0
@@ -120,7 +120,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 4.072
+      "timeSeconds": 4.581
     },
     {
       "name": "com.lumira.auth.controller.AuthV2ControllerTest",
@@ -129,7 +129,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.489
+      "timeSeconds": 0.513
     },
     {
       "name": "com.lumira.auth.domain.model.AuthDomainModelsTest",
@@ -138,7 +138,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.031
+      "timeSeconds": 0.034
     },
     {
       "name": "com.lumira.auth.RepeatSubmitControllerCoverageTest",
@@ -147,7 +147,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.406
+      "timeSeconds": 0.444
     },
     {
       "name": "com.lumira.auth.service.AuthAppServiceTest",
@@ -156,7 +156,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.451
+      "timeSeconds": 0.505
     },
     {
       "name": "com.lumira.auth.service.AuthAppServiceWechatSecondFactorTest",
@@ -165,7 +165,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.006
+      "timeSeconds": 0.011
     },
     {
       "name": "com.lumira.auth.service.AuthSessionStoreTest",
@@ -174,7 +174,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.774
+      "timeSeconds": 0.849
     },
     {
       "name": "com.lumira.auth.service.WechatLoginServiceTest",
@@ -183,7 +183,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.183
+      "timeSeconds": 0.207
     },
     {
       "name": "com.lumira.common.security.authorization.DefaultAuthorizationServiceTest",
@@ -192,7 +192,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.207
+      "timeSeconds": 0.206
     },
     {
       "name": "com.lumira.common.security.data.DataPermissionResolverTest",
@@ -201,7 +201,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.021
+      "timeSeconds": 0.032
     },
     {
       "name": "com.lumira.common.security.FieldCryptoServiceTest",
@@ -210,7 +210,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.136
+      "timeSeconds": 0.127
     },
     {
       "name": "com.lumira.common.security.InternalServiceTokenAuthFilterTest",
@@ -219,7 +219,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.018
+      "timeSeconds": 0.014
     },
     {
       "name": "com.lumira.common.security.JwtTokenParserTest",
@@ -228,7 +228,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.442
+      "timeSeconds": 0.571
     },
     {
       "name": "com.lumira.common.security.PermissionGuardTest",
@@ -237,7 +237,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.009
+      "timeSeconds": 0.014
     },
     {
       "name": "com.lumira.common.security.ProductionSecurityPropertiesValidatorTest",
@@ -246,7 +246,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.041
+      "timeSeconds": 0.065
     },
     {
       "name": "com.lumira.common.web.FeignHeaderForwardingConfigTest",
@@ -255,7 +255,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.21
+      "timeSeconds": 0.228
     },
     {
       "name": "com.lumira.common.web.InternalJobTokenValidatorTest",
@@ -264,7 +264,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.026
+      "timeSeconds": 0.031
     },
     {
       "name": "com.lumira.common.web.repeatsubmit.ClientIpResolverTest",
@@ -273,7 +273,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.141
+      "timeSeconds": 0.202
     },
     {
       "name": "com.lumira.common.web.security.ratelimit.RateLimitServiceTest",
@@ -282,7 +282,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.049
+      "timeSeconds": 0.061
     },
     {
       "name": "com.lumira.common.web.TraceIdFilterTest",
@@ -291,7 +291,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.056
+      "timeSeconds": 0.076
     },
     {
       "name": "com.lumira.file.config.UploadResourceSecurityInterceptorTest",
@@ -300,7 +300,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 4.496
+      "timeSeconds": 4.121
     },
     {
       "name": "com.lumira.file.controller.FileReadinessV2ControllerTest",
@@ -309,7 +309,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.445
+      "timeSeconds": 0.433
     },
     {
       "name": "com.lumira.file.controller.FileUploadMetricsTest",
@@ -318,7 +318,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.112
+      "timeSeconds": 0.094
     },
     {
       "name": "com.lumira.file.controller.FileV2ControllerTest",
@@ -327,7 +327,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.071
+      "timeSeconds": 0.064
     },
     {
       "name": "com.lumira.file.controller.InternalJobControllerTest",
@@ -336,7 +336,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.154
+      "timeSeconds": 0.173
     },
     {
       "name": "com.lumira.file.domain.model.FileDomainModelsTest",
@@ -345,7 +345,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.028
+      "timeSeconds": 0.034
     },
     {
       "name": "com.lumira.file.event.FileOutboxMetricsServiceTest",
@@ -354,7 +354,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.183
+      "timeSeconds": 0.192
     },
     {
       "name": "com.lumira.file.event.FileOutboxRelayTest",
@@ -363,7 +363,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.081
+      "timeSeconds": 0.073
     },
     {
       "name": "com.lumira.file.event.FilePlatformEventPublisherTest",
@@ -381,7 +381,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.047
+      "timeSeconds": 0.037
     },
     {
       "name": "com.lumira.file.event.PlatformEventOutboxRelayServiceTest",
@@ -390,7 +390,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.496
+      "timeSeconds": 0.613
     },
     {
       "name": "com.lumira.file.event.PlatformEventOutboxServiceTest",
@@ -399,16 +399,16 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.063
+      "timeSeconds": 0.076
     },
     {
       "name": "com.lumira.file.FileManagementAppServiceTest",
       "file": "lumira-backend\\services\\lumira-file\\target\\surefire-reports\\TEST-com.lumira.file.FileManagementAppServiceTest.xml",
-      "tests": 7,
+      "tests": 8,
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.423
+      "timeSeconds": 0.517
     },
     {
       "name": "com.lumira.file.mapper.FileStorageSpaceMapperHotPathSqlTest",
@@ -417,7 +417,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.011
+      "timeSeconds": 0.01
     },
     {
       "name": "com.lumira.file.processing.ClamAvFileSecurityScanEngineTest",
@@ -435,7 +435,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.168
+      "timeSeconds": 0.196
     },
     {
       "name": "com.lumira.file.processing.FileOcrEngineSelectorTest",
@@ -444,7 +444,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.009
+      "timeSeconds": 0.011
     },
     {
       "name": "com.lumira.file.processing.FileOcrProcessorTest",
@@ -453,7 +453,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.106
+      "timeSeconds": 0.1
     },
     {
       "name": "com.lumira.file.processing.FileProcessingMetricsTest",
@@ -462,7 +462,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.009
+      "timeSeconds": 0.005
     },
     {
       "name": "com.lumira.file.processing.FileProcessingTaskServiceTest",
@@ -471,7 +471,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.337
+      "timeSeconds": 0.323
     },
     {
       "name": "com.lumira.file.processing.FileSecurityScanEngineSelectorTest",
@@ -480,7 +480,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.005
+      "timeSeconds": 0.006
     },
     {
       "name": "com.lumira.file.processing.FileSecurityScanMetricsTest",
@@ -489,7 +489,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.004
+      "timeSeconds": 0.005
     },
     {
       "name": "com.lumira.file.processing.FileSecurityScanProcessorTest",
@@ -498,7 +498,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.083
+      "timeSeconds": 0.98
     },
     {
       "name": "com.lumira.file.processing.FileTextExtractionProcessorTest",
@@ -507,7 +507,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.726
+      "timeSeconds": 1.002
     },
     {
       "name": "com.lumira.file.processing.FileThumbnailProcessorTest",
@@ -516,7 +516,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.265
+      "timeSeconds": 0.268
     },
     {
       "name": "com.lumira.file.processing.InlineFileSecurityScanEngineTest",
@@ -525,7 +525,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.021
+      "timeSeconds": 0.022
     },
     {
       "name": "com.lumira.file.RepeatSubmitControllerCoverageTest",
@@ -534,7 +534,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.2
+      "timeSeconds": 0.206
     },
     {
       "name": "com.lumira.file.upload.DocumentUploadServiceTest",
@@ -543,7 +543,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.02
+      "timeSeconds": 0.026
     },
     {
       "name": "com.lumira.file.upload.FileStorageMetricsTest",
@@ -561,7 +561,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.047
+      "timeSeconds": 0.055
     },
     {
       "name": "com.lumira.job.domain.model.JobDomainModelsTest",
@@ -741,7 +741,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 3.577
+      "timeSeconds": 3.928
     },
     {
       "name": "com.lumira.payment.controller.PaymentControllerTest",
@@ -750,7 +750,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.749
+      "timeSeconds": 0.784
     },
     {
       "name": "com.lumira.payment.controller.PaymentReadinessV2ControllerTest",
@@ -759,7 +759,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.099
+      "timeSeconds": 0.103
     },
     {
       "name": "com.lumira.payment.controller.PaymentV2ControllerTest",
@@ -768,7 +768,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.045
+      "timeSeconds": 0.048
     },
     {
       "name": "com.lumira.payment.domain.model.PaymentDomainModelsTest",
@@ -777,7 +777,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.025
+      "timeSeconds": 0.026
     },
     {
       "name": "com.lumira.payment.service.PaymentManagementAppServiceTest",
@@ -786,7 +786,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.586
+      "timeSeconds": 0.738
     },
     {
       "name": "com.lumira.payment.service.PaymentOutboxRelayTest",
@@ -795,7 +795,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.042
+      "timeSeconds": 0.036
     },
     {
       "name": "com.lumira.payment.service.PaymentOutboxServiceTest",
@@ -804,7 +804,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.088
+      "timeSeconds": 0.076
     },
     {
       "name": "com.lumira.payment.service.PaymentServiceSqlHotPathTest",
@@ -822,7 +822,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.146
+      "timeSeconds": 0.13
     },
     {
       "name": "com.lumira.plugin.RepeatSubmitControllerCoverageTest",
@@ -840,7 +840,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 3.768
+      "timeSeconds": 3.199
     },
     {
       "name": "com.lumira.saas.architecture.SystemFileHotPathMigrationTest",
@@ -849,7 +849,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.003
+      "timeSeconds": 0.002
     },
     {
       "name": "com.lumira.saas.infrastructure.db.DefaultAdminPasswordBaselineTest",
@@ -858,7 +858,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.25
+      "timeSeconds": 0.259
     },
     {
       "name": "com.lumira.saas.infrastructure.event.PlatformEventOutboxRelayTest",
@@ -867,7 +867,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 3.665
+      "timeSeconds": 4.054
     },
     {
       "name": "com.lumira.saas.infrastructure.event.PlatformEventOutboxServiceTest",
@@ -876,7 +876,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.512
+      "timeSeconds": 0.619
     },
     {
       "name": "com.lumira.saas.infrastructure.event.PlatformEventPublisherTest",
@@ -885,7 +885,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.023
+      "timeSeconds": 0.033
     },
     {
       "name": "com.lumira.saas.infrastructure.event.RedisStreamPlatformEventDispatcherTest",
@@ -894,7 +894,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.339
+      "timeSeconds": 0.375
     },
     {
       "name": "com.lumira.saas.infrastructure.event.SystemServiceSqlHotPathTest",
@@ -903,7 +903,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.018
+      "timeSeconds": 0.02
     },
     {
       "name": "com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapperTest",
@@ -912,7 +912,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.216
+      "timeSeconds": 0.234
     },
     {
       "name": "com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperationsTest",
@@ -921,7 +921,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.062
+      "timeSeconds": 0.061
     },
     {
       "name": "com.lumira.saas.infrastructure.redis.RedisStartupCleanupRunnerTest",
@@ -930,7 +930,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.687
+      "timeSeconds": 0.633
     },
     {
       "name": "com.lumira.saas.infrastructure.security.JwtAuthFilterTest",
@@ -939,7 +939,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.403
+      "timeSeconds": 0.434
     },
     {
       "name": "com.lumira.saas.infrastructure.security.RuntimeSecurityPropertiesValidatorTest",
@@ -948,7 +948,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.016
+      "timeSeconds": 0.013
     },
     {
       "name": "com.lumira.saas.infrastructure.security.SecurityPermitPathsTest",
@@ -957,7 +957,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.014
+      "timeSeconds": 0.02
     },
     {
       "name": "com.lumira.saas.infrastructure.security.service.AuthSessionStoreTest",
@@ -966,7 +966,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.368
+      "timeSeconds": 0.454
     },
     {
       "name": "com.lumira.saas.infrastructure.security.service.CaptchaServiceTest",
@@ -975,7 +975,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.076
+      "timeSeconds": 0.073
     },
     {
       "name": "com.lumira.saas.infrastructure.security.service.InitialPasswordChangeGuardTest",
@@ -984,7 +984,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.099
+      "timeSeconds": 0.11
     },
     {
       "name": "com.lumira.saas.infrastructure.security.service.JwtTokenServiceTest",
@@ -993,7 +993,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.259
+      "timeSeconds": 0.357
     },
     {
       "name": "com.lumira.saas.infrastructure.security.service.LoginProtectionServiceTest",
@@ -1002,7 +1002,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.009
+      "timeSeconds": 0.008
     },
     {
       "name": "com.lumira.saas.infrastructure.security.service.PasswordPolicyServiceTest",
@@ -1011,7 +1011,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.01
+      "timeSeconds": 0.011
     },
     {
       "name": "com.lumira.saas.infrastructure.security.service.SecuritySettingsServiceTest",
@@ -1020,7 +1020,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.057
+      "timeSeconds": 0.074
     },
     {
       "name": "com.lumira.saas.infrastructure.security.service.SessionAuthenticationServiceTest",
@@ -1029,7 +1029,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.066
+      "timeSeconds": 0.084
     },
     {
       "name": "com.lumira.saas.modules.ai.app.AiEmployeeRuntimeServiceTest",
@@ -1038,7 +1038,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.352
+      "timeSeconds": 0.418
     },
     {
       "name": "com.lumira.saas.modules.ai.app.AiIamQueryFacadeTest",
@@ -1047,7 +1047,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.008
+      "timeSeconds": 0.01
     },
     {
       "name": "com.lumira.saas.modules.ai.app.AiKnowledgeBaseAppServiceTest",
@@ -1056,7 +1056,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.232
+      "timeSeconds": 0.282
     },
     {
       "name": "com.lumira.saas.modules.ai.app.AiKnowledgeTextExtractorTest",
@@ -1083,7 +1083,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.418
+      "timeSeconds": 0.503
     },
     {
       "name": "com.lumira.saas.modules.ai.app.AiNativeToolRuntimeServiceTest",
@@ -1092,7 +1092,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.036
+      "timeSeconds": 0.043
     },
     {
       "name": "com.lumira.saas.modules.ai.app.AiOwnerMetricsServiceTest",
@@ -1101,7 +1101,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.108
+      "timeSeconds": 0.129
     },
     {
       "name": "com.lumira.saas.modules.ai.app.AiToolPolicyServiceTest",
@@ -1110,7 +1110,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.009
+      "timeSeconds": 0.012
     },
     {
       "name": "com.lumira.saas.modules.ai.app.AiToolRegistryTest",
@@ -1119,7 +1119,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.079
+      "timeSeconds": 0.101
     },
     {
       "name": "com.lumira.saas.modules.ai.controller.AiReadinessV2ControllerTest",
@@ -1128,7 +1128,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.064
+      "timeSeconds": 0.088
     },
     {
       "name": "com.lumira.saas.modules.ai.controller.AiV2ControllerTest",
@@ -1137,7 +1137,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.477
+      "timeSeconds": 0.535
     },
     {
       "name": "com.lumira.saas.modules.ai.domain.model.AiAssistantDomainModelsTest",
@@ -1146,7 +1146,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.015
+      "timeSeconds": 0.014
     },
     {
       "name": "com.lumira.saas.modules.architecture.application.OwnerReadModelMetricsServiceTest",
@@ -1155,7 +1155,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.049
+      "timeSeconds": 0.059
     },
     {
       "name": "com.lumira.saas.modules.architecture.interfaces.rest.DddArchitectureCatalogControllerTest",
@@ -1164,7 +1164,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.007
+      "timeSeconds": 0.006
     },
     {
       "name": "com.lumira.saas.modules.audit.app.LoginAuditServiceTest",
@@ -1173,7 +1173,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.067
+      "timeSeconds": 0.064
     },
     {
       "name": "com.lumira.saas.modules.iam.app.IamTenantCommandServiceTest",
@@ -1182,7 +1182,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.12
+      "timeSeconds": 0.117
     },
     {
       "name": "com.lumira.saas.modules.iam.app.IamTenantQueryServiceTest",
@@ -1200,7 +1200,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.112
+      "timeSeconds": 0.105
     },
     {
       "name": "com.lumira.saas.modules.iam.controller.IamV2ControllerTest",
@@ -1209,7 +1209,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.055
+      "timeSeconds": 0.052
     },
     {
       "name": "com.lumira.saas.modules.iam.domain.model.IamDomainModelsTest",
@@ -1218,7 +1218,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.008
+      "timeSeconds": 0.011
     },
     {
       "name": "com.lumira.saas.modules.iam.service.IamUserServiceSyncTest",
@@ -1227,7 +1227,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.158
+      "timeSeconds": 0.16
     },
     {
       "name": "com.lumira.saas.modules.iam.service.PermissionSnapshotServiceTest",
@@ -1236,7 +1236,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.231
+      "timeSeconds": 0.221
     },
     {
       "name": "com.lumira.saas.modules.localization.app.LocalizationManagementAppServiceTest",
@@ -1308,7 +1308,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.276
+      "timeSeconds": 0.343
     },
     {
       "name": "com.lumira.saas.modules.platform.controller.PlatformReadinessV2ControllerTest",
@@ -1326,7 +1326,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.014
+      "timeSeconds": 0.011
     },
     {
       "name": "com.lumira.saas.modules.platform.domain.model.PlatformDomainModelsTest",
@@ -1335,7 +1335,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.005
+      "timeSeconds": 0.006
     },
     {
       "name": "com.lumira.saas.modules.plugin.app.PluginManagementAppServiceTest",
@@ -1443,7 +1443,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.016
+      "timeSeconds": 0.013
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceAiAuditTenantAuthorizationTest",
@@ -1452,7 +1452,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.011
+      "timeSeconds": 0.01
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceAuditTenantTest",
@@ -1470,7 +1470,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.005
+      "timeSeconds": 0.004
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemManagementAppServicePasswordTest",
@@ -1488,7 +1488,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.015
+      "timeSeconds": 0.013
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceRoleFacadeTest",
@@ -1497,7 +1497,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.066
+      "timeSeconds": 0.063
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceSensitiveConfigTest",
@@ -1506,7 +1506,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.004
+      "timeSeconds": 0.005
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceSummaryTest",
@@ -1515,7 +1515,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.588
+      "timeSeconds": 0.637
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceUserFacadeTest",
@@ -1524,7 +1524,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.004
+      "timeSeconds": 0.005
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceVerificationLogsTenantScopeTest",
@@ -1533,7 +1533,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.006
+      "timeSeconds": 0.007
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemManagementAppServiceWriteHotPathTest",
@@ -1542,7 +1542,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.015
+      "timeSeconds": 0.036
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemPlatformSettingsAppServiceTest",
@@ -1551,7 +1551,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.07
+      "timeSeconds": 0.104
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemProfileSettingsAppServiceTest",
@@ -1560,7 +1560,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.046
+      "timeSeconds": 0.053
     },
     {
       "name": "com.lumira.saas.modules.system.app.SystemRouteCatalogTest",
@@ -1587,7 +1587,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.048
+      "timeSeconds": 0.053
     },
     {
       "name": "com.lumira.saas.modules.system.controller.RoleDetailIntegrationTest",
@@ -1605,7 +1605,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.108
+      "timeSeconds": 0.121
     },
     {
       "name": "com.lumira.saas.modules.system.department.app.SystemDepartmentAppServiceTest",
@@ -1614,7 +1614,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.006
+      "timeSeconds": 0.007
     },
     {
       "name": "com.lumira.saas.modules.system.export.ExcelExportServiceTest",
@@ -1623,7 +1623,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 1.292
+      "timeSeconds": 1.603
     },
     {
       "name": "com.lumira.saas.modules.system.monitor.app.SystemMonitorAppServiceTest",
@@ -1632,7 +1632,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.009
+      "timeSeconds": 0.014
     },
     {
       "name": "com.lumira.saas.modules.system.permission.SystemPermissionTreeAssemblerTest",
@@ -1641,7 +1641,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.007
+      "timeSeconds": 0.009
     },
     {
       "name": "com.lumira.saas.modules.system.plugin.SystemPluginViewServiceTest",
@@ -1659,7 +1659,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.019
+      "timeSeconds": 0.021
     },
     {
       "name": "com.lumira.saas.modules.system.security.dto.SecuritySettingsRequestTest",
@@ -1668,7 +1668,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.006
+      "timeSeconds": 0.007
     },
     {
       "name": "com.lumira.saas.modules.system.sensitive.app.SensitiveWordPluginStateServiceTest",
@@ -1686,7 +1686,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.058
+      "timeSeconds": 0.081
     },
     {
       "name": "com.lumira.saas.modules.system.support.SmtpMailServiceTest",
@@ -1695,7 +1695,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.004
+      "timeSeconds": 0.007
     },
     {
       "name": "com.lumira.saas.modules.system.update.app.PlatformUpdateAppServiceTest",
@@ -1704,7 +1704,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.124
+      "timeSeconds": 0.14
     },
     {
       "name": "com.lumira.saas.modules.system.user.app.SystemUserManagementAppServiceTest",
@@ -1731,7 +1731,7 @@
       "failures": 0,
       "errors": 0,
       "skipped": 0,
-      "timeSeconds": 0.011
+      "timeSeconds": 0.013
     }
   ],
   "blockers": []
