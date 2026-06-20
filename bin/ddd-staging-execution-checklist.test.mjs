@@ -1153,6 +1153,7 @@ try {
     "DDD_EVIDENCE_OPERATOR=test-operator",
     "DDD_EVIDENCE_ENVIRONMENT=staging",
     "DDD_DOCKER_EXISTING_LUMIRA_SERVER_IMAGE=registry.example/lumira-server:test",
+    "DDD_DOCKER_EXISTING_LUMIRA_UI_IMAGE=registry.example/lumira-ui:test",
     "DDD_DOCKER_EXISTING_FRONTEND_IMAGE=registry.example/lumira-ui:test",
     "DDD_DOCKER_EXISTING_IMAGE_BUILD_EVIDENCE=https://ci.example/build/1",
     "LUMIRA_BASE_URL=https://api.staging.example.com",
