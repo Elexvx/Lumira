@@ -78,12 +78,20 @@ function sha256(file) {
 }
 
 function runPromote(env) {
-  return spawnSync("node", ["bin\/ddd-promote-performance-baseline.mjs"], {
+  const baseEnv = Object.fromEntries([
+    "PATH",
+    "Path",
+    "HOME",
+    "USERPROFILE",
+    "SystemRoot",
+    "TEMP",
+    "TMP",
+  ].flatMap((key) => process.env[key] ? [[key, process.env[key]]] : []));
+  return spawnSync(process.execPath, ["bin\/ddd-promote-performance-baseline.mjs"], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
-      ...process.env,
-      GITHUB_SHA: "",
+      ...baseEnv,
       ...env,
     },
   });
