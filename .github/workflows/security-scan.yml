@@ -26,17 +26,9 @@ jobs:
         continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Trivy filesystem scan
-        if: github.event_name != 'pull_request'
-        uses: aquasecurity/trivy-action@0.28.0
-        continue-on-error: true
-        with:
-          scan-type: fs
-          scan-ref: .
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '0'
-          format: table
+      - name: Filesystem vulnerability scan advisory
+        run: |
+          echo "::notice title=Filesystem vulnerability scan advisory::Trivy GitHub Action execution is disabled in this workflow until the action ref is repinned to an available, reviewed release. Dependency scanning remains covered by OSV, Semgrep, and pnpm audit."
 
   dependency-and-code-scan:
     runs-on: ubuntu-latest
