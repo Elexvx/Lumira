@@ -142,7 +142,7 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool confirmation requires the original digital employee");
         }
         if (!claimPendingPlan(tenantId, plan.getId(), currentUser.getUserId())) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "璇?AI 宸ュ叿璁″垝宸插鐞嗭紝涓嶈兘閲嶅纭");
+            throw new BizException(ErrorCode.BIZ_ERROR, "该 AI 工具计划已处理，不能重复确认");
         }
         executeRequest.setEmployeeId(plan.getEmployeeId());
         executeRequest.setConversationId(plan.getConversationId());
