@@ -4,6 +4,11 @@ set -u
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${ROOT_DIR}/artifacts/staging"
 OUT_FILE="${OUT_DIR}/staging-smoke-evidence.json"
+EVIDENCE_TARGET_SHA="${LUMIRA_EVIDENCE_TARGET_SHA:-$(git -C "${ROOT_DIR}" rev-parse HEAD)}"
+if ! printf '%s' "${EVIDENCE_TARGET_SHA}" | grep -Eq '^[0-9a-f]{40}$'; then
+  echo "Invalid evidence target commit SHA: ${EVIDENCE_TARGET_SHA}" >&2
+  exit 2
+fi
 COMPOSE_FILE="${COMPOSE_FILE:-deploy/docker-compose.prod.yml}"
 API_BASE_URL="${API_BASE_URL:-http://127.0.0.1:8000}"
 STATUS="PASS"
@@ -91,7 +96,7 @@ add_result() {
 
 write_evidence() {
   local git_commit_sha commands_json failed_json results_json
-  git_commit_sha="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
+  git_commit_sha="${EVIDENCE_TARGET_SHA}"
   commands_json="$(printf '%s\n' "${COMMANDS[@]:-}" | sed '/^$/d' | json_array)"
   failed_json="$(printf '%s\n' "${FAILED_STEPS[@]:-}" | sed '/^$/d' | json_array)"
   results_json="$(printf '[%s]' "$(IFS=,; echo "${RESULTS[*]}")")"
@@ -99,6 +104,7 @@ write_evidence() {
 {
   "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "gitCommitSha": "${git_commit_sha}",
+  "gitCommitShaMeaning": "verified-release-target",
   "composeFile": "${COMPOSE_FILE}",
   "envProfile": "${ENV_PROFILE:-staging}",
   "commands": ${commands_json},

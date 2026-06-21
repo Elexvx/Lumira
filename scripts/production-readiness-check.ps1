@@ -1,5 +1,17 @@
+param(
+  [string]$TargetSha = $env:LUMIRA_EVIDENCE_TARGET_SHA
+)
+
 $ErrorActionPreference = "Stop"
 $root = Resolve-Path "$PSScriptRoot\.."
+$gitCommitSha = if ([string]::IsNullOrWhiteSpace($TargetSha)) {
+  (git -C $root rev-parse HEAD).Trim()
+} else {
+  $TargetSha.Trim()
+}
+if ($gitCommitSha -notmatch '^[0-9a-f]{40}$') {
+  throw "Invalid evidence target commit SHA: $gitCommitSha"
+}
 $outDir = Join-Path $root "artifacts\release"
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 $compose = Get-Content (Join-Path $root "deploy\docker-compose.prod.yml") -Raw
@@ -23,7 +35,8 @@ $checks = @(
 $failed = @($checks | Where-Object { -not $_.pass } | ForEach-Object { $_.name })
 $evidence = [ordered]@{
   generatedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-  gitCommitSha = (git -C $root rev-parse HEAD)
+  gitCommitSha = $gitCommitSha
+  gitCommitShaMeaning = "verified-release-target"
   status = $(if ($failed.Count -eq 0) { "PASS" } else { "FAIL" })
   checks = $checks
   failedSteps = $failed

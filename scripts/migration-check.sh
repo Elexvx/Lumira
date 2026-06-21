@@ -4,7 +4,11 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${ROOT_DIR}/artifacts/migration"
 OUT_FILE="${OUT_DIR}/migration-check-evidence.json"
-COMMIT_SHA="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
+COMMIT_SHA="${LUMIRA_EVIDENCE_TARGET_SHA:-$(git -C "${ROOT_DIR}" rev-parse HEAD)}"
+if ! printf '%s' "${COMMIT_SHA}" | grep -Eq '^[0-9a-f]{40}$'; then
+  echo "Invalid evidence target commit SHA: ${COMMIT_SHA}" >&2
+  exit 2
+fi
 MYSQL_CONTAINER="lumira-migration-check-mysql-$$"
 NETWORK="lumira-migration-check-$$"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-LumiraMigrationCheck_ChangeMe_123456!}"
@@ -159,6 +163,7 @@ cat > "${OUT_FILE}" <<EOF
 {
   "generatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "gitCommitSha": "${COMMIT_SHA}",
+  "gitCommitShaMeaning": "verified-release-target",
   "status": "${STATUS}",
   "checks": ["fresh migration","upgrade migration","repeat migration","critical tables","critical columns","critical indexes"],
   "counts": {
