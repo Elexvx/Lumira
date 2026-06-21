@@ -1,9 +1,10 @@
 ﻿{
-    "generatedAt":  "2026-06-20T23:06:16Z",
+    "generatedAt":  "2026-06-21T05:07:28Z",
     "sourceEnvironment":  "local-windows-powershell",
     "releaseCandidate":  "enterprise-ai-authorization-closure",
     "evidenceOperator":  "Codex",
-    "gitCommitSha":  "71bd25a1a1811a9c95c03d0c2a049ba3a33fb58a",
+    "gitCommitSha":  "6554f45081aa2e56958a8a20c5c055ad5d87eb11",
+    "gitCommitShaMeaning": "verified-release-target",
     "status":  "passed",
     "command":  "backend core tests + frontend build/test + production-readiness-check.ps1",
     "exitCode":  0,
@@ -19,3 +20,7 @@
                             "nativeToolVisibility":  "AiNativeToolRuntimeService filters listTools by AuthorizationService; readOnly tools use view action and write tools use execute action; execute keeps a second authorization check."
                         }
 }
+
+
+
+
