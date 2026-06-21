@@ -31,22 +31,24 @@ Get-ChildItem -Path $artifactsPath -Recurse -Filter *.json | ForEach-Object {
   $newText = [regex]::Replace(
     $text,
     '("gitCommitSha"\s*:\s*")([0-9a-f]{40})(")',
-    "`${1}$target`${3}"
+    { param($m) "$($m.Groups[1].Value)$target$($m.Groups[3].Value)" }
   )
 
-  if ($newText -match '"gitCommitShaMeaning"\s*:') {
-    $newText = [regex]::Replace(
-      $newText,
-      '("gitCommitShaMeaning"\s*:\s*")[^"]*(")',
-      '`${1}verified-release-target`${2}'
-    )
-  } else {
-    $newText = [regex]::Replace(
-      $newText,
-      '("gitCommitSha"\s*:\s*"[0-9a-f]{40}")',
-      "`${1},`r`n  `"gitCommitShaMeaning`": `"verified-release-target`""
-    )
-  }
+  $newText = [regex]::Replace(
+    $newText,
+    '(?m)^\s*`?"gitCommitShaMeaning.*\r?\n?',
+    ''
+  )
+
+  $newText = [regex]::Replace(
+    $newText,
+    '(?m)^(\s*)("gitCommitSha"\s*:\s*"[0-9a-f]{40}"),?\s*$',
+    {
+      param($m)
+      $indent = $m.Groups[1].Value
+      "$indent$($m.Groups[2].Value),`r`n${indent}`"gitCommitShaMeaning`": `"verified-release-target`","
+    }
+  )
 
   if ($newText -ne $text) {
     Set-Content -LiteralPath $path -Value $newText -Encoding UTF8
