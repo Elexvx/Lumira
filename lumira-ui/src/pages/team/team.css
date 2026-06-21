@@ -1,0 +1,65 @@
+.team-page {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.team-page__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.team-page__header h2,
+.team-grid h4 {
+  margin: 0 0 8px;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.team-form {
+  max-width: 640px;
+}
+
+.team-invite-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.team-invite-latest {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.team-join-panel {
+  width: 100%;
+  max-width: 560px;
+}
+
+.team-tabs-shell .ant-tabs-nav {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 768px) {
+  .team-page {
+    padding: 16px;
+  }
+
+  .team-page__header,
+  .team-invite-layout {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+}

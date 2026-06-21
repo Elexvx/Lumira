@@ -1,0 +1,81 @@
+create table if not exists team (
+    id bigint primary key auto_increment,
+    tenant_id bigint not null,
+    team_code varchar(64) not null,
+    team_name varchar(128) not null,
+    team_type varchar(32) not null default 'GENERAL',
+    avatar_url varchar(512) null,
+    description varchar(1000) null,
+    visibility varchar(32) not null default 'PRIVATE',
+    join_mode varchar(32) not null default 'INVITE_ONLY',
+    owner_user_id bigint not null,
+    member_count int not null default 1,
+    status varchar(32) not null default 'ACTIVE',
+    created_by bigint not null,
+    created_at datetime not null default current_timestamp,
+    updated_by bigint not null,
+    updated_at datetime not null default current_timestamp on update current_timestamp,
+    deleted tinyint not null default 0,
+    unique key uk_team_code (tenant_id, team_code, deleted),
+    key idx_team_owner (tenant_id, owner_user_id, deleted),
+    key idx_team_status (tenant_id, status, deleted)
+);
+
+create table if not exists team_member (
+    id bigint primary key auto_increment,
+    tenant_id bigint not null,
+    team_id bigint not null,
+    user_id bigint not null,
+    role varchar(32) not null default 'MEMBER',
+    member_alias varchar(128) null,
+    status varchar(32) not null default 'ACTIVE',
+    invited_by bigint null,
+    joined_at datetime null,
+    created_at datetime not null default current_timestamp,
+    updated_at datetime not null default current_timestamp on update current_timestamp,
+    deleted tinyint not null default 0,
+    unique key uk_team_member (team_id, user_id, deleted),
+    key idx_team_member_user (tenant_id, user_id, status, deleted),
+    key idx_team_member_team (tenant_id, team_id, status, deleted)
+);
+
+create table if not exists team_invite (
+    id bigint primary key auto_increment,
+    tenant_id bigint not null,
+    team_id bigint not null,
+    invite_code varchar(64) null,
+    invite_token_hash varchar(128) not null,
+    invite_type varchar(32) not null default 'LINK',
+    role_on_join varchar(32) not null default 'MEMBER',
+    expires_at datetime null,
+    max_uses int null,
+    used_count int not null default 0,
+    need_approval tinyint not null default 0,
+    status varchar(32) not null default 'ACTIVE',
+    created_by bigint not null,
+    created_at datetime not null default current_timestamp,
+    updated_at datetime not null default current_timestamp on update current_timestamp,
+    deleted tinyint not null default 0,
+    unique key uk_team_invite_token (invite_token_hash, deleted),
+    unique key uk_team_invite_code (tenant_id, invite_code, deleted),
+    key idx_team_invite_team (tenant_id, team_id, status, deleted)
+);
+
+create table if not exists team_join_request (
+    id bigint primary key auto_increment,
+    tenant_id bigint not null,
+    team_id bigint not null,
+    user_id bigint not null,
+    invite_id bigint null,
+    apply_message varchar(1000) null,
+    status varchar(32) not null default 'PENDING',
+    reviewed_by bigint null,
+    reviewed_at datetime null,
+    review_message varchar(1000) null,
+    created_at datetime not null default current_timestamp,
+    updated_at datetime not null default current_timestamp on update current_timestamp,
+    deleted tinyint not null default 0,
+    unique key uk_team_join_pending (team_id, user_id, status, deleted),
+    key idx_team_join_team (tenant_id, team_id, status, deleted),
+    key idx_team_join_user (tenant_id, user_id, status, deleted)
+);

@@ -1,5 +1,6 @@
 import { DEFAULT_HOME_PATH, LOGIN_PATH } from '@/app.constants';
 import buildAccess from '@/access';
+import { isLoginInProgress } from '@/auth/loginFlowState';
 import { AUTH_SESSION_BROADCAST_CHANNEL } from '@/auth/token';
 import { realPageRouteMetaList, resolveCanonicalRoutePath } from '@/routes/meta';
 import type { CurrentUser, MenuNode } from '@/types/api';
@@ -109,6 +110,9 @@ export const createLoginSessionBroadcastListener = (redirectTarget: string, onNa
   const channel = new BroadcastChannel(AUTH_SESSION_BROADCAST_CHANNEL);
   channel.onmessage = (event: MessageEvent<{ type?: string }>) => {
     if (event.data?.type !== 'updated') {
+      return;
+    }
+    if (isLoginInProgress()) {
       return;
     }
 

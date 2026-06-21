@@ -61,6 +61,7 @@ class DddArchitectureBoundaryTest {
             "LOCALIZATION",
             "PAYMENT",
             "AI",
+            "TEAM",
             "JOB"
     );
     private static final Map<String, List<String>> SPLIT_TARGET_PERSISTENCE_IMPORT_PREFIXES = Map.of(
