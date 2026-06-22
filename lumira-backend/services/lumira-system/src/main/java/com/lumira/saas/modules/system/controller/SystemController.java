@@ -281,6 +281,14 @@ public class SystemController {
         return ApiResponse.success(systemManagementAppService.deleteMenu(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
     }
 
+    @GetMapping("/dict-items")
+    public ApiResponse<List<SystemVO.DictItemVO>> dictItemsByCode(@RequestParam("dictCode") String dictCode) {
+        return ApiResponse.success(
+                systemManagementAppService.listEnabledDictItemsByCode(securityContextFacade.getCurrentUser(), dictCode),
+                TraceContext.getRequestId()
+        );
+    }
+
     @GetMapping("/dict-types")
     public ApiResponse<PageResponse<SystemVO.DictTypeVO>> dictTypes(
             @RequestParam(name = "dictCode", required = false) String dictCode,

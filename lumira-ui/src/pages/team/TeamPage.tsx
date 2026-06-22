@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { ProColumns } from '@ant-design/pro-components';
 import { history, useLocation, useParams } from '@umijs/max';
 import {
   Avatar,
@@ -21,9 +22,17 @@ import {
   Tag,
   Typography,
 } from 'antd';
+import type { FormInstance, SelectProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { CopyOutlined, DeleteOutlined, LinkOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons';
+import { ManagementDrawer } from '@/features/management/ManagementDrawer';
+import { ManagementPage } from '@/features/management/ManagementPage';
+import { ManagementPageBody } from '@/features/management/ManagementPageBody';
+import { ManagementTable } from '@/features/management/ManagementTable';
+import { TableActionBar } from '@/features/table/TableActionBar';
+import { useResponsive } from '@/hooks/useResponsive';
 import { message } from '@/theme/antdFeedbackBridge';
+import { listEnabledDictItemsByCode } from '@/services/dict/runtime';
 import {
   adminDeleteTeam,
   adminUpdateTeam,
@@ -47,19 +56,85 @@ import {
   updateTeam,
   updateTeamMemberRole,
 } from '@/services/team/api';
-import type { TeamInviteRecord, TeamJoinRequestRecord, TeamMemberRecord, TeamRecord, TeamRole } from '@/services/team/types';
+import type { TeamInviteRecord, TeamJoinRequestRecord, TeamMemberRecord, TeamRecord, TeamRole, TeamUpsertPayload } from '@/services/team/types';
+import type { DictItemRecord } from '@/types/api';
 import './team.css';
 
 const roleOptions: TeamRole[] = ['ADMIN', 'MANAGER', 'MEMBER'];
-const typeOptions = ['GENERAL', 'DEV', 'COMPETITION', 'CLUB', 'OTHER'];
-const visibilityOptions = ['PRIVATE', 'PUBLIC'];
-const joinModeOptions = ['INVITE_ONLY', 'APPLY', 'OPEN'];
+type TeamDictOption = NonNullable<SelectProps['options']>[number];
+
+const TEAM_TYPE_DICT_CODE = 'team_type';
+const TEAM_VISIBILITY_DICT_CODE = 'team_visibility';
+const TEAM_JOIN_MODE_DICT_CODE = 'team_join_mode';
+
+const fallbackTeamTypeOptions: TeamDictOption[] = [
+  { value: 'GENERAL', label: '通用团队' },
+  { value: 'DEV', label: '开发团队' },
+  { value: 'COMPETITION', label: '竞赛团队' },
+  { value: 'CLUB', label: '社团组织' },
+  { value: 'OTHER', label: '其他' },
+];
+const fallbackVisibilityOptions: TeamDictOption[] = [
+  { value: 'PRIVATE', label: '私有' },
+  { value: 'PUBLIC', label: '公开' },
+];
+const fallbackJoinModeOptions: TeamDictOption[] = [
+  { value: 'INVITE_ONLY', label: '仅邀请' },
+  { value: 'APPLY', label: '申请加入' },
+  { value: 'OPEN', label: '开放加入' },
+];
 
 const roleColor: Record<string, string> = {
   OWNER: 'gold',
   ADMIN: 'blue',
   MANAGER: 'cyan',
   MEMBER: 'default',
+};
+
+const dictItemsToOptions = (items: DictItemRecord[], fallback: TeamDictOption[]): TeamDictOption[] => {
+  if (!items.length) {
+    return fallback;
+  }
+  return items.map((item) => ({ value: item.itemValue, label: item.itemLabel }));
+};
+
+const useTeamDictOptions = () => {
+  const [teamTypeOptions, setTeamTypeOptions] = useState<TeamDictOption[]>(fallbackTeamTypeOptions);
+  const [visibilityOptions, setVisibilityOptions] = useState<TeamDictOption[]>(fallbackVisibilityOptions);
+  const [joinModeOptions, setJoinModeOptions] = useState<TeamDictOption[]>(fallbackJoinModeOptions);
+
+  useEffect(() => {
+    let active = true;
+    const loadOptions = async () => {
+      try {
+        const [teamTypeItems, visibilityItems, joinModeItems] = await Promise.all([
+          listEnabledDictItemsByCode(TEAM_TYPE_DICT_CODE),
+          listEnabledDictItemsByCode(TEAM_VISIBILITY_DICT_CODE),
+          listEnabledDictItemsByCode(TEAM_JOIN_MODE_DICT_CODE),
+        ]);
+        if (!active) {
+          return;
+        }
+        setTeamTypeOptions(dictItemsToOptions(teamTypeItems, fallbackTeamTypeOptions));
+        setVisibilityOptions(dictItemsToOptions(visibilityItems, fallbackVisibilityOptions));
+        setJoinModeOptions(dictItemsToOptions(joinModeItems, fallbackJoinModeOptions));
+      } catch {
+        if (!active) {
+          return;
+        }
+        setTeamTypeOptions(fallbackTeamTypeOptions);
+        setVisibilityOptions(fallbackVisibilityOptions);
+        setJoinModeOptions(fallbackJoinModeOptions);
+      }
+    };
+
+    void loadOptions();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return { teamTypeOptions, visibilityOptions, joinModeOptions };
 };
 
 const fullInviteUrl = (invite?: TeamInviteRecord) => {
@@ -84,11 +159,26 @@ const TeamShell = ({ title, actions, children }: { title: string; actions?: Reac
   </div>
 );
 
-const TeamForm = ({ initialValues, onFinish }: { initialValues?: Partial<TeamRecord>; onFinish: (values: any) => Promise<void> }) => {
-  const [form] = Form.useForm();
+const TeamForm = ({
+  form,
+  initialValues,
+  onFinish,
+  teamTypeOptions = fallbackTeamTypeOptions,
+  visibilityOptions = fallbackVisibilityOptions,
+  joinModeOptions = fallbackJoinModeOptions,
+}: {
+  form?: FormInstance<TeamUpsertPayload>;
+  initialValues?: Partial<TeamRecord>;
+  onFinish: (values: TeamUpsertPayload) => Promise<void>;
+  teamTypeOptions?: TeamDictOption[];
+  visibilityOptions?: TeamDictOption[];
+  joinModeOptions?: TeamDictOption[];
+}) => {
+  const [internalForm] = Form.useForm<TeamUpsertPayload>();
+  const formInstance = form ?? internalForm;
   return (
     <Form
-      form={form}
+      form={formInstance}
       layout="vertical"
       className="team-form"
       initialValues={{
@@ -103,13 +193,13 @@ const TeamForm = ({ initialValues, onFinish }: { initialValues?: Partial<TeamRec
         <Input maxLength={128} />
       </Form.Item>
       <Form.Item name="teamType" label="团队类型">
-        <Select options={typeOptions.map((value) => ({ value, label: value }))} />
+        <Select options={teamTypeOptions} />
       </Form.Item>
       <Form.Item name="visibility" label="可见性">
-        <Select options={visibilityOptions.map((value) => ({ value, label: value }))} />
+        <Select options={visibilityOptions} />
       </Form.Item>
       <Form.Item name="joinMode" label="加入方式">
-        <Select options={joinModeOptions.map((value) => ({ value, label: value }))} />
+        <Select options={joinModeOptions} />
       </Form.Item>
       <Form.Item name="avatarUrl" label="头像 URL">
         <Input maxLength={512} />
@@ -117,17 +207,23 @@ const TeamForm = ({ initialValues, onFinish }: { initialValues?: Partial<TeamRec
       <Form.Item name="description" label="简介">
         <Input.TextArea rows={4} maxLength={1000} />
       </Form.Item>
-      <Button type="primary" htmlType="submit">
-        保存
-      </Button>
+      {form ? null : (
+        <Button type="primary" htmlType="submit">
+          保存
+        </Button>
+      )}
     </Form>
   );
 };
 
 const TeamListPage = () => {
+  const responsive = useResponsive();
+  const { teamTypeOptions, visibilityOptions, joinModeOptions } = useTeamDictOptions();
+  const [teamForm] = Form.useForm<TeamUpsertPayload>();
   const [teams, setTeams] = useState<TeamRecord[]>([]);
   const [loading, setLoading] = useState(false);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamRecord>();
 
   const load = async () => {
@@ -143,12 +239,48 @@ const TeamListPage = () => {
     void load();
   }, []);
 
-  const closeModal = () => {
-    setModalOpen(false);
+  const openCreateDrawer = () => {
+    setEditingTeam(undefined);
+    teamForm.resetFields();
+    teamForm.setFieldsValue({
+      teamType: 'GENERAL',
+      visibility: 'PRIVATE',
+      joinMode: 'INVITE_ONLY',
+    });
+    setDrawerOpen(true);
+  };
+
+  const openEditDrawer = (record: TeamRecord) => {
+    setEditingTeam(record);
+    teamForm.resetFields();
+    teamForm.setFieldsValue(record);
+    setDrawerOpen(true);
+  };
+
+  const closeDrawer = () => {
+    setDrawerOpen(false);
     setEditingTeam(undefined);
   };
 
-  const columns: ColumnsType<TeamRecord> = [
+  const saveTeam = async () => {
+    const values = await teamForm.validateFields();
+    setSaving(true);
+    try {
+      if (editingTeam) {
+        await adminUpdateTeam(editingTeam.id, values);
+        message.success('团队已更新');
+      } else {
+        await createTeam(values);
+        message.success('团队已创建');
+      }
+      closeDrawer();
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const columns: ProColumns<TeamRecord>[] = [
     {
       title: '团队',
       dataIndex: 'teamName',
@@ -172,87 +304,93 @@ const TeamListPage = () => {
     {
       title: '操作',
       fixed: 'right',
+      valueType: 'option',
+      width: responsive.isMobile ? 120 : 184,
+      align: 'right',
+      className: 'saas-table-action-column',
       render: (_, record) => (
-        <Space wrap>
-          <Button size="small" onClick={() => history.push(`/team/${record.id}`)}>详情</Button>
-          <Button size="small" onClick={() => history.push(`/team/${record.id}/members`)}>成员</Button>
-          <Button size="small" onClick={() => history.push(`/team/${record.id}/invites`)}>邀请</Button>
-          <Button
-            size="small"
-            type="primary"
-            onClick={() => {
-              setEditingTeam(record);
-              setModalOpen(true);
-            }}
-          >
-            编辑
-          </Button>
-          <Popconfirm
-            title="确认删除该团队？"
-            description="删除后会同步移除成员、邀请和加入申请。"
-            onConfirm={async () => {
-              await adminDeleteTeam(record.id);
-              message.success('团队已删除');
-              await load();
-            }}
-          >
-            <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
-          </Popconfirm>
-        </Space>
+        <TableActionBar
+          isMobile={responsive.isMobile}
+          inlineCount={2}
+          items={[
+            { key: 'detail', label: '详情', onClick: () => history.push(`/team/${record.id}`) },
+            { key: 'members', label: '成员', onClick: () => history.push(`/team/${record.id}/members`) },
+            { key: 'invites', label: '邀请', onClick: () => history.push(`/team/${record.id}/invites`) },
+            {
+              key: 'edit',
+              label: '编辑',
+              onClick: () => openEditDrawer(record),
+            },
+            {
+              key: 'delete',
+              label: '删除',
+              icon: <DeleteOutlined />,
+              danger: true,
+              onClick: () => {
+                Modal.confirm({
+                  title: '确认删除该团队？',
+                  content: '删除后会同步移除成员、邀请和加入申请。',
+                  okButtonProps: { danger: true },
+                  onOk: async () => {
+                    await adminDeleteTeam(record.id);
+                    message.success('团队已删除');
+                    await load();
+                  },
+                });
+              },
+            },
+          ]}
+        />
       ),
     },
   ];
 
   return (
-    <TeamShell
-      title="团队管理"
-      actions={
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            setEditingTeam(undefined);
-            setModalOpen(true);
-          }}
-        >
-          新增团队
-        </Button>
-      }
-    >
-      <Card>
-        <Table
+    <ManagementPage title="团队管理">
+      <ManagementPageBody>
+        <ManagementTable<TeamRecord>
           rowKey="id"
           columns={columns}
           dataSource={teams}
           loading={loading}
+          isMobile={responsive.isMobile}
+          search={false}
           scroll={{ x: 1180 }}
           pagination={{ pageSize: 10, showSizeChanger: true }}
-          locale={{ emptyText: <Empty description="暂无团队" /> }}
+          locale={{ emptyText: <Empty description="暂无团队" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
+          onRefresh={() => void load()}
+          toolBarRender={() => [
+            <Button
+              key="create"
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={openCreateDrawer}
+            >
+              新增团队
+            </Button>,
+          ]}
         />
-      </Card>
-      <Modal
+      </ManagementPageBody>
+      <ManagementDrawer
         title={editingTeam ? '编辑团队' : '新增团队'}
-        open={modalOpen}
-        footer={null}
-        onCancel={closeModal}
+        open={drawerOpen}
+        onClose={closeDrawer}
         destroyOnHidden
+        footerActions={[
+          { key: 'cancel', label: '取消', onClick: closeDrawer },
+          { key: 'save', label: '保存', type: 'primary', loading: saving, onClick: () => void saveTeam() },
+        ]}
       >
         <TeamForm
+          form={teamForm}
           initialValues={editingTeam}
-          onFinish={async (values) => {
-            if (editingTeam) {
-              await adminUpdateTeam(editingTeam.id, values);
-              message.success('团队已更新');
-            } else {
-              await createTeam(values);
-              message.success('团队已创建');
-            }
-            closeModal();
-            await load();
-          }}
+          teamTypeOptions={teamTypeOptions}
+          visibilityOptions={visibilityOptions}
+          joinModeOptions={joinModeOptions}
+          onFinish={async () => saveTeam()}
         />
-      </Modal>
-    </TeamShell>
+      </ManagementDrawer>
+    </ManagementPage>
   );
 };
 

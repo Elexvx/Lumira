@@ -1954,6 +1954,47 @@ ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
 
+INSERT INTO `sys_dict_type` (`tenant_id`, `dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)
+VALUES
+    (1001, 'team_type', '团队类型', 'ENABLED', 1, '团队模块字典', 0, 0, 0),
+    (1001, 'team_visibility', '团队可见性', 'ENABLED', 1, '团队模块字典', 0, 0, 0),
+    (1001, 'team_join_mode', '团队加入方式', 'ENABLED', 1, '团队模块字典', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `dict_name` = VALUES(`dict_name`),
+    `status` = VALUES(`status`),
+    `is_system` = VALUES(`is_system`),
+    `remark` = VALUES(`remark`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_dict_item` (`tenant_id`, `dict_type_id`, `item_value`, `item_label`, `sort_no`, `status`, `remark`, `created_by`, `updated_by`, `deleted`)
+SELECT 1001, `id`, 'GENERAL', '通用团队', 10, 'ENABLED', '团队类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'DEV', '开发团队', 20, 'ENABLED', '团队类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'COMPETITION', '竞赛团队', 30, 'ENABLED', '团队类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'CLUB', '社团组织', 40, 'ENABLED', '团队类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'OTHER', '其他', 50, 'ENABLED', '团队类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'PRIVATE', '私有', 10, 'ENABLED', '团队可见性', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_visibility' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'PUBLIC', '公开', 20, 'ENABLED', '团队可见性', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_visibility' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'INVITE_ONLY', '仅邀请', 10, 'ENABLED', '团队加入方式', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_join_mode' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'APPLY', '申请加入', 20, 'ENABLED', '团队加入方式', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_join_mode' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'OPEN', '开放加入', 30, 'ENABLED', '团队加入方式', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_join_mode' AND `deleted` = 0
+ON DUPLICATE KEY UPDATE
+    `item_label` = VALUES(`item_label`),
+    `sort_no` = VALUES(`sort_no`),
+    `status` = VALUES(`status`),
+    `remark` = VALUES(`remark`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
 INSERT INTO `sys_user` (`id`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
 VALUES (1001, 'admin', 'Administrator', 'Administrator', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE

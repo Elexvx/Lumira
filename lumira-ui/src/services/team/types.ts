@@ -1,7 +1,7 @@
 export type TeamRole = 'OWNER' | 'ADMIN' | 'MANAGER' | 'MEMBER';
-export type TeamType = 'GENERAL' | 'DEV' | 'COMPETITION' | 'CLUB' | 'OTHER';
-export type TeamVisibility = 'PRIVATE' | 'PUBLIC';
-export type TeamJoinMode = 'INVITE_ONLY' | 'APPLY' | 'OPEN';
+export type TeamType = string;
+export type TeamVisibility = string;
+export type TeamJoinMode = string;
 
 export interface TeamRecord {
   id: number;

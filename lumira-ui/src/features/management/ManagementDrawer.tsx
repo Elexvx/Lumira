@@ -20,7 +20,8 @@ export interface ManagementDrawerProps extends DrawerProps {
 }
 
 export const ManagementDrawer = ({
-  width = STANDARD_DRAWER_WIDTH,
+  width,
+  size,
   destroyOnHidden = true,
   footerActions,
   extra,
@@ -33,6 +34,7 @@ export const ManagementDrawer = ({
   const responsive = useResponsive();
   const drawerClassName = ['saas-management-drawer', className].filter(Boolean).join(' ');
   const handleClose = useConfirmableDrawerClose(onClose);
+  const drawerSize = size ?? width ?? STANDARD_DRAWER_WIDTH;
   const renderedActions = footerActions?.length ? (
     <div className="saas-drawer-footer">
       <Space wrap>
@@ -54,7 +56,7 @@ export const ManagementDrawer = ({
   ) : undefined;
 
   return (
-    <Drawer {...props} className={drawerClassName} width={width} destroyOnHidden={destroyOnHidden} extra={extra} footer={footer ?? renderedActions} onClose={handleClose}>
+    <Drawer {...props} className={drawerClassName} size={drawerSize} destroyOnHidden={destroyOnHidden} extra={extra} footer={footer ?? renderedActions} onClose={handleClose}>
       {children}
     </Drawer>
   );

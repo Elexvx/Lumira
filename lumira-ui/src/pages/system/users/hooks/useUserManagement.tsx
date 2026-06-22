@@ -557,9 +557,7 @@ export const useUserManagement = () => {
           });
       const orderedFields = [...fields].sort((left, right) => left.orderNo - right.orderNo);
       setExportFields(orderedFields);
-      setSelectedExportFields((current) =>
-        current.length ? current : orderedFields.filter((field) => field.defaultSelected).map((field) => field.key),
-      );
+      setSelectedExportFields([]);
       setExportModalOpen(true);
     } finally {
       setExportLoading(false);

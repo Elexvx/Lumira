@@ -21,6 +21,9 @@ import java.util.Set;
 
 @Service
 public class TeamAppService {
+    private static final String TEAM_TYPE_DICT_CODE = "team_type";
+    private static final String TEAM_VISIBILITY_DICT_CODE = "team_visibility";
+    private static final String TEAM_JOIN_MODE_DICT_CODE = "team_join_mode";
     private static final Set<String> TEAM_TYPES = Set.of("GENERAL", "DEV", "COMPETITION", "CLUB", "OTHER");
     private static final Set<String> VISIBILITIES = Set.of("PRIVATE", "PUBLIC");
     private static final Set<String> JOIN_MODES = Set.of("INVITE_ONLY", "APPLY", "OPEN");
@@ -57,11 +60,11 @@ public class TeamAppService {
                 tenantId,
                 code,
                 trimRequired(request.getTeamName(), "Team name is required"),
-                normalizeEnum(request.getTeamType(), "GENERAL", TEAM_TYPES, "Invalid team type"),
+                normalizeDictValue(tenantId, request.getTeamType(), "GENERAL", TEAM_TYPE_DICT_CODE, TEAM_TYPES, "Invalid team type"),
                 trimToNull(request.getAvatarUrl()),
                 trimToNull(request.getDescription()),
-                normalizeEnum(request.getVisibility(), "PRIVATE", VISIBILITIES, "Invalid team visibility"),
-                normalizeEnum(request.getJoinMode(), "INVITE_ONLY", JOIN_MODES, "Invalid join mode"),
+                normalizeDictValue(tenantId, request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"),
+                normalizeDictValue(tenantId, request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"),
                 userId,
                 userId,
                 userId
@@ -198,11 +201,11 @@ public class TeamAppService {
                           and status = 'ACTIVE'
                         """,
                 trimRequired(request.getTeamName(), "Team name is required"),
-                normalizeEnum(request.getTeamType(), "GENERAL", TEAM_TYPES, "Invalid team type"),
+                normalizeDictValue(tenantId, request.getTeamType(), "GENERAL", TEAM_TYPE_DICT_CODE, TEAM_TYPES, "Invalid team type"),
                 trimToNull(request.getAvatarUrl()),
                 trimToNull(request.getDescription()),
-                normalizeEnum(request.getVisibility(), "PRIVATE", VISIBILITIES, "Invalid team visibility"),
-                normalizeEnum(request.getJoinMode(), "INVITE_ONLY", JOIN_MODES, "Invalid join mode"),
+                normalizeDictValue(tenantId, request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"),
+                normalizeDictValue(tenantId, request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"),
                 currentUser.getUserId(),
                 LocalDateTime.now(),
                 tenantId,
@@ -465,6 +468,51 @@ public class TeamAppService {
             throw biz(ErrorCode.VALIDATION_ERROR, message);
         }
         return normalized;
+    }
+
+    private String normalizeDictValue(Long tenantId, String value, String defaultValue, String dictCode, Set<String> fallbackAllowed, String message) {
+        String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : defaultValue;
+        Set<String> allowed = loadEnabledDictValues(tenantId, dictCode);
+        if (allowed.isEmpty()) {
+            allowed = fallbackAllowed;
+        }
+        if (normalized == null || !allowed.contains(normalized)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, message);
+        }
+        return normalized;
+    }
+
+    private Set<String> loadEnabledDictValues(Long tenantId, String dictCode) {
+        try {
+            List<String> values = jdbcTemplate.queryForList(
+                    """
+                            select i.item_value
+                            from sys_dict_type t
+                            join sys_dict_item i
+                              on i.tenant_id = t.tenant_id
+                             and i.dict_type_id = t.id
+                             and i.deleted = 0
+                            where t.tenant_id = ?
+                              and t.dict_code = ?
+                              and t.deleted = 0
+                              and t.status = 'ENABLED'
+                              and i.status = 'ENABLED'
+                            order by i.sort_no asc, i.id asc
+                            """,
+                    String.class,
+                    tenantId,
+                    dictCode
+            );
+            Set<String> normalizedValues = new java.util.LinkedHashSet<>();
+            for (String itemValue : values) {
+                if (StringUtils.hasText(itemValue)) {
+                    normalizedValues.add(itemValue.trim().toUpperCase(Locale.ROOT));
+                }
+            }
+            return normalizedValues;
+        } catch (RuntimeException exception) {
+            return Set.of();
+        }
     }
 
     private String trimRequired(String value, String message) {
