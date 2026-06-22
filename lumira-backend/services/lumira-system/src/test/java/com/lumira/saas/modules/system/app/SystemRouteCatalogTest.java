@@ -19,6 +19,7 @@ class SystemRouteCatalogTest {
                 .contains(
                         "dashboard.home",
                         "ai.root",
+                        "team.root",
                         "settings.root",
                         "user.center.personal"
                 )
@@ -30,6 +31,7 @@ class SystemRouteCatalogTest {
                         "/ai",
                         "/ai/assistant",
                         "/ai/knowledge",
+                        "/team",
                         "/settings",
                         "/user-center/users",
                         "/user-center/roles",
@@ -44,6 +46,14 @@ class SystemRouteCatalogTest {
                 .filteredOn(menu -> "ai.knowledge".equals(menu.getMenuCode()))
                 .singleElement()
                 .satisfies(menu -> assertThat(menu.getComponent()).isEqualTo("@/pages/ai/knowledge/KnowledgePage"));
+        assertThat(flattenedMenus)
+                .filteredOn(menu -> "team.root".equals(menu.getMenuCode()))
+                .singleElement()
+                .satisfies(menu -> {
+                    assertThat(menu.getPath()).isEqualTo("/team");
+                    assertThat(menu.getComponent()).isEqualTo("@/pages/team");
+                    assertThat(menu.getPermissionKey()).isEqualTo("team:view");
+                });
         assertThat(flattenedMenus)
                 .filteredOn(menu -> "user.center.personal".equals(menu.getMenuCode()))
                 .singleElement()
@@ -63,12 +73,15 @@ class SystemRouteCatalogTest {
                     assertThat(SystemRouteCatalog.isBuiltInMenu(menu)).isTrue();
                 });
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/dashboard/home")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/team")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/team/:teamId/members")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/settings")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/carousels")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/user-center/permissions")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/dashboard/DashboardHomePage")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/ai/knowledge/KnowledgePage")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/team")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/dashboard/Home")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/settings")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/carousels")).isFalse();

@@ -30,7 +30,7 @@ import static org.mockito.Mockito.mock;
 class AiKnowledgeBaseAppServiceTest {
 
     @Test
-    void ownedKnowledgeBaseListUsesStatsTableAndKeepsWhereClauseSeparated() {
+    void ownedKnowledgeBaseListUsesBaseCountersAndKeepsWhereClauseSeparated() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
                 queryOperations,
@@ -46,7 +46,8 @@ class AiKnowledgeBaseAppServiceTest {
         service.listKnowledgeBases(currentUser, null, null, "OWNED", 1, 10);
 
         assertFalse(queryOperations.lastListSql.contains("?left join"));
-        assertTrue(queryOperations.lastListSql.contains("left join ai_knowledge_base_stats"));
+        assertFalse(queryOperations.lastListSql.contains("ai_knowledge_base_stats"));
+        assertTrue(queryOperations.lastListSql.contains("coalesce(kb.document_count, 0) as document_count"));
         assertTrue(queryOperations.lastListSql.contains("kb.owner_user_id = ?\norder by"));
         assertThat(queryOperations.countQueryCount).isZero();
     }

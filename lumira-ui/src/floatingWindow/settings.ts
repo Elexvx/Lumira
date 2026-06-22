@@ -7,7 +7,7 @@ const isEnglishLocale = () => resolvePreferredLocale().startsWith('en');
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 export const DEFAULT_FLOATING_WINDOW_SETTINGS: FloatingWindowSettings = {
-  apiDocsQrEnabled: true,
+  apiDocsQrEnabled: false,
   apiDocsQrTitle: t('微信扫码联系我们', 'Scan the QR code on WeChat to contact us'),
   apiDocsQrImageUrl: '',
 };

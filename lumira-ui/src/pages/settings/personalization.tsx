@@ -8,7 +8,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
-import { applyFavicon, DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
+import { applyBrandingRuntime, applyFavicon, DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { normalizeAgreementSettings } from '@/agreement/settings';
 import { normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import { queryClient } from '@/query/queryClient';
@@ -310,16 +310,20 @@ const PersonalizationSettingsPage = () => {
     if (!canUpdate) return;
     setBrandingSaving(true);
     try {
-      const brandingValues = await brandingForm.validateFields();
+      await brandingForm.validateFields();
+      const brandingValues = brandingForm.getFieldsValue(true);
       const updatedBranding = await request<BrandingSettings>('/v1/system/branding-settings', {
         method: 'PUT',
         data: normalizeBrandingSettings(brandingValues),
         ...API_OPTS.NO_REDIRECT,
       });
       brandingForm.setFieldsValue(updatedBranding);
-      setInitialState((prev: AppInitialState | undefined) => (prev ? { ...prev, brandingSettings: updatedBranding } : prev));
+      setInitialState((prev: AppInitialState | undefined) =>
+        prev ? { ...prev, brandingSettings: updatedBranding, brandingRevision: (prev.brandingRevision ?? 0) + 1 } : prev,
+      );
       setPreviewState(updatedBranding);
       persistBrandingSettings(updatedBranding);
+      applyBrandingRuntime(updatedBranding);
       message.success(t('品牌设置已保存并即时生效', 'Branding settings saved and applied immediately'));
     } catch (error) {
       showErrorMessage(error, t('品牌设置保存失败，请稍后重试', 'Failed to save branding settings. Please try again later.'));
@@ -361,6 +365,10 @@ const PersonalizationSettingsPage = () => {
     if (!canUpdate) return;
     setFloatingSaving(true);
     try {
+      const currentFloatingValues = floatingForm.getFieldsValue();
+      if (currentFloatingValues.apiDocsQrEnabled === false && !currentFloatingValues.apiDocsQrTitle?.trim()) {
+        floatingForm.setFieldValue('apiDocsQrTitle', DEFAULT_FLOATING_WINDOW_SETTINGS.apiDocsQrTitle);
+      }
       const floatingValues = await floatingForm.validateFields();
       const updatedFloating = normalizeFloatingWindowSettings(
         await request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
@@ -471,8 +479,17 @@ const PersonalizationSettingsPage = () => {
       setFloatingPreview(normalizedFloating);
       queryClient.setQueryData(FLOATING_WINDOW_SETTINGS_QUERY_KEY, normalizedFloating);
       persistWatermarkSettings(normalizedWatermark);
+      persistBrandingSettings(normalizedBranding);
+      applyBrandingRuntime(normalizedBranding);
       setInitialState((prev: AppInitialState | undefined) =>
-        prev ? { ...prev, brandingSettings: normalizedBranding, watermarkSettings: normalizedWatermark } : prev,
+        prev
+          ? {
+              ...prev,
+              brandingSettings: normalizedBranding,
+              brandingRevision: (prev.brandingRevision ?? 0) + 1,
+              watermarkSettings: normalizedWatermark,
+            }
+          : prev,
       );
     } catch (error) {
       if (isActive()) {

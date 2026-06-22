@@ -625,8 +625,21 @@ const buildAuthenticatorRows = ({
     wechatConfigured,
     passwordConfigured,
   });
+  const existingModes: LoginMode[] = [
+    passkeyEnabled || passkeyConfigured ? 'passkey' : null,
+    smsEnabled || smsConfigured ? 'sms' : null,
+    emailEnabled || emailConfigured ? 'email' : null,
+    wechatEnabled || wechatConfigured ? 'wechat' : null,
+    passwordEnabled || passwordConfigured ? 'password' : null,
+  ].filter(Boolean) as LoginMode[];
+  const orderedModes = normalizeExistingLoginModeOrder(configuredLoginModeOrder)
+    .filter((mode) => existingModes.includes(mode));
+  const modes = [
+    ...orderedModes,
+    ...existingModes.filter((mode) => !orderedModes.includes(mode)),
+  ];
 
-  return normalizeExistingLoginModeOrder(configuredLoginModeOrder).map((mode, index) => ({
+  return modes.map((mode, index) => ({
     ...rowsByMode[mode],
     order: index + 1,
   }));
@@ -899,8 +912,7 @@ export const useAuthenticatorManagement = ({
   const configuredLoginModeOrder = useMemo(
     () =>
       verificationSettingsData?.loginModeOrder ??
-      (verificationForm.getFieldValue('loginModeOrder') as string[] | undefined) ??
-      ['passkey', 'sms', 'email', 'wechat', 'password'],
+      (verificationForm.getFieldValue('loginModeOrder') as string[] | undefined),
     [verificationForm, verificationSettingsData?.loginModeOrder],
   );
   const authenticatorRows = useMemo<AuthenticatorRecord[]>(

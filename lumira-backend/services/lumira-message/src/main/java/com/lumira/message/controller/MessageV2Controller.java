@@ -11,6 +11,7 @@ import com.lumira.message.dto.MessageDTO;
 import com.lumira.message.vo.MessageVO;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -62,6 +63,13 @@ public class MessageV2Controller {
     public ApiResponse<MessageVO.UnreadCountVO> readAll() {
         requireAny("message:message:read", "system:notification:view");
         return ApiResponse.success(messageAppService.markAllRead(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+    }
+
+    @PostMapping("/messages/{id}/read")
+    @RepeatSubmit
+    public ApiResponse<MessageVO.NoticeVO> readMessage(@PathVariable("id") Long id) {
+        requireAny("message:message:read", "system:notification:view");
+        return ApiResponse.success(messageAppService.markMessageRead(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
     }
 
     private void requireAny(String... permissionKeys) {

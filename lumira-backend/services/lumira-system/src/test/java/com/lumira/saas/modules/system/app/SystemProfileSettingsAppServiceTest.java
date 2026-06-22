@@ -48,6 +48,8 @@ class SystemProfileSettingsAppServiceTest {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
                 "profile.field.mobile.visible", "true",
                 "profile.field.mobile.weight", "22",
+                "profile.field.mobile.required", "true",
+                "profile.field.mobile.sort", "77",
                 "profile.field.email.visible", "false"
         ));
         SystemProfileSettingsAppService service = newService(jdbcTemplate);
@@ -60,6 +62,8 @@ class SystemProfileSettingsAppServiceTest {
 
         assertTrue(mobile.getVisible());
         assertEquals(22, mobile.getWeight());
+        assertTrue(mobile.getRequired());
+        assertEquals(77, mobile.getSortNo());
         assertEquals("联系方式", mobile.getGroupLabel());
         assertTrue(avatar.getVisible());
         assertEquals(10, avatar.getWeight());
@@ -75,7 +79,10 @@ class SystemProfileSettingsAppServiceTest {
         SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
         List<ProfileFieldSettingItem> items = new ArrayList<>();
         items.add(profileFieldSetting("avatarUrl", true, 12));
-        items.add(profileFieldSetting("mobile", false, 20));
+        ProfileFieldSettingItem mobile = profileFieldSetting("mobile", false, 20);
+        mobile.setRequired(true);
+        mobile.setSortNo(77);
+        items.add(mobile);
         request.setItems(items);
 
         service.updateProfileFieldSettings(buildCurrentUser(), request);
@@ -84,8 +91,12 @@ class SystemProfileSettingsAppServiceTest {
         assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.avatar.weight"));
         assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.mobile.visible"));
         assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.mobile.weight"));
+        assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.mobile.required"));
+        assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.mobile.sort"));
         assertTrue(jdbcTemplate.hasInsertValue("profile.field.avatar.weight", "12"));
         assertTrue(jdbcTemplate.hasInsertValue("profile.field.mobile.visible", "false"));
+        assertTrue(jdbcTemplate.hasInsertValue("profile.field.mobile.required", "true"));
+        assertTrue(jdbcTemplate.hasInsertValue("profile.field.mobile.sort", "77"));
     }
 
     @Test
@@ -93,6 +104,7 @@ class SystemProfileSettingsAppServiceTest {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
                 "profile.field.mobile.visible", "true",
                 "profile.field.mobile.weight", "22",
+                "profile.field.mobile.required", "true",
                 "profile.field.email.visible", "false"
         ));
         SystemProfileSettingsAppService service = newService(jdbcTemplate);
@@ -103,7 +115,10 @@ class SystemProfileSettingsAppServiceTest {
         SystemDTO.ProfileFieldSettingsRequest request = new SystemDTO.ProfileFieldSettingsRequest();
         List<ProfileFieldSettingItem> items = new ArrayList<>();
         items.add(profileFieldSetting("avatarUrl", true, 12));
-        items.add(profileFieldSetting("mobile", false, 20));
+        ProfileFieldSettingItem updatedMobile = profileFieldSetting("mobile", false, 20);
+        updatedMobile.setRequired(true);
+        updatedMobile.setSortNo(77);
+        items.add(updatedMobile);
         request.setItems(items);
 
         service.updateProfileFieldSettings(buildCurrentUser(), request);
@@ -112,6 +127,8 @@ class SystemProfileSettingsAppServiceTest {
         ProfileFieldSettingVO mobile = findSetting(after, "mobile");
         assertFalse(mobile.getVisible());
         assertEquals(20, mobile.getWeight());
+        assertTrue(mobile.getRequired());
+        assertEquals(77, mobile.getSortNo());
         assertEquals(2, jdbcTemplate.queryForListCount());
     }
 

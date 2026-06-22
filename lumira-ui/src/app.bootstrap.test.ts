@@ -100,6 +100,7 @@ vi.mock('@/services/system/public', () => ({
 
 vi.mock('@/constants/http', () => ({
   API_PREFIX: '/api',
+  getApiPrefix: () => '/api',
 }));
 
 vi.mock('@/services/common/request', () => ({

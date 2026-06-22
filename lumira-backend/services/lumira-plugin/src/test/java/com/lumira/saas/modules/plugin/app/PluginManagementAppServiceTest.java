@@ -47,6 +47,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -141,7 +142,10 @@ class PluginManagementAppServiceTest {
         tenantEntity.setPluginVersion("1.0.0");
         tenantEntity.setEnabled(1);
 
+        PluginVO.PluginStatusVO pluginStatus = new PluginVO.PluginStatusVO();
+        pluginStatus.setSupportsDataPurge(true);
         when(pluginPersistenceService.findTenantPlugin(1001L, "sms")).thenReturn(Optional.of(tenantEntity));
+        when(pluginPersistenceService.pluginStatus(1001L, "sms")).thenReturn(Optional.of(pluginStatus));
 
         PluginDTO.DisableRequest request = new PluginDTO.DisableRequest();
         request.setTenantId(1001L);
@@ -155,6 +159,30 @@ class PluginManagementAppServiceTest {
         verify(pluginMigrationService).executeDownMigrations("sms", "1.0.0", null, 100L);
         verify(systemInternalApi).invalidatePermissionSnapshot(1001L);
         verify(domainEventPublisher).publishAll(any());
+    }
+
+    @Test
+    void disable_shouldRejectPurgeWhenPluginDoesNotSupportDataPurge() {
+        PluginTenantEntity tenantEntity = new PluginTenantEntity();
+        tenantEntity.setTenantId(1001L);
+        tenantEntity.setPluginCode("sensitive-words");
+        tenantEntity.setPluginVersion("1.0.0");
+        tenantEntity.setEnabled(1);
+
+        PluginVO.PluginStatusVO pluginStatus = new PluginVO.PluginStatusVO();
+        pluginStatus.setSupportsDataPurge(false);
+        when(pluginPersistenceService.findTenantPlugin(1001L, "sensitive-words")).thenReturn(Optional.of(tenantEntity));
+        when(pluginPersistenceService.pluginStatus(1001L, "sensitive-words")).thenReturn(Optional.of(pluginStatus));
+
+        PluginDTO.DisableRequest request = new PluginDTO.DisableRequest();
+        request.setTenantId(1001L);
+        request.setPluginCode("sensitive-words");
+        request.setPurgeData(true);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> pluginManagementAppService.disable(request, currentUser()))
+                .hasMessageContaining("does not support data purge");
+
+        verify(pluginPersistenceService, never()).disablePluginForTenant(any(), any(), any());
     }
 
     @Test

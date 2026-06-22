@@ -104,7 +104,7 @@ public class ProfileController {
     @PostMapping(value = "/uploads/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @RepeatSubmit
     public ApiResponse<String> uploadAvatar(@RequestParam("file") MultipartFile file) {
-        FileObjectDTO uploaded = fileInternalApi.uploadImage(file, "头像", "个人头像上传");
+        FileObjectDTO uploaded = fileInternalApi.uploadImage(file, "头像", "个人头像上传", "avatar");
         return ApiResponse.success(uploaded.publicUrl(), TraceContext.getRequestId());
     }
 }

@@ -238,7 +238,11 @@ public class SystemPlatformSettingsAppService {
         upsertBrandingConfig(tenantId, BRANDING_COPYRIGHT_START_YEAR_KEY, "版权起始年份", String.valueOf(copyrightStartYear), "页脚版权起始年份", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_FOOTER_ICP_KEY, "页脚 ICP 备案", sanitizeBrandingText(request.getFooterIcp(), ""), "页脚备案信息", operatorId);
         upsertBrandingConfig(tenantId, BRANDING_FOOTER_POLICE_BEIAN_KEY, "页脚公安备案", sanitizeBrandingText(request.getFooterPoliceBeian(), ""), "页脚公安备案信息", operatorId);
-        upsertBrandingConfig(tenantId, BRANDING_FOOTER_COPYRIGHT_KEY, "页脚版权声明", buildCopyrightText(companyName, copyrightStartYear), "页脚版权声明（由公司名称和起始年份生成）", operatorId);
+        String footerCopyright = sanitizeBrandingText(
+                request.getFooterCopyright(),
+                buildCopyrightText(companyName, copyrightStartYear)
+        );
+        upsertBrandingConfig(tenantId, BRANDING_FOOTER_COPYRIGHT_KEY, "页脚版权声明", footerCopyright, "页脚版权声明", operatorId);
         operationAuditService.log(
                 tenantId,
                 currentUser.getUserId(),
@@ -249,6 +253,7 @@ public class SystemPlatformSettingsAppService {
                 "SUCCESS",
                 "更新个性化设置"
         );
+        markRuntimeAppearanceChanged(tenantId, "branding-update");
         return loadBrandingSettings(tenantId);
     }
 
@@ -268,6 +273,7 @@ public class SystemPlatformSettingsAppService {
                 "SUCCESS",
                 "更新协议设置"
         );
+        markRuntimeAppearanceChanged(tenantId, "agreement-update");
         return loadAgreementSettings(tenantId);
     }
 
@@ -285,7 +291,7 @@ public class SystemPlatformSettingsAppService {
         Long operatorId = currentUser.getUserId();
         upsertBrandingConfig(tenantId, WATERMARK_ENABLED_KEY, "水印开关", String.valueOf(Boolean.TRUE.equals(request.getEnabled())), "全局水印开关", operatorId);
         upsertBrandingConfig(tenantId, WATERMARK_MODE_KEY, "水印模式", defaultIfBlank(request.getMode(), "TEXT"), "TEXT/IMAGE", operatorId);
-        upsertBrandingConfig(tenantId, WATERMARK_TEXT_LINES_KEY, "水印文本", String.join("\n", request.getTextLines() == null ? List.of("宏翔商道", "后台管理系统") : request.getTextLines()), "多行文本水印", operatorId);
+        upsertBrandingConfig(tenantId, WATERMARK_TEXT_LINES_KEY, "水印文本", String.join("\n", request.getTextLines() == null ? List.of() : request.getTextLines()), "多行文本水印", operatorId);
         upsertBrandingConfig(tenantId, WATERMARK_IMAGE_URL_KEY, "水印图片", defaultIfBlank(request.getImageUrl(), ""), "图片水印 URL", operatorId);
         upsertBrandingConfig(tenantId, WATERMARK_FONT_COLOR_KEY, "字体颜色", defaultIfBlank(request.getFontColor(), "rgba(0,0,0,0.15)"), "字体颜色", operatorId);
         upsertBrandingConfig(tenantId, WATERMARK_FONT_SIZE_KEY, "字体大小", String.valueOf(request.getFontSize() == null ? 14 : request.getFontSize()), "字体大小", operatorId);
@@ -297,6 +303,7 @@ public class SystemPlatformSettingsAppService {
         upsertBrandingConfig(tenantId, WATERMARK_OFFSET_Y_KEY, "纵向偏移", String.valueOf(request.getOffsetY() == null ? 0 : request.getOffsetY()), "纵向偏移", operatorId);
         upsertBrandingConfig(tenantId, WATERMARK_Z_INDEX_KEY, "层级", String.valueOf(request.getZIndex() == null ? 9 : request.getZIndex()), "z-index", operatorId);
         upsertBrandingConfig(tenantId, WATERMARK_OPACITY_KEY, "透明度", String.valueOf(request.getOpacity() == null ? 0.15D : request.getOpacity()), "透明度", operatorId);
+        markRuntimeAppearanceChanged(tenantId, "watermark-update");
         return loadWatermarkSettings(tenantId);
     }
 
@@ -304,7 +311,7 @@ public class SystemPlatformSettingsAppService {
     public SystemVO.FloatingWindowSettingsVO updateFloatingWindowSettings(CurrentUser currentUser, SystemDTO.FloatingWindowSettingsRequest request) {
         Long tenantId = currentTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
-        upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_ENABLED_KEY, "接口文档二维码开关", String.valueOf(request.getApiDocsQrEnabled() == null || request.getApiDocsQrEnabled()), "是否在全局悬浮窗展示接口文档二维码入口", operatorId);
+        upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_ENABLED_KEY, "接口文档二维码开关", String.valueOf(Boolean.TRUE.equals(request.getApiDocsQrEnabled())), "是否在全局悬浮窗展示接口文档二维码入口", operatorId);
         upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_TITLE_KEY, "接口文档二维码标题", defaultIfBlank(request.getApiDocsQrTitle(), "微信扫码联系我们"), "接口文档二维码弹层标题", operatorId);
         upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_IMAGE_URL_KEY, "接口文档二维码图片", defaultIfBlank(request.getApiDocsQrImageUrl(), ""), "接口文档悬浮入口展开后展示的二维码图片", operatorId);
         operationAuditService.log(
@@ -317,6 +324,7 @@ public class SystemPlatformSettingsAppService {
                 "SUCCESS",
                 "更新悬浮窗设置"
         );
+        markRuntimeAppearanceChanged(tenantId, "floating-window-update");
         return loadFloatingWindowSettings(tenantId);
     }
 
@@ -365,6 +373,7 @@ public class SystemPlatformSettingsAppService {
         currentValues.put(SMTP_AUTH_ENABLED_KEY, String.valueOf(authEnabled));
         currentValues.put(SMTP_STARTTLS_ENABLED_KEY, String.valueOf(startTlsEnabled));
         currentValues.put(SMTP_SSL_ENABLED_KEY, String.valueOf(sslEnabled));
+        markRuntimeAppearanceChanged(tenantId, "smtp-update");
         return buildSmtpSettings(currentValues);
     }
 
@@ -383,6 +392,7 @@ public class SystemPlatformSettingsAppService {
         upsertPlatformConfig(tenantId, SMTP_SSL_ENABLED_KEY, "SMTP SSL", "false", "是否启用 SSL", operatorId);
         smtpMailService.invalidateTenant(tenantId);
         operationAuditService.log(tenantId, operatorId, currentUser.getUsername(), "smtp", "reset", "DELETE", "SUCCESS", "重置 SMTP 配置");
+        markRuntimeAppearanceChanged(tenantId, "smtp-reset");
         return buildSmtpSettings(Map.of(
                 SMTP_ENABLED_KEY, "false",
                 SMTP_HOST_KEY, "",
@@ -420,6 +430,7 @@ public class SystemPlatformSettingsAppService {
         currentValues.put(WECHAT_OFFICIAL_APP_SECRET_KEY, appSecret);
         currentValues.put(WECHAT_OFFICIAL_TEMPLATE_ID_KEY, templateId);
         currentValues.put(WECHAT_OFFICIAL_DETAIL_URL_KEY, detailUrl);
+        markRuntimeAppearanceChanged(tenantId, "wechat-official-update");
         return buildWechatOfficialAccountSettings(currentValues);
     }
 
@@ -485,7 +496,7 @@ public class SystemPlatformSettingsAppService {
         SystemVO.WatermarkSettingsVO settings = new SystemVO.WatermarkSettingsVO();
         settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(WATERMARK_ENABLED_KEY), "false")));
         settings.setMode(defaultIfBlank(valueByKey.get(WATERMARK_MODE_KEY), "TEXT"));
-        settings.setTextLines(List.of(defaultIfBlank(valueByKey.get(WATERMARK_TEXT_LINES_KEY), "宏翔商道\n后台管理系统").split("\n")));
+        settings.setTextLines(parseWatermarkTextLines(valueByKey.get(WATERMARK_TEXT_LINES_KEY)));
         settings.setImageUrl(defaultIfBlank(valueByKey.get(WATERMARK_IMAGE_URL_KEY), ""));
         settings.setFontColor(defaultIfBlank(valueByKey.get(WATERMARK_FONT_COLOR_KEY), "rgba(0,0,0,0.15)"));
         settings.setFontSize(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_FONT_SIZE_KEY), "14")));
@@ -503,7 +514,7 @@ public class SystemPlatformSettingsAppService {
     private SystemVO.FloatingWindowSettingsVO loadFloatingWindowSettings(Long tenantId) {
         Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, FLOATING_WINDOW_CONFIG_KEYS);
         SystemVO.FloatingWindowSettingsVO settings = new SystemVO.FloatingWindowSettingsVO();
-        settings.setApiDocsQrEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_ENABLED_KEY), "true")));
+        settings.setApiDocsQrEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_ENABLED_KEY), "false")));
         settings.setApiDocsQrTitle(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_TITLE_KEY), "微信扫码联系我们"));
         settings.setApiDocsQrImageUrl(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_IMAGE_URL_KEY), ""));
         return settings;
@@ -586,6 +597,17 @@ public class SystemPlatformSettingsAppService {
 
     private void cacheConfigSnapshot(String cacheKey, Map<String, String> valueByKey) {
         configSnapshotCache.put(cacheKey, new LinkedHashMap<>(valueByKey));
+    }
+
+    private void markRuntimeAppearanceChanged(Long tenantId, String eventKey) {
+        Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
+        configSnapshotCache.invalidateAll();
+        configLoadInFlight.invalidateAll();
+        runtimeAppearanceVersionCache.invalidate(effectiveTenantId);
+        runtimeAppearanceVersionLoadInFlight.invalidate(effectiveTenantId);
+        if (readModelVersionService != null) {
+            readModelVersionService.bump(effectiveTenantId, CONTEXT_PLATFORM, SCOPE_RUNTIME_APPEARANCE, eventKey);
+        }
     }
 
     private Map<String, String> loadConfigValuesByKeysWithSingleFlight(
@@ -841,6 +863,16 @@ public class SystemPlatformSettingsAppService {
 
     private String normalizeMarkdownText(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private List<String> parseWatermarkTextLines(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of();
+        }
+        return value.lines()
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList();
     }
 
     private String normalizeConfigText(Object value) {

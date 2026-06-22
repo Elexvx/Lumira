@@ -29,6 +29,7 @@ Lumira/
 
 - `lumira-backend/services/lumira-admin`：聚合后端启动入口。
 - `lumira-backend/services/lumira-system`：系统、权限、配置、审计等核心能力。
+- `lumira-backend/services/lumira-team`：团队、成员、邀请和加入申请等 Team 业务域。
 - `lumira-backend/services/lumira-auth`：认证、会话、登录保护和二次验证。
 - `lumira-backend/services/lumira-file`：文件对象、上传、存储空间和文件安全。
 - `lumira-backend/services/lumira-message`：站内消息、通知和 WebSocket。
@@ -37,7 +38,15 @@ Lumira/
 - `lumira-backend/services/lumira-payment`：支付配置、订单、退款和支付事件。
 - `lumira-backend/services/lumira-ai`：AI 助手、知识库、会话和工具调用。
 - `lumira-backend/services/lumira-quartz`：后台任务、XXL-JOB handler 和 relay 调度。
+- `lumira-backend/libs/lumira-team-api`：Team 跨模块 Internal API 契约。
 - `lumira-backend/libs/*`：后端公共能力和跨模块契约。
+
+## 架构文档入口
+
+- [模块边界](doc/architecture/module-boundary.md)
+- [表归属边界](doc/architecture/table-ownership.md)
+- [事件边界](doc/architecture/event-boundary.md)
+- [业务模块模板](doc/architecture/business-module-template.md)
 
 ## 常用命令
 

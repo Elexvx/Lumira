@@ -1521,7 +1521,7 @@ public class SystemManagementAppService {
         SystemVO.WatermarkSettingsVO settings = new SystemVO.WatermarkSettingsVO();
         settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(WATERMARK_ENABLED_KEY), "false")));
         settings.setMode(defaultIfBlank(valueByKey.get(WATERMARK_MODE_KEY), "TEXT"));
-        settings.setTextLines(List.of(defaultIfBlank(valueByKey.get(WATERMARK_TEXT_LINES_KEY), "宏翔商道\n后台管理系统").split("\n")));
+        settings.setTextLines(parseWatermarkTextLines(valueByKey.get(WATERMARK_TEXT_LINES_KEY)));
         settings.setImageUrl(defaultIfBlank(valueByKey.get(WATERMARK_IMAGE_URL_KEY), ""));
         settings.setFontColor(defaultIfBlank(valueByKey.get(WATERMARK_FONT_COLOR_KEY), "rgba(0,0,0,0.15)"));
         settings.setFontSize(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_FONT_SIZE_KEY), "14")));
@@ -2277,6 +2277,16 @@ public class SystemManagementAppService {
 
     private String normalizeMarkdownText(String value) {
         return value == null ? "" : value;
+    }
+
+    private List<String> parseWatermarkTextLines(String value) {
+        if (!StringUtils.hasText(value)) {
+            return List.of();
+        }
+        return value.lines()
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList();
     }
 
     private String defaultIfBlank(String value, String fallback) {

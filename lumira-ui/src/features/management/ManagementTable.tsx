@@ -13,6 +13,8 @@ const DEFAULT_MANAGEMENT_TABLE_OPTIONS: ManagementTableOptions = {
 type MobilePagination = TablePaginationConfig | false | undefined;
 
 const TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD = 1100;
+const TABLE_HORIZONTAL_SCROLL_BUFFER = 1;
+const DEFAULT_DATA_COLUMN_WIDTH = 160;
 
 const parseColumnWidth = (width: ProColumns['width']) => {
   if (typeof width === 'number') {
@@ -21,17 +23,18 @@ const parseColumnWidth = (width: ProColumns['width']) => {
   if (typeof width === 'string' && /^\d+$/.test(width)) {
     return Number(width);
   }
+  if (typeof width === 'string') {
+    const spacingValue = width.match(/^var\(--saas-spacing-(\d+)\)$/)?.[1];
+    return spacingValue ? Number(spacingValue) : undefined;
+  }
   return undefined;
 };
 
-const buildTableScroll = <RecordType extends object>(columns: ProColumns<RecordType>[], isMobile: boolean) => {
-  const hasFixedColumn = columns.some((column) => Boolean(column.fixed));
-  const estimatedWidth = columns.reduce((sum, column) => {
-    if (typeof column.width === 'number') {
-      return sum + column.width;
-    }
-    if (typeof column.width === 'string' && /^\d+$/.test(column.width)) {
-      return sum + Number(column.width);
+const estimateTableWidth = <RecordType extends object>(columns: ProColumns<RecordType>[]) =>
+  columns.reduce((sum, column) => {
+    const width = parseColumnWidth(column.width);
+    if (width) {
+      return sum + width;
     }
     if (column.valueType === 'option') {
       return sum + 160;
@@ -42,10 +45,15 @@ const buildTableScroll = <RecordType extends object>(columns: ProColumns<RecordT
     if (column.ellipsis) {
       return sum + 160;
     }
-    return sum + 120;
+    return sum + DEFAULT_DATA_COLUMN_WIDTH;
   }, 0);
 
-  return hasFixedColumn || estimatedWidth >= TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD || isMobile ? { x: 'max-content' } : undefined;
+const buildTableScroll = <RecordType extends object>(columns: ProColumns<RecordType>[], isMobile: boolean) => {
+  const hasFixedColumn = columns.some((column) => Boolean(column.fixed));
+  const estimatedWidth = estimateTableWidth(columns);
+  const scrollX = Math.max(estimatedWidth + TABLE_HORIZONTAL_SCROLL_BUFFER, TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD);
+
+  return hasFixedColumn || estimatedWidth >= TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD || isMobile ? { x: scrollX } : undefined;
 };
 
 const buildAutoWidthScroll = <RecordType extends object>(
@@ -53,13 +61,14 @@ const buildAutoWidthScroll = <RecordType extends object>(
   fallbackScroll: TableProps<RecordType>['scroll'] | undefined,
 ) => {
   const resolvedScroll = scroll ?? fallbackScroll;
+  const fallbackX = fallbackScroll?.x;
   if (!resolvedScroll) {
-    return { x: 'max-content' };
+    return fallbackScroll ?? { x: TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD };
   }
 
   return {
     ...resolvedScroll,
-    x: 'max-content',
+    x: resolvedScroll.x === 'max-content' || resolvedScroll.x === true || resolvedScroll.x === undefined ? fallbackX ?? TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD : resolvedScroll.x,
   };
 };
 
@@ -71,21 +80,43 @@ const buildAutoWidthColumns = <RecordType extends object>(columns: ProColumns<Re
     const isIndexColumn = column.valueType === 'index';
 
     if (isFixedColumn || isActionColumn || isIndexColumn) {
+      const width = parseColumnWidth(column.width);
       return {
         ...column,
         children,
+        width: width ?? column.width,
       };
     }
 
     const width = parseColumnWidth(column.width);
+    const normalizedWidth = width ?? column.minWidth ?? DEFAULT_DATA_COLUMN_WIDTH;
     return {
       ...column,
       children,
-      width: undefined,
-      minWidth: column.minWidth ?? width,
-      ellipsis: false,
+      width: normalizedWidth,
+      minWidth: column.minWidth ?? normalizedWidth,
     };
   });
+
+const normalizeFixedColumnOrder = <RecordType extends object>(columns: ProColumns<RecordType>[]): ProColumns<RecordType>[] => {
+  const leftFixedColumns: ProColumns<RecordType>[] = [];
+  const regularColumns: ProColumns<RecordType>[] = [];
+  const rightFixedColumns: ProColumns<RecordType>[] = [];
+
+  columns.forEach((column) => {
+    if (column.fixed === 'left') {
+      leftFixedColumns.push(column);
+      return;
+    }
+    if (column.fixed === 'right') {
+      rightFixedColumns.push(column);
+      return;
+    }
+    regularColumns.push(column);
+  });
+
+  return [...leftFixedColumns, ...regularColumns, ...rightFixedColumns];
+};
 
 const buildMobilePagination = (pagination: MobilePagination | boolean, isMobile: boolean): MobilePagination => {
   if (!pagination || !isMobile) {
@@ -130,7 +161,16 @@ const buildManagementTableOptions = <
     ...(options || {}),
   } as Exclude<ProTableProps<RecordType, Params>['options'], false | undefined>;
 
-  return mergedOptions;
+  return {
+    ...mergedOptions,
+    setting:
+      mergedOptions.setting === false
+        ? false
+        : {
+            ...(typeof mergedOptions.setting === 'object' ? mergedOptions.setting : {}),
+            draggable: false,
+          },
+  };
 };
 
 const buildManagementToolbar = <
@@ -158,17 +198,18 @@ export const ManagementTable = <RecordType extends object = object, Params exten
   options,
   onRefresh,
   scroll,
+  tableLayout,
   toolBarRender,
   ...props
 }: ManagementTableProps<RecordType, Params>) => (
   <div className="saas-table-wrap">
     <ProTable<RecordType, Params>
       {...props}
-      columns={buildAutoWidthColumns(columns)}
+      columns={normalizeFixedColumnOrder(buildAutoWidthColumns(columns))}
       options={buildManagementTableOptions(options)}
       pagination={buildMobilePagination(pagination, isMobile) as ProTableProps<RecordType, Params>['pagination']}
       scroll={buildAutoWidthScroll(scroll, buildTableScroll(columns, isMobile))}
-      tableLayout="auto"
+      tableLayout={tableLayout}
       toolBarRender={buildManagementToolbar(toolBarRender, onRefresh)}
     />
   </div>

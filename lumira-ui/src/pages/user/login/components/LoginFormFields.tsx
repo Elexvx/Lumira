@@ -1,4 +1,4 @@
-import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse, AgreementSettings } from '@/types/api';
+import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse } from '@/types/api';
 import { CheckOutlined, KeyOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
 import { Alert, Button, Checkbox, Form, Image, Input, Modal, Segmented, Skeleton, Typography } from 'antd';
@@ -13,9 +13,11 @@ import {
   shouldBlockLoginInputPaste,
   type LoginInputKind,
 } from '@/pages/user/login/hooks/useLoginFlowRuntime';
+import { hasConfiguredAgreementSettings } from '@/agreement/settings';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 import { MailOutlined, MobileOutlined } from '@ant-design/icons';
 import { LOGIN_SLIDER_CAPTCHA_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
+import type { AgreementSettings } from '@/types/api';
 
 const CAPTCHA_ALLOWED_CHAR_PATTERN = /^[A-Za-z0-9]$/;
 const CAPTCHA_SANITIZE_PATTERN = /[^A-Za-z0-9]/g;
@@ -421,9 +423,9 @@ export interface LoginFormValues {
 interface LoginFormFieldsProps {
   activeLoginMode: LoginMode;
   availableLoginModes: LoginMode[];
-  agreementSettings: AgreementSettings;
   pendingSecondFactorLogin: LoginResponse | null;
   pendingSecondFactorPrompt: string;
+  agreementSettings: AgreementSettings;
   securityCaptchaEnabled: boolean;
   securityCaptchaType: CaptchaChallenge['captchaType'];
   captchaChallenge: CaptchaChallenge | null;
@@ -602,9 +604,9 @@ const PasswordLoginPanel = ({
 export const LoginFormFields = ({
   activeLoginMode,
   availableLoginModes,
-  agreementSettings,
   pendingSecondFactorLogin,
   pendingSecondFactorPrompt,
+  agreementSettings,
   securityCaptchaEnabled,
   securityCaptchaType,
   captchaChallenge,
@@ -627,7 +629,9 @@ export const LoginFormFields = ({
   onOpenAgreementPreview,
 }: LoginFormFieldsProps) => {
   const codeLoginMode: CodeLoginMode = activeLoginMode === 'sms' ? 'sms' : 'email';
-  const hasAgreement = Boolean(agreementSettings.userAgreementMarkdown || agreementSettings.privacyAgreementMarkdown);
+  const showAgreement = hasConfiguredAgreementSettings(agreementSettings);
+  const showUserAgreement = Boolean(agreementSettings.userAgreementMarkdown.trim());
+  const showPrivacyAgreement = Boolean(agreementSettings.privacyAgreementMarkdown.trim());
 
   const modeContent =
     pendingSecondFactorLogin ? (
@@ -672,15 +676,15 @@ export const LoginFormFields = ({
               {formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })}
             </Button>
           ) : null}
-          <div className="saas-login-page__agreement">
-            {hasAgreement ? (
+          {showAgreement ? (
+            <div className="saas-login-page__agreement">
               <Form.Item
                 name="agreementAccepted"
                 valuePropName="checked"
                 rules={[
                   {
                     validator: async (_, value) => {
-                      if (hasAgreement && !value) {
+                      if (!value) {
                         throw new Error(formatMessage({ id: 'page.login.agreement.required', defaultMessage: 'Please agree to the terms before logging in' }));
                       }
                     },
@@ -689,17 +693,21 @@ export const LoginFormFields = ({
               >
                 <Checkbox data-testid="login-agreement-checkbox">
                   {formatMessage({ id: 'page.login.agreement.accept', defaultMessage: 'I have read and agree to' })}
-                  <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
-                    {formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })}
-                  </Button>
-                  {formatMessage({ id: 'page.login.agreement.and', defaultMessage: 'and' })}
-                  <Button type="link" size="small" onClick={() => onOpenAgreementPreview('privacy')}>
-                    {formatMessage({ id: 'page.login.agreement.privacy', defaultMessage: 'Privacy Policy' })}
-                  </Button>
+                  {showUserAgreement ? (
+                    <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
+                      {formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })}
+                    </Button>
+                  ) : null}
+                  {showUserAgreement && showPrivacyAgreement ? formatMessage({ id: 'page.login.agreement.and', defaultMessage: 'and' }) : null}
+                  {showPrivacyAgreement ? (
+                    <Button type="link" size="small" onClick={() => onOpenAgreementPreview('privacy')}>
+                      {formatMessage({ id: 'page.login.agreement.privacy', defaultMessage: 'Privacy Policy' })}
+                    </Button>
+                  ) : null}
                 </Checkbox>
               </Form.Item>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
           <div className="saas-login-page__actions">
             <Form.Item noStyle name="remember" valuePropName="checked">
               <Checkbox>{formatMessage({ id: 'page.login.remember', defaultMessage: 'Remember me' })}</Checkbox>

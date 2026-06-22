@@ -1,9 +1,44 @@
-const normalizeBaseUrl = (value?: string) => value?.trim().replace(/\/+$/, '');
+declare global {
+  interface Window {
+    __LUMIRA_API_BASE_URL__?: string;
+  }
+}
 
-const API_BASE_URL = normalizeBaseUrl(process.env.UMI_APP_API_BASE_URL);
+export const API_BASE_URL_STORAGE_KEY = 'lumira:api_base_url';
 
-export const API_PREFIX = API_BASE_URL ? `${API_BASE_URL}/api` : process.env.UMI_APP_API_PREFIX || '/api';
-export const API_ORIGIN = API_BASE_URL || '';
+const normalizeBaseUrl = (value?: string | null) => value?.trim().replace(/\/+$/, '') || '';
+
+const API_BASE_URL_FROM_ENV = normalizeBaseUrl(process.env.UMI_APP_API_BASE_URL);
+const API_PREFIX_FROM_ENV = process.env.UMI_APP_API_PREFIX || '/api';
+
+const readRuntimeApiBaseUrl = () => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  const globalBaseUrl = normalizeBaseUrl(window.__LUMIRA_API_BASE_URL__);
+  if (globalBaseUrl) {
+    return globalBaseUrl;
+  }
+
+  try {
+    return normalizeBaseUrl(window.localStorage?.getItem(API_BASE_URL_STORAGE_KEY));
+  } catch {
+    return '';
+  }
+};
+
+export const getApiBaseUrl = () => readRuntimeApiBaseUrl() || API_BASE_URL_FROM_ENV;
+
+export const getApiPrefix = () => {
+  const apiBaseUrl = getApiBaseUrl();
+  return apiBaseUrl ? `${apiBaseUrl}/api` : API_PREFIX_FROM_ENV;
+};
+
+export const getApiOrigin = () => getApiBaseUrl();
+
+export const API_PREFIX = getApiPrefix();
+export const API_ORIGIN = getApiOrigin();
 export const REQUEST_ID_HEADER = 'X-Request-Id';
 export const TRACE_ID_HEADER = 'X-Trace-Id';
 export const AUTHORIZATION_HEADER = 'Authorization';

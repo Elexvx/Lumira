@@ -11,10 +11,14 @@ import type {
 } from './types';
 
 export const listMyTeams = () => request<TeamRecord[]>('/v2/teams/my');
+export const listAllTeams = () => request<TeamRecord[]>('/v2/admin/teams');
 export const createTeam = (data: TeamUpsertPayload) => request<TeamRecord>('/v2/teams', { method: 'POST', data });
 export const getTeam = (teamId: number) => request<TeamRecord>(`/v2/teams/${teamId}`);
 export const updateTeam = (teamId: number, data: TeamUpsertPayload) => request<TeamRecord>(`/v2/teams/${teamId}`, { method: 'PUT', data });
+export const adminUpdateTeam = (teamId: number, data: TeamUpsertPayload) =>
+  request<TeamRecord>(`/v2/admin/teams/${teamId}`, { method: 'PUT', data });
 export const deleteTeam = (teamId: number) => request<boolean>(`/v2/teams/${teamId}`, { method: 'DELETE' });
+export const adminDeleteTeam = (teamId: number) => request<boolean>(`/v2/admin/teams/${teamId}`, { method: 'DELETE' });
 
 export const listTeamMembers = (teamId: number) => request<TeamMemberRecord[]>(`/v2/teams/${teamId}/members`);
 export const updateTeamMemberRole = (teamId: number, memberId: number, role: TeamRole) =>

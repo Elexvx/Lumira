@@ -71,7 +71,8 @@ class DddArchitectureBoundaryTest {
             "lumira-plugin", List.of("com.lumira.saas.modules.plugin.mapper.", "com.lumira.saas.modules.plugin.entity."),
             "lumira-localization", List.of("com.lumira.saas.modules.localization.mapper.", "com.lumira.saas.modules.localization.entity."),
             "lumira-payment", List.of("com.lumira.payment.mapper.", "com.lumira.payment.entity."),
-            "lumira-ai", List.of("com.lumira.ai.mapper.", "com.lumira.ai.entity.")
+            "lumira-ai", List.of("com.lumira.ai.mapper.", "com.lumira.ai.entity."),
+            "lumira-team", List.of("com.lumira.team.mapper.", "com.lumira.team.entity.")
     );
     private static final Set<String> SERVICE_ARTIFACT_IDS = Set.of(
             "lumira-system",
@@ -82,6 +83,7 @@ class DddArchitectureBoundaryTest {
             "lumira-localization",
             "lumira-payment",
             "lumira-ai",
+            "lumira-team",
             "lumira-quartz"
     );
     private static final Pattern MAVEN_DEPENDENCY_PATTERN = Pattern.compile(
@@ -143,6 +145,7 @@ class DddArchitectureBoundaryTest {
                 "services/lumira-plugin/src/main/java/com/lumira/saas/modules/plugin/domain/model/PluginDomainModels.java",
                 "services/lumira-localization/src/main/java/com/lumira/saas/modules/localization/domain/model/LocalizationDomainModels.java",
                 "services/lumira-payment/src/main/java/com/lumira/payment/domain/model/PaymentDomainModels.java",
+                "services/lumira-team/src/main/java/com/lumira/team/domain/model/TeamDomainModels.java",
                 "services/lumira-system/src/main/java/com/lumira/saas/modules/ai/domain/model/AiAssistantDomainModels.java",
                 "services/lumira-quartz/src/main/java/com/lumira/job/domain/model/JobDomainModels.java"
         );
@@ -284,35 +287,16 @@ class DddArchitectureBoundaryTest {
     void migrationTableWritesMustBeDeclaredInOwnerManifest() throws IOException {
         Path root = repositoryRoot();
         List<OwnerTableRule> rules = ownerTableRules(root);
-        List<Path> migrationFiles = Files.walk(root.resolve("services"))
+        List<Path> activeMigrationFiles = Files.walk(root.resolve("services"))
                 .filter(Files::isRegularFile)
                 .filter(path -> normalized(path).contains("/src/main/resources/db/migration/"))
                 .filter(path -> path.toString().endsWith(".sql"))
                 .toList();
 
-        assertThat(migrationFiles).isNotEmpty();
+        assertThat(activeMigrationFiles)
+                .as("Flyway is disabled before launch; active service migrations should be empty")
+                .isEmpty();
         List<String> violations = new ArrayList<>();
-        for (Path migrationFile : migrationFiles) {
-            String module = serviceModuleName(root, migrationFile);
-            Matcher matcher = TABLE_DDL_PATTERN.matcher(Files.readString(migrationFile));
-            while (matcher.find()) {
-                String table = matcher.group(1);
-                List<OwnerTableRule> matchingRules = rules.stream()
-                        .filter(rule -> rule.matches(table))
-                        .toList();
-                if (matchingRules.isEmpty()) {
-                    violations.add(root.relativize(migrationFile) + " declares " + table + " but no owner rule matches");
-                    continue;
-                }
-                Optional<OwnerTableRule> writableRule = matchingRules.stream()
-                        .filter(rule -> rule.canWrite(module))
-                        .findFirst();
-                if (writableRule.isEmpty()) {
-                    violations.add(root.relativize(migrationFile) + " declares " + table
-                            + " from " + module + " but matching owner rules are " + matchingRules);
-                }
-            }
-        }
 
         assertThat(violations).isEmpty();
     }
@@ -452,6 +436,30 @@ class DddArchitectureBoundaryTest {
                 .filter(path -> !normalized(path).contains("/target/"));
     }
 
+    @Test
+    void systemModuleMustNotContainTeamImplementationPackage() throws IOException {
+        Path root = repositoryRoot();
+        Path forbiddenPackage = root.resolve("services/lumira-system/src/main/java/com/lumira/saas/modules/team");
+
+        assertThat(forbiddenPackage)
+                .as("Team is a Business module and must live in services/lumira-team")
+                .doesNotExist();
+    }
+
+    @Test
+    void teamTablesAreOwnedByLumiraTeam() throws IOException {
+        List<OwnerTableRule> rules = ownerTableRules(repositoryRoot());
+        Optional<OwnerTableRule> teamRule = rules.stream()
+                .filter(rule -> rule.context().equals("TEAM"))
+                .findFirst();
+
+        assertThat(teamRule).isPresent();
+        assertThat(teamRule.get().ownerModule()).isEqualTo("lumira-team");
+        assertThat(teamRule.get().compatibleWriterModules()).isEmpty();
+        assertThat(teamRule.get().tablePatterns())
+                .containsExactly("team", "team_member", "team_invite", "team_join_request");
+    }
+
     private static Path repositoryRoot() {
         Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
         while (current != null && !Files.exists(current.resolve("pom.xml"))) {
@@ -513,6 +521,38 @@ class DddArchitectureBoundaryTest {
         Path relative = root.relativize(file);
         assertThat(relative.getName(0).toString()).isEqualTo("services");
         return relative.getName(1).toString();
+    }
+
+    private static String archivedMigrationModuleName(Path archiveRoot, Path file) {
+        Path relative = archiveRoot.relativize(file);
+        return relative.getName(0).toString();
+    }
+
+    private static void assertMigrationDdlAllowed(
+            Path root,
+            List<OwnerTableRule> rules,
+            List<String> violations,
+            String module,
+            Path migrationFile
+    ) throws IOException {
+        Matcher matcher = TABLE_DDL_PATTERN.matcher(Files.readString(migrationFile));
+        while (matcher.find()) {
+            String table = matcher.group(1);
+            List<OwnerTableRule> matchingRules = rules.stream()
+                    .filter(rule -> rule.matches(table))
+                    .toList();
+            if (matchingRules.isEmpty()) {
+                violations.add(root.relativize(migrationFile) + " declares " + table + " but no owner rule matches");
+                continue;
+            }
+            Optional<OwnerTableRule> writableRule = matchingRules.stream()
+                    .filter(rule -> rule.canWrite(module))
+                    .findFirst();
+            if (writableRule.isEmpty()) {
+                violations.add(root.relativize(migrationFile) + " declares " + table
+                        + " from " + module + " but matching owner rules are " + matchingRules);
+            }
+        }
     }
 
     private static void assertExplicitSqlWriteAllowed(

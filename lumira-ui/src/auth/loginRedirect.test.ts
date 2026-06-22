@@ -60,4 +60,14 @@ describe('login session broadcast listener', () => {
 
     expect(onNavigate).toHaveBeenCalledWith('/dashboard/home');
   });
+
+  it('does not navigate when the caller suppresses login broadcast redirects', () => {
+    vi.stubGlobal('BroadcastChannel', FakeBroadcastChannel);
+    const onNavigate = vi.fn();
+
+    createLoginSessionBroadcastListener('/dashboard/home', onNavigate, () => false);
+    FakeBroadcastChannel.instances[0].onmessage?.({ data: { type: 'updated' } } as MessageEvent<{ type?: string }>);
+
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
 });

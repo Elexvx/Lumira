@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { STANDARD_DRAWER_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
-import { API_ORIGIN } from '@/constants/http';
+import { getApiOrigin } from '@/constants/http';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { normalizeLocale } from '@/i18n/locale';
 import { resolveBuiltinMessage } from '@/i18n/messages';
@@ -182,7 +182,8 @@ const requestWebSocketTicket = async () => {
 };
 
 const buildWebSocketUrl = (ticket: string) => {
-  const apiOrigin = API_ORIGIN ? new URL(API_ORIGIN) : window.location;
+  const apiOriginValue = getApiOrigin();
+  const apiOrigin = apiOriginValue ? new URL(apiOriginValue) : window.location;
   const wsScheme = apiOrigin.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${wsScheme}//${apiOrigin.host}/ws/message?ticket=${encodeURIComponent(ticket)}`;
 };

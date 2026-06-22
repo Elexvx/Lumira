@@ -16,7 +16,6 @@ import { request } from '@/services/common/request';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import {
   buildSettingsDropdownItems,
-  isPluginSettingsShellPath,
   isSettingsShellPath,
   resolveActiveSettingsNavigationPath,
 } from '@/navigation/settingsNavigationRuntime';
@@ -324,8 +323,8 @@ export const TopActions = () => {
     [access, initialState?.availablePlugins, initialState?.menuTree, location.pathname],
   );
   const settingsMenuSelectedKeys = useMemo(
-    () => ((isSettingsShellPath(location.pathname) || isPluginSettingsShellPath(location.pathname, initialState?.availablePlugins)) && activeSettingsPath ? [activeSettingsPath] : []),
-    [activeSettingsPath, initialState?.availablePlugins, location.pathname],
+    () => (isSettingsShellPath(location.pathname) && activeSettingsPath ? [activeSettingsPath] : []),
+    [activeSettingsPath, location.pathname],
   );
   const themeMenuItems: MenuProps['items'] = useMemo(
     () =>

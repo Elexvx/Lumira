@@ -12,16 +12,13 @@ spring:
   cache:
     type: caffeine
   flyway:
-    enabled: true
+    enabled: ${FLYWAY_ENABLED:false}
     baseline-on-migrate: true
     validate-on-migrate: false
     locations:
       - classpath:db/migration
     ignore-migration-patterns:
       - "*:missing"
-    placeholders:
-      defaultAdminInitEnabled: false
-      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
 
 # Monolith mode flag - disables sub-module security configs that would conflict.
 lumira:
@@ -100,9 +97,12 @@ saas:
     refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
     auth-bootstrap-cache-ttl-seconds: ${AUTH_BOOTSTRAP_CACHE_TTL_SECONDS:5}
     login-capabilities-cache-ttl-seconds: ${LOGIN_CAPABILITIES_CACHE_TTL_SECONDS:5}
+    initial-admin:
+      password: ${LUMIRA_INITIAL_ADMIN_PASSWORD:123456}
     captcha-enabled: ${CAPTCHA_ENABLED:false}
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
     allow-unsafe-default-admin-login: ${ALLOW_UNSAFE_DEFAULT_ADMIN_LOGIN:false}
+    allow-plaintext-login-password: ${ALLOW_PLAINTEXT_LOGIN_PASSWORD:false}
     register-ip-max-count: ${REGISTER_IP_MAX_COUNT:20}
     register-ip-window-minutes: ${REGISTER_IP_WINDOW_MINUTES:10}
     permit-paths:
@@ -129,6 +129,7 @@ saas:
       - /api/v1/public/security-settings
       - /api/v1/public/captcha/**
       - /api/v2/platform/public/bootstrap
+      - /api/v2/team-invites/preview
       - /api/v2/localization/bundles
       - /api/v1/payment/webhooks/**
       - /api/v2/payment/webhook/**
@@ -145,7 +146,7 @@ saas:
       - /api/v2/*/health
       - /api/v2/*/metrics
   web:
-    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
+    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,http://192.168.*:*,http://10.*:*,http://172.16.*:*,http://172.17.*:*,http://172.18.*:*,http://172.19.*:*,http://172.20.*:*,http://172.21.*:*,http://172.22.*:*,http://172.23.*:*,http://172.24.*:*,http://172.25.*:*,http://172.26.*:*,http://172.27.*:*,http://172.28.*:*,http://172.29.*:*,http://172.30.*:*,http://172.31.*:*,https://localhost:*,https://127.0.0.1:*,https://192.168.*:*,https://10.*:*,https://172.16.*:*,https://172.17.*:*,https://172.18.*:*,https://172.19.*:*,https://172.20.*:*,https://172.21.*:*,https://172.22.*:*,https://172.23.*:*,https://172.24.*:*,https://172.25.*:*,https://172.26.*:*,https://172.27.*:*,https://172.28.*:*,https://172.29.*:*,https://172.30.*:*,https://172.31.*:*}
     trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
     trusted-proxy-cidrs:
       - 127.0.0.1/32
@@ -237,9 +238,6 @@ spring:
       on-profile: dev
   flyway:
     out-of-order: true
-    placeholders:
-      defaultAdminInitEnabled: true
-      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
   security:
     user:
       name: ${SPRING_SECURITY_USER_NAME:dev-only}
@@ -254,6 +252,44 @@ saas:
     cors-allowed-origin-patterns:
       - http://localhost:*
       - http://127.0.0.1:*
+      - http://192.168.*:*
+      - http://10.*:*
+      - http://172.16.*:*
+      - http://172.17.*:*
+      - http://172.18.*:*
+      - http://172.19.*:*
+      - http://172.20.*:*
+      - http://172.21.*:*
+      - http://172.22.*:*
+      - http://172.23.*:*
+      - http://172.24.*:*
+      - http://172.25.*:*
+      - http://172.26.*:*
+      - http://172.27.*:*
+      - http://172.28.*:*
+      - http://172.29.*:*
+      - http://172.30.*:*
+      - http://172.31.*:*
+      - https://localhost:*
+      - https://127.0.0.1:*
+      - https://192.168.*:*
+      - https://10.*:*
+      - https://172.16.*:*
+      - https://172.17.*:*
+      - https://172.18.*:*
+      - https://172.19.*:*
+      - https://172.20.*:*
+      - https://172.21.*:*
+      - https://172.22.*:*
+      - https://172.23.*:*
+      - https://172.24.*:*
+      - https://172.25.*:*
+      - https://172.26.*:*
+      - https://172.27.*:*
+      - https://172.28.*:*
+      - https://172.29.*:*
+      - https://172.30.*:*
+      - https://172.31.*:*
     trust-forwarded-headers: false
     trusted-proxy-cidrs:
       - 127.0.0.1/32
@@ -265,10 +301,6 @@ spring:
   config:
     activate:
       on-profile: test
-  flyway:
-    placeholders:
-      defaultAdminInitEnabled: false
-      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
 
 saas:
   web:
@@ -280,10 +312,6 @@ spring:
   config:
     activate:
       on-profile: prod
-  flyway:
-    placeholders:
-      defaultAdminInitEnabled: false
-      defaultAdminPasswordHash: ${DEFAULT_ADMIN_PASSWORD_HASH:}
 
 saas:
   web:

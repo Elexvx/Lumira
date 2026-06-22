@@ -1,5 +1,5 @@
 import type { AppInitialState } from '@/app.types';
-import { clearBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
+import { DEFAULT_BRANDING_SETTINGS, getStoredBrandingSettings, normalizeBrandingSettings } from '@/branding/settings';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
 import { clearSecuritySettings } from '@/auth/securitySettingsStorage';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
@@ -9,7 +9,6 @@ import { clearStoredSessionState } from '@/auth/sessionState';
 export const clearClientRuntimeState = () => {
   clearStoredSessionState();
   clearSecuritySettings();
-  clearBrandingSettings();
   clearWatermarkSettings();
 };
 
@@ -19,6 +18,6 @@ export const buildLoggedOutInitialState = (): AppInitialState => ({
   menuVersion: 0,
   availablePlugins: [],
   securitySettings: DEFAULT_SECURITY_SETTINGS,
-  brandingSettings: DEFAULT_BRANDING_SETTINGS,
+  brandingSettings: normalizeBrandingSettings(getStoredBrandingSettings() || DEFAULT_BRANDING_SETTINGS),
   watermarkSettings: DEFAULT_WATERMARK_SETTINGS,
 });

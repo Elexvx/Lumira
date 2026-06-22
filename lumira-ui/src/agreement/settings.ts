@@ -10,6 +10,9 @@ export const normalizeAgreementSettings = (settings?: Partial<AgreementSettings>
   privacyAgreementMarkdown: normalizeMarkdown(settings?.privacyAgreementMarkdown),
 });
 
+export const hasConfiguredAgreementSettings = (settings?: Partial<AgreementSettings> | null) =>
+  Boolean(settings?.userAgreementMarkdown?.trim() || settings?.privacyAgreementMarkdown?.trim());
+
 const normalizeMarkdown = (value: unknown) => {
   if (typeof value !== 'string') {
     return '';

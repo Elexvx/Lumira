@@ -73,9 +73,15 @@ public class FileManagementAppService {
     public static final String SCOPE_TENANT = "tenant";
     public static final String SCOPE_DOWNLOAD_CENTER = "download-center";
     private static final String STORAGE_KEY_DOWNLOAD_CENTER = "download_center";
+    private static final Long SYSTEM_OPERATOR_ID = 1L;
     private static final String VISIBILITY_SCOPE_PERSONAL = "PERSONAL";
     private static final String VISIBILITY_SCOPE_DOWNLOAD_CENTER = "DOWNLOAD_CENTER";
     private static final String VISIBILITY_SCOPE_PUBLIC = "PUBLIC";
+    private static final List<DefaultStorageSpace> DEFAULT_STORAGE_SPACES = List.of(
+            new DefaultStorageSpace("用户上传文件", "local", "storage/uploads/", "", true, 20),
+            new DefaultStorageSpace("AI 聊天附件", "ai_chat", "storage/uploads/ai_chat/", "", false, 20),
+            new DefaultStorageSpace("头像文件", "avatar", "storage/uploads/avatar/", "", false, 10)
+    );
     private static final Map<String, String> SORT_COLUMN_MAPPING = Map.ofEntries(
             Map.entry("createdAt", "created_at"),
             Map.entry("updatedAt", "updated_at"),
@@ -457,6 +463,11 @@ public class FileManagementAppService {
         return uploadImage(currentUser, file, category, remark, null, VISIBILITY_SCOPE_PUBLIC);
     }
 
+    @Transactional
+    public FileObjectDTO uploadPublicImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket) {
+        return uploadImage(currentUser, file, category, remark, bucket, VISIBILITY_SCOPE_PUBLIC);
+    }
+
     private FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket, String visibilityScope) {
         Long tenantId = currentTenantId(currentUser);
         StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
@@ -542,6 +553,7 @@ public class FileManagementAppService {
 
     public PageResponse<StorageSpaceDTO> listStorageSpaces(CurrentUser currentUser, long pageNo, long pageSize) {
         Long tenantId = currentTenantId(currentUser);
+        ensureDefaultStorageSpaces(tenantId);
         long safePageNo = Math.max(pageNo, 1L);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long safeOffset = (safePageNo - 1L) * safePageSize;
@@ -1137,6 +1149,7 @@ public class FileManagementAppService {
     }
 
     private StorageSpaceDTO getDefaultStorageSpace(Long tenantId) {
+        ensureDefaultStorageSpaces(tenantId);
         FileStorageSpaceEntity entity = fileStorageSpaceMapper.findDefault(tenantId);
         if (entity != null) {
             return mapStorageSpace(entity);
@@ -1145,6 +1158,7 @@ public class FileManagementAppService {
     }
 
     private StorageSpaceDTO queryStorageSpace(Long tenantId, String storageKey) {
+        ensureDefaultStorageSpaces(tenantId);
         FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByStorageKey(tenantId, storageKey);
         if (entity == null) {
             throw visibleBizException(ErrorCode.NOT_FOUND, "存储空间不存在");
@@ -1260,6 +1274,70 @@ public class FileManagementAppService {
             return;
         }
         fileStorageSpaceMapper.ensureFirstDefaultStorage(tenantId);
+    }
+
+    private void ensureDefaultStorageSpaces(Long tenantId) {
+        if (tenantId == null) {
+            return;
+        }
+        Long defaultCount = fileStorageSpaceMapper.countDefaultStorage(tenantId);
+        boolean hasDefault = defaultCount != null && defaultCount > 0;
+        for (DefaultStorageSpace storageSpace : DEFAULT_STORAGE_SPACES) {
+            if (fileStorageSpaceMapper.findByStorageKey(tenantId, storageSpace.storageKey()) != null) {
+                continue;
+            }
+            StoragePayload payload = new StoragePayload(
+                    storageSpace.title(),
+                    storageSpace.storageKey(),
+                    "LOCAL",
+                    storageSpace.rootPath(),
+                    storageSpace.bucketName(),
+                    "",
+                    "",
+                    "",
+                    null,
+                    "APPEND_RANDOM_ID",
+                    storageSpace.maxFileSizeMb(),
+                    "*",
+                    storageSpace.defaultStorage() && !hasDefault,
+                    false,
+                    false,
+                    "ENABLED"
+            );
+            FileStorageSpaceEntity entity = buildStorageSpaceEntity(tenantId, payload, SYSTEM_OPERATOR_ID);
+            try {
+                fileStorageSpaceMapper.insert(entity);
+            } catch (DuplicateKeyException exception) {
+                restoreDefaultStorageSpace(tenantId, payload);
+            }
+            if (payload.defaultStorage()) {
+                hasDefault = true;
+            }
+        }
+        ensureOneDefaultStorage(tenantId);
+    }
+
+    private void restoreDefaultStorageSpace(Long tenantId, StoragePayload payload) {
+        fileStorageSpaceMapper.update(
+                null,
+                new LambdaUpdateWrapper<FileStorageSpaceEntity>()
+                        .set(FileStorageSpaceEntity::getTitle, payload.title())
+                        .set(FileStorageSpaceEntity::getProvider, payload.provider())
+                        .set(FileStorageSpaceEntity::getRootPath, payload.rootPath())
+                        .set(FileStorageSpaceEntity::getBucketName, payload.bucketName())
+                        .set(FileStorageSpaceEntity::getRenameStrategy, payload.renameStrategy())
+                        .set(FileStorageSpaceEntity::getMaxFileSizeMb, payload.maxFileSizeMb())
+                        .set(FileStorageSpaceEntity::getAllowedMimeTypes, payload.allowedMimeTypes())
+                        .set(FileStorageSpaceEntity::getDefaultFlag, payload.defaultStorage() ? 1 : 0)
+                        .set(FileStorageSpaceEntity::getRetainFileOnRecordDelete, payload.retainFileOnRecordDelete() ? 1 : 0)
+                        .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, payload.anonymousAccessAllowed() ? 1 : 0)
+                        .set(FileStorageSpaceEntity::getStatus, payload.status())
+                        .set(FileStorageSpaceEntity::getDeleted, 0)
+                        .set(FileStorageSpaceEntity::getUpdatedBy, SYSTEM_OPERATOR_ID)
+                        .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
+                        .eq(FileStorageSpaceEntity::getTenantId, tenantId)
+                        .eq(FileStorageSpaceEntity::getStorageKey, payload.storageKey())
+        );
     }
 
     private String relativePathFromPublicUrl(String publicUrl) {
@@ -1497,6 +1575,16 @@ public class FileManagementAppService {
             boolean retainFileOnRecordDelete,
             boolean anonymousAccessAllowed,
             String status
+    ) {
+    }
+
+    private record DefaultStorageSpace(
+            String title,
+            String storageKey,
+            String rootPath,
+            String bucketName,
+            boolean defaultStorage,
+            Integer maxFileSizeMb
     ) {
     }
 

@@ -26,13 +26,7 @@ class SystemServiceSqlHotPathTest {
 
     @Test
     void systemOutboxMigrationShouldIntroduceOwnerQueueIndex() throws Exception {
-        Path path = resolvePath("src/main/resources/db/migration/V19__platform_event_outbox_owner_queue_index.sql");
-        if (!Files.exists(path)) {
-            path = Path.of("services/lumira-system/src/main/resources/db/migration/V19__platform_event_outbox_owner_queue_index.sql");
-        }
-        assertThat(Files.exists(path)).as("system outbox owner-queue migration exists").isTrue();
-
-        String sql = Files.readString(path, StandardCharsets.UTF_8).toLowerCase();
+        String sql = consolidatedSchemaSql().toLowerCase();
         assertThat(sql).contains("idx_platform_event_outbox_owner_queue");
         assertThat(sql).contains("source_type");
         assertThat(sql).contains("created_at");
@@ -53,7 +47,35 @@ class SystemServiceSqlHotPathTest {
         if (Files.exists(pathFromRepoRoot)) {
             return pathFromRepoRoot;
         }
-        return Path.of(relativePath);
+        Path direct = Path.of(relativePath);
+        if (Files.exists(direct)) {
+            return direct;
+        }
+        Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        while (current != null) {
+            Path repoPath = current.resolve("services/lumira-system").resolve(relativePath);
+            if (Files.exists(repoPath)) {
+                return repoPath;
+            }
+            Path currentPath = current.resolve(relativePath);
+            if (Files.exists(currentPath)) {
+                return currentPath;
+            }
+            current = current.getParent();
+        }
+        return direct;
+    }
+
+    private static Path resolvePath(String firstCandidate, String secondCandidate) {
+        Path first = resolvePath(firstCandidate);
+        if (Files.exists(first)) {
+            return first;
+        }
+        return resolvePath(secondCandidate);
+    }
+
+    private static String consolidatedSchemaSql() throws IOException {
+        return Files.readString(resolvePath("../../sql/saas.sql", "sql/saas.sql"), StandardCharsets.UTF_8);
     }
 
     private static String normalizeSql(String sql) {

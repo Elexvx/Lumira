@@ -25,9 +25,9 @@ type LoginPageMainSectionProps = {
   submitButtonText: string;
   activeLoginMode: LoginMode;
   availableLoginModes: LoginMode[];
-  agreementSettings: AgreementSettings;
   pendingSecondFactorLogin: LoginResponse | null;
   pendingSecondFactorPrompt: string;
+  agreementSettings: AgreementSettings;
   securityCaptchaEnabled: boolean;
   securityCaptchaType: CaptchaChallenge['captchaType'];
   captchaChallenge: CaptchaChallenge | null;
@@ -61,9 +61,9 @@ const LoginPageMainSection = ({
   submitButtonText,
   activeLoginMode,
   availableLoginModes,
-  agreementSettings,
   pendingSecondFactorLogin,
   pendingSecondFactorPrompt,
+  agreementSettings,
   securityCaptchaEnabled,
   securityCaptchaType,
   captchaChallenge,
@@ -95,16 +95,7 @@ const LoginPageMainSection = ({
       subTitle={loginSubTitle}
       onFinish={handleSubmit}
       onFinishFailed={handleFinishFailed}
-      submitter={{
-        submitButtonProps: {
-          children: submitButtonText,
-          loading: submitting,
-          block: true,
-          'data-testid': 'login-submit-button',
-          style: activeLoginMode === 'passkey' && !pendingSecondFactorLogin ? { display: 'none' } : undefined,
-        },
-        resetButtonProps: false,
-      }}
+      submitter={{ render: () => null, submitButtonProps: false }}
       containerStyle={{
         width: '100%',
         maxWidth: 'var(--saas-spacing-536)',
@@ -120,9 +111,9 @@ const LoginPageMainSection = ({
       <LoginFormFields
         activeLoginMode={activeLoginMode}
         availableLoginModes={availableLoginModes}
-        agreementSettings={agreementSettings}
         pendingSecondFactorLogin={pendingSecondFactorLogin}
         pendingSecondFactorPrompt={pendingSecondFactorPrompt}
+        agreementSettings={agreementSettings}
         securityCaptchaEnabled={securityCaptchaEnabled}
         securityCaptchaType={securityCaptchaType}
         captchaChallenge={captchaChallenge}
@@ -144,6 +135,32 @@ const LoginPageMainSection = ({
         onSliderCaptchaReset={resetCaptchaProof}
         onOpenAgreementPreview={openAgreementPreview}
       />
+      {activeLoginMode === 'passkey' && !pendingSecondFactorLogin ? null : (
+        <Button
+          block
+          size="large"
+          type="primary"
+          loading={submitting}
+          data-testid="login-submit-button"
+          className="saas-login-page__submit-button"
+          onClick={() => {
+            const formValues = loginForm.getFieldsValue(true);
+            const accountInput = document.querySelector<HTMLInputElement>('[data-testid="login-account-input"]');
+            const passwordInput = document.querySelector<HTMLInputElement>('[data-testid="login-password-input"]');
+            const agreementInput = document.querySelector<HTMLInputElement>('[data-testid="login-agreement-checkbox"] input');
+            const nextValues = {
+              ...formValues,
+              passwordAccount: formValues.passwordAccount || accountInput?.value,
+              passwordPassword: formValues.passwordPassword || passwordInput?.value,
+              agreementAccepted: Boolean(formValues.agreementAccepted || agreementInput?.checked),
+            };
+            loginForm.setFieldsValue(nextValues);
+            void handleSubmit(nextValues);
+          }}
+        >
+          {submitButtonText}
+        </Button>
+      )}
     </LoginFormPage>
   </div>
 );
@@ -172,9 +189,9 @@ const Login = () => {
         loginForm={loginFlow.loginForm}
         activeLoginMode={loginFlow.activeLoginMode}
         availableLoginModes={loginFlow.availableLoginModes}
-        agreementSettings={loginFlow.agreementSettings}
         pendingSecondFactorLogin={loginFlow.viewState.pendingSecondFactorLogin}
         pendingSecondFactorPrompt={loginFlow.viewState.pendingSecondFactorPrompt}
+        agreementSettings={loginFlow.agreementSettings}
         securityCaptchaEnabled={loginFlow.viewState.securitySettings.captchaEnabled}
         securityCaptchaType={loginFlow.viewState.securitySettings.captchaType}
         captchaChallenge={loginFlow.viewState.captchaChallenge}

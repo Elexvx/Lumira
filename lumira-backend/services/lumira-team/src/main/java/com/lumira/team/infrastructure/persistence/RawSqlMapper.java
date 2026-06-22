@@ -1,0 +1,24 @@
+package com.lumira.team.infrastructure.persistence;
+
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.SelectProvider;
+import org.apache.ibatis.annotations.UpdateProvider;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Map;
+
+@Mapper
+@Component("teamRawSqlMapper")
+public interface RawSqlMapper {
+
+    @SelectProvider(type = RawSqlProvider.class, method = "sql")
+    List<Map<String, Object>> selectList(@Param("sql") String sql, @Param("params") List<Object> params);
+
+    @SelectProvider(type = RawSqlProvider.class, method = "sql")
+    Long selectScalar(@Param("sql") String sql, @Param("params") List<Object> params);
+
+    @UpdateProvider(type = RawSqlProvider.class, method = "sql")
+    int update(@Param("sql") String sql, @Param("params") List<Object> params);
+}

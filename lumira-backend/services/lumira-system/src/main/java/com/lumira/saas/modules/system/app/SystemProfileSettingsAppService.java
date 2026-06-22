@@ -60,7 +60,7 @@ public class SystemProfileSettingsAppService {
             new ProfileFieldDefinition("idCardNumber", "身份证号码", "控制个人中心是否展示身份证号码字段", PROFILE_FIELD_GROUP_IDENTITY_KEY, "证件信息", "profile.field.id-card-number.visible", "profile.field.id-card-number.weight", true, 5, "ID_CARD", false, "请输入身份证号码", 80, false)
     );
     private static final List<String> PROFILE_FIELD_CONFIG_KEYS = PROFILE_FIELD_DEFINITIONS.stream()
-            .flatMap(definition -> List.of(definition.visibleConfigKey(), definition.weightConfigKey()).stream())
+            .flatMap(definition -> List.of(definition.visibleConfigKey(), definition.weightConfigKey(), definition.requiredConfigKey(), definition.sortConfigKey()).stream())
             .collect(Collectors.collectingAndThen(Collectors.toCollection(ArrayList::new), keys -> {
                 keys.add(CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY);
                 return List.copyOf(keys);
@@ -107,6 +107,22 @@ public class SystemProfileSettingsAppService {
                 definition.weightConfigKey(),
                 definition.fieldLabel() + "评分权重",
                 String.valueOf(resolveRequestedWeight(requestedSettings.get(definition.fieldKey()), definition.defaultWeight())),
+                definition.fieldDescription(),
+                currentUser.getUserId()
+        ));
+        PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
+                tenantId,
+                definition.requiredConfigKey(),
+                definition.fieldLabel() + " required",
+                String.valueOf(requestedRequired(requestedSettings.get(definition.fieldKey()), definition.required())),
+                definition.fieldDescription(),
+                currentUser.getUserId()
+        ));
+        PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
+                tenantId,
+                definition.sortConfigKey(),
+                definition.fieldLabel() + " sort",
+                String.valueOf(resolveRequestedSortNo(requestedSettings.get(definition.fieldKey()), definition.sortNo())),
                 definition.fieldDescription(),
                 currentUser.getUserId()
         ));
@@ -177,9 +193,13 @@ public class SystemProfileSettingsAppService {
                     ? definition.defaultWeight()
                     : parseInteger(defaultIfBlank(valueByKey.get(definition.weightConfigKey()), String.valueOf(definition.defaultWeight())), definition.defaultWeight()));
             item.setFieldType(definition.fieldType());
-            item.setRequired(definition.required());
+            item.setRequired(definition.custom()
+                    ? definition.required()
+                    : Boolean.parseBoolean(defaultIfBlank(valueByKey.get(definition.requiredConfigKey()), String.valueOf(definition.required()))));
             item.setPlaceholder(definition.placeholder());
-            item.setSortNo(definition.sortNo());
+            item.setSortNo(definition.custom()
+                    ? definition.sortNo()
+                    : parseInteger(defaultIfBlank(valueByKey.get(definition.sortConfigKey()), String.valueOf(definition.sortNo())), definition.sortNo()));
             item.setCustom(definition.custom());
             return item;
         }).toList();
@@ -497,6 +517,13 @@ public class SystemProfileSettingsAppService {
         return item.getVisible();
     }
 
+    private boolean requestedRequired(ProfileFieldSettingItem item, boolean fallback) {
+        if (item == null || item.getRequired() == null) {
+            return fallback;
+        }
+        return item.getRequired();
+    }
+
     private int resolveCompletionRate(int earnedWeight, int totalWeight) {
         if (totalWeight <= 0) {
             return 0;
@@ -516,6 +543,13 @@ public class SystemProfileSettingsAppService {
             return fallback;
         }
         return weight;
+    }
+
+    private int resolveRequestedSortNo(ProfileFieldSettingItem item, int fallback) {
+        if (item == null || item.getSortNo() == null || item.getSortNo() <= 0) {
+            return fallback;
+        }
+        return item.getSortNo();
     }
 
     private boolean isProfileFieldCompleted(CurrentUserVO currentUser, String fieldKey) {
@@ -743,6 +777,20 @@ public class SystemProfileSettingsAppService {
 
         private String weightConfigKey() {
             return weightConfigKey;
+        }
+
+        private String requiredConfigKey() {
+            if (!StringUtils.hasText(visibleConfigKey)) {
+                return null;
+            }
+            return visibleConfigKey.replace(".visible", ".required");
+        }
+
+        private String sortConfigKey() {
+            if (!StringUtils.hasText(visibleConfigKey)) {
+                return null;
+            }
+            return visibleConfigKey.replace(".visible", ".sort");
         }
 
         private boolean defaultVisible() {

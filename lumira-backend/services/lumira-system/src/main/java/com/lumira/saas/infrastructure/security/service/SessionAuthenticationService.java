@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class SessionAuthenticationService {
 
+    private static final long PROTECTED_ADMIN_ID = 1001L;
+    private static final String PROTECTED_ADMIN_USERNAME = "admin";
     private static final long LAST_ACTIVITY_WRITE_THROTTLE_SECONDS = 30L;
     private static final long AUTHENTICATED_ACCESS_CACHE_TTL_MILLIS = 60_000L;
     private static final long AUTHENTICATED_ACCESS_CACHE_MAX_ENTRIES = 10_000L;
@@ -221,7 +223,7 @@ public class SessionAuthenticationService {
         currentUser.setPermissionsVersion(snapshot.getVersion());
         currentUser.setRequiresPasswordChange(session.getRequiresPasswordChange());
         currentUser.setAuthenticated(true);
-        currentUser.setPermissions(snapshot.getPermissions() == null ? Collections.emptySet() : snapshot.getPermissions());
+        currentUser.setPermissions(resolveEffectivePermissions(claims, snapshot));
         currentUser.setRoleIds(snapshot.getRoleIds());
         currentUser.setPrimaryDeptId(snapshot.getPrimaryDeptId());
         currentUser.setDeptIds(snapshot.getDeptIds());
@@ -229,6 +231,25 @@ public class SessionAuthenticationService {
         currentUser.setDataScopes(snapshot.getDataScopes());
         currentUser.setDefaultHomePath(snapshot.getDefaultHomePath());
         return currentUser;
+    }
+
+    private Set<String> resolveEffectivePermissions(
+            TokenClaims claims,
+            PermissionSnapshotService.PermissionSnapshot snapshot
+    ) {
+        Set<String> permissions = snapshot.getPermissions() == null ? Collections.emptySet() : snapshot.getPermissions();
+        if (!isProtectedAdminAccount(claims)) {
+            return permissions;
+        }
+        LinkedHashSet<String> effectivePermissions = new LinkedHashSet<>(permissions);
+        effectivePermissions.add("*");
+        return Collections.unmodifiableSet(effectivePermissions);
+    }
+
+    private boolean isProtectedAdminAccount(TokenClaims claims) {
+        return claims != null
+                && (PROTECTED_ADMIN_ID == claims.getUserId()
+                || (StringUtils.hasText(claims.getUsername()) && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(claims.getUsername().trim())));
     }
 
     private PermissionSnapshotResolution resolvePermissionSnapshot(TokenClaims claims, AuthSession session) {

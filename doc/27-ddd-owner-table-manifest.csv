@@ -8,5 +8,5 @@ PLUGIN,lumira-plugin,sys_plugin_*|plugin_event_outbox,lumira-system,Plugin lifec
 LOCALIZATION,lumira-localization,sys_localization_*,lumira-system,Localization tables are long-term owned by lumira-localization; lumira-system currently carries the aggregate migration.
 PAYMENT,lumira-payment,payment_*,lumira-system,Payment tables are owned by lumira-payment; lumira-system keeps aggregate runtime compatibility migrations.
 AI,lumira-ai,ai_*,lumira-system,AI assistant and knowledge-base data; lumira-system remains the aggregate compatibility writer until AI v2 business APIs move into lumira-ai.
-TEAM,lumira-system,team|team_member|team_invite|team_join_request,,Team core business data; teams are generic business subjects and are not tenants.
+TEAM,lumira-team,team|team_member|team_invite|team_join_request,,Team core business data; teams are generic business subjects and are not tenants.
 JOB,lumira-quartz,-,,Job is a scheduler/relay adapter and must not own business tables.

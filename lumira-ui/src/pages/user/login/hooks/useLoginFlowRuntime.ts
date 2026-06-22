@@ -4,10 +4,10 @@ import { message } from '@/theme/antdFeedbackBridge';
 import type { FormInstance } from 'antd';
 import type { FormProps } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { flushSync } from 'react-dom';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
-import { isLoggedIn, tryRefreshToken } from '@/auth/sessionLifecycle';
+import { clearAuthSession, isLoggedIn } from '@/auth/sessionLifecycle';
 import { createLoginSessionBroadcastListener, resolveAuthorizedLoginRedirectTarget } from '@/auth/loginRedirect';
 import { resolveLoginRedirectTarget } from '@/auth/loginRedirect';
 import { isPasskeySupported, toAuthenticationPayload, toPublicKeyRequestOptions } from '@/auth/passkey';
@@ -19,7 +19,7 @@ import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 import { resolveApiErrorFeedback, type ApiErrorLike, type ErrorFeedback } from '@/services/common/errorFeedback';
 import type { LoginCodeChallenge, LoginEncryptionKey } from '@/types/api';
 import type { AgreementSettings, CaptchaChallenge, CaptchaType, LoginResponse, SecuritySettings } from '@/types/api';
-import type { LoginFormValues } from '@/pages/user/login/components/LoginFormFields';
+import type { LoginFormValues, LoginMode } from '@/pages/user/login/components/LoginFormFields';
 import { showErrorMessage } from '@/utils/errorMessage';
 import type { LoginBootstrapFlow } from './useLoginFlow';
 import { initializeAfterLogin } from '@/auth/sessionBootstrap';
@@ -33,6 +33,7 @@ import { request, type RequestOptions } from '@/services/common/request';
 import type { MenuNode, PasskeyOptions, TenantPlugin } from '@/types/api';
 import type { BrandingSettings, FloatingWindowSettings, WatermarkSettings } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
+import { hasConfiguredAgreementSettings } from '@/agreement/settings';
 
 export type LoginInputKind = 'account' | 'mobile' | 'email' | 'verificationCode';
 
@@ -242,6 +243,23 @@ const encryptLoginPassword = async (password: string, key: LoginEncryptionKey) =
   return arrayBufferToBase64(encrypted);
 };
 
+const canEncryptLoginPassword = () => Boolean(window.crypto?.subtle);
+
+const buildPasswordLoginPayload = async (password: string, key: LoginEncryptionKey | null) => {
+  if (key && canEncryptLoginPassword()) {
+    return {
+      password: await encryptLoginPassword(password, key),
+      headers: undefined,
+    };
+  }
+  return {
+    password,
+    headers: {
+      'X-Login-Password-Plaintext': 'true',
+    },
+  };
+};
+
 export type LoginFlowState = {
   submitting: boolean;
   setSubmitting: Dispatch<SetStateAction<boolean>>;
@@ -268,6 +286,7 @@ type UseLoginFlowInteractionsParams = {
   initialState: AppInitialState | undefined;
   locationSearch: string;
   setInitialState: (updater: (prev: AppInitialState | undefined) => AppInitialState | undefined) => void;
+  suppressLoginBroadcastRedirectRef: MutableRefObject<boolean>;
 };
 
 const useLoginFlowInteractions = ({
@@ -276,6 +295,7 @@ const useLoginFlowInteractions = ({
   initialState,
   locationSearch,
   setInitialState,
+  suppressLoginBroadcastRedirectRef,
 }: UseLoginFlowInteractionsParams) => {
   const pendingSecondFactorOption = flowState.pendingSecondFactorLogin?.secondFactorOptions?.[0] || null;
   const forcedPasswordChangeOpen =
@@ -283,8 +303,15 @@ const useLoginFlowInteractions = ({
     flowState.restoredPasswordChangeRequired ||
     Boolean(initialState?.currentUser?.requiresPasswordChange);
   const completeSuccessfulLogin = useCallback(
-    async (loginResponse: LoginResponse) => {
-      const sessionResult = await initializeAfterLogin(loginResponse);
+    async (loginResponse: LoginResponse, remember?: boolean) => {
+      suppressLoginBroadcastRedirectRef.current = true;
+      let sessionResult: Awaited<ReturnType<typeof initializeAfterLogin>>;
+      try {
+        sessionResult = await initializeAfterLogin(loginResponse, { remember });
+      } catch (error) {
+        suppressLoginBroadcastRedirectRef.current = false;
+        throw error;
+      }
       const pluginBootstrap = await loadPluginBootstrap().catch(() => ({
         menuTree: initialState?.menuTree || [],
         availablePlugins: initialState?.availablePlugins || [],
@@ -315,6 +342,9 @@ const useLoginFlowInteractions = ({
       const redirectTarget = resolveAuthorizedLoginRedirectTarget(locationSearch, sessionResult.currentUser, resources.menuTree);
       message.success(formatMessage({ id: 'page.login.success.loggedIn', defaultMessage: '登录成功，正在进入系统' }));
       history.replace(redirectTarget);
+      window.setTimeout(() => {
+        suppressLoginBroadcastRedirectRef.current = false;
+      }, 0);
 
       void loadRuntimeAppearanceSettings()
         .then((appearanceSettings) => ({
@@ -397,62 +427,55 @@ const useLoginFlowInteractions = ({
   );
   const startForcedPasswordChange = useCallback(
     async (loginResponse: LoginResponse, currentPassword: string) => {
+      suppressLoginBroadcastRedirectRef.current = true;
       flowState.setPendingPasswordChangeLogin(loginResponse);
       flowState.setPendingPasswordChangeCurrentPassword(currentPassword || '');
       flowState.forcedPasswordChangeForm.resetFields();
-      await initializeAfterLogin(loginResponse);
+      await initializeAfterLogin(loginResponse, { remember: Boolean(flowState.loginForm.getFieldValue('remember')) });
       message.warning(formatMessage({ id: 'page.login.initialPasswordChange.required', defaultMessage: '当前账号仍在使用初始密码，请先修改密码' }));
     },
     [flowState],
   );
-  const completeSessionRestore = useCallback(async () => {
-    const restoredSession = await restoreSession();
-    if (!restoredSession?.currentUser) {
-      return;
-    }
+  const loginAfterPasswordChange = useCallback(
+    async (account: string, newPassword: string) => {
+      const encryptionKey: LoginEncryptionKey | null = bootstrapFlow.loginEncryptionKey || (await bootstrapFlow.loadLoginEncryptionKey());
+      if (!encryptionKey && canEncryptLoginPassword()) {
+        return null;
+      }
+      const loginPassword = await buildPasswordLoginPayload(newPassword, encryptionKey);
+      const loginPayload = {
+        account,
+        username: account,
+        password: loginPassword.password,
+      };
 
-    const currentUser = restoredSession.currentUser;
-    flushSync(() => {
-      setInitialState((prev: AppInitialState | undefined) =>
-        prev
-          ? {
-              ...prev,
-              currentUser,
-              securitySettings: restoredSession.securitySettings,
-            }
-          : prev,
+      return request<LoginResponse>('/v2/auth/login', {
+        method: 'POST',
+        headers: loginPassword.headers,
+        data: loginPayload,
+        skipAuth: true,
+        silent: true,
+        allowDuplicate: true,
+      }).catch(() =>
+        request<LoginResponse>('/v1/auth/login', {
+          method: 'POST',
+          headers: loginPassword.headers,
+          data: loginPayload,
+          skipAuth: true,
+          silent: true,
+          allowDuplicate: true,
+        }),
       );
-    });
-    history.replace(resolveAuthorizedLoginRedirectTarget(locationSearch, currentUser, initialState?.menuTree || []));
-  }, [initialState?.menuTree, locationSearch, setInitialState]);
-  const completePasswordChangeFlow = useCallback(async () => {
-    const loginResponse = flowState.pendingPasswordChangeLogin;
-    flowState.setPendingPasswordChangeLogin(null);
-    flowState.setRestoredPasswordChangeRequired(false);
-    flowState.setPendingPasswordChangeCurrentPassword('');
-    flowState.forcedPasswordChangeForm.resetFields();
-    if (loginResponse) {
-      await completeSuccessfulLogin({
-        ...loginResponse,
-        requiresPasswordChange: false,
-      });
-      return;
-    }
-    if (flowState.restoredPasswordChangeRequired || initialState?.currentUser?.requiresPasswordChange) {
-      await completeSessionRestore();
-    }
-  }, [
-    completeSessionRestore,
-    completeSuccessfulLogin,
-    flowState,
-    initialState?.currentUser?.requiresPasswordChange,
-  ]);
+    },
+    [bootstrapFlow],
+  );
   const handleForcedPasswordChange = useCallback(
     async (values: ForcedPasswordChangeFormValues) => {
       if (!flowState.pendingPasswordChangeLogin && !flowState.restoredPasswordChangeRequired && !initialState?.currentUser?.requiresPasswordChange) {
         return;
       }
       flowState.setPasswordChangeSubmitting(true);
+      const pendingLoginResponse = flowState.pendingPasswordChangeLogin;
       try {
         await request<boolean>('/v1/profile/password', {
           method: 'PUT',
@@ -464,6 +487,37 @@ const useLoginFlowInteractions = ({
           ...API_OPTS.NO_REDIRECT,
         });
         message.success(formatMessage({ id: 'page.login.initialPasswordChange.success', defaultMessage: '密码已修改，请使用新密码登录' }));
+        const account =
+          pendingLoginResponse?.user?.username ||
+          initialState?.currentUser?.username ||
+          flowState.loginForm.getFieldValue('passwordAccount') ||
+          '';
+        if (account) {
+          const reloginResponse = await loginAfterPasswordChange(account, values.newPassword).catch(() => null);
+          if (reloginResponse?.accessToken) {
+            flowState.setPendingPasswordChangeLogin(null);
+            flowState.setRestoredPasswordChangeRequired(false);
+            flowState.setPendingPasswordChangeCurrentPassword('');
+            flowState.forcedPasswordChangeForm.resetFields();
+            suppressLoginBroadcastRedirectRef.current = false;
+            await completeSuccessfulLogin(
+              {
+                ...reloginResponse,
+                requiresPasswordChange: false,
+              },
+              Boolean(flowState.loginForm.getFieldValue('remember')),
+            );
+            return;
+          }
+        }
+
+        clearAuthSession();
+        flowState.setPendingPasswordChangeLogin(null);
+        flowState.setRestoredPasswordChangeRequired(false);
+        flowState.setPendingPasswordChangeCurrentPassword('');
+        flowState.forcedPasswordChangeForm.resetFields();
+        suppressLoginBroadcastRedirectRef.current = false;
+        message.info(formatMessage({ id: 'page.login.initialPasswordChange.success', defaultMessage: '密码已修改，请使用新密码登录' }));
       } catch (error) {
         message.error(
           error instanceof Error && error.message
@@ -474,12 +528,13 @@ const useLoginFlowInteractions = ({
       } finally {
         flowState.setPasswordChangeSubmitting(false);
       }
-      await completePasswordChangeFlow();
     },
     [
-      completePasswordChangeFlow,
+      completeSuccessfulLogin,
       flowState,
       initialState?.currentUser?.requiresPasswordChange,
+      initialState?.currentUser?.username,
+      loginAfterPasswordChange,
     ],
   );
 
@@ -691,7 +746,7 @@ const useLoginSecurityFlow = ({ initialSecuritySettings }: { initialSecuritySett
 };
 
 const ensureLoginAgreementAccepted = (agreementSettings: AgreementSettings, loginForm: FormInstance) => {
-  if (!agreementSettings.userAgreementMarkdown && !agreementSettings.privacyAgreementMarkdown) {
+  if (!hasConfiguredAgreementSettings(agreementSettings)) {
     return true;
   }
 
@@ -714,7 +769,7 @@ type UseLoginFlowAuthInteractionsParams = {
     promptMessage?: string | null;
     factorName?: string;
   } | null;
-  completeSuccessfulLogin: (loginResponse: LoginResponse) => Promise<void>;
+  completeSuccessfulLogin: (loginResponse: LoginResponse, remember?: boolean) => Promise<void>;
   startForcedPasswordChange: (loginResponse: LoginResponse, currentPassword: string) => Promise<void>;
 };
 
@@ -846,37 +901,41 @@ export const useLoginFlowAuthInteractions = ({
   const handlePasswordLogin = useCallback(
     async (values: LoginFormValues) => {
       const encryptionKey: LoginEncryptionKey | null = bootstrapFlow.loginEncryptionKey || (await bootstrapFlow.loadLoginEncryptionKey());
-      if (!encryptionKey) {
+      if (!encryptionKey && canEncryptLoginPassword()) {
         return null;
       }
-      const encryptedPassword = await encryptLoginPassword(values.passwordPassword || '', encryptionKey);
+      const loginPassword = await buildPasswordLoginPayload(values.passwordPassword || '', encryptionKey);
 
       return request<LoginResponse>('/v2/auth/login', {
         method: 'POST',
+        headers: loginPassword.headers,
         data: {
           account: values.passwordAccount,
           username: values.passwordAccount,
-          password: encryptedPassword,
+          password: loginPassword.password,
           captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
           captchaCode: securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' ? values.captchaCode : undefined,
           captchaProof: securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' ? values.captchaProof : undefined,
         },
         skipAuth: true,
         silent: true,
+        allowDuplicate: true,
       })
         .catch(() =>
           request<LoginResponse>('/v1/auth/login', {
             method: 'POST',
+            headers: loginPassword.headers,
             data: {
               account: values.passwordAccount,
               username: values.passwordAccount,
-              password: encryptedPassword,
+              password: loginPassword.password,
               captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
               captchaCode: securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' ? values.captchaCode : undefined,
               captchaProof: securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' ? values.captchaProof : undefined,
             },
             skipAuth: true,
             silent: true,
+            allowDuplicate: true,
           }),
         );
     },
@@ -969,7 +1028,7 @@ export const useLoginFlowAuthInteractions = ({
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
       });
-      await completeSuccessfulLogin(loginResponse);
+      await completeSuccessfulLogin(loginResponse, Boolean(flowState.loginForm.getFieldValue('remember')));
     } catch (error) {
       if (error instanceof DOMException && error.name === 'NotAllowedError') {
         message.info(formatMessage({ id: 'page.login.passkey.cancelled', defaultMessage: '已取消通行密钥验证' }));
@@ -1005,33 +1064,33 @@ export const useLoginFlowAuthInteractions = ({
   );
 
   const validateLoginSubmit = useCallback(
-    (values: LoginFormValues) => {
-      if (bootstrapFlow.activeLoginMode === 'passkey') {
+    (values: LoginFormValues, submitLoginMode: LoginMode) => {
+      if (submitLoginMode === 'passkey') {
         return true;
       }
 
-      if (!bootstrapFlow.availableLoginModes.includes(bootstrapFlow.activeLoginMode)) {
+      if (!bootstrapFlow.availableLoginModes.includes(submitLoginMode)) {
         message.warning(
-          bootstrapFlow.activeLoginMode === 'sms'
+          submitLoginMode === 'sms'
             ? formatMessage({ id: 'page.login.error.smsDisabled', defaultMessage: 'SMS login is not enabled' })
-            : bootstrapFlow.activeLoginMode === 'email'
+            : submitLoginMode === 'email'
               ? formatMessage({ id: 'page.login.error.emailDisabled', defaultMessage: 'Email login is not enabled' })
               : formatMessage({ id: 'page.login.error.loginModeUnavailable', defaultMessage: 'Current login mode is unavailable' }),
         );
         return false;
       }
 
-      if (bootstrapFlow.activeLoginMode === 'password' && securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {
+      if (submitLoginMode === 'password' && securitySettings.captchaEnabled && !captchaChallenge?.captchaId) {
         message.warning(formatMessage({ id: 'page.login.error.captchaExpired', defaultMessage: 'The captcha has expired, please refresh and try again' }));
         return false;
       }
 
-      if (bootstrapFlow.activeLoginMode === 'password' && securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' && !values.captchaCode) {
+      if (submitLoginMode === 'password' && securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' && !values.captchaCode) {
         message.warning(formatMessage({ id: 'page.login.error.pleaseEnterCaptcha', defaultMessage: 'Please enter the captcha' }));
         return false;
       }
 
-      if (bootstrapFlow.activeLoginMode === 'password' && securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' && !values.captchaProof) {
+      if (submitLoginMode === 'password' && securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' && !values.captchaProof) {
         message.warning(formatMessage({ id: 'page.login.error.pleaseCompleteSliderCaptcha', defaultMessage: 'Please complete the slider captcha first' }));
         return false;
       }
@@ -1060,11 +1119,11 @@ export const useLoginFlowAuthInteractions = ({
       }
 
       if (loginResponse.requiresPasswordChange) {
-        await startForcedPasswordChange(loginResponse, bootstrapFlow.activeLoginMode === 'password' ? values.passwordPassword || INITIAL_PASSWORD : INITIAL_PASSWORD);
+        await startForcedPasswordChange(loginResponse, values.passwordPassword || INITIAL_PASSWORD);
         return false;
       }
 
-      await completeSuccessfulLogin(loginResponse);
+      await completeSuccessfulLogin(loginResponse, Boolean(values.remember));
       return true;
     },
     [bootstrapFlow.activeLoginMode, completeSuccessfulLogin, flowState, startForcedPasswordChange],
@@ -1132,13 +1191,15 @@ export const useLoginFlowAuthInteractions = ({
   const pendingSecondFactorPrompt = buildLoginSecondFactorPrompt(pendingSecondFactorOption);
   const handleSubmit = useCallback(
     async (values: LoginFormValues): Promise<boolean> => {
+      const submitLoginMode: LoginMode =
+        values.passwordAccount || values.passwordPassword ? 'password' : bootstrapFlow.activeLoginMode;
       if (!flowState.pendingSecondFactorLogin) {
-        if (bootstrapFlow.activeLoginMode === 'passkey') {
+        if (submitLoginMode === 'passkey') {
           await handlePasskeyLogin();
           return false;
         }
 
-        if (!validateLoginSubmit(values)) {
+        if (!validateLoginSubmit(values, submitLoginMode)) {
           return false;
         }
       }
@@ -1148,9 +1209,9 @@ export const useLoginFlowAuthInteractions = ({
       try {
         const loginResponse = flowState.pendingSecondFactorLogin
           ? await handlePendingSecondFactorSubmit(values)
-          : bootstrapFlow.activeLoginMode === 'password'
+          : submitLoginMode === 'password'
             ? await handlePasswordLogin(values)
-            : await handleCodeLogin(bootstrapFlow.activeLoginMode as CodeLoginMode, values);
+            : await handleCodeLogin(submitLoginMode as CodeLoginMode, values);
 
         if (!loginResponse) {
           return false;
@@ -1226,6 +1287,7 @@ export const useLoginFlowRuntime = ({
   const redirectTarget = resolveLoginRedirectTarget(locationSearch);
   const wechatCallbackHandledRef = useRef(false);
   const passwordChangeRestoreHandledRef = useRef(false);
+  const suppressLoginBroadcastRedirectRef = useRef(false);
 
   const {
     postLoginPack,
@@ -1236,6 +1298,7 @@ export const useLoginFlowRuntime = ({
     initialState,
     locationSearch,
     setInitialState,
+    suppressLoginBroadcastRedirectRef,
   });
 
   const {
@@ -1268,8 +1331,7 @@ export const useLoginFlowRuntime = ({
     if (flowState.pendingPasswordChangeLogin || flowState.restoredPasswordChangeRequired || initialState?.currentUser?.requiresPasswordChange) {
       return;
     }
-    const alreadyAuthenticated = isLoggedIn() || Boolean(initialState?.currentUser?.sessionId);
-    if (!alreadyAuthenticated || flowState.submitting) {
+    if (!isLoggedIn() || flowState.submitting) {
       return;
     }
 
@@ -1313,7 +1375,6 @@ export const useLoginFlowRuntime = ({
         history.replace(resolveAuthorizedLoginRedirectTarget(locationSearch, restoredSession.currentUser, initialState?.menuTree || []));
         return;
       }
-      void tryRefreshToken();
       flowState.setRestoredPasswordChangeRequired(true);
       flowState.setPendingPasswordChangeCurrentPassword(INITIAL_PASSWORD);
       flowState.forcedPasswordChangeForm.resetFields();
@@ -1335,7 +1396,7 @@ export const useLoginFlowRuntime = ({
   useEffect(() => {
     return createLoginSessionBroadcastListener(redirectTarget, (target) => {
       window.location.replace(target);
-    });
+    }, () => !suppressLoginBroadcastRedirectRef.current);
   }, [redirectTarget]);
   useEffect(() => {
     if (wechatCallbackHandledRef.current) {
@@ -1372,7 +1433,7 @@ export const useLoginFlowRuntime = ({
           history.replace(locationPathname);
           return;
         }
-        await completeSuccessfulLogin(loginResponse);
+        await completeSuccessfulLogin(loginResponse, Boolean(flowState.loginForm.getFieldValue('remember')));
       })
       .catch((error) => {
         showErrorMessage(

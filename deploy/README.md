@@ -159,6 +159,7 @@ node bin/ddd-docker-build-evidence.mjs
 
 - 用户名：`admin`
 - 初始密码：`123456`
+- 生产环境可通过 `LUMIRA_INITIAL_ADMIN_PASSWORD` 覆盖首次登录密码；覆盖只会在 `admin` 仍处于出厂密码时生效。
 - 首次登录后会强制修改初始密码
 
 如果需要在测试环境彻底重装数据库，先确认数据可以删除，再执行：
@@ -404,7 +405,7 @@ DEPLOY_RESET_CONFIRM=DELETE_LEGENDARY_DATA node bin/deploy-container.mjs --reset
 - `DB_PASSWORD`、`JWT_SECRET`、`FIELD_SECRET`、`PLUGIN_SIGNATURE_SECRET`、`SAAS_JOB_INTERNAL_TOKEN` 必须使用强随机值。
 - 独立部署插件服务时配置 `SAAS_JOB_PLUGIN_SERVICE_BASE_URL`，聚合部署可沿用默认的 lumira-server 地址。
 - `CORS_ALLOWED_ORIGIN_PATTERNS` 在生产环境只保留实际 Vercel 域名和自定义前端域名；本地调试地址仅放入 dev/test 环境。
-- `DEFAULT_ADMIN_INIT_ENABLED` 在正式演示环境建议保持 `false`。
+- `LUMIRA_INITIAL_ADMIN_PASSWORD` can set a production-only first-login password; leave it unset to use the factory default `admin / 123456`, which still requires an immediate password change.
 - HTTPS/CDN/WAF 放在容器前面，API proxy 只承担容器内反向代理。
 - `XXL_JOB_EXECUTOR_ENABLED=false` 可用于 runtime smoke、准生产 owner 演练或临时禁用外部调度注册；正式需要 XXL-JOB 调度时保持默认 `true` 并配置 `XXL_JOB_ADMIN_ADDRESSES`、`XXL_JOB_ACCESS_TOKEN`。
 - `XXL_JOB_EXECUTOR_LOG_HOST_PATH` 默认使用 `/opt/lumira/data/xxl-job/logs`，部署前会授权给容器内 `app` 用户写入。

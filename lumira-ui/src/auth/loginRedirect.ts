@@ -103,7 +103,11 @@ export const resolveAuthorizedLoginRedirectTarget = (
   return canVisitPath(canonicalFallback, currentUser) ? canonicalFallback : '/403';
 };
 
-export const createLoginSessionBroadcastListener = (redirectTarget: string, onNavigate: (target: string) => void) => {
+export const createLoginSessionBroadcastListener = (
+  redirectTarget: string,
+  onNavigate: (target: string) => void,
+  shouldNavigate: () => boolean = () => true,
+) => {
   if (typeof BroadcastChannel === 'undefined') {
     return () => {};
   }
@@ -113,6 +117,9 @@ export const createLoginSessionBroadcastListener = (redirectTarget: string, onNa
       return;
     }
     if (isLoginInProgress()) {
+      return;
+    }
+    if (!shouldNavigate()) {
       return;
     }
 

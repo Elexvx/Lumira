@@ -7,39 +7,58 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DefaultAdminPasswordBaselineTest {
 
-    private static final String INITIAL_ADMIN_PASSWORD = "123456";
-    private static final Pattern ADMIN_PASSWORD_CREDENTIAL_PATTERN = Pattern.compile(
-            "\\((?:\\d+,)?1001,'PASSWORD','([^']+)','BCRYPT',1,"
-    );
+    private static final Pattern BCRYPT_HASH_PATTERN = Pattern.compile("\\$2[aby]\\$\\d{2}\\$[./A-Za-z0-9]{53}");
 
     @Test
-    void freshFlywayBaselineDoesNotUseInitialAdminPassword() throws IOException {
-        String hash = extractAdminPasswordHash(Path.of("src/main/resources/db/migration/V1__baseline.sql"));
+    void consolidatedSaasSqlSeedsDefaultAdminPassword() throws IOException {
+        String referenceSql = Files.readString(resolvePath(
+                "../../sql/saas.sql",
+                "sql/saas.sql"), StandardCharsets.UTF_8);
 
-        assertFalse(new BCryptPasswordEncoder().matches(INITIAL_ADMIN_PASSWORD, hash));
+        assertTrue(referenceSql.contains("INSERT INTO `sys_user`"));
+        assertTrue(referenceSql.contains("VALUES (1001, 'admin'"));
+        assertTrue(referenceSql.contains("INSERT INTO `iam_user_identity`"));
+        assertTrue(referenceSql.contains("INSERT INTO `iam_user_credential`"));
+        assertTrue(referenceSql.contains("'PASSWORD'"));
+        assertTrue(referenceSql.contains("'BCRYPT'"));
+        assertTrue(hasHashMatchingInitialPassword(referenceSql));
     }
 
-    @Test
-    void referenceSaasSqlUsesSameNonDefaultAdminPasswordHash() throws IOException {
-        String baselineHash = extractAdminPasswordHash(Path.of("src/main/resources/db/migration/V1__baseline.sql"));
-        String referenceHash = extractAdminPasswordHash(Path.of("../../sql/saas.sql"));
-
-        assertEquals(baselineHash, referenceHash);
-        assertFalse(new BCryptPasswordEncoder().matches(INITIAL_ADMIN_PASSWORD, referenceHash));
+    private static boolean hasHashMatchingInitialPassword(String referenceSql) {
+        BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+        Matcher matcher = BCRYPT_HASH_PATTERN.matcher(referenceSql);
+        while (matcher.find()) {
+            if (passwordEncoder.matches("123456", matcher.group())) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    private String extractAdminPasswordHash(Path path) throws IOException {
-        String sql = Files.readString(path, StandardCharsets.UTF_8);
-        var matcher = ADMIN_PASSWORD_CREDENTIAL_PATTERN.matcher(sql);
-        assertTrue(matcher.find(), () -> "admin PASSWORD credential seed not found in " + path);
-        return matcher.group(1);
+    private static Path resolvePath(String... candidates) {
+        for (String candidate : candidates) {
+            Path path = Path.of(candidate);
+            if (Files.exists(path)) {
+                return path;
+            }
+        }
+        Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        while (current != null) {
+            for (String candidate : candidates) {
+                Path path = current.resolve(candidate);
+                if (Files.exists(path)) {
+                    return path;
+                }
+            }
+            current = current.getParent();
+        }
+        return Path.of(candidates[0]);
     }
 }

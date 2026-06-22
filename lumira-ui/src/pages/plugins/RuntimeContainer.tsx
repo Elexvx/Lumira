@@ -5,6 +5,7 @@ import { Alert, Card, Spin } from 'antd';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { notifyPluginLoadError } from '@/plugins/loader';
 import { mountPlugin, unmountPlugin } from '@/plugins/runtime';
+import { createRequestId } from '@/utils/requestId';
 
 type RuntimeErrorState = {
   type: 'info' | 'warning' | 'error';
@@ -76,7 +77,7 @@ const RuntimeContainer = () => {
       version: plugin.version,
       routePath: location.pathname,
       currentUser: initialState?.currentUser,
-      requestId: crypto.randomUUID(),
+      requestId: createRequestId(),
     })
       .then((result) => {
         if (!active) {

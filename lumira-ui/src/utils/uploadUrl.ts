@@ -1,4 +1,4 @@
-import { API_ORIGIN } from '@/constants/http';
+import { getApiOrigin } from '@/constants/http';
 
 const DEFAULT_UPLOAD_PUBLIC_PATH = '/api/uploads';
 
@@ -14,7 +14,7 @@ export const normalizeUploadUrl = (value?: string | null, publicPath = DEFAULT_U
 
   const normalizedPublicPath = normalizePublicPath(publicPath);
   const publicPathWithoutLeadingSlash = normalizedPublicPath.slice(1);
-  const uploadOrigin = normalizeUploadOrigin(API_ORIGIN);
+  const uploadOrigin = normalizeUploadOrigin(getApiOrigin());
 
   if (trimmed === normalizedPublicPath || trimmed.startsWith(`${normalizedPublicPath}/`)) {
     return uploadOrigin ? `${uploadOrigin}${trimmed}` : trimmed;

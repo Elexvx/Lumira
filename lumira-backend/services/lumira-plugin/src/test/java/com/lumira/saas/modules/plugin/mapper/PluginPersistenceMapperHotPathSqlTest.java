@@ -2,6 +2,7 @@ package com.lumira.saas.modules.plugin.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -46,13 +47,28 @@ class PluginPersistenceMapperHotPathSqlTest {
         }
     }
 
-    private static String migrationSql() throws Exception {
-        Path migrationPath = Path.of("src/main/resources/db/migration/plugin/V33__plugin_hot_path_indexes.sql");
-        if (!Files.exists(migrationPath)) {
-            migrationPath = Path.of("services/lumira-plugin/src/main/resources/db/migration/plugin/V33__plugin_hot_path_indexes.sql");
+    private static String migrationSql() throws IOException {
+        return consolidatedSchemaSql();
+    }
+
+    private static Path resolvePath(String... candidates) {
+        for (String candidate : candidates) {
+            Path direct = Path.of(candidate);
+            if (Files.exists(direct)) {
+                return direct;
+            }
         }
-        assertThat(Files.exists(migrationPath)).as("plugin hot-path migration exists").isTrue();
-        return Files.readString(migrationPath, StandardCharsets.UTF_8);
+        Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        while (current != null) {
+            for (String candidate : candidates) {
+                Path path = current.resolve(candidate);
+                if (Files.exists(path)) {
+                    return path;
+                }
+            }
+            current = current.getParent();
+        }
+        return Path.of(candidates[0]);
     }
 
     private static void assertStatementContains(String xml, String statementId, String expectedSql) {
@@ -67,6 +83,10 @@ class PluginPersistenceMapperHotPathSqlTest {
         assertThat(normalizeSql(matcher.group()))
                 .as("statement %s SQL", statementId)
                 .contains(normalizeSql(expectedSql));
+    }
+
+    private static String consolidatedSchemaSql() throws IOException {
+        return Files.readString(resolvePath("../../sql/saas.sql", "sql/saas.sql"), StandardCharsets.UTF_8);
     }
 
     private static String normalizeSql(String sql) {

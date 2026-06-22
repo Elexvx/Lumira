@@ -3,7 +3,13 @@ import { Form } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useLocation } from '@umijs/max';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
-import { DEFAULT_BRANDING_SETTINGS, normalizeBrandingSettings } from '@/branding/settings';
+import {
+  applyBrandingRuntime,
+  DEFAULT_BRANDING_SETTINGS,
+  getStoredBrandingSettings,
+  normalizeBrandingSettings,
+  persistBrandingSettings,
+} from '@/branding/settings';
 import type { AppInitialState } from '@/app';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import type { LoginEncryptionKey, LoginResponse } from '@/types/api';
@@ -11,7 +17,7 @@ import { showErrorMessage } from '@/utils/errorMessage';
 import type { LoginFormValues, LoginMode } from '@/pages/user/login/components/LoginFormFields';
 import { useLoginFlowRuntime } from './useLoginFlowRuntime';
 import { request } from '@/services/common/request';
-import type { LoginCapabilities } from '@/types/api';
+import type { BrandingSettings, LoginCapabilities } from '@/types/api';
 
 const INITIAL_PASSWORD = '123456';
 type ForcedPasswordChangeFormValues = {
@@ -76,10 +82,18 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
   const [, setLoginEncryptionLoading] = useState(false);
   const loginEncryptionLoadPromiseRef = useRef<Promise<LoginEncryptionKey | null> | null>(null);
 
-  const brandingSettings = useMemo(() => normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS), [initialState?.brandingSettings]);
+  const brandingSettings = useMemo(
+    () => normalizeBrandingSettings(initialState?.brandingSettings || getStoredBrandingSettings() || DEFAULT_BRANDING_SETTINGS),
+    [initialState?.brandingSettings],
+  );
+  const brandingSettingsRef = useRef(brandingSettings);
   const agreementSettings = useMemo(() => normalizeAgreementSettings(initialState?.agreementSettings || DEFAULT_AGREEMENT_SETTINGS), [initialState?.agreementSettings]);
   const loginCapabilities: LoginCapabilitiesState = initialState?.loginCapabilities || DEFAULT_LOGIN_CAPABILITIES;
   const availableLoginModes = useMemo(() => getAvailableLoginModes(loginCapabilities), [loginCapabilities]);
+
+  useEffect(() => {
+    brandingSettingsRef.current = brandingSettings;
+  }, [brandingSettings]);
 
   useEffect(() => {
     if (initialState?.loginCapabilities) {
@@ -120,6 +134,51 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
       disposed = true;
     };
   }, [initialState?.loginCapabilities, setInitialState]);
+
+  useEffect(() => {
+    if (initialState?.currentUser) {
+      return;
+    }
+
+    let disposed = false;
+
+    void request<BrandingSettings>('/v1/public/branding-settings', {
+      method: 'GET',
+      skipAuth: true,
+      silent: true,
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+    })
+      .then((settings) => {
+        if (disposed) {
+          return;
+        }
+        const normalizedBranding = normalizeBrandingSettings(settings);
+        persistBrandingSettings(normalizedBranding);
+        applyBrandingRuntime(normalizedBranding);
+        setInitialState((prev: AppInitialState | undefined) =>
+          prev
+            ? {
+                ...prev,
+                brandingSettings: normalizedBranding,
+                brandingRevision:
+                  prev.brandingSettings?.websiteName === normalizedBranding.websiteName &&
+                  prev.brandingSettings?.websiteLogoUrl === normalizedBranding.websiteLogoUrl &&
+                  prev.brandingSettings?.websiteFaviconUrl === normalizedBranding.websiteFaviconUrl
+                    ? prev.brandingRevision
+                    : (prev.brandingRevision ?? 0) + 1,
+              }
+            : prev,
+        );
+      })
+      .catch(() => {
+        applyBrandingRuntime(brandingSettingsRef.current);
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [initialState?.currentUser, setInitialState]);
 
   const loginPageStyle = useMemo(
     () =>

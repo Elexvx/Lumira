@@ -372,6 +372,22 @@ body,
   white-space: nowrap;
 }
 
+.saas-table-action-bar {
+  width: 100%;
+  max-width: 100%;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.saas-table-action-bar .ant-space-item {
+  min-width: 0;
+}
+
+.saas-table-action-bar .ant-btn-link {
+  max-width: 100%;
+  padding-inline: var(--saas-spacing-2xs);
+}
+
 .saas-ai-employees-card .ant-tabs-content .saas-table-wrap .ant-pro-card-body {
   padding-inline: 0;
 }
@@ -649,6 +665,62 @@ body,
 .saas-management-page .ant-card,
 .saas-management-page .ant-pro-card {
   border-radius: var(--saas-card-radius);
+}
+
+.saas-management-page .ant-card,
+.saas-management-page .ant-pro-card,
+.saas-table-wrap > .ant-pro-table > .ant-pro-card {
+  background: var(--ant-color-bg-container);
+}
+
+.saas-management-page .ant-pro-table-search,
+.saas-management-page .ant-pro-table-list,
+.saas-management-page .ant-table-wrapper,
+.saas-management-page .ant-table,
+.saas-management-page .ant-table-container,
+.saas-management-page .ant-table-content {
+  background: transparent;
+}
+
+.saas-management-page .ant-table-thead > tr > th {
+  background: var(--ant-color-fill-quaternary);
+}
+
+.saas-management-page .ant-table-tbody > tr > td {
+  background: transparent;
+}
+
+.saas-management-page .ant-table-tbody > tr > .ant-table-cell-fix,
+.saas-management-page .ant-table-tbody > tr > .ant-table-cell-fix-left,
+.saas-management-page .ant-table-tbody > tr > .ant-table-cell-fix-right,
+.saas-management-page .ant-table-tbody > tr > .ant-table-cell-fix-start,
+.saas-management-page .ant-table-tbody > tr > .ant-table-cell-fix-end {
+  background: var(--ant-color-bg-container) !important;
+  background-clip: padding-box;
+  z-index: 3 !important;
+}
+
+.saas-management-page .ant-table-thead > tr > .ant-table-cell-fix,
+.saas-management-page .ant-table-thead > tr > .ant-table-cell-fix-left,
+.saas-management-page .ant-table-thead > tr > .ant-table-cell-fix-right,
+.saas-management-page .ant-table-thead > tr > .ant-table-cell-fix-start,
+.saas-management-page .ant-table-thead > tr > .ant-table-cell-fix-end {
+  background: var(--ant-color-fill-quaternary) !important;
+  background-clip: padding-box;
+  z-index: 4 !important;
+}
+
+.saas-management-page .ant-table-tbody > tr:hover > .ant-table-cell-fix,
+.saas-management-page .ant-table-tbody > tr:hover > .ant-table-cell-fix-left,
+.saas-management-page .ant-table-tbody > tr:hover > .ant-table-cell-fix-right,
+.saas-management-page .ant-table-tbody > tr:hover > .ant-table-cell-fix-start,
+.saas-management-page .ant-table-tbody > tr:hover > .ant-table-cell-fix-end,
+.saas-management-page .ant-table-tbody > tr.ant-table-row-selected > .ant-table-cell-fix,
+.saas-management-page .ant-table-tbody > tr.ant-table-row-selected > .ant-table-cell-fix-left,
+.saas-management-page .ant-table-tbody > tr.ant-table-row-selected > .ant-table-cell-fix-right,
+.saas-management-page .ant-table-tbody > tr.ant-table-row-selected > .ant-table-cell-fix-start,
+.saas-management-page .ant-table-tbody > tr.ant-table-row-selected > .ant-table-cell-fix-end {
+  background: var(--ant-table-row-hover-bg, var(--ant-color-fill-tertiary)) !important;
 }
 
 .saas-dashboard-workplace .ant-card > .ant-card-head,

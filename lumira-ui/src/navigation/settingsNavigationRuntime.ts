@@ -99,18 +99,6 @@ export const isSettingsNavigationPath = (path?: string) => {
 
 export const isSettingsShellPath = (path?: string) => isSettingsNavigationPath(path);
 
-export const isPluginSettingsShellPath = (path?: string, availablePlugins: TenantPlugin[] | undefined = []) => {
-  const normalizedPath = normalizeMenuPath(path);
-  return Boolean(
-    normalizedPath &&
-      (availablePlugins || []).some((plugin) => {
-        const menuPaths = (plugin.menus || []).map((menu) => normalizeMenuPath(menu.path)).filter(Boolean);
-        const routePaths = (plugin.routes || []).map((route) => normalizeMenuPath(route)).filter(Boolean);
-        return [...menuPaths, ...routePaths].some((pluginPath) => pluginPath === normalizedPath || normalizedPath.startsWith(`${pluginPath}/`));
-      }),
-  );
-};
-
 export const isMainMenuHiddenSettingPath = (path?: string) =>
   Boolean(
     path &&

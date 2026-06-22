@@ -21,13 +21,13 @@ import { request } from '@/services/common/request';
 import { resolveAuthorizedLoginRedirectTarget, resolveRouteAccessStatus } from '@/auth/loginRedirect';
 import { TopActions } from '@/layouts/components/TopActions';
 import NoPermission from '@/pages/exception/NoPermission';
-import { applyFavicon, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
+import { applyBrandingRuntime, buildCopyrightText, normalizeBrandingSettings, DEFAULT_BRANDING_SETTINGS } from '@/branding/settings';
 import type { AppInitialState, RuntimeMenuDataItem } from '@/app.types';
 import type { BrandingSettings, FloatingWindowSettings, MenuNode, SecuritySettings } from '@/types/api';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import { buildVisibleSettingsNavigationItems, resolveActiveSettingsNavigationPath } from '@/navigation/settingsNavigationRuntime';
 import { resolveNavigationIcon } from '@/navigation/settingsNavigationIcon';
-import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isPluginSettingsShellPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
+import { isMainMenuHiddenMonitoringPath, isMainMenuHiddenSettingPath, isSettingsShellPath } from '@/navigation/settingsNavigationRuntime';
 import { backendRouteMeta, realPageRouteMetaMap, resolveCanonicalRoutePath } from '@/routes/meta';
 import { API_OPTS } from '@/utils/errorMessage';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -260,9 +260,9 @@ const useSessionActivityController = ({ securitySettings }: { securitySettings: 
   };
 };
 
-const resolveSiderMenuMode = (pathname: string, initialState: AppInitialState | undefined) =>
-  isSettingsShellPath(pathname) || isPluginSettingsShellPath(pathname, initialState?.availablePlugins) ? 'settings' : 'main';
-const isPluginRuntimePath = (path?: string) => Boolean(path && /^\/plugins\/[^/]+$/.test(path));
+const resolveSiderMenuMode = (pathname: string, _initialState: AppInitialState | undefined) =>
+  isSettingsShellPath(pathname) ? 'settings' : 'main';
+const isPluginRuntimePath = (path?: string) => Boolean(path && (path === '/plugins' || path.startsWith('/plugins/')));
 
 const CollapsedButtonWithReturn = ({ defaultDom }: { defaultDom: ReactNode }) => {
   const location = useLocation();
@@ -977,7 +977,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
   const LAYOUT_HEADER_HEIGHT = resolveResponsiveValue(APP_SPACING.layout.headerHeight, isMobile);
   const LAYOUT_SIDER_WIDTH = resolveResponsiveValue(APP_SPACING.layout.siderWidth, isMobile);
 
-  applyFavicon(brandingSettings.websiteFaviconUrl);
+  applyBrandingRuntime(brandingSettings);
 
   return {
     title: brandName,
@@ -1053,6 +1053,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         siderMenuMode,
         menuVersion: initialState?.menuVersion ?? 0,
         themeRevision: initialState?.themeRevision ?? 0,
+        brandingRevision: initialState?.brandingRevision ?? 0,
       },
     },
     menuDataRender: (menuData) => {

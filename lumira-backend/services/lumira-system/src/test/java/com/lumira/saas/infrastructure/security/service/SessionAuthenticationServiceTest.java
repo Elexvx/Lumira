@@ -88,6 +88,38 @@ class SessionAuthenticationServiceTest {
     }
 
     @Test
+    void shouldGrantWildcardToProtectedAdminEvenWhenCachedSessionSnapshotIsEmpty() {
+        StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
+        StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
+        StubJwtTokenService jwtTokenService = new StubJwtTokenService();
+        StubSecuritySettingsService securitySettingsService = new StubSecuritySettingsService();
+        SessionAuthenticationService service = new SessionAuthenticationService(
+                jwtTokenService,
+                authSessionStore,
+                permissionSnapshotService,
+                securitySettingsService
+        );
+
+        AuthSession session = buildSession(null);
+        session.setUserId(1001L);
+        session.setUsername("admin");
+        session.setPermissionsVersion("v1:data-scope-cache-v4");
+        session.setPermissions(java.util.List.of());
+        session.setRoleIds(java.util.List.of(1001L));
+        session.setDeptIds(java.util.List.of());
+        session.setDescendantDeptIds(java.util.List.of());
+        session.setDataScopes(java.util.List.of());
+        authSessionStore.put(session);
+        jwtTokenService.setClaims(buildClaims(session));
+
+        SessionAuthenticationService.AuthenticatedAccess access = service.authenticateAccessToken("access-token");
+
+        assertFalse(permissionSnapshotService.userSnapshotLoaded);
+        assertEquals(Set.of("*"), access.currentUser().getPermissions());
+        assertFalse(access.sessionStateUpdated());
+    }
+
+    @Test
     void shouldCacheStableAuthenticatedAccessForHotToken() {
         StubPermissionSnapshotService permissionSnapshotService = new StubPermissionSnapshotService();
         StubAuthSessionStore authSessionStore = new StubAuthSessionStore();
@@ -280,7 +312,7 @@ class SessionAuthenticationServiceTest {
         AuthSession session = new AuthSession();
         session.setSessionId("session-1");
         session.setUserId(2001L);
-        session.setUsername("admin");
+        session.setUsername("ordinary");
         session.setCurrentTenantId(1001L);
         session.setLoginTime(Instant.now().minusSeconds(60));
         session.setLastActivityAt(Instant.now().minusSeconds(30));

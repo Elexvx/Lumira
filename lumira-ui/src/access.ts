@@ -3,13 +3,16 @@ import { tokenManager } from '@/auth/token';
 import { isSuperAdminUser } from '@/auth/adminAccess';
 
 const hasPermission = (permissions: Set<string>, key: string) => permissions.has(key) || permissions.has('*');
+const hasAnyPermission = (permissions: Set<string>, keys: string[]) => keys.some((key) => hasPermission(permissions, key));
 
 const AI_PERMISSIONS = ['ai:chat:send', 'ai:knowledge:view'];
+const SYSTEM_CONFIG_PERMISSIONS = ['system:config:view', 'system:config:update'];
 
 export default function access(initialState: { currentUser?: CurrentUser; availablePlugins?: TenantPlugin[] }) {
   const permissions = new Set(initialState?.currentUser?.permissions ?? []);
   const isLogin = Boolean(initialState?.currentUser?.sessionId) || tokenManager.hasToken();
   const isSettingsAdmin = isSuperAdminUser(initialState?.currentUser);
+  const canVisitSystemConfig = isSettingsAdmin || hasAnyPermission(permissions, SYSTEM_CONFIG_PERMISSIONS);
   return {
     hasPermission: (permission: string) => hasPermission(permissions, permission),
     isLogin,
@@ -33,7 +36,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitSystemMenus: isLogin && isSettingsAdmin,
     canVisitSystemDicts: isLogin && isSettingsAdmin,
     canVisitSystemProfileFields: isLogin && isSettingsAdmin,
-    canVisitSystemPersonalization: isLogin && isSettingsAdmin,
+    canVisitSystemPersonalization: isLogin && canVisitSystemConfig,
     canVisitSystemSecurity: isLogin && isSettingsAdmin,
     canVisitSystemVerification: isLogin && isSettingsAdmin,
     canVisitSystemPayment: isLogin && isSettingsAdmin,
@@ -41,6 +44,7 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitSystemFiles: isLogin && isSettingsAdmin,
     canVisitSystemMyFiles: isLogin && hasPermission(permissions, 'system:file:view'),
     canVisitDownloadCenter: isLogin && hasPermission(permissions, 'download:center:view'),
+    canVisitTeam: isLogin && hasPermission(permissions, 'team:view'),
     canVisitSystemAllFiles: isLogin && isSettingsAdmin,
     canVisitLocalization: isLogin && isSettingsAdmin,
     canVisitAudit: isLogin && isSettingsAdmin,

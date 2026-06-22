@@ -174,6 +174,45 @@ class SystemPlatformSettingsAppServiceTest {
         verify(smtpMailService, times(2)).invalidateTenant(1L);
     }
 
+    @Test
+    void updateBrandingSettingsPersistsEditableFooterFields() {
+        CurrentUser currentUser = currentUser(1L);
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.of(
+                "branding.website-name", "Lumira",
+                "branding.company-name", "Acme Corp",
+                "branding.copyright-start-year", "2020",
+                "branding.footer-icp", "",
+                "branding.footer-police-beian", "",
+                "branding.footer-copyright", ""
+        ));
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+        when(readModelVersionService.getOrInitialize(1L, "platform", "runtime-appearance")).thenReturn(1L);
+        SystemPlatformSettingsAppService service = newService(queryOperations, readModelVersionService, null, mock(SmtpMailService.class));
+
+        assertThat(service.getBrandingSettings(currentUser).getFooterCopyright()).contains("Acme Corp");
+
+        SystemDTO.BrandingSettingsRequest request = new SystemDTO.BrandingSettingsRequest();
+        request.setWebsiteName("Lumira");
+        request.setCompanyName("Acme Corp");
+        request.setCopyrightStartYear(2020);
+        request.setGithubLinkEnabled(Boolean.FALSE);
+        request.setGithubLinkUrl("https://github.com/example/lumira");
+        request.setHelpLinkEnabled(Boolean.TRUE);
+        request.setHelpLinkUrl("https://docs.example.com/help");
+        request.setFooterIcp("ICP-123456");
+        request.setFooterPoliceBeian("Police-654321");
+        request.setFooterCopyright("Custom copyright text");
+
+        SystemVO.BrandingSettingsVO updated = service.updateBrandingSettings(currentUser, request);
+
+        assertThat(updated.getFooterIcp()).isEqualTo("ICP-123456");
+        assertThat(updated.getFooterPoliceBeian()).isEqualTo("Police-654321");
+        assertThat(updated.getFooterCopyright()).isEqualTo("Custom copyright text");
+        assertThat(updated.getGithubLinkEnabled()).isFalse();
+        assertThat(updated.getGithubLinkUrl()).isEqualTo("https://github.com/example/lumira");
+        verify(readModelVersionService).bump(1L, "platform", "runtime-appearance", "branding-update");
+    }
+
     private static SystemPlatformSettingsAppService newService(
             RecordingQueryOperations queryOperations,
             ReadModelVersionService readModelVersionService,
@@ -251,10 +290,15 @@ class SystemPlatformSettingsAppServiceTest {
 
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {
         private final Map<String, String> configValues;
+        private final Map<String, Long> configIds = new LinkedHashMap<>();
         private final AtomicInteger queryForListCount = new AtomicInteger(0);
 
         private RecordingQueryOperations(Map<String, String> configValues) {
             this.configValues = new LinkedHashMap<>(configValues);
+            long nextId = 1L;
+            for (String configKey : this.configValues.keySet()) {
+                configIds.put(configKey, nextId++);
+            }
         }
 
         @Override
@@ -265,16 +309,25 @@ class SystemPlatformSettingsAppServiceTest {
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            if (requiredType == Long.class && args.length > 0 && configValues.containsKey(Objects.toString(args[0], ""))) {
-                return requiredType.cast(1L);
+            if (requiredType == Long.class && args.length > 0) {
+                Long configId = configIds.get(Objects.toString(args[0], ""));
+                if (configId != null) {
+                    return requiredType.cast(configId);
+                }
             }
             return null;
         }
 
         @Override
         public int update(String sql, Object... args) {
-            if (args.length >= 4 && args[1] instanceof String configKey) {
+            if (sql.contains("insert into sys_config") && args.length >= 4 && args[1] instanceof String configKey) {
                 configValues.put(configKey, Objects.toString(args[3], ""));
+                configIds.putIfAbsent(configKey, (long) configIds.size() + 1L);
+            } else if (sql.contains("update sys_config") && args.length >= 6) {
+                configValues.entrySet().stream()
+                        .filter(entry -> Objects.equals(configIds.get(entry.getKey()), args[5]))
+                        .findFirst()
+                        .ifPresent(entry -> entry.setValue(Objects.toString(args[1], "")));
             }
             return 1;
         }

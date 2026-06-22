@@ -83,6 +83,15 @@ export const applyFavicon = (faviconUrl?: string) => {
   iconLink.href = href;
 };
 
+export const applyBrandingRuntime = (settings?: Partial<BrandingSettings> | null) => {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  const normalized = normalizeBrandingSettings(settings);
+  document.title = normalized.websiteName;
+  applyFavicon(normalized.websiteFaviconUrl);
+};
+
 const normalizeText = (value: unknown, fallback: string) => {
   if (typeof value !== 'string') {
     return fallback;

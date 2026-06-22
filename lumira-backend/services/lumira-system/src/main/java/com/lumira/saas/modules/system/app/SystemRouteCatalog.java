@@ -35,6 +35,12 @@ public final class SystemRouteCatalog {
             "/files",
             "/files/all",
             "/download-center",
+            "/team",
+            "/team/create",
+            "/team/join",
+            "/team/:teamId",
+            "/team/:teamId/members",
+            "/team/:teamId/invites",
             "/settings",
             "/settings/overview",
             "/settings/menus",
@@ -100,6 +106,7 @@ public final class SystemRouteCatalog {
             "@/pages/profile/Center",
             "@/pages/files/Center",
             "@/pages/files/DownloadCenter",
+            "@/pages/team",
             "@/pages/audit/Overview",
             "@/pages/system/menus",
             "@/pages/system/Plugins",
@@ -186,6 +193,7 @@ public final class SystemRouteCatalog {
         roots.add(menu(-955L, 0L, "dashboard.home", "首页", "MENU", "/dashboard/home", "@/pages/dashboard/DashboardHomePage", "DashboardOutlined", 0, "dashboard:view"));
         roots.add(menu(-956L, 0L, "files.download-center", "下载中心", "MENU", "/download-center", "@/pages/files/DownloadCenter", "DownloadOutlined", 1, "download:center:view"));
         roots.add(aiRoot);
+        roots.add(menu(-957L, 0L, "team.root", "团队", "MENU", "/team", "@/pages/team", "TeamOutlined", 3, "team:view"));
         SystemVO.MenuVO userCenterRoot = menu(-950L, 0L, "user.center.root", "用户中心", "CATALOG", "/user-center", "@/layouts/SettingsLayout", "TeamOutlined", 18, "user:center:view");
         userCenterRoot.setChildren(new ArrayList<>(List.of(
                 menu(-951L, -950L, "system.users", "用户管理", "MENU", "/user-center/users", "@/pages/system/users", "TeamOutlined", 21, "system:user:view"),

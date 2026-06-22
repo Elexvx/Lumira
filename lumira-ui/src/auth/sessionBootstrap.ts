@@ -12,6 +12,10 @@ export interface SessionBootstrapResult {
   securitySettings: SecuritySettings;
 }
 
+export interface InitializeAfterLoginOptions {
+  remember?: boolean;
+}
+
 const LOGIN_CURRENT_USER_TIMEOUT_MS = 2500;
 const RESTORE_CURRENT_USER_TIMEOUT_MS = 5000;
 const POST_LOGIN_SECURITY_TIMEOUT_MS = 2500;
@@ -58,9 +62,12 @@ async function loadCurrentUserOrFallback(loginResponse?: LoginResponse): Promise
   }
 }
 
-export const initializeAfterLogin = async (loginResponse: LoginResponse): Promise<SessionBootstrapResult> =>
+export const initializeAfterLogin = async (
+  loginResponse: LoginResponse,
+  options: InitializeAfterLoginOptions = {},
+): Promise<SessionBootstrapResult> =>
   withBootstrapFlow(async () => {
-    const currentUser = await initializeLoginSession(loginResponse);
+    const currentUser = await initializeLoginSession(loginResponse, options);
     return currentUser;
   });
 
@@ -111,12 +118,16 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
     return { currentUser: persistedCurrentUser, securitySettings };
   });
 
-const initializeLoginSession = async (loginResponse: LoginResponse): Promise<SessionBootstrapResult> => {
+const initializeLoginSession = async (
+  loginResponse: LoginResponse,
+  options: InitializeAfterLoginOptions,
+): Promise<SessionBootstrapResult> => {
   tokenManager.setTokens({
     accessToken: loginResponse.accessToken,
     refreshToken: loginResponse.refreshToken,
     tokenType: loginResponse.tokenType,
     expiresIn: loginResponse.expiresIn,
+    remember: options.remember,
   });
 
   persistSessionActivity(Date.now());

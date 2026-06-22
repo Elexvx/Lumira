@@ -20,21 +20,23 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
-import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -173,6 +175,24 @@ class FileManagementAppServiceTest {
         assertThat(typed.getHasMore()).isFalse();
         assertThat(typed.getTotalCapped()).isFalse();
         assertThat(typed.getRecords()).hasSize(2);
+    }
+
+    @Test
+    void listStorageSpaces_shouldSeedPlatformDefaultStorageSpacesWhenMissing() {
+        when(fileStorageSpaceMapper.countDefaultStorage(1001L)).thenReturn(0L);
+        when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
+                .thenReturn(storageSpaceEntities(3, 1001L));
+        when(fileStorageSpaceMapper.listWithUsage(1001L, 10L, 0L)).thenReturn(storageSpaceEntities(3, 1001L));
+
+        PageResponse<?> response = service.listStorageSpaces(currentUser(), 1, 10);
+
+        ArgumentCaptor<FileStorageSpaceEntity> captor = ArgumentCaptor.forClass(FileStorageSpaceEntity.class);
+        verify(fileStorageSpaceMapper, times(3)).insert(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(FileStorageSpaceEntity::getStorageKey)
+                .containsExactly("local", "ai_chat", "avatar");
+        assertThat(captor.getAllValues().getFirst().getDefaultFlag()).isEqualTo(1);
+        assertThat(response.getRecords()).hasSize(3);
     }
 
     @Test

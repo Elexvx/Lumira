@@ -25,6 +25,10 @@ type SensitiveWordFormValues = {
   enabled?: boolean;
 };
 
+type SensitiveWordsPageProps = {
+  embedded?: boolean;
+};
+
 const SEVERITY_OPTIONS = [
   { label: '高', value: 'HIGH' },
   { label: '中', value: 'MEDIUM' },
@@ -39,7 +43,7 @@ const CATEGORY_OPTIONS = [
 
 const renderEnabled = (enabled: boolean) => <Tag color={enabled ? 'green' : 'default'}>{enabled ? '启用' : '停用'}</Tag>;
 
-const SensitiveWordsPage = () => {
+const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
   const { initialState } = useInitialStateModel();
   const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
   const crud = useCrudPageState<SensitiveWordRecord>();
@@ -219,8 +223,8 @@ const SensitiveWordsPage = () => {
     ];
   }, [actionPermission, deleteWord, openEdit, responsive.isMobile, toggleEnabled]);
 
-  return (
-    <ManagementPage title="敏感词拦截">
+  const content = (
+    <>
       <ManagementPageBody>
         {!pluginEnabled ? (
           <Empty
@@ -297,6 +301,16 @@ const SensitiveWordsPage = () => {
           <Typography.Text type="secondary">支持 txt、md、docx、xls、xlsx</Typography.Text>
         </Upload.Dragger>
       </ManagementDrawer>
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <ManagementPage title="敏感词拦截">
+      {content}
     </ManagementPage>
   );
 };

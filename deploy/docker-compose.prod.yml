@@ -15,7 +15,7 @@ x-common-env:
   SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-false}
   REDIS_HOST: redis
   REDIS_PORT: 6379
-  REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
   REDIS_DATABASE: 0
   JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
   FIELD_SECRET: ${FIELD_SECRET:?FIELD_SECRET is required}
@@ -102,6 +102,15 @@ services:
     - --collation-server=utf8mb4_unicode_ci
     volumes:
     - mysql_data:/var/lib/mysql
+    - ../lumira-backend/sql/saas.sql:/docker-entrypoint-initdb.d/001-saas.sql:ro
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent
+      interval: ${MYSQL_HEALTH_INTERVAL:-10s}
+      timeout: ${MYSQL_HEALTH_TIMEOUT:-5s}
+      retries: ${MYSQL_HEALTH_RETRIES:-30}
+      start_period: ${MYSQL_HEALTH_START_PERIOD:-30s}
   redis:
     image: redis:7.4
     container_name: lumira-redis
@@ -116,13 +125,20 @@ services:
 
       '
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-256mb}
       TZ: Asia/Shanghai
     volumes:
     - redis_data:/data
   xxl-job-admin:
-    image: xuxueli/xxl-job-admin:3.4.0
+    build:
+      context: ..
+      dockerfile: deploy/docker/xxl-job-admin.Dockerfile
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.11-eclipse-temurin-21}
+        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
+        XXL_JOB_VERSION: ${XXL_JOB_VERSION:-3.4.0}
+    image: ${XXL_JOB_ADMIN_IMAGE:-lumira/xxl-job-admin:3.4.0}
     container_name: lumira-xxl-job-admin
     restart: unless-stopped
     logging: *id001
@@ -137,6 +153,14 @@ services:
         is required} --xxl.job.login.username=admin --xxl.job.login.password=${XXL_JOB_LOGIN_PASSWORD:?XXL_JOB_LOGIN_PASSWORD
         is required}
       TZ: Asia/Shanghai
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - curl -fsS http://127.0.0.1:8080/xxl-job-admin/ >/dev/null
+      interval: ${XXL_JOB_ADMIN_HEALTH_INTERVAL:-10s}
+      timeout: ${XXL_JOB_ADMIN_HEALTH_TIMEOUT:-5s}
+      retries: ${XXL_JOB_ADMIN_HEALTH_RETRIES:-30}
+      start_period: ${XXL_JOB_ADMIN_HEALTH_START_PERIOD:-30s}
     networks:
     - default
     - 1panel-network
@@ -318,18 +342,20 @@ services:
       LEGENDARY_MONOLITH: 'true'
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
       REDIS_DATABASE: 0
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED:-false}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       FIELD_SECRET: ${FIELD_SECRET:?FIELD_SECRET is required}
+      LUMIRA_INITIAL_ADMIN_PASSWORD: ${LUMIRA_INITIAL_ADMIN_PASSWORD:-}
       PLUGIN_SIGNATURE_SECRET: ${PLUGIN_SIGNATURE_SECRET:?PLUGIN_SIGNATURE_SECRET
         is required}
       SAAS_JOB_INTERNAL_TOKEN: ${SAAS_JOB_INTERNAL_TOKEN:?SAAS_JOB_INTERNAL_TOKEN
         is required}
       XXL_JOB_ADMIN_ADDRESSES: ${XXL_JOB_ADMIN_ADDRESSES:-http://lumira-xxl-job-admin:8080/xxl-job-admin}
       XXL_JOB_ADMIN_ACCESS_TOKEN: ${XXL_JOB_ADMIN_ACCESS_TOKEN:?XXL_JOB_ADMIN_ACCESS_TOKEN is required}
+      XXL_JOB_EXECUTOR_ENABLED: ${XXL_JOB_EXECUTOR_ENABLED:-true}
       XXL_JOB_EXECUTOR_APPNAME: ${XXL_JOB_EXECUTOR_APPNAME:-lumira-server}
       XXL_JOB_EXECUTOR_PORT: ${XXL_JOB_EXECUTOR_PORT:-9998}
       XXL_JOB_EXECUTOR_LOG_PATH: ${XXL_JOB_EXECUTOR_LOG_PATH:-/tmp/xxl-job/logs}
@@ -400,7 +426,10 @@ services:
     - plugin_data:/data/plugins
     - plugin_staging:/data/plugin-staging
     depends_on:
-    - redis
+      redis:
+        condition: service_started
+      xxl-job-admin:
+        condition: service_healthy
     networks:
     - default
     - 1panel-network

@@ -125,6 +125,7 @@ export const WatermarkTab = ({
   const { isMobile } = useResponsive();
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
   const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
+  const watermarkControlsDisabled = !canUpdate || !watermarkPreview.enabled;
 
   return (
     <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
@@ -133,7 +134,10 @@ export const WatermarkTab = ({
           <Switch />
         </Form.Item>
         <Form.Item name="mode" label={t('模式', 'Mode')}>
-          <Segmented options={[{ label: t('文字', 'Text'), value: 'TEXT' }, { label: t('图片', 'Image'), value: 'IMAGE' }]} />
+          <Segmented
+            disabled={watermarkControlsDisabled}
+            options={[{ label: t('文字', 'Text'), value: 'TEXT' }, { label: t('图片', 'Image'), value: 'IMAGE' }]}
+          />
         </Form.Item>
         {watermarkPreview.mode !== 'IMAGE' ? (
           <Form.Item
@@ -147,7 +151,11 @@ export const WatermarkTab = ({
                 .filter(Boolean)
             }
           >
-            <Input.TextArea rows={4} placeholder={t('每行输入一条水印文字', 'Enter one watermark line per row')} />
+            <Input.TextArea
+              rows={4}
+              disabled={watermarkControlsDisabled}
+              placeholder={t('每行输入一条水印文字', 'Enter one watermark line per row')}
+            />
           </Form.Item>
         ) : null}
 
@@ -159,7 +167,7 @@ export const WatermarkTab = ({
             {renderImageUploadPreviewField({
               target: 'watermark',
               previewSrc: watermarkPreview.imageUrl,
-              canUpdate,
+              canUpdate: canUpdate && watermarkPreview.enabled,
               uploadingTarget,
               cardWidth: 200,
               cardHeight: 100,
@@ -174,29 +182,29 @@ export const WatermarkTab = ({
         ) : null}
 
         <Form.Item name="fontColor" label={t('字体颜色', 'Font color')}>
-          <Input />
+          <Input disabled={watermarkControlsDisabled} />
         </Form.Item>
         <Form.Item name="fontSize" label={t('字号', 'Font size')}>
-          <InputNumber min={10} max={48} style={{ width: '100%' }} />
+          <InputNumber min={10} max={48} disabled={watermarkControlsDisabled} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="gapX" label={t('横向间距', 'Horizontal spacing')}>
-          <InputNumber min={40} style={{ width: '100%' }} />
+          <InputNumber min={40} disabled={watermarkControlsDisabled} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="gapY" label={t('纵向间距', 'Vertical spacing')}>
-          <InputNumber min={40} style={{ width: '100%' }} />
+          <InputNumber min={40} disabled={watermarkControlsDisabled} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="rotate" label={t('旋转', 'Rotation')}>
-          <InputNumber style={{ width: '100%' }} />
+          <InputNumber disabled={watermarkControlsDisabled} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item name="opacity" label={t('透明度', 'Opacity')}>
-          <InputNumber min={0.05} max={1} step={0.05} style={{ width: '100%' }} />
+          <InputNumber min={0.05} max={1} step={0.05} disabled={watermarkControlsDisabled} style={{ width: '100%' }} />
         </Form.Item>
       </Form>
 
       <Card title={t('预览', 'Preview')}>
         <Watermark
-          content={watermarkPreview.mode === 'TEXT' ? watermarkPreview.textLines : undefined}
-          image={watermarkPreview.mode === 'IMAGE' ? normalizeUploadUrl(watermarkPreview.imageUrl) : undefined}
+          content={watermarkPreview.enabled && watermarkPreview.mode === 'TEXT' ? watermarkPreview.textLines : undefined}
+          image={watermarkPreview.enabled && watermarkPreview.mode === 'IMAGE' ? normalizeUploadUrl(watermarkPreview.imageUrl) : undefined}
         >
           <div
             style={{

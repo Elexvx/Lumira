@@ -113,11 +113,9 @@ public class AiKnowledgeBaseAppService {
                 """
                         select kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
                                kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time,
-                               coalesce(st.document_count, 0) as document_count,
-                               coalesce(st.chunk_count, 0) as chunk_count
+                               coalesce(kb.document_count, 0) as document_count,
+                               coalesce(kb.chunk_count, 0) as chunk_count
                         from ai_knowledge_base kb
-                        left join ai_knowledge_base_stats st
-                          on st.tenant_id = kb.tenant_id and st.knowledge_base_id = kb.id
                         """ + sqlClause(where) + """
                         order by kb.id desc
                         limit ? offset ?
@@ -527,11 +525,10 @@ public class AiKnowledgeBaseAppService {
                 """
                         select kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
                                kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time,
-                               coalesce(st.document_count, 0) as document_count,
-                               coalesce(st.chunk_count, 0) as chunk_count
+                               coalesce(kb.document_count, 0) as document_count,
+                               coalesce(kb.chunk_count, 0) as chunk_count
                         from ai_employee_knowledge_base rel
                         join ai_knowledge_base kb on kb.tenant_id = rel.tenant_id and kb.id = rel.knowledge_base_id and kb.is_deleted = 0
-                        left join ai_knowledge_base_stats st on st.tenant_id = kb.tenant_id and st.knowledge_base_id = kb.id
                         """ + sqlClause(where) + """
                         order by kb.id desc
                         """,
@@ -685,6 +682,30 @@ public class AiKnowledgeBaseAppService {
                             vector_indexed_chunk_count = values(vector_indexed_chunk_count),
                             update_time = values(update_time)
                         """,
+                tenantId,
+                knowledgeBaseId
+        );
+        jdbcTemplate.update(
+                """
+                        update ai_knowledge_base kb
+                        left join (
+                            select d.tenant_id,
+                                   d.knowledge_base_id,
+                                   count(distinct d.id) as document_count,
+                                   count(c.id) as chunk_count
+                            from ai_knowledge_document d
+                            left join ai_knowledge_chunk c
+                              on c.tenant_id = d.tenant_id and c.knowledge_base_id = d.knowledge_base_id and c.document_id = d.id and c.is_deleted = 0
+                            where d.tenant_id = ? and d.knowledge_base_id = ? and d.is_deleted = 0
+                            group by d.tenant_id, d.knowledge_base_id
+                        ) stats on stats.tenant_id = kb.tenant_id and stats.knowledge_base_id = kb.id
+                        set kb.document_count = coalesce(stats.document_count, 0),
+                            kb.chunk_count = coalesce(stats.chunk_count, 0),
+                            kb.update_time = current_timestamp
+                        where kb.tenant_id = ? and kb.id = ? and kb.is_deleted = 0
+                        """,
+                tenantId,
+                knowledgeBaseId,
                 tenantId,
                 knowledgeBaseId
         );
@@ -1003,10 +1024,9 @@ public class AiKnowledgeBaseAppService {
                 """
                         select kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
                                kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time,
-                               coalesce(st.document_count, 0) as document_count,
-                               coalesce(st.chunk_count, 0) as chunk_count
+                               coalesce(kb.document_count, 0) as document_count,
+                               coalesce(kb.chunk_count, 0) as chunk_count
                         from ai_knowledge_base kb
-                        left join ai_knowledge_base_stats st on st.tenant_id = kb.tenant_id and st.knowledge_base_id = kb.id
                         """ + sqlClause(where) + """
                         limit 1
                         """,

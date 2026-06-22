@@ -205,21 +205,21 @@ const dashboardRoutes: BackendRouteRecord[] = [
 ];
 
 const teamRouteMeta: BackendRouteMeta[] = [
-  { path: '/team', name: 'nav.team.root', icon: 'TeamOutlined' },
-  { path: '/team/create', name: 'nav.team.create', icon: 'PlusOutlined', hideInMenu: true },
-  { path: '/team/:teamId', name: 'nav.team.detail', icon: 'TeamOutlined', hideInMenu: true },
-  { path: '/team/:teamId/members', name: 'nav.team.members', icon: 'UsergroupAddOutlined', hideInMenu: true },
-  { path: '/team/:teamId/invites', name: 'nav.team.invites', icon: 'LinkOutlined', hideInMenu: true },
-  { path: '/team/join', name: 'nav.team.join', icon: 'LinkOutlined', hideInMenu: true },
+  { path: '/team', name: 'nav.team.root', icon: 'TeamOutlined', access: 'canVisitTeam' },
+  { path: '/team/create', name: 'nav.team.create', icon: 'PlusOutlined', access: 'canVisitTeam', hideInMenu: true },
+  { path: '/team/:teamId', name: 'nav.team.detail', icon: 'TeamOutlined', access: 'canVisitTeam', hideInMenu: true },
+  { path: '/team/:teamId/members', name: 'nav.team.members', icon: 'UsergroupAddOutlined', access: 'canVisitTeam', hideInMenu: true },
+  { path: '/team/:teamId/invites', name: 'nav.team.invites', icon: 'LinkOutlined', access: 'canVisitTeam', hideInMenu: true },
+  { path: '/team/join', name: 'nav.team.join', icon: 'LinkOutlined', access: 'canVisitTeam', hideInMenu: true },
 ];
 
 const teamRoutes: BackendRouteRecord[] = [
-  { path: '/team', component: '@/pages/team', name: 'nav.team.root', icon: 'TeamOutlined' },
-  { path: '/team/create', component: '@/pages/team', name: 'nav.team.create', icon: 'PlusOutlined', hideInMenu: true },
-  { path: '/team/join', component: '@/pages/team', name: 'nav.team.join', icon: 'LinkOutlined', hideInMenu: true },
-  { path: '/team/:teamId', component: '@/pages/team', name: 'nav.team.detail', icon: 'TeamOutlined', hideInMenu: true },
-  { path: '/team/:teamId/members', component: '@/pages/team', name: 'nav.team.members', icon: 'UsergroupAddOutlined', hideInMenu: true },
-  { path: '/team/:teamId/invites', component: '@/pages/team', name: 'nav.team.invites', icon: 'LinkOutlined', hideInMenu: true },
+  { path: '/team', component: '@/pages/team', name: 'nav.team.root', icon: 'TeamOutlined', access: 'canVisitTeam' },
+  { path: '/team/create', component: '@/pages/team', name: 'nav.team.create', icon: 'PlusOutlined', access: 'canVisitTeam', hideInMenu: true },
+  { path: '/team/join', component: '@/pages/team', name: 'nav.team.join', icon: 'LinkOutlined', access: 'canVisitTeam', hideInMenu: true },
+  { path: '/team/:teamId', component: '@/pages/team', name: 'nav.team.detail', icon: 'TeamOutlined', access: 'canVisitTeam', hideInMenu: true },
+  { path: '/team/:teamId/members', component: '@/pages/team', name: 'nav.team.members', icon: 'UsergroupAddOutlined', access: 'canVisitTeam', hideInMenu: true },
+  { path: '/team/:teamId/invites', component: '@/pages/team', name: 'nav.team.invites', icon: 'LinkOutlined', access: 'canVisitTeam', hideInMenu: true },
 ];
 
 const publicRouteMeta: BackendRouteMeta[] = [

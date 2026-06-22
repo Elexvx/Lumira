@@ -1,14 +1,15 @@
-import { API_PREFIX, AUTHORIZATION_HEADER, CSRF_TOKEN_COOKIE, CSRF_TOKEN_HEADER, REQUEST_ID_HEADER, TRACE_ID_HEADER } from '@/constants/http';
+import { AUTHORIZATION_HEADER, CSRF_TOKEN_COOKIE, CSRF_TOKEN_HEADER, getApiPrefix, REQUEST_ID_HEADER, TRACE_ID_HEADER } from '@/constants/http';
 import type { RequestOptions } from './requestInternalsTypes';
 import { buildAuthorization } from './requestInternalsAuth';
 import type { AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
 import { shouldSendJsonContentType } from './requestInternalsPayload';
+import { createRequestId } from '@/utils/requestId';
 
 export const buildRequestHeaders = (options: RequestOptions, authSnapshot: AuthRequestSnapshot) => {
   const headers = {
     ...(options.headers || {}),
     [AUTHORIZATION_HEADER]: buildAuthorization(authSnapshot.accessToken),
-    [REQUEST_ID_HEADER]: crypto.randomUUID(),
+    [REQUEST_ID_HEADER]: createRequestId(),
     [TRACE_ID_HEADER]: '',
   };
 
@@ -28,7 +29,7 @@ export const hasHeader = (headers: Record<string, string>, headerName: string) =
 };
 
 export const buildRequestUrl = (url: string, params?: Record<string, unknown>) => {
-  const fullUrl = new URL(`${API_PREFIX}${url}`, window.location.origin);
+  const fullUrl = new URL(`${getApiPrefix()}${url}`, window.location.origin);
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
       if (value === undefined || value === null) {

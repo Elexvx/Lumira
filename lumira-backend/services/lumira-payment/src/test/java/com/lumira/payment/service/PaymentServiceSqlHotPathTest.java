@@ -59,13 +59,7 @@ class PaymentServiceSqlHotPathTest {
 
     @Test
     void paymentOutboxOwnerQueueMigrationShouldIntroduceSourceBoundedQueueIndex() throws Exception {
-        Path path = resolvePath("src/main/resources/db/migration/payment/V30__payment_outbox_owner_queue_index.sql");
-        if (!Files.exists(path)) {
-            path = Path.of("services/lumira-payment/src/main/resources/db/migration/payment/V30__payment_outbox_owner_queue_index.sql");
-        }
-        assertThat(Files.exists(path)).as("payment outbox owner-queue migration exists").isTrue();
-
-        String sql = Files.readString(path, StandardCharsets.UTF_8);
+        String sql = consolidatedSchemaSql();
         assertThat(sql).contains("idx_payment_outbox_owner_queue");
         assertThat(sql).contains("deleted");
         assertThat(sql).contains("source_type");
@@ -82,12 +76,7 @@ class PaymentServiceSqlHotPathTest {
     }
 
     private static String migrationSql() throws IOException {
-        Path path = resolvePath("src/main/resources/db/migration/payment/V29__payment_hot_path_indexes.sql");
-        if (!Files.exists(path)) {
-            path = Path.of("services/lumira-payment/src/main/resources/db/migration/payment/V29__payment_hot_path_indexes.sql");
-        }
-        assertThat(Files.exists(path)).as("payment hot-path migration exists").isTrue();
-        return Files.readString(path, StandardCharsets.UTF_8);
+        return consolidatedSchemaSql();
     }
 
     private static Path resolvePath(String relativePath) {
@@ -95,7 +84,35 @@ class PaymentServiceSqlHotPathTest {
         if (Files.exists(pathFromRepoRoot)) {
             return pathFromRepoRoot;
         }
-        return Path.of(relativePath);
+        Path direct = Path.of(relativePath);
+        if (Files.exists(direct)) {
+            return direct;
+        }
+        Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        while (current != null) {
+            Path repoPath = current.resolve("services/lumira-payment").resolve(relativePath);
+            if (Files.exists(repoPath)) {
+                return repoPath;
+            }
+            Path currentPath = current.resolve(relativePath);
+            if (Files.exists(currentPath)) {
+                return currentPath;
+            }
+            current = current.getParent();
+        }
+        return direct;
+    }
+
+    private static Path resolvePath(String firstCandidate, String secondCandidate) {
+        Path first = resolvePath(firstCandidate);
+        if (Files.exists(first)) {
+            return first;
+        }
+        return resolvePath(secondCandidate);
+    }
+
+    private static String consolidatedSchemaSql() throws IOException {
+        return Files.readString(resolvePath("../../sql/saas.sql", "sql/saas.sql"), StandardCharsets.UTF_8);
     }
 
     private static String normalizeSql(String sql) {

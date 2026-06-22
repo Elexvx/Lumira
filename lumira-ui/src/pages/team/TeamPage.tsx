@@ -25,6 +25,8 @@ import type { ColumnsType } from 'antd/es/table';
 import { CopyOutlined, DeleteOutlined, LinkOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons';
 import { message } from '@/theme/antdFeedbackBridge';
 import {
+  adminDeleteTeam,
+  adminUpdateTeam,
   approveTeamJoinRequest,
   createTeam,
   createTeamInvite,
@@ -33,8 +35,8 @@ import {
   getTeam,
   joinTeamByCode,
   joinTeamByToken,
+  listAllTeams,
   leaveTeam,
-  listMyTeams,
   listTeamInvites,
   listTeamJoinRequests,
   listTeamMembers,
@@ -125,11 +127,13 @@ const TeamForm = ({ initialValues, onFinish }: { initialValues?: Partial<TeamRec
 const TeamListPage = () => {
   const [teams, setTeams] = useState<TeamRecord[]>([]);
   const [loading, setLoading] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<TeamRecord>();
 
   const load = async () => {
     setLoading(true);
     try {
-      setTeams(await listMyTeams());
+      setTeams(await listAllTeams());
     } finally {
       setLoading(false);
     }
@@ -139,32 +143,115 @@ const TeamListPage = () => {
     void load();
   }, []);
 
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingTeam(undefined);
+  };
+
+  const columns: ColumnsType<TeamRecord> = [
+    {
+      title: '团队',
+      dataIndex: 'teamName',
+      render: (_, record) => (
+        <Space>
+          <Avatar size={32} src={record.avatarUrl} icon={<TeamOutlined />} />
+          <Space direction="vertical" size={0}>
+            <Typography.Text strong>{record.teamName}</Typography.Text>
+            <Typography.Text type="secondary">{record.teamCode}</Typography.Text>
+          </Space>
+        </Space>
+      ),
+    },
+    { title: '类型', dataIndex: 'teamType', render: (value) => <Tag>{value}</Tag> },
+    { title: '可见性', dataIndex: 'visibility' },
+    { title: '加入方式', dataIndex: 'joinMode' },
+    { title: 'Owner ID', dataIndex: 'ownerUserId' },
+    { title: '成员数', dataIndex: 'memberCount' },
+    { title: '状态', dataIndex: 'status', render: (value) => <Tag color={value === 'ACTIVE' ? 'green' : 'default'}>{value}</Tag> },
+    { title: '更新时间', dataIndex: 'updatedAt', render: (value) => value || '-' },
+    {
+      title: '操作',
+      fixed: 'right',
+      render: (_, record) => (
+        <Space wrap>
+          <Button size="small" onClick={() => history.push(`/team/${record.id}`)}>详情</Button>
+          <Button size="small" onClick={() => history.push(`/team/${record.id}/members`)}>成员</Button>
+          <Button size="small" onClick={() => history.push(`/team/${record.id}/invites`)}>邀请</Button>
+          <Button
+            size="small"
+            type="primary"
+            onClick={() => {
+              setEditingTeam(record);
+              setModalOpen(true);
+            }}
+          >
+            编辑
+          </Button>
+          <Popconfirm
+            title="确认删除该团队？"
+            description="删除后会同步移除成员、邀请和加入申请。"
+            onConfirm={async () => {
+              await adminDeleteTeam(record.id);
+              message.success('团队已删除');
+              await load();
+            }}
+          >
+            <Button size="small" danger icon={<DeleteOutlined />}>删除</Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
   return (
     <TeamShell
-      title="我的团队"
-      actions={<Button type="primary" icon={<PlusOutlined />} onClick={() => history.push('/team/create')}>创建团队</Button>}
+      title="团队管理"
+      actions={
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => {
+            setEditingTeam(undefined);
+            setModalOpen(true);
+          }}
+        >
+          新增团队
+        </Button>
+      }
     >
-      <div className="team-grid">
-        {teams.map((team) => (
-          <Card key={team.id} hoverable onClick={() => history.push(`/team/${team.id}`)}>
-            <Space align="start">
-              <Avatar size={44} src={team.avatarUrl} icon={<TeamOutlined />} />
-              <div>
-                <Typography.Title level={4}>{team.teamName}</Typography.Title>
-                <Space wrap>
-                  <Tag>{team.teamType}</Tag>
-                  <Tag color={roleColor[team.myRole || 'MEMBER']}>{team.myRole}</Tag>
-                  <Tag>{team.memberCount} 人</Tag>
-                </Space>
-                <Typography.Paragraph type="secondary" ellipsis={{ rows: 2 }}>
-                  {team.description || '暂无简介'}
-                </Typography.Paragraph>
-              </div>
-            </Space>
-          </Card>
-        ))}
-      </div>
-      {!loading && teams.length === 0 ? <Empty description="还没有加入任何团队" /> : null}
+      <Card>
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={teams}
+          loading={loading}
+          scroll={{ x: 1180 }}
+          pagination={{ pageSize: 10, showSizeChanger: true }}
+          locale={{ emptyText: <Empty description="暂无团队" /> }}
+        />
+      </Card>
+      <Modal
+        title={editingTeam ? '编辑团队' : '新增团队'}
+        open={modalOpen}
+        footer={null}
+        onCancel={closeModal}
+        destroyOnHidden
+      >
+        <TeamForm
+          initialValues={editingTeam}
+          onFinish={async (values) => {
+            if (editingTeam) {
+              await adminUpdateTeam(editingTeam.id, values);
+              message.success('团队已更新');
+            } else {
+              await createTeam(values);
+              message.success('团队已创建');
+            }
+            closeModal();
+            await load();
+          }}
+        />
+      </Modal>
     </TeamShell>
   );
 };

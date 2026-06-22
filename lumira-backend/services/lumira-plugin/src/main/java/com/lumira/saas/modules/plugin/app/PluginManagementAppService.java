@@ -246,6 +246,11 @@ public class PluginManagementAppService {
     public void disable(PluginDTO.DisableRequest request, CurrentUser currentUser) {
         PluginTenantEntity tenantEntity = pluginPersistenceService.findTenantPlugin(request.getTenantId(), request.getPluginCode())
                 .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前尚未启用该插件"));
+        PluginVO.PluginStatusVO pluginStatus = pluginPersistenceService.pluginStatus(request.getTenantId(), request.getPluginCode()).orElse(null);
+        if (Boolean.TRUE.equals(request.getPurgeData())
+                && (pluginStatus == null || !Boolean.TRUE.equals(pluginStatus.getSupportsDataPurge()))) {
+            throw new BizException(ErrorCode.BIZ_ERROR, "Plugin does not support data purge on disable");
+        }
         TenantPluginAggregate tenantPlugin = new TenantPluginAggregate(request.getPluginCode(), request.getTenantId(), true);
         tenantPlugin.disable(Boolean.TRUE.equals(request.getPurgeData()) ? "purge-data" : "disable");
         pluginPersistenceService.disablePluginForTenant(request.getTenantId(), request.getPluginCode(), currentUser.getUserId());

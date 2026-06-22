@@ -1,14 +1,13 @@
-# 数据库初始化口径
+# 数据库初始化入口
 
-当前生产运行以 `lumira-server` 聚合服务为主，推荐数据库初始化以 `services/lumira-system/src/main/resources/db/migration` 下的 Flyway 迁移为准。
+`sql/saas.sql` 是 Lumira 当前的全量初始化脚本，用于全新空库部署。服务端默认关闭 Flyway，部署时应先让 MySQL 在初始化空数据卷时导入该脚本，或在启动后端前手动导入该脚本。
 
-`sql/saas.sql` 是面向开源用户和手动安装场景的全量初始化脚本，可直接导入空库。该脚本会写入已折叠迁移对应的 `flyway_schema_history` 记录，因此后续启动服务时 Flyway 可以从未折叠的后续增量继续执行。
+该脚本也包含 XXL-JOB Admin 运行所需的 `xxl_job_*` 调度表和 `lumira-server` 执行器分组。部署时不要再单独维护一份 XXL-JOB 建表脚本，否则容易出现后端 executor 注册失败或调度中心启动后缺表的问题。
 
-`file-service`、`message-service`、`plugin-service` 下的领域迁移保留给未来拆分服务独立运行时使用；当前聚合运行的最终结构已经合并进 system-service 的主基线，并通过后续迁移补齐旧库清理。
+推荐路径：
 
-验收口径：
-
-- 空库部署：先启动 MySQL/Redis/Nacos，再启动后端服务，由 Flyway 自动建表和补数据。
-- 手动导入：先创建空库，再导入 `sql/saas.sql`，随后启动后端服务补跑后续 Flyway 增量。
-- 手动核查：对比 `services/lumira-system/src/main/resources/db/migration/*.sql` 与目标库 `flyway_schema_history`，确认已折叠版本存在且后续版本按需执行。
+- Docker Compose 部署：`deploy/docker-compose.yml` 和 `deploy/docker-compose.prod.yml` 会将 `sql/saas.sql` 挂载到 MySQL 的 `/docker-entrypoint-initdb.d/001-saas.sql`，空数据卷首次启动时自动导入。
+- 手动部署：先创建空库，再导入 `sql/saas.sql`，确认表结构完成后启动后端服务。
 - 灾备恢复：优先使用 `deploy/backup-platform.sh` 生成的数据库备份恢复；`sql/saas.sql` 只用于全新初始化，不用于覆盖已有业务数据。
+
+注意：MySQL 只会在数据目录为空时执行 `/docker-entrypoint-initdb.d` 下的脚本；已有数据卷不会重复导入。

@@ -54,7 +54,7 @@ export const TableActionBar = ({ items, isMobile = false, inlineCount }: TableAc
   }
 
   return (
-    <Space size={APP_SPACING.microGap.desktop} wrap={false}>
+    <Space className="saas-table-action-bar" size={APP_SPACING.microGap.desktop} wrap={false}>
       {inlineItems.map((item) => (
         <Button key={item.key} type="link" size="small" danger={item.danger} disabled={item.disabled} loading={item.loading} onClick={item.onClick}>
           {item.label}

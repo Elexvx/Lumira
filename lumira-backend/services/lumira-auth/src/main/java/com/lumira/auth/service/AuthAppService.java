@@ -16,6 +16,7 @@ import com.lumira.common.web.repeatsubmit.ClientIpResolver;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.InitialAdminPassword;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
 import com.lumira.common.security.SecurityContextFacade;
@@ -29,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -50,7 +52,6 @@ public class AuthAppService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthAppService.class);
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
-    private static final String INITIAL_ADMIN_PASSWORD = "123456";
     private static final Set<String> UNSAFE_DEFAULT_ADMIN_PASSWORDS = Set.of("123456", "admin", "password");
     private static final String READ_MODEL_CONTEXT_IAM = "IAM";
     private static final String READ_MODEL_SCOPE_IAM_PERMISSION_SNAPSHOT = "permission-snapshot";
@@ -58,6 +59,7 @@ public class AuthAppService {
     private static final String AUTH_CURRENT_USER_TIMER = "auth.current_user";
     private static final String AUTH_BOOTSTRAP_TIMER = "auth.bootstrap";
     private static final String AUTH_REFRESH_TOKEN_TIMER = "auth.refresh_token";
+    private static final String PLAINTEXT_LOGIN_PASSWORD_HEADER = "X-Login-Password-Plaintext";
     private static final long CURRENT_USER_CACHE_TTL_MILLIS = 60_000L;
     private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
@@ -72,6 +74,7 @@ public class AuthAppService {
     private final WechatLoginService wechatLoginService;
     private final AuthSecurityProperties securityProperties;
     private final SecuritySettingsService securitySettingsService;
+    private final Environment environment;
     private final Cache<PermissionSnapshotCacheKey, PermissionSnapshotVersionCache> permissionSnapshotVersionCache;
     private final LongAdder permissionSnapshotVersionCacheHits = new LongAdder();
     private final LongAdder permissionSnapshotVersionCacheMisses = new LongAdder();
@@ -124,6 +127,7 @@ public class AuthAppService {
                 wechatLoginService,
                 securityProperties,
                 securitySettingsService,
+                null,
                 (MeterRegistry) null
         );
     }
@@ -141,6 +145,7 @@ public class AuthAppService {
             WechatLoginService wechatLoginService,
             AuthSecurityProperties securityProperties,
             SecuritySettingsService securitySettingsService,
+            Environment environment,
             ObjectProvider<MeterRegistry> meterRegistry
     ) {
         this(
@@ -155,6 +160,7 @@ public class AuthAppService {
                 wechatLoginService,
                 securityProperties,
                 securitySettingsService,
+                environment,
                 meterRegistry.getIfAvailable()
         );
     }
@@ -171,6 +177,7 @@ public class AuthAppService {
             WechatLoginService wechatLoginService,
             AuthSecurityProperties securityProperties,
             SecuritySettingsService securitySettingsService,
+            Environment environment,
             MeterRegistry meterRegistry
     ) {
         this.systemInternalApi = systemInternalApi;
@@ -184,6 +191,7 @@ public class AuthAppService {
         this.wechatLoginService = wechatLoginService;
         this.securityProperties = securityProperties;
         this.securitySettingsService = securitySettingsService;
+        this.environment = environment;
         this.permissionSnapshotVersionCacheTtlMillis = Math.max(1, securityProperties.getPermissionSnapshotVersionCacheTtlSeconds()) * 1000L;
         this.authBootstrapCacheTtlMillis = Math.max(
                 1,
@@ -270,7 +278,7 @@ public class AuthAppService {
                 throw loginFailed();
             }
 
-            String loginPassword = loginEncryptionService.decryptPassword(request.password());
+            String loginPassword = resolveLoginPassword(request, httpServletRequest);
             if (!passwordEncoder.matches(loginPassword, user.passwordHash())) {
                 loginProtectionService.recordFailure(account, loginIp);
                 recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "PASSWORD_MISMATCH", loginIp, userAgent);
@@ -304,9 +312,17 @@ public class AuthAppService {
         }
     }
 
+    private String resolveLoginPassword(LoginRequest request, HttpServletRequest httpServletRequest) {
+        if (securityProperties.isAllowPlaintextLoginPassword()
+                && "true".equalsIgnoreCase(httpServletRequest.getHeader(PLAINTEXT_LOGIN_PASSWORD_HEADER))) {
+            return request.password();
+        }
+        return loginEncryptionService.decryptPassword(request.password());
+    }
+
     private boolean requiresInitialAdminPasswordChange(String account, SystemUserSnapshotDTO user, String loginPassword) {
         boolean adminAccount = DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(account) || DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username());
-        return adminAccount && INITIAL_ADMIN_PASSWORD.equals(loginPassword);
+        return adminAccount && initialAdminPassword().equals(loginPassword);
     }
 
     private BizException loginFailed() {
@@ -326,7 +342,11 @@ public class AuthAppService {
     private boolean requiresInitialAdminPasswordChange(SystemUserSnapshotDTO user) {
         return user != null
                 && DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(user.username())
-                && passwordEncoder.matches(INITIAL_ADMIN_PASSWORD, user.passwordHash());
+                && passwordEncoder.matches(initialAdminPassword(), user.passwordHash());
+    }
+
+    private String initialAdminPassword() {
+        return InitialAdminPassword.resolve(environment);
     }
 
     private void rejectUnsafeDefaultAdminLogin(

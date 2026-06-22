@@ -15,6 +15,7 @@ export interface AppInitialState {
   menuTree: MenuNode[];
   menuVersion: number;
   themeRevision?: number;
+  brandingRevision?: number;
   availablePlugins: TenantPlugin[];
   securitySettings: SecuritySettings;
   brandingSettings: BrandingSettings;

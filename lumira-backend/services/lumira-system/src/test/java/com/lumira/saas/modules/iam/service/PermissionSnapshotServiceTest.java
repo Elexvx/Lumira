@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -45,11 +46,21 @@ class PermissionSnapshotServiceTest {
 
         PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1L, 1001L);
 
+        assertTrue(snapshot.getPermissions().contains("*"));
         assertTrue(snapshot.getPermissions().contains("system:menu:view"));
         assertTrue(snapshot.getPermissions().contains("system:config:view"));
         assertTrue(snapshot.getPermissions().contains("plugin:management:view"));
         assertTrue(snapshot.getPermissions().contains("ai:view"));
         assertTrue(snapshot.getVersion().contains("data-scope-cache-v4"));
+    }
+
+    @Test
+    void loadSnapshotGrantsWildcardWhenProtectedAdminRoleHasNoPermissions() {
+        PermissionSnapshotService service = newService(List.of());
+
+        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1L, 1001L);
+
+        assertEquals(Set.of("*"), snapshot.getPermissions());
     }
 
     @Test

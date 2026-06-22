@@ -11,6 +11,15 @@ services:
     - 3306:3306
     volumes:
     - mysql_data:/var/lib/mysql
+    - ../lumira-backend/sql/saas.sql:/docker-entrypoint-initdb.d/001-saas.sql:ro
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD}" --silent
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
   redis:
     image: redis:7.4
     container_name: lumira-redis
@@ -24,7 +33,14 @@ services:
     volumes:
     - redis_data:/data
   xxl-job-admin:
-    image: xuxueli/xxl-job-admin:3.4.0
+    build:
+      context: ..
+      dockerfile: deploy/docker/xxl-job-admin.Dockerfile
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.11-eclipse-temurin-21}
+        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
+        XXL_JOB_VERSION: ${XXL_JOB_VERSION:-3.4.0}
+    image: ${XXL_JOB_ADMIN_IMAGE:-lumira/xxl-job-admin:3.4.0}
     container_name: lumira-xxl-job-admin
     restart: unless-stopped
     extra_hosts:
@@ -36,8 +52,17 @@ services:
         --xxl.job.login.username=admin --xxl.job.login.password=${XXL_JOB_LOGIN_PASSWORD:-local-dev-xxl-password}
     ports:
     - 8090:8080
+    healthcheck:
+      test:
+      - CMD-SHELL
+      - curl -fsS http://127.0.0.1:8080/xxl-job-admin/ >/dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
     depends_on:
-    - mysql
+      mysql:
+        condition: service_healthy
 volumes:
   mysql_data: null
   redis_data: null

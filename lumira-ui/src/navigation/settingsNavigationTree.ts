@@ -35,11 +35,6 @@ const isVisibleSettingsPath = (path?: string) => {
   return Boolean(normalizedPath && normalizedPath.startsWith(`${SETTINGS_ROUTE_PREFIX}/`) && normalizedPath !== '/settings/overview');
 };
 
-const isVisiblePluginPath = (path?: string) => {
-  const normalizedPath = normalizeMenuPath(path);
-  return Boolean(normalizedPath && normalizedPath.startsWith('/plugins/'));
-};
-
 const isSettingsRootNode = (path?: string) => {
   const normalizedPath = normalizeMenuPath(path);
   return normalizedPath === SETTINGS_ROUTE_PREFIX || LEGACY_SETTING_ROUTE_PREFIXES.some((prefix) => normalizedPath === prefix);
@@ -97,65 +92,24 @@ const cloneSettingsFallbackItems = () =>
       icon: item.icon,
     })) as SettingsNavigationSourceItem[];
 
-const normalizePluginMenuNode = (node: Partial<MenuNode>, plugin: TenantPlugin): SettingsNavigationSourceItem | null => {
-  const path = normalizeMenuPath(node.path);
-  if (!path || !path.startsWith('/plugins/')) {
-    return null;
-  }
-
-  return {
-    path,
-    name: node.name || plugin.pluginName || plugin.pluginCode,
-    icon: node.icon || 'ApiOutlined',
-    access: node.permissionKey || `plugin:${plugin.pluginCode}:view`,
-    sortNo: node.sortNo,
-  };
-};
-
-const buildAvailablePluginNavigationItems = (availablePlugins: TenantPlugin[] | undefined) =>
-  (availablePlugins || [])
-    .flatMap((plugin) => {
-      const menuItems = (plugin.menus || [])
-        .map((menu) => normalizePluginMenuNode(menu, plugin))
-        .filter(Boolean) as SettingsNavigationSourceItem[];
-
-      if (menuItems.length) {
-        return menuItems;
-      }
-
-      const firstRoute = plugin.routes?.find((route) => normalizeMenuPath(route)?.startsWith('/plugins/'));
-      if (!firstRoute) {
-        return [];
-      }
-
-      return [{
-        path: firstRoute,
-        name: plugin.pluginName || plugin.pluginCode,
-        icon: 'ApiOutlined',
-        access: `plugin:${plugin.pluginCode}:view`,
-      }];
-    })
-    .sort((left, right) => (left.sortNo ?? Number.MAX_SAFE_INTEGER) - (right.sortNo ?? Number.MAX_SAFE_INTEGER) || left.path.localeCompare(right.path));
-
 const toSourceItem = (node: MenuNode): SettingsNavigationSourceItem | null => {
   const path = normalizeMenuPath(node.path);
-  if (!path || !isVisibleSettingsPath(path) && !isSettingsRootNode(path) && !isVisiblePluginPath(path)) {
+  if (!path || (!isVisibleSettingsPath(path) && !isSettingsRootNode(path))) {
     return null;
   }
 
   const routeMeta = getRouteMeta(path);
-  const isPluginPath = isVisiblePluginPath(path);
 
   return {
     path,
-    name: isPluginPath ? node.name || path : routeMeta?.name || node.name || path,
-    icon: isPluginPath ? node.icon || 'ApiOutlined' : routeMeta?.icon || node.icon,
+    name: routeMeta?.name || node.name || path,
+    icon: routeMeta?.icon || node.icon,
     access: routeMeta?.access || node.permissionKey,
     sortNo: node.sortNo,
   };
 };
 
-export const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined, availablePlugins: TenantPlugin[] | undefined = []) => {
+export const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined, _availablePlugins: TenantPlugin[] | undefined = []) => {
   const rootNode = findMenuNodeByPath(menuTree, SETTINGS_ROUTE_PREFIX);
   const candidateNodes: MenuNode[] = [];
   const seenPaths = new Set<string>();
@@ -170,7 +124,7 @@ export const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined, avail
       return;
     }
 
-    if (isVisiblePluginPath(normalizedPath) || isVisibleSettingsPath(normalizedPath) && SETTINGS_FALLBACK_PATH_SET.has(normalizedPath)) {
+    if (isVisibleSettingsPath(normalizedPath) && SETTINGS_FALLBACK_PATH_SET.has(normalizedPath)) {
       candidateNodes.push(node);
       seenPaths.add(normalizedPath);
     }
@@ -194,41 +148,11 @@ export const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined, avail
       .map((item) => [item.path, item]),
   );
 
-  const pluginItemsByPath = new Map<string, SettingsNavigationSourceItem>();
-  sortNavigationItems(candidateNodes.map((node) => toSourceItem(node)).filter((item) => item?.path.startsWith('/plugins/')) as SettingsNavigationSourceItem[])
-    .forEach((item) => pluginItemsByPath.set(item.path, item));
-  buildAvailablePluginNavigationItems(availablePlugins).forEach((item) => {
-    if (!pluginItemsByPath.has(item.path)) {
-      pluginItemsByPath.set(item.path, item);
-    }
-  });
-  const pluginItems = Array.from(pluginItemsByPath.values());
-
-  return cloneSettingsFallbackItems().map((fallbackItem) => {
-    const item = {
-      ...fallbackItem,
-      ...backendItemsByPath.get(fallbackItem.path),
-      name: fallbackItem.name,
-      icon: fallbackItem.icon,
-      access: fallbackItem.access,
-    };
-
-    if (item.path !== '/settings/plugins') {
-      return item;
-    }
-
-    return {
-      ...item,
-      children: [
-        {
-          path: item.path,
-          name: item.name,
-          icon: item.icon,
-          access: item.access,
-          sortNo: Number.MIN_SAFE_INTEGER,
-        },
-        ...pluginItems,
-      ],
-    };
-  });
+  return cloneSettingsFallbackItems().map((fallbackItem) => ({
+    ...fallbackItem,
+    ...backendItemsByPath.get(fallbackItem.path),
+    name: fallbackItem.name,
+    icon: fallbackItem.icon,
+    access: fallbackItem.access,
+  }));
 };

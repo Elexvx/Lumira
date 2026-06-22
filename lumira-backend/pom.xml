@@ -16,6 +16,7 @@
         <module>libs/lumira-common-web</module>
         <module>libs/lumira-common-security</module>
         <module>libs/lumira-common-api</module>
+        <module>libs/lumira-team-api</module>
         <module>libs/lumira-plugin-api</module>
         <module>services/lumira-auth</module>
         <module>services/lumira-file</module>
@@ -24,6 +25,7 @@
         <module>services/lumira-localization</module>
         <module>services/lumira-payment</module>
         <module>services/lumira-ai</module>
+        <module>services/lumira-team</module>
         <module>services/lumira-quartz</module>
     </modules>
 

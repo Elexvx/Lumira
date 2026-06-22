@@ -1,5 +1,5 @@
 import { getLocale } from '@umijs/max';
-import { API_PREFIX } from '@/constants/http';
+import { getApiPrefix } from '@/constants/http';
 import { DEFAULT_BRANDING_SETTINGS, applyFavicon, getStoredBrandingSettings, normalizeBrandingSettings, persistBrandingSettings } from '@/branding/settings';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
 import { DEFAULT_SECURITY_SETTINGS } from '@/auth/securitySettingsTypes';
@@ -441,7 +441,7 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
 };
 
 const checkBackendHealth = async () => {
-  const response = await fetch(`${API_PREFIX}/health`);
+  const response = await fetch(`${getApiPrefix()}/health`);
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('text/html')) {
     throw new BackendProxyUnavailableError(t('app.bootstrap.healthHtmlResponse', '后端健康检查返回了前端页面，请检查 API 代理配置'));

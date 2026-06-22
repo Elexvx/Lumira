@@ -7,6 +7,7 @@ import { buildUnauthorizedRuntimeState } from '@/auth/unauthorized';
 import { performLogout } from '@/auth/sessionLifecycle';
 import { shouldSuppressUnauthorizedSideEffects, type AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
 import { resolveBuiltinMessage } from '@/i18n/messages';
+import { createRequestId } from '@/utils/requestId';
 
 const getRegisteredPluginModule = (pluginCode: string, version: string): PluginModule | undefined =>
   pluginRegistry.getModule(pluginCode, version);
@@ -21,7 +22,7 @@ const cleanupPluginAssets = (pluginCode: string) => {
 
 const buildHeaders = (accessToken: string) => {
   const headers: Record<string, string> = {
-    'X-Request-Id': crypto.randomUUID(),
+    'X-Request-Id': createRequestId(),
   };
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;

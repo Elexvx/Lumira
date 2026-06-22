@@ -34,9 +34,15 @@ public class InternalFileController implements com.lumira.api.client.FileInterna
     public FileObjectDTO uploadImage(
             @RequestParam("file") @NotNull MultipartFile file,
             @RequestParam(name = "category", required = false) String category,
-            @RequestParam(name = "remark", required = false) String remark
+            @RequestParam(name = "remark", required = false) String remark,
+            @RequestParam(name = "bucket", required = false) String bucket
     ) {
-        return fileManagementAppService.uploadPublicImage(securityContextFacade.getCurrentUser(), file, category, remark);
+        return fileManagementAppService.uploadPublicImage(securityContextFacade.getCurrentUser(), file, category, remark, bucket);
+    }
+
+    @Override
+    public FileObjectDTO uploadImage(MultipartFile file, String category, String remark) {
+        return uploadImage(file, category, remark, null);
     }
 
     @PostMapping(value = "/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

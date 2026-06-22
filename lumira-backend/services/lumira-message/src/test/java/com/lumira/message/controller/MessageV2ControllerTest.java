@@ -80,6 +80,21 @@ class MessageV2ControllerTest {
     }
 
     @Test
+    void readMessage_shouldDelegateToApplicationService() {
+        CurrentUser currentUser = currentUser("message:message:read");
+        MessageVO.NoticeVO notice = new MessageVO.NoticeVO();
+        notice.setId(99L);
+        notice.setReadFlag(Boolean.TRUE);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(messageAppService.markMessageRead(currentUser, 99L)).thenReturn(notice);
+
+        var response = controller.readMessage(99L);
+
+        assertThat(response.getData().getReadFlag()).isTrue();
+        verify(messageAppService).markMessageRead(currentUser, 99L);
+    }
+
+    @Test
     void unreadCount_shouldRejectMissingPermissionBeforeCallingApplicationService() {
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser("message:other:view"));
 

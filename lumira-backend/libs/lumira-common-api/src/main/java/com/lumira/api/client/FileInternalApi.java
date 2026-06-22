@@ -16,6 +16,15 @@ public interface FileInternalApi {
              String remark
     );
 
+    default FileObjectDTO uploadImage(
+             MultipartFile file,
+             String category,
+             String remark,
+             String bucket
+    ) {
+        return uploadImage(file, category, remark);
+    }
+
     
     default FileObjectDTO uploadDocument(
              MultipartFile file,

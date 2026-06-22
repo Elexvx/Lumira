@@ -1,5 +1,5 @@
-import { formatMessage, history } from '@umijs/max';
-import { BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, SyncOutlined } from '@ant-design/icons';
+import { formatMessage } from '@umijs/max';
+import { ArrowLeftOutlined, BuildOutlined, CloudUploadOutlined, DeleteOutlined, FileSearchOutlined, SyncOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Descriptions, Empty, Input, Modal, Radio, Row, Space, Switch, Tag, Typography, Upload, theme } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import type { DescriptionsProps } from 'antd';
@@ -21,6 +21,7 @@ import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
+import SensitiveWordsPage from '@/pages/plugins/SensitiveWordsPage';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -46,6 +47,7 @@ const PluginCardsGrid = ({
   onOpenDetails,
   onOpenVersions,
   onOpenLogs,
+  onOpenManagement,
   onUninstall,
 }: {
   isMobile: boolean;
@@ -61,6 +63,7 @@ const PluginCardsGrid = ({
   onOpenDetails: (plugin: PluginDefinition) => void;
   onOpenVersions: (plugin: PluginDefinition) => void;
   onOpenLogs: (plugin: PluginDefinition) => void;
+  onOpenManagement: (plugin: PluginDefinition) => void;
   onUninstall: (plugin: PluginDefinition) => void;
 }) => {
   const rowGutter = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
@@ -109,7 +112,7 @@ const PluginCardsGrid = ({
                 <Typography.Paragraph style={{ marginBottom: 0 }}>{plugin.description || t('暂无插件描述', 'No plugin description')}</Typography.Paragraph>
                 <Space wrap>
                   {managementPath ? (
-                    <Button type="primary" onClick={() => history.push(managementPath)}>
+                    <Button type="primary" onClick={() => onOpenManagement(plugin)}>
                       {t('管理', 'Manage')}
                     </Button>
                   ) : null}
@@ -557,13 +560,14 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
 
     panel.setMutationLoading(true);
     try {
+      const purgeData = Boolean(panel.disableTarget.supportsDataPurge && panel.purgePluginDataOnDisable);
       await request<boolean>(`/v1/plugins/${panel.disableTarget.pluginCode}/disable`, {
         method: 'POST',
-        data: { purgeData: panel.purgePluginDataOnDisable },
+        data: { purgeData },
         ...API_OPTS.NO_REDIRECT,
       });
       message.success(
-        panel.purgePluginDataOnDisable
+        purgeData
           ? formatMessage({ id: 'page.plugins.success.disabledAndPurged', defaultMessage: 'Plugin disabled and plugin tables removed' })
           : formatMessage({ id: 'page.plugins.success.disabled', defaultMessage: 'Plugin disabled' }),
       );
@@ -1058,6 +1062,7 @@ const PluginDisableModal = ({
   disableDialogOpen,
   disableTarget,
   purgePluginDataOnDisable,
+  supportsDataPurge,
   mutationLoading,
   setDisableDialogOpen,
   setDisableTarget,
@@ -1068,6 +1073,7 @@ const PluginDisableModal = ({
   disableDialogOpen: boolean;
   disableTarget: PluginDefinition | null;
   purgePluginDataOnDisable: boolean;
+  supportsDataPurge: boolean;
   mutationLoading: boolean;
   setDisableDialogOpen: (open: boolean) => void;
   setDisableTarget: (plugin: PluginDefinition | null) => void;
@@ -1107,7 +1113,11 @@ const PluginDisableModal = ({
         <Typography.Paragraph type="secondary" style={{ marginBottom: 0 }}>
           {formatMessage({ id: 'page.plugins.disableDesc', defaultMessage: 'Choose whether to keep plugin data for later re-enable, or remove plugin-owned tables and data now.' })}
         </Typography.Paragraph>
-        <Radio.Group value={purgePluginDataOnDisable} onChange={(event) => setPurgePluginDataOnDisable(event.target.value)} style={{ width: '100%' }}>
+        <Radio.Group
+          value={supportsDataPurge ? purgePluginDataOnDisable : false}
+          onChange={(event) => setPurgePluginDataOnDisable(supportsDataPurge ? event.target.value : false)}
+          style={{ width: '100%' }}
+        >
           <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.modalFooterGap, isMobile)} style={{ width: '100%' }}>
             <Radio
               value={false}
@@ -1126,6 +1136,7 @@ const PluginDisableModal = ({
             </Radio>
             <Radio
               value={true}
+              disabled={!supportsDataPurge}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -1133,8 +1144,8 @@ const PluginDisableModal = ({
                 marginInlineStart: 0,
                 padding: `${rowGutterPanel[0]}px ${rowGutterPadHorizontal}px`,
                 borderRadius: 'var(--saas-card-radius)',
-                border: `1px solid ${purgePluginDataOnDisable ? token.colorError : token.colorBorderSecondary}`,
-                background: purgePluginDataOnDisable ? token.colorErrorBg : token.colorBgContainer,
+                border: `1px solid ${supportsDataPurge && purgePluginDataOnDisable ? token.colorError : token.colorBorderSecondary}`,
+                background: supportsDataPurge && purgePluginDataOnDisable ? token.colorErrorBg : token.colorBgContainer,
               }}
             >
               {formatMessage({ id: 'page.plugins.disableAndDeleteData', defaultMessage: 'Disable and remove plugin-owned tables/data' })}
@@ -1191,6 +1202,7 @@ const PluginUploadModal = ({
 
 const PluginsPage = () => {
   const { token } = theme.useToken();
+  const [managedPluginCode, setManagedPluginCode] = useState<string | null>(null);
   const { pluginPageDataPack } = usePluginsPageData();
   const pluginActions = usePluginManagementActions({
     loading: pluginPageDataPack.loading,
@@ -1252,6 +1264,14 @@ const PluginsPage = () => {
     confirmUninstall,
     confirmDisable,
   } = { ...pluginPageDataPack, ...pluginActions };
+  const managedPlugin = managedPluginCode ? currentAvailableMap.get(managedPluginCode) : undefined;
+  const managedPluginDefinition = managedPluginCode
+    ? filteredDefinitions.find((plugin) => plugin.pluginCode === managedPluginCode)
+    : undefined;
+  const managedPluginTitle = managedPlugin?.pluginName || managedPluginDefinition?.pluginName || managedPluginCode;
+  const managedPluginContent = managedPluginCode === 'sensitive-words'
+    ? <SensitiveWordsPage embedded />
+    : null;
 
   return (
     <ManagementPage
@@ -1267,40 +1287,57 @@ const PluginsPage = () => {
             gap: resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile),
           }}
         >
-          <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
-            <Input.Search
-              allowClear
-              placeholder={formatMessage({ id: 'page.plugins.searchPlaceholder', defaultMessage: 'Enter plugin code or name' })}
-              onChange={(event) => setSearchKeyword(event.target.value)}
-              style={{ width: 'var(--saas-spacing-320)', maxWidth: '100%', flex: '0 1 var(--saas-spacing-320)' }}
-            />
-            <Space wrap>
-              <Button icon={<SyncOutlined />} onClick={() => void pluginPageDataPack.loadOverview()} loading={loading || mutationLoading}>
-                {formatMessage({ id: 'page.plugins.refresh', defaultMessage: 'Refresh' })}
-              </Button>
-              <Button icon={<CloudUploadOutlined />} type="primary" disabled={!canUploadPlugin} onClick={() => setUploadVisible(true)}>
-                {formatMessage({ id: 'page.plugins.upload', defaultMessage: 'Upload plugin' })}
-              </Button>
-            </Space>
-          </Space>
-          <PluginCardsGrid
-            loading={loading}
-            definitions={filteredDefinitions}
-            currentAvailableMap={currentAvailableMap}
-            getPreferredEnableVersion={getPreferredEnableVersionForPlugin}
-            mutationLoading={mutationLoading}
-            canEnable={canEnablePlugin}
-            canDisable={canDisablePlugin}
-            canViewLogs={canViewPluginLogs}
-            isMobile={responsive.isMobile}
-            onToggleEnable={(pluginCode, enabled, versionLabel) =>
-              void (enabled ? handleEnable(pluginCode, versionLabel) : handleDisable(pluginCode))
-            }
-            onOpenDetails={handleOpenDetails}
-            onOpenVersions={handleOpenVersions}
-            onOpenLogs={(plugin) => void handleOpenLogs(plugin)}
-            onUninstall={handleUninstall}
-          />
+          {managedPluginContent ? (
+            <>
+              <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Space wrap>
+                  <Button icon={<ArrowLeftOutlined />} onClick={() => setManagedPluginCode(null)}>
+                    {t('返回插件列表', 'Back to plugins')}
+                  </Button>
+                  <Typography.Text strong>{managedPluginTitle}</Typography.Text>
+                </Space>
+              </Space>
+              {managedPluginContent}
+            </>
+          ) : (
+            <>
+              <Space wrap style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Input.Search
+                  allowClear
+                  placeholder={formatMessage({ id: 'page.plugins.searchPlaceholder', defaultMessage: 'Enter plugin code or name' })}
+                  onChange={(event) => setSearchKeyword(event.target.value)}
+                  style={{ width: 'var(--saas-spacing-320)', maxWidth: '100%', flex: '0 1 var(--saas-spacing-320)' }}
+                />
+                <Space wrap>
+                  <Button icon={<SyncOutlined />} onClick={() => void pluginPageDataPack.loadOverview()} loading={loading || mutationLoading}>
+                    {formatMessage({ id: 'page.plugins.refresh', defaultMessage: 'Refresh' })}
+                  </Button>
+                  <Button icon={<CloudUploadOutlined />} type="primary" disabled={!canUploadPlugin} onClick={() => setUploadVisible(true)}>
+                    {formatMessage({ id: 'page.plugins.upload', defaultMessage: 'Upload plugin' })}
+                  </Button>
+                </Space>
+              </Space>
+              <PluginCardsGrid
+                loading={loading}
+                definitions={filteredDefinitions}
+                currentAvailableMap={currentAvailableMap}
+                getPreferredEnableVersion={getPreferredEnableVersionForPlugin}
+                mutationLoading={mutationLoading}
+                canEnable={canEnablePlugin}
+                canDisable={canDisablePlugin}
+                canViewLogs={canViewPluginLogs}
+                isMobile={responsive.isMobile}
+                onToggleEnable={(pluginCode, enabled, versionLabel) =>
+                  void (enabled ? handleEnable(pluginCode, versionLabel) : handleDisable(pluginCode))
+                }
+                onOpenDetails={handleOpenDetails}
+                onOpenVersions={handleOpenVersions}
+                onOpenLogs={(plugin) => void handleOpenLogs(plugin)}
+                onOpenManagement={(plugin) => setManagedPluginCode(plugin.pluginCode)}
+                onUninstall={handleUninstall}
+              />
+            </>
+          )}
         </Card>
       </ManagementPageBody>
       <PluginVersionDrawer
@@ -1347,6 +1384,7 @@ const PluginsPage = () => {
         disableDialogOpen={disableDialogOpen}
         disableTarget={disableTarget}
         purgePluginDataOnDisable={purgePluginDataOnDisable}
+        supportsDataPurge={Boolean(disableTarget?.supportsDataPurge)}
         mutationLoading={mutationLoading}
         setDisableDialogOpen={setDisableDialogOpen}
         setDisableTarget={setDisableTarget}

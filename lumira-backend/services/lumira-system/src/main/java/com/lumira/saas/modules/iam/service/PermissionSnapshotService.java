@@ -487,8 +487,9 @@ public class PermissionSnapshotService {
     }
 
     private Set<String> queryPermissionsByRoleIds(Long tenantId, Long userId, Set<Long> roleIds) {
+        boolean protectedAdminAccount = isProtectedAdminAccount(userId);
         if (roleIds == null || roleIds.isEmpty()) {
-            return Set.of();
+            return protectedAdminAccount ? Set.of("*") : Set.of();
         }
         if (ownerRuntimeMetrics != null) {
             ownerRuntimeMetrics.recordIamPermissionSnapshotPermissionsQuery();
@@ -511,7 +512,12 @@ public class PermissionSnapshotService {
                 (rs, rowNum) -> rs.getString("permission_key"),
                 params.toArray()
         );
-        return isProtectedAdminAccount(userId) ? new LinkedHashSet<>(permissions) : filterRoleAssignablePermissionKeys(permissions);
+        if (protectedAdminAccount) {
+            LinkedHashSet<String> result = new LinkedHashSet<>(permissions);
+            result.add("*");
+            return result;
+        }
+        return filterRoleAssignablePermissionKeys(permissions);
     }
 
     private boolean isProtectedAdminAccount(Long userId) {

@@ -9,13 +9,10 @@ import org.junit.jupiter.api.Test;
 class SystemFileHotPathMigrationTest {
 
     @Test
-    void aggregateServerMigrationShouldProvideFileMapperForcedIndexes() throws Exception {
-        String migration = readText(
-                "src/main/resources/db/migration/V49__aggregate_file_hot_path_indexes.sql",
-                "services/lumira-system/src/main/resources/db/migration/V49__aggregate_file_hot_path_indexes.sql"
-        );
+    void consolidatedSchemaShouldProvideFileMapperForcedIndexes() throws Exception {
+        String schema = readText("../../sql/saas.sql", "sql/saas.sql");
 
-        assertThat(migration)
+        assertThat(schema)
                 .contains("idx_file_storage_space_tenant_deleted_default_id")
                 .contains("idx_file_object_tenant_deleted_bucket")
                 .contains("idx_file_object_tenant_deleted_created_id")
@@ -23,12 +20,29 @@ class SystemFileHotPathMigrationTest {
                 .contains("idx_file_processing_task_tenant_created");
     }
 
-    private static String readText(String modulePath, String repoPath) throws Exception {
-        Path path = Path.of(modulePath);
-        if (!Files.exists(path)) {
-            path = Path.of(repoPath);
-        }
-        assertThat(Files.exists(path)).as("migration exists at %s or %s", modulePath, repoPath).isTrue();
+    private static String readText(String... candidates) throws Exception {
+        Path path = resolvePath(candidates);
+        assertThat(Files.exists(path)).as("consolidated schema exists").isTrue();
         return Files.readString(path);
+    }
+
+    private static Path resolvePath(String... candidates) {
+        for (String candidate : candidates) {
+            Path direct = Path.of(candidate);
+            if (Files.exists(direct)) {
+                return direct;
+            }
+        }
+        Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        while (current != null) {
+            for (String candidate : candidates) {
+                Path path = current.resolve(candidate);
+                if (Files.exists(path)) {
+                    return path;
+                }
+            }
+            current = current.getParent();
+        }
+        return Path.of(candidates[0]);
     }
 }

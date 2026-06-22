@@ -12,7 +12,7 @@ import { TableActionBar } from '@/features/table/TableActionBar';
 import { useDetailProDescriptionsProps } from '@/features/detail/config';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
-import { AUTHORIZATION_HEADER, API_PREFIX } from '@/constants/http';
+import { AUTHORIZATION_HEADER, getApiPrefix } from '@/constants/http';
 import { captureAuthRequestSnapshot, buildUnauthorizedRuntimeState } from '@/auth/unauthorized';
 import { shouldSuppressUnauthorizedSideEffects, type AuthRequestSnapshot } from '@/auth/unauthorizedDecision';
 import { performLogout } from '@/auth/sessionLifecycle';
@@ -125,7 +125,7 @@ const connectOnlineSessionStream = (options: OnlineSessionStreamOptions) => {
     }
 
     try {
-      const response = await fetch(`${API_PREFIX}/v1/system/online-users/events`, {
+      const response = await fetch(`${getApiPrefix()}/v1/system/online-users/events`, {
         method: 'GET',
         headers: {
           [AUTHORIZATION_HEADER]: `Bearer ${accessToken}`,

@@ -7,6 +7,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Modal,
   Popconfirm,
   Select,
   Space,
@@ -17,7 +18,7 @@ import {
   Typography,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { DeleteOutlined, EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { PlusOutlined } from "@ant-design/icons";
 import { getLocale } from "@umijs/max";
 import { useEffect, useMemo, useState } from "react";
 import { ManagementPage } from "@/features/management/ManagementPage";
@@ -70,6 +71,11 @@ const ProfileFieldManagementPage = () => {
   const [saving, setSaving] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingFieldKey, setEditingFieldKey] = useState<string | null>(null);
+  const editingItem = useMemo(
+    () => items.find((item) => item.fieldKey === editingFieldKey) || null,
+    [editingFieldKey, items],
+  );
+  const editingSystemField = Boolean(editingItem && !editingItem.custom);
 
   const enabledWeight = useMemo(
     () =>
@@ -109,97 +115,7 @@ const ProfileFieldManagementPage = () => {
     void loadItems();
   }, []);
 
-  const patchItem = (fieldKey: string, patch: Partial<ProfileFieldSetting>) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.fieldKey === fieldKey ? { ...item, ...patch } : item,
-      ),
-    );
-  };
-
-  const openAddDrawer = () => {
-    setEditingFieldKey(null);
-    form.resetFields();
-    form.setFieldsValue({
-      fieldType: "TEXT",
-      groupLabel: t("自定义资料", "Custom profile"),
-      required: false,
-      visible: true,
-      weight: 5,
-      sortNo: (items.length + 1) * 10,
-    });
-    setDrawerOpen(true);
-  };
-
-  const openEditDrawer = (item: ProfileFieldSetting) => {
-    setEditingFieldKey(item.fieldKey);
-    form.setFieldsValue({
-      fieldKey: item.fieldKey,
-      fieldLabel: item.fieldLabel,
-      fieldDescription: item.fieldDescription || undefined,
-      fieldType: item.fieldType || "TEXT",
-      placeholder: item.placeholder || undefined,
-      groupLabel: item.groupLabel || t("自定义资料", "Custom profile"),
-      required: Boolean(item.required),
-      visible: Boolean(item.visible),
-      weight: item.weight ?? 5,
-      sortNo: item.sortNo ?? 1000,
-    });
-    setDrawerOpen(true);
-  };
-
-  const closeDrawer = () => {
-    setDrawerOpen(false);
-    setEditingFieldKey(null);
-    form.resetFields();
-  };
-
-  const handleSubmitCustomField = async () => {
-    const values = await form.validateFields();
-    const fieldKey = normalizeCustomFieldKey(values.fieldKey);
-    if (
-      items.some(
-        (item) =>
-          item.fieldKey === fieldKey && item.fieldKey !== editingFieldKey,
-      )
-    ) {
-      message.warning(
-        t("字段标识已存在，请换一个", "This field key already exists."),
-      );
-      return;
-    }
-    const nextItem: ProfileFieldSetting = {
-      fieldKey,
-      fieldLabel: values.fieldLabel.trim(),
-      fieldDescription:
-        values.fieldDescription?.trim() ||
-        t("自定义资料字段", "Custom profile field"),
-      fieldType: values.fieldType || "TEXT",
-      placeholder: values.placeholder?.trim() || null,
-      groupKey: "custom",
-      groupLabel:
-        values.groupLabel?.trim() || t("自定义资料", "Custom profile"),
-      required: Boolean(values.required),
-      visible: values.visible ?? true,
-      weight: values.weight ?? 5,
-      sortNo: values.sortNo ?? (items.length + 1) * 10,
-      custom: true,
-    };
-    setItems((prev) =>
-      editingFieldKey
-        ? prev.map((item) =>
-            item.fieldKey === editingFieldKey ? nextItem : item,
-          )
-        : [...prev, nextItem],
-    );
-    closeDrawer();
-  };
-
-  const handleRemoveCustomField = (fieldKey: string) => {
-    setItems((prev) => prev.filter((item) => item.fieldKey !== fieldKey));
-  };
-
-  const handleSave = async () => {
+  const saveItems = async (nextItems: ProfileFieldSetting[]) => {
     setSaving(true);
     try {
       const result = await request<ProfileFieldSetting[]>(
@@ -207,7 +123,7 @@ const ProfileFieldManagementPage = () => {
         {
           method: "PUT",
           data: {
-            items: items.map((item) => ({
+            items: nextItems.map((item) => ({
               fieldKey: item.fieldKey,
               fieldLabel: item.fieldLabel,
               fieldDescription: item.fieldDescription,
@@ -227,14 +143,134 @@ const ProfileFieldManagementPage = () => {
       );
       setItems(result);
       message.success(t("字段配置已保存", "Field settings saved"));
+      return true;
     } catch (error) {
       showErrorMessage(
         error,
         t("保存字段配置失败", "Failed to save field settings"),
       );
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+
+  const patchItem = (fieldKey: string, patch: Partial<ProfileFieldSetting>) => {
+    const nextItems = items.map((item) =>
+      item.fieldKey === fieldKey ? { ...item, ...patch } : item,
+    );
+    setItems(nextItems);
+    void saveItems(nextItems);
+  };
+
+  const openAddDrawer = () => {
+    setEditingFieldKey(null);
+    form.resetFields();
+    form.setFieldsValue({
+      fieldType: "TEXT",
+      groupLabel: t("自定义资料", "Custom profile"),
+      required: false,
+      visible: true,
+      weight: 5,
+      sortNo: (items.length + 1) * 10,
+    });
+    setDrawerOpen(true);
+  };
+
+  const openEditDrawer = (item: ProfileFieldSetting) => {
+    setEditingFieldKey(item.fieldKey);
+    form.resetFields();
+    form.setFieldsValue({
+      fieldKey: item.fieldKey,
+      fieldLabel: item.fieldLabel,
+      fieldDescription: item.fieldDescription || undefined,
+      fieldType: item.fieldType || "TEXT",
+      placeholder: item.placeholder || undefined,
+      groupLabel: item.groupLabel || t("自定义资料", "Custom profile"),
+      required: Boolean(item.required),
+      visible: Boolean(item.visible),
+      weight: item.weight ?? 5,
+      sortNo: item.sortNo ?? 1000,
+    });
+    setDrawerOpen(true);
+  };
+
+  const closeDrawer = (force = false) => {
+    if (!force && form.isFieldsTouched()) {
+      Modal.confirm({
+        title: t("确认退出编辑？", "Discard changes?"),
+        content: t(
+          "当前字段修改尚未保存，退出后将丢失本次编辑内容。",
+          "Your field changes have not been saved. Closing now will discard them.",
+        ),
+        okText: t("退出", "Discard"),
+        cancelText: t("继续编辑", "Keep editing"),
+        okButtonProps: { danger: true },
+        onOk: () => closeDrawer(true),
+      });
+      return;
+    }
+    setDrawerOpen(false);
+    setEditingFieldKey(null);
+    form.resetFields();
+  };
+
+  const handleSubmitField = async () => {
+    const values = await form.validateFields();
+    const editing = items.find((item) => item.fieldKey === editingFieldKey);
+    const fieldKey = editing ? editing.fieldKey : normalizeCustomFieldKey(values.fieldKey);
+    if (
+      items.some(
+        (item) =>
+          item.fieldKey === fieldKey && item.fieldKey !== editingFieldKey,
+      )
+    ) {
+      message.warning(
+        t("字段标识已存在，请换一个", "This field key already exists."),
+      );
+      return;
+    }
+    const nextItem: ProfileFieldSetting = editing && !editing.custom
+      ? {
+          ...editing,
+          required: Boolean(values.required),
+          visible: values.visible ?? true,
+          weight: values.weight ?? editing.weight ?? 1,
+          sortNo: values.sortNo ?? editing.sortNo ?? 1000,
+          custom: false,
+        }
+      : {
+      fieldKey,
+      fieldLabel: values.fieldLabel.trim(),
+      fieldDescription:
+        values.fieldDescription?.trim() ||
+        t("自定义资料字段", "Custom profile field"),
+      fieldType: values.fieldType || "TEXT",
+      placeholder: values.placeholder?.trim() || null,
+      groupKey: "custom",
+      groupLabel:
+        values.groupLabel?.trim() || t("自定义资料", "Custom profile"),
+      required: Boolean(values.required),
+      visible: values.visible ?? true,
+      weight: values.weight ?? 5,
+      sortNo: values.sortNo ?? (items.length + 1) * 10,
+      custom: true,
+    };
+    const nextItems = editingFieldKey
+      ? items.map((item) =>
+          item.fieldKey === editingFieldKey ? nextItem : item,
+        )
+      : [...items, nextItem];
+    setItems(nextItems);
+    if (await saveItems(nextItems)) {
+      closeDrawer(true);
+    }
+  };
+
+  const handleRemoveCustomField = (fieldKey: string) => {
+    const nextItems = items.filter((item) => item.fieldKey !== fieldKey);
+    setItems(nextItems);
+    void saveItems(nextItems);
   };
 
   const columns: ColumnsType<ProfileFieldSetting> = [
@@ -271,10 +307,11 @@ const ProfileFieldManagementPage = () => {
       title: t("必填", "Required"),
       dataIndex: "required",
       width: 96,
+      align: "center",
       render: (_value, item) => (
         <Switch
           checked={Boolean(item.required)}
-          disabled={!canUpdate || !item.custom}
+          disabled={!canUpdate || saving}
           onChange={(checked) =>
             patchItem(item.fieldKey, { required: checked })
           }
@@ -290,7 +327,7 @@ const ProfileFieldManagementPage = () => {
           min={1}
           precision={0}
           controls={false}
-          disabled={!canUpdate}
+          disabled={!canUpdate || saving}
           value={item.weight ?? 1}
           style={{ width: "var(--saas-spacing-100)" }}
           onChange={(value) => {
@@ -310,7 +347,7 @@ const ProfileFieldManagementPage = () => {
           min={1}
           precision={0}
           controls={false}
-          disabled={!canUpdate || !item.custom}
+          disabled={!canUpdate || saving}
           value={item.sortNo ?? 1000}
           style={{ width: "var(--saas-spacing-100)" }}
           onChange={(value) => {
@@ -325,10 +362,11 @@ const ProfileFieldManagementPage = () => {
       title: t("启用", "Enabled"),
       dataIndex: "visible",
       width: 96,
+      align: "center",
       render: (_value, item) => (
         <Switch
           checked={Boolean(item.visible)}
-          disabled={!canUpdate}
+          disabled={!canUpdate || saving}
           onChange={(checked) => patchItem(item.fieldKey, { visible: checked })}
         />
       ),
@@ -336,24 +374,25 @@ const ProfileFieldManagementPage = () => {
     {
       title: t("操作", "Actions"),
       key: "actions",
-      width: 96,
-      fixed: "right",
-      render: (_value, item) =>
-        item.custom ? (
-          <Space size={4}>
+      width: 128,
+      align: "center",
+      render: (_value, item) => (
+          <Space size={tagWrapGap} wrap={false}>
             <Button
-              type="text"
-              shape="circle"
-              icon={<EditOutlined />}
-              disabled={!canUpdate}
+              type="link"
+              size="small"
+              disabled={!canUpdate || saving}
               aria-label={t("修改字段", "Edit field")}
               onClick={() => openEditDrawer(item)}
-            />
-            <Popconfirm
+            >
+              {t("编辑", "Edit")}
+            </Button>
+            {item.custom ? (
+              <Popconfirm
               title={t("删除自定义字段", "Delete custom field")}
               description={t(
-                "删除后保存才会生效，确认删除吗？",
-                "Deletion takes effect after saving. Continue?",
+                "删除后将立即保存，确认删除吗？",
+                "Deletion is saved immediately. Continue?",
               )}
               okText={t("删除", "Delete")}
               cancelText={t("取消", "Cancel")}
@@ -361,22 +400,20 @@ const ProfileFieldManagementPage = () => {
             >
               <Button
                 danger
-                type="text"
-                shape="circle"
-                icon={<DeleteOutlined />}
-                disabled={!canUpdate}
+                type="link"
+                size="small"
+                disabled={!canUpdate || saving}
                 aria-label={t("删除字段", "Delete field")}
-              />
-            </Popconfirm>
+              >
+                {t("删除", "Delete")}
+              </Button>
+              </Popconfirm>
+            ) : null}
           </Space>
-        ) : (
-          <Typography.Text type="secondary">-</Typography.Text>
         ),
     },
   ];
-  const visibleColumns = customFieldCount > 0
-    ? columns
-    : columns.filter((column) => column.key !== "actions");
+  const visibleColumns = columns;
 
   return (
     <ManagementPage
@@ -398,7 +435,7 @@ const ProfileFieldManagementPage = () => {
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                disabled={!canUpdate}
+                disabled={!canUpdate || saving}
                 onClick={openAddDrawer}
               >
                 {t("新增字段", "Add field")}
@@ -443,7 +480,7 @@ const ProfileFieldManagementPage = () => {
                 )}
                 pagination={false}
                 size="middle"
-                scroll={{ x: 1120 }}
+                scroll={isMobile ? { x: 960 } : undefined}
               />
             ) : (
               <Empty
@@ -451,18 +488,6 @@ const ProfileFieldManagementPage = () => {
               />
             )}
 
-            {items.length ? (
-              <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                <Button
-                  type="primary"
-                  loading={saving}
-                  onClick={() => void handleSave()}
-                  disabled={loading || !canUpdate}
-                >
-                  {t("保存设置", "Save settings")}
-                </Button>
-              </div>
-            ) : null}
           </Space>
         </Card>
       </ManagementPageBody>
@@ -470,24 +495,26 @@ const ProfileFieldManagementPage = () => {
       <Drawer
         title={
           editingFieldKey
-            ? t("修改自定义字段", "Edit custom field")
+            ? t("编辑字段", "Edit field")
             : t("新增自定义字段", "Add custom field")
         }
         width={isMobile ? "100%" : 520}
         open={drawerOpen}
         destroyOnHidden
         forceRender
-        onClose={closeDrawer}
+        onClose={() => closeDrawer()}
         footer={
           <Space>
-            <Button onClick={closeDrawer}>{t("取消", "Cancel")}</Button>
+            <Button onClick={() => closeDrawer()}>{t("取消", "Cancel")}</Button>
             <Button
               type="primary"
-              onClick={() => void handleSubmitCustomField()}
+              loading={saving}
+              disabled={loading || !canUpdate || saving}
+              onClick={() => void handleSubmitField()}
             >
               {editingFieldKey
                 ? t("保存修改", "Save changes")
-                : t("添加到列表", "Add to list")}
+                : t("保存字段", "Save field")}
             </Button>
           </Space>
         }
@@ -517,6 +544,7 @@ const ProfileFieldManagementPage = () => {
             <Input
               placeholder={t("例如：学校", "e.g. School")}
               maxLength={64}
+              disabled={editingSystemField}
             />
           </Form.Item>
           <Form.Item
@@ -540,6 +568,7 @@ const ProfileFieldManagementPage = () => {
             <Input
               placeholder={t("例如：school", "e.g. school")}
               maxLength={64}
+              disabled={Boolean(editingFieldKey)}
             />
           </Form.Item>
           <Form.Item
@@ -552,12 +581,13 @@ const ProfileFieldManagementPage = () => {
               },
             ]}
           >
-            <Select options={FIELD_TYPE_OPTIONS} />
+            <Select options={FIELD_TYPE_OPTIONS} disabled={editingSystemField} />
           </Form.Item>
           <Form.Item name="placeholder" label={t("占位提示", "Placeholder")}>
             <Input
               placeholder={t("例如：请输入学校名称", "e.g. Enter school name")}
               maxLength={120}
+              disabled={editingSystemField}
             />
           </Form.Item>
           <Form.Item name="fieldDescription" label={t("说明", "Description")}>
@@ -568,12 +598,14 @@ const ProfileFieldManagementPage = () => {
                 "Describe how this field is used",
               )}
               maxLength={200}
+              disabled={editingSystemField}
             />
           </Form.Item>
           <Form.Item name="groupLabel" label={t("分组", "Group")}>
             <Input
               placeholder={t("例如：教育信息", "e.g. Education")}
               maxLength={64}
+              disabled={editingSystemField}
             />
           </Form.Item>
           <Space size={tagWrapGap} wrap>

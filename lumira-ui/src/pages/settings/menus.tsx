@@ -84,6 +84,15 @@ type SettingsRouteEditorValues = {
   sortNo?: number;
 };
 
+type MenuOrderItem = { id: number; parentId?: number | null; sortNo: number };
+
+type SettingsRouteDragState = {
+  draggedPath: string;
+  targetPath: string;
+  position: 'before' | 'after';
+};
+
+const MAIN_ROUTE_MENU_ORDER_KEY = 'main_route_menu_order';
 const SETTING_ROUTE_ICON_KEY = 'settings_route_icons';
 
 const getStoredSettingRouteOrder = () => {
@@ -126,6 +135,22 @@ const persistSettingRouteIcons = (icons: Record<string, string>) => {
         .map(([path, icon]) => [path, icon.trim()])
         .filter(([path, icon]) => validPathSet.has(path) && Boolean(icon)),
     ),
+  );
+};
+
+const getStoredMainRouteMenuOrder = () => storage.get<MenuOrderItem[]>(MAIN_ROUTE_MENU_ORDER_KEY) || [];
+
+const persistMainRouteMenuOrder = (order: MenuOrderItem[]) => {
+  const seenIds = new Set<number>();
+  storage.set(
+    MAIN_ROUTE_MENU_ORDER_KEY,
+    order.filter((item) => {
+      if (!Number.isFinite(item.id) || seenIds.has(item.id)) {
+        return false;
+      }
+      seenIds.add(item.id);
+      return true;
+    }),
   );
 };
 
@@ -296,6 +321,68 @@ const sortMenuTree = (menus: MenuRecord[]): MenuRecord[] =>
       children: menu.children?.length ? sortMenuTree(menu.children) : undefined,
     }));
 
+const applyStoredMainRouteMenuOrder = (menus: MenuRecord[]) => {
+  const storedOrder = getStoredMainRouteMenuOrder();
+  if (!storedOrder.length) {
+    return sortMenuTree(menus);
+  }
+
+  const sortedMenus = sortMenuTree(menus);
+  const flatMenus = flattenMenus(sortedMenus);
+  const menuById = new Map(flatMenus.map((menu) => [menu.id, menu]));
+  const storedById = new Map(storedOrder.map((item) => [item.id, item]));
+  const originalParentById = new Map<number, number>();
+  flattenMenuOrder(sortedMenus).forEach((item) => {
+    originalParentById.set(item.id, item.parentId ?? 0);
+  });
+
+  const parentById = new Map<number, number>();
+  flatMenus.forEach((menu) => {
+    const storedParentId = storedById.get(menu.id)?.parentId ?? originalParentById.get(menu.id) ?? 0;
+    const parentId = storedParentId && storedParentId !== menu.id && menuById.has(storedParentId) ? storedParentId : 0;
+    parentById.set(menu.id, parentId);
+  });
+
+  parentById.forEach((parentId, menuId) => {
+    const seenIds = new Set<number>([menuId]);
+    let currentParentId = parentId;
+    while (currentParentId && parentById.has(currentParentId)) {
+      if (seenIds.has(currentParentId)) {
+        parentById.set(menuId, originalParentById.get(menuId) ?? 0);
+        break;
+      }
+      seenIds.add(currentParentId);
+      currentParentId = parentById.get(currentParentId) ?? 0;
+    }
+  });
+
+  const childrenByParentId = new Map<number, MenuRecord[]>();
+  flatMenus.forEach((menu) => {
+    const parentId = parentById.get(menu.id) ?? 0;
+    const storedSortNo = storedById.get(menu.id)?.sortNo;
+    const nextMenu: MenuRecord = {
+      ...menu,
+      parentId,
+      sortNo: storedSortNo ?? menu.sortNo,
+      children: undefined,
+    };
+    childrenByParentId.set(parentId, [...(childrenByParentId.get(parentId) || []), nextMenu]);
+  });
+
+  const buildTree = (parentId = 0): MenuRecord[] =>
+    [...(childrenByParentId.get(parentId) || [])]
+      .sort((left, right) => (left.sortNo ?? 0) - (right.sortNo ?? 0) || left.id - right.id)
+      .map((menu) => {
+        const children = buildTree(menu.id);
+        return {
+          ...menu,
+          children: children.length ? children : undefined,
+        };
+      });
+
+  return buildTree();
+};
+
 const normalizeMenuTreeOrder = (menus: MenuRecord[], parentId = 0): MenuRecord[] =>
   menus.map((menu, index) => ({
     ...menu,
@@ -397,6 +484,14 @@ const getDropPosition = (event: DragEvent<HTMLTableRowElement>, record: MenuReco
   return record.menuType === 'BUTTON' ? 'after' : 'inside';
 };
 
+const getRouteDropPosition = (event: DragEvent<HTMLTableRowElement>): SettingsRouteDragState['position'] => {
+  const row = event.currentTarget;
+  const bounds = row.getBoundingClientRect();
+  const offsetY = event.clientY - bounds.top;
+  const ratio = bounds.height <= 0 ? 0.5 : offsetY / bounds.height;
+  return ratio <= 0.5 ? 'before' : 'after';
+};
+
 const buildMenuColumns = ({
   isMobile,
   canReorderMenus,
@@ -456,7 +551,7 @@ const buildMenuColumns = ({
               justifyContent: 'center',
             }}
           />
-          <HolderOutlined style={{ color: dragHandleColor, cursor: canReorderMenus && !readonly ? 'grab' : 'not-allowed' }} />
+          <HolderOutlined style={{ color: dragHandleColor, cursor: canReorderMenus ? 'grab' : 'not-allowed' }} />
         </Space>
       );
     },
@@ -645,7 +740,7 @@ const useMenuTreeManagement = ({
       method: 'GET',
       ...API_OPTS.NO_REDIRECT,
     });
-    const sortedResult = sortMenuTree(result);
+    const sortedResult = applyStoredMainRouteMenuOrder(result);
     setMenuTree(sortedResult);
     setInitialState((prev) =>
       prev
@@ -758,7 +853,9 @@ const useMenuTreeManagement = ({
     async (nextTree: MenuRecord[]) => {
       const normalizedTree = normalizeMenuTreeOrder(nextTree);
       const previousTree = menuTree;
+      const orderItems = flattenMenuOrder(normalizedTree);
       setMenuTree(normalizedTree);
+      persistMainRouteMenuOrder(orderItems);
       setInitialState((prev) =>
         prev
           ? {
@@ -770,16 +867,20 @@ const useMenuTreeManagement = ({
       );
       setReordering(true);
       try {
-        await request<boolean>('/v1/system/menus/reorder', {
-          method: 'PUT',
-          data: {
-            items: flattenMenuOrder(normalizedTree).filter((item) => item.id > 0),
-          },
-          ...API_OPTS.NO_REDIRECT,
-        });
+        const backendOrderItems = orderItems.filter((item) => item.id > 0 && (!item.parentId || item.parentId > 0));
+        if (backendOrderItems.length) {
+          await request<boolean>('/v1/system/menus/reorder', {
+            method: 'PUT',
+            data: {
+              items: backendOrderItems,
+            },
+            ...API_OPTS.NO_REDIRECT,
+          });
+        }
         message.success(t('菜单顺序已更新', 'Menu order updated'));
       } catch (error) {
         setMenuTree(previousTree);
+        persistMainRouteMenuOrder(flattenMenuOrder(previousTree));
         setInitialState((prev) =>
           prev
             ? {
@@ -799,7 +900,7 @@ const useMenuTreeManagement = ({
 
   const handleRowDragStart = useCallback(
     (record: MenuRecord) => (event: DragEvent<HTMLTableRowElement>) => {
-      if (!canReorderMenus || isBuiltinMenu(record)) {
+      if (!canReorderMenus) {
         event.preventDefault();
         return;
       }
@@ -816,7 +917,7 @@ const useMenuTreeManagement = ({
 
   const handleRowDragOver = useCallback(
     (record: MenuRecord) => (event: DragEvent<HTMLTableRowElement>) => {
-      if (!dragState || dragState.draggedId === record.id || !canReorderMenus || isBuiltinMenu(record)) {
+      if (!dragState || dragState.draggedId === record.id || !canReorderMenus) {
         return;
       }
       event.preventDefault();
@@ -838,7 +939,7 @@ const useMenuTreeManagement = ({
   const handleRowDrop = useCallback(
     (record: MenuRecord) => async (event: DragEvent<HTMLTableRowElement>) => {
       event.preventDefault();
-      if (!dragState || dragState.draggedId === record.id || !canReorderMenus || isBuiltinMenu(record)) {
+      if (!dragState || dragState.draggedId === record.id || !canReorderMenus) {
         setDragState(null);
         return;
       }
@@ -919,13 +1020,13 @@ const useMenuTreeManagement = ({
   );
   const getRowProps = useMemo(
     () => (record: MenuRecord) => ({
-      draggable: canReorderMenus && !isBuiltinMenu(record),
+      draggable: canReorderMenus,
       onDragStart: handleRowDragStart(record),
       onDragOver: handleRowDragOver(record),
       onDrop: handleRowDrop(record),
       onDragEnd: handleRowDragEnd,
       style: {
-        cursor: canReorderMenus && !isBuiltinMenu(record) ? 'grab' : undefined,
+        cursor: canReorderMenus ? 'grab' : undefined,
         userSelect: 'none' as const,
         opacity: dragState?.draggedId === record.id ? 0.35 : 1,
         backgroundColor:
@@ -982,6 +1083,7 @@ const SettingsRoutesTab = () => {
   const [routeOrder, setRouteOrder] = useState(() => getStoredSettingRouteOrder());
   const [routeIcons, setRouteIcons] = useState(() => getStoredSettingRouteIcons());
   const [editingRoute, setEditingRoute] = useState<SettingsRouteRecord | null>(null);
+  const [routeDragState, setRouteDragState] = useState<SettingsRouteDragState | null>(null);
   const { setInitialState } = useInitialStateModel();
 
   const records = useMemo(() => buildSettingsRouteRecords(routeOrder, routeIcons), [routeIcons, routeOrder]);
@@ -1027,17 +1129,73 @@ const SettingsRoutesTab = () => {
     [refreshSettingsNavigation],
   );
 
-  const moveRoute = useCallback(
-    (record: SettingsRouteRecord, direction: -1 | 1) => {
-      const currentIndex = routeOrder.indexOf(record.path);
-      const nextIndex = currentIndex + direction;
-      if (currentIndex < 0 || nextIndex < 0 || nextIndex >= routeOrder.length) {
+  const handleRouteDragStart = useCallback(
+    (record: SettingsRouteRecord) => (event: DragEvent<HTMLTableRowElement>) => {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', record.path);
+      setRouteDragState({
+        draggedPath: record.path,
+        targetPath: record.path,
+        position: 'after',
+      });
+    },
+    [],
+  );
+
+  const handleRouteDragOver = useCallback(
+    (record: SettingsRouteRecord) => (event: DragEvent<HTMLTableRowElement>) => {
+      if (!routeDragState || routeDragState.draggedPath === record.path) {
         return;
       }
-      updateRouteOrder(moveArrayItem(routeOrder, currentIndex, nextIndex));
+      event.preventDefault();
+      const position = getRouteDropPosition(event);
+      setRouteDragState((current) => {
+        if (!current || current.draggedPath !== routeDragState.draggedPath || (current.targetPath === record.path && current.position === position)) {
+          return current;
+        }
+        return {
+          draggedPath: current.draggedPath,
+          targetPath: record.path,
+          position,
+        };
+      });
     },
-    [routeOrder, updateRouteOrder],
+    [routeDragState],
   );
+
+  const handleRouteDrop = useCallback(
+    (record: SettingsRouteRecord) => (event: DragEvent<HTMLTableRowElement>) => {
+      event.preventDefault();
+      if (!routeDragState || routeDragState.draggedPath === record.path) {
+        setRouteDragState(null);
+        return;
+      }
+
+      const currentIndex = routeOrder.indexOf(routeDragState.draggedPath);
+      const targetIndex = routeOrder.indexOf(record.path);
+      if (currentIndex < 0 || targetIndex < 0) {
+        setRouteDragState(null);
+        return;
+      }
+
+      const position = getRouteDropPosition(event);
+      const withoutDragged = routeOrder.filter((path) => path !== routeDragState.draggedPath);
+      const targetIndexAfterRemoval = withoutDragged.indexOf(record.path);
+      const insertIndex = position === 'before' ? targetIndexAfterRemoval : targetIndexAfterRemoval + 1;
+      const nextOrder = [...withoutDragged];
+      nextOrder.splice(insertIndex, 0, routeDragState.draggedPath);
+      setRouteDragState(null);
+
+      if (nextOrder.join('|') !== routeOrder.join('|')) {
+        updateRouteOrder(nextOrder);
+      }
+    },
+    [routeDragState, routeOrder, updateRouteOrder],
+  );
+
+  const handleRouteDragEnd = useCallback(() => {
+    setRouteDragState(null);
+  }, []);
 
   const resetOrder = useCallback(() => {
     resetSettingRouteOrder();
@@ -1094,7 +1252,29 @@ const SettingsRoutesTab = () => {
     { key: 'save', label: t('保存', 'Save'), type: 'primary', onClick: () => void saveRouteEditor() },
   ];
   const { token } = theme.useToken();
-  const microGap = resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile);
+  const getRouteRowProps = useMemo(
+    () => (record: SettingsRouteRecord) => ({
+      draggable: true,
+      onDragStart: handleRouteDragStart(record),
+      onDragOver: handleRouteDragOver(record),
+      onDrop: handleRouteDrop(record),
+      onDragEnd: handleRouteDragEnd,
+      style: {
+        cursor: 'grab',
+        userSelect: 'none' as const,
+        opacity: routeDragState?.draggedPath === record.path ? 0.35 : 1,
+        backgroundColor: routeDragState?.targetPath === record.path ? token.colorPrimaryBg : undefined,
+        boxShadow:
+          routeDragState?.targetPath === record.path && routeDragState.position === 'before'
+            ? `inset 0 2px 0 ${token.colorPrimary}`
+            : routeDragState?.targetPath === record.path && routeDragState.position === 'after'
+              ? `inset 0 -2px 0 ${token.colorPrimary}`
+              : undefined,
+      },
+    }),
+    [handleRouteDragEnd, handleRouteDragOver, handleRouteDragStart, handleRouteDrop, routeDragState, token.colorPrimary, token.colorPrimaryBg],
+  );
+
   const columns: ProColumns<SettingsRouteRecord>[] = [
     {
         title: t('拖拽', 'Drag'),
@@ -1102,7 +1282,7 @@ const SettingsRoutesTab = () => {
       width: 'var(--saas-spacing-96)',
       search: false,
       responsive: ['md', 'lg', 'xl', 'xxl'],
-      render: () => <HolderOutlined style={{ color: token.colorTextTertiary, cursor: 'default' }} />,
+      render: () => <HolderOutlined style={{ color: token.colorTextTertiary, cursor: 'grab' }} />,
     },
     {
       title: t('菜单编码', 'Menu code'),
@@ -1188,16 +1368,10 @@ const SettingsRoutesTab = () => {
       valueType: 'option',
       width: 'var(--saas-spacing-144)',
       fixed: 'right',
-      render: (_, record, index) => (
-        <Space size={microGap}>
+      render: (_, record) => (
+        <Space size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>
           <Button type="link" onClick={() => openEditRoute(record)}>
             {t('编辑', 'Edit')}
-          </Button>
-          <Button type="link" disabled={index === 0} onClick={() => moveRoute(record, -1)}>
-            {t('上移', 'Move up')}
-          </Button>
-          <Button type="link" disabled={index === records.length - 1} onClick={() => moveRoute(record, 1)}>
-            {t('下移', 'Move down')}
           </Button>
         </Space>
       ),
@@ -1216,6 +1390,7 @@ const SettingsRoutesTab = () => {
         search={false}
         toolBarRender={() => (canResetOrder ? [<Button key="reset" onClick={resetOrder}>{t('恢复默认顺序', 'Restore default order')}</Button>] : [])}
         columns={columns}
+        onRow={getRouteRowProps}
       />
       <ManagementDrawer
         title={editingRoute ? `${t('编辑设置页路由', 'Edit settings route')} · ${editingRoute.menuName}` : t('编辑设置页路由', 'Edit settings route')}
