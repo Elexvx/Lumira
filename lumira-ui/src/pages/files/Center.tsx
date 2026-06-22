@@ -153,6 +153,7 @@ const buildFileObjectColumns = ({
   onDelete,
 }: BuildFileObjectColumnsParams): ProColumns<FileObjectRecord>[] => {
   const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile) as [number, number];
+  const FILE_ACTION_COLUMN_WIDTH = isMobile ? 72 : 168;
   const searchColumns = [
     {
       title: formatMessage({ id: 'system.files.search.keywordLabel', defaultMessage: 'Keyword' }),
@@ -240,11 +241,14 @@ const buildFileObjectColumns = ({
   const actionColumn: ProColumns<FileObjectRecord> = {
     title: formatMessage({ id: 'system.files.field.actions', defaultMessage: 'Actions' }),
     valueType: 'option',
-    fixed: 'right',
-    width: isMobile ? 64 : 'var(--saas-spacing-220)',
+    fixed: isMobile ? undefined : 'right',
+    width: FILE_ACTION_COLUMN_WIDTH,
+    align: 'right',
+    className: 'saas-table-action-column',
     render: (_: unknown, record: FileObjectRecord) => (
       <TableActionBar
         isMobile={isMobile}
+        inlineCount={readOnlyCenter ? 2 : 1}
         items={[
           {
             key: 'preview',

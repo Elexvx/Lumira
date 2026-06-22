@@ -388,6 +388,35 @@ body,
   padding-inline: var(--saas-spacing-2xs);
 }
 
+.saas-table-wrap .ant-table-cell-fix-left,
+.saas-table-wrap .ant-table-cell-fix-right {
+  background: var(--ant-color-bg-container) !important;
+  z-index: 2;
+}
+
+.saas-table-wrap .ant-table-thead > tr > th.ant-table-cell-fix-left,
+.saas-table-wrap .ant-table-thead > tr > th.ant-table-cell-fix-right {
+  background: var(--ant-table-header-bg, var(--ant-color-bg-container)) !important;
+  z-index: 4;
+}
+
+.saas-table-wrap .ant-table-tbody > tr > td.ant-table-cell-fix-left,
+.saas-table-wrap .ant-table-tbody > tr > td.ant-table-cell-fix-right {
+  background: var(--ant-color-bg-container) !important;
+  z-index: 3;
+}
+
+.saas-table-wrap .saas-table-action-column {
+  min-width: 168px;
+  max-width: 168px;
+  white-space: nowrap;
+}
+
+.saas-table-wrap .saas-table-action-column .saas-table-action-bar {
+  justify-content: flex-end;
+  width: 100%;
+}
+
 .saas-ai-employees-card .ant-tabs-content .saas-table-wrap .ant-pro-card-body {
   padding-inline: 0;
 }
