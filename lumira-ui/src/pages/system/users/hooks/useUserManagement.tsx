@@ -74,11 +74,42 @@ const downloadBase64File = (contentBase64: string, contentType: string, fileName
   URL.revokeObjectURL(url);
 };
 
-const exportableQueryParams = (params: Record<string, unknown>, deptId: number | null) => {
-  const { pageNo: _pageNo, pageSize: _pageSize, current: _current, cursorId: _cursorId, cursorCreatedAt: _cursorCreatedAt, ...rest } = params;
+const formatDateRangeBoundary = (value: unknown, index: 0 | 1) => {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const boundary = value[index];
+  if (boundary == null || boundary === '') {
+    return undefined;
+  }
+  const parsed = dayjs(boundary);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD') : undefined;
+};
+
+const normalizeUserQueryParams = (params: Record<string, unknown>, deptId: number | null) => {
+  const { registeredAt, lastLoginAt, ...rest } = params;
+
   return {
     ...rest,
     deptId: deptId || undefined,
+    registeredStart: formatDateRangeBoundary(registeredAt, 0),
+    registeredEnd: formatDateRangeBoundary(registeredAt, 1),
+    lastLoginStart: formatDateRangeBoundary(lastLoginAt, 0),
+    lastLoginEnd: formatDateRangeBoundary(lastLoginAt, 1),
+  };
+};
+
+const exportableQueryParams = (params: Record<string, unknown>) => {
+  const {
+    pageNo: _pageNo,
+    pageSize: _pageSize,
+    current: _current,
+    cursorId: _cursorId,
+    cursorCreatedAt: _cursorCreatedAt,
+    ...rest
+  } = params;
+  return {
+    ...rest,
   };
 };
 
@@ -108,7 +139,7 @@ const userListContactColumns: ProColumns<UserRecord>[] = [
   {
     title: t('手机号', 'Mobile number'),
     dataIndex: 'mobile',
-    search: false,
+    search: true,
     ellipsis: true,
     render: (_, record) => {
       const content = maskMobile(record.mobile) || '';
@@ -124,7 +155,7 @@ const userListContactColumns: ProColumns<UserRecord>[] = [
   {
     title: t('邮箱', 'Email'),
     dataIndex: 'email',
-    search: false,
+    search: true,
     ellipsis: true,
     responsive: ['md', 'lg', 'xl', 'xxl'],
     render: (_, record) => {
@@ -142,7 +173,7 @@ const userListStatusColumns: ProColumns<UserRecord>[] = [
       ENABLED: { text: t('启用', 'Enabled'), status: 'Success' },
       DISABLED: { text: t('禁用', 'Disabled'), status: 'Default' },
     },
-    search: false,
+    search: true,
     render: (_, record) => <Tag color={record.status === 'ENABLED' ? 'green' : 'default'}>{record.status === 'ENABLED' ? t('启用', 'Enabled') : t('禁用', 'Disabled')}</Tag>,
   },
   {
@@ -157,14 +188,14 @@ const userListStatusColumns: ProColumns<UserRecord>[] = [
       ADMIN_CREATE: { text: t('后台创建', 'Admin created') },
       SYSTEM: { text: t('系统', 'System') },
     },
-    search: false,
+    search: true,
     responsive: ['lg', 'xl', 'xxl'],
   },
   {
     title: t('注册时间', 'Registered at'),
     dataIndex: 'registeredAt',
     valueType: 'dateRange',
-    search: false,
+    search: true,
     responsive: ['lg', 'xl', 'xxl'],
     renderText: (value) => value || '-',
   },
@@ -172,7 +203,7 @@ const userListStatusColumns: ProColumns<UserRecord>[] = [
     title: t('最近登录', 'Last login'),
     dataIndex: 'lastLoginAt',
     valueType: 'dateRange',
-    search: false,
+    search: true,
     responsive: ['xl', 'xxl'],
     renderText: (value) => value || '-',
   },
@@ -280,6 +311,13 @@ const buildUserColumns = ({
 export const useUserManagement = () => {
   const { initialState } = useInitialStateModel();
   const { actionPermission, responsive, searchConfig, buildToolbarButtons } = usePagePermissionActions();
+  const userSearchConfig = useMemo(
+    () => ({
+      ...searchConfig,
+      defaultCollapsed: true,
+    }),
+    [searchConfig],
+  );
   const { actionRef, drawer, detail, reloadTable } = useCrudPageState<UserRecord>();
   const securitySettings = useMemo(
     () => normalizeSecuritySettings(initialState?.securitySettings || DEFAULT_SECURITY_SETTINGS),
@@ -573,7 +611,7 @@ export const useUserManagement = () => {
       const result = await request<UserExportStart>('/v1/system/users/export', {
         method: 'POST',
         data: {
-          ...exportableQueryParams(lastUserQueryParamsRef.current, selectedDepartmentId),
+          ...exportableQueryParams(lastUserQueryParamsRef.current),
           fields: selectedExportFields,
         },
         timeoutMs: 120000,
@@ -603,7 +641,7 @@ export const useUserManagement = () => {
     } finally {
       setExportLoading(false);
     }
-  }, [selectedDepartmentId, selectedExportFields]);
+  }, [selectedExportFields]);
 
   const downloadExportTaskFile = useCallback(() => {
     if (exportTask?.downloadUrl) {
@@ -633,13 +671,11 @@ export const useUserManagement = () => {
   const tableRequest = useMemo(
     () =>
       buildTableRequest((params) => {
-        lastUserQueryParamsRef.current = params;
+        const queryParams = normalizeUserQueryParams(params, selectedDepartmentId);
+        lastUserQueryParamsRef.current = queryParams;
         return request<PagedResult<UserRecord>>('/v1/system/users', {
           method: 'GET',
-          params: {
-            ...params,
-            deptId: selectedDepartmentId || undefined,
-          },
+          params: queryParams,
           ...API_OPTS.NO_REDIRECT,
         });
       }),
@@ -649,7 +685,7 @@ export const useUserManagement = () => {
   return {
     actionRef,
     responsive,
-    searchConfig,
+    searchConfig: userSearchConfig,
     buildToolbarButtons,
     columns,
     tableRequest,

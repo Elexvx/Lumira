@@ -107,6 +107,16 @@ public class TeamV2Controller {
         return ApiResponse.success(teamAppService.listMembers(currentUser(), teamId), TraceContext.getRequestId());
     }
 
+    @PostMapping("/teams/{teamId}/members")
+    @RepeatSubmit
+    public ApiResponse<TeamVO.Member> addMember(
+            @PathVariable("teamId") Long teamId,
+            @Valid @RequestBody TeamDTO.MemberCreateRequest request
+    ) {
+        require(TEAM_MEMBER_INVITE);
+        return ApiResponse.success(teamAppService.addMember(currentUser(), teamId, request), TraceContext.getRequestId());
+    }
+
     @PatchMapping("/teams/{teamId}/members/{memberId}/role")
     @RepeatSubmit
     public ApiResponse<TeamVO.Member> updateMemberRole(

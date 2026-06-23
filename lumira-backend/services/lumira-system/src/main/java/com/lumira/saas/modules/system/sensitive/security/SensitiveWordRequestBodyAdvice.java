@@ -12,10 +12,7 @@ import org.springframework.http.HttpInputMessage;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.http.server.ServerHttpRequest;
-import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.stereotype.Controller;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdviceAdapter;
 
@@ -71,20 +68,11 @@ public class SensitiveWordRequestBodyAdvice extends RequestBodyAdviceAdapter {
 
     private boolean shouldSkip(ServletServerHttpRequest request) {
         String path = request.getServletRequest().getRequestURI();
-        if (path == null) {
-            return true;
-        }
-        if (path.startsWith("/api/v1/sensitive-words")
-                || path.startsWith("/api/v1/plugins")
-                || path.startsWith("/api/v1/files/upload")
-                || path.startsWith("/api/v1/auth/")
-                || path.startsWith("/api/v1/public/")
-                || path.startsWith("/api/auth/")
-                || path.startsWith("/api/public/")) {
+        if (SensitiveWordRequestSkipMatcher.shouldSkipPath(path)) {
             return true;
         }
         MediaType contentType = request.getHeaders().getContentType();
-        return contentType != null && MediaType.MULTIPART_FORM_DATA.includes(contentType);
+        return SensitiveWordRequestSkipMatcher.shouldSkipMultipart(contentType);
     }
 
     private BizException buildException(SensitiveWordVO.CheckResult result) {

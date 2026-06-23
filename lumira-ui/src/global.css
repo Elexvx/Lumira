@@ -5,6 +5,7 @@
   --saas-page-content-width-compact: 1120px;
   --saas-page-gutter: clamp(16px, 2.4vw, 28px);
   --saas-page-section-gap: clamp(16px, 2vw, 24px);
+  --saas-table-section-gap: var(--saas-spacing-md);
   --saas-form-item-gap: var(--saas-spacing-xs);
   --saas-form-label-gap: var(--saas-spacing-xs);
   --saas-form-control-max-width: 720px;
@@ -313,6 +314,24 @@ body,
   overflow: hidden;
   background: var(--saas-color-bg-surface-strong);
   border: 1px solid var(--saas-color-border);
+}
+
+.saas-table-wrap > .ant-pro-table {
+  display: flex;
+  flex-direction: column;
+  gap: var(--saas-table-section-gap);
+}
+
+.saas-table-wrap > .ant-pro-table > .ant-pro-card > .ant-pro-card-body {
+  gap: var(--saas-table-section-gap);
+}
+
+.saas-table-wrap .ant-pro-table-search {
+  margin-bottom: 0;
+}
+
+.saas-table-wrap .ant-pro-table-list {
+  margin-top: 0;
 }
 
 .saas-table-wrap .ant-pro-card-body {
@@ -869,6 +888,10 @@ body,
   .saas-table-wrap .ant-pro-table-search,
   .saas-table-wrap .ant-pro-table-list {
     padding-inline: 0;
+  }
+
+  .saas-table-wrap > .ant-pro-table > .ant-pro-card > .ant-pro-card-body {
+    gap: var(--saas-spacing-sm);
   }
 
   .saas-table-wrap .ant-table-thead > tr > th,

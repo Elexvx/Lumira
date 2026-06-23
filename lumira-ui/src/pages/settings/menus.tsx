@@ -325,8 +325,21 @@ const sortMenuTree = (menus: MenuRecord[]): MenuRecord[] =>
       children: menu.children?.length ? sortMenuTree(menu.children) : undefined,
     }));
 
-const applyStoredMainRouteMenuOrder = (menus: MenuRecord[]) => {
-  const storedOrder = getStoredMainRouteMenuOrder();
+const resolveStoredMenuParentId = (
+  menu: MenuRecord,
+  storedItem: MenuOrderItem | undefined,
+  originalParentId: number,
+  menuById: Map<number, MenuRecord>,
+) => {
+  const storedParentId = storedItem?.parentId ?? originalParentId;
+  if (menu.id < 0 || (storedParentId ?? 0) < 0) {
+    return originalParentId;
+  }
+  return storedParentId && storedParentId !== menu.id && menuById.has(storedParentId) ? storedParentId : 0;
+};
+
+const applyStoredMainRouteMenuOrder = (menus: MenuRecord[], order: MenuOrderItem[] = getStoredMainRouteMenuOrder()) => {
+  const storedOrder = order;
   if (!storedOrder.length) {
     return sortMenuTree(menus);
   }
@@ -342,8 +355,7 @@ const applyStoredMainRouteMenuOrder = (menus: MenuRecord[]) => {
 
   const parentById = new Map<number, number>();
   flatMenus.forEach((menu) => {
-    const storedParentId = storedById.get(menu.id)?.parentId ?? originalParentById.get(menu.id) ?? 0;
-    const parentId = storedParentId && storedParentId !== menu.id && menuById.has(storedParentId) ? storedParentId : 0;
+    const parentId = resolveStoredMenuParentId(menu, storedById.get(menu.id), originalParentById.get(menu.id) ?? 0, menuById);
     parentById.set(menu.id, parentId);
   });
 
@@ -855,7 +867,7 @@ const useMenuTreeManagement = ({
 
   const persistMenuOrder = useCallback(
     async (nextTree: MenuRecord[]) => {
-      const normalizedTree = normalizeMenuTreeOrder(nextTree);
+      const normalizedTree = applyStoredMainRouteMenuOrder(menuTree, flattenMenuOrder(normalizeMenuTreeOrder(nextTree)));
       const previousTree = menuTree;
       const orderItems = flattenMenuOrder(normalizedTree);
       setMenuTree(normalizedTree);

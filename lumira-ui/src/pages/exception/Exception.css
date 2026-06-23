@@ -5,8 +5,18 @@
   padding: var(--saas-page-gutter);
 }
 
+.saas-exception-card {
+  overflow: hidden;
+  border-radius: var(--saas-radius-lg);
+  box-shadow: var(--saas-shadow-card);
+}
+
+.saas-exception-card .ant-card-body {
+  padding: 0;
+}
+
 .saas-exception-result {
-  min-height: min(var(--saas-spacing-560), calc(100vh - var(--saas-spacing-220)));
+  min-height: min(var(--saas-spacing-560), calc(100vh - var(--saas-spacing-260)));
   padding: clamp(var(--saas-spacing-48), 8vh, var(--saas-spacing-88)) var(--saas-spacing-lg) var(--saas-spacing-40);
 }
 

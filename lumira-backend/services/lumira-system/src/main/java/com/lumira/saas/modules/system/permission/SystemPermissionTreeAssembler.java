@@ -67,10 +67,11 @@ public final class SystemPermissionTreeAssembler {
         if (CollectionUtils.isEmpty(menus)) {
             return List.of();
         }
-        Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey = buildActionPermissionsByPageKey(permissions);
+        Map<String, SystemVO.PermissionVO> permissionMap = buildPermissionMap(permissions);
+        Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey = buildActionPermissionsByPageKey(permissions, permissionMap);
         List<SystemVO.PermissionTreeVO> tree = new ArrayList<>();
         for (SystemVO.MenuVO menu : menus) {
-            SystemVO.PermissionTreeVO node = buildPermissionTreeNode(menu, actionPermissionsByPageKey);
+            SystemVO.PermissionTreeVO node = buildPermissionTreeNode(menu, actionPermissionsByPageKey, permissionMap);
             if (node != null) {
                 tree.add(node);
             }
@@ -80,7 +81,8 @@ public final class SystemPermissionTreeAssembler {
 
     private SystemVO.PermissionTreeVO buildPermissionTreeNode(
             SystemVO.MenuVO menu,
-            Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey
+            Map<String, List<SystemVO.PermissionActionVO>> actionPermissionsByPageKey,
+            Map<String, SystemVO.PermissionVO> permissionMap
     ) {
         if (menu == null || "BUTTON".equalsIgnoreCase(menu.getMenuType())) {
             return null;
@@ -91,7 +93,7 @@ public final class SystemPermissionTreeAssembler {
         List<SystemVO.PermissionTreeVO> children = new ArrayList<>();
         if (!CollectionUtils.isEmpty(menu.getChildren())) {
             for (SystemVO.MenuVO child : menu.getChildren()) {
-                SystemVO.PermissionTreeVO childNode = buildPermissionTreeNode(child, actionPermissionsByPageKey);
+                SystemVO.PermissionTreeVO childNode = buildPermissionTreeNode(child, actionPermissionsByPageKey, permissionMap);
                 if (childNode != null) {
                     children.add(childNode);
                 }
@@ -116,7 +118,7 @@ public final class SystemPermissionTreeAssembler {
         if (selectable) {
             node.setPermissionGroup(resolvePermissionGroup(menu.getPermissionKey()));
             node.setSourceType(resolvePermissionSourceType(menu.getPermissionKey()));
-            node.setActionPermissions(actionPermissionsByPageKey.getOrDefault(menu.getPermissionKey(), List.of()));
+            node.setActionPermissions(resolveMenuButtonActions(menu, permissionMap, actionPermissionsByPageKey));
         }
         return node;
     }
@@ -153,16 +155,24 @@ public final class SystemPermissionTreeAssembler {
         return "/settings".equals(normalizedPath) || normalizedPath.startsWith("/settings/");
     }
 
-    private Map<String, List<SystemVO.PermissionActionVO>> buildActionPermissionsByPageKey(List<SystemVO.PermissionVO> permissions) {
+    private Map<String, SystemVO.PermissionVO> buildPermissionMap(List<SystemVO.PermissionVO> permissions) {
         if (CollectionUtils.isEmpty(permissions)) {
+            return Map.of();
+        }
+        return permissions.stream()
+                .filter(permission -> StringUtils.hasText(permission.getPermissionKey()))
+                .collect(Collectors.toMap(SystemVO.PermissionVO::getPermissionKey, permission -> permission, (left, right) -> left, LinkedHashMap::new));
+    }
+
+    private Map<String, List<SystemVO.PermissionActionVO>> buildActionPermissionsByPageKey(
+            List<SystemVO.PermissionVO> permissions,
+            Map<String, SystemVO.PermissionVO> permissionMap
+    ) {
+        if (CollectionUtils.isEmpty(permissions) || CollectionUtils.isEmpty(permissionMap)) {
             return Map.of();
         }
 
         Map<String, List<SystemVO.PermissionActionVO>> result = new LinkedHashMap<>();
-        Map<String, SystemVO.PermissionVO> permissionMap = permissions.stream()
-                .filter(permission -> StringUtils.hasText(permission.getPermissionKey()))
-                .collect(Collectors.toMap(SystemVO.PermissionVO::getPermissionKey, permission -> permission, (left, right) -> left, LinkedHashMap::new));
-
         for (SystemVO.PermissionVO permission : permissions) {
             String permissionKey = permission.getPermissionKey();
             if (!StringUtils.hasText(permissionKey)) {
@@ -192,6 +202,46 @@ public final class SystemPermissionTreeAssembler {
         }
 
         return result;
+    }
+
+    private List<SystemVO.PermissionActionVO> resolveMenuButtonActions(
+            SystemVO.MenuVO menu,
+            Map<String, SystemVO.PermissionVO> permissionMap,
+            Map<String, List<SystemVO.PermissionActionVO>> inferredActionsByPageKey
+    ) {
+        List<SystemVO.PermissionActionVO> buttonActions = buildMenuButtonActions(menu, permissionMap);
+        if (!buttonActions.isEmpty()) {
+            return buttonActions;
+        }
+        return inferredActionsByPageKey.getOrDefault(menu.getPermissionKey(), List.of());
+    }
+
+    private List<SystemVO.PermissionActionVO> buildMenuButtonActions(SystemVO.MenuVO menu, Map<String, SystemVO.PermissionVO> permissionMap) {
+        if (menu == null || CollectionUtils.isEmpty(menu.getChildren())) {
+            return List.of();
+        }
+        return menu.getChildren().stream()
+                .filter(child -> child != null && "BUTTON".equalsIgnoreCase(child.getMenuType()))
+                .filter(child -> StringUtils.hasText(child.getPermissionKey()))
+                .map(child -> toPermissionAction(child, permissionMap))
+                .sorted(Comparator.comparing(SystemVO.PermissionActionVO::getPermissionKey, Comparator.nullsLast(String::compareTo)))
+                .toList();
+    }
+
+    private SystemVO.PermissionActionVO toPermissionAction(SystemVO.MenuVO buttonMenu, Map<String, SystemVO.PermissionVO> permissionMap) {
+        SystemVO.PermissionVO permission = permissionMap.get(buttonMenu.getPermissionKey());
+        SystemVO.PermissionActionVO action = new SystemVO.PermissionActionVO();
+        action.setPermissionKey(buttonMenu.getPermissionKey());
+        action.setPermissionName(permission != null && StringUtils.hasText(permission.getPermissionName())
+                ? permission.getPermissionName()
+                : buttonMenu.getMenuName());
+        action.setPermissionGroup(permission != null && StringUtils.hasText(permission.getPermissionGroup())
+                ? permission.getPermissionGroup()
+                : resolvePermissionGroup(buttonMenu.getPermissionKey()));
+        action.setSourceType(permission != null && StringUtils.hasText(permission.getSourceType())
+                ? permission.getSourceType()
+                : resolvePermissionSourceType(buttonMenu.getPermissionKey()));
+        return action;
     }
 
     private boolean isActionPermissionForPage(String permissionKey, List<String> actionPrefixes) {

@@ -45,12 +45,17 @@ const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const realPagePathSet = new Set(realPageRouteMetaMap.keys());
 const resolveIsMobileViewport = () =>
   typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches;
-const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai'];
+const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai', '/activities', '/competitions', '/experts', '/team', '/user-center'];
 const DASHBOARD_GROUP_PATH = '/dashboard';
 const DASHBOARD_HOME_PATH = '/dashboard/home';
+const USER_CENTER_GROUP_PATH = '/user-center';
 const PERSONAL_CENTER_GROUP_PATH = '/user-center/personal-center';
-const PERSONAL_CENTER_CHILD_PATHS = ['/user-center/personal-center/profile', '/user-center/files'];
+const PERSONAL_CENTER_CHILD_PATHS = ['/user-center/personal-center/profile', '/user-center/personal-center/files'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
+const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
+  [USER_CENTER_GROUP_PATH]: 'main:user-center',
+  [PERSONAL_CENTER_GROUP_PATH]: 'main:personal-center',
+};
 const STORAGE_ACTIVITY_KEY = getSessionActivityStorageKey();
 const MOUSE_MOVE_THROTTLE_MS = 1000;
 const KEEPALIVE_THROTTLE_MS = 60_000;
@@ -782,6 +787,7 @@ const buildPersonalCenterMenuGroupForLayout = (
   }
 
   return {
+    key: MAIN_MENU_KEY_BY_PATH[PERSONAL_CENTER_GROUP_PATH],
     path: PERSONAL_CENTER_GROUP_PATH,
     name: resolveBuiltinMessage(
       groupMeta.name,
@@ -844,9 +850,10 @@ const composeMenuItemForLayout = (
     return null;
   }
 
-  const normalizedPath = resolveCanonicalRoutePath(backendNode.path || '');
+  const backendPath = backendNode.path || '';
+  const normalizedPath = resolveCanonicalRoutePath(backendPath);
   const localMeta = localByPath.get(normalizedPath);
-  const mergedMeta = routeMetaMap.get(normalizedPath);
+  const mergedMeta = routeMetaMap.get(backendPath) || routeMetaMap.get(normalizedPath);
   const hasLocalRoute = Boolean(
     (backendNode.path && realPagePathSet.has(normalizedPath))
       || isPluginRuntimePath(backendNode.path),
@@ -862,12 +869,14 @@ const composeMenuItemForLayout = (
   const { children: _localChildren, routes: _localRoutes, ...localItemMeta } =
     (localMeta || {}) as RuntimeMenuDataItem & { routes?: RuntimeMenuDataItem[] };
   const icon = resolveNavigationIcon(backendNode.icon) ?? resolveNavigationIcon(localMeta?.icon) ?? resolveNavigationIcon(mergedMeta?.icon);
-  const menuLabelId = mergedMeta?.name || backendNode.name || backendNode.menuCode;
   const isRedirectGroup = children.length > 0 && Boolean(backendNode.component?.startsWith('redirect:'));
+  const isUserCenterMenuGroup = normalizedPath === USER_CENTER_GROUP_PATH && children.length > 0;
+  const menuLabelId = backendNode.name || mergedMeta?.name || backendNode.menuCode;
 
   return {
     ...localItemMeta,
-    path: isRedirectGroup ? undefined : normalizedPath || localMeta?.path,
+    key: MAIN_MENU_KEY_BY_PATH[normalizedPath] || localItemMeta.key,
+    path: isRedirectGroup || isUserCenterMenuGroup ? undefined : normalizedPath || localMeta?.path,
     name: resolveBuiltinMessage(menuLabelId, formatMessage({ id: menuLabelId, defaultMessage: backendNode.name })),
     locale: false as const,
     icon,
@@ -876,16 +885,43 @@ const composeMenuItemForLayout = (
   };
 };
 
+const resolveStableMainMenuSortPath = (item: RuntimeMenuDataItem) => {
+  if (item.path === DASHBOARD_GROUP_PATH) {
+    return DASHBOARD_HOME_PATH;
+  }
+  if (item.path) {
+    return item.path;
+  }
+  if (item.key) {
+    const matchedPath = Object.entries(MAIN_MENU_KEY_BY_PATH).find(([, key]) => key === item.key)?.[0];
+    if (matchedPath) {
+      return matchedPath;
+    }
+  }
+  return '';
+};
+
 const buildMainMenuDataForLayout = (
   initialState: AppInitialState | undefined,
   menuData: RuntimeMenuDataItem[],
   fallbackSourceMenuData: RuntimeMenuDataItem[] = menuData,
+  options: { allowMissingStableMenus?: boolean } = {},
 ) => {
   const access = buildAccess({ currentUser: initialState?.currentUser, availablePlugins: initialState?.availablePlugins });
   const accessMap = access as Record<string, unknown>;
   const fallbackByPath = flattenLocalMenuMap(fallbackSourceMenuData);
-  const dashboardMenu = buildDashboardMenuGroupForLayout(fallbackByPath, accessMap);
-  const personalCenterMenu = buildPersonalCenterMenuGroupForLayout(fallbackByPath, accessMap);
+  const sourcePaths = collectMenuPaths(menuData);
+  const allowMissingStableMenus = options.allowMissingStableMenus ?? false;
+  const hasDashboardSource = hasMenuPathOrChild(sourcePaths, DASHBOARD_HOME_PATH) || hasMenuPathOrChild(sourcePaths, DASHBOARD_GROUP_PATH);
+  const hasPersonalCenterSource =
+    hasMenuPathOrChild(sourcePaths, PERSONAL_CENTER_GROUP_PATH)
+    || PERSONAL_CENTER_CHILD_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path));
+  const dashboardMenu = allowMissingStableMenus || hasDashboardSource
+    ? buildDashboardMenuGroupForLayout(fallbackByPath, accessMap)
+    : null;
+  const personalCenterMenu = allowMissingStableMenus || hasPersonalCenterSource
+    ? buildPersonalCenterMenuGroupForLayout(fallbackByPath, accessMap)
+    : null;
   const pathsToRemove = new Set([
     ...(dashboardMenu ? [DASHBOARD_HOME_PATH] : []),
     ...(personalCenterMenu ? [PERSONAL_CENTER_GROUP_PATH, ...PERSONAL_CENTER_CHILD_PATHS] : []),
@@ -895,33 +931,40 @@ const buildMainMenuDataForLayout = (
     : ([...menuData] as RuntimeMenuDataItem[]);
   const existingPaths = collectMenuPaths(visibleMenus);
 
-  const fallbackMenus = STABLE_MAIN_ROUTE_PATHS
-    .filter((path) => path !== DASHBOARD_HOME_PATH)
-    .filter((path) => !hasMenuPathOrChild(existingPaths, path))
-    .map((path) => {
-      const localMenu = fallbackByPath.get(path);
-      if (localMenu) {
-        return localMenu;
-      }
+  const fallbackMenus = allowMissingStableMenus
+    ? STABLE_MAIN_ROUTE_PATHS
+      .filter((path) => path !== DASHBOARD_HOME_PATH)
+      .filter((path) => !hasMenuPathOrChild(existingPaths, path))
+      .map((path) => {
+        const localMenu = fallbackByPath.get(path);
+        if (localMenu) {
+          return {
+            ...localMenu,
+            key: MAIN_MENU_KEY_BY_PATH[path] || localMenu.key,
+            path: path === USER_CENTER_GROUP_PATH && localMenu.children?.length ? undefined : localMenu.path,
+          };
+        }
 
-      const meta = routeMetaMap.get(path);
-      if (!meta || (meta.access && !accessMap[meta.access])) {
-        return null;
-      }
+        const meta = routeMetaMap.get(path);
+        if (!meta || (meta.access && !accessMap[meta.access])) {
+          return null;
+        }
 
-      return {
-        path: meta.path,
-        name: resolveBuiltinMessage(meta.name, formatMessage({ id: meta.name, defaultMessage: meta.name })),
-        locale: false as const,
-        icon: resolveNavigationIcon(meta.icon),
-        hideInMenu: meta.hideInMenu,
-      };
-    })
-    .filter(Boolean) as RuntimeMenuDataItem[];
+        return {
+          key: MAIN_MENU_KEY_BY_PATH[path],
+          path: meta.path,
+          name: resolveBuiltinMessage(meta.name, formatMessage({ id: meta.name, defaultMessage: meta.name })),
+          locale: false as const,
+          icon: resolveNavigationIcon(meta.icon),
+          hideInMenu: meta.hideInMenu,
+        };
+      })
+      .filter(Boolean) as RuntimeMenuDataItem[]
+    : [];
 
   return [...(dashboardMenu ? [dashboardMenu] : []), ...fallbackMenus, ...visibleMenus, ...(personalCenterMenu ? [personalCenterMenu] : [])].sort((a, b) => {
-    const leftPath = a.path === DASHBOARD_GROUP_PATH ? DASHBOARD_HOME_PATH : a.path || '';
-    const rightPath = b.path === DASHBOARD_GROUP_PATH ? DASHBOARD_HOME_PATH : b.path || '';
+    const leftPath = resolveStableMainMenuSortPath(a);
+    const rightPath = resolveStableMainMenuSortPath(b);
     const leftIndex = STABLE_MAIN_ROUTE_PATHS.indexOf(leftPath);
     const rightIndex = STABLE_MAIN_ROUTE_PATHS.indexOf(rightPath);
     if (leftIndex !== -1 || rightIndex !== -1) {
@@ -1073,7 +1116,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
       const backendMenus: MenuNode[] = initialState?.menuTree || [];
       const translatedLocalMenus = translateVisibleLocalMenuDataForLayout(initialState, menuData as RuntimeMenuDataItem[]);
       if (!backendMenus.length) {
-        return buildMainMenuDataForLayout(initialState, translatedLocalMenus, translatedLocalMenus);
+        return [];
       }
 
       const localByPath = flattenLocalMenuMap(menuData as RuntimeMenuDataItem[]);
@@ -1082,7 +1125,9 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
         .map((node) => composeMenuItemForLayout(node, localByPath))
         .filter(Boolean) as RuntimeMenuDataItem[];
 
-      return removeRedundantParentPathItemsForLayout(buildMainMenuDataForLayout(initialState, composedMenus, translatedLocalMenus));
+      return removeRedundantParentPathItemsForLayout(
+        buildMainMenuDataForLayout(initialState, composedMenus, translatedLocalMenus, { allowMissingStableMenus: false }),
+      );
     },
     onPageChange: createLayoutOnPageChange({ initialState }),
   };

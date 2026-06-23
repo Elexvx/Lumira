@@ -1,9 +1,11 @@
 package com.lumira.team.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public final class TeamDTO {
     private TeamDTO() {
@@ -23,6 +25,7 @@ public final class TeamDTO {
         private String visibility;
         @Size(max = 32)
         private String joinMode;
+        private List<@Valid DraftMemberRequest> initialMembers;
 
         public String getTeamName() { return teamName; }
         public void setTeamName(String teamName) { this.teamName = teamName; }
@@ -36,9 +39,38 @@ public final class TeamDTO {
         public void setVisibility(String visibility) { this.visibility = visibility; }
         public String getJoinMode() { return joinMode; }
         public void setJoinMode(String joinMode) { this.joinMode = joinMode; }
+        public List<DraftMemberRequest> getInitialMembers() { return initialMembers; }
+        public void setInitialMembers(List<DraftMemberRequest> initialMembers) { this.initialMembers = initialMembers; }
     }
 
     public static class TeamUpdateRequest extends TeamCreateRequest {
+    }
+
+    public static class DraftMemberRequest {
+        @NotBlank
+        @Size(max = 128)
+        private String memberName;
+        @Size(max = 64)
+        private String employeeNo;
+        @Size(max = 128)
+        private String departmentName;
+        @Size(max = 32)
+        private String role;
+        @Size(max = 512)
+        private String remark;
+        public String getMemberName() { return memberName; }
+        public void setMemberName(String memberName) { this.memberName = memberName; }
+        public String getEmployeeNo() { return employeeNo; }
+        public void setEmployeeNo(String employeeNo) { this.employeeNo = employeeNo; }
+        public String getDepartmentName() { return departmentName; }
+        public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+        public String getRemark() { return remark; }
+        public void setRemark(String remark) { this.remark = remark; }
+    }
+
+    public static class MemberCreateRequest extends DraftMemberRequest {
     }
 
     public static class MemberRoleRequest {

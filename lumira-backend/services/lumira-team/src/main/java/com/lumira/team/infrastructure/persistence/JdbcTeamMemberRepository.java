@@ -1,5 +1,6 @@
 package com.lumira.team.infrastructure.persistence;
 
+import com.lumira.team.dto.TeamDTO;
 import com.lumira.team.repository.TeamMemberRepository;
 import com.lumira.team.vo.TeamVO;
 import org.springframework.dao.DuplicateKeyException;
@@ -21,8 +22,8 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
-                        insert into team_member (tenant_id, team_id, user_id, role, status, joined_at, created_at, updated_at, deleted)
-                        values (?, ?, ?, 'OWNER', 'ACTIVE', ?, ?, ?, 0)
+                        insert into team_member (tenant_id, team_id, user_id, role, member_name, member_source, status, joined_at, created_at, updated_at, deleted)
+                        values (?, ?, ?, 'OWNER', 'Owner', 'REGISTERED', 'ACTIVE', ?, ?, ?, 0)
                         """,
                 tenantId,
                 teamId,
@@ -131,8 +132,8 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
             if (updated == 0) {
                 jdbcTemplate.update(
                         """
-                                insert into team_member (tenant_id, team_id, user_id, role, status, invited_by, joined_at, created_at, updated_at, deleted)
-                                values (?, ?, ?, ?, 'ACTIVE', ?, ?, ?, ?, 0)
+                                insert into team_member (tenant_id, team_id, user_id, role, member_source, status, invited_by, joined_at, created_at, updated_at, deleted)
+                                values (?, ?, ?, ?, 'REGISTERED', 'ACTIVE', ?, ?, ?, ?, 0)
                                 """,
                         tenantId,
                         teamId,
@@ -147,6 +148,32 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
         } catch (DuplicateKeyException exception) {
             // Existing active member is an idempotent success path.
         }
+    }
+
+    @Override
+    public Long addDraftMember(Long tenantId, Long teamId, TeamDTO.DraftMemberRequest request) {
+        LocalDateTime now = LocalDateTime.now();
+        jdbcTemplate.update(
+                """
+                        insert into team_member (
+                            tenant_id, team_id, user_id, role, member_alias, member_name,
+                            employee_no, department_name, remark, member_source, status,
+                            joined_at, created_at, updated_at, deleted
+                        ) values (?, ?, null, ?, ?, ?, ?, ?, ?, 'DRAFT', 'ACTIVE', ?, ?, ?, 0)
+                        """,
+                tenantId,
+                teamId,
+                request.getRole(),
+                request.getMemberName(),
+                request.getMemberName(),
+                request.getEmployeeNo(),
+                request.getDepartmentName(),
+                request.getRemark(),
+                now,
+                now,
+                now
+        );
+        return jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
     }
 
     @Override
@@ -185,7 +212,9 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
     private String memberSelect(String tail) {
         return """
                 select id, tenant_id as tenantId, team_id as teamId, user_id as userId, role,
-                       member_alias as memberAlias, status, invited_by as invitedBy,
+                       member_alias as memberAlias, member_name as memberName,
+                       employee_no as employeeNo, department_name as departmentName,
+                       remark, member_source as memberSource, status, invited_by as invitedBy,
                        joined_at as joinedAt, created_at as createdAt
                 from team_member
                 """ + tail;

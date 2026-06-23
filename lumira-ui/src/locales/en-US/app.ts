@@ -36,4 +36,6 @@ export default {
   'page.exception.noPermission.subtitle': 'Your account does not have permission to access this page.',
   'page.exception.noPermission.back': 'Go back',
   'page.exception.noPermission.home': 'Back to home',
+  'page.exception.serverError.subtitle': 'A server error occurred. Please try again later.',
+  'page.exception.serverError.backHome': 'Back to home',
 };

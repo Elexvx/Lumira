@@ -5,7 +5,8 @@ import { isSuperAdminUser } from '@/auth/adminAccess';
 const hasPermission = (permissions: Set<string>, key: string) => permissions.has(key) || permissions.has('*');
 const hasAnyPermission = (permissions: Set<string>, keys: string[]) => keys.some((key) => hasPermission(permissions, key));
 
-const AI_PERMISSIONS = ['ai:chat:send', 'ai:knowledge:view'];
+const AI_ASSISTANT_PERMISSIONS = ['ai:assistant:view', 'ai:chat:send'];
+const AI_PERMISSIONS = [...AI_ASSISTANT_PERMISSIONS, 'ai:knowledge:view'];
 const SYSTEM_CONFIG_PERMISSIONS = ['system:config:view', 'system:config:update'];
 
 export default function access(initialState: { currentUser?: CurrentUser; availablePlugins?: TenantPlugin[] }) {
@@ -45,6 +46,10 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitSystemMyFiles: isLogin && hasPermission(permissions, 'system:file:view'),
     canVisitDownloadCenter: isLogin && hasPermission(permissions, 'download:center:view'),
     canVisitTeam: isLogin && hasPermission(permissions, 'team:view'),
+    canVisitActivitiesRoot: isLogin && hasPermission(permissions, 'aiadc:activity:view'),
+    canVisitActivities: isLogin && hasPermission(permissions, 'aiadc:activity:view'),
+    canVisitCompetitions: isLogin && hasPermission(permissions, 'aiadc:competition:view'),
+    canVisitExperts: isLogin && hasPermission(permissions, 'expert:view'),
     canVisitSystemAllFiles: isLogin && isSettingsAdmin,
     canVisitLocalization: isLogin && isSettingsAdmin,
     canVisitAudit: isLogin && isSettingsAdmin,
@@ -52,10 +57,11 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitSystemOnlineUsers: isLogin && hasPermission(permissions, 'system:online-user:view'),
     canVisitSystemPlugins: isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:management:view')),
     canVisitSensitiveWordsPlugin: isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:sensitive-words:view')),
+    canVisitWorkOrderFeedbackPlugin: isLogin && (isSettingsAdmin || hasPermission(permissions, 'plugin:work-order-feedback:view')),
     canVisitAi: isLogin && AI_PERMISSIONS.some((item) => hasPermission(permissions, item)),
     canVisitAiEmployees: isLogin && isSettingsAdmin,
     canVisitAiKnowledge: isLogin && hasPermission(permissions, 'ai:knowledge:view'),
-    canVisitAiAssistant: isLogin && hasPermission(permissions, 'ai:chat:send'),
+    canVisitAiAssistant: isLogin && hasAnyPermission(permissions, AI_ASSISTANT_PERMISSIONS),
     canVisitPluginRuntime: isLogin,
   };
 }

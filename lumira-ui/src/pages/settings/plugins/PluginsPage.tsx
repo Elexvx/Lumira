@@ -30,6 +30,9 @@ const resolvePluginManagementPath = (pluginCode: string) => {
   if (pluginCode === 'sensitive-words') {
     return '/plugins/sensitive-words';
   }
+  if (pluginCode === 'work-order-feedback') {
+    return '/plugins/work-order-feedback';
+  }
   return null;
 };
 

@@ -103,6 +103,37 @@ describe('sessionBootstrap', () => {
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
   });
 
+  it('restores a new browser tab by refreshing when no access token is stored', async () => {
+    const bootstrapUser = {
+      userId: 12,
+      username: 'new-tab',
+      nickname: 'New Tab User',
+      permissions: [],
+      sessionId: 'session-new-tab',
+      locale: 'zh-CN',
+    };
+    const securitySettings = { captchaEnabled: false };
+
+    mocks.hasToken.mockReturnValue(false);
+    mocks.tryRefreshToken.mockResolvedValue(true);
+    mocks.request.mockResolvedValue({
+      currentUser: bootstrapUser,
+      securitySettings,
+    });
+
+    const { restoreSession } = await import('@/auth/sessionBootstrap');
+
+    const restored = await restoreSession();
+
+    expect(restored).toMatchObject({
+      currentUser: bootstrapUser,
+      securitySettings,
+    });
+    expect(mocks.tryRefreshToken).toHaveBeenCalledTimes(1);
+    expect(mocks.request).toHaveBeenCalledWith('/v2/auth/bootstrap', expect.objectContaining({ method: 'GET' }));
+    expect(mocks.clearAuthSession).not.toHaveBeenCalled();
+  });
+
   it('falls back to legacy flow when bootstrap endpoint is unavailable', async () => {
     let currentUserResolve: ((value: CurrentUserFixture) => void) | undefined;
     const currentUserPromise = new Promise((resolve) => {

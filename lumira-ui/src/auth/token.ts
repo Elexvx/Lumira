@@ -11,25 +11,23 @@ export interface AuthTokenState {
   expiresAt: number;
 }
 
-type TokenPersistence = 'session' | 'local';
-
 const isBrowserRuntime = () => typeof window !== 'undefined';
 
-const safeStorage = (persistence: TokenPersistence): Storage | null => {
+const safeStorage = (storageName: 'sessionStorage' | 'localStorage'): Storage | null => {
   if (!isBrowserRuntime()) {
     return null;
   }
   try {
-    return persistence === 'local' ? window.localStorage : window.sessionStorage;
+    return window[storageName];
   } catch {
     return null;
   }
 };
 
 const readStoredTokenState = (): AuthTokenState | null => {
-  const candidates: TokenPersistence[] = ['session', 'local'];
-  for (const persistence of candidates) {
-    const storage = safeStorage(persistence);
+  const candidates: Array<'localStorage' | 'sessionStorage'> = ['localStorage', 'sessionStorage'];
+  for (const storageName of candidates) {
+    const storage = safeStorage(storageName);
     const raw = storage?.getItem(TOKEN_STORAGE_KEY);
     if (!raw) {
       continue;
@@ -60,14 +58,14 @@ let memoryTokenState: AuthTokenState | null = readStoredTokenState();
 const getTokenState = (): AuthTokenState | null => memoryTokenState;
 
 const clearStoredTokenState = () => {
-  safeStorage('session')?.removeItem(TOKEN_STORAGE_KEY);
-  safeStorage('local')?.removeItem(TOKEN_STORAGE_KEY);
+  safeStorage('sessionStorage')?.removeItem(TOKEN_STORAGE_KEY);
+  safeStorage('localStorage')?.removeItem(TOKEN_STORAGE_KEY);
 };
 
-const writeTokenState = (state: AuthTokenState, persistence: TokenPersistence) => {
+const writeTokenState = (state: AuthTokenState) => {
   memoryTokenState = state;
   clearStoredTokenState();
-  safeStorage(persistence)?.setItem(TOKEN_STORAGE_KEY, JSON.stringify(state));
+  safeStorage('localStorage')?.setItem(TOKEN_STORAGE_KEY, JSON.stringify(state));
 };
 
 const removeTokenState = () => {
@@ -104,7 +102,7 @@ export const tokenManager = {
       tokenType: payload.tokenType || 'Bearer',
       expiresIn: payload.expiresIn,
       expiresAt,
-    }, payload.remember ? 'local' : 'session');
+    });
     authTokenGeneration += 1;
     bumpAuthSessionEpoch();
     broadcastAuthSession('updated');

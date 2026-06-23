@@ -1,0 +1,16 @@
+.expert-page .ant-pro-card-body {
+  padding-block: 16px;
+}
+
+.expert-name-cell {
+  min-width: 180px;
+}
+
+.expert-name-cell__meta {
+  color: var(--ant-color-text-secondary);
+  font-size: 12px;
+}
+
+.expert-tags {
+  max-width: 260px;
+}

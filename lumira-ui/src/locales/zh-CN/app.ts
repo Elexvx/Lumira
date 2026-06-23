@@ -36,4 +36,6 @@ export default {
   'page.exception.noPermission.subtitle': '当前账号没有访问该页面的权限',
   'page.exception.noPermission.back': '返回上一页',
   'page.exception.noPermission.home': '回到首页',
+  'page.exception.serverError.subtitle': '服务器发生异常，请稍后再试。',
+  'page.exception.serverError.backHome': '返回首页',
 };
