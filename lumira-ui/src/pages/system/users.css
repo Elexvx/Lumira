@@ -14,27 +14,25 @@
 .saas-user-management-page .saas-management-page-body {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .saas-user-management-layout {
   display: grid;
   grid-template-columns: clamp(var(--saas-spacing-220), 18vw, var(--saas-spacing-280)) minmax(0, 1fr);
   gap: var(--saas-spacing-md);
-  align-items: stretch;
+  align-items: start;
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
-  height: var(--saas-user-management-height);
-  min-height: 0;
-  overflow: hidden;
+  min-height: var(--saas-user-management-height);
 }
 
 .saas-user-department-card {
   display: flex;
   align-self: stretch;
   flex-direction: column;
-  height: 100%;
+  height: var(--saas-user-management-height);
   min-height: 0;
   min-width: 0;
   overflow: hidden;
@@ -115,35 +113,18 @@
 .saas-user-management-main {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  min-height: 0;
+  min-height: var(--saas-spacing-420);
   min-width: 0;
-  overflow: hidden;
 }
 
 .saas-user-management-main > .saas-table-wrap {
   flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.saas-user-management-main > .saas-table-wrap > .ant-pro-table,
-.saas-user-management-main > .saas-table-wrap > .ant-pro-table > .ant-pro-card {
-  height: 100%;
-  min-height: 0;
-}
-
-.saas-user-management-main .ant-pro-card-body,
-.saas-user-management-main .ant-pro-card-body > .ant-pro-card-content {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
+  min-height: var(--saas-spacing-420);
+  overflow: visible;
 }
 
 .saas-user-management-main .ant-pro-table-search {
-  flex: 0 0 auto;
-  min-height: 0;
+  margin-bottom: var(--saas-spacing-md);
 }
 
 .saas-user-management-main .ant-pro-table-search .ant-pro-card-body,
@@ -154,34 +135,11 @@
 }
 
 .saas-user-management-main .ant-pro-table-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.saas-user-management-main .ant-pro-table-list .ant-pro-card,
-.saas-user-management-main .ant-pro-table-list .ant-pro-card-body,
-.saas-user-management-main .ant-pro-table-list .ant-pro-card-content,
-.saas-user-management-main .ant-spin-nested-loading,
-.saas-user-management-main .ant-spin-container,
-.saas-user-management-main .ant-table-wrapper {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.saas-user-management-main .ant-table {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-.saas-user-management-main .ant-table-container {
-  min-height: 0;
+  min-height: var(--saas-spacing-360);
 }
 
 .saas-user-management-main .ant-table-body {
-  max-height: 100%;
+  max-height: calc(var(--saas-user-management-height) - var(--saas-spacing-240));
   overflow: auto;
 }
 
