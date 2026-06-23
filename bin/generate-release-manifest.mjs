@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const outPath = process.env.LUMIRA_RELEASE_MANIFEST_OUT || path.join(repoRoot, 'artifacts', 'release', 'lumira-release-manifest.json');
+const outPath = process.env.LUMIRA_RELEASE_MANIFEST_OUT || path.join(repoRoot, 'tmp', 'release', 'lumira-release-manifest.json');
 const commit = first(process.env.GIT_COMMIT, process.env.GITHUB_SHA)?.slice(0, 12) || 'unknown';
 const version = first(process.env.APP_VERSION, process.env.BUILD_VERSION, process.env.GITHUB_REF_NAME, '0.1.0');
 const owner = (process.env.GITHUB_REPOSITORY_OWNER || 'elexvx').toLowerCase();

@@ -40,6 +40,10 @@ backups/
 storage/
 services/*/storage/
 
+# Local agent/Codex workspace state
+.agents/
+.codex/
+
 # Java
 **/target/
 
