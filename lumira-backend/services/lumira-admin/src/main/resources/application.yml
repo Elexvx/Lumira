@@ -97,11 +97,8 @@ saas:
     refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
     auth-bootstrap-cache-ttl-seconds: ${AUTH_BOOTSTRAP_CACHE_TTL_SECONDS:5}
     login-capabilities-cache-ttl-seconds: ${LOGIN_CAPABILITIES_CACHE_TTL_SECONDS:5}
-    initial-admin:
-      password: ${LUMIRA_INITIAL_ADMIN_PASSWORD:123456}
     captcha-enabled: ${CAPTCHA_ENABLED:false}
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
-    allow-unsafe-default-admin-login: ${ALLOW_UNSAFE_DEFAULT_ADMIN_LOGIN:false}
     allow-plaintext-login-password: ${ALLOW_PLAINTEXT_LOGIN_PASSWORD:false}
     register-ip-max-count: ${REGISTER_IP_MAX_COUNT:20}
     register-ip-window-minutes: ${REGISTER_IP_WINDOW_MINUTES:10}

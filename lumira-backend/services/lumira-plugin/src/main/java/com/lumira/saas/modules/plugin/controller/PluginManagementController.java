@@ -6,6 +6,7 @@ import com.lumira.common.exception.BizException;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.saas.modules.plugin.app.PluginManagementAppService;
@@ -276,7 +277,6 @@ public class PluginManagementController {
     }
 
     private Long currentTenantId() {
-        Long tenantId = currentUser().getCurrentTenantId();
-        return tenantId == null ? com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
+        return PlatformContext.compatibilityTenantId();
     }
 }

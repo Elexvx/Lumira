@@ -32,13 +32,14 @@ public class ImageUploadService {
     private static final long MAX_IMAGE_PIXELS = 25_000_000L;
     private static final int MAX_IMAGE_WIDTH = 10_000;
     private static final int MAX_IMAGE_HEIGHT = 10_000;
-    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp");
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("png", "jpg", "jpeg", "gif", "bmp", "ico");
     private static final Map<String, String> EXTENSION_CONTENT_TYPES = Map.of(
             "png", "image/png",
             "jpg", "image/jpeg",
             "jpeg", "image/jpeg",
             "gif", "image/gif",
-            "bmp", "image/bmp"
+            "bmp", "image/bmp",
+            "ico", "image/x-icon"
     );
     private static final Set<String> UNKNOWN_CONTENT_TYPES = Set.of("", "application/octet-stream", "binary/octet-stream");
 
@@ -184,6 +185,9 @@ public class ImageUploadService {
         if ("bmp".equals(extension) && Set.of("image/x-ms-bmp", "image/x-bmp", "image/bmp").contains(normalizedContentType)) {
             return expectedContentType;
         }
+        if ("ico".equals(extension) && Set.of("image/x-icon", "image/vnd.microsoft.icon").contains(normalizedContentType)) {
+            return expectedContentType;
+        }
         if (!expectedContentType.equals(normalizedContentType)) {
             throw badRequest("图片 Content-Type 与文件格式不一致");
         }
@@ -248,6 +252,7 @@ public class ImageUploadService {
             case "gif" -> startsWith(bytes, 0x47, 0x49, 0x46, 0x38, 0x37, 0x61)
                     || startsWith(bytes, 0x47, 0x49, 0x46, 0x38, 0x39, 0x61);
             case "bmp" -> startsWith(bytes, 0x42, 0x4D);
+            case "ico" -> startsWith(bytes, 0x00, 0x00, 0x01, 0x00);
             default -> false;
         };
         if (!valid) {
@@ -256,6 +261,9 @@ public class ImageUploadService {
     }
 
     private void validateDecodedImage(byte[] bytes, String extension) {
+        if ("ico".equals(extension)) {
+            return;
+        }
         String normalizedExtension = "jpg".equals(extension) ? "jpeg" : extension;
         try (ImageInputStream imageInputStream = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
             Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName(normalizedExtension);

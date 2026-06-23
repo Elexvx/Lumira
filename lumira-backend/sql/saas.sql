@@ -1365,6 +1365,7 @@ CREATE TABLE `sys_sensitive_word` (
   `normalized_word` varchar(128) NOT NULL,
   `category` varchar(64) DEFAULT NULL,
   `severity` varchar(32) DEFAULT NULL,
+  `action` varchar(32) NOT NULL DEFAULT 'BLOCK',
   `enabled` tinyint NOT NULL DEFAULT '1',
   `created_by` bigint DEFAULT '0',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1932,8 +1933,131 @@ ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
 
+INSERT INTO `sys_permission` (
+    `tenant_id`, `permission_key`, `permission_name`, `permission_group`, `source_type`, `plugin_code`,
+    `created_by`, `updated_by`, `deleted`
+)
+VALUES
+    (1001, 'ai:chat:send', 'ai:chat:send', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:employee:create', 'ai:employee:create', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:employee:delete', 'ai:employee:delete', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:employee:skills', 'ai:employee:skills', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:employee:status', 'ai:employee:status', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:employee:update', 'ai:employee:update', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:knowledge:bind', 'ai:knowledge:bind', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:knowledge:create', 'ai:knowledge:create', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:knowledge:delete', 'ai:knowledge:delete', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:knowledge:document:delete', 'ai:knowledge:document:delete', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:knowledge:document:index', 'ai:knowledge:document:index', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:knowledge:document:upload', 'ai:knowledge:document:upload', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:knowledge:query', 'ai:knowledge:query', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:knowledge:share', 'ai:knowledge:share', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:knowledge:update', 'ai:knowledge:update', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:knowledge:view', 'ai:knowledge:view', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:llm:create', 'ai:llm:create', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:llm:delete', 'ai:llm:delete', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:llm:status', 'ai:llm:status', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:llm:update', 'ai:llm:update', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:tool:execute', 'ai:tool:execute', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:tool:invoke', 'ai:tool:invoke', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:tool:view', 'ai:tool:view', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'ai:view', 'ai:view', 'ai', 'CORE', NULL, 0, 0, 0),
+    (1001, 'audit:login:view', 'audit:login:view', 'audit', 'CORE', NULL, 0, 0, 0),
+    (1001, 'audit:operation:view', 'audit:operation:view', 'audit', 'CORE', NULL, 0, 0, 0),
+    (1001, 'audit:view', 'audit:view', 'audit', 'CORE', NULL, 0, 0, 0),
+    (1001, 'dashboard:view', 'dashboard:view', 'dashboard', 'CORE', NULL, 0, 0, 0),
+    (1001, 'download:center:view', 'download:center:view', 'download', 'CORE', NULL, 0, 0, 0),
+    (1001, 'localization:view', 'localization:view', 'localization', 'CORE', NULL, 0, 0, 0),
+    (1001, 'payment:config:test', 'payment:config:test', 'payment', 'CORE', NULL, 0, 0, 0),
+    (1001, 'payment:config:update', 'payment:config:update', 'payment', 'CORE', NULL, 0, 0, 0),
+    (1001, 'payment:config:view', 'payment:config:view', 'payment', 'CORE', NULL, 0, 0, 0),
+    (1001, 'payment:order:create', 'payment:order:create', 'payment', 'CORE', NULL, 0, 0, 0),
+    (1001, 'payment:order:view', 'payment:order:view', 'payment', 'CORE', NULL, 0, 0, 0),
+    (1001, 'payment:refund:create', 'payment:refund:create', 'payment', 'CORE', NULL, 0, 0, 0),
+    (1001, 'payment:refund:view', 'payment:refund:view', 'payment', 'CORE', NULL, 0, 0, 0),
+    (1001, 'payment:view', 'payment:view', 'payment', 'CORE', NULL, 0, 0, 0),
+    (1001, 'payment:webhook:retry', 'payment:webhook:retry', 'payment', 'CORE', NULL, 0, 0, 0),
+    (1001, 'payment:webhook:view', 'payment:webhook:view', 'payment', 'CORE', NULL, 0, 0, 0),
+    (1001, 'plugin:management:view', 'plugin:management:view', 'plugin', 'CORE', NULL, 0, 0, 0),
+    (1001, 'plugin:sensitive-words:import', 'plugin:sensitive-words:import', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
+    (1001, 'plugin:sensitive-words:manage', 'plugin:sensitive-words:manage', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
+    (1001, 'plugin:sensitive-words:view', 'plugin:sensitive-words:view', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
+    (1001, 'profile:view', 'profile:view', 'profile', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:config:update', 'system:config:update', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:config:view', 'system:config:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:department:create', 'system:department:create', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:department:delete', 'system:department:delete', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:department:update', 'system:department:update', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:department:view', 'system:department:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:dict:create', 'system:dict:create', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:dict:delete', 'system:dict:delete', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:dict:update', 'system:dict:update', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:dict:view', 'system:dict:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:file:delete', 'system:file:delete', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:file:manage', 'system:file:manage', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:file:upload', 'system:file:upload', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:file:view', 'system:file:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:menu:create', 'system:menu:create', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:menu:delete', 'system:menu:delete', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:menu:status', 'system:menu:status', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:menu:update', 'system:menu:update', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:menu:view', 'system:menu:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:monitor:docs:view', 'system:monitor:docs:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:monitor:redis:view', 'system:monitor:redis:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:monitor:service:view', 'system:monitor:service:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:monitor:view', 'system:monitor:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:notification:view', 'system:notification:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:online-user:ban', 'system:online-user:ban', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:online-user:kick', 'system:online-user:kick', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:online-user:view', 'system:online-user:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:role:create', 'system:role:create', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:role:delete', 'system:role:delete', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:role:grant', 'system:role:grant', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:role:permissions', 'system:role:permissions', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:role:update', 'system:role:update', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:role:view', 'system:role:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:update:check', 'system:update:check', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:update:install', 'system:update:install', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:update:rollback', 'system:update:rollback', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:update:view', 'system:update:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:user:create', 'system:user:create', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:user:delete', 'system:user:delete', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:user:export', 'system:user:export', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:user:sensitive:view', 'system:user:sensitive:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:user:status', 'system:user:status', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:user:update', 'system:user:update', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:user:view', 'system:user:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:verification:manage', 'system:verification:manage', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:verification:view', 'system:verification:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'system:view', 'system:view', 'system', 'CORE', NULL, 0, 0, 0),
+    (1001, 'team:view', 'team:view', 'team', 'CORE', NULL, 0, 0, 0),
+    (1001, 'team:create', 'team:create', 'team', 'CORE', NULL, 0, 0, 0),
+    (1001, 'team:update', 'team:update', 'team', 'CORE', NULL, 0, 0, 0),
+    (1001, 'team:delete', 'team:delete', 'team', 'CORE', NULL, 0, 0, 0),
+    (1001, 'team:member:view', 'team:member:view', 'team', 'CORE', NULL, 0, 0, 0),
+    (1001, 'team:member:invite', 'team:member:invite', 'team', 'CORE', NULL, 0, 0, 0),
+    (1001, 'team:member:remove', 'team:member:remove', 'team', 'CORE', NULL, 0, 0, 0),
+    (1001, 'team:member:role-update', 'team:member:role-update', 'team', 'CORE', NULL, 0, 0, 0),
+    (1001, 'user:center:view', 'user:center:view', 'user', 'CORE', NULL, 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `permission_name` = VALUES(`permission_name`),
+    `permission_group` = VALUES(`permission_group`),
+    `source_type` = VALUES(`source_type`),
+    `plugin_code` = VALUES(`plugin_code`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
 INSERT INTO `sys_role` (`id`, `tenant_id`, `role_code`, `role_name`, `role_type`, `default_home_path`, `created_by`, `updated_by`, `deleted`)
 VALUES (1001, 1001, 'ADMIN', 'Administrator', 'SYSTEM', '/dashboard/home', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `role_name` = VALUES(`role_name`),
+    `role_type` = VALUES(`role_type`),
+    `default_home_path` = VALUES(`default_home_path`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_role` (`id`, `tenant_id`, `role_code`, `role_name`, `role_type`, `default_home_path`, `created_by`, `updated_by`, `deleted`)
+VALUES (1002, 1001, 'commonuser', 'Common User', 'BUSINESS', '/dashboard/home', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `role_name` = VALUES(`role_name`),
     `role_type` = VALUES(`role_type`),
@@ -1948,9 +2072,74 @@ ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
 
-INSERT INTO `sys_role_permission` (`tenant_id`, `role_id`, `permission_key`, `created_by`, `updated_by`, `deleted`)
-VALUES (1001, 1001, '*', 0, 0, 0)
+INSERT INTO `sys_role_data_scope` (`tenant_id`, `role_id`, `resource_code`, `scope_type`, `created_by`, `updated_by`, `deleted`)
+VALUES (1001, 1002, '*', 'SELF', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
+    `scope_type` = VALUES(`scope_type`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+DELETE FROM `sys_role_permission`
+WHERE `tenant_id` = 1001 AND `role_id` = 1001 AND `permission_key` = '*';
+
+INSERT INTO `sys_role_permission` (`tenant_id`, `role_id`, `permission_key`, `created_by`, `updated_by`, `deleted`)
+SELECT 1001, 1001, p.`permission_key`, 0, 0, 0
+FROM `sys_permission` p
+WHERE p.`tenant_id` = 1001 AND p.`deleted` = 0
+ON DUPLICATE KEY UPDATE
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_role_permission` (`tenant_id`, `role_id`, `permission_key`, `created_by`, `updated_by`, `deleted`)
+SELECT 1001, 1002, p.`permission_key`, 0, 0, 0
+FROM `sys_permission` p
+WHERE p.`tenant_id` = 1001
+  AND p.`deleted` = 0
+  AND p.`permission_key` IN (
+      'dashboard:view',
+      'download:center:view',
+      'user:center:view',
+      'profile:view',
+      'system:file:view',
+      'system:file:upload',
+      'ai:view',
+      'ai:chat:send',
+      'ai:knowledge:view',
+      'team:view'
+  )
+ON DUPLICATE KEY UPDATE
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_config` (
+    `tenant_id`, `config_key`, `config_name`, `config_value`, `config_scope`, `is_system`, `remark`,
+    `created_by`, `updated_by`, `deleted`
+)
+VALUES (1001, 'auth.default-registration-role-code', 'Default registration role', 'commonuser', 'PLATFORM', 1, 'Default role code assigned to newly registered users', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `config_name` = VALUES(`config_name`),
+    `config_value` = VALUES(`config_value`),
+    `config_scope` = VALUES(`config_scope`),
+    `is_system` = VALUES(`is_system`),
+    `remark` = VALUES(`remark`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_dict_type` (`tenant_id`, `dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)
+VALUES
+    (1001, 'sys_user_gender', '用户性别', 'ENABLED', 1, '系统字典：用户性别', 0, 0, 0),
+    (1001, 'sys_user_status', '用户状态', 'ENABLED', 1, '系统字典：用户状态', 0, 0, 0),
+    (1001, 'sys_common_status', '通用状态', 'ENABLED', 1, '系统字典：通用状态', 0, 0, 0),
+    (1001, 'sys_yes_no', '是否', 'ENABLED', 1, '系统字典：是否', 0, 0, 0),
+    (1001, 'sys_role_type', '角色类型', 'ENABLED', 1, '系统字典：角色类型', 0, 0, 0),
+    (1001, 'sys_menu_type', '菜单类型', 'ENABLED', 1, '系统字典：菜单类型', 0, 0, 0),
+    (1001, 'sys_data_scope_type', '数据范围类型', 'ENABLED', 1, '系统字典：数据范围类型', 0, 0, 0),
+    (1001, 'team_member_role', '团队成员角色', 'ENABLED', 1, '团队模块字典', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `dict_name` = VALUES(`dict_name`),
+    `status` = VALUES(`status`),
+    `is_system` = VALUES(`is_system`),
+    `remark` = VALUES(`remark`),
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
 
@@ -1995,6 +2184,66 @@ ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
 
+INSERT INTO `sys_dict_item` (`tenant_id`, `dict_type_id`, `item_value`, `item_label`, `sort_no`, `status`, `remark`, `created_by`, `updated_by`, `deleted`)
+SELECT 1001, `id`, 'MALE', '男', 10, 'ENABLED', '用户性别', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_user_gender' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'FEMALE', '女', 20, 'ENABLED', '用户性别', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_user_gender' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'OTHER', '其他', 30, 'ENABLED', '用户性别', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_user_gender' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'UNKNOWN', '未知', 40, 'ENABLED', '用户性别', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_user_gender' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'ENABLED', '启用', 10, 'ENABLED', '用户状态', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_user_status' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'DISABLED', '禁用', 20, 'ENABLED', '用户状态', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_user_status' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'LOCKED', '锁定', 30, 'ENABLED', '用户状态', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_user_status' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'ENABLED', '启用', 10, 'ENABLED', '通用状态', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_common_status' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'DISABLED', '停用', 20, 'ENABLED', '通用状态', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_common_status' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'YES', '是', 10, 'ENABLED', '是否', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_yes_no' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'NO', '否', 20, 'ENABLED', '是否', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_yes_no' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'SYSTEM', '系统角色', 10, 'ENABLED', '角色类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_role_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'CUSTOM', '自定义角色', 20, 'ENABLED', '角色类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_role_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'CATALOG', '目录', 10, 'ENABLED', '菜单类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_menu_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'MENU', '菜单', 20, 'ENABLED', '菜单类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_menu_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'BUTTON', '按钮', 30, 'ENABLED', '菜单类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_menu_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'LINK', '外链', 40, 'ENABLED', '菜单类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_menu_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'ALL', '全部数据', 10, 'ENABLED', '数据范围类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'DEPT_AND_CHILD', '本部门及下级', 20, 'ENABLED', '数据范围类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'DEPT', '本部门', 30, 'ENABLED', '数据范围类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'SELF', '仅本人', 40, 'ENABLED', '数据范围类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'CUSTOM', '自定义', 50, 'ENABLED', '数据范围类型', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'OWNER', '所有者', 10, 'ENABLED', '团队成员角色', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_member_role' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'ADMIN', '管理员', 20, 'ENABLED', '团队成员角色', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_member_role' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'MANAGER', '协作者', 30, 'ENABLED', '团队成员角色', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_member_role' AND `deleted` = 0
+UNION ALL
+SELECT 1001, `id`, 'MEMBER', '成员', 40, 'ENABLED', '团队成员角色', 0, 0, 0 FROM `sys_dict_type` WHERE `tenant_id` = 1001 AND `dict_code` = 'team_member_role' AND `deleted` = 0
+ON DUPLICATE KEY UPDATE
+    `item_label` = VALUES(`item_label`),
+    `sort_no` = VALUES(`sort_no`),
+    `status` = VALUES(`status`),
+    `remark` = VALUES(`remark`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
 INSERT INTO `sys_user` (`id`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
 VALUES (1001, 'admin', 'Administrator', 'Administrator', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
@@ -2026,6 +2275,134 @@ VALUES (1001, 1001, 1001, 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
+
+INSERT INTO `sys_config` (
+    `tenant_id`, `config_key`, `config_name`, `config_value`, `config_scope`, `is_system`, `remark`,
+    `created_by`, `updated_by`, `deleted`
+)
+VALUES
+    (1001, 'branding.website-name', '站点名称', '宏翔商道', 'PLATFORM', 0, '控制台顶部与浏览器标题展示名称', 0, 0, 0),
+    (1001, 'branding.website-favicon-url', '站点图标地址', '', 'PLATFORM', 0, '浏览器标签页 icon 地址', 0, 0, 0),
+    (1001, 'branding.website-logo-url', '站点 Logo 地址', '', 'PLATFORM', 0, '控制台左上角品牌 Logo 地址', 0, 0, 0),
+    (1001, 'branding.login-background-url', '登录页背景图地址', '', 'PLATFORM', 0, '登录页背景图地址', 0, 0, 0),
+    (1001, 'branding.github-link-enabled', 'GitHub 链接开关', 'true', 'PLATFORM', 0, '是否显示顶部 GitHub 图标', 0, 0, 0),
+    (1001, 'branding.github-link-url', 'GitHub 链接', '', 'PLATFORM', 0, '顶部 GitHub 图标跳转地址', 0, 0, 0),
+    (1001, 'branding.help-link-enabled', '帮助链接开关', 'true', 'PLATFORM', 0, '是否显示顶部帮助图标', 0, 0, 0),
+    (1001, 'branding.help-link-url', '帮助链接', '', 'PLATFORM', 0, '顶部帮助图标跳转地址', 0, 0, 0),
+    (1001, 'branding.company-name', '公司名称', '宏翔商道', 'PLATFORM', 0, '页脚版权主体名称', 0, 0, 0),
+    (1001, 'branding.copyright-start-year', '版权起始年份', CAST(YEAR(CURRENT_DATE()) AS CHAR), 'PLATFORM', 0, '页脚版权起始年份', 0, 0, 0),
+    (1001, 'branding.footer-icp', '页脚备案', '', 'PLATFORM', 0, '页脚备案信息', 0, 0, 0),
+    (1001, 'branding.footer-police-beian', '页脚公安备案', '', 'PLATFORM', 0, '页脚公安备案信息', 0, 0, 0),
+    (1001, 'branding.footer-copyright', '页脚版权声明', CONCAT('Copyright ', YEAR(CURRENT_DATE()), ' 宏翔商道 All Rights Reserved'), 'PLATFORM', 0, '页脚版权声明', 0, 0, 0),
+    (1001, 'agreement.user-agreement-markdown', '用户协议', '', 'PLATFORM', 0, '用户协议 Markdown', 0, 0, 0),
+    (1001, 'agreement.privacy-agreement-markdown', '隐私协议', '', 'PLATFORM', 0, '隐私协议 Markdown', 0, 0, 0),
+    (1001, 'watermark.enabled', '水印开关', 'false', 'PLATFORM', 0, '全局水印开关', 0, 0, 0),
+    (1001, 'watermark.mode', '水印模式', 'TEXT', 'PLATFORM', 0, 'TEXT/IMAGE', 0, 0, 0),
+    (1001, 'watermark.text-lines', '水印文本', '', 'PLATFORM', 0, '多行文本水印', 0, 0, 0),
+    (1001, 'watermark.image-url', '水印图片', '', 'PLATFORM', 0, '图片水印 URL', 0, 0, 0),
+    (1001, 'watermark.font-color', '字体颜色', 'rgba(0,0,0,0.15)', 'PLATFORM', 0, '字体颜色', 0, 0, 0),
+    (1001, 'watermark.font-size', '字体大小', '14', 'PLATFORM', 0, '字体大小', 0, 0, 0),
+    (1001, 'watermark.font-weight', '字体粗细', 'normal', 'PLATFORM', 0, '字体粗细', 0, 0, 0),
+    (1001, 'watermark.rotate', '旋转角度', '-22', 'PLATFORM', 0, '旋转角度', 0, 0, 0),
+    (1001, 'watermark.gap-x', '横向间距', '100', 'PLATFORM', 0, '横向间距', 0, 0, 0),
+    (1001, 'watermark.gap-y', '纵向间距', '100', 'PLATFORM', 0, '纵向间距', 0, 0, 0),
+    (1001, 'watermark.offset-x', '横向偏移', '0', 'PLATFORM', 0, '横向偏移', 0, 0, 0),
+    (1001, 'watermark.offset-y', '纵向偏移', '0', 'PLATFORM', 0, '纵向偏移', 0, 0, 0),
+    (1001, 'watermark.z-index', '层级', '9', 'PLATFORM', 0, 'z-index', 0, 0, 0),
+    (1001, 'watermark.opacity', '透明度', '0.15', 'PLATFORM', 0, '透明度', 0, 0, 0),
+    (1001, 'floating-window.api-docs-qr-enabled', '接口文档二维码开关', 'false', 'PLATFORM', 0, '是否在全局悬浮窗展示接口文档二维码入口', 0, 0, 0),
+    (1001, 'floating-window.api-docs-qr-title', '接口文档二维码标题', '', 'PLATFORM', 0, '接口文档二维码弹层标题', 0, 0, 0),
+    (1001, 'floating-window.api-docs-qr-image-url', '接口文档二维码图片', '', 'PLATFORM', 0, '接口文档悬浮入口展开后展示的二维码图片', 0, 0, 0),
+    (1001, 'smtp.enabled', 'SMTP 邮箱通知启用', 'false', 'PLATFORM', 0, '是否启用邮箱通知渠道', 0, 0, 0),
+    (1001, 'smtp.host', 'SMTP 主机', '', 'PLATFORM', 0, '邮件服务器地址', 0, 0, 0),
+    (1001, 'smtp.port', 'SMTP 端口', '25', 'PLATFORM', 0, '邮件服务器端口', 0, 0, 0),
+    (1001, 'smtp.username', 'SMTP 用户名', '', 'PLATFORM', 0, 'SMTP 登录用户名', 0, 0, 0),
+    (1001, 'smtp.password', 'SMTP 密码', '', 'PLATFORM', 0, 'SMTP 登录密码', 0, 0, 0),
+    (1001, 'smtp.from', '发件人地址', '', 'PLATFORM', 0, 'SMTP 默认发件人', 0, 0, 0),
+    (1001, 'smtp.auth-enabled', 'SMTP 认证', 'true', 'PLATFORM', 0, '是否启用 SMTP AUTH', 0, 0, 0),
+    (1001, 'smtp.starttls-enabled', 'SMTP STARTTLS', 'true', 'PLATFORM', 0, '是否启用 STARTTLS', 0, 0, 0),
+    (1001, 'smtp.ssl-enabled', 'SMTP SSL', 'false', 'PLATFORM', 0, '是否启用 SSL', 0, 0, 0),
+    (1001, 'notification.wechat-official.enabled', '微信公众号通知启用', 'false', 'PLATFORM', 0, '是否启用微信公众号/服务号模板消息通知', 0, 0, 0),
+    (1001, 'notification.wechat-official.app-id', '微信公众号 AppID', '', 'PLATFORM', 0, '微信公众号或服务号 AppID', 0, 0, 0),
+    (1001, 'notification.wechat-official.app-secret', '微信公众号 AppSecret', '', 'PLATFORM', 0, '微信公众号或服务号 AppSecret', 0, 0, 0),
+    (1001, 'notification.wechat-official.template-id', '微信公众号模板 ID', '', 'PLATFORM', 0, '用于系统通知的公众号模板消息 ID', 0, 0, 0),
+    (1001, 'notification.wechat-official.detail-url', '微信公众号通知详情链接', '', 'PLATFORM', 0, '模板消息点击后打开的系统链接，可留空', 0, 0, 0),
+    (1001, 'verification.totp.enabled', '2FA 启用', 'true', 'PLATFORM', 0, '是否启用 2FA 登录方式', 0, 0, 0),
+    (1001, 'verification.password-login.enabled', '密码登录', 'true', 'PLATFORM', 0, '是否启用账号密码登录', 0, 0, 0),
+    (1001, 'verification.email-login.enabled', '邮箱验证码登录', 'false', 'PLATFORM', 0, '是否启用邮箱验证码登录', 0, 0, 0),
+    (1001, 'verification.login-mode.order', '登录方式排序', 'password,sms,email,wechat,passkey', 'PLATFORM', 0, '登录页分段控制器展示顺序', 0, 0, 0),
+    (1001, 'verification.sms.enabled', '短信验证码启用', 'false', 'PLATFORM', 0, '是否启用短信验证码服务', 0, 0, 0),
+    (1001, 'verification.sms.provider', '短信验证码服务商', 'aliyun', 'PLATFORM', 0, '短信验证码服务提供方', 0, 0, 0),
+    (1001, 'verification.sms.sign-name', '短信签名', '', 'PLATFORM', 0, '短信验证码签名', 0, 0, 0),
+    (1001, 'verification.sms.template-code', '短信模板编码', '', 'PLATFORM', 0, '短信验证码模板编码', 0, 0, 0),
+    (1001, 'verification.sms.access-key-id', '短信 Access Key ID', '', 'PLATFORM', 0, '短信验证码访问密钥 ID', 0, 0, 0),
+    (1001, 'verification.sms.access-key-secret', '短信 Access Key Secret', '', 'PLATFORM', 0, '短信验证码访问密钥 Secret', 0, 0, 0),
+    (1001, 'verification.sms.endpoint', '短信服务地址', '', 'PLATFORM', 0, '短信验证码服务端点', 0, 0, 0),
+    (1001, 'verification.sms.region', '短信服务地域', '', 'PLATFORM', 0, '短信验证码服务地域', 0, 0, 0),
+    (1001, 'verification.wechat-login.enabled', '微信登录启用', 'false', 'PLATFORM', 0, '是否启用微信扫码登录', 0, 0, 0),
+    (1001, 'verification.wechat-login.app-id', '微信 AppID', '', 'PLATFORM', 0, '微信开放平台网站应用 AppID', 0, 0, 0),
+    (1001, 'verification.wechat-login.app-secret', '微信 AppSecret', '', 'PLATFORM', 0, '微信开放平台网站应用 AppSecret', 0, 0, 0),
+    (1001, 'verification.wechat-login.redirect-uri', '微信登录回调地址', '', 'PLATFORM', 0, '微信开放平台授权回调地址', 0, 0, 0),
+    (1001, 'verification.wechat-login.state-expire-minutes', '微信登录状态有效期', '10', 'PLATFORM', 0, '微信登录 state 缓存有效期，单位分钟', 0, 0, 0),
+    (1001, 'verification.passkey.enabled', '通行密钥启用', 'false', 'PLATFORM', 0, '是否启用通行密钥登录', 0, 0, 0),
+    (1001, 'verification.passkey.passwordless-enabled', '通行密钥无账号登录', 'false', 'PLATFORM', 0, '是否允许发现式凭据无账号登录', 0, 0, 0),
+    (1001, 'verification.passkey.self-binding-enabled', '通行密钥自助绑定', 'false', 'PLATFORM', 0, '是否允许用户在个人中心自助绑定通行密钥', 0, 0, 0),
+    (1001, 'verification.passkey.rp-id', '通行密钥 RP ID', '', 'PLATFORM', 0, 'WebAuthn RP ID', 0, 0, 0),
+    (1001, 'verification.passkey.rp-name', '通行密钥 RP 名称', '', 'PLATFORM', 0, 'WebAuthn RP 显示名称', 0, 0, 0),
+    (1001, 'verification.passkey.allowed-origins', '通行密钥允许 Origin', '', 'PLATFORM', 0, 'WebAuthn 允许的前端 Origin', 0, 0, 0),
+    (1001, 'verification.passkey.challenge-ttl-seconds', '通行密钥 Challenge TTL', '120', 'PLATFORM', 0, 'WebAuthn challenge 有效期秒数', 0, 0, 0),
+    (1001, 'security.idle-timeout-seconds', '空闲超时时间', '1800', 'PLATFORM', 1, '会话在无操作状态下允许保持的秒数', 0, 0, 0),
+    (1001, 'security.access-token-expire-seconds', 'Access Token 过期时间', '1800', 'PLATFORM', 1, 'Access Token 的有效秒数', 0, 0, 0),
+    (1001, 'security.refresh-token-expire-seconds', 'Refresh Token 刷新时限', '604800', 'PLATFORM', 1, 'Refresh Token 的有效秒数', 0, 0, 0),
+    (1001, 'security.allow-multi-device-login', '多设备登录', '1', 'PLATFORM', 1, '是否允许同一账号在多个设备同时在线', 0, 0, 0),
+    (1001, 'security.captcha-enabled', '验证码开关', '0', 'PLATFORM', 1, '是否开启登录时的人机验证码', 0, 0, 0),
+    (1001, 'security.captcha-type', '验证码类型', 'IMAGE', 'PLATFORM', 1, '验证码类型：IMAGE/SLIDER', 0, 0, 0),
+    (1001, 'security.login-defense-window-minutes', '登录防御统计窗口', '5', 'PLATFORM', 1, '统计登录尝试与错误次数的时间窗口，单位分钟', 0, 0, 0),
+    (1001, 'security.login-max-validation-attempts', '最大验证次数', '100', 'PLATFORM', 1, '统计窗口内允许的最大验证码/登录验证尝试次数', 0, 0, 0),
+    (1001, 'security.login-max-failure-count', '最大错误次数', '10', 'PLATFORM', 1, '统计窗口内允许的最大登录失败次数', 0, 0, 0),
+    (1001, 'security.verification-code-expire-seconds', '验证码有效期', '300', 'PLATFORM', 1, '短信/邮箱验证码的有效秒数', 0, 0, 0),
+    (1001, 'security.verification-code-cooldown-seconds', '验证码重发冷却', '60', 'PLATFORM', 1, '同一账号同一验证码渠道再次发送前需要等待的秒数', 0, 0, 0),
+    (1001, 'security.password-min-length', '密码最短长度', '6', 'PLATFORM', 1, '用户密码允许的最少字符数', 0, 0, 0),
+    (1001, 'security.password-require-uppercase', '密码必须包含大写字母', '0', 'PLATFORM', 1, '强制密码包含 A-Z', 0, 0, 0),
+    (1001, 'security.password-require-lowercase', '密码必须包含小写字母', '0', 'PLATFORM', 1, '强制密码包含 a-z', 0, 0, 0),
+    (1001, 'security.password-require-special-character', '密码必须包含特殊字符', '0', 'PLATFORM', 1, '强制密码包含特殊字符', 0, 0, 0),
+    (1001, 'security.password-allow-consecutive-characters', '允许连续字符', '1', 'PLATFORM', 1, '是否允许密码中出现连续字符', 0, 0, 0),
+    (1001, 'profile.field.system.overrides', 'System profile field metadata overrides', '[]', 'PLATFORM', 0, 'Stores editable labels, descriptions, placeholders, and groups for built-in profile fields', 0, 0, 0),
+    (1001, 'profile.field.custom.definitions', '自定义资料字段定义', '[]', 'PLATFORM', 0, '保存个人中心可扩展的自定义资料字段定义', 0, 0, 0),
+    (1001, 'profile.field.avatar.visible', '头像显示开关', 'true', 'PLATFORM', 0, '个人中心头像字段显示开关', 0, 0, 0),
+    (1001, 'profile.field.avatar.weight', '头像评分权重', '10', 'PLATFORM', 0, '个人中心头像字段评分权重', 0, 0, 0),
+    (1001, 'profile.field.avatar.required', '头像 required', 'false', 'PLATFORM', 0, '个人中心头像字段必填开关', 0, 0, 0),
+    (1001, 'profile.field.avatar.sort', '头像 sort', '10', 'PLATFORM', 0, '个人中心头像字段排序', 0, 0, 0),
+    (1001, 'profile.field.real-name.visible', '姓名显示开关', 'true', 'PLATFORM', 0, '个人中心姓名字段显示开关', 0, 0, 0),
+    (1001, 'profile.field.real-name.weight', '姓名评分权重', '15', 'PLATFORM', 0, '个人中心姓名字段评分权重', 0, 0, 0),
+    (1001, 'profile.field.real-name.required', '姓名 required', 'false', 'PLATFORM', 0, '个人中心姓名字段必填开关', 0, 0, 0),
+    (1001, 'profile.field.real-name.sort', '姓名 sort', '20', 'PLATFORM', 0, '个人中心姓名字段排序', 0, 0, 0),
+    (1001, 'profile.field.mobile.visible', '手机号显示开关', 'true', 'PLATFORM', 0, '个人中心手机号字段显示开关', 0, 0, 0),
+    (1001, 'profile.field.mobile.weight', '手机号评分权重', '15', 'PLATFORM', 0, '个人中心手机号字段评分权重', 0, 0, 0),
+    (1001, 'profile.field.mobile.required', '手机号 required', 'false', 'PLATFORM', 0, '个人中心手机号字段必填开关', 0, 0, 0),
+    (1001, 'profile.field.mobile.sort', '手机号 sort', '30', 'PLATFORM', 0, '个人中心手机号字段排序', 0, 0, 0),
+    (1001, 'profile.field.email.visible', '邮箱显示开关', 'true', 'PLATFORM', 0, '个人中心邮箱字段显示开关', 0, 0, 0),
+    (1001, 'profile.field.email.weight', '邮箱评分权重', '15', 'PLATFORM', 0, '个人中心邮箱字段评分权重', 0, 0, 0),
+    (1001, 'profile.field.email.required', '邮箱 required', 'false', 'PLATFORM', 0, '个人中心邮箱字段必填开关', 0, 0, 0),
+    (1001, 'profile.field.email.sort', '邮箱 sort', '40', 'PLATFORM', 0, '个人中心邮箱字段排序', 0, 0, 0),
+    (1001, 'profile.field.birth-month.visible', '出生年月显示开关', 'true', 'PLATFORM', 0, '个人中心出生年月字段显示开关', 0, 0, 0),
+    (1001, 'profile.field.birth-month.weight', '出生年月评分权重', '10', 'PLATFORM', 0, '个人中心出生年月字段评分权重', 0, 0, 0),
+    (1001, 'profile.field.birth-month.required', '出生年月 required', 'false', 'PLATFORM', 0, '个人中心出生年月字段必填开关', 0, 0, 0),
+    (1001, 'profile.field.birth-month.sort', '出生年月 sort', '50', 'PLATFORM', 0, '个人中心出生年月字段排序', 0, 0, 0),
+    (1001, 'profile.field.gender.visible', '性别显示开关', 'true', 'PLATFORM', 0, '个人中心性别字段显示开关', 0, 0, 0),
+    (1001, 'profile.field.gender.weight', '性别评分权重', '10', 'PLATFORM', 0, '个人中心性别字段评分权重', 0, 0, 0),
+    (1001, 'profile.field.gender.required', '性别 required', 'false', 'PLATFORM', 0, '个人中心性别字段必填开关', 0, 0, 0),
+    (1001, 'profile.field.gender.sort', '性别 sort', '60', 'PLATFORM', 0, '个人中心性别字段排序', 0, 0, 0),
+    (1001, 'profile.field.region.visible', '所在地区显示开关', 'true', 'PLATFORM', 0, '个人中心所在地区字段显示开关', 0, 0, 0),
+    (1001, 'profile.field.region.weight', '所在地区评分权重', '10', 'PLATFORM', 0, '个人中心所在地区字段评分权重', 0, 0, 0),
+    (1001, 'profile.field.region.required', '所在地区 required', 'false', 'PLATFORM', 0, '个人中心所在地区字段必填开关', 0, 0, 0),
+    (1001, 'profile.field.region.sort', '所在地区 sort', '70', 'PLATFORM', 0, '个人中心所在地区字段排序', 0, 0, 0),
+    (1001, 'profile.field.id-card-number.visible', '身份证号码显示开关', 'true', 'PLATFORM', 0, '个人中心身份证号码字段显示开关', 0, 0, 0),
+    (1001, 'profile.field.id-card-number.weight', '身份证号码评分权重', '5', 'PLATFORM', 0, '个人中心身份证号码字段评分权重', 0, 0, 0),
+    (1001, 'profile.field.id-card-number.required', '身份证号码 required', 'false', 'PLATFORM', 0, '个人中心身份证号码字段必填开关', 0, 0, 0),
+    (1001, 'profile.field.id-card-number.sort', '身份证号码 sort', '80', 'PLATFORM', 0, '个人中心身份证号码字段排序', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `config_key` = VALUES(`config_key`);
 
 INSERT INTO `iam_user` (`id`, `user_no`, `display_name`, `status`, `user_type`, `source`, `deleted`)
 VALUES (1001, 'admin', 'Administrator', 'ENABLED', 'SYSTEM', 'BOOTSTRAP_SQL', 0)
@@ -2075,6 +2452,90 @@ INSERT INTO `iam_subject_role` (`tenant_id`, `subject_id`, `role_id`, `created_b
 SELECT 1001, `id`, 1001, 0, 0, 0
 FROM `iam_subject`
 WHERE `tenant_id` = 1001 AND `subject_type` = 'USER' AND `ref_id` = 1001 AND `deleted` = 0
+ON DUPLICATE KEY UPDATE
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_user` (`id`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
+VALUES (1002, 'user', 'Common User', 'Common User', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `nickname` = VALUES(`nickname`),
+    `real_name` = VALUES(`real_name`),
+    `password_hash` = VALUES(`password_hash`),
+    `status` = VALUES(`status`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_user_tenant` (`tenant_id`, `user_id`, `is_default`, `status`, `created_by`, `updated_by`, `deleted`)
+VALUES (1001, 1002, 1, 'ENABLED', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `is_default` = VALUES(`is_default`),
+    `status` = VALUES(`status`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_user_tenant_profile` (`tenant_id`, `user_id`, `display_name`, `locale`, `created_by`, `updated_by`, `deleted`)
+VALUES (1001, 1002, 'Common User', 'zh-CN', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `display_name` = VALUES(`display_name`),
+    `locale` = VALUES(`locale`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_user_role` (`tenant_id`, `user_id`, `role_id`, `created_by`, `updated_by`, `deleted`)
+VALUES (1001, 1002, 1002, 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `iam_user` (`id`, `user_no`, `display_name`, `status`, `user_type`, `source`, `deleted`)
+VALUES (1002, 'user', 'Common User', 'ENABLED', 'REGISTERED', 'BOOTSTRAP_SQL', 0)
+ON DUPLICATE KEY UPDATE
+    `display_name` = VALUES(`display_name`),
+    `status` = VALUES(`status`),
+    `user_type` = VALUES(`user_type`),
+    `source` = VALUES(`source`),
+    `deleted` = 0;
+
+INSERT INTO `iam_user_identity` (`user_id`, `identity_type`, `identifier`, `identifier_normalized`, `verified`, `primary_identity`, `status`, `deleted`)
+VALUES (1002, 'USERNAME', 'user', 'user', 1, 1, 'ENABLED', 0)
+ON DUPLICATE KEY UPDATE
+    `user_id` = VALUES(`user_id`),
+    `identifier` = VALUES(`identifier`),
+    `verified` = VALUES(`verified`),
+    `primary_identity` = VALUES(`primary_identity`),
+    `status` = VALUES(`status`),
+    `deleted` = 0;
+
+INSERT INTO `iam_user_credential` (`user_id`, `credential_type`, `credential_secret`, `algorithm`, `version`, `status`, `deleted`)
+VALUES (1002, 'PASSWORD', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'BCRYPT', 1, 'ENABLED', 0)
+ON DUPLICATE KEY UPDATE
+    `credential_secret` = VALUES(`credential_secret`),
+    `algorithm` = VALUES(`algorithm`),
+    `status` = VALUES(`status`),
+    `deleted` = 0;
+
+INSERT INTO `iam_user_profile` (`user_id`, `nickname`, `real_name`, `locale`, `deleted`)
+VALUES (1002, 'Common User', 'Common User', 'zh-CN', 0)
+ON DUPLICATE KEY UPDATE
+    `nickname` = VALUES(`nickname`),
+    `real_name` = VALUES(`real_name`),
+    `locale` = VALUES(`locale`),
+    `deleted` = 0;
+
+INSERT INTO `iam_subject` (`tenant_id`, `subject_type`, `ref_id`, `subject_code`, `display_name`, `status`, `created_by`, `updated_by`, `deleted`)
+VALUES (1001, 'USER', 1002, 'user', 'Common User', 'ENABLED', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `subject_code` = VALUES(`subject_code`),
+    `display_name` = VALUES(`display_name`),
+    `status` = VALUES(`status`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `iam_subject_role` (`tenant_id`, `subject_id`, `role_id`, `created_by`, `updated_by`, `deleted`)
+SELECT 1001, `id`, 1002, 0, 0, 0
+FROM `iam_subject`
+WHERE `tenant_id` = 1001 AND `subject_type` = 'USER' AND `ref_id` = 1002 AND `deleted` = 0
 ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;

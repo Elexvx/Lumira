@@ -4,6 +4,7 @@ import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -78,9 +79,9 @@ public class FilePlatformEventPublisher {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser != null && currentUser.getCurrentTenantId() != null) {
-            return currentUser.getCurrentTenantId();
+        if (currentUser == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
-        throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
+        return PlatformContext.compatibilityTenantId();
     }
 }

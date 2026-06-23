@@ -18,7 +18,6 @@ import type {
   AiEmployeeCapabilityRecord,
   AiEmployeeDetailRecord,
   AiEmployeeRecord,
-  AiPromptTemplateRecord,
   AiKnowledgeBaseRecord,
   AiLlmServiceRecord,
   AiLlmServiceTestResult,
@@ -77,12 +76,10 @@ const getAvatarOption = (options: readonly AvatarOption[], avatarKey?: string | 
 
 type UseAiEmployeesEmployeeDrawerStateParams = {
   actionPermission: ReturnType<typeof usePagePermissionActions>['actionPermission'];
-  employeePromptTemplate: string;
 };
 
 const useAiEmployeesEmployeeDrawerState = ({
   actionPermission,
-  employeePromptTemplate,
 }: UseAiEmployeesEmployeeDrawerStateParams) => {
   const [employeeForm] = Form.useForm<EmployeeFormValues>();
   const [employeeKnowledgeBaseIds, setEmployeeKnowledgeBaseIds] = useState<number[]>([]);
@@ -123,13 +120,13 @@ const useAiEmployeesEmployeeDrawerState = ({
       avatarKey: DEFAULT_AVATAR_KEY,
       description: '',
       greeting: '',
-      systemPrompt: employeePromptTemplate,
+      systemPrompt: '',
       defaultLlmServiceId: undefined,
     });
     setEmployeeKnowledgeBaseIds([]);
     setEmployeeCapabilities([]);
     setEmployeeCapabilityModes({});
-  }, [employeeForm, employeePromptTemplate, employeeState.drawer]);
+  }, [employeeForm, employeeState.drawer]);
 
   const handleEmployeeCapabilityModeChange = useCallback((capabilityCode: string, checked: boolean, readOnly: boolean) => {
     const enabledMode = readOnly ? 'visit' : 'allow';
@@ -164,7 +161,7 @@ const useAiEmployeesEmployeeDrawerState = ({
           avatarKey: detail.avatarKey || DEFAULT_AVATAR_KEY,
           description: detail.description || '',
           greeting: detail.greeting || '',
-          systemPrompt: detail.systemPrompt ?? detail.defaultSystemPromptTemplate ?? employeePromptTemplate,
+          systemPrompt: detail.systemPrompt ?? '',
           defaultLlmServiceId: detail.defaultLlmServiceId || undefined,
         });
         setEmployeeKnowledgeBaseIds(knowledgeBases.map((item) => item.id));
@@ -174,7 +171,7 @@ const useAiEmployeesEmployeeDrawerState = ({
         employeeState.drawer.reset();
       }
     },
-    [employeeForm, employeePromptTemplate, employeeState, setEmployeeCapabilities, setEmployeeCapabilityModes, setEmployeeKnowledgeBaseIds],
+    [employeeForm, employeeState, setEmployeeCapabilities, setEmployeeCapabilityModes, setEmployeeKnowledgeBaseIds],
   );
 
   const saveEmployee = useCallback(async () => {
@@ -277,7 +274,7 @@ const buildLlmServiceOptions = (services: Array<{ id: number; title: string; cod
 
 const buildKnowledgeBaseOptions = (knowledgeBases: AiKnowledgeBaseRecord[]): SimpleOption[] =>
   knowledgeBases.map((knowledgeBase) => ({
-    label: `${knowledgeBase.name}${knowledgeBase.visibilityScope === 'TENANT' ? t('（企业）', ' (Tenant)') : t('（个人）', ' (Personal)')}`,
+    label: `${knowledgeBase.name}${knowledgeBase.visibilityScope === 'TENANT' ? t('（组织）', ' (Organization)') : t('（个人）', ' (Personal)')}`,
     value: knowledgeBase.id,
   }));
 
@@ -449,12 +446,10 @@ const buildLlmColumns = ({
 
 const AiEmployeesPage = () => {
   const { actionPermission, responsive, buildToolbarButtons } = usePagePermissionActions();
-  const [employeePromptTemplate, setEmployeePromptTemplate] = useState('');
   const [llmServiceOptions, setLlmServiceOptions] = useState<SimpleOption[]>([]);
   const [knowledgeBaseOptions, setKnowledgeBaseOptions] = useState<SimpleOption[]>([]);
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
   const employeeContext = useAiEmployeesEmployeeDrawerState({
-    employeePromptTemplate,
     actionPermission,
   });
   const {
@@ -750,11 +745,7 @@ const AiEmployeesPage = () => {
     const loadBootstrapData = async () => {
       setBootstrapLoading(true);
       try {
-        const [template, services, knowledgeBases] = await Promise.all([
-          request<AiPromptTemplateRecord>('/ai/employees/template', {
-            method: 'GET',
-            ...API_OPTS.NO_REDIRECT,
-          }),
+        const [services, knowledgeBases] = await Promise.all([
           request<PagedResult<AiLlmServiceRecord>>('/ai/llm-services', {
             method: 'GET',
             params: { pageNo: 1, pageSize: 200 },
@@ -771,7 +762,6 @@ const AiEmployeesPage = () => {
           return;
         }
 
-        setEmployeePromptTemplate(template.defaultSystemPromptTemplate);
         setLlmServiceOptions(buildLlmServiceOptions(services.records || []));
         setKnowledgeBaseOptions(buildKnowledgeBaseOptions(knowledgeBases.records || []));
       } catch (error) {
@@ -907,7 +897,6 @@ const AiEmployeesPage = () => {
     open: employeeState.drawer.open,
     title: employeeState.drawer.editingId ? t('编辑 AI 员工', 'Edit AI employee') : t('新建 AI 员工', 'Create AI employee'),
     form: employeeForm,
-    employeePromptTemplate,
     avatarOptions,
     llmServiceOptions,
     knowledgeBaseOptions,

@@ -855,6 +855,7 @@ export interface SensitiveWordRecord {
   normalizedWord: string;
   category?: string | null;
   severity?: string | null;
+  action?: string | null;
   enabled: boolean;
   createdBy?: number | null;
   createdAt?: string | null;
@@ -873,10 +874,12 @@ export interface SensitiveWordMatchItem {
   fieldPath?: string | null;
   word: string;
   maskedWord: string;
+  action?: string | null;
 }
 
 export interface SensitiveWordCheckResult {
   hit: boolean;
+  blocked?: boolean;
   matches: SensitiveWordMatchItem[];
 }
 
@@ -888,7 +891,7 @@ export interface NotificationRecord {
 }
 
 export type MessageNoticeType = 'MESSAGE';
-export type MessageTargetScope = 'TENANT' | 'USER' | 'ROLE';
+export type MessageTargetScope = 'PLATFORM' | 'TENANT' | 'USER' | 'ROLE';
 export type MessagePublishStatus = 'PUBLISHED' | 'RETRACTED';
 export type MessageSourceType = 'MANUAL';
 export type MessageChannel = 'INBOX' | 'EMAIL' | 'WECHAT_OFFICIAL';
@@ -1582,7 +1585,7 @@ export interface RoleDetail extends RoleRecord {
   dataScopes?: RoleDataScope[];
 }
 
-export type DataScopeType = 'ALL' | 'TENANT' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM';
+export type DataScopeType = 'ALL' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM';
 
 export interface RoleDataScope {
   resourceCode: string;

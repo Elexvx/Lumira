@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.auth.vo.CurrentUserVO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -46,6 +47,7 @@ public class SystemProfileSettingsAppService {
     private static final String PROFILE_FIELD_GROUP_IDENTITY_KEY = "identity";
     private static final String PROFILE_FIELD_GROUP_CUSTOM_KEY = "custom";
     private static final String PROFILE_FIELD_GROUP_CUSTOM_LABEL = "自定义资料";
+    private static final String SYSTEM_PROFILE_FIELD_OVERRIDES_KEY = "profile.field.system.overrides";
     private static final String CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY = "profile.field.custom.definitions";
     private static final Set<String> SUPPORTED_CUSTOM_FIELD_TYPES = Set.of("TEXT", "NUMBER", "DATE", "SELECT", "TEXTAREA");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -62,6 +64,7 @@ public class SystemProfileSettingsAppService {
     private static final List<String> PROFILE_FIELD_CONFIG_KEYS = PROFILE_FIELD_DEFINITIONS.stream()
             .flatMap(definition -> List.of(definition.visibleConfigKey(), definition.weightConfigKey(), definition.requiredConfigKey(), definition.sortConfigKey()).stream())
             .collect(Collectors.collectingAndThen(Collectors.toCollection(ArrayList::new), keys -> {
+                keys.add(SYSTEM_PROFILE_FIELD_OVERRIDES_KEY);
                 keys.add(CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY);
                 return List.copyOf(keys);
             }));
@@ -93,6 +96,7 @@ public class SystemProfileSettingsAppService {
         Long tenantId = currentTenantId(currentUser);
         Map<String, ProfileFieldSettingItem> requestedSettings = new LinkedHashMap<>();
         request.getItems().forEach(item -> requestedSettings.put(item.getFieldKey(), item));
+        List<ProfileFieldMetadataOverride> systemOverrides = normalizeSystemFieldOverrides(request.getItems());
         List<ProfileFieldDefinition> customDefinitions = normalizeCustomDefinitions(request.getItems(), requestedSettings.keySet());
         PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
                 tenantId,
@@ -126,6 +130,14 @@ public class SystemProfileSettingsAppService {
                 definition.fieldDescription(),
                 currentUser.getUserId()
         ));
+        upsertConfigValue(
+                tenantId,
+                SYSTEM_PROFILE_FIELD_OVERRIDES_KEY,
+                "System profile field metadata overrides",
+                serializeSystemFieldOverrides(systemOverrides),
+                "Stores editable labels, descriptions, placeholders, and groups for built-in profile fields",
+                currentUser.getUserId()
+        );
         upsertConfigValue(
                 tenantId,
                 CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY,
@@ -175,17 +187,19 @@ public class SystemProfileSettingsAppService {
             return new ArrayList<>(cached);
         }
         Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, PROFILE_FIELD_CONFIG_KEYS);
+        Map<String, ProfileFieldMetadataOverride> systemOverrides = parseSystemFieldOverrides(valueByKey.get(SYSTEM_PROFILE_FIELD_OVERRIDES_KEY));
         List<ProfileFieldDefinition> definitions = new ArrayList<>(PROFILE_FIELD_DEFINITIONS);
         definitions.addAll(parseCustomDefinitions(valueByKey.get(CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY)));
         List<ProfileFieldSettingVO> settings = definitions.stream()
                 .sorted(Comparator.comparing(ProfileFieldDefinition::sortNo).thenComparing(ProfileFieldDefinition::fieldKey))
                 .map(definition -> {
+            ProfileFieldMetadataOverride override = definition.custom() ? null : systemOverrides.get(definition.fieldKey());
             ProfileFieldSettingVO item = new ProfileFieldSettingVO();
             item.setFieldKey(definition.fieldKey());
-            item.setFieldLabel(definition.fieldLabel());
-            item.setFieldDescription(definition.fieldDescription());
+            item.setFieldLabel(overrideText(override == null ? null : override.fieldLabel(), definition.fieldLabel()));
+            item.setFieldDescription(overrideText(override == null ? null : override.fieldDescription(), definition.fieldDescription()));
             item.setGroupKey(definition.groupKey());
-            item.setGroupLabel(definition.groupLabel());
+            item.setGroupLabel(overrideText(override == null ? null : override.groupLabel(), definition.groupLabel()));
             item.setVisible(definition.custom()
                     ? definition.defaultVisible()
                     : Boolean.parseBoolean(defaultIfBlank(valueByKey.get(definition.visibleConfigKey()), String.valueOf(definition.defaultVisible()))));
@@ -196,7 +210,7 @@ public class SystemProfileSettingsAppService {
             item.setRequired(definition.custom()
                     ? definition.required()
                     : Boolean.parseBoolean(defaultIfBlank(valueByKey.get(definition.requiredConfigKey()), String.valueOf(definition.required()))));
-            item.setPlaceholder(definition.placeholder());
+            item.setPlaceholder(overrideText(override == null ? null : override.placeholder(), definition.placeholder()));
             item.setSortNo(definition.custom()
                     ? definition.sortNo()
                     : parseInteger(defaultIfBlank(valueByKey.get(definition.sortConfigKey()), String.valueOf(definition.sortNo())), definition.sortNo()));
@@ -236,7 +250,7 @@ public class SystemProfileSettingsAppService {
             }
             int weight = resolveRequestedWeight(setting.getWeight(), definition.defaultWeight());
             totalWeight += weight;
-            evaluatedFields.add(new EvaluatedField(definition, weight));
+            evaluatedFields.add(new EvaluatedField(definition, setting, weight));
         }
 
         List<ProfileCompletionGroupVO> groups = new ArrayList<>();
@@ -252,10 +266,10 @@ public class SystemProfileSettingsAppService {
 
             ProfileCompletionItemVO item = new ProfileCompletionItemVO();
             item.setFieldKey(field.definition.fieldKey());
-            item.setFieldLabel(field.definition.fieldLabel());
-            item.setFieldDescription(field.definition.fieldDescription());
-            item.setGroupKey(field.definition.groupKey());
-            item.setGroupLabel(field.definition.groupLabel());
+            item.setFieldLabel(overrideText(field.setting.getFieldLabel(), field.definition.fieldLabel()));
+            item.setFieldDescription(overrideText(field.setting.getFieldDescription(), field.definition.fieldDescription()));
+            item.setGroupKey(overrideText(field.setting.getGroupKey(), field.definition.groupKey()));
+            item.setGroupLabel(overrideText(field.setting.getGroupLabel(), field.definition.groupLabel()));
             item.setCompleted(completed);
             item.setWeight(field.weight);
             item.setScoreContribution(completed ? scoreContribution : 0);
@@ -267,8 +281,8 @@ public class SystemProfileSettingsAppService {
             item.setActionHint(completed ? null : resolveActionHint(field.definition.fieldKey(), mobileBindAvailable, emailBindAvailable, scoreContribution));
 
             GroupAccumulator groupAccumulator = groupByKey.computeIfAbsent(
-                    field.definition.groupKey(),
-                    key -> new GroupAccumulator(field.definition.groupKey(), field.definition.groupLabel())
+                    item.getGroupKey(),
+                    key -> new GroupAccumulator(item.getGroupKey(), item.getGroupLabel())
             );
             groupAccumulator.totalWeight += field.weight;
             if (completed) {
@@ -348,6 +362,75 @@ public class SystemProfileSettingsAppService {
             usedKeys.add(fieldKey);
         }
         return customDefinitions;
+    }
+
+    private List<ProfileFieldMetadataOverride> normalizeSystemFieldOverrides(List<ProfileFieldSettingItem> items) {
+        Map<String, ProfileFieldDefinition> builtInByKey = PROFILE_FIELD_DEFINITIONS.stream()
+                .collect(Collectors.toMap(ProfileFieldDefinition::fieldKey, item -> item, (left, right) -> left, LinkedHashMap::new));
+        List<ProfileFieldMetadataOverride> overrides = new ArrayList<>();
+        for (ProfileFieldSettingItem item : items) {
+            if (item == null || Boolean.TRUE.equals(item.getCustom())) {
+                continue;
+            }
+            ProfileFieldDefinition definition = builtInByKey.get(item.getFieldKey());
+            if (definition == null) {
+                continue;
+            }
+            String fieldLabel = normalizeLimitedText(item.getFieldLabel(), 64);
+            String fieldDescription = normalizeLimitedText(item.getFieldDescription(), 200);
+            String groupLabel = normalizeLimitedText(item.getGroupLabel(), 64);
+            String placeholder = normalizeLimitedText(item.getPlaceholder(), 120);
+            if (!StringUtils.hasText(fieldLabel)
+                    && !StringUtils.hasText(fieldDescription)
+                    && !StringUtils.hasText(groupLabel)
+                    && !StringUtils.hasText(placeholder)) {
+                continue;
+            }
+            overrides.add(new ProfileFieldMetadataOverride(
+                    definition.fieldKey(),
+                    fieldLabel,
+                    fieldDescription,
+                    groupLabel,
+                    placeholder
+            ));
+        }
+        return overrides;
+    }
+
+    private Map<String, ProfileFieldMetadataOverride> parseSystemFieldOverrides(String json) {
+        if (!StringUtils.hasText(json)) {
+            return Map.of();
+        }
+        try {
+            List<ProfileFieldSettingItem> items = OBJECT_MAPPER.readValue(json, new TypeReference<>() {
+            });
+            return normalizeSystemFieldOverrides(items).stream()
+                    .collect(Collectors.toMap(ProfileFieldMetadataOverride::fieldKey, item -> item, (left, right) -> left, LinkedHashMap::new));
+        } catch (JsonProcessingException | RuntimeException exception) {
+            return Map.of();
+        }
+    }
+
+    private String serializeSystemFieldOverrides(List<ProfileFieldMetadataOverride> overrides) {
+        List<ProfileFieldSettingItem> items = overrides.stream().map(override -> {
+            ProfileFieldSettingItem item = new ProfileFieldSettingItem();
+            item.setFieldKey(override.fieldKey());
+            item.setFieldLabel(override.fieldLabel());
+            item.setFieldDescription(override.fieldDescription());
+            item.setGroupLabel(override.groupLabel());
+            item.setPlaceholder(override.placeholder());
+            item.setCustom(false);
+            return item;
+        }).toList();
+        try {
+            return OBJECT_MAPPER.writeValueAsString(items);
+        } catch (JsonProcessingException exception) {
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "System profile field overrides serialization failed");
+        }
+    }
+
+    private String overrideText(String override, String fallback) {
+        return StringUtils.hasText(override) ? override : fallback;
     }
 
     private List<ProfileFieldDefinition> parseCustomDefinitions(String json) {
@@ -674,18 +757,62 @@ public class SystemProfileSettingsAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
+    }
+
+    private static final class ProfileFieldMetadataOverride {
+        private final String fieldKey;
+        private final String fieldLabel;
+        private final String fieldDescription;
+        private final String groupLabel;
+        private final String placeholder;
+
+        private ProfileFieldMetadataOverride(
+                String fieldKey,
+                String fieldLabel,
+                String fieldDescription,
+                String groupLabel,
+                String placeholder
+        ) {
+            this.fieldKey = fieldKey;
+            this.fieldLabel = fieldLabel;
+            this.fieldDescription = fieldDescription;
+            this.groupLabel = groupLabel;
+            this.placeholder = placeholder;
+        }
+
+        private String fieldKey() {
+            return fieldKey;
+        }
+
+        private String fieldLabel() {
+            return fieldLabel;
+        }
+
+        private String fieldDescription() {
+            return fieldDescription;
+        }
+
+        private String groupLabel() {
+            return groupLabel;
+        }
+
+        private String placeholder() {
+            return placeholder;
+        }
     }
 
     private static final class EvaluatedField {
         private final ProfileFieldDefinition definition;
+        private final ProfileFieldSettingVO setting;
         private final int weight;
 
-        private EvaluatedField(ProfileFieldDefinition definition, int weight) {
+        private EvaluatedField(ProfileFieldDefinition definition, ProfileFieldSettingVO setting, int weight) {
             this.definition = definition;
+            this.setting = setting;
             this.weight = weight;
         }
     }

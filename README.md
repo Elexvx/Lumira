@@ -47,6 +47,8 @@ Lumira/
 - [表归属边界](doc/architecture/table-ownership.md)
 - [事件边界](doc/architecture/event-boundary.md)
 - [业务模块模板](doc/architecture/business-module-template.md)
+- [持久化边界治理](doc/architecture/persistence-boundary.md)
+- [持久化边界历史债务](doc/architecture/persistence-boundary-debt.md)
 
 ## 常用命令
 

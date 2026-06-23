@@ -144,7 +144,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         }
         String placeholders = String.join(",", normalizedIds.stream().map(ignored -> "?").toList());
         List<Object> params = new java.util.ArrayList<>();
-        params.add(tenantId);
         params.addAll(normalizedIds);
         return jdbcTemplate.query(
                 """
@@ -163,10 +162,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                                u.available_time,
                                u.id_card_number
                         from sys_user u
-                        join sys_user_tenant ut
-                          on ut.user_id = u.id
-                         and ut.tenant_id = ?
-                         and ut.deleted = 0
                         where u.deleted = 0
                           and u.id in (
                         """ + placeholders + """
@@ -272,16 +267,11 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         }
         String placeholders = String.join(",", normalizedIds.stream().map(ignored -> "?").toList());
         List<Object> params = new java.util.ArrayList<>();
-        params.add(tenantId);
         params.addAll(normalizedIds);
         return jdbcTemplate.query(
                 """
                         select u.id as user_id, u.username, u.email, wb.openid as wechat_openid
                         from sys_user u
-                        join sys_user_tenant ut
-                          on ut.user_id = u.id
-                         and ut.tenant_id = ?
-                         and ut.deleted = 0
                         left join sys_user_wechat_binding wb
                           on wb.user_id = u.id
                          and wb.deleted = 0
@@ -327,8 +317,8 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         );
     }
 
-    @GetMapping("/tenants/{tenantId}/user-contacts")
-    public List<SystemUserContactSnapshotDTO> tenantUserContacts(@PathVariable("tenantId") Long tenantId) {
+    @Override
+    public List<SystemUserContactSnapshotDTO> platformUserContacts(Long tenantId) {
         if (tenantId == null) {
             return List.of();
         }
@@ -336,10 +326,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 """
                         select distinct u.id as user_id, u.username, u.email, wb.openid as wechat_openid
                         from sys_user u
-                        join sys_user_tenant ut
-                          on ut.user_id = u.id
-                         and ut.tenant_id = ?
-                         and ut.deleted = 0
                         left join sys_user_wechat_binding wb
                           on wb.user_id = u.id
                          and wb.deleted = 0
@@ -347,8 +333,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                           and u.status = 'ENABLED'
                         order by u.id asc
                         """,
-                this::toContactSnapshot,
-                tenantId
+                this::toContactSnapshot
         );
     }
 
@@ -821,7 +806,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         );
         SysUserEntity user = userDomainService.findLoginUser(username)
                 .orElseThrow(() -> new IllegalStateException("寰俊鐧诲綍鑷姩娉ㄥ唽鐢ㄦ埛澶辫触"));
-        upsertUserTenantRelation(user.getId(), com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
         grantDefaultLoginRole(user.getId(), com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
         permissionSnapshotService.invalidateTenant(com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
         return user;
@@ -871,7 +855,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 .orElseThrow(() -> new IllegalStateException("验证码登录自动注册用户失败"));
         iamUserService.createUserWithIdentity(user, normalizedAccount, "LOGIN_CODE_REGISTER");
         iamUserService.recordUserRegistered(user.getId(), "LOGIN_CODE_REGISTER", null, null);
-        upsertUserTenantRelation(user.getId(), tenantId);
         grantDefaultLoginRole(user.getId(), tenantId);
         permissionSnapshotService.invalidateTenant(tenantId);
         return user;
@@ -949,22 +932,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 request.scope(),
                 0L,
                 0L
-        );
-    }
-
-    private void upsertUserTenantRelation(Long userId, Long tenantId) {
-        jdbcTemplate.update(
-                """
-                        insert into sys_user_tenant (tenant_id, user_id, is_default, status, created_by, updated_by, deleted)
-                        values (?, ?, 1, 'ENABLED', 0, 0, 0)
-                        on duplicate key update is_default = 1,
-                                                 status = 'ENABLED',
-                                                 updated_by = 0,
-                                                 updated_at = current_timestamp,
-                                                 deleted = 0
-                        """,
-                tenantId,
-                userId
         );
     }
 

@@ -1,22 +1,53 @@
+.saas-user-management-page {
+  --saas-user-management-height: max(var(--saas-spacing-420), calc(100dvh - var(--saas-spacing-160)));
+}
+
+.saas-user-management-page .ant-pro-grid-content,
+.saas-user-management-page .ant-pro-page-container-children-container,
+.saas-user-management-page .ant-pro-page-container-children-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.saas-user-management-page .saas-management-page-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .saas-user-management-layout {
   display: grid;
-  grid-template-columns: minmax(var(--saas-spacing-240), var(--saas-spacing-280)) minmax(0, 1fr);
+  grid-template-columns: clamp(var(--saas-spacing-220), 18vw, var(--saas-spacing-280)) minmax(0, 1fr);
   gap: var(--saas-spacing-md);
-  align-items: start;
+  align-items: stretch;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: var(--saas-user-management-height);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .saas-user-department-card {
-  position: sticky;
-  top: var(--saas-spacing-md);
+  display: flex;
+  align-self: stretch;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .saas-user-department-card .ant-card-body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--saas-spacing-sm);
-  min-height: var(--saas-spacing-420);
+  min-height: 0;
   padding: var(--saas-spacing-md);
+  overflow: hidden;
 }
 
 .saas-user-department-card__title {
@@ -37,7 +68,10 @@
 }
 
 .saas-user-department-tree {
+  flex: 1 1 auto;
+  min-height: 0;
   min-width: 0;
+  overflow-y: auto;
   overflow-x: hidden;
 }
 
@@ -79,7 +113,76 @@
 }
 
 .saas-user-management-main {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
+}
+
+.saas-user-management-main > .saas-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.saas-user-management-main > .saas-table-wrap > .ant-pro-table,
+.saas-user-management-main > .saas-table-wrap > .ant-pro-table > .ant-pro-card {
+  height: 100%;
+  min-height: 0;
+}
+
+.saas-user-management-main .ant-pro-card-body,
+.saas-user-management-main .ant-pro-card-body > .ant-pro-card-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.saas-user-management-main .ant-pro-table-search {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.saas-user-management-main .ant-pro-table-search .ant-pro-card-body,
+.saas-user-management-main .ant-pro-table-search .ant-pro-card-content {
+  display: block;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.saas-user-management-main .ant-pro-table-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.saas-user-management-main .ant-pro-table-list .ant-pro-card,
+.saas-user-management-main .ant-pro-table-list .ant-pro-card-body,
+.saas-user-management-main .ant-pro-table-list .ant-pro-card-content,
+.saas-user-management-main .ant-spin-nested-loading,
+.saas-user-management-main .ant-spin-container,
+.saas-user-management-main .ant-table-wrapper {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.saas-user-management-main .ant-table {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.saas-user-management-main .ant-table-container {
+  min-height: 0;
+}
+
+.saas-user-management-main .ant-table-body {
+  max-height: 100%;
+  overflow: auto;
 }
 
 .saas-user-detail-descriptions .ant-descriptions-item-label {
@@ -97,10 +200,13 @@
 @media (max-width: 991px) {
   .saas-user-management-layout {
     grid-template-columns: 1fr;
+    min-height: 0;
+    overflow: visible;
   }
 
   .saas-user-department-card {
-    position: static;
+    max-height: min(42dvh, var(--saas-spacing-420));
+    height: auto;
   }
 
   .saas-user-department-card .ant-card-body {

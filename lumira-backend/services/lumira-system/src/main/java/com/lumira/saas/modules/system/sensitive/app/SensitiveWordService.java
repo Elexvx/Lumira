@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.sensitive.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -46,6 +47,8 @@ public class SensitiveWordService {
     private static final int MAX_PAYLOAD_NODES = 5000;
     private static final int MAX_PAYLOAD_TEXT_CHARS = 200_000;
     private static final int IMPORT_BATCH_SIZE = 500;
+    private static final String ACTION_BLOCK = "BLOCK";
+    private static final String ACTION_LOG_ONLY = "LOG_ONLY";
     private static final Pattern IMPORT_SPLITTER = Pattern.compile("[\\r\\n,;；、]+");
     private static final Pattern FIELD_BYPASS_PATTERN = Pattern.compile("(password|secret|token|captcha|verifycode|verificationcode|apikey|privatekey|publickey|accesskey)", Pattern.CASE_INSENSITIVE);
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -101,8 +104,9 @@ public class SensitiveWordService {
         List<Object> params = new ArrayList<>();
         params.add(tenantId);
         if (StringUtils.hasText(keyword)) {
-            baseSql.append(" and (word like ? or category like ? or severity like ?)");
+            baseSql.append(" and (word like ? or category like ? or severity like ? or action like ?)");
             String like = "%" + keyword.trim() + "%";
+            params.add(like);
             params.add(like);
             params.add(like);
             params.add(like);
@@ -113,7 +117,7 @@ public class SensitiveWordService {
         }
         String selectSql = """
                 select id, tenant_id as tenantId, word, normalized_word as normalizedWord,
-                       category, severity, enabled, created_by as createdBy, created_at as createdAt,
+                       category, severity, action, enabled, created_by as createdBy, created_at as createdAt,
                        updated_by as updatedBy, updated_at as updatedAt
                 """ + baseSql + " order by updated_at desc, id desc";
         return pageQuery(selectSql, "select count(1) " + baseSql, SensitiveWordVO.WordRecord.class, pageNo, pageSize, params);
@@ -126,7 +130,7 @@ public class SensitiveWordService {
         }
         SensitiveWordVO.WordRecord record = jdbcTemplate.queryForObject("""
                 select id, tenant_id as tenantId, word, normalized_word as normalizedWord,
-                       category, severity, enabled, created_by as createdBy, created_at as createdAt,
+                       category, severity, action, enabled, created_by as createdBy, created_at as createdAt,
                        updated_by as updatedBy, updated_at as updatedAt
                 from sys_sensitive_word
                 where id = ? and tenant_id = ? and deleted = 0
@@ -145,12 +149,12 @@ public class SensitiveWordService {
         ensureUniqueWord(tenantId, normalized.normalizedWord(), null);
         jdbcTemplate.update("""
                 insert into sys_sensitive_word (
-                    tenant_id, word, normalized_word, category, severity, enabled,
+                    tenant_id, word, normalized_word, category, severity, action, enabled,
                     created_by, created_at, updated_by, updated_at, deleted
-                ) values (?, ?, ?, ?, ?, ?, ?, now(), ?, now(), 0)
+                ) values (?, ?, ?, ?, ?, ?, ?, ?, now(), ?, now(), 0)
                 """,
                 tenantId, normalized.word(), normalized.normalizedWord(), normalized.category(), normalized.severity(),
-                normalized.enabled() ? 1 : 0, currentUser.getUserId(), currentUser.getUserId());
+                normalized.action(), normalized.enabled() ? 1 : 0, currentUser.getUserId(), currentUser.getUserId());
         dictionaryCache.invalidate(tenantId);
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         return getWord(currentUser, id);
@@ -164,20 +168,20 @@ public class SensitiveWordService {
         ensureUniqueWord(tenantId, normalized.normalizedWord(), id);
         jdbcTemplate.update("""
                 update sys_sensitive_word
-                   set word = ?, normalized_word = ?, category = ?, severity = ?, enabled = ?,
+                   set word = ?, normalized_word = ?, category = ?, severity = ?, action = ?, enabled = ?,
                        updated_by = ?, updated_at = now()
                  where id = ? and tenant_id = ? and deleted = 0
                 """,
                 normalized.word(), normalized.normalizedWord(), normalized.category(), normalized.severity(),
-                normalized.enabled() ? 1 : 0, currentUser.getUserId(), id, tenantId);
+                normalized.action(), normalized.enabled() ? 1 : 0, currentUser.getUserId(), id, tenantId);
         dictionaryCache.invalidate(tenantId);
         return getWord(currentUser, id);
     }
 
     public boolean updateStatus(CurrentUser currentUser, Long id, Boolean enabled) {
         pluginStateService.ensureEnabled(currentUser);
-        if (enabled == null) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "Enabled status is required");
+        if (!Boolean.TRUE.equals(enabled)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Sensitive words are enabled once added");
         }
         Long tenantId = tenantId(currentUser);
         getWord(currentUser, id);
@@ -252,7 +256,7 @@ public class SensitiveWordService {
         if (matches.size() > MAX_MATCHES) {
             matches = new ArrayList<>(matches.subList(0, MAX_MATCHES));
         }
-        return new SensitiveWordVO.CheckResult(!matches.isEmpty(), matches);
+        return new SensitiveWordVO.CheckResult(!matches.isEmpty(), hasBlockingMatch(matches), matches);
     }
 
     public boolean shouldBypassField(String fieldPath) {
@@ -277,10 +281,10 @@ public class SensitiveWordService {
         }
         Instant startedAt = Instant.now();
         List<SensitiveWordVO.MatchItem> matches = matcher.find(text, fieldPath, MAX_MATCHES).stream()
-                .map(match -> new SensitiveWordVO.MatchItem(match.fieldPath(), match.word(), maskWord(match.word())))
+                .map(match -> new SensitiveWordVO.MatchItem(match.fieldPath(), match.word(), maskWord(match.word()), normalizeAction(match.action())))
                 .toList();
         metrics.recordMatch(Duration.between(startedAt, Instant.now()));
-        return new SensitiveWordVO.CheckResult(!matches.isEmpty(), matches);
+        return new SensitiveWordVO.CheckResult(!matches.isEmpty(), hasBlockingMatch(matches), matches);
     }
 
     private void inspectValue(Object value, String fieldPath, List<SensitiveWordVO.MatchItem> matches,
@@ -370,22 +374,23 @@ public class SensitiveWordService {
         }
         StringBuilder sql = new StringBuilder("""
                 insert into sys_sensitive_word (
-                    tenant_id, word, normalized_word, category, severity, enabled,
+                    tenant_id, word, normalized_word, category, severity, action, enabled,
                     created_by, created_at, updated_by, updated_at, deleted
                 ) values
                 """);
-        List<Object> args = new ArrayList<>(batch.size() * 7);
+        List<Object> args = new ArrayList<>(batch.size() * 8);
         for (int i = 0; i < batch.size(); i += 1) {
             if (i > 0) {
                 sql.append(", ");
             }
-            sql.append("(?, ?, ?, ?, ?, 1, ?, now(), ?, now(), 0)");
+            sql.append("(?, ?, ?, ?, ?, ?, 1, ?, now(), ?, now(), 0)");
             Map.Entry<String, String> entry = batch.get(i);
             args.add(tenantId);
             args.add(entry.getValue());
             args.add(entry.getKey());
             args.add("IMPORTED");
             args.add("MEDIUM");
+            args.add(ACTION_BLOCK);
             args.add(userId);
             args.add(userId);
         }
@@ -423,8 +428,18 @@ public class SensitiveWordService {
                 normalizeForMatch(word),
                 normalizeNullableText(request.getCategory(), "DEFAULT"),
                 normalizeNullableText(request.getSeverity(), "MEDIUM"),
-                !Boolean.FALSE.equals(request.getEnabled())
+                normalizeAction(request.getAction()),
+                true
         );
+    }
+
+    private boolean hasBlockingMatch(List<SensitiveWordVO.MatchItem> matches) {
+        return matches != null && matches.stream().anyMatch(match -> ACTION_BLOCK.equals(normalizeAction(match.getAction())));
+    }
+
+    private String normalizeAction(String action) {
+        String normalized = action == null ? "" : action.trim().toUpperCase(Locale.ROOT);
+        return ACTION_LOG_ONLY.equals(normalized) ? ACTION_LOG_ONLY : ACTION_BLOCK;
     }
 
     private void ensureUniqueWord(Long tenantId, String normalizedWord, Long excludeId) {
@@ -492,10 +507,10 @@ public class SensitiveWordService {
     }
 
     private Long tenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Current tenant is required");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
     private String maskWord(String word) {
@@ -566,7 +581,7 @@ public class SensitiveWordService {
         return result;
     }
 
-    private record NormalizedWord(String word, String normalizedWord, String category, String severity, boolean enabled) {
+    private record NormalizedWord(String word, String normalizedWord, String category, String severity, String action, boolean enabled) {
     }
 
     public static class SensitiveWordRecord {

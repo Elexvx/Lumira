@@ -84,12 +84,11 @@ const exportableQueryParams = (params: Record<string, unknown>, deptId: number |
 
 const userListIdentityColumns: ProColumns<UserRecord>[] = [
   {
-    title: t('用户ID', 'User ID'),
-    dataIndex: 'id',
-    search: {
-      transform: (value) => ({ userId: value ? Number(value) : undefined }),
-    },
-    width: 'var(--saas-spacing-96)',
+    title: t('序号', 'No.'),
+    search: false,
+    width: 'var(--saas-spacing-80)',
+    align: 'center',
+    render: (_: unknown, __: UserRecord, index: number) => index + 1,
   },
   {
     title: t('用户编号', 'User number'),

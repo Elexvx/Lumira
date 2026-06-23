@@ -10,6 +10,7 @@ import type { DataNode } from 'antd/es/tree';
 import { useEffect, useMemo, useState } from 'react';
 import { useUserManagement } from './users/hooks/useUserManagement';
 import './users.css';
+import { useDictOptions, type DictOption } from '@/hooks/useDictOptions';
 import type { DepartmentRecord, UserDetail } from '@/types/api';
 import { maskEmail, maskIdCardNumber, maskMobile } from '@/utils/sensitive';
 import type { FormProps } from 'antd';
@@ -18,6 +19,7 @@ import type { SecuritySettings } from '@/types/api';
 import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } from '@/utils/validators';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
+import { protectedUserStatusOptions } from './users/options';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -150,7 +152,6 @@ const DepartmentTreeFilter = ({
 };
 
 const userDetailColumns: ProDescriptionsItemProps<UserDetail>[] = [
-  { title: t('用户ID', 'User ID'), dataIndex: 'id' },
   { title: t('用户编号', 'User number'), dataIndex: 'userNo', renderText: (value) => value || '-' },
   { title: t('用户名', 'Username'), dataIndex: 'username' },
   { title: t('昵称', 'Nickname'), dataIndex: 'nickname', renderText: (value) => value || '-' },
@@ -195,6 +196,9 @@ const USER_STATUS_OPTIONS = [
   { label: t('启用', 'Enabled'), value: 'ENABLED' },
   { label: t('禁用', 'Disabled'), value: 'DISABLED' },
 ];
+
+const USER_GENDER_DICT_FALLBACK_OPTIONS = [...GENDER_OPTIONS, { label: 'Unknown', value: 'UNKNOWN' }];
+const USER_STATUS_DICT_FALLBACK_OPTIONS = [...USER_STATUS_OPTIONS, { label: 'Locked', value: 'LOCKED' }];
 
 const USERNAME_PATTERN = /^[A-Za-z0-9_-]+$/;
 
@@ -263,13 +267,15 @@ const buildPasswordPolicyHint = (securitySettings: SecuritySettings) => {
   return parts.join('，');
 };
 
-const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, protectedAdminSelected, securitySettings }: {
+const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, protectedAdminSelected, securitySettings, genderOptions, userStatusOptions }: {
   formProps: FormProps;
   editingId: number | null;
   roleOptions: { label: string; value: number }[];
   departmentOptions: { label: string; value: number }[];
   protectedAdminSelected: boolean;
   securitySettings: SecuritySettings;
+  genderOptions: DictOption[];
+  userStatusOptions: DictOption[];
 }) => (
   <Form {...formProps}>
     <Form.Item
@@ -304,7 +310,7 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
       <Input.Password placeholder={t('输入密码', 'Enter password')} />
     </Form.Item>
     <Form.Item name="status" label={t('状态', 'Status')} rules={[{ required: true, message: t('请选择状态', 'Please select a status') }]}>
-      <Select disabled={protectedAdminSelected} options={protectedAdminSelected ? USER_STATUS_OPTIONS.slice(0, 1) : USER_STATUS_OPTIONS} />
+      <Select disabled={protectedAdminSelected} options={protectedUserStatusOptions(userStatusOptions, protectedAdminSelected)} />
     </Form.Item>
     <Form.Item name="mobile" label={t('手机号', 'Mobile number')} rules={[{ validator: validateOptionalChinaMobile }]} normalize={trimString}>
       <Input />
@@ -328,7 +334,7 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
       <DatePicker picker="month" placeholder={t('请选择出生年月', 'Select birth month')} format={isEnglishLocale() ? 'YYYY-MM' : 'YYYY年MM月'} style={{ width: '100%' }} />
     </Form.Item>
     <Form.Item name="gender" label={t('性别', 'Gender')}>
-      <Select allowClear options={GENDER_OPTIONS} placeholder={t('请选择性别', 'Select gender')} />
+      <Select allowClear options={genderOptions} placeholder={t('请选择性别', 'Select gender')} />
     </Form.Item>
     <Form.Item name="region" label={t('所在地区', 'Region')} normalize={trimString}>
       <Input />
@@ -341,6 +347,8 @@ const UserEditorForm = ({ formProps, editingId, roleOptions, departmentOptions, 
 
 const UserManagementPage = () => {
   const userManagement = useUserManagement();
+  const { options: genderOptions } = useDictOptions('sys_user_gender', USER_GENDER_DICT_FALLBACK_OPTIONS);
+  const { options: userStatusOptions } = useDictOptions('sys_user_status', USER_STATUS_DICT_FALLBACK_OPTIONS);
 
   const {
     actionRef,
@@ -446,6 +454,8 @@ const UserManagementPage = () => {
           departmentOptions={departmentOptions}
           protectedAdminSelected={protectedAdminSelected}
           securitySettings={securitySettings}
+          genderOptions={genderOptions}
+          userStatusOptions={userStatusOptions}
         />
       </ManagementDrawer>
 

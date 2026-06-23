@@ -19,7 +19,6 @@ public class AuthSecurityProperties {
     private long loginDefenseWindowMinutes = 5;
     private long loginMaxValidationAttempts = 100;
     private long loginMaxFailureCount = 10;
-    private boolean allowUnsafeDefaultAdminLogin = false;
     private boolean allowPlaintextLoginPassword = false;
     private long permissionSnapshotVersionCacheTtlSeconds = 30;
     private long permissionSnapshotVersionCacheMaxEntries = 100_000;
@@ -113,14 +112,6 @@ public class AuthSecurityProperties {
 
     public void setLoginMaxFailureCount(long loginMaxFailureCount) {
         this.loginMaxFailureCount = loginMaxFailureCount;
-    }
-
-    public boolean isAllowUnsafeDefaultAdminLogin() {
-        return allowUnsafeDefaultAdminLogin;
-    }
-
-    public void setAllowUnsafeDefaultAdminLogin(boolean allowUnsafeDefaultAdminLogin) {
-        this.allowUnsafeDefaultAdminLogin = allowUnsafeDefaultAdminLogin;
     }
 
     public boolean isAllowPlaintextLoginPassword() {

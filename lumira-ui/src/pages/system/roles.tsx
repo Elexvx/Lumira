@@ -7,6 +7,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useRoleManagementPageData } from '@/pages/system/roles/hooks/useRoleManagementPageData';
 import { ROLE_TYPE_LABEL_MAP, ROLE_TYPE_OPTIONS } from '@/constants/role';
+import { useDictOptions, type DictOption } from '@/hooks/useDictOptions';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import type { TreeProps } from 'antd';
 import type { NormalizedPermissionTreeRecord } from '@/pages/system/rolesPermissionTree/normalize';
@@ -18,9 +19,8 @@ import { normalizeLocale } from '@/i18n/locale';
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
-const DATA_SCOPE_OPTIONS: Array<{ label: string; value: 'ALL' | 'TENANT' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM' }> = [
+const DATA_SCOPE_OPTIONS: Array<{ label: string; value: 'ALL' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM' }> = [
   { label: t('全部数据', 'All data'), value: 'ALL' },
-  { label: t('本租户数据', 'Current tenant data'), value: 'TENANT' },
   { label: t('本部门数据', 'Current department data'), value: 'DEPT' },
   { label: t('本部门及下级', 'Current department and descendants'), value: 'DEPT_AND_CHILD' },
   { label: t('仅本人数据', 'My data only'), value: 'SELF' },
@@ -31,6 +31,7 @@ const DATA_SCOPE_LABELS = DATA_SCOPE_OPTIONS.reduce<Record<string, string>>((acc
   return acc;
 }, {});
 const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'SELF' }];
+const ROLE_TYPE_DICT_FALLBACK_OPTIONS = ROLE_TYPE_OPTIONS as unknown as DictOption[];
 
 const formatPermissionGroupLabel = (permissionGroup: string) =>
   (
@@ -267,6 +268,7 @@ const RolePermissionEditor = ({
 };
 
 const RoleManagementPage = () => {
+  const { options: roleTypeOptions } = useDictOptions('sys_role_type', ROLE_TYPE_DICT_FALLBACK_OPTIONS);
   const {
     roleCrud,
     searchConfig,
@@ -326,6 +328,7 @@ const RoleManagementPage = () => {
     isPermissionOnlyEditor: roleActions.isPermissionOnlyEditor,
     handleRoleCodeBlur: roleActions.handleRoleCodeBlur,
     defaultHomeOptions,
+    roleTypeOptions,
     permissionEditor,
   };
   const detailDrawer: {
@@ -366,7 +369,7 @@ const RoleManagementPage = () => {
                 permission: 'system:role:create',
                 type: 'primary',
                 label: t('新增角色', 'Add role'),
-                onClick: roleCrud.drawer.openCreate,
+                onClick: roleActions.openCreate,
               },
               {
                 key: 'default-registration-role',
@@ -403,6 +406,7 @@ const RoleManagementPage = () => {
             isPermissionOnlyEditor={editorDrawer.isPermissionOnlyEditor}
             handleRoleCodeBlur={editorDrawer.handleRoleCodeBlur}
             defaultHomeOptions={editorDrawer.defaultHomeOptions}
+            roleTypeOptions={editorDrawer.roleTypeOptions}
           />
           <RolePermissionEditor
             permissionTree={editorDrawer.permissionEditor.permissionTree}
@@ -486,10 +490,12 @@ const RoleEditorBasicFields = ({
   isPermissionOnlyEditor,
   handleRoleCodeBlur,
   defaultHomeOptions,
+  roleTypeOptions,
 }: {
   isPermissionOnlyEditor: boolean;
   handleRoleCodeBlur: () => void;
   defaultHomeOptions: Array<{ label: string; value: string }>;
+  roleTypeOptions: DictOption[];
 }) => (
   <>
     <Form.Item
@@ -519,7 +525,7 @@ const RoleEditorBasicFields = ({
       <Input disabled={isPermissionOnlyEditor} />
     </Form.Item>
     <Form.Item name="roleType" label={t('角色类型', 'Role type')} rules={[{ required: true, message: t('请选择角色类型', 'Please select a role type') }]}>
-      <Select disabled={isPermissionOnlyEditor} options={ROLE_TYPE_OPTIONS as unknown as { label: string; value: string }[]} />
+      <Select disabled={isPermissionOnlyEditor} options={roleTypeOptions} />
     </Form.Item>
     <Form.Item name="defaultHomePath" label={t('默认访问页面', 'Default home page')} rules={[{ required: true, message: t('请选择默认访问页面', 'Please select a default home page') }]}>
       <Select

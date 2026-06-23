@@ -33,6 +33,25 @@ class FilePlatformEventPublisherTest {
     }
 
     @Test
+    void publishUploadedAfterCommitShouldUsePlatformTenantWhenFileIsMissing() {
+        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
+        FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(outboxService);
+        CurrentUser currentUser = currentUser();
+        currentUser.setCurrentTenantId(2002L);
+
+        publisher.publishUploadedAfterCommit(currentUser, null);
+
+        verify(outboxService).recordAfterCommit(
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(FilePlatformEventTypes.FILE_OBJECT_UPLOADED),
+                eq(1001L),
+                eq(2001L),
+                eq("FILE_OBJECT_UPLOADED:1001:file.object:none"),
+                any()
+        );
+    }
+
+    @Test
     void buildEventKeyShouldFallbackForMissingFileId() {
         FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(mock(PlatformEventOutboxService.class));
 

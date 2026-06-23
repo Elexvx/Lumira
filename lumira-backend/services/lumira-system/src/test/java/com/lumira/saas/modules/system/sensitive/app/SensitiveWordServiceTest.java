@@ -84,9 +84,33 @@ class SensitiveWordServiceTest {
         assertThat(queryOperations.lastListSql).contains("from sys_sensitive_word");
     }
 
+    @Test
+    void checkTextShouldNotBlockLogOnlyWord() {
+        SensitiveWordDictionaryCache dictionaryCache = mock(SensitiveWordDictionaryCache.class);
+        when(dictionaryCache.getMatcher(1001L)).thenReturn(new SensitiveWordMatcher(List.of(
+                new SensitiveWordMatcher.DictionaryEntry(1L, "敏感词", "敏感词", "DEFAULT", "MEDIUM", "LOG_ONLY", 20)
+        )));
+        SensitiveWordService service = new SensitiveWordService(
+                new RecordingQueryOperations(),
+                mock(AiKnowledgeTextExtractor.class),
+                mock(SensitiveWordPluginStateService.class),
+                dictionaryCache,
+                new SensitiveWordMetrics(new io.micrometer.core.instrument.simple.SimpleMeterRegistry())
+        );
+
+        SensitiveWordVO.CheckResult result = service.checkText(currentUser(), "这里有敏感词", "content");
+
+        assertThat(result.isHit()).isTrue();
+        assertThat(result.isBlocked()).isFalse();
+        assertThat(result.getMatches()).singleElement().satisfies(match -> {
+            assertThat(match.getMaskedWord()).isEqualTo("敏*词");
+            assertThat(match.getAction()).isEqualTo("LOG_ONLY");
+        });
+    }
+
     private CurrentUser currentUser() {
         CurrentUser currentUser = new CurrentUser();
-        currentUser.setCurrentTenantId(1001L);
+        currentUser.setCurrentTenantId(2002L);
         currentUser.setUserId(2001L);
         currentUser.setUsername("admin");
         currentUser.setAuthenticated(true);

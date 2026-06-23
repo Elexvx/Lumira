@@ -56,7 +56,7 @@ describe('message api fallback wrappers', () => {
       id: 100,
       tenantId: 1,
       messageType: 'MESSAGE',
-      targetScope: 'TENANT',
+      targetScope: 'PLATFORM',
       title: 'Welcome',
       content: 'Welcome to system',
       sourceType: 'MANUAL',
@@ -71,17 +71,17 @@ describe('message api fallback wrappers', () => {
     const { requestMessageCreate } = await import('@/services/message/api');
     const result = await requestMessageCreate({
       method: 'POST',
-      data: { title: 'Welcome', content: 'Welcome to system', channels: ['INBOX'], targetScope: 'TENANT' },
+      data: { title: 'Welcome', content: 'Welcome to system', channels: ['INBOX'], targetScope: 'PLATFORM' },
     });
 
     expect(result).toEqual(legacyMessage);
     expect(mocks.request).toHaveBeenNthCalledWith(1, '/v2/message/messages', {
       method: 'POST',
-      data: { title: 'Welcome', content: 'Welcome to system', channels: ['INBOX'], targetScope: 'TENANT' },
+      data: { title: 'Welcome', content: 'Welcome to system', channels: ['INBOX'], targetScope: 'PLATFORM' },
     });
     expect(mocks.request).toHaveBeenNthCalledWith(2, '/v1/message/messages', {
       method: 'POST',
-      data: { title: 'Welcome', content: 'Welcome to system', channels: ['INBOX'], targetScope: 'TENANT' },
+      data: { title: 'Welcome', content: 'Welcome to system', channels: ['INBOX'], targetScope: 'PLATFORM' },
     });
   });
 
@@ -121,7 +121,7 @@ describe('message api fallback wrappers', () => {
       records: [{
         id: 100,
         messageType: 'MESSAGE',
-        targetScope: 'TENANT',
+        targetScope: 'PLATFORM',
         title: 'Welcome',
         content: 'Welcome to system',
         sourceType: 'MANUAL',

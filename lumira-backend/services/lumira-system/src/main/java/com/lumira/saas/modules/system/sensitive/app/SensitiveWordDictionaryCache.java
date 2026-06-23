@@ -57,7 +57,7 @@ public class SensitiveWordDictionaryCache {
         try {
             List<DictionaryRow> rows = jdbcTemplate.query(
                     """
-                            select id, word, normalized_word as normalizedWord, category, severity
+                            select id, word, normalized_word as normalizedWord, category, severity, action
                             from sys_sensitive_word
                             where tenant_id = ?
                               and enabled = 1
@@ -74,6 +74,7 @@ public class SensitiveWordDictionaryCache {
                             row.getNormalizedWord(),
                             row.getCategory(),
                             row.getSeverity(),
+                            normalizeAction(row.getAction()),
                             severityPriority(row.getSeverity())
                     ))
                     .sorted(Comparator
@@ -100,6 +101,14 @@ public class SensitiveWordDictionaryCache {
         };
     }
 
+    private String normalizeAction(String action) {
+        if (action == null || action.isBlank()) {
+            return "BLOCK";
+        }
+        String normalized = action.trim().toUpperCase();
+        return "LOG_ONLY".equals(normalized) ? "LOG_ONLY" : "BLOCK";
+    }
+
     private record CacheKey(Long tenantId, long version) {
     }
 
@@ -109,6 +118,7 @@ public class SensitiveWordDictionaryCache {
         private String normalizedWord;
         private String category;
         private String severity;
+        private String action;
 
         public Long getId() {
             return id;
@@ -148,6 +158,14 @@ public class SensitiveWordDictionaryCache {
 
         public void setSeverity(String severity) {
             this.severity = severity;
+        }
+
+        public String getAction() {
+            return action;
+        }
+
+        public void setAction(String action) {
+            this.action = action;
         }
     }
 }

@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.sensitive.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 
@@ -75,9 +76,9 @@ public class SensitiveWordPluginStateService {
     }
 
     private Long resolveTenantId(CurrentUser currentUser) {
-        if (currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 }

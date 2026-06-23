@@ -2,6 +2,7 @@ package com.lumira.team.app;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.team.api.TeamInternalApi;
 import com.lumira.team.api.TeamMemberDTO;
 import com.lumira.team.api.TeamSummaryDTO;
@@ -22,6 +23,7 @@ public class TeamInternalApiService implements TeamInternalApi {
 
     @Override
     public TeamSummaryDTO getTeam(Long tenantId, Long teamId) {
+        Long effectiveTenantId = platformTenantId();
         List<TeamSummaryDTO> teams = jdbcTemplate.query(
                 """
                         select id, tenant_id as tenantId, team_code as teamCode, team_name as teamName,
@@ -31,9 +33,9 @@ public class TeamInternalApiService implements TeamInternalApi {
                           and id = ?
                           and deleted = 0
                         limit 1
-                        """,
+                """,
                 new BeanPropertyRowMapper<>(TeamSummaryDTO.class),
-                tenantId,
+                effectiveTenantId,
                 teamId
         );
         return teams.isEmpty() ? null : teams.get(0);
@@ -41,6 +43,7 @@ public class TeamInternalApiService implements TeamInternalApi {
 
     @Override
     public List<TeamMemberDTO> listActiveMembers(Long tenantId, Long teamId) {
+        Long effectiveTenantId = platformTenantId();
         return jdbcTemplate.query(
                 """
                         select id, tenant_id as tenantId, team_id as teamId, user_id as userId,
@@ -51,16 +54,16 @@ public class TeamInternalApiService implements TeamInternalApi {
                           and status = 'ACTIVE'
                           and deleted = 0
                         order by id asc
-                        """,
+                """,
                 new BeanPropertyRowMapper<>(TeamMemberDTO.class),
-                tenantId,
+                effectiveTenantId,
                 teamId
         );
     }
 
     @Override
     public TeamMemberDTO requireActiveMember(Long tenantId, Long teamId, Long userId) {
-        TeamMemberDTO member = activeMember(tenantId, teamId, userId);
+        TeamMemberDTO member = activeMember(platformTenantId(), teamId, userId);
         if (member == null) {
             throw new BizException(ErrorCode.FORBIDDEN, "Team membership required", "Team membership required");
         }
@@ -69,18 +72,18 @@ public class TeamInternalApiService implements TeamInternalApi {
 
     @Override
     public boolean isTeamOwner(Long tenantId, Long teamId, Long userId) {
-        return TeamPermissionService.OWNER.equals(permissionService.activeRole(tenantId, teamId, userId));
+        return TeamPermissionService.OWNER.equals(permissionService.activeRole(platformTenantId(), teamId, userId));
     }
 
     @Override
     public boolean isTeamAdmin(Long tenantId, Long teamId, Long userId) {
-        String role = permissionService.activeRole(tenantId, teamId, userId);
+        String role = permissionService.activeRole(platformTenantId(), teamId, userId);
         return TeamPermissionService.OWNER.equals(role) || TeamPermissionService.ADMIN.equals(role);
     }
 
     @Override
     public boolean isTeamManager(Long tenantId, Long teamId, Long userId) {
-        String role = permissionService.activeRole(tenantId, teamId, userId);
+        String role = permissionService.activeRole(platformTenantId(), teamId, userId);
         return TeamPermissionService.OWNER.equals(role)
                 || TeamPermissionService.ADMIN.equals(role)
                 || TeamPermissionService.MANAGER.equals(role);
@@ -105,5 +108,9 @@ public class TeamInternalApiService implements TeamInternalApi {
                 userId
         );
         return members.isEmpty() ? null : members.get(0);
+    }
+
+    private Long platformTenantId() {
+        return PlatformContext.compatibilityTenantId();
     }
 }

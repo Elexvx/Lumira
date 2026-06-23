@@ -73,7 +73,9 @@ const buildDetailActionColumn = (
       title: t('操作', 'Actions'),
   valueType: 'option',
   fixed: isDesktop ? 'right' : undefined,
-  width: 'var(--saas-spacing-100)',
+  width: 96,
+  align: 'center',
+  className: 'saas-table-action-column saas-table-action-column--compact',
   render: (_: unknown, record: AuditRecord) => (
     <TableActionBar
       isMobile={isMobile}

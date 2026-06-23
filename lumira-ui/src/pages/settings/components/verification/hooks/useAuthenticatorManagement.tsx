@@ -652,7 +652,7 @@ const buildAuthenticatorOrderColumn = ({
   tokenColorTextSecondary: string;
   isMobile: boolean;
 }): ProColumns<AuthenticatorRecord> => ({
-  title: '',
+  title: t('排序', 'Sort'),
   dataIndex: 'order',
   width: 'var(--saas-spacing-96)',
   search: false,

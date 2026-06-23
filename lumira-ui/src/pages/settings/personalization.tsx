@@ -117,6 +117,42 @@ const applyPersonalizationImageUpload = ({
   setFloatingPreview((prev) => ({ ...prev, apiDocsQrImageUrl: normalizedUrl }));
 };
 
+const applyPersonalizationImagePreview = ({
+  target,
+  previewUrl,
+  setPreviewState,
+  setWatermarkPreview,
+  setFloatingPreview,
+}: {
+  target: UploadTarget;
+  previewUrl: string;
+  setPreviewState: (updater: (prev: BrandingSettings) => BrandingSettings) => void;
+  setWatermarkPreview: (updater: (prev: WatermarkSettings) => WatermarkSettings) => void;
+  setFloatingPreview: (updater: (prev: FloatingWindowSettings) => FloatingWindowSettings) => void;
+}) => {
+  if (target === 'favicon') {
+    setPreviewState((prev) => ({ ...prev, websiteFaviconUrl: previewUrl }));
+    return;
+  }
+
+  if (target === 'logo') {
+    setPreviewState((prev) => ({ ...prev, websiteLogoUrl: previewUrl }));
+    return;
+  }
+
+  if (target === 'loginBackground') {
+    setPreviewState((prev) => ({ ...prev, loginBackgroundUrl: previewUrl }));
+    return;
+  }
+
+  if (target === 'watermark') {
+    setWatermarkPreview((prev) => ({ ...prev, imageUrl: previewUrl }));
+    return;
+  }
+
+  setFloatingPreview((prev) => ({ ...prev, apiDocsQrImageUrl: previewUrl }));
+};
+
 const PersonalizationSettingsPage = () => {
   const location = useLocation();
   const { initialState, setInitialState } = useInitialStateModel();
@@ -237,6 +273,17 @@ const PersonalizationSettingsPage = () => {
       }
 
       setUploadingTarget(target);
+      const previousBranding = brandingForm.getFieldsValue(true);
+      const previousWatermark = watermarkForm.getFieldsValue(true);
+      const previousFloating = floatingForm.getFieldsValue(true);
+      const localPreviewUrl = URL.createObjectURL(file);
+      applyPersonalizationImagePreview({
+        target,
+        previewUrl: localPreviewUrl,
+        setPreviewState,
+        setWatermarkPreview,
+        setFloatingPreview,
+      });
       try {
         const formData = new FormData();
         formData.append('file', file);
@@ -259,8 +306,12 @@ const PersonalizationSettingsPage = () => {
         });
         message.success(t('图片已上传', 'Image uploaded'));
       } catch (error) {
+        setPreviewState(normalizeBrandingSettings(previousBranding));
+        setWatermarkPreview((prev) => ({ ...prev, imageUrl: normalizeUploadUrl(previousWatermark.imageUrl) }));
+        setFloatingPreview(normalizeFloatingWindowSettings(previousFloating));
         showErrorMessage(error, t('图片上传失败，请稍后重试', 'Image upload failed. Please try again later.'));
       } finally {
+        window.setTimeout(() => URL.revokeObjectURL(localPreviewUrl), 30_000);
         setUploadingTarget(null);
       }
     },
@@ -365,10 +416,6 @@ const PersonalizationSettingsPage = () => {
     if (!canUpdate) return;
     setFloatingSaving(true);
     try {
-      const currentFloatingValues = floatingForm.getFieldsValue();
-      if (currentFloatingValues.apiDocsQrEnabled === false && !currentFloatingValues.apiDocsQrTitle?.trim()) {
-        floatingForm.setFieldValue('apiDocsQrTitle', DEFAULT_FLOATING_WINDOW_SETTINGS.apiDocsQrTitle);
-      }
       const floatingValues = await floatingForm.validateFields();
       const updatedFloating = normalizeFloatingWindowSettings(
         await request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
@@ -398,14 +445,16 @@ const PersonalizationSettingsPage = () => {
         data: normalizeAgreementSettings(agreementValues),
         autoRedirectOnUnauthorized: false,
       });
-      agreementForm.setFieldsValue(updatedAgreement);
+      const normalizedAgreement = normalizeAgreementSettings(updatedAgreement);
+      agreementForm.setFieldsValue(normalizedAgreement);
+      setInitialState((prev: AppInitialState | undefined) => (prev ? { ...prev, agreementSettings: normalizedAgreement } : prev));
       message.success(t('协议设置已保存并即时生效', 'Agreement settings saved and applied immediately'));
     } catch (error) {
       showErrorMessage(error, t('协议设置保存失败，请稍后重试', 'Failed to save agreement settings. Please try again later.'));
     } finally {
       setAgreementSaving(false);
     }
-  }, [agreementForm, canUpdate]);
+  }, [agreementForm, canUpdate, setInitialState]);
   const handleClearAgreementField = useCallback(
     (field: keyof AgreementSettings) => {
       const fieldLabelMap: Record<keyof AgreementSettings, string> = {
@@ -488,6 +537,7 @@ const PersonalizationSettingsPage = () => {
               brandingSettings: normalizedBranding,
               brandingRevision: (prev.brandingRevision ?? 0) + 1,
               watermarkSettings: normalizedWatermark,
+              agreementSettings: normalizedAgreement,
             }
           : prev,
       );
@@ -554,7 +604,6 @@ const PersonalizationSettingsPage = () => {
                   <WatermarkTab
                     formProps={watermarkFormProps}
                     watermarkPreview={watermarkPreview}
-                    previewState={previewState}
                     uploadingTarget={uploadingTarget}
                     watermarkSaving={watermarkSaving}
                     canUpdate={canUpdate}

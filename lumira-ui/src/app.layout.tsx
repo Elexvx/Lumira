@@ -606,8 +606,13 @@ const renderLayoutFooter = (brandingSettings: BrandingSettings) => {
 
   return (
     <div className="saas-layout-footer">
-      {brandingSettings.footerIcp ? <div className="saas-layout-footer__line">{renderBeianLink(brandingSettings.footerIcp, ICP_QUERY_URL)}</div> : null}
-      {brandingSettings.footerPoliceBeian ? <div className="saas-layout-footer__line">{renderBeianLink(brandingSettings.footerPoliceBeian, POLICE_BEIAN_QUERY_URL)}</div> : null}
+      {brandingSettings.footerIcp || brandingSettings.footerPoliceBeian ? (
+        <div className="saas-layout-footer__line saas-layout-footer__beian-line">
+          {brandingSettings.footerIcp ? renderBeianLink(brandingSettings.footerIcp, ICP_QUERY_URL) : null}
+          {brandingSettings.footerIcp && brandingSettings.footerPoliceBeian ? <span className="saas-layout-footer__separator" aria-hidden="true" /> : null}
+          {brandingSettings.footerPoliceBeian ? renderBeianLink(brandingSettings.footerPoliceBeian, POLICE_BEIAN_QUERY_URL) : null}
+        </div>
+      ) : null}
       {copyrightText ? <div className="saas-layout-footer__line">{copyrightText}</div> : null}
     </div>
   );

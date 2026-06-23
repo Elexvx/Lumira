@@ -40,7 +40,7 @@ final class SensitiveWordAutomaton {
             }
             for (SensitiveWordMatcher.DictionaryEntry entry : current.outputs) {
                 String key = fieldPath + "\u0000" + entry.normalizedWord();
-                deduplicated.putIfAbsent(key, new SensitiveWordMatcher.Match(fieldPath, entry.word(), entry.normalizedWord()));
+                deduplicated.putIfAbsent(key, new SensitiveWordMatcher.Match(fieldPath, entry.word(), entry.normalizedWord(), entry.action()));
                 if (deduplicated.size() >= maxMatches) {
                     matches.addAll(deduplicated.values());
                     return matches;

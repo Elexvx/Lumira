@@ -4,10 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.lumira.common.constant.CacheKeyConstants;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.RequestContextUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -113,8 +113,7 @@ public class RepeatSubmitAspect {
         SecurityContextFacade securityContextFacade = securityContextFacadeProvider.getIfAvailable();
         CurrentUser currentUser = securityContextFacade == null ? null : securityContextFacade.getCurrentUserOrNull();
         if (currentUser != null && currentUser.isAuthenticated() && currentUser.getUserId() != null) {
-            Long tenantId = currentUser.getCurrentTenantId() == null ? PlatformConstants.PLATFORM_TENANT_ID : currentUser.getCurrentTenantId();
-            return String.join(":", "user", String.valueOf(currentUser.getUserId()), String.valueOf(tenantId));
+            return String.join(":", "user", String.valueOf(currentUser.getUserId()), String.valueOf(PlatformContext.compatibilityTenantId()));
         }
         return String.join(":", "ip", clientIpResolver.resolve(request));
     }

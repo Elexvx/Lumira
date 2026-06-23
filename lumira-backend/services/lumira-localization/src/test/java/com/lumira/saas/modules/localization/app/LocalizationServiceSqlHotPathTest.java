@@ -26,6 +26,23 @@ class LocalizationServiceSqlHotPathTest {
     }
 
     @Test
+    void entryListCountShouldUseCurrentPageWindowCap() throws Exception {
+        String source = serviceSource("src/main/java/com/lumira/saas/modules/localization/app/LocalizationManagementAppService.java");
+
+        assertThat(source).contains(normalizeSql("query.setCountLimit(calculateEntryCountLimit(safePageSize, offset))"));
+        assertThat(source).contains(normalizeSql("safeOffset + safePageSize + 1L"));
+        assertThat(source).contains(normalizeSql("return Math.min(dynamicLimit, ENTRY_LIST_TOTAL_COUNT_CAP);"));
+    }
+
+    @Test
+    void localizationWritesShouldUsePlatformContextInsteadOfCurrentUserTenant() throws Exception {
+        String source = serviceSource("src/main/java/com/lumira/saas/modules/localization/app/LocalizationManagementAppService.java");
+
+        assertThat(source).contains(normalizeSql("PlatformContext.compatibilityTenantId()"));
+        assertThat(source).doesNotContain(normalizeSql("currentUser.getCurrentTenantId()"));
+    }
+
+    @Test
     void localizationHotPathMigrationShouldKeepReaderFriendlyIndexes() throws Exception {
         String sql = consolidatedSchemaSql().toLowerCase();
         assertThat(sql).contains("idx_sys_localization_entry_namespace_deleted_status");

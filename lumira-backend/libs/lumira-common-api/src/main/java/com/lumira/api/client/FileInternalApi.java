@@ -10,20 +10,20 @@ import java.util.List;
 public interface FileInternalApi {
 
     
-    FileObjectDTO uploadImage(
+    default FileObjectDTO uploadImage(
              MultipartFile file,
              String category,
              String remark
-    );
+    ) {
+        return uploadImage(file, category, remark, null);
+    }
 
-    default FileObjectDTO uploadImage(
+    FileObjectDTO uploadImage(
              MultipartFile file,
              String category,
              String remark,
              String bucket
-    ) {
-        return uploadImage(file, category, remark);
-    }
+    );
 
     
     default FileObjectDTO uploadDocument(

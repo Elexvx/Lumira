@@ -12,6 +12,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
@@ -64,7 +65,7 @@ public class PaymentV2Controller {
     public ApiResponse<List<PaymentProviderSettingsDTO>> providers() {
         CurrentUser currentUser = requireSettingsAdmin();
         return ApiResponse.success(
-                paymentManagementAppService.listProviderSettings(currentUser.getCurrentTenantId()),
+                paymentManagementAppService.listProviderSettings(platformTenantId()),
                 TraceContext.getRequestId()
         );
     }
@@ -73,7 +74,7 @@ public class PaymentV2Controller {
     public ApiResponse<PaymentProviderSettingsDTO> provider(@PathVariable String providerCode) {
         CurrentUser currentUser = requireSettingsAdmin();
         return ApiResponse.success(
-                paymentManagementAppService.paymentProviderSettings(currentUser.getCurrentTenantId(), providerCode),
+                paymentManagementAppService.paymentProviderSettings(platformTenantId(), providerCode),
                 TraceContext.getRequestId()
         );
     }
@@ -86,7 +87,7 @@ public class PaymentV2Controller {
     ) {
         CurrentUser currentUser = requireSettingsAdmin();
         return ApiResponse.success(
-                paymentManagementAppService.updatePaymentProviderSettings(currentUser.getCurrentTenantId(), currentUser.getUserId(), providerCode, request),
+                paymentManagementAppService.updatePaymentProviderSettings(platformTenantId(), currentUser.getUserId(), providerCode, request),
                 TraceContext.getRequestId()
         );
     }
@@ -96,7 +97,7 @@ public class PaymentV2Controller {
     public ApiResponse<PaymentProviderTestResultDTO> testProvider(@PathVariable String providerCode) {
         CurrentUser currentUser = requireSettingsAdmin();
         return ApiResponse.success(
-                paymentManagementAppService.testPaymentProvider(currentUser.getCurrentTenantId(), currentUser.getUserId(), providerCode),
+                paymentManagementAppService.testPaymentProvider(platformTenantId(), currentUser.getUserId(), providerCode),
                 TraceContext.getRequestId()
         );
     }
@@ -106,7 +107,7 @@ public class PaymentV2Controller {
     public ApiResponse<PaymentOrderDTO> createOrder(@Valid @RequestBody PaymentCreateOrderRequestDTO request) {
         CurrentUser currentUser = requirePermission("payment:order:create");
         return ApiResponse.success(
-                paymentTransactionService.createOrder(currentUser.getCurrentTenantId(), currentUser.getUserId(), request),
+                paymentTransactionService.createOrder(platformTenantId(), currentUser.getUserId(), request),
                 TraceContext.getRequestId()
         );
     }
@@ -114,7 +115,7 @@ public class PaymentV2Controller {
     @GetMapping("/orders/{orderNo}")
     public ApiResponse<PaymentOrderDTO> order(@PathVariable String orderNo) {
         CurrentUser currentUser = requirePermission("payment:order:view");
-        return ApiResponse.success(paymentTransactionService.getOrder(currentUser.getCurrentTenantId(), orderNo), TraceContext.getRequestId());
+        return ApiResponse.success(paymentTransactionService.getOrder(platformTenantId(), orderNo), TraceContext.getRequestId());
     }
 
     @PostMapping("/orders/{orderNo}/refunds")
@@ -125,7 +126,7 @@ public class PaymentV2Controller {
     ) {
         CurrentUser currentUser = requirePermission("payment:refund:create");
         return ApiResponse.success(
-                paymentTransactionService.createRefund(currentUser.getCurrentTenantId(), currentUser.getUserId(), orderNo, request),
+                paymentTransactionService.createRefund(platformTenantId(), currentUser.getUserId(), orderNo, request),
                 TraceContext.getRequestId()
         );
     }
@@ -133,7 +134,7 @@ public class PaymentV2Controller {
     @GetMapping("/refunds/{refundNo}")
     public ApiResponse<PaymentRefundDTO> refund(@PathVariable String refundNo) {
         CurrentUser currentUser = requirePermission("payment:refund:view");
-        return ApiResponse.success(paymentTransactionService.getRefund(currentUser.getCurrentTenantId(), refundNo), TraceContext.getRequestId());
+        return ApiResponse.success(paymentTransactionService.getRefund(platformTenantId(), refundNo), TraceContext.getRequestId());
     }
 
     @PostMapping("/webhooks/{providerCode}")
@@ -166,6 +167,10 @@ public class PaymentV2Controller {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
         permissionGuard.requirePermission(currentUser, permissionKey);
         return currentUser;
+    }
+
+    private Long platformTenantId() {
+        return PlatformContext.compatibilityTenantId();
     }
 
     private Map<String, String> extractHeaders(HttpServletRequest request) {

@@ -1,11 +1,11 @@
 package com.lumira.team.app;
 
 import com.lumira.common.enums.ErrorCode;
-import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.team.infrastructure.persistence.BeanPropertyRowMapper;
-import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.team.dto.TeamDTO;
+import com.lumira.team.repository.TeamInviteRepository;
+import com.lumira.team.repository.TeamJoinRequestRepository;
 import com.lumira.team.vo.TeamVO;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
@@ -29,20 +29,23 @@ public class TeamInviteService {
     private static final Set<String> ROLES_ON_JOIN = Set.of("ADMIN", "MANAGER", "MEMBER");
     private static final char[] INVITE_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789".toCharArray();
 
-    private final MyBatisQueryOperations jdbcTemplate;
     private final TeamAppService teamAppService;
     private final TeamPermissionService permissionService;
+    private final TeamInviteRepository teamInviteRepository;
+    private final TeamJoinRequestRepository teamJoinRequestRepository;
     private final TeamAuditPort auditPort;
 
     public TeamInviteService(
-            MyBatisQueryOperations jdbcTemplate,
             TeamAppService teamAppService,
             TeamPermissionService permissionService,
+            TeamInviteRepository teamInviteRepository,
+            TeamJoinRequestRepository teamJoinRequestRepository,
             TeamAuditPort auditPort
     ) {
-        this.jdbcTemplate = jdbcTemplate;
         this.teamAppService = teamAppService;
         this.permissionService = permissionService;
+        this.teamInviteRepository = teamInviteRepository;
+        this.teamJoinRequestRepository = teamJoinRequestRepository;
         this.auditPort = auditPort;
     }
 
@@ -57,14 +60,7 @@ public class TeamInviteService {
         String rawToken = generateRawToken();
         String hash = sha256(rawToken);
         String inviteCode = allocateInviteCode(tenantId, request.getInviteCode());
-        jdbcTemplate.update(
-                """
-                        insert into team_invite (
-                            tenant_id, team_id, invite_code, invite_token_hash, invite_type,
-                            role_on_join, expires_at, max_uses, used_count, need_approval,
-                            status, created_by, created_at, updated_at, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'ACTIVE', ?, ?, ?, 0)
-                        """,
+        Long inviteId = teamInviteRepository.createInvite(
                 tenantId,
                 teamId,
                 inviteCode,
@@ -73,12 +69,9 @@ public class TeamInviteService {
                 teamAppService.normalizeEnum(request.getRoleOnJoin(), "MEMBER", ROLES_ON_JOIN, "Invalid role on join"),
                 request.getExpiresAt(),
                 normalizeMaxUses(request.getMaxUses()),
-                Boolean.TRUE.equals(request.getNeedApproval()) ? 1 : 0,
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                LocalDateTime.now()
+                Boolean.TRUE.equals(request.getNeedApproval()),
+                currentUser.getUserId()
         );
-        Long inviteId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         TeamVO.Invite invite = requireInvite(tenantId, teamId, inviteId);
         invite.setRawToken(rawToken);
         invite.setInviteUrl("/team/join?token=" + rawToken);
@@ -89,31 +82,14 @@ public class TeamInviteService {
     public List<TeamVO.Invite> listInvites(CurrentUser currentUser, Long teamId) {
         Long tenantId = teamAppService.requireTenantId(currentUser);
         permissionService.requireTeamAdmin(tenantId, teamId, currentUser.getUserId());
-        return jdbcTemplate.query(
-                inviteSelect("""
-                        where tenant_id = ?
-                          and team_id = ?
-                          and deleted = 0
-                        order by created_at desc, id desc
-                        """),
-                new BeanPropertyRowMapper<>(TeamVO.Invite.class),
-                tenantId,
-                teamId
-        );
+        return teamInviteRepository.listInvites(tenantId, teamId);
     }
 
     @Transactional
     public boolean disableInvite(CurrentUser currentUser, Long teamId, Long inviteId) {
         Long tenantId = teamAppService.requireTenantId(currentUser);
         permissionService.requireTeamAdmin(tenantId, teamId, currentUser.getUserId());
-        int updated = jdbcTemplate.update(
-                "update team_invite set status = 'DISABLED', updated_at = ? where tenant_id = ? and team_id = ? and id = ? and deleted = 0",
-                LocalDateTime.now(),
-                tenantId,
-                teamId,
-                inviteId
-        );
-        if (updated == 0) {
+        if (!teamInviteRepository.disableInvite(tenantId, teamId, inviteId)) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Invite not found");
         }
         return true;
@@ -143,21 +119,10 @@ public class TeamInviteService {
     @Transactional
     public TeamVO.JoinResult joinByCode(CurrentUser currentUser, String inviteCode) {
         Long tenantId = teamAppService.requireTenantId(currentUser);
-        List<TeamVO.Invite> invites = jdbcTemplate.query(
-                inviteSelect("""
-                        where tenant_id = ?
-                          and invite_code = ?
-                          and deleted = 0
-                        limit 1
-                        """),
-                new BeanPropertyRowMapper<>(TeamVO.Invite.class),
-                tenantId,
-                normalizeInviteCode(inviteCode)
-        );
-        if (invites.isEmpty()) {
+        TeamVO.Invite invite = teamInviteRepository.findByCode(tenantId, normalizeInviteCode(inviteCode));
+        if (invite == null) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Invite not found");
         }
-        TeamVO.Invite invite = invites.get(0);
         validateInviteUsable(invite);
         return joinWithInvite(currentUser, invite);
     }
@@ -178,17 +143,7 @@ public class TeamInviteService {
     public List<TeamVO.JoinRequest> listJoinRequests(CurrentUser currentUser, Long teamId) {
         Long tenantId = teamAppService.requireTenantId(currentUser);
         permissionService.requireTeamAdmin(tenantId, teamId, currentUser.getUserId());
-        return jdbcTemplate.query(
-                joinRequestSelect("""
-                        where tenant_id = ?
-                          and team_id = ?
-                          and deleted = 0
-                        order by created_at desc, id desc
-                        """),
-                new BeanPropertyRowMapper<>(TeamVO.JoinRequest.class),
-                tenantId,
-                teamId
-        );
+        return teamJoinRequestRepository.listByTeam(tenantId, teamId);
     }
 
     @Transactional
@@ -200,20 +155,10 @@ public class TeamInviteService {
             throw TeamAppService.biz(ErrorCode.BIZ_ERROR, "Join request already reviewed");
         }
         teamAppService.ensureDirectMember(tenantId, teamId, joinRequest.getUserId(), currentUser.getUserId(), "MEMBER");
-        jdbcTemplate.update(
-                """
-                        update team_join_request
-                        set status = 'APPROVED', reviewed_by = ?, reviewed_at = ?, review_message = ?, updated_at = ?
-                        where tenant_id = ? and team_id = ? and id = ? and status = 'PENDING' and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                request == null ? null : teamAppService.trimToNull(request.getReviewMessage()),
-                LocalDateTime.now(),
-                tenantId,
-                teamId,
-                requestId
-        );
+        String reviewMessage = request == null ? null : teamAppService.trimToNull(request.getReviewMessage());
+        if (!teamJoinRequestRepository.approve(tenantId, teamId, requestId, currentUser.getUserId(), reviewMessage)) {
+            throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Pending join request not found");
+        }
         return requireJoinRequest(tenantId, teamId, requestId);
     }
 
@@ -221,22 +166,8 @@ public class TeamInviteService {
     public TeamVO.JoinRequest rejectJoinRequest(CurrentUser currentUser, Long teamId, Long requestId, TeamDTO.JoinReviewRequest request) {
         Long tenantId = teamAppService.requireTenantId(currentUser);
         permissionService.requireTeamAdmin(tenantId, teamId, currentUser.getUserId());
-        // Rejected requests intentionally do not release invite used_count. This keeps invite capacity accounting append-only for auditability.
-        int updated = jdbcTemplate.update(
-                """
-                        update team_join_request
-                        set status = 'REJECTED', reviewed_by = ?, reviewed_at = ?, review_message = ?, updated_at = ?
-                        where tenant_id = ? and team_id = ? and id = ? and status = 'PENDING' and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                request == null ? null : teamAppService.trimToNull(request.getReviewMessage()),
-                LocalDateTime.now(),
-                tenantId,
-                teamId,
-                requestId
-        );
-        if (updated == 0) {
+        String reviewMessage = request == null ? null : teamAppService.trimToNull(request.getReviewMessage());
+        if (!teamJoinRequestRepository.reject(tenantId, teamId, requestId, currentUser.getUserId(), reviewMessage)) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Pending join request not found");
         }
         return requireJoinRequest(tenantId, teamId, requestId);
@@ -252,7 +183,7 @@ public class TeamInviteService {
             return joinedResult(team);
         }
         if (Boolean.TRUE.equals(invite.getNeedApproval()) || "APPLY".equals(team.getJoinMode())) {
-            TeamVO.JoinRequest pendingRequest = findPendingRequest(tenantId, invite.getTeamId(), currentUser.getUserId());
+            TeamVO.JoinRequest pendingRequest = teamJoinRequestRepository.findPending(tenantId, invite.getTeamId(), currentUser.getUserId());
             if (pendingRequest == null) {
                 consumeInvite(invite);
                 pendingRequest = createPendingRequest(tenantId, invite.getTeamId(), currentUser.getUserId(), invite.getId(), null);
@@ -266,80 +197,19 @@ public class TeamInviteService {
 
     private TeamVO.JoinRequest createPendingRequest(Long tenantId, Long teamId, Long userId, Long inviteId, String applyMessage) {
         try {
-            jdbcTemplate.update(
-                    """
-                            insert into team_join_request (
-                                tenant_id, team_id, user_id, invite_id, apply_message, status, created_at, updated_at, deleted
-                            ) values (?, ?, ?, ?, ?, 'PENDING', ?, ?, 0)
-                            """,
-                    tenantId,
-                    teamId,
-                    userId,
-                    inviteId,
-                    teamAppService.trimToNull(applyMessage),
-                    LocalDateTime.now(),
-                    LocalDateTime.now()
-            );
-            Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+            Long id = teamJoinRequestRepository.createPending(tenantId, teamId, userId, inviteId, teamAppService.trimToNull(applyMessage));
             return requireJoinRequest(tenantId, teamId, id);
         } catch (DuplicateKeyException exception) {
-            List<TeamVO.JoinRequest> rows = jdbcTemplate.query(
-                    joinRequestSelect("""
-                            where tenant_id = ?
-                              and team_id = ?
-                              and user_id = ?
-                              and status = 'PENDING'
-                              and deleted = 0
-                            limit 1
-                            """),
-                    new BeanPropertyRowMapper<>(TeamVO.JoinRequest.class),
-                    tenantId,
-                    teamId,
-                    userId
-            );
-            if (!rows.isEmpty()) {
-                return rows.get(0);
+            TeamVO.JoinRequest existing = teamJoinRequestRepository.findPending(tenantId, teamId, userId);
+            if (existing != null) {
+                return existing;
             }
             throw exception;
         }
     }
 
-    private TeamVO.JoinRequest findPendingRequest(Long tenantId, Long teamId, Long userId) {
-        List<TeamVO.JoinRequest> rows = jdbcTemplate.query(
-                joinRequestSelect("""
-                        where tenant_id = ?
-                          and team_id = ?
-                          and user_id = ?
-                          and status = 'PENDING'
-                          and deleted = 0
-                        limit 1
-                        """),
-                new BeanPropertyRowMapper<>(TeamVO.JoinRequest.class),
-                tenantId,
-                teamId,
-                userId
-        );
-        return rows.isEmpty() ? null : rows.get(0);
-    }
-
     private void consumeInvite(TeamVO.Invite invite) {
-        int updated = jdbcTemplate.update(
-                """
-                        update team_invite
-                        set used_count = used_count + 1, updated_at = ?
-                        where tenant_id = ?
-                          and id = ?
-                          and status = 'ACTIVE'
-                          and deleted = 0
-                          and (expires_at is null or expires_at > ?)
-                          and (max_uses is null or used_count < max_uses)
-                        """,
-                LocalDateTime.now(),
-                invite.getTenantId(),
-                invite.getId(),
-                LocalDateTime.now()
-        );
-        if (updated == 0) {
+        if (!teamInviteRepository.consumeInviteQuota(invite)) {
             throw TeamAppService.biz(ErrorCode.BIZ_ERROR, "Invite is no longer usable");
         }
     }
@@ -361,56 +231,23 @@ public class TeamInviteService {
         if (!StringUtils.hasText(rawToken)) {
             throw TeamAppService.biz(ErrorCode.VALIDATION_ERROR, "Invite token is required");
         }
-        List<TeamVO.Invite> invites = jdbcTemplate.query(
-                inviteSelect("""
-                        where invite_token_hash = ?
-                          and deleted = 0
-                        limit 1
-                        """),
-                new BeanPropertyRowMapper<>(TeamVO.Invite.class),
-                sha256(rawToken)
-        );
-        return invites.isEmpty() ? null : invites.get(0);
+        return teamInviteRepository.findByTokenHash(sha256(rawToken));
     }
 
     private TeamVO.Invite requireInvite(Long tenantId, Long teamId, Long inviteId) {
-        List<TeamVO.Invite> invites = jdbcTemplate.query(
-                inviteSelect("""
-                        where tenant_id = ?
-                          and team_id = ?
-                          and id = ?
-                          and deleted = 0
-                        limit 1
-                        """),
-                new BeanPropertyRowMapper<>(TeamVO.Invite.class),
-                tenantId,
-                teamId,
-                inviteId
-        );
-        if (invites.isEmpty()) {
+        TeamVO.Invite invite = teamInviteRepository.findById(tenantId, teamId, inviteId);
+        if (invite == null) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Invite not found");
         }
-        return invites.get(0);
+        return invite;
     }
 
     private TeamVO.JoinRequest requireJoinRequest(Long tenantId, Long teamId, Long requestId) {
-        List<TeamVO.JoinRequest> rows = jdbcTemplate.query(
-                joinRequestSelect("""
-                        where tenant_id = ?
-                          and team_id = ?
-                          and id = ?
-                          and deleted = 0
-                        limit 1
-                        """),
-                new BeanPropertyRowMapper<>(TeamVO.JoinRequest.class),
-                tenantId,
-                teamId,
-                requestId
-        );
-        if (rows.isEmpty()) {
+        TeamVO.JoinRequest request = teamJoinRequestRepository.findById(tenantId, teamId, requestId);
+        if (request == null) {
             throw TeamAppService.biz(ErrorCode.NOT_FOUND, "Join request not found");
         }
-        return rows.get(0);
+        return request;
     }
 
     private TeamVO.Team requireActiveTeam(Long tenantId, Long teamId, Long currentUserId) {
@@ -469,11 +306,7 @@ public class TeamInviteService {
         }
         for (int attempt = 0; attempt < 20; attempt += 1) {
             String generated = generateInviteCode();
-            if (!jdbcTemplate.exists(
-                    "select 1 from team_invite where tenant_id = ? and invite_code = ? and status = 'ACTIVE' and deleted = 0 limit 1",
-                    tenantId,
-                    generated
-            )) {
+            if (!teamInviteRepository.existsActiveCode(tenantId, generated)) {
                 return generated;
             }
         }
@@ -502,30 +335,9 @@ public class TeamInviteService {
         return StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : defaultValue;
     }
 
-    private String inviteSelect(String tail) {
-        return """
-                select id, tenant_id as tenantId, team_id as teamId, invite_code as inviteCode,
-                       invite_type as inviteType, role_on_join as roleOnJoin, expires_at as expiresAt,
-                       max_uses as maxUses, used_count as usedCount,
-                       case when need_approval = 1 then true else false end as needApproval,
-                       status, created_at as createdAt
-                from team_invite
-                """ + tail;
-    }
-
-    private String joinRequestSelect(String tail) {
-        return """
-                select id, tenant_id as tenantId, team_id as teamId, user_id as userId,
-                       invite_id as inviteId, apply_message as applyMessage, status,
-                       reviewed_by as reviewedBy, reviewed_at as reviewedAt,
-                       review_message as reviewMessage, created_at as createdAt
-                from team_join_request
-                """ + tail;
-    }
-
     private void audit(CurrentUser currentUser, String module, String action, String type, String message) {
         if (auditPort != null) {
-            auditPort.log(currentUser.getCurrentTenantId(), currentUser.getUserId(), currentUser.getUsername(), module, action, type, "SUCCESS", message);
+            auditPort.log(PlatformContext.compatibilityTenantId(), currentUser.getUserId(), currentUser.getUsername(), module, action, type, "SUCCESS", message);
         }
     }
 }

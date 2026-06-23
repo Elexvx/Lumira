@@ -10,6 +10,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.message.config.MessageProperties;
 import com.lumira.message.dto.MessageDTO;
 import com.lumira.message.dto.MessageQueryModels.DeliveryLogQuery;
@@ -53,7 +54,8 @@ import java.util.stream.Collectors;
 public class MessageAppService {
 
     private static final String TYPE_MESSAGE = "MESSAGE";
-    private static final String TARGET_SCOPE_TENANT = "TENANT";
+    private static final String TARGET_SCOPE_PLATFORM = "PLATFORM";
+    private static final String TARGET_SCOPE_LEGACY_TENANT = "TENANT";
     private static final String TARGET_SCOPE_USER = "USER";
     private static final String TARGET_SCOPE_ROLE = "ROLE";
     private static final String STATUS_PUBLISHED = "PUBLISHED";
@@ -300,6 +302,7 @@ public class MessageAppService {
         if (channels.isEmpty()) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请至少选择一个通知渠道");
         }
+        request.setTargetScope(normalizeTargetScope(request.getTargetScope()));
         MessageVO.NoticeVO notice = null;
         if (channels.contains(CHANNEL_INBOX)) {
             notice = insertInboxNotice(
@@ -1345,16 +1348,28 @@ public class MessageAppService {
 
     private List<Recipient> resolveRecipients(Long tenantId, String targetScope, Long targetUserId, Long targetRoleId) {
         List<SystemUserContactSnapshotDTO> contacts;
-        if (TARGET_SCOPE_USER.equals(targetScope)) {
+        String normalizedTargetScope = normalizeTargetScope(targetScope);
+        if (TARGET_SCOPE_USER.equals(normalizedTargetScope)) {
             contacts = targetUserId == null ? List.of() : systemInternalApi.userContactsByIds(tenantId, List.of(targetUserId));
             return toRecipients(contacts);
         }
-        if (TARGET_SCOPE_ROLE.equals(targetScope)) {
+        if (TARGET_SCOPE_ROLE.equals(normalizedTargetScope)) {
             contacts = targetRoleId == null ? List.of() : systemInternalApi.userContactsByRole(tenantId, targetRoleId);
             return toRecipients(contacts);
         }
-        contacts = systemInternalApi.tenantUserContacts(tenantId);
+        contacts = systemInternalApi.platformUserContacts(tenantId);
         return toRecipients(contacts);
+    }
+
+    private String normalizeTargetScope(String targetScope) {
+        if (!StringUtils.hasText(targetScope)) {
+            return targetScope;
+        }
+        String normalized = targetScope.trim().toUpperCase();
+        if (TARGET_SCOPE_LEGACY_TENANT.equals(normalized)) {
+            return TARGET_SCOPE_PLATFORM;
+        }
+        return normalized;
     }
 
     private List<Recipient> toRecipients(List<SystemUserContactSnapshotDTO> contacts) {
@@ -1519,9 +1534,7 @@ public class MessageAppService {
     }
 
     private Long tenantId(CurrentUser currentUser) {
-        return currentUser == null || currentUser.getCurrentTenantId() == null
-                ? PlatformConstants.PLATFORM_TENANT_ID
-                : currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
     private record RoleVisibility(String version, List<Long> roleIds) {

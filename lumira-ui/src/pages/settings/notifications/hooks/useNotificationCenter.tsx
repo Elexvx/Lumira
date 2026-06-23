@@ -19,6 +19,7 @@ const notifyMessageCenterRefresh = () => {
 };
 
 type NotificationChannelKey = MessageChannel;
+type ChannelDrawerMode = 'detail' | 'edit';
 
 interface NotificationChannelRecord {
   key: NotificationChannelKey;
@@ -363,6 +364,7 @@ const useNotificationChannelManagement = ({
   const wechatConfigured = Boolean(wechatOfficialSettings?.configured);
 
   const [channelDrawerOpen, setChannelDrawerOpen] = useState(false);
+  const [channelDrawerMode, setChannelDrawerMode] = useState<ChannelDrawerMode>('detail');
   const [channelRecord, setChannelRecord] = useState<NotificationChannelRecord | null>(null);
   const [selectedChannelKeys, setSelectedChannelKeys] = useState<MessageChannel[]>([]);
   const [togglingChannelKey, setTogglingChannelKey] = useState<MessageChannel | null>(null);
@@ -376,8 +378,9 @@ const useNotificationChannelManagement = ({
   );
 
   const handleOpenChannelDrawer = useCallback(
-    (record: (typeof channelRecords)[number]) => {
+    (record: (typeof channelRecords)[number], mode: ChannelDrawerMode = 'detail') => {
       setChannelRecord(record);
+      setChannelDrawerMode(mode);
       setChannelDrawerOpen(true);
       if (record.key === 'EMAIL') {
         void reloadSmtpSettings();
@@ -393,7 +396,7 @@ const useNotificationChannelManagement = ({
     (channel: 'EMAIL' | 'WECHAT_OFFICIAL') => {
       const record = buildChannelRecord(channel, false);
       if (record) {
-        handleOpenChannelDrawer(record);
+        handleOpenChannelDrawer(record, 'edit');
       }
     },
     [handleOpenChannelDrawer],
@@ -401,6 +404,7 @@ const useNotificationChannelManagement = ({
 
   const closeChannelDrawer = useCallback(() => {
     setChannelDrawerOpen(false);
+    setChannelDrawerMode('detail');
     setChannelRecord(null);
   }, []);
 
@@ -482,11 +486,13 @@ const useNotificationChannelManagement = ({
   return {
     channelStatePack: {
       channelDrawerOpen,
+      channelDrawerMode,
       channelRecord,
       selectedChannelKeys,
       togglingChannelKey,
       channelRecords,
       setChannelDrawerOpen,
+      setChannelDrawerMode,
       setChannelRecord,
       setSelectedChannelKeys,
       setTogglingChannelKey,
@@ -521,7 +527,7 @@ type PublishFormValues = {
   title: string;
   content: string;
   channels: MessageChannel[];
-  targetScope: 'TENANT' | 'USER' | 'ROLE';
+  targetScope: 'PLATFORM' | 'USER' | 'ROLE';
   targetUserId?: number;
   targetRoleId?: number;
 };
@@ -531,7 +537,6 @@ interface UseNotificationCenterParams {
   canManageSmtp: boolean;
   canRetractMessage: boolean;
   requestOptions: { autoRedirectOnUnauthorized: boolean; silent: boolean };
-  onReloadArchive: () => void;
   onReloadLog: () => void;
 }
 
@@ -540,12 +545,10 @@ export const useNotificationCenter = ({
   canManageSmtp,
   canRetractMessage,
   requestOptions,
-  onReloadArchive,
   onReloadLog,
 }: UseNotificationCenterParams) => {
   const [detailRecord, setDetailRecord] = useState<MessageNoticeRecord | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [archiveOpen, setArchiveOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -556,7 +559,7 @@ export const useNotificationCenter = ({
       title: '',
       content: '',
       channels: ['INBOX'],
-      targetScope: 'TENANT',
+      targetScope: 'PLATFORM',
       targetUserId: undefined,
       targetRoleId: undefined,
     },
@@ -571,7 +574,7 @@ export const useNotificationCenter = ({
       title: '',
       content: '',
       channels: ['INBOX'],
-      targetScope: 'TENANT',
+      targetScope: 'PLATFORM',
       targetUserId: undefined,
       targetRoleId: undefined,
     });
@@ -612,7 +615,6 @@ export const useNotificationCenter = ({
       message.success(t('通知已提交发送', 'Notification queued for delivery'));
       closePublishDrawer();
       notifyMessageCenterRefresh();
-      onReloadArchive();
       onReloadLog();
     } catch (error) {
       if (error && typeof error === 'object' && 'errorFields' in error) {
@@ -622,7 +624,7 @@ export const useNotificationCenter = ({
     } finally {
       setPublishing(false);
     }
-  }, [canManualPublish, closePublishDrawer, form, onReloadArchive, onReloadLog, requestOptions]);
+  }, [canManualPublish, closePublishDrawer, form, onReloadLog, requestOptions]);
   const targetScope = Form.useWatch('targetScope', form);
   useEffect(() => {
     if (!publishOpen || !canManualPublish || roleOptions.length > 0) {
@@ -726,21 +728,18 @@ export const useNotificationCenter = ({
         message.success(t('站内信已撤回', 'In-app message retracted'));
         setDetailRecord((current) => (current && current.id === record.id ? { ...current, publishStatus: 'RETRACTED' } : current));
         notifyMessageCenterRefresh();
-        onReloadArchive();
         onReloadLog();
       } catch (error) {
         showErrorMessage(error, t('站内信撤回失败，请稍后重试', 'Failed to retract the in-app message. Please try again later.'));
       }
     },
-    [canRetractMessage, onReloadArchive, onReloadLog, requestOptions],
+    [canRetractMessage, onReloadLog, requestOptions],
   );
 
   return {
     detailRecord,
     detailOpen,
     handleCloseDetail,
-    archiveOpen,
-    setArchiveOpen,
     logOpen,
     setLogOpen,
     publishOpen,

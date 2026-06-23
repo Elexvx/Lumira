@@ -11,7 +11,7 @@ import { useDetailDescriptionsProps } from '@/features/detail/config';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { buildTableRequest, DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
-import { requestMessageArchive, requestMessageDeliveryLogs } from '@/services/message/api';
+import { requestMessageDeliveryLogs } from '@/services/message/api';
 import { useNotificationCenter } from './hooks/useNotificationCenter';
 import type { MessageDeliveryLogRecord, MessageNoticeRecord } from '@/types/api';
 import type { SmtpSettings, SmtpTestPayload, WechatOfficialAccountSettings } from '@/types/api';
@@ -24,7 +24,7 @@ import { normalizeLocale } from '@/i18n/locale';
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
-type NotificationPublishTargetScope = 'TENANT' | 'USER' | 'ROLE';
+type NotificationPublishTargetScope = 'PLATFORM' | 'USER' | 'ROLE';
 
 type NotificationChannelKey = 'INBOX' | 'EMAIL' | 'WECHAT_OFFICIAL';
 
@@ -40,6 +40,7 @@ interface NotificationChannelRecord {
 }
 
 const TARGET_SCOPE_LABELS: Record<string, string> = {
+  PLATFORM: t('全员', 'All users'),
   TENANT: t('全员', 'All users'),
   USER: t('指定用户', 'Specific users'),
   ROLE: t('角色分组', 'Role groups'),
@@ -116,7 +117,7 @@ const resolveSortParams = (sorter?: Record<string, unknown>) => {
   };
 };
 
-type MessageArchiveQuery = Record<string, unknown> & {
+type MessageLogQuery = Record<string, unknown> & {
   pageNo?: number;
   pageSize?: number;
   keyword?: string;
@@ -130,26 +131,8 @@ type MessageArchiveQuery = Record<string, unknown> & {
   sortOrder?: string;
 };
 
-const archiveMessages = (params: MessageArchiveQuery = {}) =>
-  requestMessageArchive({
-    method: 'GET',
-    params,
-    autoRedirectOnUnauthorized: false,
-    silent: true,
-  });
-
-const adaptArchiveResult = async (params: MessageArchiveQuery) => {
-  const result = await archiveMessages(params);
-  const currentPage = Number(params.pageNo || 1);
-  const pageSize = Number(params.pageSize || 10);
-  const hasMore = result.hasMore === true;
-  const boundedTotal = result.total ?? 0;
-  const estimatedTotal = hasMore ? Math.max(boundedTotal, currentPage * pageSize + result.records.length + 1) : boundedTotal;
-  return { ...result, total: estimatedTotal };
-};
-
-const adaptDeliveryLogResult = async (params: MessageArchiveQuery, sorter?: Record<string, unknown>) => {
-  const mergedParams = { ...params, ...(sorter ? resolveSortParams(sorter) : {}) } as MessageArchiveQuery;
+const adaptDeliveryLogResult = async (params: MessageLogQuery, sorter?: Record<string, unknown>) => {
+  const mergedParams = { ...params, ...(sorter ? resolveSortParams(sorter) : {}) } as MessageLogQuery;
   const result = await deliveryLogs(mergedParams);
   const currentPage = Number(params.pageNo || 1);
   const pageSize = Number(params.pageSize || 10);
@@ -159,7 +142,7 @@ const adaptDeliveryLogResult = async (params: MessageArchiveQuery, sorter?: Reco
   return { ...result, total: estimatedTotal };
 };
 
-const deliveryLogs = (params: MessageArchiveQuery = {}) =>
+const deliveryLogs = (params: MessageLogQuery = {}) =>
   requestMessageDeliveryLogs({
     method: 'GET',
     params,
@@ -272,96 +255,6 @@ const NotificationWechatOfficialChannelSettingsForm = ({
   </Form>
 );
 
-const buildArchiveColumns = ({
-  canRetractMessage,
-  handleOpenDetail,
-  handleRetract,
-}: {
-  canRetractMessage: boolean;
-  handleOpenDetail: (record: MessageNoticeRecord) => void;
-  handleRetract: (record: MessageNoticeRecord) => Promise<void>;
-}): ProColumns<MessageNoticeRecord>[] => {
-  const columns = [
-    {
-      title: t('关键字', 'Keyword'),
-      dataIndex: 'keyword',
-      hideInTable: true,
-      renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />,
-    },
-    {
-      title: t('标题', 'Title'),
-      dataIndex: 'title',
-      ellipsis: true,
-      copyable: true,
-      search: false,
-      render: (_: unknown, record: MessageNoticeRecord) => <Typography.Text strong>{record.title}</Typography.Text>,
-    },
-    {
-      title: t('目标范围', 'Target scope'),
-      dataIndex: 'targetScope',
-      width: 'var(--saas-spacing-120)',
-      valueEnum: { TENANT: { text: t('全员', 'All users') }, USER: { text: t('指定用户', 'Specific users') }, ROLE: { text: t('角色分组', 'Role groups') } },
-      renderFormItem: () => <Select allowClear options={[{ label: t('全员', 'All users'), value: 'TENANT' }, { label: t('指定用户', 'Specific users'), value: 'USER' }, { label: t('角色分组', 'Role groups'), value: 'ROLE' }]} placeholder={t('全部', 'All')} />,
-      render: (_: unknown, record: MessageNoticeRecord) => renderTag(TARGET_SCOPE_LABELS[record.targetScope] || record.targetScope, 'geekblue'),
-    },
-    {
-      title: t('目标用户', 'Target user'),
-      dataIndex: 'targetUserName',
-      width: 'var(--saas-spacing-160)',
-      search: false,
-      responsive: ['lg', 'xl', 'xxl'],
-      render: (_: unknown, record: MessageNoticeRecord) => (record.targetScope === 'USER' ? record.targetUserName || (record.targetUserId ? String(record.targetUserId) : '-') : '-'),
-    },
-    {
-      title: t('目标角色', 'Target role'),
-      dataIndex: 'targetRoleName',
-      width: 'var(--saas-spacing-160)',
-      search: false,
-      responsive: ['lg', 'xl', 'xxl'],
-      render: (_: unknown, record: MessageNoticeRecord) => (record.targetScope === 'ROLE' ? record.targetRoleName || (record.targetRoleId ? String(record.targetRoleId) : '-') : '-'),
-    },
-    {
-      title: t('状态', 'Status'),
-      dataIndex: 'publishStatus',
-      width: 'var(--saas-spacing-110)',
-      valueEnum: { PUBLISHED: { text: t('已发布', 'Published') }, RETRACTED: { text: t('已撤回', 'Retracted') } },
-      renderFormItem: () => <Select allowClear options={[{ label: t('已发布', 'Published'), value: 'PUBLISHED' }, { label: t('已撤回', 'Retracted'), value: 'RETRACTED' }]} placeholder={t('全部', 'All')} />,
-      render: (_: unknown, record: MessageNoticeRecord) => renderEnumTag(record.publishStatus, PUBLISH_STATUS_LABELS),
-    },
-    {
-      title: t('发布时间', 'Published at'),
-      dataIndex: 'publishedAt',
-      width: 'var(--saas-spacing-180)',
-      search: false,
-      sorter: true,
-      render: (_: unknown, record: MessageNoticeRecord) => formatDateTime(record.publishedAt || record.createdAt),
-    },
-    {
-      title: t('发布时间范围', 'Published at range'),
-      dataIndex: 'publishedAtRange',
-      hideInTable: true,
-      renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />,
-      search: buildRangeSearch(),
-    },
-    {
-      title: t('操作', 'Actions'),
-      valueType: 'option',
-      width: 'var(--saas-spacing-160)',
-      render: (_: unknown, record: MessageNoticeRecord) => (
-        <TableActionBar
-          isMobile={false}
-          items={[
-            { key: 'detail', label: t('详情', 'Details'), onClick: () => handleOpenDetail(record) },
-            { key: 'retract', label: t('撤回', 'Retract'), danger: true, hidden: record.publishStatus === 'RETRACTED' || !canRetractMessage, onClick: () => void handleRetract(record) },
-          ]}
-        />
-      ),
-    },
-  ] as unknown as ProColumns<MessageNoticeRecord>[];
-
-  return columns;
-};
-
 const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
   const columns = [
     {
@@ -398,7 +291,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
       title: t('目标范围', 'Target scope'),
       dataIndex: 'targetScope',
       width: 'var(--saas-spacing-120)',
-      renderFormItem: () => <Select allowClear options={[{ label: t('全员', 'All users'), value: 'TENANT' }, { label: t('指定用户', 'Specific users'), value: 'USER' }, { label: t('角色分组', 'Role groups'), value: 'ROLE' }]} placeholder={t('全部', 'All')} />,
+      renderFormItem: () => <Select allowClear options={[{ label: t('全员', 'All users'), value: 'PLATFORM' }, { label: t('指定用户', 'Specific users'), value: 'USER' }, { label: t('角色分组', 'Role groups'), value: 'ROLE' }]} placeholder={t('全部', 'All')} />,
       render: (_: unknown, record: MessageDeliveryLogRecord) => renderTag(TARGET_SCOPE_LABELS[record.targetScope] || record.targetScope, 'geekblue'),
     },
     {
@@ -452,7 +345,6 @@ const buildChannelColumns = ({
   canManageSmtp,
   tokenColorSuccess,
   togglingChannelKey,
-  setArchiveOpen,
   setLogOpen,
   handleDisableChannel,
   handleOpenChannelDrawer,
@@ -462,10 +354,9 @@ const buildChannelColumns = ({
   canManageSmtp: boolean;
   tokenColorSuccess: string;
   togglingChannelKey: NotificationChannelRecord['key'] | null;
-  setArchiveOpen: (open: boolean) => void;
   setLogOpen: (open: boolean) => void;
   handleDisableChannel: (record: NotificationChannelRecord) => void;
-  handleOpenChannelDrawer: (record: NotificationChannelRecord) => void;
+  handleOpenChannelDrawer: (record: NotificationChannelRecord, mode?: 'detail' | 'edit') => void;
 }): ProColumns<NotificationChannelRecord>[] => [
   { title: t('序号', 'No.'), dataIndex: 'order', width: 'var(--saas-spacing-80)', search: false },
   { title: t('通知标识', 'Notification key'), dataIndex: 'identifier', width: 'var(--saas-spacing-180)', copyable: true, search: false },
@@ -489,12 +380,12 @@ const buildChannelColumns = ({
   {
     title: t('操作', 'Actions'),
     valueType: 'option',
-    width: 'var(--saas-spacing-240)',
+    width: 'var(--saas-spacing-280)',
     fixed: isDesktop ? 'right' : undefined,
     render: (_: unknown, record: NotificationChannelRecord) => (
       <TableActionBar
         isMobile={isMobile}
-        inlineCount={isMobile ? 0 : 3}
+        inlineCount={isMobile ? 0 : 4}
         items={[
           {
             key: 'toggle',
@@ -505,20 +396,20 @@ const buildChannelColumns = ({
             onClick: () => void handleDisableChannel(record),
           },
           {
-            key: 'config',
-            label: t('配置', 'Configure'),
-            onClick: () => handleOpenChannelDrawer(record),
+            key: 'detail',
+            label: t('详情', 'Details'),
+            onClick: () => handleOpenChannelDrawer(record, 'detail'),
+          },
+          {
+            key: 'edit',
+            label: t('修改', 'Edit'),
+            disabled: !canManageSmtp || record.key === 'INBOX',
+            onClick: () => handleOpenChannelDrawer(record, 'edit'),
           },
           {
             key: 'logs',
             label: t('日志', 'Logs'),
             onClick: () => setLogOpen(true),
-          },
-          {
-            key: 'archive',
-            label: t('归档', 'Archive'),
-            hidden: record.key !== 'INBOX',
-            onClick: () => setArchiveOpen(true),
           },
           {
             key: 'delete',
@@ -535,7 +426,6 @@ const buildChannelColumns = ({
 
 const NotificationsPage = () => {
   const { token } = theme.useToken();
-  const archiveActionRef = useRef<ActionType | undefined>(undefined);
   const logActionRef = useRef<ActionType | undefined>(undefined);
   const { actionPermission, responsive, searchConfig } = usePagePermissionActions();
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile);
@@ -564,9 +454,9 @@ const NotificationsPage = () => {
     canManageSmtp,
     canRetractMessage,
     requestOptions,
-    onReloadArchive: () => archiveActionRef.current?.reload(),
     onReloadLog: () => logActionRef.current?.reload(),
   });
+  const channelDrawerEditing = notificationCenter.channelDrawerMode === 'edit';
   const publishTargetScope = Form.useWatch('targetScope', notificationCenter.publishFormProps.form) as NotificationPublishTargetScope | undefined;
   const channelColumns = useMemo(
     () =>
@@ -576,7 +466,6 @@ const NotificationsPage = () => {
         canManageSmtp,
         tokenColorSuccess: token.colorSuccess,
         togglingChannelKey: notificationCenter.togglingChannelKey,
-        setArchiveOpen: notificationCenter.setArchiveOpen,
         setLogOpen: notificationCenter.setLogOpen,
         handleDisableChannel: notificationCenter.handleDisableChannel,
         handleOpenChannelDrawer: notificationCenter.handleOpenChannelDrawer,
@@ -585,7 +474,6 @@ const NotificationsPage = () => {
       canManageSmtp,
       notificationCenter.handleDisableChannel,
       notificationCenter.handleOpenChannelDrawer,
-      notificationCenter.setArchiveOpen,
       notificationCenter.setLogOpen,
       notificationCenter.togglingChannelKey,
       responsive.isDesktop,
@@ -593,18 +481,9 @@ const NotificationsPage = () => {
       token.colorSuccess,
     ],
   );
-  const archiveColumns = useMemo(
-    () =>
-      buildArchiveColumns({
-        canRetractMessage,
-        handleOpenDetail: notificationCenter.handleOpenDetail,
-        handleRetract: notificationCenter.handleRetract,
-      }),
-    [canRetractMessage, notificationCenter.handleOpenDetail, notificationCenter.handleRetract],
-  );
   const logColumns = useMemo(() => buildLogColumns(), []);
   const handlePublishTargetScopeChange = (nextScope: NotificationPublishTargetScope) => {
-    if (nextScope === 'TENANT') {
+    if (nextScope === 'PLATFORM') {
       notificationCenter.publishFormProps.form?.setFieldsValue({ targetUserId: undefined, targetRoleId: undefined });
       notificationCenter.setUserOptions([]);
       notificationCenter.setUserLoading(false);
@@ -657,16 +536,22 @@ const NotificationsPage = () => {
       </ManagementPageBody>
 
       <ManagementDrawer
-        title={notificationCenter.channelRecord ? t(`配置${notificationCenter.channelRecord.title}`, `Configure ${notificationCenter.channelRecord.title}`) : t('配置通知渠道', 'Configure notification channel')}
+        title={
+          notificationCenter.channelRecord
+            ? channelDrawerEditing
+              ? t(`修改${notificationCenter.channelRecord.title}`, `Edit ${notificationCenter.channelRecord.title}`)
+              : t(`${notificationCenter.channelRecord.title}详情`, `${notificationCenter.channelRecord.title} details`)
+            : t('通知渠道详情', 'Notification channel details')
+        }
         open={notificationCenter.channelDrawerOpen}
         onClose={notificationCenter.closeChannelDrawer}
         footerActions={
-          notificationCenter.channelRecord?.key === 'EMAIL'
+          channelDrawerEditing && notificationCenter.channelRecord?.key === 'EMAIL'
             ? [
                 { key: 'cancel', label: t('取消', 'Cancel'), onClick: notificationCenter.closeChannelDrawer },
                 { key: 'save', label: t('保存', 'Save'), type: 'primary' as const, loading: notificationCenter.savingSmtpSettings, disabled: !canManageSmtp, onClick: notificationCenter.handleSaveSmtpSettings },
               ]
-            : notificationCenter.channelRecord?.key === 'WECHAT_OFFICIAL'
+            : channelDrawerEditing && notificationCenter.channelRecord?.key === 'WECHAT_OFFICIAL'
               ? [
                   { key: 'cancel', label: t('取消', 'Cancel'), onClick: notificationCenter.closeChannelDrawer },
                   { key: 'save', label: t('保存', 'Save'), type: 'primary' as const, loading: notificationCenter.savingWechatOfficialSettings, disabled: !canManageSmtp, onClick: notificationCenter.handleSaveWechatOfficialSettings },
@@ -678,7 +563,7 @@ const NotificationsPage = () => {
           <NotificationInboxInfo descriptionsProps={detailDescriptionsProps} />
         ) : notificationCenter.channelRecord?.key === 'EMAIL' ? (
           <NotificationEmailChannelSettingsForm
-            canManageSmtp={canManageSmtp}
+            canManageSmtp={channelDrawerEditing && canManageSmtp}
             loadingSmtpSettings={notificationCenter.loadingSmtpSettings}
             testingSmtpSettings={notificationCenter.testingSmtpSettings}
             smtpFormProps={notificationCenter.smtpFormProps}
@@ -688,7 +573,7 @@ const NotificationsPage = () => {
           />
         ) : (
           <NotificationWechatOfficialChannelSettingsForm
-            canManageSmtp={canManageSmtp}
+            canManageSmtp={channelDrawerEditing && canManageSmtp}
             loadingWechatOfficialSettings={notificationCenter.loadingWechatOfficialSettings}
             wechatOfficialAppSecretConfigured={notificationCenter.wechatOfficialAppSecretConfigured}
             formProps={notificationCenter.wechatOfficialFormProps}
@@ -704,22 +589,7 @@ const NotificationsPage = () => {
           isMobile={responsive.isMobile}
           pagination={{ showSizeChanger: true, pageSize: 10 }}
           search={searchConfig}
-          request={buildTableRequest((params, sorter) => adaptDeliveryLogResult(params as MessageArchiveQuery, sorter))}
-          toolBarRender={false}
-        />
-      </ManagementDrawer>
-
-      <ManagementDrawer title={t('通知归档', 'Notification archive')} open={notificationCenter.archiveOpen} onClose={() => notificationCenter.setArchiveOpen(false)} destroyOnHidden>
-        <ManagementTable<MessageNoticeRecord>
-          actionRef={archiveActionRef}
-          rowKey="id"
-          columns={archiveColumns}
-          isMobile={responsive.isMobile}
-          pagination={{ showSizeChanger: true, pageSize: 10 }}
-          search={searchConfig}
-          request={buildTableRequest((params, sorter) =>
-            adaptArchiveResult({ ...params, ...resolveSortParams(sorter) } as MessageArchiveQuery),
-          )}
+          request={buildTableRequest((params, sorter) => adaptDeliveryLogResult(params as MessageLogQuery, sorter))}
           toolBarRender={false}
         />
       </ManagementDrawer>
@@ -818,7 +688,7 @@ const NotificationsPage = () => {
             <Input.TextArea rows={8} placeholder={t('请输入要发送给用户的通知内容', 'Enter the content to send to users')} />
           </Form.Item>
           <Form.Item name="targetScope" label={t('目标范围', 'Target scope')} rules={[{ required: true, message: t('请选择目标范围', 'Please select a target scope') }]}>
-            <Select options={[{ label: t('全员', 'All users'), value: 'TENANT' }, { label: t('指定用户', 'Specific users'), value: 'USER' }, { label: t('角色分组', 'Role groups'), value: 'ROLE' }]} />
+            <Select options={[{ label: t('全员', 'All users'), value: 'PLATFORM' }, { label: t('指定用户', 'Specific users'), value: 'USER' }, { label: t('角色分组', 'Role groups'), value: 'ROLE' }]} />
           </Form.Item>
           {publishTargetScope === 'USER' ? (
             <Form.Item

@@ -61,7 +61,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void providers_shouldAllowProtectedAdminAndDelegateToManagementService() {
-        CurrentUser admin = currentUser(1001L, "admin", "payment:settings:view");
+        CurrentUser admin = currentUser(1001L, "admin", 2002L, "payment:settings:view");
         PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
         settings.setProviderCode("stripe");
         when(securityContextFacade.getCurrentUser()).thenReturn(admin);
@@ -86,8 +86,8 @@ class PaymentV2ControllerTest {
     }
 
     @Test
-    void updateProvider_shouldDelegateWithCurrentTenantAndOperator() {
-        CurrentUser admin = currentUser(1001L, "admin", "payment:settings:manage");
+    void updateProvider_shouldDelegateWithPlatformTenantAndOperator() {
+        CurrentUser admin = currentUser(1001L, "admin", null, "payment:settings:manage");
         PaymentProviderSettingsDTO request = new PaymentProviderSettingsDTO();
         PaymentProviderSettingsDTO result = new PaymentProviderSettingsDTO();
         result.setProviderCode("stripe");
@@ -102,7 +102,7 @@ class PaymentV2ControllerTest {
 
     @Test
     void createOrder_shouldCheckPermissionAndDelegateToTransactionService() {
-        CurrentUser currentUser = currentUser(42L, "alice", "payment:order:create");
+        CurrentUser currentUser = currentUser(42L, "alice", 2002L, "payment:order:create");
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -180,7 +180,11 @@ class PaymentV2ControllerTest {
     }
 
     private CurrentUser currentUser(Long userId, String username, String permission) {
-        return new CurrentUser(userId, username, 1001L, "session-1", 1, true, Set.of(permission));
+        return currentUser(userId, username, 1001L, permission);
+    }
+
+    private CurrentUser currentUser(Long userId, String username, Long tenantId, String permission) {
+        return new CurrentUser(userId, username, tenantId, "session-1", 1, true, Set.of(permission));
     }
 
     private HttpServletRequest requestWithHeaders(Map<String, String> headers) {

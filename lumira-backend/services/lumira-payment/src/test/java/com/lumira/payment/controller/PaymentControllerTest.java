@@ -1,6 +1,9 @@
 package com.lumira.payment.controller;
 
+import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
+import com.lumira.api.payment.PaymentOrderDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.payment.service.PaymentManagementAppService;
@@ -24,6 +27,44 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaymentControllerTest {
+
+    @Test
+    void createOrder_shouldUsePlatformTenantInsteadOfCurrentUserTenant() {
+        PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
+        PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
+        PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        PaymentController controller = new PaymentController(
+                paymentManagementAppService,
+                paymentTransactionService,
+                paymentWebhookService,
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser currentUser = new CurrentUser(42L, "alice", 2002L, "session-1", 1, true, Set.of("payment:order:create"));
+        PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
+                "stripe",
+                "ORD-1",
+                "subscription",
+                9900L,
+                "CNY",
+                "127.0.0.1",
+                null,
+                null,
+                Map.of("plan", "pro"),
+                "idem-1"
+        );
+        PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po_1", "subscription", 9900L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
+        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
+        when(paymentTransactionService.createOrder(1001L, 42L, request)).thenReturn(order);
+
+        var response = controller.createOrder(request);
+
+        assertThat(response.getData()).isSameAs(order);
+        verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
+        verify(paymentTransactionService).createOrder(1001L, 42L, request);
+    }
 
     @Test
     void webhook_shouldResolveTenantFromProviderIdentityInsteadOfTenantHeader() {

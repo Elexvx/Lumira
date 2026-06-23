@@ -29,6 +29,12 @@ const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
 const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'SELF' }];
 const DEFAULT_HOME_PATH = '/dashboard/home';
+const DEFAULT_CREATE_ROLE_VALUES: RoleEditorFormValues = {
+  roleType: 'CUSTOM',
+  defaultHomePath: DEFAULT_HOME_PATH,
+  permissionKeys: [],
+  dataScopes: DEFAULT_DATA_SCOPES,
+};
 type RoleEditorMode = 'create' | 'edit' | 'permissions';
 
 type RoleEditorFormValues = Record<string, unknown> & {
@@ -309,7 +315,7 @@ const buildRoleActionColumn = ({
         {
           key: 'permission',
           label: t('权限分配', 'Permissions'),
-          permission: 'system:role:permissions',
+          permission: 'system:role:grant',
           onClick: () => onOpenPermissions(record),
         },
         {
@@ -822,6 +828,16 @@ export const useRoleManagementPageData = () => {
       editorForm.setFieldsValue({ roleCode: trimmedRoleCode });
     }
   }, [editorForm]);
+  const openCreate = useCallback(() => {
+    roleCrud.drawer.openCreate();
+    setRoleEditorMode('create');
+    setSelectedRoleDetail(null);
+    setEditorDirty(false);
+    permissionEditor.setEditorLoading(false);
+    permissionEditor.resetEditorPermissionState();
+    editorForm.resetFields();
+    editorForm.setFieldsValue(DEFAULT_CREATE_ROLE_VALUES);
+  }, [editorForm, permissionEditor, roleCrud.drawer]);
   const closeEditorDrawer = useCallback(() => {
     roleCrud.drawer.close();
     setRoleEditorMode('create');
@@ -877,12 +893,12 @@ export const useRoleManagementPageData = () => {
   }, [closeEditorDrawer, editorDirty]);
   const canSaveRole =
     roleEditorMode === 'permissions'
-      ? actionPermission.can('system:role:permissions')
+      ? actionPermission.can('system:role:grant')
       : actionPermission.can(roleCrud.drawer.editingId ? 'system:role:update' : 'system:role:create');
   const isPermissionOnlyEditor = roleEditorMode === 'permissions';
   const editorFormProps = useStandardFormProps({
     form: editorForm,
-    initialValues: { roleType: 'CUSTOM', defaultHomePath: DEFAULT_HOME_PATH, permissionKeys: [], dataScopes: DEFAULT_DATA_SCOPES },
+    initialValues: DEFAULT_CREATE_ROLE_VALUES,
     onValuesChange: () => setEditorDirty(true),
     className: 'role-editor-form',
   });
@@ -988,6 +1004,7 @@ export const useRoleManagementPageData = () => {
     editorFormProps,
     detailProps,
     handleRoleCodeBlur,
+    openCreate,
     closeEditorDrawer,
     openEdit,
     openDetail,

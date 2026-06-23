@@ -9,6 +9,7 @@ import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.dict.app.DictRuntimeService;
 import com.lumira.saas.modules.system.export.ExportDTO;
 import com.lumira.saas.modules.system.export.ExportFieldVO;
 import com.lumira.saas.modules.system.export.ExportTaskService;
@@ -36,6 +37,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/system")
 public class SystemController {
+    private static final String PUBLIC_BRANDING_UPLOAD_BUCKET = "local";
 
     private final SystemManagementAppService systemManagementAppService;
     private final SecurityContextFacade securityContextFacade;
@@ -43,6 +45,7 @@ public class SystemController {
     private final FileInternalApi fileInternalApi;
     private final UserExportAppService userExportAppService;
     private final ExportTaskService exportTaskService;
+    private final DictRuntimeService dictRuntimeService;
 
     public SystemController(
             SystemManagementAppService systemManagementAppService,
@@ -50,7 +53,8 @@ public class SystemController {
             PermissionGuard permissionGuard,
             FileInternalApi fileInternalApi,
             UserExportAppService userExportAppService,
-            ExportTaskService exportTaskService
+            ExportTaskService exportTaskService,
+            DictRuntimeService dictRuntimeService
     ) {
         this.systemManagementAppService = systemManagementAppService;
         this.securityContextFacade = securityContextFacade;
@@ -58,6 +62,7 @@ public class SystemController {
         this.fileInternalApi = fileInternalApi;
         this.userExportAppService = userExportAppService;
         this.exportTaskService = exportTaskService;
+        this.dictRuntimeService = dictRuntimeService;
     }
 
     @GetMapping("/permissions")
@@ -230,7 +235,7 @@ public class SystemController {
     @PutMapping("/roles/{id}/permissions")
     @RepeatSubmit
     public ApiResponse<Boolean> updateRolePermissions(@PathVariable("id") Long id, @RequestBody SystemDTO.RolePermissionRequest request) {
-        require("system:role:permissions");
+        require("system:role:grant");
         return ApiResponse.success(systemManagementAppService.updateRolePermissions(securityContextFacade.getCurrentUser(), id, request.getPermissionKeys()), TraceContext.getRequestId());
     }
 
@@ -284,7 +289,7 @@ public class SystemController {
     @GetMapping("/dict-items")
     public ApiResponse<List<SystemVO.DictItemVO>> dictItemsByCode(@RequestParam("dictCode") String dictCode) {
         return ApiResponse.success(
-                systemManagementAppService.listEnabledDictItemsByCode(securityContextFacade.getCurrentUser(), dictCode),
+                dictRuntimeService.listEnabledItems(dictCode),
                 TraceContext.getRequestId()
         );
     }
@@ -460,11 +465,13 @@ public class SystemController {
 
     @GetMapping("/security-settings")
     public ApiResponse<SystemVO.SecuritySettingsVO> securitySettings() {
+        require("system:config:view");
         return ApiResponse.success(systemManagementAppService.getSecuritySettings(), TraceContext.getRequestId());
     }
 
     @GetMapping("/runtime-appearance-settings")
     public ApiResponse<SystemVO.RuntimeAppearanceSettingsVO> runtimeAppearanceSettings() {
+        require("system:config:view");
         return ApiResponse.success(
                 systemManagementAppService.getRuntimeAppearanceSettings(securityContextFacade.getCurrentUser()),
                 TraceContext.getRequestId()
@@ -497,6 +504,7 @@ public class SystemController {
 
     @GetMapping("/floating-window-settings")
     public ApiResponse<SystemVO.FloatingWindowSettingsVO> floatingWindowSettings() {
+        require("system:config:view");
         return ApiResponse.success(systemManagementAppService.getFloatingWindowSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
     }
 
@@ -509,6 +517,7 @@ public class SystemController {
 
     @GetMapping("/branding-settings")
     public ApiResponse<SystemVO.BrandingSettingsVO> brandingSettings() {
+        require("system:config:view");
         return ApiResponse.success(
                 systemManagementAppService.getBrandingSettings(securityContextFacade.getCurrentUser()),
                 TraceContext.getRequestId()
@@ -527,6 +536,7 @@ public class SystemController {
 
     @GetMapping("/agreement-settings")
     public ApiResponse<SystemVO.AgreementSettingsVO> agreementSettings() {
+        require("system:config:view");
         return ApiResponse.success(systemManagementAppService.getAgreementSettings(), TraceContext.getRequestId());
     }
 
@@ -544,7 +554,7 @@ public class SystemController {
     @RepeatSubmit
     public ApiResponse<String> uploadImage(@RequestParam("file") MultipartFile file) {
         require("system:config:update");
-        FileObjectDTO uploaded = fileInternalApi.uploadImage(file, "系统图片", "系统配置图片上传");
+        FileObjectDTO uploaded = fileInternalApi.uploadImage(file, "系统图片", "系统配置图片上传", PUBLIC_BRANDING_UPLOAD_BUCKET);
         return ApiResponse.success(uploaded.publicUrl(), TraceContext.getRequestId());
     }
 

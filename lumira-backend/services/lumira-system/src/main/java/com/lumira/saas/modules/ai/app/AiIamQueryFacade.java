@@ -32,13 +32,8 @@ class DefaultAiIamQueryFacade implements AiIamQueryFacade {
     public UserSearchResult searchUsers(Long tenantId, String keyword, String status, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, MAX_SEARCH_LIMIT));
         List<Object> args = new java.util.ArrayList<>();
-        args.add(tenantId);
         StringBuilder filterSql = new StringBuilder("""
                 from sys_user u
-                join sys_user_tenant ut
-                  on ut.user_id = u.id
-                 and ut.tenant_id = ?
-                 and ut.deleted = 0
                 where u.deleted = 0
                 """);
         appendUserSearchFilters(filterSql, args, keyword, status);

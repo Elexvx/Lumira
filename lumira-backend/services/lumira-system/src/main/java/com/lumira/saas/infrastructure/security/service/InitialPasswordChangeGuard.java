@@ -4,10 +4,9 @@ import com.lumira.common.security.CurrentUser;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.lumira.common.security.InitialAdminPassword;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -24,22 +23,14 @@ public class InitialPasswordChangeGuard {
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectProvider<PasswordEncoder> passwordEncoderProvider;
-    private final Environment environment;
     private final Cache<InitialPasswordCacheKey, Boolean> initialPasswordCache;
 
-    protected InitialPasswordChangeGuard(MyBatisQueryOperations jdbcTemplate, ObjectProvider<PasswordEncoder> passwordEncoderProvider) {
-        this(jdbcTemplate, passwordEncoderProvider, null);
-    }
-
-    @Autowired
     public InitialPasswordChangeGuard(
             MyBatisQueryOperations jdbcTemplate,
-            ObjectProvider<PasswordEncoder> passwordEncoderProvider,
-            Environment environment
+            ObjectProvider<PasswordEncoder> passwordEncoderProvider
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.passwordEncoderProvider = passwordEncoderProvider;
-        this.environment = environment;
         this.initialPasswordCache = CacheBuilder.newBuilder()
                 .maximumSize(INITIAL_PASSWORD_CACHE_MAX_ENTRIES)
                 .expireAfterWrite(INITIAL_PASSWORD_CACHE_TTL_MILLIS, TimeUnit.MILLISECONDS)
@@ -81,7 +72,7 @@ public class InitialPasswordChangeGuard {
                 DEFAULT_ADMIN_USERNAME
         );
         return StringUtils.hasText(passwordHash)
-                && passwordEncoderProvider.getObject().matches(InitialAdminPassword.resolve(environment), passwordHash);
+                && passwordEncoderProvider.getObject().matches(InitialAdminPassword.DEFAULT_PASSWORD, passwordHash);
     }
 
     private record InitialPasswordCacheKey(
@@ -93,7 +84,7 @@ public class InitialPasswordChangeGuard {
         private static InitialPasswordCacheKey from(CurrentUser currentUser) {
             return new InitialPasswordCacheKey(
                     currentUser.getUserId(),
-                    currentUser.getCurrentTenantId(),
+                    PlatformContext.compatibilityTenantId(),
                     currentUser.getSessionId(),
                     currentUser.getSessionVersion()
             );

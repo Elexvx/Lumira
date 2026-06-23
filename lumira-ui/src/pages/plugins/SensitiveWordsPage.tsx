@@ -1,6 +1,6 @@
 import { InboxOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ProColumns } from '@ant-design/pro-components';
-import { Alert, Empty, Form, Input, Select, Switch, Tag, Typography, Upload } from 'antd';
+import { Alert, Empty, Form, Input, Select, Typography, Upload } from 'antd';
 import type { UploadFile, UploadProps } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
@@ -21,18 +21,16 @@ import { confirmAction } from '@/utils/confirm';
 type SensitiveWordFormValues = {
   word: string;
   category?: string;
-  severity?: string;
-  enabled?: boolean;
+  action?: string;
 };
 
 type SensitiveWordsPageProps = {
   embedded?: boolean;
 };
 
-const SEVERITY_OPTIONS = [
-  { label: '高', value: 'HIGH' },
-  { label: '中', value: 'MEDIUM' },
-  { label: '低', value: 'LOW' },
+const ACTION_OPTIONS = [
+  { label: '拦截', value: 'BLOCK' },
+  { label: '仅记录', value: 'LOG_ONLY' },
 ];
 
 const CATEGORY_OPTIONS = [
@@ -40,8 +38,6 @@ const CATEGORY_OPTIONS = [
   { label: '导入', value: 'IMPORTED' },
   { label: '自定义', value: 'CUSTOM' },
 ];
-
-const renderEnabled = (enabled: boolean) => <Tag color={enabled ? 'green' : 'default'}>{enabled ? '启用' : '停用'}</Tag>;
 
 const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
   const { initialState } = useInitialStateModel();
@@ -60,7 +56,7 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
   const openCreate = useCallback(() => {
     crud.drawer.openCreate();
     form.resetFields();
-    form.setFieldsValue({ enabled: true, severity: 'MEDIUM', category: 'CUSTOM' });
+    form.setFieldsValue({ action: 'BLOCK', category: 'CUSTOM' });
   }, [crud.drawer, form]);
 
   const openEdit = useCallback((record: SensitiveWordRecord) => {
@@ -68,8 +64,7 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
     form.setFieldsValue({
       word: record.word,
       category: record.category ?? 'CUSTOM',
-      severity: record.severity ?? 'MEDIUM',
-      enabled: record.enabled,
+      action: record.action ?? 'BLOCK',
     });
   }, [crud.drawer, form]);
 
@@ -97,16 +92,6 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
       setSaving(false);
     }
   };
-
-  const toggleEnabled = useCallback(async (record: SensitiveWordRecord) => {
-    await request<boolean>(`/v1/sensitive-words/${record.id}/status`, {
-      method: 'PATCH',
-      data: { enabled: !record.enabled },
-      ...API_OPTS.NO_REDIRECT,
-    });
-    message.success(record.enabled ? '敏感词已停用' : '敏感词已启用');
-    crud.reloadTable();
-  }, [crud]);
 
   const deleteWord = useCallback(async (record: SensitiveWordRecord) => {
     confirmAction({
@@ -171,12 +156,6 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
         onClick: () => openEdit(record),
       },
       {
-        key: 'toggle',
-        label: record.enabled ? '停用' : '启用',
-        disabled: !actionPermission.can('plugin:sensitive-words:manage'),
-        onClick: () => void toggleEnabled(record),
-      },
-      {
         key: 'delete',
         label: '删除',
         danger: true,
@@ -189,24 +168,13 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
       { title: '敏感词', dataIndex: 'word' },
       { title: '分类', dataIndex: 'category', search: false },
       {
-        title: '等级',
-        dataIndex: 'severity',
+        title: '执行操作',
+        dataIndex: 'action',
         valueType: 'select',
         valueEnum: {
-          HIGH: { text: '高' },
-          MEDIUM: { text: '中' },
-          LOW: { text: '低' },
+          BLOCK: { text: '拦截' },
+          LOG_ONLY: { text: '仅记录' },
         },
-      },
-      {
-        title: '状态',
-        dataIndex: 'enabled',
-        valueType: 'select',
-        valueEnum: {
-          true: { text: '启用' },
-          false: { text: '停用' },
-        },
-        render: (_, record) => renderEnabled(record.enabled),
       },
       {
         title: '更新时间',
@@ -221,7 +189,7 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
         render: (_, record) => <TableActionBar isMobile={responsive.isMobile} items={actionItems(record)} />,
       },
     ];
-  }, [actionPermission, deleteWord, openEdit, responsive.isMobile, toggleEnabled]);
+  }, [actionPermission, deleteWord, openEdit, responsive.isMobile]);
 
   const content = (
     <>
@@ -231,7 +199,7 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
             description={<Alert type="warning" showIcon message="敏感词拦截插件当前未启用" />}
           />
         ) : (
-        <ManagementTable<SensitiveWordRecord, { keyword?: string; enabled?: boolean }>
+        <ManagementTable<SensitiveWordRecord, { keyword?: string }>
           rowKey="id"
           isMobile={responsive.isMobile}
           actionRef={crud.actionRef}
@@ -265,18 +233,15 @@ const SensitiveWordsPage = ({ embedded = false }: SensitiveWordsPageProps) => {
           { key: 'save', label: '保存', type: 'primary', loading: saving, disabled: !canCreate, onClick: () => void saveWord() },
         ]}
       >
-        <Form form={form} layout="vertical" initialValues={{ enabled: true, severity: 'MEDIUM', category: 'CUSTOM' }}>
+        <Form form={form} layout="vertical" initialValues={{ action: 'BLOCK', category: 'CUSTOM' }}>
           <Form.Item name="word" label="敏感词" rules={[{ required: true, message: '请输入敏感词' }, { max: 128, message: '长度不能超过 128 个字符' }]}>
             <Input maxLength={128} showCount />
           </Form.Item>
           <Form.Item name="category" label="分类">
             <Select options={CATEGORY_OPTIONS} />
           </Form.Item>
-          <Form.Item name="severity" label="等级">
-            <Select options={SEVERITY_OPTIONS} />
-          </Form.Item>
-          <Form.Item name="enabled" label="启用" valuePropName="checked">
-            <Switch />
+          <Form.Item name="action" label="执行操作">
+            <Select options={ACTION_OPTIONS} />
           </Form.Item>
         </Form>
       </ManagementDrawer>

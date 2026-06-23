@@ -20,13 +20,47 @@ export interface PermissionAwareToolbarAction<TValue> {
   hidden?: boolean;
 }
 
-const normalizePermissions = (permission?: PermissionRequirement): string[] => {
+export const normalizePermissions = (permission?: PermissionRequirement): string[] => {
   if (!permission) {
     return [];
   }
 
   return Array.isArray(permission) ? permission : [permission];
 };
+
+export const resolvePermissionAwareTableActions = (
+  items: PermissionAwareTableAction[],
+  canAccessAny: (permissions: string[]) => boolean,
+): TableActionItem[] =>
+  items.map((item) => {
+    const allowed = item.permission ? canAccessAny(normalizePermissions(item.permission)) : true;
+    const unauthorizedMode = item.unauthorizedMode ?? 'disable';
+    const hidden = Boolean(item.hidden) || (!allowed && unauthorizedMode === 'hide');
+    const disabled = Boolean(item.disabled) || (!allowed && unauthorizedMode === 'disable');
+
+    return {
+      ...item,
+      hidden,
+      disabled,
+    };
+  });
+
+export const resolvePermissionAwareToolbarActions = <TValue,>(
+  items: PermissionAwareToolbarAction<TValue>[],
+  canAccessAny: (permissions: string[]) => boolean,
+): TValue[] =>
+  items
+    .filter((item) => {
+      if (item.hidden) {
+        return false;
+      }
+      if (!item.permission) {
+        return true;
+      }
+
+      return canAccessAny(normalizePermissions(item.permission));
+    })
+    .map((item) => item.value);
 
 export const useActionPermission = () => {
   const access = useAccess();
@@ -49,31 +83,9 @@ export const useActionPermission = () => {
         return canAccessAny(permissionList);
       },
       buildTableActions: (items: PermissionAwareTableAction[]): TableActionItem[] =>
-        items.map((item) => {
-          const allowed = item.permission ? canAccessAny(normalizePermissions(item.permission)) : true;
-          const unauthorizedMode = item.unauthorizedMode ?? 'disable';
-          const hidden = Boolean(item.hidden) || (!allowed && unauthorizedMode === 'hide');
-          const disabled = Boolean(item.disabled) || (!allowed && unauthorizedMode === 'disable');
-
-          return {
-            ...item,
-            hidden,
-            disabled,
-          };
-        }),
+        resolvePermissionAwareTableActions(items, canAccessAny),
       buildToolbarActions: <TValue,>(items: PermissionAwareToolbarAction<TValue>[]) =>
-        items
-          .filter((item) => {
-            if (item.hidden) {
-              return false;
-            }
-            if (!item.permission) {
-              return true;
-            }
-
-            return canAccessAny(normalizePermissions(item.permission));
-          })
-          .map((item) => item.value),
+        resolvePermissionAwareToolbarActions(items, canAccessAny),
       withPermissionGuard: <TValue,>(
         permission: PermissionRequirement | undefined,
         allowedValue: TValue,

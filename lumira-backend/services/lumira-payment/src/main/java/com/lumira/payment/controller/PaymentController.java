@@ -8,7 +8,9 @@ import com.lumira.api.payment.PaymentProviderTestResultDTO;
 import com.lumira.api.payment.PaymentRefundDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
@@ -80,7 +82,7 @@ public class PaymentController {
         requireManage();
         var currentUser = securityContextFacade.getCurrentUser();
         return ApiResponse.success(
-                paymentManagementAppService.updatePaymentProviderSettings(currentUser.getCurrentTenantId(), currentUser.getUserId(), providerCode, request),
+                paymentManagementAppService.updatePaymentProviderSettings(currentTenantId(), currentUser.getUserId(), providerCode, request),
                 TraceContext.getRequestId()
         );
     }
@@ -91,7 +93,7 @@ public class PaymentController {
         requireTest();
         var currentUser = securityContextFacade.getCurrentUser();
         return ApiResponse.success(
-                paymentManagementAppService.testPaymentProvider(currentUser.getCurrentTenantId(), currentUser.getUserId(), providerCode),
+                paymentManagementAppService.testPaymentProvider(currentTenantId(), currentUser.getUserId(), providerCode),
                 TraceContext.getRequestId()
         );
     }
@@ -102,7 +104,7 @@ public class PaymentController {
         requireOrderManage();
         var currentUser = securityContextFacade.getCurrentUser();
         return ApiResponse.success(
-                paymentTransactionService.createOrder(currentUser.getCurrentTenantId(), currentUser.getUserId(), request),
+                paymentTransactionService.createOrder(currentTenantId(), currentUser.getUserId(), request),
                 TraceContext.getRequestId()
         );
     }
@@ -111,7 +113,7 @@ public class PaymentController {
     public ApiResponse<PaymentOrderDTO> order(@PathVariable String orderNo) {
         requireOrderView();
         var currentUser = securityContextFacade.getCurrentUser();
-        return ApiResponse.success(paymentTransactionService.getOrder(currentUser.getCurrentTenantId(), orderNo), TraceContext.getRequestId());
+        return ApiResponse.success(paymentTransactionService.getOrder(currentTenantId(), orderNo), TraceContext.getRequestId());
     }
 
     @PostMapping("/orders/{orderNo}/refunds")
@@ -123,7 +125,7 @@ public class PaymentController {
         requireRefundManage();
         var currentUser = securityContextFacade.getCurrentUser();
         return ApiResponse.success(
-                paymentTransactionService.createRefund(currentUser.getCurrentTenantId(), currentUser.getUserId(), orderNo, request),
+                paymentTransactionService.createRefund(currentTenantId(), currentUser.getUserId(), orderNo, request),
                 TraceContext.getRequestId()
         );
     }
@@ -132,7 +134,7 @@ public class PaymentController {
     public ApiResponse<PaymentRefundDTO> refund(@PathVariable String refundNo) {
         requireRefundView();
         var currentUser = securityContextFacade.getCurrentUser();
-        return ApiResponse.success(paymentTransactionService.getRefund(currentUser.getCurrentTenantId(), refundNo), TraceContext.getRequestId());
+        return ApiResponse.success(paymentTransactionService.getRefund(currentTenantId(), refundNo), TraceContext.getRequestId());
     }
 
     @PostMapping("/webhooks/{providerCode}")
@@ -188,10 +190,10 @@ public class PaymentController {
     }
 
     private Long currentTenantId() {
-        return securityContextFacade.getCurrentUser().getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
-    private void requireAny(com.lumira.common.security.CurrentUser currentUser, String... permissionKeys) {
+    private void requireAny(CurrentUser currentUser, String... permissionKeys) {
         for (String permissionKey : permissionKeys) {
             try {
                 permissionGuard.requirePermission(currentUser, permissionKey);
@@ -203,7 +205,7 @@ public class PaymentController {
         throw new com.lumira.common.exception.BizException(com.lumira.common.enums.ErrorCode.FORBIDDEN, "缺少权限");
     }
 
-    private void requireSettingsAdmin(com.lumira.common.security.CurrentUser currentUser) {
+    private void requireSettingsAdmin(CurrentUser currentUser) {
         if (currentUser != null
                 && (PROTECTED_ADMIN_ID.equals(currentUser.getUserId())
                 || (currentUser.getUsername() != null && PROTECTED_ADMIN_USERNAME.equalsIgnoreCase(currentUser.getUsername().trim())))) {

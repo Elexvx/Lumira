@@ -24,11 +24,13 @@ class AiIamQueryFacadeTest {
         assertThat(result.items().getFirst().get("email")).isEqualTo("a***@example.com");
         assertThat(queryOperations.countQueryCalled).isFalse();
         assertThat(queryOperations.requestedLimit).isEqualTo(100);
+        assertThat(queryOperations.lastUserSearchSql).doesNotContain("sys_user_tenant");
     }
 
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {
         private boolean countQueryCalled;
         private int requestedLimit;
+        private String lastUserSearchSql;
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
@@ -40,6 +42,7 @@ class AiIamQueryFacadeTest {
 
         @Override
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
+            lastUserSearchSql = sql;
             requestedLimit = ((Number) args[args.length - 1]).intValue();
             return List.of(Map.of(
                     "id", 100L,

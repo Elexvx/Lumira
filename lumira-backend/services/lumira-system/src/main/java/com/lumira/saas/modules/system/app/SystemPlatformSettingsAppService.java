@@ -4,6 +4,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
+import com.lumira.common.security.PlatformContext;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
@@ -312,7 +313,7 @@ public class SystemPlatformSettingsAppService {
         Long tenantId = currentTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
         upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_ENABLED_KEY, "接口文档二维码开关", String.valueOf(Boolean.TRUE.equals(request.getApiDocsQrEnabled())), "是否在全局悬浮窗展示接口文档二维码入口", operatorId);
-        upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_TITLE_KEY, "接口文档二维码标题", defaultIfBlank(request.getApiDocsQrTitle(), "微信扫码联系我们"), "接口文档二维码弹层标题", operatorId);
+        upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_TITLE_KEY, "接口文档二维码标题", defaultIfBlank(request.getApiDocsQrTitle(), ""), "接口文档二维码弹层标题", operatorId);
         upsertBrandingConfig(tenantId, FLOATING_API_DOCS_QR_IMAGE_URL_KEY, "接口文档二维码图片", defaultIfBlank(request.getApiDocsQrImageUrl(), ""), "接口文档悬浮入口展开后展示的二维码图片", operatorId);
         operationAuditService.log(
                 tenantId,
@@ -515,7 +516,7 @@ public class SystemPlatformSettingsAppService {
         Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, FLOATING_WINDOW_CONFIG_KEYS);
         SystemVO.FloatingWindowSettingsVO settings = new SystemVO.FloatingWindowSettingsVO();
         settings.setApiDocsQrEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_ENABLED_KEY), "false")));
-        settings.setApiDocsQrTitle(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_TITLE_KEY), "微信扫码联系我们"));
+        settings.setApiDocsQrTitle(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_TITLE_KEY), ""));
         settings.setApiDocsQrImageUrl(defaultIfBlank(valueByKey.get(FLOATING_API_DOCS_QR_IMAGE_URL_KEY), ""));
         return settings;
     }
@@ -884,10 +885,10 @@ public class SystemPlatformSettingsAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
     private JavaMailSenderImpl buildSmtpSender(Map<String, String> values) {

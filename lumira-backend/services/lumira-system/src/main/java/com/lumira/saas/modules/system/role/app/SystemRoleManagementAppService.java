@@ -5,6 +5,7 @@ import com.lumira.common.exception.BizException;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.iam.domain.model.IamDomainModels.RoleAggregate;
@@ -526,7 +527,10 @@ public class SystemRoleManagementAppService {
 
     private String normalizeScopeType(String scopeType) {
         String normalized = StringUtils.hasText(scopeType) ? scopeType.trim().toUpperCase(Locale.ROOT) : "SELF";
-        if (!Set.of("ALL", "TENANT", "DEPT", "DEPT_AND_CHILD", "SELF", "CUSTOM").contains(normalized)) {
+        if ("TENANT".equals(normalized)) {
+            return "ALL";
+        }
+        if (!Set.of("ALL", "DEPT", "DEPT_AND_CHILD", "SELF", "CUSTOM").contains(normalized)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "不支持的数据权限范围");
         }
         return normalized;
@@ -789,9 +793,9 @@ public class SystemRoleManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 }

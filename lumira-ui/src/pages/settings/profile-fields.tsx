@@ -75,18 +75,13 @@ const ProfileFieldManagementPage = () => {
     () => items.find((item) => item.fieldKey === editingFieldKey) || null,
     [editingFieldKey, items],
   );
-  const editingSystemField = Boolean(editingItem && !editingItem.custom);
+  const editingSystemFieldType = Boolean(editingItem && !editingItem.custom);
 
   const enabledWeight = useMemo(
     () =>
       items
         .filter((item) => item.visible)
         .reduce((total, item) => total + (item.weight || 0), 0),
-    [items],
-  );
-
-  const customFieldCount = useMemo(
-    () => items.filter((item) => item.custom).length,
     [items],
   );
 
@@ -233,6 +228,11 @@ const ProfileFieldManagementPage = () => {
     const nextItem: ProfileFieldSetting = editing && !editing.custom
       ? {
           ...editing,
+          fieldLabel: values.fieldLabel.trim(),
+          fieldDescription: values.fieldDescription?.trim() || editing.fieldDescription,
+          placeholder: values.placeholder?.trim() || null,
+          groupLabel: values.groupLabel?.trim() || editing.groupLabel,
+          fieldType: editing.fieldType,
           required: Boolean(values.required),
           visible: values.visible ?? true,
           weight: values.weight ?? editing.weight ?? 1,
@@ -452,12 +452,8 @@ const ProfileFieldManagementPage = () => {
               type={enabledWeight === 100 ? "success" : "info"}
               showIcon
               message={t(
-                `当前启用字段权重总和：${enabledWeight}，自定义字段：${customFieldCount} 个`,
-                `Enabled weight total: ${enabledWeight}; custom fields: ${customFieldCount}`,
-              )}
-              description={t(
-                "系统字段保持与当前个人中心资料兼容；学校、年级等业务字段可作为自定义字段新增，并随配置一起保存。",
-                "System fields remain compatible with the current profile center. Business fields such as school and grade can be added as custom fields and saved with this configuration.",
+                `当前启用字段权重总和：${enabledWeight}`,
+                `Enabled weight total: ${enabledWeight}`,
               )}
             />
             {loading ? (
@@ -544,7 +540,6 @@ const ProfileFieldManagementPage = () => {
             <Input
               placeholder={t("例如：学校", "e.g. School")}
               maxLength={64}
-              disabled={editingSystemField}
             />
           </Form.Item>
           <Form.Item
@@ -581,13 +576,12 @@ const ProfileFieldManagementPage = () => {
               },
             ]}
           >
-            <Select options={FIELD_TYPE_OPTIONS} disabled={editingSystemField} />
+            <Select options={FIELD_TYPE_OPTIONS} disabled={editingSystemFieldType} />
           </Form.Item>
           <Form.Item name="placeholder" label={t("占位提示", "Placeholder")}>
             <Input
               placeholder={t("例如：请输入学校名称", "e.g. Enter school name")}
               maxLength={120}
-              disabled={editingSystemField}
             />
           </Form.Item>
           <Form.Item name="fieldDescription" label={t("说明", "Description")}>
@@ -598,14 +592,12 @@ const ProfileFieldManagementPage = () => {
                 "Describe how this field is used",
               )}
               maxLength={200}
-              disabled={editingSystemField}
             />
           </Form.Item>
           <Form.Item name="groupLabel" label={t("分组", "Group")}>
             <Input
               placeholder={t("例如：教育信息", "e.g. Education")}
               maxLength={64}
-              disabled={editingSystemField}
             />
           </Form.Item>
           <Space size={tagWrapGap} wrap>

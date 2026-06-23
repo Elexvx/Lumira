@@ -15,6 +15,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,7 +25,8 @@ class TeamControllerTest {
         TeamAppService appService = mock(TeamAppService.class);
         TeamInviteService inviteService = mock(TeamInviteService.class);
         SecurityContextFacade security = mock(SecurityContextFacade.class);
-        TeamV2Controller controller = new TeamV2Controller(appService, inviteService, security, mock(PermissionGuard.class));
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        TeamV2Controller controller = new TeamV2Controller(appService, inviteService, security, permissionGuard);
         CurrentUser user = currentUser();
         TeamDTO.TeamCreateRequest request = new TeamDTO.TeamCreateRequest();
         request.setTeamName("Core Team");
@@ -33,6 +35,7 @@ class TeamControllerTest {
         when(appService.createTeam(user, request)).thenReturn(team);
 
         assertThat(controller.createTeam(request).getData()).isSameAs(team);
+        verify(permissionGuard).requirePermission(user, "team:create");
         verify(appService).createTeam(user, request);
     }
 
@@ -64,12 +67,14 @@ class TeamControllerTest {
     void memberEndpointsDelegateWithAuthenticatedUser() {
         TeamAppService appService = mock(TeamAppService.class);
         SecurityContextFacade security = mock(SecurityContextFacade.class);
-        TeamV2Controller controller = new TeamV2Controller(appService, mock(TeamInviteService.class), security, mock(PermissionGuard.class));
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        TeamV2Controller controller = new TeamV2Controller(appService, mock(TeamInviteService.class), security, permissionGuard);
         CurrentUser user = currentUser();
         when(security.getCurrentUser()).thenReturn(user);
         when(appService.listMembers(user, 2001L)).thenReturn(List.of());
 
         assertThat(controller.members(2001L).getData()).isEmpty();
+        verify(permissionGuard).requirePermission(user, "team:member:view");
         verify(appService).listMembers(user, 2001L);
     }
 
@@ -86,6 +91,101 @@ class TeamControllerTest {
         assertThat(controller.adminTeams().getData()).isEmpty();
         verify(permissionGuard).requirePermission(user, "team:view");
         verify(appService).listTeamsForAdmin(user);
+    }
+
+    @Test
+    void teamWriteEndpointsRequireActionPermissions() {
+        TeamAppService appService = mock(TeamAppService.class);
+        SecurityContextFacade security = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        TeamV2Controller controller = new TeamV2Controller(appService, mock(TeamInviteService.class), security, permissionGuard);
+        CurrentUser user = currentUser();
+        when(security.getCurrentUser()).thenReturn(user);
+
+        TeamDTO.TeamUpdateRequest updateRequest = new TeamDTO.TeamUpdateRequest();
+        TeamVO.Team team = new TeamVO.Team();
+        when(appService.updateTeam(user, 2001L, updateRequest)).thenReturn(team);
+        when(appService.updateTeamForAdmin(user, 2001L, updateRequest)).thenReturn(team);
+        when(appService.deleteTeam(user, 2001L)).thenReturn(true);
+        when(appService.deleteTeamForAdmin(user, 2001L)).thenReturn(true);
+
+        assertThat(controller.updateTeam(2001L, updateRequest).getData()).isSameAs(team);
+        assertThat(controller.adminUpdateTeam(2001L, updateRequest).getData()).isSameAs(team);
+        assertThat(controller.deleteTeam(2001L).getData()).isTrue();
+        assertThat(controller.adminDeleteTeam(2001L).getData()).isTrue();
+
+        verify(permissionGuard, times(2)).requirePermission(user, "team:update");
+        verify(permissionGuard, times(2)).requirePermission(user, "team:delete");
+        verify(appService).updateTeam(user, 2001L, updateRequest);
+        verify(appService).updateTeamForAdmin(user, 2001L, updateRequest);
+        verify(appService).deleteTeam(user, 2001L);
+        verify(appService).deleteTeamForAdmin(user, 2001L);
+    }
+
+    @Test
+    void memberWriteEndpointsRequireMemberActionPermissions() {
+        TeamAppService appService = mock(TeamAppService.class);
+        SecurityContextFacade security = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        TeamV2Controller controller = new TeamV2Controller(appService, mock(TeamInviteService.class), security, permissionGuard);
+        CurrentUser user = currentUser();
+        when(security.getCurrentUser()).thenReturn(user);
+
+        TeamDTO.MemberRoleRequest roleRequest = new TeamDTO.MemberRoleRequest();
+        roleRequest.setRole("MANAGER");
+        TeamDTO.TransferOwnerRequest transferRequest = new TeamDTO.TransferOwnerRequest();
+        transferRequest.setMemberId(3002L);
+        TeamVO.Member member = new TeamVO.Member();
+        TeamVO.Team team = new TeamVO.Team();
+        when(appService.updateMemberRole(user, 2001L, 3002L, roleRequest)).thenReturn(member);
+        when(appService.removeMember(user, 2001L, 3002L)).thenReturn(true);
+        when(appService.transferOwner(user, 2001L, transferRequest)).thenReturn(team);
+
+        assertThat(controller.updateMemberRole(2001L, 3002L, roleRequest).getData()).isSameAs(member);
+        assertThat(controller.removeMember(2001L, 3002L).getData()).isTrue();
+        assertThat(controller.transferOwner(2001L, transferRequest).getData()).isSameAs(team);
+
+        verify(permissionGuard, times(2)).requirePermission(user, "team:member:role-update");
+        verify(permissionGuard).requirePermission(user, "team:member:remove");
+        verify(appService).updateMemberRole(user, 2001L, 3002L, roleRequest);
+        verify(appService).removeMember(user, 2001L, 3002L);
+        verify(appService).transferOwner(user, 2001L, transferRequest);
+    }
+
+    @Test
+    void inviteReviewEndpointsRequireInvitePermission() {
+        TeamInviteService inviteService = mock(TeamInviteService.class);
+        SecurityContextFacade security = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        TeamV2Controller controller = new TeamV2Controller(mock(TeamAppService.class), inviteService, security, permissionGuard);
+        CurrentUser user = currentUser();
+        when(security.getCurrentUser()).thenReturn(user);
+
+        TeamDTO.InviteCreateRequest inviteRequest = new TeamDTO.InviteCreateRequest();
+        TeamDTO.JoinReviewRequest reviewRequest = new TeamDTO.JoinReviewRequest();
+        TeamVO.Invite invite = new TeamVO.Invite();
+        TeamVO.JoinRequest joinRequest = new TeamVO.JoinRequest();
+        when(inviteService.createInvite(user, 2001L, inviteRequest)).thenReturn(invite);
+        when(inviteService.listInvites(user, 2001L)).thenReturn(List.of(invite));
+        when(inviteService.disableInvite(user, 2001L, 4001L)).thenReturn(true);
+        when(inviteService.listJoinRequests(user, 2001L)).thenReturn(List.of(joinRequest));
+        when(inviteService.approveJoinRequest(user, 2001L, 5001L, reviewRequest)).thenReturn(joinRequest);
+        when(inviteService.rejectJoinRequest(user, 2001L, 5001L, reviewRequest)).thenReturn(joinRequest);
+
+        assertThat(controller.createInvite(2001L, inviteRequest).getData()).isSameAs(invite);
+        assertThat(controller.invites(2001L).getData()).containsExactly(invite);
+        assertThat(controller.disableInvite(2001L, 4001L).getData()).isTrue();
+        assertThat(controller.joinRequests(2001L).getData()).containsExactly(joinRequest);
+        assertThat(controller.approveJoinRequest(2001L, 5001L, reviewRequest).getData()).isSameAs(joinRequest);
+        assertThat(controller.rejectJoinRequest(2001L, 5001L, reviewRequest).getData()).isSameAs(joinRequest);
+
+        verify(permissionGuard, times(6)).requirePermission(user, "team:member:invite");
+        verify(inviteService).createInvite(user, 2001L, inviteRequest);
+        verify(inviteService).listInvites(user, 2001L);
+        verify(inviteService).disableInvite(user, 2001L, 4001L);
+        verify(inviteService).listJoinRequests(user, 2001L);
+        verify(inviteService).approveJoinRequest(user, 2001L, 5001L, reviewRequest);
+        verify(inviteService).rejectJoinRequest(user, 2001L, 5001L, reviewRequest);
     }
 
     private SecurityContextFacade unauthenticatedSecurity() {

@@ -20,6 +20,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.PlatformContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
@@ -570,10 +571,10 @@ public class AiCommandService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Tenant context is required");
+        if (currentUser == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
     private Long currentUserId(CurrentUser currentUser) {

@@ -389,32 +389,59 @@ body,
 }
 
 .saas-table-wrap .ant-table-cell-fix-left,
-.saas-table-wrap .ant-table-cell-fix-right {
+.saas-table-wrap .ant-table-cell-fix-right,
+.saas-table-wrap .ant-table-cell-fix-start,
+.saas-table-wrap .ant-table-cell-fix-end {
   background: var(--ant-color-bg-container) !important;
-  z-index: 2;
+  background-clip: padding-box;
+  z-index: 11;
 }
 
 .saas-table-wrap .ant-table-thead > tr > th.ant-table-cell-fix-left,
-.saas-table-wrap .ant-table-thead > tr > th.ant-table-cell-fix-right {
+.saas-table-wrap .ant-table-thead > tr > th.ant-table-cell-fix-right,
+.saas-table-wrap .ant-table-thead > tr > th.ant-table-cell-fix-start,
+.saas-table-wrap .ant-table-thead > tr > th.ant-table-cell-fix-end {
   background: var(--ant-table-header-bg, var(--ant-color-bg-container)) !important;
-  z-index: 4;
+  z-index: 13;
 }
 
 .saas-table-wrap .ant-table-tbody > tr > td.ant-table-cell-fix-left,
-.saas-table-wrap .ant-table-tbody > tr > td.ant-table-cell-fix-right {
+.saas-table-wrap .ant-table-tbody > tr > td.ant-table-cell-fix-right,
+.saas-table-wrap .ant-table-tbody > tr > td.ant-table-cell-fix-start,
+.saas-table-wrap .ant-table-tbody > tr > td.ant-table-cell-fix-end {
   background: var(--ant-color-bg-container) !important;
-  z-index: 3;
+  z-index: 12;
 }
 
 .saas-table-wrap .saas-table-action-column {
   min-width: 168px;
   max-width: 168px;
+  text-align: center !important;
   white-space: nowrap;
 }
 
+.saas-table-wrap .saas-table-action-column--compact {
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  text-align: center;
+}
+
+.saas-table-wrap .ant-table-thead > tr > th.saas-table-action-column {
+  text-align: center !important;
+}
+
+.saas-table-wrap .ant-table-thead > tr > th.saas-table-action-column--compact {
+  text-align: center !important;
+}
+
 .saas-table-wrap .saas-table-action-column .saas-table-action-bar {
-  justify-content: flex-end;
+  justify-content: center;
   width: 100%;
+}
+
+.saas-table-wrap .saas-table-action-column--compact .saas-table-action-bar {
+  justify-content: center;
 }
 
 .saas-ai-employees-card .ant-tabs-content .saas-table-wrap .ant-pro-card-body {
@@ -726,7 +753,7 @@ body,
 .saas-management-page .ant-table-tbody > tr > .ant-table-cell-fix-end {
   background: var(--ant-color-bg-container) !important;
   background-clip: padding-box;
-  z-index: 3 !important;
+  z-index: 12 !important;
 }
 
 .saas-management-page .ant-table-thead > tr > .ant-table-cell-fix,
@@ -736,7 +763,7 @@ body,
 .saas-management-page .ant-table-thead > tr > .ant-table-cell-fix-end {
   background: var(--ant-color-fill-quaternary) !important;
   background-clip: padding-box;
-  z-index: 4 !important;
+  z-index: 13 !important;
 }
 
 .saas-management-page .ant-table-tbody > tr:hover > .ant-table-cell-fix,
@@ -1333,6 +1360,23 @@ body,
 
 .saas-layout-footer__line {
   word-break: break-word;
+}
+
+.saas-layout-footer__beian-line {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: var(--saas-spacing-xs);
+  flex-wrap: wrap;
+}
+
+.saas-layout-footer__separator {
+  display: inline-block;
+  width: 1px;
+  height: 0.9em;
+  background: currentColor;
+  opacity: 0.35;
 }
 
 .saas-layout-footer__link {

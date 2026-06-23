@@ -9,6 +9,7 @@ import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.authorization.AuthorizationDecision;
 import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.common.security.authorization.AuthorizationService;
@@ -326,7 +327,7 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
             putIfText(arguments, "configKey", captureAfter(message, "配置键", "configKey", "键"));
             putIfText(arguments, "configName", captureAfter(message, "配置名称", "配置名", "名称"));
             putIfText(arguments, "configValue", captureAfter(message, "配置值", "值", "value"));
-            arguments.put("configScope", containsAny(normalized, "平台") ? "PLATFORM" : "TENANT");
+            arguments.put("configScope", "PLATFORM");
             return new ToolIntent("system.config.create", arguments);
         }
         Long configId = firstLongAfter(message, "配置ID", "配置id", "configId");
@@ -335,7 +336,7 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
             putIfText(arguments, "configKey", captureAfter(message, "配置键", "configKey", "键"));
             putIfText(arguments, "configName", captureAfter(message, "配置名称", "配置名", "名称"));
             putIfText(arguments, "configValue", captureAfter(message, "配置值", "值", "value"));
-            arguments.put("configScope", containsAny(normalized, "平台") ? "PLATFORM" : "TENANT");
+            arguments.put("configScope", "PLATFORM");
             return new ToolIntent("system.config.update", arguments);
         }
         return null;
@@ -750,10 +751,10 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser != null && currentUser.getCurrentTenantId() != null) {
-            return currentUser.getCurrentTenantId();
+        if (currentUser == null) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
-        throw new BizException(ErrorCode.FORBIDDEN, "Tenant context is required");
+        return PlatformContext.compatibilityTenantId();
     }
 
     private record ToolIntent(String toolCode, Map<String, Object> arguments) {

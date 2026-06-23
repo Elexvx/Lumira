@@ -1,11 +1,11 @@
 package com.lumira.saas.modules.plugin.controller;
 
 import com.lumira.common.api.ApiResponse;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
@@ -142,9 +142,7 @@ public class PluginV2Controller {
     }
 
     private Long currentTenantId() {
-        CurrentUser currentUser = currentUser();
-        Long tenantId = currentUser == null ? null : currentUser.getCurrentTenantId();
-        return tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
+        return PlatformContext.compatibilityTenantId();
     }
 
     private List<String> permissionList(CurrentUser currentUser) {

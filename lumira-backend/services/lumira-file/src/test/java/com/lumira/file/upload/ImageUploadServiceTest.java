@@ -91,11 +91,46 @@ class ImageUploadServiceTest {
         assertEquals("image/png", storedImage.contentType());
     }
 
+    @Test
+    void acceptsFaviconIcoUploads() throws Exception {
+        UploadProperties properties = new UploadProperties();
+        properties.setStorageRoot(Files.createTempDirectory("image-upload-test").toString());
+        ImageUploadService service = service(properties);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "favicon.ico",
+                "image/vnd.microsoft.icon",
+                minimalIcoBytes()
+        );
+
+        ImageUploadService.StoredImage storedImage = service.upload(file);
+
+        assertEquals(".ico", storedImage.fileExtension());
+        assertEquals("image/x-icon", storedImage.contentType());
+        assertTrue(storedImage.publicUrl().startsWith("/api/uploads/"));
+    }
+
     private byte[] generatePngBytes() throws Exception {
         BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         ImageIO.write(image, "png", output);
         return output.toByteArray();
+    }
+
+    private byte[] minimalIcoBytes() {
+        return new byte[] {
+                0x00, 0x00,
+                0x01, 0x00,
+                0x01, 0x00,
+                0x10, 0x10,
+                0x00,
+                0x00,
+                0x01, 0x00,
+                0x20, 0x00,
+                0x00, 0x00, 0x00, 0x00,
+                0x16, 0x00, 0x00, 0x00
+        };
     }
 
     private ImageUploadService service(UploadProperties properties) {

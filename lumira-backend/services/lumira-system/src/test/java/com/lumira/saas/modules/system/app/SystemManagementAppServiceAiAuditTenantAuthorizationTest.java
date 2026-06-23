@@ -39,7 +39,7 @@ class SystemManagementAppServiceAiAuditTenantAuthorizationTest {
         service.listAiCallLogs(tenantUser, null, null, null, null, null, null, 1, 10);
 
         assertTrue(queryOperations.lastSql.contains("and l.tenant_id = ?"));
-        assertEquals(2002L, queryOperations.lastArgs[0]);
+        assertEquals(1001L, queryOperations.lastArgs[0]);
     }
 
     @Test

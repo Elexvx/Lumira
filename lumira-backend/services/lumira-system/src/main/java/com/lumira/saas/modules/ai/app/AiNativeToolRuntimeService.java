@@ -9,6 +9,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.authorization.AuthorizationDecision;
 import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.common.security.authorization.AuthorizationService;
@@ -22,6 +23,7 @@ import com.lumira.saas.modules.system.vo.SystemVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -82,6 +84,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private final AiIamQueryFacade iamQueryFacade;
     private final FileInternalApi fileInternalApi;
     private final Map<String, NativeTool> tools;
+    private final boolean writeToolsEnabled;
 
     @Autowired
     DefaultAiNativeToolRuntimeService(
@@ -93,7 +96,8 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             AiPlatformQueryFacade platformQueryFacade,
             AiIamQueryFacade iamQueryFacade,
             SystemManagementAppService systemManagementAppService,
-            FileInternalApi fileInternalApi
+            FileInternalApi fileInternalApi,
+            @Value("${saas.ai.native-tools.write-enabled:false}") boolean writeToolsEnabled
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionGuard = permissionGuard;
@@ -104,12 +108,13 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         this.iamQueryFacade = iamQueryFacade == null ? new DefaultAiIamQueryFacade(jdbcTemplate) : iamQueryFacade;
         this.systemManagementAppService = systemManagementAppService;
         this.fileInternalApi = fileInternalApi;
+        this.writeToolsEnabled = writeToolsEnabled;
         this.tools = new LinkedHashMap<>(Map.of(
                 "system.permission.snapshot", new NativeTool(
                         "system.permission.snapshot",
                         "读取当前权限上下文",
                         "system",
-                        "返回当前登录用户、租户、角色、部门和权限集合，供 AI 判断可访问边界。",
+                        "返回当前登录用户、角色、部门和权限集合，供 AI 判断可访问边界。",
                         "LOW",
                         true,
                         false,
@@ -157,7 +162,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                         "system.user.search",
                         "检索系统用户",
                         "system",
-                        "按关键词和状态检索当前租户用户，返回脱敏后的基础资料。",
+                        "按关键词和状态检索平台用户，返回脱敏后的基础资料。",
                         "MEDIUM",
                         true,
                         false,
@@ -176,7 +181,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                         "file.object.search",
                         "检索文件对象",
                         "file",
-                        "按关键词、类型和状态检索文件中心对象；普通用户仅返回本人上传文件，全站文件管理员可检索租户文件。",
+                        "按关键词、类型和状态检索文件中心对象；普通用户仅返回本人上传文件，全站文件管理员可检索平台文件。",
                         "MEDIUM",
                         true,
                         false,
@@ -213,7 +218,9 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                         this::searchAiCallAuditLogs
                 )
         ));
-        registerWriteTools();
+        if (writeToolsEnabled) {
+            registerWriteTools();
+        }
     }
 
     private void registerWriteTools() {
@@ -221,7 +228,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 "system.user.create",
                 "新增系统用户",
                 "system",
-                "在当前租户和当前账号权限范围内新增系统用户。",
+                "在当前账号权限范围内新增系统用户。",
                 "HIGH",
                 false,
                 true,
@@ -244,7 +251,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 "system.user.update",
                 "编辑系统用户",
                 "system",
-                "在当前租户和当前账号权限范围内编辑用户基础信息、角色和部门。",
+                "在当前账号权限范围内编辑用户基础信息、角色和部门。",
                 "HIGH",
                 false,
                 true,
@@ -268,7 +275,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 "system.user.status",
                 "启停系统用户",
                 "system",
-                "在当前租户和当前账号权限范围内启用或禁用用户。",
+                "在当前账号权限范围内启用或禁用用户。",
                 "HIGH",
                 false,
                 true,
@@ -283,7 +290,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                 "system.user.delete",
                 "删除系统用户",
                 "system",
-                "在当前租户和当前账号权限范围内删除用户。",
+                "在当前账号权限范围内删除用户。",
                 "HIGH",
                 false,
                 true,
@@ -312,22 +319,22 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private void registerSystemManagementTools() {
-        tools.put("system.role.create", writeTool("system.role.create", "新增角色", "在当前租户新增角色。", "system:role:create", this::createRole));
-        tools.put("system.role.update", writeTool("system.role.update", "编辑角色", "在当前租户编辑角色基础信息。", "system:role:update", this::updateRole));
-        tools.put("system.role.permissions", writeTool("system.role.permissions", "配置角色权限", "在当前租户更新角色权限集合。", "system:role:permissions", this::updateRolePermissions));
-        tools.put("system.role.delete", writeTool("system.role.delete", "删除角色", "在当前租户删除角色。", "system:role:delete", this::deleteRole));
-        tools.put("system.menu.create", writeTool("system.menu.create", "新增菜单", "新增当前租户自定义菜单。", "system:menu:create", this::createMenu));
-        tools.put("system.menu.update", writeTool("system.menu.update", "编辑菜单", "编辑当前租户自定义菜单。", "system:menu:update", this::updateMenu));
-        tools.put("system.menu.status", writeTool("system.menu.status", "启停菜单", "更新当前租户菜单状态。", "system:menu:status", this::updateMenuStatus));
-        tools.put("system.menu.delete", writeTool("system.menu.delete", "删除菜单", "删除当前租户自定义菜单。", "system:menu:delete", this::deleteMenu));
-        tools.put("system.dict_type.create", writeTool("system.dict_type.create", "新增字典类型", "新增当前租户字典类型。", "system:dict:create", this::createDictType));
-        tools.put("system.dict_type.update", writeTool("system.dict_type.update", "编辑字典类型", "编辑当前租户字典类型。", "system:dict:update", this::updateDictType));
-        tools.put("system.dict_type.delete", writeTool("system.dict_type.delete", "删除字典类型", "删除当前租户非系统字典类型。", "system:dict:delete", this::deleteDictType));
-        tools.put("system.dict_item.create", writeTool("system.dict_item.create", "新增字典项", "新增当前租户字典项。", "system:dict:create", this::createDictItem));
-        tools.put("system.dict_item.update", writeTool("system.dict_item.update", "编辑字典项", "编辑当前租户字典项。", "system:dict:update", this::updateDictItem));
-        tools.put("system.dict_item.delete", writeTool("system.dict_item.delete", "删除字典项", "删除当前租户字典项。", "system:dict:delete", this::deleteDictItem));
-        tools.put("system.config.create", writeTool("system.config.create", "新增系统配置", "新增非敏感平台或租户配置。", "system:config:update", this::createConfig));
-        tools.put("system.config.update", writeTool("system.config.update", "编辑系统配置", "编辑非敏感平台或租户配置。", "system:config:update", this::updateConfig));
+        tools.put("system.role.create", writeTool("system.role.create", "新增角色", "新增平台角色。", "system:role:create", this::createRole));
+        tools.put("system.role.update", writeTool("system.role.update", "编辑角色", "编辑平台角色基础信息。", "system:role:update", this::updateRole));
+        tools.put("system.role.permissions", writeTool("system.role.permissions", "配置角色权限", "更新平台角色权限集合。", "system:role:grant", this::updateRolePermissions));
+        tools.put("system.role.delete", writeTool("system.role.delete", "删除角色", "删除平台角色。", "system:role:delete", this::deleteRole));
+        tools.put("system.menu.create", writeTool("system.menu.create", "新增菜单", "新增平台自定义菜单。", "system:menu:create", this::createMenu));
+        tools.put("system.menu.update", writeTool("system.menu.update", "编辑菜单", "编辑平台自定义菜单。", "system:menu:update", this::updateMenu));
+        tools.put("system.menu.status", writeTool("system.menu.status", "启停菜单", "更新平台菜单状态。", "system:menu:status", this::updateMenuStatus));
+        tools.put("system.menu.delete", writeTool("system.menu.delete", "删除菜单", "删除平台自定义菜单。", "system:menu:delete", this::deleteMenu));
+        tools.put("system.dict_type.create", writeTool("system.dict_type.create", "新增字典类型", "新增平台字典类型。", "system:dict:create", this::createDictType));
+        tools.put("system.dict_type.update", writeTool("system.dict_type.update", "编辑字典类型", "编辑平台字典类型。", "system:dict:update", this::updateDictType));
+        tools.put("system.dict_type.delete", writeTool("system.dict_type.delete", "删除字典类型", "删除平台非系统字典类型。", "system:dict:delete", this::deleteDictType));
+        tools.put("system.dict_item.create", writeTool("system.dict_item.create", "新增字典项", "新增平台字典项。", "system:dict:create", this::createDictItem));
+        tools.put("system.dict_item.update", writeTool("system.dict_item.update", "编辑字典项", "编辑平台字典项。", "system:dict:update", this::updateDictItem));
+        tools.put("system.dict_item.delete", writeTool("system.dict_item.delete", "删除字典项", "删除平台字典项。", "system:dict:delete", this::deleteDictItem));
+        tools.put("system.config.create", writeTool("system.config.create", "新增系统配置", "新增非敏感平台配置。", "system:config:update", this::createConfig));
+        tools.put("system.config.update", writeTool("system.config.update", "编辑系统配置", "编辑非敏感平台配置。", "system:config:update", this::updateConfig));
         tools.put("platform.branding.update", writeTool("platform.branding.update", "更新品牌设置", "更新网站名称、Logo、页脚等品牌设置。", "system:config:update", this::updateBrandingSettings));
         tools.put("platform.agreement.update", writeTool("platform.agreement.update", "更新协议设置", "更新用户协议与隐私协议设置。", "system:config:update", this::updateAgreementSettings));
         tools.put("platform.watermark.update", writeTool("platform.watermark.update", "更新水印设置", "更新平台水印设置。", "system:config:update", this::updateWatermarkSettings));
@@ -724,7 +731,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         ensureNonSensitiveConfig(context.arguments());
         SystemDTO.ConfigUpsertRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.ConfigUpsertRequest.class);
         if (!StringUtils.hasText(request.getConfigScope())) {
-            request.setConfigScope("TENANT");
+            request.setConfigScope("PLATFORM");
         }
         SystemVO.ConfigVO config = systemManagementAppService.createConfig(context.currentUser(), request);
         return Map.of("config", config);
@@ -1120,10 +1127,10 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser != null && currentUser.getCurrentTenantId() != null) {
-            return currentUser.getCurrentTenantId();
+        if (currentUser == null) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
-        throw new BizException(ErrorCode.FORBIDDEN, "Tenant context is required");
+        return PlatformContext.compatibilityTenantId();
     }
 
     private record ToolExecutionContext(CurrentUser currentUser, Long tenantId, Map<String, Object> arguments) {

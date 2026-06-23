@@ -9,6 +9,7 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import { request } from '@/services/common/request';
 import type { AuditLogRecord, DashboardSummary } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import './Home.css';
 import { getLocale } from '@umijs/max';
@@ -247,7 +248,7 @@ const DashboardHomePage = () => {
         <ProCard variant="borderless" className="saas-dashboard-home__hero">
           <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
             <Space align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} wrap>
-              <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)} src={currentUser?.avatarUrl || undefined}>
+              <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)} src={normalizeUploadUrl(currentUser?.avatarUrl) || undefined}>
                 {buildInitials(currentUser?.nickname || currentUser?.realName || currentUser?.username)}
               </Avatar>
               <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.microGap, responsive.isMobile)}>

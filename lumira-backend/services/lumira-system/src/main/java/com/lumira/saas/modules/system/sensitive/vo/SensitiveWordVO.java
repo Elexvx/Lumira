@@ -11,6 +11,7 @@ public class SensitiveWordVO {
         private String normalizedWord;
         private String category;
         private String severity;
+        private String action;
         private Boolean enabled;
         private Long createdBy;
         private String createdAt;
@@ -29,6 +30,8 @@ public class SensitiveWordVO {
         public void setCategory(String category) { this.category = category; }
         public String getSeverity() { return severity; }
         public void setSeverity(String severity) { this.severity = severity; }
+        public String getAction() { return action; }
+        public void setAction(String action) { this.action = action; }
         public Boolean getEnabled() { return enabled; }
         public void setEnabled(Boolean enabled) { this.enabled = enabled; }
         public Long getCreatedBy() { return createdBy; }
@@ -45,14 +48,16 @@ public class SensitiveWordVO {
         private String fieldPath;
         private String word;
         private String maskedWord;
+        private String action;
 
         public MatchItem() {
         }
 
-        public MatchItem(String fieldPath, String word, String maskedWord) {
+        public MatchItem(String fieldPath, String word, String maskedWord, String action) {
             this.fieldPath = fieldPath;
             this.word = word;
             this.maskedWord = maskedWord;
+            this.action = action;
         }
 
         public String getFieldPath() { return fieldPath; }
@@ -61,22 +66,32 @@ public class SensitiveWordVO {
         public void setWord(String word) { this.word = word; }
         public String getMaskedWord() { return maskedWord; }
         public void setMaskedWord(String maskedWord) { this.maskedWord = maskedWord; }
+        public String getAction() { return action; }
+        public void setAction(String action) { this.action = action; }
     }
 
     public static class CheckResult {
         private boolean hit;
+        private boolean blocked;
         private List<MatchItem> matches = List.of();
 
         public CheckResult() {
         }
 
         public CheckResult(boolean hit, List<MatchItem> matches) {
+            this(hit, hit, matches);
+        }
+
+        public CheckResult(boolean hit, boolean blocked, List<MatchItem> matches) {
             this.hit = hit;
+            this.blocked = blocked;
             this.matches = matches;
         }
 
         public boolean isHit() { return hit; }
         public void setHit(boolean hit) { this.hit = hit; }
+        public boolean isBlocked() { return blocked; }
+        public void setBlocked(boolean blocked) { this.blocked = blocked; }
         public List<MatchItem> getMatches() { return matches; }
         public void setMatches(List<MatchItem> matches) { this.matches = matches; }
     }

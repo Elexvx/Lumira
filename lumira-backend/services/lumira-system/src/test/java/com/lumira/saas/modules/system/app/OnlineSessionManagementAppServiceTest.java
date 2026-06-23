@@ -78,10 +78,11 @@ class OnlineSessionManagementAppServiceTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(userId);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(tenantId);
+        currentUser.setCurrentTenantId(2002L);
 
         var page = service.listOnlineSessions(currentUser, 1, 10);
 
+        assertEquals(1001L, authSessionStore.lastListedTenantId);
         assertEquals(1L, page.getTotal());
         assertEquals(1, page.getRecords().size());
         assertEquals(activeSession.getSessionId(), page.getRecords().getFirst().getSessionId());
@@ -127,10 +128,11 @@ class OnlineSessionManagementAppServiceTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(9999L);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(tenantId);
+        currentUser.setCurrentTenantId(2002L);
 
         var page = service.listOnlineSessions(currentUser, 1, 10);
 
+        assertEquals(1001L, authSessionStore.lastListedTenantId);
         assertEquals(2L, page.getTotal());
         assertEquals(2, page.getRecords().size());
         assertEquals(newerSession.getSessionId(), page.getRecords().get(0).getSessionId());
@@ -158,6 +160,7 @@ class OnlineSessionManagementAppServiceTest {
         private final Map<Long, Integer> latestSessionLookupCounts = new HashMap<>();
         private final List<String> sessionOrder = new ArrayList<>();
         private final List<AuthSession> removedSessions = new ArrayList<>();
+        private Long lastListedTenantId;
         private int batchLookupCounts;
 
         private StubAuthSessionStore() {
@@ -171,6 +174,7 @@ class OnlineSessionManagementAppServiceTest {
 
         @Override
         public List<String> listActiveTenantSessionIds(Long tenantId, long start, long end) {
+            lastListedTenantId = tenantId;
             return sessions.values().stream()
                     .sorted((left, right) -> {
                         Instant leftExpire = left.getExpireTime();

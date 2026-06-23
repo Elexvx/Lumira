@@ -51,10 +51,11 @@ public final class SensitiveWordMatcher {
             String normalizedWord,
             String category,
             String severity,
+            String action,
             int priority
     ) {
     }
 
-    public record Match(String fieldPath, String word, String normalizedWord) {
+    public record Match(String fieldPath, String word, String normalizedWord, String action) {
     }
 }

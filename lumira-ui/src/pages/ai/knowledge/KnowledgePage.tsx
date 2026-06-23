@@ -34,14 +34,14 @@ const SCOPE_TABS = [
   { key: 'ALL', label: t('全部可用', 'All available') },
   { key: 'OWNED', label: t('我的知识库', 'My knowledge bases') },
   { key: 'SHARED', label: t('共享给我', 'Shared with me') },
-  { key: 'TENANT', label: t('企业知识库', 'Tenant knowledge bases') },
+  { key: 'PLATFORM', label: t('组织知识库', 'Organization knowledge bases') },
 ];
 
 const formatNumber = (value?: number | null) => (typeof value === 'number' ? value.toLocaleString() : '0');
 
 const visibilityTag = (scope?: string | null) => {
-  if (scope === 'TENANT') {
-    return <Tag color="purple">{t('企业', 'Tenant')}</Tag>;
+  if (scope === 'PLATFORM' || scope === 'TENANT') {
+    return <Tag color="purple">{t('组织', 'Organization')}</Tag>;
   }
   if (scope === 'TEAM') {
     return <Tag color="blue">{t('团队', 'Team')}</Tag>;
@@ -87,7 +87,7 @@ const useKnowledgePageAccess = () => {
   const visibilityOptions = useMemo(
     () => [
       { label: t('个人知识库', 'Personal knowledge base'), value: 'PERSONAL' },
-      ...(canShareKnowledge ? [{ label: t('企业知识库', 'Tenant knowledge base'), value: 'TENANT' }] : []),
+      ...(canShareKnowledge ? [{ label: t('组织知识库', 'Organization knowledge base'), value: 'PLATFORM' }] : []),
     ],
     [canShareKnowledge],
   );

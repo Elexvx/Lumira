@@ -2,19 +2,22 @@ package com.lumira.team.app;
 
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
-import com.lumira.team.infrastructure.persistence.RowMapper;
 import com.lumira.team.dto.TeamDTO;
+import com.lumira.team.repository.TeamInviteRepository;
+import com.lumira.team.repository.TeamJoinRequestRepository;
 import com.lumira.team.vo.TeamVO;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -23,110 +26,100 @@ import static org.mockito.Mockito.when;
 class TeamInviteServiceTest {
     @Test
     void createInviteShouldReturnRawTokenAndPersistOnlyHash() {
-        RecordingQueries queries = new RecordingQueries();
-        TeamAppService teamService = teamService();
-        TeamPermissionService permission = mock(TeamPermissionService.class);
-        when(permission.activeRole(1001L, 2001L, 3001L)).thenReturn("OWNER");
-        when(permission.canInvite("OWNER")).thenReturn(true);
-        TeamInviteService service = service(queries, teamService, permission);
+        Fixtures fixtures = fixtures();
         TeamDTO.InviteCreateRequest request = new TeamDTO.InviteCreateRequest();
         request.setInviteCode("JOIN2026");
 
-        TeamVO.Invite invite = service.createInvite(currentUser(3001L), 2001L, request);
+        TeamVO.Invite invite = fixtures.service.createInvite(currentUser(3001L), 2001L, request);
 
         assertThat(invite.getRawToken()).isNotBlank();
         assertThat(invite.getInviteUrl()).contains(invite.getRawToken());
-        assertThat(queries.persistedTokenHash).hasSize(64);
-        assertThat(queries.persistedTokenHash).isNotEqualTo(invite.getRawToken());
+        verify(fixtures.teamInviteRepository).createInvite(
+                anyLong(), anyLong(), anyString(), org.mockito.ArgumentMatchers.matches("[0-9a-f]{64}"),
+                anyString(), anyString(), any(), any(), anyBoolean(), anyLong()
+        );
     }
 
     @Test
     void blankInviteCodeShouldBeGeneratedAndJoinable() {
-        RecordingQueries queries = new RecordingQueries();
-        TeamPermissionService permission = mock(TeamPermissionService.class);
-        when(permission.activeRole(1001L, 2001L, 3001L)).thenReturn("OWNER");
-        when(permission.canInvite("OWNER")).thenReturn(true);
-        when(permission.activeMember(1001L, 2001L, 3002L)).thenReturn(null);
-        TeamInviteService service = service(queries, teamService(), permission);
+        Fixtures fixtures = fixtures();
         TeamDTO.InviteCreateRequest request = new TeamDTO.InviteCreateRequest();
+        when(fixtures.permissionService.activeMember(1001L, 2001L, 3002L)).thenReturn(null);
 
-        TeamVO.Invite invite = service.createInvite(currentUser(3001L), 2001L, request);
-        TeamVO.JoinResult result = service.joinByCode(currentUser(3002L), invite.getInviteCode());
+        TeamVO.Invite invite = fixtures.service.createInvite(currentUser(3001L), 2001L, request);
+        when(fixtures.teamInviteRepository.findByCode(1001L, invite.getInviteCode())).thenReturn(invite);
+        TeamVO.JoinResult result = fixtures.service.joinByCode(currentUser(3002L), invite.getInviteCode());
 
         assertThat(invite.getInviteCode()).matches("[A-Z0-9]{8,}");
         assertThat(result.getStatus()).isEqualTo("JOINED");
+        verify(fixtures.teamAppService).ensureDirectMember(1001L, 2001L, 3002L, null, "MEMBER");
     }
 
     @Test
     void expiredOrUsageLimitedInviteCannotJoin() {
-        RecordingQueries expired = new RecordingQueries();
-        expired.invite = invite(true, false, false);
-        TeamInviteService expiredService = service(expired, teamService(), mock(TeamPermissionService.class));
-        assertThatThrownBy(() -> expiredService.joinByToken(currentUser(3002L), "raw"))
+        Fixtures expired = fixtures();
+        when(expired.teamInviteRepository.findByTokenHash(anyString())).thenReturn(invite(true, false, false));
+        assertThatThrownBy(() -> expired.service.joinByToken(currentUser(3002L), "raw"))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("expired");
 
-        RecordingQueries full = new RecordingQueries();
-        full.invite = invite(false, true, false);
-        TeamInviteService fullService = service(full, teamService(), mock(TeamPermissionService.class));
-        assertThatThrownBy(() -> fullService.joinByToken(currentUser(3002L), "raw"))
+        Fixtures full = fixtures();
+        when(full.teamInviteRepository.findByTokenHash(anyString())).thenReturn(invite(false, true, false));
+        assertThatThrownBy(() -> full.service.joinByToken(currentUser(3002L), "raw"))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("limit");
     }
 
     @Test
     void inviteWithoutApprovalShouldJoinDirectlyAndRepeatJoinIsIdempotent() {
-        RecordingQueries queries = new RecordingQueries();
-        TeamAppService teamService = teamService();
-        TeamPermissionService permission = mock(TeamPermissionService.class);
-        when(permission.activeMember(1001L, 2001L, 3002L)).thenReturn(null);
-        TeamInviteService service = service(queries, teamService, permission);
+        Fixtures fixtures = fixtures();
+        when(fixtures.permissionService.activeMember(1001L, 2001L, 3002L)).thenReturn(null);
 
-        TeamVO.JoinResult result = service.joinByToken(currentUser(3002L), "raw");
+        TeamVO.JoinResult result = fixtures.service.joinByToken(currentUser(3002L), "raw");
 
         assertThat(result.getStatus()).isEqualTo("JOINED");
-        assertThat(queries.consumeInviteCalled).isTrue();
-        verify(teamService).ensureDirectMember(1001L, 2001L, 3002L, null, "MEMBER");
+        verify(fixtures.teamInviteRepository).consumeInviteQuota(any());
+        verify(fixtures.teamAppService).ensureDirectMember(1001L, 2001L, 3002L, null, "MEMBER");
 
-        when(permission.activeMember(1001L, 2001L, 3002L)).thenReturn(member());
-        TeamVO.JoinResult repeat = service.joinByToken(currentUser(3002L), "raw");
+        when(fixtures.permissionService.activeMember(1001L, 2001L, 3002L)).thenReturn(member());
+        TeamVO.JoinResult repeat = fixtures.service.joinByToken(currentUser(3002L), "raw");
         assertThat(repeat.getStatus()).isEqualTo("JOINED");
     }
 
     @Test
     void inviteWithApprovalShouldCreateJoinRequest() {
-        RecordingQueries queries = new RecordingQueries();
-        queries.invite = invite(false, false, true);
-        TeamInviteService service = service(queries, teamService(), mock(TeamPermissionService.class));
+        Fixtures fixtures = fixtures();
+        TeamVO.Invite approvalInvite = invite(false, false, true);
+        when(fixtures.teamInviteRepository.findByTokenHash(anyString())).thenReturn(approvalInvite);
+        when(fixtures.teamJoinRequestRepository.findPending(1001L, 2001L, 3002L)).thenReturn(null);
 
-        TeamVO.JoinResult result = service.joinByToken(currentUser(3002L), "raw");
+        TeamVO.JoinResult result = fixtures.service.joinByToken(currentUser(3002L), "raw");
 
         assertThat(result.getStatus()).isEqualTo("PENDING");
-        assertThat(queries.joinRequestInsertCalled).isTrue();
-        assertThat(queries.consumeInviteCalled).isTrue();
+        verify(fixtures.teamJoinRequestRepository).createPending(1001L, 2001L, 3002L, 5001L, null);
+        verify(fixtures.teamInviteRepository).consumeInviteQuota(approvalInvite);
     }
 
     @Test
     void repeatedPendingRequestShouldNotConsumeInviteAgain() {
-        RecordingQueries queries = new RecordingQueries();
-        queries.invite = invite(false, false, true);
-        queries.pendingRequestAlreadyExists = true;
-        TeamInviteService service = service(queries, teamService(), mock(TeamPermissionService.class));
+        Fixtures fixtures = fixtures();
+        TeamVO.Invite approvalInvite = invite(false, false, true);
+        TeamVO.JoinRequest pending = joinRequest();
+        when(fixtures.teamInviteRepository.findByTokenHash(anyString())).thenReturn(approvalInvite);
+        when(fixtures.teamJoinRequestRepository.findPending(1001L, 2001L, 3002L)).thenReturn(pending);
 
-        TeamVO.JoinResult result = service.joinByToken(currentUser(3002L), "raw");
+        TeamVO.JoinResult result = fixtures.service.joinByToken(currentUser(3002L), "raw");
 
         assertThat(result.getStatus()).isEqualTo("PENDING");
-        assertThat(queries.consumeInviteCalled).isFalse();
-        assertThat(queries.joinRequestInsertCalled).isFalse();
+        assertThat(result.getJoinRequest()).isEqualTo(pending);
     }
 
     @Test
     void previewShouldExposeOnlyMinimalInviteInformation() {
-        RecordingQueries queries = new RecordingQueries();
-        queries.invite = invite(false, false, true);
-        TeamInviteService service = service(queries, teamService(), mock(TeamPermissionService.class));
+        Fixtures fixtures = fixtures();
+        when(fixtures.teamInviteRepository.findByTokenHash(anyString())).thenReturn(invite(false, false, true));
 
-        TeamVO.InvitePreview preview = service.previewByToken("raw");
+        TeamVO.InvitePreview preview = fixtures.service.previewByToken("raw");
 
         assertThat(preview.getTeamName()).isEqualTo("Core Team");
         assertThat(preview.getTeamType()).isEqualTo("GENERAL");
@@ -134,13 +127,33 @@ class TeamInviteServiceTest {
         assertThat(preview.getNeedApproval()).isTrue();
     }
 
-    private TeamInviteService service(RecordingQueries queries, TeamAppService teamService, TeamPermissionService permission) {
-        return new TeamInviteService(
-                queries,
-                teamService,
-                permission,
+    private Fixtures fixtures() {
+        TeamAppService teamAppService = teamService();
+        TeamPermissionService permissionService = mock(TeamPermissionService.class);
+        TeamInviteRepository teamInviteRepository = mock(TeamInviteRepository.class);
+        TeamJoinRequestRepository teamJoinRequestRepository = mock(TeamJoinRequestRepository.class);
+        when(permissionService.activeRole(1001L, 2001L, 3001L)).thenReturn("OWNER");
+        when(permissionService.canInvite("OWNER")).thenReturn(true);
+        TeamVO.Invite invite = invite(false, false, false);
+        when(teamInviteRepository.createInvite(anyLong(), anyLong(), anyString(), anyString(), anyString(), anyString(), any(), any(), anyBoolean(), anyLong()))
+                .thenAnswer(invocation -> {
+                    invite.setInviteCode(invocation.getArgument(2));
+                    return 5001L;
+                });
+        when(teamInviteRepository.findById(1001L, 2001L, 5001L)).thenReturn(invite);
+        when(teamInviteRepository.findByTokenHash(anyString())).thenReturn(invite);
+        when(teamInviteRepository.findByCode(1001L, "JOIN2026")).thenReturn(invite);
+        when(teamInviteRepository.consumeInviteQuota(any())).thenReturn(true);
+        when(teamJoinRequestRepository.createPending(anyLong(), anyLong(), anyLong(), any(), any())).thenReturn(6001L);
+        when(teamJoinRequestRepository.findById(1001L, 2001L, 6001L)).thenReturn(joinRequest());
+        TeamInviteService service = new TeamInviteService(
+                teamAppService,
+                permissionService,
+                teamInviteRepository,
+                teamJoinRequestRepository,
                 (tenantId, userId, username, moduleName, actionName, operationType, resultStatus, detailMessage) -> {}
         );
+        return new Fixtures(service, teamAppService, permissionService, teamInviteRepository, teamJoinRequestRepository);
     }
 
     private TeamAppService teamService() {
@@ -200,66 +213,21 @@ class TeamInviteServiceTest {
         return invite;
     }
 
-    private static final class RecordingQueries extends MyBatisQueryOperations {
-        private TeamVO.Invite invite = invite(false, false, false);
-        private String persistedTokenHash;
-        private String persistedInviteCode;
-        private boolean consumeInviteCalled;
-        private boolean joinRequestInsertCalled;
-        private boolean pendingRequestAlreadyExists;
-
-        @Override
-        public boolean exists(String sql, Object... args) {
-            return false;
-        }
-
-        @Override
-        public int update(String sql, Object... args) {
-            if (sql.contains("insert into team_invite")) {
-                persistedInviteCode = String.valueOf(args[2]);
-                persistedTokenHash = String.valueOf(args[3]);
-                invite.setInviteCode(persistedInviteCode);
-            }
-            if (sql.contains("used_count = used_count + 1")) {
-                consumeInviteCalled = true;
-            }
-            if (sql.contains("insert into team_join_request")) {
-                joinRequestInsertCalled = true;
-            }
-            return 1;
-        }
-
-        @Override
-        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            if (sql.contains("last_insert_id")) {
-                return requiredType.cast(joinRequestInsertCalled ? 6001L : 5001L);
-            }
-            return null;
-        }
-
-        @Override
-        public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
-            if (sql.contains("from team_invite")) {
-                return cast(List.of(invite));
-            }
-            if (sql.contains("from team_join_request")) {
-                if (!joinRequestInsertCalled && !pendingRequestAlreadyExists) {
-                    return List.of();
-                }
-                TeamVO.JoinRequest request = new TeamVO.JoinRequest();
-                request.setId(6001L);
-                request.setTenantId(1001L);
-                request.setTeamId(2001L);
-                request.setUserId(3002L);
-                request.setStatus("PENDING");
-                return cast(List.of(request));
-            }
-            return List.of();
-        }
-
-        @SuppressWarnings("unchecked")
-        private <T> List<T> cast(List<?> value) {
-            return (List<T>) new ArrayList<>(value);
-        }
+    private static TeamVO.JoinRequest joinRequest() {
+        TeamVO.JoinRequest request = new TeamVO.JoinRequest();
+        request.setId(6001L);
+        request.setTenantId(1001L);
+        request.setTeamId(2001L);
+        request.setUserId(3002L);
+        request.setStatus("PENDING");
+        return request;
     }
+
+    private record Fixtures(
+            TeamInviteService service,
+            TeamAppService teamAppService,
+            TeamPermissionService permissionService,
+            TeamInviteRepository teamInviteRepository,
+            TeamJoinRequestRepository teamJoinRequestRepository
+    ) {}
 }

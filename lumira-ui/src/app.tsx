@@ -8,6 +8,7 @@ import { createLayoutConfig } from '@/app.layout';
 import { queryClient } from '@/query/queryClient';
 import { DEFAULT_WATERMARK_SETTINGS } from '@/watermark/settingsTypes';
 import { getWatermarkSettingsSnapshot, subscribeWatermarkSettings } from '@/watermark/settingsStorage';
+import { applyWatermarkOpacity } from '@/watermark/color';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import './global.css';
 
@@ -49,7 +50,7 @@ const AppWatermarkLayer = ({ children }: { children: ReactNode }) => {
       content={watermark.mode === 'TEXT' ? watermark.textLines : undefined}
       image={watermark.mode === 'IMAGE' ? normalizeUploadUrl(watermark.imageUrl) : undefined}
       font={{
-        color: watermark.fontColor,
+        color: applyWatermarkOpacity(watermark.fontColor, watermark.opacity),
         fontSize: watermark.fontSize,
         fontWeight: normalizeWatermarkFontWeight(watermark.fontWeight),
       }}

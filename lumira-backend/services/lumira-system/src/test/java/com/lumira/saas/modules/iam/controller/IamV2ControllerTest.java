@@ -1,10 +1,22 @@
 package com.lumira.saas.modules.iam.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.saas.common.annotation.RepeatSubmit;
+import com.lumira.saas.modules.system.app.SystemManagementAppService;
+import com.lumira.saas.modules.system.department.app.SystemDepartmentAppService;
+import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.export.ExportTaskService;
+import com.lumira.saas.modules.system.user.app.UserExportAppService;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -28,8 +40,6 @@ class IamV2ControllerTest {
                 .contains(
                         "permissions:/permissions",
                         "permissionTree:/permissions/tree",
-                        "currentTenant:/tenants/current",
-                        "myTenants:/tenants/mine",
                         "users:/users",
                         "user:/users/{id}",
                         "userRoles:/users/{id}/roles",
@@ -45,7 +55,6 @@ class IamV2ControllerTest {
                 );
         assertThat(methodsWith(PostMapping.class))
                 .contains(
-                        "createTenant:/tenants",
                         "createUser:/users",
                         "exportUsers:/users/export",
                         "createRole:/roles",
@@ -54,8 +63,6 @@ class IamV2ControllerTest {
                 );
         assertThat(methodsWith(PutMapping.class))
                 .contains(
-                        "updateTenant:/tenants/{id}",
-                        "upsertTenantMember:/tenants/{tenantId}/members/{userId}",
                         "updateUser:/users/{id}",
                         "updateDefaultRegistrationRole:/roles/default-registration-role",
                         "updateRole:/roles/{id}",
@@ -66,13 +73,11 @@ class IamV2ControllerTest {
                 );
         assertThat(methodsWith(PatchMapping.class))
                 .contains(
-                        "changeTenantStatus:/tenants/{id}/status",
                         "changeUserStatus:/users/{id}/status",
                         "updateMenuStatus:/menus/{id}/status"
                 );
         assertThat(methodsWith(DeleteMapping.class))
                 .contains(
-                        "archiveTenant:/tenants/{id}",
                         "deleteUser:/users/{id}",
                         "deleteRole:/roles/{id}",
                         "deleteMenu:/menus/{id}",
@@ -92,6 +97,34 @@ class IamV2ControllerTest {
                         .isNotNull();
             }
         }
+    }
+
+    @Test
+    void updateRolePermissionsShouldRequireRoleGrantPermission() {
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SecurityContextFacade securityContextFacade = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        IamV2Controller controller = new IamV2Controller(
+                systemManagementAppService,
+                mock(SystemDepartmentAppService.class),
+                mock(UserExportAppService.class),
+                mock(ExportTaskService.class),
+                securityContextFacade,
+                permissionGuard
+        );
+        CurrentUser user = new CurrentUser();
+        user.setUserId(3001L);
+        user.setUsername("admin");
+        user.setAuthenticated(true);
+        SystemDTO.RolePermissionRequest request = new SystemDTO.RolePermissionRequest();
+        request.setPermissionKeys(List.of("system:user:view"));
+        when(securityContextFacade.getCurrentUser()).thenReturn(user);
+        when(systemManagementAppService.updateRolePermissions(user, 2001L, request.getPermissionKeys())).thenReturn(true);
+
+        assertThat(controller.updateRolePermissions(2001L, request).getData()).isTrue();
+
+        verify(permissionGuard).requirePermission(user, "system:role:grant");
+        verify(systemManagementAppService).updateRolePermissions(user, 2001L, request.getPermissionKeys());
     }
 
     private Set<String> methodsWith(Class<? extends java.lang.annotation.Annotation> annotationClass) {

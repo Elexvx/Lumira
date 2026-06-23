@@ -83,7 +83,7 @@ public class SensitiveWordFormFilter extends OncePerRequestFilter {
                 }
             });
             SensitiveWordVO.CheckResult result = sensitiveWordService.checkPayload(currentUser, payload);
-            if (result.isHit()) {
+            if (result.isBlocked()) {
                 writeError(response, request, result);
                 return;
             }

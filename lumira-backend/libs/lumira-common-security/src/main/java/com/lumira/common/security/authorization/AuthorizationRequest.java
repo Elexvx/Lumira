@@ -1,6 +1,7 @@
 package com.lumira.common.security.authorization;
 
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 
 import java.util.Map;
 
@@ -25,7 +26,7 @@ public record AuthorizationRequest(
         CurrentUser currentUser
 ) {
     public static AuthorizationRequest permission(CurrentUser currentUser, String permissionKey) {
-        Long tenantId = currentUser == null ? null : currentUser.getCurrentTenantId();
+        Long tenantId = PlatformContext.compatibilityTenantId();
         Long userId = currentUser == null ? null : currentUser.getUserId();
         return new AuthorizationRequest(
                 tenantId,
@@ -52,7 +53,7 @@ public record AuthorizationRequest(
     public static AuthorizationRequest aiTool(CurrentUser currentUser, Long employeeId, String toolCode,
                                                String permissionKey, String riskLevel, boolean confirmed,
                                                boolean approvalGranted, Map<String, Object> arguments) {
-        Long tenantId = currentUser == null ? null : currentUser.getCurrentTenantId();
+        Long tenantId = PlatformContext.compatibilityTenantId();
         Long userId = currentUser == null ? null : currentUser.getUserId();
         return new AuthorizationRequest(tenantId, SubjectRef.humanUser(tenantId, userId),
                 SubjectRef.digitalEmployee(tenantId, employeeId), userId, employeeId, "ai_tool", "execute",
@@ -68,7 +69,7 @@ public record AuthorizationRequest(
     public static AuthorizationRequest aiToolAccess(CurrentUser currentUser, Long employeeId, String toolCode,
                                                     String permissionKey, String riskLevel, String actionCode,
                                                     Map<String, Object> arguments) {
-        Long tenantId = currentUser == null ? null : currentUser.getCurrentTenantId();
+        Long tenantId = PlatformContext.compatibilityTenantId();
         Long userId = currentUser == null ? null : currentUser.getUserId();
         return new AuthorizationRequest(tenantId, SubjectRef.humanUser(tenantId, userId),
                 SubjectRef.digitalEmployee(tenantId, employeeId), userId, employeeId, "ai_tool", actionCode,
@@ -77,7 +78,7 @@ public record AuthorizationRequest(
     }
 
     public static AuthorizationRequest plugin(CurrentUser currentUser, String permissionKey, String pluginCode) {
-        Long tenantId = currentUser == null ? null : currentUser.getCurrentTenantId();
+        Long tenantId = PlatformContext.compatibilityTenantId();
         Long userId = currentUser == null ? null : currentUser.getUserId();
         return new AuthorizationRequest(tenantId, SubjectRef.humanUser(tenantId, userId), null, userId, null,
                 "plugin", "invoke", permissionKey, pluginCode, "LOW", null, Map.of(), false, false,
@@ -85,7 +86,7 @@ public record AuthorizationRequest(
     }
 
     public static AuthorizationRequest systemJob(Long tenantId, String resourceCode, String actionCode, String requestId) {
-        return new AuthorizationRequest(tenantId, null, null, null, null, resourceCode, actionCode,
+        return new AuthorizationRequest(PlatformContext.effectiveCompatibilityTenantId(tenantId), null, null, null, null, resourceCode, actionCode,
                 null, null, "LOW", null, Map.of("systemPrincipal", Boolean.TRUE), false, true,
                 "SYSTEM_JOB", requestId, null, null);
     }

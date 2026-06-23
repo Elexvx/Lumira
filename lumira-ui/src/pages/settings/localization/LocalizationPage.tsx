@@ -151,6 +151,8 @@ const buildLocalizationSyncPayload = (): LocalizationSyncPayload => {
   };
 };
 
+const LOCALIZATION_SOURCE_ENTRY_COUNT = buildLocalizationSyncPayload().items.length;
+
 const LocalizationPage = () => {
   const { actionPermission, responsive, searchConfig, buttonSize } = usePagePermissionActions();
   const tableActionRef = useRef<ActionType>(null);
@@ -442,7 +444,8 @@ const LocalizationPage = () => {
         },
       },
       {
-        title: '',
+        title: t('序号', 'No.'),
+        valueType: 'index',
         width: 'var(--saas-spacing-64)',
         align: 'center',
         render: (_: unknown, __: import('@/types/api').LocalizationEntry, index: number) => index + 1,
@@ -557,7 +560,7 @@ const LocalizationPage = () => {
         !namespaceCode &&
         !keyword &&
         !translationStatus &&
-        result.total === 0;
+        result.total < LOCALIZATION_SOURCE_ENTRY_COUNT;
 
       if (!shouldInitialize) {
         return result;

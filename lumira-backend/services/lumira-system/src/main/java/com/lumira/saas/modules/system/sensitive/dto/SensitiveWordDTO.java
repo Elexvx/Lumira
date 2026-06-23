@@ -16,6 +16,9 @@ public class SensitiveWordDTO {
         @Size(max = 32, message = "等级长度不能超过 32 个字符")
         private String severity;
 
+        @Size(max = 32, message = "执行操作长度不能超过 32 个字符")
+        private String action;
+
         private Boolean enabled;
 
         public String getWord() {
@@ -40,6 +43,14 @@ public class SensitiveWordDTO {
 
         public void setSeverity(String severity) {
             this.severity = severity;
+        }
+
+        public String getAction() {
+            return action;
+        }
+
+        public void setAction(String action) {
+            this.action = action;
         }
 
         public Boolean getEnabled() {

@@ -24,7 +24,7 @@ public class MessageRecipientResolver {
             return List.of();
         }
         String targetScope = notice.getTargetScope();
-        if (!StringUtils.hasText(targetScope) || "TENANT".equalsIgnoreCase(targetScope)) {
+        if (!StringUtils.hasText(targetScope) || isPlatformScope(targetScope)) {
             return List.of();
         }
         if ("USER".equalsIgnoreCase(targetScope)) {
@@ -42,5 +42,9 @@ public class MessageRecipientResolver {
         }
         Set<Long> distinct = new LinkedHashSet<>(userIds);
         return new ArrayList<>(distinct);
+    }
+
+    private boolean isPlatformScope(String targetScope) {
+        return "PLATFORM".equalsIgnoreCase(targetScope) || "TENANT".equalsIgnoreCase(targetScope);
     }
 }

@@ -40,14 +40,14 @@ import static org.mockito.Mockito.when;
 class SystemUserManagementAppServiceTest {
 
     @Test
-    void getUserShouldReturnTenantIdsAndTenantNames() {
+    void getUserShouldNotExposeTenantMembership() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         SystemUserManagementAppService service = buildService(jdbcTemplate);
 
         SystemVO.UserDetailVO user = service.getUser(currentUser(), 2001L);
 
-        assertEquals(List.of(1001L, 1002L), user.getTenantIds());
-        assertEquals(List.of("平台租户", "租户 1002"), user.getTenantNames());
+        assertEquals(List.of(), user.getTenantIds());
+        assertEquals(List.of(), user.getTenantNames());
     }
 
     @Test
@@ -58,14 +58,15 @@ class SystemUserManagementAppServiceTest {
 
         SystemVO.UserDetailVO user = service.getUser(currentUserWithPermissionSnapshot(), 2001L);
 
-        assertEquals(List.of(1001L, 1002L), user.getTenantIds());
+        assertEquals(List.of(), user.getTenantIds());
         verify(permissionSnapshotService, never()).loadSnapshot(anyLong(), anyLong());
     }
 
     @Test
     void updateUserShouldClearRolesWhenRoleIdsEmpty() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
-        SystemUserManagementAppService service = buildService(jdbcTemplate);
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemUserManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
         SystemDTO.UserUpsertRequest request = userRequest(List.of());
 
         assertDoesNotThrow(() -> service.updateUser(currentUser(), 2001L, request));
@@ -73,6 +74,8 @@ class SystemUserManagementAppServiceTest {
         assertTrue(jdbcTemplate.deletedUserRoles);
         assertEquals(0, jdbcTemplate.roleExistenceChecks);
         assertEquals(0, jdbcTemplate.insertedUserRoles);
+        assertFalse(jdbcTemplate.seenMismatchedTenantArgument);
+        verify(permissionSnapshotService).invalidateTenant(1001L);
     }
 
     @Test
@@ -227,7 +230,7 @@ class SystemUserManagementAppServiceTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(1001L);
+        currentUser.setCurrentTenantId(2002L);
         currentUser.setPermissions(java.util.Set.of("*"));
         return currentUser;
     }
@@ -263,11 +266,13 @@ class SystemUserManagementAppServiceTest {
         private int lastInsertIdQueries;
         private boolean deletedUserRoles;
         private boolean deletedUserDepartments;
+        private boolean seenMismatchedTenantArgument;
         private Long lastInsertedId = 2001L;
         private String lastInsertedUsername = "demo-user";
 
         @Override
         public int update(String sql, Object... args) {
+            recordMismatchedTenant(args);
             updateCount += 1;
             if (sql.contains("insert into sys_user") && args.length > 0 && args[0] != null) {
                 lastInsertedUsername = String.valueOf(args[0]);
@@ -289,11 +294,13 @@ class SystemUserManagementAppServiceTest {
 
         @Override
         public <T> T queryForObject(String sql, RowMapper<T> rowMapper, Object... args) {
+            recordMismatchedTenant(args);
             return rowMapperResult();
         }
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+            recordMismatchedTenant(args);
             if (sql.contains("select last_insert_id()")) {
                 lastInsertIdQueries += 1;
                 return requiredType.cast(lastInsertedId);
@@ -324,7 +331,8 @@ class SystemUserManagementAppServiceTest {
 
         @Override
         public List<java.util.Map<String, Object>> queryForList(String sql, Object... args) {
-            if (sql.contains("from sys_user u") || sql.contains("from sys_user_tenant")) {
+            recordMismatchedTenant(args);
+            if (sql.contains("from sys_user u")) {
                 if (userRecordAccessCount <= 0) {
                     return new ArrayList<>();
                 }
@@ -335,13 +343,8 @@ class SystemUserManagementAppServiceTest {
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
+            recordMismatchedTenant(args);
             if (sql.contains("from sys_user u") && Long.class.equals(elementType)) {
-                if (userRecordAccessCount <= 0) {
-                    return new ArrayList<>();
-                }
-                return castList(List.of(1L));
-            }
-            if (sql.contains("from sys_user_tenant") && sql.contains("status = 'ENABLED'") && Long.class.equals(elementType)) {
                 if (userRecordAccessCount <= 0) {
                     return new ArrayList<>();
                 }
@@ -349,12 +352,6 @@ class SystemUserManagementAppServiceTest {
             }
             if (sql.contains("from sys_department") && sql.contains("deleted = 0 limit 1") && Long.class.equals(elementType)) {
                 return castList(List.of(1L));
-            }
-            if (sql.contains("from sys_user_tenant") && Long.class.equals(elementType)) {
-                return castList(List.of(1001L, 1002L));
-            }
-            if (sql.contains("tenant_name") && String.class.equals(elementType)) {
-                return castList(List.of("平台租户", "租户 1002"));
             }
             if (sql.contains("from sys_user_role") && Long.class.equals(elementType)) {
                 return castList(List.of(2001L));
@@ -369,6 +366,14 @@ class SystemUserManagementAppServiceTest {
                 return castList(List.of("产品部", "研发部"));
             }
             return new ArrayList<>();
+        }
+
+        private void recordMismatchedTenant(Object... args) {
+            for (Object arg : args) {
+                if (Long.valueOf(2002L).equals(arg)) {
+                    seenMismatchedTenantArgument = true;
+                }
+            }
         }
 
         @SuppressWarnings("unchecked")

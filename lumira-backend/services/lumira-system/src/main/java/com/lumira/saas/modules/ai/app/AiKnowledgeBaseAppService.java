@@ -13,6 +13,7 @@ import com.lumira.saas.infrastructure.event.PlatformEventTypes;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.domain.model.AiAssistantDomainModels.KnowledgeBaseAggregate;
 import com.lumira.saas.modules.ai.vo.AiVO;
@@ -48,7 +49,8 @@ public class AiKnowledgeBaseAppService {
     private static final int CHUNK_OVERLAP = 180;
     private static final long MAX_PAGE_SIZE = 100L;
     private static final String SCOPE_PERSONAL = "PERSONAL";
-    private static final String SCOPE_TENANT = "TENANT";
+    private static final String SCOPE_PLATFORM = "PLATFORM";
+    private static final String SCOPE_LEGACY_TENANT = "TENANT";
     private static final String KNOWLEDGE_STORAGE_BUCKET = "ai_knowledge";
     private static final String FILE_TEXT_CONTENT_ARTIFACT = "TEXT_CONTENT";
     private static final int MAX_INDEX_BATCH_SIZE = 50;
@@ -1185,9 +1187,8 @@ public class AiKnowledgeBaseAppService {
             args.add(currentUserId(currentUser));
             return;
         }
-        if (SCOPE_TENANT.equals(normalizedScope)) {
-            where.append(" and ").append(alias).append(".visibility_scope = ?");
-            args.add(SCOPE_TENANT);
+        if (isPlatformScope(normalizedScope)) {
+            appendPlatformVisibilityFilter(where, args, alias);
             return;
         }
         if ("SHARED".equals(normalizedScope)) {
@@ -1200,8 +1201,8 @@ public class AiKnowledgeBaseAppService {
         where.append(" and (").append(alias).append(".owner_user_id = ?");
         args.add(currentUserId(currentUser));
         if (access != KnowledgeAccess.MANAGE) {
-            where.append(" or ").append(alias).append(".visibility_scope = ?");
-            args.add(SCOPE_TENANT);
+            where.append(" or ");
+            appendPlatformVisibilityPredicate(where, args, alias);
         }
         where.append(" or ").append(buildAclExistsClause(alias, currentUser, access, args)).append(")");
     }
@@ -1218,10 +1219,24 @@ public class AiKnowledgeBaseAppService {
             where.append(" and ").append(alias).append(".owner_user_id <> ?");
             args.add(currentUserId(currentUser));
             where.append(" and ").append(buildAclExistsClause(alias, currentUser, KnowledgeAccess.VIEW, args));
-        } else if (SCOPE_TENANT.equals(normalizedScope)) {
-            where.append(" and ").append(alias).append(".visibility_scope = ?");
-            args.add(SCOPE_TENANT);
+        } else if (isPlatformScope(normalizedScope)) {
+            appendPlatformVisibilityFilter(where, args, alias);
         }
+    }
+
+    private void appendPlatformVisibilityFilter(StringBuilder where, List<Object> args, String alias) {
+        where.append(" and ");
+        appendPlatformVisibilityPredicate(where, args, alias);
+    }
+
+    private void appendPlatformVisibilityPredicate(StringBuilder where, List<Object> args, String alias) {
+        where.append(alias).append(".visibility_scope in (?, ?)");
+        args.add(SCOPE_PLATFORM);
+        args.add(SCOPE_LEGACY_TENANT);
+    }
+
+    private boolean isPlatformScope(String scope) {
+        return SCOPE_PLATFORM.equals(scope) || SCOPE_LEGACY_TENANT.equals(scope);
     }
 
     private String buildAclExistsClause(String alias, CurrentUser currentUser, KnowledgeAccess access, List<Object> args) {
@@ -1275,10 +1290,10 @@ public class AiKnowledgeBaseAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser != null && currentUser.getCurrentTenantId() != null) {
-            return currentUser.getCurrentTenantId();
+        if (currentUser == null) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
-        throw new BizException(ErrorCode.FORBIDDEN, "Tenant context is required");
+        return PlatformContext.compatibilityTenantId();
     }
 
     private Long currentUserId(CurrentUser currentUser) {
@@ -1293,7 +1308,7 @@ public class AiKnowledgeBaseAppService {
         return currentUser != null && currentUser.getPermissions().contains("*");
     }
 
-    private boolean canPublishTenantKnowledge(CurrentUser currentUser) {
+    private boolean canPublishPlatformKnowledge(CurrentUser currentUser) {
         return currentUser != null && (currentUser.getPermissions().contains("*") || currentUser.getPermissions().contains("ai:knowledge:share"));
     }
 
@@ -1318,10 +1333,13 @@ public class AiKnowledgeBaseAppService {
         if ("PRIVATE".equals(normalized)) {
             normalized = SCOPE_PERSONAL;
         }
-        if (!SCOPE_PERSONAL.equals(normalized) && !SCOPE_TENANT.equals(normalized)) {
+        if (SCOPE_LEGACY_TENANT.equals(normalized)) {
+            normalized = SCOPE_PLATFORM;
+        }
+        if (!SCOPE_PERSONAL.equals(normalized) && !SCOPE_PLATFORM.equals(normalized)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "知识库可见范围不支持");
         }
-        if (SCOPE_TENANT.equals(normalized) && !canPublishTenantKnowledge(currentUser)) {
+        if (SCOPE_PLATFORM.equals(normalized) && !canPublishPlatformKnowledge(currentUser)) {
             throw new BizException(ErrorCode.FORBIDDEN, "没有发布企业知识库的权限");
         }
         return normalized;

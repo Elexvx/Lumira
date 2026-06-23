@@ -81,6 +81,6 @@ class AiReadQueryServiceTest {
     }
 
     private CurrentUser user(Set<String> permissions) {
-        return new CurrentUser(7L, "ai-user", 1001L, "s1", 1, true, permissions);
+        return new CurrentUser(7L, "ai-user", 2002L, "s1", 1, true, permissions);
     }
 }

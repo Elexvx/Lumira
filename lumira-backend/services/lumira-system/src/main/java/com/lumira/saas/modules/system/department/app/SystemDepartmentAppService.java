@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.department.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.department.dto.DepartmentUpsertRequest;
@@ -392,10 +393,10 @@ public class SystemDepartmentAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "未登录");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
     private BizException visibleBizException(ErrorCode errorCode, String message) {

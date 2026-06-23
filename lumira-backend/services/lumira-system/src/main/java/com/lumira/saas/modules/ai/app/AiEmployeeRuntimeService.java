@@ -3,6 +3,7 @@ package com.lumira.saas.modules.ai.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.vo.AiVO;
 import org.slf4j.Logger;
@@ -613,9 +614,9 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser != null && currentUser.getCurrentTenantId() != null) {
-            return currentUser.getCurrentTenantId();
+        if (currentUser == null) {
+            throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
-        throw new BizException(ErrorCode.FORBIDDEN, "Tenant context is required");
+        return PlatformContext.compatibilityTenantId();
     }
 }

@@ -25,14 +25,16 @@ import {
 import type { FormInstance, SelectProps } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { CopyOutlined, DeleteOutlined, LinkOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { TableActionBar } from '@/features/table/TableActionBar';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
 import { message } from '@/theme/antdFeedbackBridge';
-import { listEnabledDictItemsByCode } from '@/services/dict/runtime';
 import {
   adminDeleteTeam,
   adminUpdateTeam,
@@ -57,7 +59,6 @@ import {
   updateTeamMemberRole,
 } from '@/services/team/api';
 import type { TeamInviteRecord, TeamJoinRequestRecord, TeamMemberRecord, TeamRecord, TeamRole, TeamUpsertPayload } from '@/services/team/types';
-import type { DictItemRecord } from '@/types/api';
 import './team.css';
 
 const roleOptions: TeamRole[] = ['ADMIN', 'MANAGER', 'MEMBER'];
@@ -91,48 +92,10 @@ const roleColor: Record<string, string> = {
   MEMBER: 'default',
 };
 
-const dictItemsToOptions = (items: DictItemRecord[], fallback: TeamDictOption[]): TeamDictOption[] => {
-  if (!items.length) {
-    return fallback;
-  }
-  return items.map((item) => ({ value: item.itemValue, label: item.itemLabel }));
-};
-
 const useTeamDictOptions = () => {
-  const [teamTypeOptions, setTeamTypeOptions] = useState<TeamDictOption[]>(fallbackTeamTypeOptions);
-  const [visibilityOptions, setVisibilityOptions] = useState<TeamDictOption[]>(fallbackVisibilityOptions);
-  const [joinModeOptions, setJoinModeOptions] = useState<TeamDictOption[]>(fallbackJoinModeOptions);
-
-  useEffect(() => {
-    let active = true;
-    const loadOptions = async () => {
-      try {
-        const [teamTypeItems, visibilityItems, joinModeItems] = await Promise.all([
-          listEnabledDictItemsByCode(TEAM_TYPE_DICT_CODE),
-          listEnabledDictItemsByCode(TEAM_VISIBILITY_DICT_CODE),
-          listEnabledDictItemsByCode(TEAM_JOIN_MODE_DICT_CODE),
-        ]);
-        if (!active) {
-          return;
-        }
-        setTeamTypeOptions(dictItemsToOptions(teamTypeItems, fallbackTeamTypeOptions));
-        setVisibilityOptions(dictItemsToOptions(visibilityItems, fallbackVisibilityOptions));
-        setJoinModeOptions(dictItemsToOptions(joinModeItems, fallbackJoinModeOptions));
-      } catch {
-        if (!active) {
-          return;
-        }
-        setTeamTypeOptions(fallbackTeamTypeOptions);
-        setVisibilityOptions(fallbackVisibilityOptions);
-        setJoinModeOptions(fallbackJoinModeOptions);
-      }
-    };
-
-    void loadOptions();
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { options: teamTypeOptions } = useDictOptions(TEAM_TYPE_DICT_CODE, fallbackTeamTypeOptions);
+  const { options: visibilityOptions } = useDictOptions(TEAM_VISIBILITY_DICT_CODE, fallbackVisibilityOptions);
+  const { options: joinModeOptions } = useDictOptions(TEAM_JOIN_MODE_DICT_CODE, fallbackJoinModeOptions);
 
   return { teamTypeOptions, visibilityOptions, joinModeOptions };
 };
@@ -218,6 +181,7 @@ const TeamForm = ({
 
 const TeamListPage = () => {
   const responsive = useResponsive();
+  const actionPermission = useActionPermission();
   const { teamTypeOptions, visibilityOptions, joinModeOptions } = useTeamDictOptions();
   const [teamForm] = Form.useForm<TeamUpsertPayload>();
   const [teams, setTeams] = useState<TeamRecord[]>([]);
@@ -253,7 +217,11 @@ const TeamListPage = () => {
   const openEditDrawer = (record: TeamRecord) => {
     setEditingTeam(record);
     teamForm.resetFields();
-    teamForm.setFieldsValue(record);
+    teamForm.setFieldsValue({
+      ...record,
+      avatarUrl: record.avatarUrl || '',
+      description: record.description || '',
+    });
     setDrawerOpen(true);
   };
 
@@ -286,7 +254,7 @@ const TeamListPage = () => {
       dataIndex: 'teamName',
       render: (_, record) => (
         <Space>
-          <Avatar size={32} src={record.avatarUrl} icon={<TeamOutlined />} />
+          <Avatar size={32} src={normalizeUploadUrl(record.avatarUrl) || undefined} icon={<TeamOutlined />} />
           <Space direction="vertical" size={0}>
             <Typography.Text strong>{record.teamName}</Typography.Text>
             <Typography.Text type="secondary">{record.teamCode}</Typography.Text>
@@ -312,19 +280,21 @@ const TeamListPage = () => {
         <TableActionBar
           isMobile={responsive.isMobile}
           inlineCount={2}
-          items={[
-            { key: 'detail', label: '详情', onClick: () => history.push(`/team/${record.id}`) },
-            { key: 'members', label: '成员', onClick: () => history.push(`/team/${record.id}/members`) },
-            { key: 'invites', label: '邀请', onClick: () => history.push(`/team/${record.id}/invites`) },
+          items={actionPermission.buildTableActions([
+            { key: 'detail', label: '详情', permission: 'team:view', onClick: () => history.push(`/team/${record.id}`) },
+            { key: 'members', label: '成员', permission: 'team:member:view', onClick: () => history.push(`/team/${record.id}/members`) },
+            { key: 'invites', label: '邀请', permission: 'team:member:invite', onClick: () => history.push(`/team/${record.id}/invites`) },
             {
               key: 'edit',
               label: '编辑',
+              permission: 'team:update',
               onClick: () => openEditDrawer(record),
             },
             {
               key: 'delete',
               label: '删除',
               icon: <DeleteOutlined />,
+              permission: 'team:delete',
               danger: true,
               onClick: () => {
                 Modal.confirm({
@@ -339,7 +309,7 @@ const TeamListPage = () => {
                 });
               },
             },
-          ]}
+          ])}
         />
       ),
     },
@@ -359,16 +329,23 @@ const TeamListPage = () => {
           pagination={{ pageSize: 10, showSizeChanger: true }}
           locale={{ emptyText: <Empty description="暂无团队" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
           onRefresh={() => void load()}
-          toolBarRender={() => [
-            <Button
-              key="create"
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={openCreateDrawer}
-            >
-              新增团队
-            </Button>,
-          ]}
+          toolBarRender={() =>
+            actionPermission.buildToolbarActions([
+              {
+                value: (
+                  <Button
+                    key="create"
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={openCreateDrawer}
+                  >
+                    新增团队
+                  </Button>
+                ),
+                permission: 'team:create',
+              },
+            ])
+          }
         />
       </ManagementPageBody>
       <ManagementDrawer
@@ -394,19 +371,31 @@ const TeamListPage = () => {
   );
 };
 
-const CreateTeamPage = () => (
-  <TeamShell title="创建团队" actions={<Button onClick={() => history.push('/team')}>返回</Button>}>
-    <Card>
-      <TeamForm
-        onFinish={async (values) => {
-          const team = await createTeam(values);
-          message.success('团队已创建');
-          history.push(`/team/${team.id}`);
-        }}
-      />
-    </Card>
-  </TeamShell>
-);
+const CreateTeamPage = () => {
+  const actionPermission = useActionPermission();
+
+  if (!actionPermission.can('team:create')) {
+    return (
+      <TeamShell title="创建团队" actions={<Button onClick={() => history.push('/team')}>返回</Button>}>
+        <Result status="403" title="403" />
+      </TeamShell>
+    );
+  }
+
+  return (
+    <TeamShell title="创建团队" actions={<Button onClick={() => history.push('/team')}>返回</Button>}>
+      <Card>
+        <TeamForm
+          onFinish={async (values) => {
+            const team = await createTeam(values);
+            message.success('团队已创建');
+            history.push(`/team/${team.id}`);
+          }}
+        />
+      </Card>
+    </TeamShell>
+  );
+};
 
 const useTeamId = () => {
   const params = useParams<{ teamId?: string }>();
@@ -415,6 +404,7 @@ const useTeamId = () => {
 
 const TeamDetailPage = () => {
   const teamId = useTeamId();
+  const actionPermission = useActionPermission();
   const [team, setTeam] = useState<TeamRecord>();
   const [editOpen, setEditOpen] = useState(false);
 
@@ -433,18 +423,25 @@ const TeamDetailPage = () => {
       actions={
         <>
           <Button onClick={() => history.push('/team')}>我的团队</Button>
-          <Button onClick={() => history.push(`/team/${teamId}/members`)}>成员</Button>
-          <Button onClick={() => history.push(`/team/${teamId}/invites`)}>邀请</Button>
-          <Button type="primary" onClick={() => setEditOpen(true)}>编辑</Button>
-          {team.myRole === 'OWNER' ? (
+          {actionPermission.can('team:member:view') ? (
+            <Button onClick={() => history.push(`/team/${teamId}/members`)}>成员</Button>
+          ) : null}
+          {actionPermission.can('team:member:invite') ? (
+            <Button onClick={() => history.push(`/team/${teamId}/invites`)}>邀请</Button>
+          ) : null}
+          {actionPermission.can('team:update') ? (
+            <Button type="primary" onClick={() => setEditOpen(true)}>编辑</Button>
+          ) : null}
+          {team.myRole === 'OWNER' && actionPermission.can('team:delete') ? (
             <Popconfirm title="确认解散团队？" onConfirm={async () => { await deleteTeam(teamId); message.success('团队已删除'); history.push('/team'); }}>
               <Button danger icon={<DeleteOutlined />}>解散</Button>
             </Popconfirm>
-          ) : (
+          ) : null}
+          {team.myRole !== 'OWNER' ? (
             <Popconfirm title="确认退出团队？" onConfirm={async () => { await leaveTeam(teamId); message.success('已退出团队'); history.push('/team'); }}>
               <Button danger>退出</Button>
             </Popconfirm>
-          )}
+          ) : null}
         </>
       }
     >
@@ -476,6 +473,7 @@ const TeamDetailPage = () => {
 
 const MembersPage = () => {
   const teamId = useTeamId();
+  const actionPermission = useActionPermission();
   const [members, setMembers] = useState<TeamMemberRecord[]>([]);
   const load = async () => setMembers(await listTeamMembers(teamId));
   useEffect(() => {
@@ -483,7 +481,7 @@ const MembersPage = () => {
   }, [teamId]);
 
   const columns: ColumnsType<TeamMemberRecord> = [
-    { title: '成员 ID', dataIndex: 'userId' },
+    { title: '序号', width: 72, align: 'center', render: (_, __, index) => index + 1 },
     { title: '角色', dataIndex: 'role', render: (role) => <Tag color={roleColor[role]}>{role}</Tag> },
     { title: '状态', dataIndex: 'status' },
     {
@@ -494,6 +492,7 @@ const MembersPage = () => {
             <Select
               size="small"
               value={record.role}
+              disabled={!actionPermission.can('team:member:role-update')}
               style={{ width: 120 }}
               options={roleOptions.map((role) => ({ value: role, label: role }))}
               onChange={async (role) => {
@@ -504,12 +503,12 @@ const MembersPage = () => {
           ) : null}
           {record.role !== 'OWNER' ? (
             <Popconfirm title="移除该成员？" onConfirm={async () => { await removeTeamMember(teamId, record.id); await load(); }}>
-              <Button size="small" danger>移除</Button>
+              <Button size="small" danger disabled={!actionPermission.can('team:member:remove')}>移除</Button>
             </Popconfirm>
           ) : null}
           {record.role !== 'OWNER' ? (
             <Popconfirm title="转让 OWNER 给该成员？" onConfirm={async () => { await transferTeamOwner(teamId, record.id); await load(); }}>
-              <Button size="small">转让</Button>
+              <Button size="small" disabled={!actionPermission.can('team:member:role-update')}>转让</Button>
             </Popconfirm>
           ) : null}
         </Space>
@@ -528,6 +527,7 @@ const MembersPage = () => {
 
 const InvitesPage = () => {
   const teamId = useTeamId();
+  const actionPermission = useActionPermission();
   const [invites, setInvites] = useState<TeamInviteRecord[]>([]);
   const [latest, setLatest] = useState<TeamInviteRecord>();
   const [form] = Form.useForm();
@@ -546,7 +546,7 @@ const InvitesPage = () => {
       title: '操作',
       render: (_, record) => (
         <Popconfirm title="禁用该邀请？" onConfirm={async () => { await disableTeamInvite(teamId, record.id); await load(); }}>
-          <Button size="small">禁用</Button>
+          <Button size="small" disabled={!actionPermission.can('team:member:invite')}>禁用</Button>
         </Popconfirm>
       ),
     },
@@ -579,7 +579,7 @@ const InvitesPage = () => {
             <Form.Item name="needApproval" label="需要审批" valuePropName="checked">
               <Switch />
             </Form.Item>
-            <Button type="primary" icon={<LinkOutlined />} htmlType="submit">生成链接</Button>
+            <Button type="primary" icon={<LinkOutlined />} htmlType="submit" disabled={!actionPermission.can('team:member:invite')}>生成链接</Button>
           </Form>
           {latest ? (
             <div className="team-invite-latest">
@@ -649,6 +649,7 @@ const JoinPage = () => {
 };
 
 const JoinRequestsPage = ({ teamId }: { teamId: number }) => {
+  const actionPermission = useActionPermission();
   const [requests, setRequests] = useState<TeamJoinRequestRecord[]>([]);
   const load = async () => setRequests(await listTeamJoinRequests(teamId));
   useEffect(() => {
@@ -660,15 +661,15 @@ const JoinRequestsPage = ({ teamId }: { teamId: number }) => {
       dataSource={requests}
       pagination={false}
       columns={[
-        { title: '用户 ID', dataIndex: 'userId' },
+        { title: '序号', width: 72, align: 'center', render: (_, __, index) => index + 1 },
         { title: '状态', dataIndex: 'status' },
         { title: '申请信息', dataIndex: 'applyMessage', render: (value) => value || '-' },
         {
           title: '操作',
           render: (_, record) => record.status === 'PENDING' ? (
             <Space>
-              <Button size="small" onClick={async () => { await approveTeamJoinRequest(teamId, record.id); await load(); }}>通过</Button>
-              <Button size="small" danger onClick={async () => { await rejectTeamJoinRequest(teamId, record.id); await load(); }}>拒绝</Button>
+              <Button size="small" disabled={!actionPermission.can('team:member:invite')} onClick={async () => { await approveTeamJoinRequest(teamId, record.id); await load(); }}>通过</Button>
+              <Button size="small" danger disabled={!actionPermission.can('team:member:invite')} onClick={async () => { await rejectTeamJoinRequest(teamId, record.id); await load(); }}>拒绝</Button>
             </Space>
           ) : null,
         },

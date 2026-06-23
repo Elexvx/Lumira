@@ -11,6 +11,7 @@ import com.lumira.ai.vo.PageResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -31,7 +32,8 @@ public class AiReadQueryService {
 
     private static final long MAX_PAGE_SIZE = 100L;
     private static final int MAX_CONVERSATION_MESSAGES = 500;
-    private static final String SCOPE_TENANT = "TENANT";
+    private static final String SCOPE_PLATFORM = "PLATFORM";
+    private static final String SCOPE_LEGACY_TENANT = "TENANT";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -433,9 +435,8 @@ public class AiReadQueryService {
             args.add(currentUserId(currentUser));
             return;
         }
-        if (SCOPE_TENANT.equals(normalizedScope)) {
-            where.append(" and kb.visibility_scope = ?");
-            args.add(SCOPE_TENANT);
+        if (isPlatformScope(normalizedScope)) {
+            appendPlatformVisibilityFilter(where, args);
             return;
         }
         if ("SHARED".equals(normalizedScope)) {
@@ -447,8 +448,8 @@ public class AiReadQueryService {
 
         where.append(" and (kb.owner_user_id = ?");
         args.add(currentUserId(currentUser));
-        where.append(" or kb.visibility_scope = ?");
-        args.add(SCOPE_TENANT);
+        where.append(" or ");
+        appendPlatformVisibilityPredicate(where, args);
         where.append(" or ").append(buildAclExistsClause(currentUser, args)).append(")");
     }
 
@@ -464,10 +465,24 @@ public class AiReadQueryService {
             where.append(" and kb.owner_user_id <> ?");
             args.add(currentUserId(currentUser));
             where.append(" and ").append(buildAclExistsClause(currentUser, args));
-        } else if (SCOPE_TENANT.equals(normalizedScope)) {
-            where.append(" and kb.visibility_scope = ?");
-            args.add(SCOPE_TENANT);
+        } else if (isPlatformScope(normalizedScope)) {
+            appendPlatformVisibilityFilter(where, args);
         }
+    }
+
+    private void appendPlatformVisibilityFilter(StringBuilder where, List<Object> args) {
+        where.append(" and ");
+        appendPlatformVisibilityPredicate(where, args);
+    }
+
+    private void appendPlatformVisibilityPredicate(StringBuilder where, List<Object> args) {
+        where.append("kb.visibility_scope in (?, ?)");
+        args.add(SCOPE_PLATFORM);
+        args.add(SCOPE_LEGACY_TENANT);
+    }
+
+    private boolean isPlatformScope(String scope) {
+        return SCOPE_PLATFORM.equals(scope) || SCOPE_LEGACY_TENANT.equals(scope);
     }
 
     private String buildAclExistsClause(CurrentUser currentUser, List<Object> args) {
@@ -555,10 +570,10 @@ public class AiReadQueryService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Tenant context is required");
+        if (currentUser == null) {
+            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
     private Long currentUserId(CurrentUser currentUser) {

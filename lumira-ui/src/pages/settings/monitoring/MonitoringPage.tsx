@@ -141,7 +141,7 @@ const resolveStatusKey = (status?: PlatformUpdateStatus | null) => {
 
 const buildServiceColumns = () => {
   const websocketColumns = [
-    { title: t('租户', 'Tenant'), dataIndex: 'tenantId', width: 'var(--saas-spacing-180)' },
+    { title: t('平台', 'Platform'), dataIndex: 'tenantId', width: 'var(--saas-spacing-180)' },
     { title: t('连接数', 'Connections'), dataIndex: 'connectionCount', width: 'var(--saas-spacing-120)' },
   ];
 
@@ -1190,7 +1190,7 @@ const ServiceMonitorContent = () => {
             <Statistic title={t('当前连接数', 'Active connections')} value={webSocketQuery.data?.activeConnections ?? 0} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={8}>
-            <Statistic title={t('在线租户数', 'Online tenants')} value={webSocketQuery.data?.tenantCount ?? 0} valueStyle={valueStyle} />
+            <Statistic title={t('在线平台数', 'Online platforms')} value={webSocketQuery.data?.tenantCount ?? 0} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={8}>
             <Statistic title={t('在线用户数', 'Online users')} value={webSocketQuery.data?.userCount ?? 0} valueStyle={valueStyle} />

@@ -55,6 +55,41 @@ class SystemRouteCatalogTest {
                     assertThat(menu.getPermissionKey()).isEqualTo("team:view");
                 });
         assertThat(flattenedMenus)
+                .filteredOn(menu -> menu.getMenuCode() != null && menu.getMenuCode().startsWith("team."))
+                .extracting(SystemVO.MenuVO::getPermissionKey)
+                .contains(
+                        "team:view",
+                        "team:create",
+                        "team:update",
+                        "team:delete",
+                        "team:member:view",
+                        "team:member:invite",
+                        "team:member:remove",
+                        "team:member:role-update"
+                );
+        assertThat(flattenedMenus)
+                .extracting(SystemVO.MenuVO::getPermissionKey)
+                .contains(
+                        "system:user:view",
+                        "system:user:create",
+                        "system:user:update",
+                        "system:user:delete",
+                        "system:user:export",
+                        "system:role:view",
+                        "system:role:create",
+                        "system:role:update",
+                        "system:role:delete",
+                        "system:role:grant",
+                        "system:menu:view",
+                        "system:menu:create",
+                        "system:menu:update",
+                        "system:menu:delete",
+                        "system:dict:view",
+                        "system:dict:create",
+                        "system:dict:update",
+                        "system:dict:delete"
+                );
+        assertThat(flattenedMenus)
                 .filteredOn(menu -> "user.center.personal".equals(menu.getMenuCode()))
                 .singleElement()
                 .satisfies(menu -> {

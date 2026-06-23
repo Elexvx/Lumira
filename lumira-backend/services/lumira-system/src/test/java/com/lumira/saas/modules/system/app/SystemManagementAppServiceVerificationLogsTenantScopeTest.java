@@ -44,7 +44,7 @@ class SystemManagementAppServiceVerificationLogsTenantScopeTest {
 
         assertTrue(queryOperations.queried);
         assertTrue(queryOperations.querySql.contains("and l.tenant_id = ?"));
-        assertArrayEquals(new Object[]{2001L, 10L, 0L}, queryOperations.queryArgs);
+        assertArrayEquals(new Object[]{1001L, 10L, 0L}, queryOperations.queryArgs);
         assertEquals(null, queryOperations.countArgs);
     }
 

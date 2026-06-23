@@ -1,4 +1,4 @@
-import { Alert, Avatar, Button, Card, Checkbox, Col, Form, Input, Radio, Row, Select, Space, Tag, Tabs, Typography } from 'antd';
+import { Alert, Avatar, Card, Checkbox, Form, Input, Radio, Select, Space, Tag, Tabs, Typography } from 'antd';
 import type { FormInstance } from 'antd';
 import type { ReactNode } from 'react';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
@@ -34,7 +34,6 @@ interface EmployeeDrawerProps {
   open: boolean;
   title: string;
   form: FormInstance<EmployeeFormValues>;
-  employeePromptTemplate: string;
   avatarOptions: AvatarOption[];
   llmServiceOptions: Array<{ label: string; value: number }>;
   knowledgeBaseOptions: Array<{ label: string; value: number }>;
@@ -63,7 +62,6 @@ export const EmployeeDrawer = ({
   open,
   title,
   form,
-  employeePromptTemplate,
   avatarOptions,
   llmServiceOptions,
   knowledgeBaseOptions,
@@ -80,7 +78,6 @@ export const EmployeeDrawer = ({
 }: EmployeeDrawerProps) => {
   const { isMobile } = useResponsive();
   const sectionGap = resolveResponsiveValue(APP_SPACING.sectionGap, isMobile);
-  const rowGutter = resolveResponsiveValue(APP_SPACING.rowGutterPanel, isMobile);
   const microGap = resolveResponsiveValue(APP_SPACING.microGap, isMobile);
   const mediumGap = resolveResponsiveValue(APP_SPACING.modalFooterGap, isMobile);
   const groupedCapabilities = groupCapabilities(employeeCapabilities);
@@ -96,7 +93,7 @@ export const EmployeeDrawer = ({
         { key: 'save', label: t('保存', 'Save'), type: 'primary', loading: saving, disabled: !canSave, onClick: onSave },
       ]}
       >
-      <Form layout="vertical" form={form} initialValues={{ avatarKey: DEFAULT_AVATAR_KEY, systemPrompt: employeePromptTemplate }}>
+      <Form layout="vertical" form={form} initialValues={{ avatarKey: DEFAULT_AVATAR_KEY, systemPrompt: '' }}>
         <Tabs
           defaultActiveKey="basic"
           items={[
@@ -105,8 +102,6 @@ export const EmployeeDrawer = ({
               label: t('员工资料', 'Profile'),
               children: (
                 <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
-                  <Row gutter={rowGutter}>
-                    <Col xs={24} md={12}>
                       <Form.Item
                         label={t('用户名', 'Username')}
                         name="username"
@@ -117,25 +112,15 @@ export const EmployeeDrawer = ({
                       >
                         <Input placeholder={t('例如：aiAssistant', 'e.g. aiAssistant')} />
                       </Form.Item>
-                    </Col>
-                    <Col xs={24} md={12}>
                       <Form.Item label={t('昵称', 'Nickname')} name="nickname" rules={[{ required: true, message: t('请输入昵称', 'Please enter a nickname') }]}>
                         <Input placeholder={t('例如：小助手', 'e.g. Assistant')} />
                       </Form.Item>
-                    </Col>
-                  </Row>
-                  <Row gutter={rowGutter}>
-                    <Col xs={24} md={12}>
                       <Form.Item label={t('职位', 'Position')} name="position">
                         <Input placeholder={t('例如：智能客服', 'e.g. AI support agent')} />
                       </Form.Item>
-                    </Col>
-                    <Col xs={24} md={12}>
                       <Form.Item label={t('默认 LLM 服务', 'Default LLM service')} name="defaultLlmServiceId">
                         <Select allowClear options={llmServiceOptions} placeholder={t('请选择默认模型服务（可选）', 'Select a default model service (optional)')} />
                       </Form.Item>
-                    </Col>
-                  </Row>
                   <Form.Item label={t('头像', 'Avatar')} name="avatarKey">
                     <Radio.Group>
                       <Space wrap>
@@ -164,22 +149,6 @@ export const EmployeeDrawer = ({
               children: (
                 <Space direction="vertical" size={sectionGap} style={{ width: '100%' }}>
                   <Alert type="info" showIcon message={t('AI 模型的系统提示词，决定了‘我’是谁，遵循哪些要求来工作和完成任务。', 'The system prompt defines who this AI is and the rules it follows to work and complete tasks.')} />
-                  <Space wrap>
-                    <Button
-                      onClick={() => {
-                        form.setFieldValue('systemPrompt', '');
-                      }}
-                    >
-                      {t('清空', 'Clear')}
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        form.setFieldValue('systemPrompt', employeePromptTemplate);
-                      }}
-                    >
-                      {t('恢复默认模板', 'Restore default template')}
-                    </Button>
-                  </Space>
                   <Form.Item name="systemPrompt" label="systemPrompt">
                     <Input.TextArea rows={12} placeholder={t('请输入系统提示词', 'Please enter the system prompt')} />
                   </Form.Item>

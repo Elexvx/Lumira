@@ -21,6 +21,8 @@ class SensitiveWordPluginStateServiceTest {
         assertThat(service.isEnabled(currentUser())).isTrue();
         assertThat(service.isEnabled(currentUser())).isTrue();
         assertThat(queryOperations.existsCallCount).isEqualTo(3);
+        assertThat(queryOperations.seenPlatformTenantArgument).isTrue();
+        assertThat(queryOperations.seenMismatchedTenantArgument).isFalse();
         assertThat(queryOperations.countQueryCalled).isFalse();
     }
 
@@ -38,7 +40,7 @@ class SensitiveWordPluginStateServiceTest {
 
     private CurrentUser currentUser() {
         CurrentUser currentUser = new CurrentUser();
-        currentUser.setCurrentTenantId(1001L);
+        currentUser.setCurrentTenantId(2002L);
         currentUser.setUserId(2001L);
         currentUser.setUsername("admin");
         currentUser.setAuthenticated(true);
@@ -49,12 +51,16 @@ class SensitiveWordPluginStateServiceTest {
         private boolean pluginEnabled;
         private boolean tableExists;
         private boolean countQueryCalled;
+        private boolean seenPlatformTenantArgument;
+        private boolean seenMismatchedTenantArgument;
         private int existsCallCount;
 
         @Override
         public boolean exists(String sql, Object... args) {
             existsCallCount += 1;
             if (sql.contains("from sys_plugin_tenant")) {
+                seenPlatformTenantArgument = args.length > 0 && Long.valueOf(1001L).equals(args[0]);
+                seenMismatchedTenantArgument = args.length > 0 && Long.valueOf(2002L).equals(args[0]);
                 return pluginEnabled;
             }
             if (sql.contains("information_schema.tables")) {

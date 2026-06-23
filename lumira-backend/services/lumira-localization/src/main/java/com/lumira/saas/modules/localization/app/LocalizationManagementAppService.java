@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.localization.dto.LocalizationDTO;
 import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.EntryQuery;
 import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.LanguageStatRow;
@@ -499,7 +500,7 @@ public class LocalizationManagementAppService {
             releaseMapper.insert(release);
             ReleaseAggregate releaseAggregate = new ReleaseAggregate(
                     release.id == null ? nextVersion : release.id,
-                    currentUser.getCurrentTenantId(),
+                    PlatformContext.compatibilityTenantId(),
                     localeCode,
                     false
             );
@@ -534,7 +535,7 @@ public class LocalizationManagementAppService {
                 .eq("deleted", 0));
         ReleaseAggregate releaseAggregate = new ReleaseAggregate(
                 request.getReleaseId(),
-                currentUser.getCurrentTenantId(),
+                PlatformContext.compatibilityTenantId(),
                 release.getLocaleCode(),
                 false
         );
@@ -901,9 +902,7 @@ public class LocalizationManagementAppService {
 
     private void bumpRuntimeBundleReadModelVersion(String localeCode, CurrentUser currentUser) {
         String normalizedLocale = normalizeLocale(localeCode);
-        Long tenantId = currentUser == null || currentUser.getCurrentTenantId() == null
-                ? PlatformConstants.PLATFORM_TENANT_ID
-                : currentUser.getCurrentTenantId();
+        Long tenantId = PlatformContext.compatibilityTenantId();
         readModelVersionCache.remove(readModelVersionCacheKey(tenantId, normalizedLocale));
         try {
             systemInternalApi.bumpReadModelVersion(

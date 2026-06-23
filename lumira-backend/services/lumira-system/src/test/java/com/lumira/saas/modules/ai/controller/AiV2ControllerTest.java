@@ -91,14 +91,14 @@ class AiV2ControllerTest {
         CurrentUser currentUser = currentUser("ai:knowledge:view");
         PageResponse<AiVO.KnowledgeBaseVO> page = new PageResponse<>();
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(aiKnowledgeBaseAppService.listKnowledgeBases(currentUser, "policy", "ENABLED", "TENANT", 2L, 50L))
+        when(aiKnowledgeBaseAppService.listKnowledgeBases(currentUser, "policy", "ENABLED", "PLATFORM", 2L, 50L))
                 .thenReturn(page);
 
-        var response = controller.knowledgeBases("policy", "ENABLED", "TENANT", 2L, 50L);
+        var response = controller.knowledgeBases("policy", "ENABLED", "PLATFORM", 2L, 50L);
 
         assertThat(response.getData()).isSameAs(page);
         verify(permissionGuard).requirePermission(currentUser, "ai:knowledge:view");
-        verify(aiKnowledgeBaseAppService).listKnowledgeBases(currentUser, "policy", "ENABLED", "TENANT", 2L, 50L);
+        verify(aiKnowledgeBaseAppService).listKnowledgeBases(currentUser, "policy", "ENABLED", "PLATFORM", 2L, 50L);
     }
 
     @Test

@@ -34,6 +34,6 @@ class RemoteAiOwnerToolGatewayTest {
     }
 
     private CurrentUser user() {
-        return new CurrentUser(7L, "ai-user", 1001L, "s1", 1, true, Set.of("*"));
+        return new CurrentUser(7L, "ai-user", 2002L, "s1", 1, true, Set.of("*"));
     }
 }

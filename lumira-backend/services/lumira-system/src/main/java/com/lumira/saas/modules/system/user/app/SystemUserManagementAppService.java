@@ -8,6 +8,7 @@ import com.lumira.common.security.data.DataPermissionRule;
 import com.lumira.common.security.data.DataPermissionResolver;
 import com.lumira.common.security.data.DataScopeType;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserAccount;
@@ -104,15 +105,9 @@ public class SystemUserManagementAppService {
                 left join iam_user iu
                   on iu.id = u.id
                  and iu.deleted = 0
-                join sys_user_tenant ut
-                  on ut.user_id = u.id
-                 and ut.tenant_id = ?
-                 and ut.deleted = 0
-                 and ut.status = 'ENABLED'
                 where u.deleted = 0
                 """;
         List<Object> params = new ArrayList<>();
-        params.add(tenantId);
         if (userId != null) {
             baseSql += " and u.id = ?";
             params.add(userId);
@@ -241,18 +236,16 @@ public class SystemUserManagementAppService {
     }
 
     private SystemVO.UserDetailVO buildUserDetail(CurrentUser currentUser, Long userId) {
-        SystemVO.UserVO user = queryUser(currentTenantId(currentUser), userId);
+        Long tenantId = currentTenantId(currentUser);
+        SystemVO.UserVO user = queryUser(userId);
         boolean canViewSensitive = canViewSensitiveUserInfo(currentUser);
         if (!canViewSensitive) {
             maskSensitiveUser(user);
         }
         SystemVO.UserDetailVO detail = new SystemVO.UserDetailVO();
         copyUser(detail, user);
-        Long tenantId = currentTenantId(currentUser);
         CompletableFuture<List<Long>> roleIdsFuture = CompletableFuture.supplyAsync(() -> listUserRoleIds(userId, tenantId), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<Long>> deptIdsFuture = CompletableFuture.supplyAsync(() -> listUserDeptIds(userId, tenantId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<Long>> tenantIdsFuture = CompletableFuture.supplyAsync(() -> listUserTenantIds(userId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<String>> tenantNamesFuture = CompletableFuture.supplyAsync(() -> listUserTenantNames(userId), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(() -> listUserRoleNames(userId, tenantId), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<String>> deptNamesFuture = CompletableFuture.supplyAsync(() -> listUserDeptNames(userId, tenantId), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<UserDetailVO.UserIdentityVO>> identitiesFuture = CompletableFuture.supplyAsync(
@@ -277,8 +270,8 @@ public class SystemUserManagementAppService {
         List<Long> deptIds = deptIdsFuture.join();
         detail.setDeptIds(deptIds);
         detail.setPrimaryDeptId(deptIds.isEmpty() ? null : deptIds.get(0));
-        detail.setTenantIds(tenantIdsFuture.join());
-        detail.setTenantNames(tenantNamesFuture.join());
+        detail.setTenantIds(List.of());
+        detail.setTenantNames(List.of());
         detail.setRoleNames(roleNamesFuture.join());
         detail.setDeptNames(deptNamesFuture.join());
         detail.setIdentities(identitiesFuture.join());
@@ -291,7 +284,6 @@ public class SystemUserManagementAppService {
     public SystemVO.UserDetailVO createUser(CurrentUser currentUser, SystemDTO.UserUpsertRequest request) {
         Long tenantId = currentTenantId(currentUser);
         Long userId = insertOrUpdateUser(null, request, currentUser.getUserId());
-        upsertUserTenantRelation(userId, tenantId, true, currentUser.getUserId());
         replaceUserRoles(userId, tenantId, request.getRoleIds(), currentUser.getUserId());
         replaceUserDepartments(userId, tenantId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), true);
         permissionSnapshotService.invalidateTenant(tenantId);
@@ -343,23 +335,9 @@ public class SystemUserManagementAppService {
         }
         Long tenantId = currentTenantId(currentUser);
         requireAccessibleUserRecord(currentUser, userId);
-        SystemVO.UserVO user = queryUser(tenantId, userId);
+        SystemVO.UserVO user = queryUser(userId);
         LocalDateTime now = LocalDateTime.now();
 
-        int tenantRows = jdbcTemplate.update(
-                """
-                        update sys_user_tenant
-                        set status = 'DISABLED', deleted = 1, updated_by = ?, updated_at = ?
-                        where tenant_id = ? and user_id = ? and deleted = 0
-                        """,
-                currentUser.getUserId(),
-                now,
-                tenantId,
-                userId
-        );
-        if (tenantRows == 0) {
-            throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
-        }
         jdbcTemplate.update(
                 "update sys_user_role set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
                 currentUser.getUserId(),
@@ -396,33 +374,27 @@ public class SystemUserManagementAppService {
                 userId
         );
 
-        boolean activeTenantExists = existsByQuery(
-                "select 1 from sys_user_tenant where user_id = ? and deleted = 0 and status = 'ENABLED' limit 1",
+        jdbcTemplate.update(
+                """
+                        update sys_user
+                        set username = concat(left(username, 32), '#deleted#', id),
+                            status = 'DISABLED',
+                            deleted = 1,
+                            updated_by = ?,
+                            updated_at = ?
+                        where id = ? and deleted = 0
+                        """,
+                currentUser.getUserId(),
+                now,
                 userId
         );
-        if (!activeTenantExists) {
-            jdbcTemplate.update(
-                    """
-                            update sys_user
-                            set username = concat(left(username, 32), '#deleted#', id),
-                                status = 'DISABLED',
-                                deleted = 1,
-                                updated_by = ?,
-                                updated_at = ?
-                            where id = ? and deleted = 0
-                            """,
-                    currentUser.getUserId(),
-                    now,
-                    userId
-            );
-            jdbcTemplate.update(
-                    "update sys_user_wechat_binding set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
-                    currentUser.getUserId(),
-                    now,
-                    userId
-            );
-            iamUserService.softDeleteUser(userId);
-        }
+        jdbcTemplate.update(
+                "update sys_user_wechat_binding set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
+                currentUser.getUserId(),
+                now,
+                userId
+        );
+        iamUserService.softDeleteUser(userId);
 
         onlineSessionManagementAppService.revokeUserSessions(userId);
         permissionSnapshotService.invalidateTenant(tenantId);
@@ -447,7 +419,7 @@ public class SystemUserManagementAppService {
         );
     }
 
-    private SystemVO.UserVO queryUser(Long tenantId, Long userId) {
+    private SystemVO.UserVO queryUser(Long userId) {
         SystemVO.UserVO user = queryOne(
                 """
                         select u.id, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName, u.avatar_url as avatarUrl,
@@ -458,11 +430,9 @@ public class SystemUserManagementAppService {
                                u.created_at as createdAt, u.updated_at as updatedAt
                         from sys_user u
                         left join iam_user iu on iu.id = u.id and iu.deleted = 0
-                        join sys_user_tenant ut on ut.user_id = u.id and ut.tenant_id = ? and ut.deleted = 0
                         where u.id = ? and u.deleted = 0
                         """,
                 SystemVO.UserVO.class,
-                tenantId,
                 userId
         );
         if (user == null) {
@@ -602,22 +572,6 @@ public class SystemUserManagementAppService {
         }
     }
 
-    private void upsertUserTenantRelation(Long userId, Long tenantId, boolean isDefault, Long operatorId) {
-        jdbcTemplate.update(
-                """
-                        insert into sys_user_tenant (tenant_id, user_id, is_default, status, created_by, updated_by, deleted)
-                        values (?, ?, ?, 'ENABLED', ?, ?, 0)
-                        on duplicate key update is_default = values(is_default), status = values(status),
-                                                 updated_by = values(updated_by), updated_at = current_timestamp, deleted = 0
-                        """,
-                tenantId,
-                userId,
-                isDefault ? 1 : 0,
-                operatorId,
-                operatorId
-        );
-    }
-
     private void replaceUserRoles(Long userId, Long tenantId, List<Long> roleIds, Long operatorId) {
         jdbcTemplate.update(
                 "delete from sys_user_role where tenant_id = ? and user_id = ?",
@@ -733,45 +687,6 @@ public class SystemUserManagementAppService {
         detail.setSecuritySetting(iamUserService.findSecuritySetting(userId)
                 .map(this::toUserSecuritySettingVO)
                 .orElse(null));
-    }
-
-    private List<String> listUserTenantNames(Long userId) {
-        return jdbcTemplate.queryForList(
-                """
-                        select coalesce(
-                            (
-                                select nullif(c.config_value, '')
-                                from sys_config c
-                                where c.tenant_id = ut.tenant_id
-                                  and c.config_key = 'platform.name'
-                                  and c.deleted = 0
-                                order by c.id asc
-                                limit 1
-                            ),
-                            concat('租户 ', ut.tenant_id)
-                        ) as tenant_name
-                        from sys_user_tenant ut
-                        where ut.user_id = ?
-                          and ut.deleted = 0
-                        order by ut.is_default desc, ut.tenant_id asc
-                        """,
-                String.class,
-                userId
-        );
-    }
-
-    private List<Long> listUserTenantIds(Long userId) {
-        return jdbcTemplate.queryForList(
-                """
-                        select tenant_id
-                        from sys_user_tenant
-                        where user_id = ?
-                          and deleted = 0
-                        order by is_default desc, tenant_id asc
-                        """,
-                Long.class,
-                userId
-        );
     }
 
     private List<Long> listUserRoleIds(Long userId, Long tenantId) {
@@ -1160,10 +1075,10 @@ public class SystemUserManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
     private void requireAccessibleUserRecord(CurrentUser currentUser, Long userId) {
@@ -1176,21 +1091,14 @@ public class SystemUserManagementAppService {
         if (userId == null) {
             return false;
         }
-        Long tenantId = currentTenantId(currentUser);
         DataPermissionSql dataPermissionSql = userDataPermissionClause(currentUser, "u");
         List<Object> params = new ArrayList<>();
-        params.add(tenantId);
         params.add(userId);
         params.addAll(dataPermissionSql.params());
         return existsByQuery(
                 """
                         select 1
                         from sys_user u
-                        join sys_user_tenant ut
-                          on ut.user_id = u.id
-                         and ut.tenant_id = ?
-                         and ut.deleted = 0
-                         and ut.status = 'ENABLED'
                         where u.deleted = 0
                           and u.id = ?
                         """ + dataPermissionSql.sql() + " limit 1",
@@ -1219,7 +1127,7 @@ public class SystemUserManagementAppService {
                 dataScopes,
                 permissions
         );
-        if (decision.scopeType() == DataScopeType.ALL || decision.scopeType() == DataScopeType.TENANT) {
+        if (decision.scopeType() == DataScopeType.ALL) {
             return DataPermissionSql.empty();
         }
         Set<Long> deptIds = new LinkedHashSet<>(decision.deptIds());
@@ -1256,10 +1164,10 @@ public class SystemUserManagementAppService {
 
     private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(CurrentUser currentUser) {
         if (currentUser == null || currentUser.getSimulatedRoleId() != null) {
-            if (currentUser == null || currentUser.getSimulatedRoleId() == null || currentUser.getCurrentTenantId() == null || currentUser.getUserId() == null) {
+            if (currentUser == null || currentUser.getSimulatedRoleId() == null || currentUser.getUserId() == null) {
                 return PermissionSnapshotService.PermissionSnapshot.empty();
             }
-            return permissionSnapshotService.loadRoleSnapshot(currentUser.getCurrentTenantId(), currentUser.getSimulatedRoleId());
+            return permissionSnapshotService.loadRoleSnapshot(currentTenantId(currentUser), currentUser.getSimulatedRoleId());
         }
         if (!org.springframework.util.StringUtils.hasText(currentUser.getPermissionsVersion())) {
             return permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId());

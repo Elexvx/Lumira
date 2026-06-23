@@ -31,7 +31,16 @@ class MessageEventDeliveryServiceTest {
     }
 
     @Test
-    void deliverShouldRouteTenantBroadcastToTenantSubscribers() {
+    void deliverShouldRoutePlatformBroadcastToTenantSubscribers() {
+        MessageEventDTO event = buildEvent("PLATFORM", null, null);
+
+        deliveryService.deliver(event);
+
+        verify(registry).sendToTenant(1001L, event);
+    }
+
+    @Test
+    void deliverShouldKeepLegacyTenantBroadcastCompatible() {
         MessageEventDTO event = buildEvent("TENANT", null, null);
 
         deliveryService.deliver(event);

@@ -2,116 +2,128 @@ package com.lumira.team.app;
 
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
-import com.lumira.team.infrastructure.persistence.RowMapper;
 import com.lumira.team.dto.TeamDTO;
+import com.lumira.team.repository.TeamInviteRepository;
+import com.lumira.team.repository.TeamJoinRequestRepository;
+import com.lumira.team.repository.TeamMemberRepository;
+import com.lumira.team.repository.TeamRepository;
 import com.lumira.team.vo.TeamVO;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class TeamAppServiceTest {
     @Test
-    void createTeamShouldInsertOwnerMember() {
-        RecordingQueries queries = new RecordingQueries();
-        TeamAppService service = service(queries, mockPermission("OWNER"));
+    void createTeamShouldDelegatePersistenceToRepositories() {
+        Fixtures fixtures = fixtures("OWNER");
         TeamDTO.TeamCreateRequest request = new TeamDTO.TeamCreateRequest();
         request.setTeamName("Core Team");
 
-        TeamVO.Team team = service.createTeam(currentUser(3001L), request);
+        TeamVO.Team team = fixtures.service.createTeam(currentUser(3001L), request);
 
         assertThat(team.getId()).isEqualTo(2001L);
-        assertThat(queries.teamInsertCalled).isTrue();
-        assertThat(queries.ownerMemberInsertCalled).isTrue();
-        assertThat(queries.memberInsertRole).isEqualTo("OWNER");
+        verify(fixtures.teamRepository).nextTeamCode(1001L);
+        verify(fixtures.teamRepository).createTeam(anyLong(), any(), anyLong(), any());
+        verify(fixtures.teamMemberRepository).addOwner(1001L, 2001L, 3001L);
     }
 
     @Test
-    void myTeamsShouldUseMembershipScope() {
-        RecordingQueries queries = new RecordingQueries();
-        TeamAppService service = service(queries, mockPermission("MEMBER"));
+    void myTeamsShouldUseMembershipRepositoryScope() {
+        Fixtures fixtures = fixtures("MEMBER");
 
-        List<TeamVO.Team> teams = service.myTeams(currentUser(3001L));
+        List<TeamVO.Team> teams = fixtures.service.myTeams(currentUser(3001L));
 
         assertThat(teams).hasSize(1);
-        assertThat(queries.lastQuerySql).contains("join team_member");
-        assertThat(teams.get(0).getMyRole()).isEqualTo("MEMBER");
+        verify(fixtures.teamRepository).listMyTeams(1001L, 3001L);
     }
 
     @Test
-    void adminTeamsShouldUseTenantScopeWithoutMembershipFilter() {
-        RecordingQueries queries = new RecordingQueries();
-        TeamAppService service = service(queries, mockPermission("MEMBER"));
+    void adminTeamsShouldUseRepositoryWithoutRoleGate() {
+        Fixtures fixtures = fixtures("MEMBER");
 
-        List<TeamVO.Team> teams = service.listTeamsForAdmin(currentUser(3001L));
+        List<TeamVO.Team> teams = fixtures.service.listTeamsForAdmin(currentUser(3001L));
 
         assertThat(teams).hasSize(1);
-        assertThat(queries.lastQuerySql).contains("left join team_member");
-        assertThat(queries.lastQuerySql).doesNotContain("and t.status = 'ACTIVE'");
+        verify(fixtures.teamRepository).listTeamsForAdmin(1001L, 3001L);
     }
 
     @Test
     void ownerCanUpdateButMemberCannot() {
-        TeamDTO.TeamUpdateRequest request = new TeamDTO.TeamUpdateRequest();
-        request.setTeamName("Updated");
-        TeamAppService ownerService = service(new RecordingQueries(), mockPermission("OWNER"));
-        assertThat(ownerService.updateTeam(currentUser(3001L), 2001L, request).getTeamName()).isEqualTo("Core Team");
+        TeamDTO.TeamUpdateRequest request = updateRequest();
+        Fixtures owner = fixtures("OWNER");
+        assertThat(owner.service.updateTeam(currentUser(3001L), 2001L, request).getTeamName()).isEqualTo("Core Team");
+        verify(owner.teamRepository).updateTeamProfile(anyLong(), anyLong(), anyLong(), any());
 
-        TeamAppService memberService = service(new RecordingQueries(), mockPermission("MEMBER"));
-        assertThatThrownBy(() -> memberService.updateTeam(currentUser(3001L), 2001L, request))
+        Fixtures member = fixtures("MEMBER");
+        assertThatThrownBy(() -> member.service.updateTeam(currentUser(3001L), 2001L, request))
                 .isInstanceOf(BizException.class);
     }
 
     @Test
     void adminUpdateBypassesTeamRole() {
-        TeamDTO.TeamUpdateRequest request = new TeamDTO.TeamUpdateRequest();
-        request.setTeamName("Updated");
-        TeamAppService service = service(new RecordingQueries(), mockPermission("MEMBER"));
+        Fixtures fixtures = fixtures("MEMBER");
 
-        assertThat(service.updateTeamForAdmin(currentUser(3001L), 2001L, request).getTeamName()).isEqualTo("Core Team");
+        assertThat(fixtures.service.updateTeamForAdmin(currentUser(3001L), 2001L, updateRequest()).getTeamName()).isEqualTo("Core Team");
+
+        verify(fixtures.teamRepository).updateTeamProfile(anyLong(), anyLong(), anyLong(), any());
     }
 
     @Test
     void ownerCannotLeaveDirectly() {
-        TeamPermissionService permission = mockPermission("OWNER");
-        TeamVO.Member owner = member(1L, 3001L, "OWNER");
-        when(permission.activeMember(1001L, 2001L, 3001L)).thenReturn(owner);
-        TeamAppService service = service(new RecordingQueries(), permission);
+        Fixtures fixtures = fixtures("OWNER");
+        when(fixtures.permissionService.activeMember(1001L, 2001L, 3001L)).thenReturn(member(1L, 3001L, "OWNER"));
 
-        assertThatThrownBy(() -> service.leaveTeam(currentUser(3001L), 2001L))
+        assertThatThrownBy(() -> fixtures.service.leaveTeam(currentUser(3001L), 2001L))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("Owner must transfer");
     }
 
     @Test
-    void transferOwnerShouldDemotePreviousOwner() {
-        RecordingQueries queries = new RecordingQueries();
-        TeamPermissionService permission = mockPermission("OWNER");
-        when(permission.memberById(1001L, 2001L, 2L)).thenReturn(member(2L, 3002L, "ADMIN"));
-        TeamAppService service = service(queries, permission);
+    void transferOwnerShouldDemotePreviousOwnerThroughRepository() {
+        Fixtures fixtures = fixtures("OWNER");
+        when(fixtures.teamMemberRepository.findMemberById(1001L, 2001L, 2L)).thenReturn(member(2L, 3002L, "ADMIN"));
         TeamDTO.TransferOwnerRequest request = new TeamDTO.TransferOwnerRequest();
         request.setMemberId(2L);
         request.setPreviousOwnerRole("MEMBER");
 
-        service.transferOwner(currentUser(3001L), 2001L, request);
+        fixtures.service.transferOwner(currentUser(3001L), 2001L, request);
 
-        assertThat(queries.previousOwnerRole).isEqualTo("MEMBER");
-        assertThat(queries.newOwnerUpdated).isTrue();
+        verify(fixtures.teamMemberRepository).transferOwner(1001L, 2001L, 3001L, "MEMBER", 2L);
+        verify(fixtures.teamRepository).transferOwner(1001L, 2001L, 3002L, 3001L);
     }
 
-    private TeamAppService service(RecordingQueries queries, TeamPermissionService permissionService) {
-        return new TeamAppService(
-                queries,
+    private Fixtures fixtures(String role) {
+        TeamRepository teamRepository = mock(TeamRepository.class);
+        TeamMemberRepository teamMemberRepository = mock(TeamMemberRepository.class);
+        TeamInviteRepository teamInviteRepository = mock(TeamInviteRepository.class);
+        TeamJoinRequestRepository teamJoinRequestRepository = mock(TeamJoinRequestRepository.class);
+        TeamPermissionService permissionService = mockPermission(role);
+        when(teamRepository.nextTeamCode(1001L)).thenReturn("T001");
+        when(teamRepository.createTeam(anyLong(), any(), anyLong(), any())).thenReturn(2001L);
+        when(teamRepository.listMyTeams(1001L, 3001L)).thenReturn(List.of(team()));
+        when(teamRepository.listTeamsForAdmin(1001L, 3001L)).thenReturn(List.of(team()));
+        when(teamRepository.findTeam(1001L, 2001L, 3001L)).thenReturn(team());
+        when(teamRepository.updateTeamProfile(anyLong(), anyLong(), anyLong(), any())).thenReturn(1);
+        when(teamRepository.loadEnabledDictValues(anyLong(), any())).thenReturn(Set.of());
+        when(teamMemberRepository.findMemberById(1001L, 2001L, 2L)).thenReturn(member(2L, 3002L, "ADMIN"));
+        TeamAppService service = new TeamAppService(
+                teamRepository,
+                teamMemberRepository,
+                teamInviteRepository,
+                teamJoinRequestRepository,
                 permissionService,
                 (tenantId, userId, username, moduleName, actionName, operationType, resultStatus, detailMessage) -> {}
         );
+        return new Fixtures(service, teamRepository, teamMemberRepository, permissionService);
     }
 
     private TeamPermissionService mockPermission(String role) {
@@ -124,12 +136,34 @@ class TeamAppServiceTest {
         return permission;
     }
 
+    private static TeamDTO.TeamUpdateRequest updateRequest() {
+        TeamDTO.TeamUpdateRequest request = new TeamDTO.TeamUpdateRequest();
+        request.setTeamName("Updated");
+        return request;
+    }
+
     private static CurrentUser currentUser(Long userId) {
         CurrentUser user = new CurrentUser();
         user.setUserId(userId);
         user.setUsername("user" + userId);
         user.setCurrentTenantId(1001L);
         return user;
+    }
+
+    private static TeamVO.Team team() {
+        TeamVO.Team team = new TeamVO.Team();
+        team.setId(2001L);
+        team.setTenantId(1001L);
+        team.setTeamCode("T001");
+        team.setTeamName("Core Team");
+        team.setTeamType("GENERAL");
+        team.setVisibility("PRIVATE");
+        team.setJoinMode("INVITE_ONLY");
+        team.setOwnerUserId(3001L);
+        team.setMemberCount(1);
+        team.setStatus("ACTIVE");
+        team.setMyRole("MEMBER");
+        return team;
     }
 
     private static TeamVO.Member member(Long id, Long userId, String role) {
@@ -143,71 +177,10 @@ class TeamAppServiceTest {
         return member;
     }
 
-    private static final class RecordingQueries extends MyBatisQueryOperations {
-        private boolean teamInsertCalled;
-        private boolean ownerMemberInsertCalled;
-        private String memberInsertRole;
-        private String lastQuerySql;
-        private String previousOwnerRole;
-        private boolean newOwnerUpdated;
-
-        @Override
-        public boolean exists(String sql, Object... args) {
-            return false;
-        }
-
-        @Override
-        public int update(String sql, Object... args) {
-            if (sql.contains("insert into team (")) {
-                teamInsertCalled = true;
-            }
-            if (sql.contains("insert into team_member")) {
-                ownerMemberInsertCalled = true;
-                memberInsertRole = sql.contains("'OWNER'") ? "OWNER" : String.valueOf(args[3]);
-            }
-            if (sql.contains("set role = ?") && args.length > 0) {
-                previousOwnerRole = String.valueOf(args[0]);
-            }
-            if (sql.contains("set role = 'OWNER'")) {
-                newOwnerUpdated = true;
-            }
-            return 1;
-        }
-
-        @Override
-        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            if (sql.contains("last_insert_id")) {
-                return requiredType.cast(2001L);
-            }
-            return null;
-        }
-
-        @Override
-        public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
-            lastQuerySql = sql;
-            return cast(List.of(team()));
-        }
-
-        private TeamVO.Team team() {
-            TeamVO.Team team = new TeamVO.Team();
-            team.setId(2001L);
-            team.setTenantId(1001L);
-            team.setTeamCode("T001");
-            team.setTeamName("Core Team");
-            team.setTeamType("GENERAL");
-            team.setVisibility("PRIVATE");
-            team.setJoinMode("INVITE_ONLY");
-            team.setOwnerUserId(3001L);
-            team.setMemberCount(1);
-            team.setStatus("ACTIVE");
-            team.setMyRole("MEMBER");
-            team.setCreatedAt(LocalDateTime.now());
-            return team;
-        }
-
-        @SuppressWarnings("unchecked")
-        private <T> List<T> cast(List<?> value) {
-            return (List<T>) new ArrayList<>(value);
-        }
-    }
+    private record Fixtures(
+            TeamAppService service,
+            TeamRepository teamRepository,
+            TeamMemberRepository teamMemberRepository,
+            TeamPermissionService permissionService
+    ) {}
 }

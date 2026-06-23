@@ -7,6 +7,7 @@ import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,17 +27,21 @@ class AiToolPolicyServiceTest {
         assertThat(response.getRecords()).hasSize(1);
         assertThat(response.getTotal()).isEqualTo(1L);
         assertThat(queryOperations.countQueryCalled).isFalse();
+        assertThat(queryOperations.usedTenantIds).contains(1001L);
+        assertThat(queryOperations.usedTenantIds).doesNotContain(2002L);
     }
 
     private static CurrentUser currentUser() {
-        return new CurrentUser(100L, "admin", 1001L, "session-1", 1, true, Set.of("ai:tool-policy:view"));
+        return new CurrentUser(100L, "admin", 2002L, "session-1", 1, true, Set.of("ai:tool-policy:view"));
     }
 
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {
         private boolean countQueryCalled;
+        private final List<Long> usedTenantIds = new ArrayList<>();
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
+            recordTenantArgs(args);
             if (sql.contains("count(1)")) {
                 countQueryCalled = true;
             }
@@ -45,6 +50,7 @@ class AiToolPolicyServiceTest {
 
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+            recordTenantArgs(args);
             if (sql.contains("from ai_tool_policy")) {
                 try {
                     return List.of(rowMapper.mapRow(new SqlRow(Map.ofEntries(
@@ -67,6 +73,17 @@ class AiToolPolicyServiceTest {
                 }
             }
             return List.of();
+        }
+
+        private void recordTenantArgs(Object... args) {
+            if (args == null) {
+                return;
+            }
+            for (Object arg : args) {
+                if (arg instanceof Long tenantId && (tenantId == 1001L || tenantId == 2002L)) {
+                    usedTenantIds.add(tenantId);
+                }
+            }
         }
     }
 }

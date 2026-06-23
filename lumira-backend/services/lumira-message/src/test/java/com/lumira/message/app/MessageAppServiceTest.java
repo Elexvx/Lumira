@@ -119,7 +119,7 @@ class MessageAppServiceTest {
     @Test
     void listMessages_shouldUseCurrentUserPermissionSnapshotWhenAligned() {
         MessageVO.NoticeVO notice = notice(1001L, "会话快照公告");
-        notice.setTargetScope("TENANT");
+        notice.setTargetScope("PLATFORM");
         when(systemInternalApi.readModelVersion(1001L, "IAM", "permission-snapshot")).thenReturn(9L);
         when(messageNoticeMapper.listVisiblePublished(eq(1001L), eq(1001L), argThat(list ->
                         list != null && list.containsAll(List.of(3001L, 3002L)) && list.size() == 2
@@ -135,7 +135,7 @@ class MessageAppServiceTest {
     @Test
     void listMessages_shouldFallbackToSystemPermissionSnapshotWhenVersionMisaligned() {
         MessageVO.NoticeVO notice = notice(1001L, "回源快照公告");
-        notice.setTargetScope("TENANT");
+        notice.setTargetScope("PLATFORM");
         CurrentUser currentUser = currentUserWithSnapshot();
         currentUser.setPermissionsVersion("v10");
         when(systemInternalApi.readModelVersion(1001L, "IAM", "permission-snapshot")).thenReturn(11L);
@@ -151,7 +151,7 @@ class MessageAppServiceTest {
     @Test
     void listMessages_shouldUseSessionPermissionSnapshotWhenIamReadModelUnavailable() {
         MessageVO.NoticeVO notice = notice(1001L, "会话快照公告");
-        notice.setTargetScope("TENANT");
+        notice.setTargetScope("PLATFORM");
 
         CurrentUser currentUser = currentUserWithSnapshot();
         when(systemInternalApi.readModelVersion(1001L, "IAM", "permission-snapshot")).thenReturn(null);
@@ -508,7 +508,7 @@ class MessageAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        return new CurrentUser(1001L, "alice", 1001L, "session-1", 3, true, Set.of("message:message:view"));
+        return new CurrentUser(1001L, "alice", 2002L, "session-1", 3, true, Set.of("message:message:view"));
     }
 
     private PermissionSnapshotDTO permissionSnapshot(List<Long> roleIds) {
@@ -534,7 +534,7 @@ class MessageAppServiceTest {
         notice.setId(id);
         notice.setTenantId(1001L);
         notice.setMessageType("MESSAGE");
-        notice.setTargetScope("TENANT");
+        notice.setTargetScope("PLATFORM");
         notice.setTitle(title);
         notice.setContent("内容");
         notice.setSourceType("MANUAL");

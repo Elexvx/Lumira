@@ -149,6 +149,6 @@ class PluginV2ControllerTest {
     }
 
     private CurrentUser currentUser(String... permissions) {
-        return new CurrentUser(100L, "alice", 1001L, "session-1", 3, true, Set.of(permissions));
+        return new CurrentUser(100L, "alice", 2002L, "session-1", 3, true, Set.of(permissions));
     }
 }

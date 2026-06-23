@@ -22,6 +22,7 @@ import type { MenuMutationPayload } from '@/services/iam/types';
 import { MenuIconPicker, MenuIconPreview } from '@/pages/settings/menus/components/MenuIconPicker';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
+import { useDictOptions, type DictOption } from '@/hooks/useDictOptions';
 import { backendRouteMeta } from '@/routes/meta';
 import { resolveBuiltinMessage } from '@/i18n/messages';
 import type { ProDescriptionsItemProps, ProColumns } from '@ant-design/pro-components';
@@ -55,6 +56,9 @@ const MENU_STATUS_OPTIONS = [
   { label: t('启用', 'Enabled'), value: 'ENABLED' },
   { label: t('停用', 'Disabled'), value: 'DISABLED' },
 ];
+
+const MENU_TYPE_DICT_FALLBACK_OPTIONS = MENU_TYPE_OPTIONS as unknown as DictOption[];
+const MENU_STATUS_DICT_FALLBACK_OPTIONS = MENU_STATUS_OPTIONS as unknown as DictOption[];
 
 const isBuiltinMenu = (record: Pick<MenuRecord, 'id'>) => record.id < 0;
 
@@ -1442,7 +1446,17 @@ const menuDetailColumns: ProDescriptionsItemProps<MenuRecord>[] = [
   { title: t('状态', 'Status'), dataIndex: 'status' },
 ];
 
-const MenuEditorForm = ({ formProps, parentOptions }: { formProps: FormProps; parentOptions: Array<{ label: string; value: number }> }) => (
+const MenuEditorForm = ({
+  formProps,
+  parentOptions,
+  menuTypeOptions,
+  menuStatusOptions,
+}: {
+  formProps: FormProps;
+  parentOptions: Array<{ label: string; value: number }>;
+  menuTypeOptions: DictOption[];
+  menuStatusOptions: DictOption[];
+}) => (
   <Form {...formProps}>
     <Form.Item name="parentId" label={t('上级菜单', 'Parent menu')}>
       <Select allowClear options={parentOptions} />
@@ -1454,7 +1468,7 @@ const MenuEditorForm = ({ formProps, parentOptions }: { formProps: FormProps; pa
       <Input />
     </Form.Item>
     <Form.Item name="menuType" label={t('菜单类型', 'Menu type')} rules={[{ required: true, message: t('请选择菜单类型', 'Please select a menu type') }]}>
-      <Select options={MENU_TYPE_OPTIONS} />
+      <Select options={menuTypeOptions} />
     </Form.Item>
     <Form.Item name="path" label={t('路由', 'Route')}>
       <Input />
@@ -1472,13 +1486,15 @@ const MenuEditorForm = ({ formProps, parentOptions }: { formProps: FormProps; pa
       <Input />
     </Form.Item>
     <Form.Item name="status" label={t('状态', 'Status')}>
-      <Select options={MENU_STATUS_OPTIONS} />
+      <Select options={menuStatusOptions} />
     </Form.Item>
   </Form>
 );
 
 const MenuManagementPage = () => {
   const { token } = theme.useToken();
+  const { options: menuTypeOptions } = useDictOptions('sys_menu_type', MENU_TYPE_DICT_FALLBACK_OPTIONS);
+  const { options: menuStatusOptions } = useDictOptions('sys_common_status', MENU_STATUS_DICT_FALLBACK_OPTIONS);
   const { actionPermission, responsive, searchConfig } = usePagePermissionActions();
   const { actionRef, drawer, detail, reloadTable } = useCrudPageState<MenuRecord>();
   const [editorForm] = Form.useForm<MenuMutationPayload>();
@@ -1643,7 +1659,12 @@ const MenuManagementPage = () => {
       </ManagementPageBody>
 
       <ManagementDrawer title={menuEditorProps.title} open={menuEditorProps.open} onClose={menuEditorProps.onClose} footerActions={menuEditorProps.footerActions}>
-        <MenuEditorForm formProps={menuEditorProps.formProps} parentOptions={menuEditorProps.parentOptions} />
+        <MenuEditorForm
+          formProps={menuEditorProps.formProps}
+          parentOptions={menuEditorProps.parentOptions}
+          menuTypeOptions={menuTypeOptions}
+          menuStatusOptions={menuStatusOptions}
+        />
       </ManagementDrawer>
 
       <ManagementDrawer title={menuDetailDrawerProps.title} open={menuDetailDrawerProps.open} onClose={menuDetailDrawerProps.onClose}>

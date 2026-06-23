@@ -11,6 +11,7 @@ const DEFAULT_MANAGEMENT_TABLE_OPTIONS: ManagementTableOptions = {
 };
 
 type MobilePagination = TablePaginationConfig | false | undefined;
+type TablePagination = Exclude<MobilePagination, false | undefined>;
 
 const TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD = 1100;
 const TABLE_HORIZONTAL_SCROLL_BUFFER = 1;
@@ -83,6 +84,9 @@ const buildAutoWidthColumns = <RecordType extends object>(columns: ProColumns<Re
       const width = parseColumnWidth(column.width);
       return {
         ...column,
+        align: isActionColumn ? 'center' : column.align,
+        className: isActionColumn ? mergeClassName(column.className, 'saas-table-action-column') : column.className,
+        fixed: isActionColumn ? column.fixed ?? 'right' : column.fixed,
         children,
         width: width ?? column.width,
       };
@@ -98,12 +102,25 @@ const buildAutoWidthColumns = <RecordType extends object>(columns: ProColumns<Re
     };
   });
 
+const mergeClassName = (className: ProColumns['className'], nextClassName: string) => {
+  if (typeof className !== 'string' || !className.trim()) {
+    return nextClassName;
+  }
+  const classNames = className.split(/\s+/);
+  return classNames.includes(nextClassName) ? className : `${className} ${nextClassName}`;
+};
+
 const normalizeFixedColumnOrder = <RecordType extends object>(columns: ProColumns<RecordType>[]): ProColumns<RecordType>[] => {
+  const leadingIndexColumns: ProColumns<RecordType>[] = [];
   const leftFixedColumns: ProColumns<RecordType>[] = [];
   const regularColumns: ProColumns<RecordType>[] = [];
   const rightFixedColumns: ProColumns<RecordType>[] = [];
 
   columns.forEach((column) => {
+    if (column.valueType === 'index') {
+      leadingIndexColumns.push({ ...column, fixed: undefined });
+      return;
+    }
     if (column.fixed === 'left') {
       leftFixedColumns.push(column);
       return;
@@ -115,28 +132,45 @@ const normalizeFixedColumnOrder = <RecordType extends object>(columns: ProColumn
     regularColumns.push(column);
   });
 
-  return [...leftFixedColumns, ...regularColumns, ...rightFixedColumns];
+  return [...leadingIndexColumns, ...leftFixedColumns, ...regularColumns, ...rightFixedColumns];
 };
 
 const buildMobilePagination = (pagination: MobilePagination | boolean, isMobile: boolean): MobilePagination => {
   if (!pagination || !isMobile) {
-    return pagination as MobilePagination;
+    return normalizePaginationDefaults(pagination as MobilePagination);
   }
 
   if (pagination === true) {
-    return { simple: true, showSizeChanger: false, pageSize: DEFAULT_TABLE_PAGE_SIZE };
+    return { simple: true, showSizeChanger: false, defaultPageSize: DEFAULT_TABLE_PAGE_SIZE };
   }
 
   if (typeof pagination !== 'object') {
     return pagination as MobilePagination;
   }
 
-  return {
+  return normalizePaginationDefaults({
     ...pagination,
-    pageSize: pagination.pageSize ?? DEFAULT_TABLE_PAGE_SIZE,
+    defaultPageSize: pagination.defaultPageSize ?? pagination.pageSize ?? DEFAULT_TABLE_PAGE_SIZE,
     simple: true,
     showSizeChanger: false,
-  } as MobilePagination;
+  });
+};
+
+const normalizePaginationDefaults = (pagination: MobilePagination): MobilePagination => {
+  if (!pagination || typeof pagination !== 'object') {
+    return pagination;
+  }
+
+  const { pageSize, defaultPageSize, current, ...rest } = pagination;
+  const controlsCurrentPage = current !== undefined;
+  const normalized: TablePagination = {
+    ...rest,
+    ...(controlsCurrentPage ? { current } : {}),
+    ...(controlsCurrentPage ? { pageSize } : {}),
+    defaultPageSize: defaultPageSize ?? pageSize ?? DEFAULT_TABLE_PAGE_SIZE,
+  };
+
+  return normalized;
 };
 
 export interface ManagementTableProps<RecordType extends object = object, Params extends Record<string, unknown> = Record<string, unknown>>
@@ -194,7 +228,7 @@ const buildManagementToolbar = <
 export const ManagementTable = <RecordType extends object = object, Params extends Record<string, unknown> = Record<string, unknown>>({
   columns,
   isMobile,
-  pagination = { showSizeChanger: true, pageSize: DEFAULT_TABLE_PAGE_SIZE },
+  pagination = { showSizeChanger: true, defaultPageSize: DEFAULT_TABLE_PAGE_SIZE },
   options,
   onRefresh,
   scroll,

@@ -32,7 +32,7 @@ public class MessageEventDeliveryService {
             return;
         }
 
-        if (!StringUtils.hasText(notice.getTargetScope()) || "TENANT".equalsIgnoreCase(notice.getTargetScope())) {
+        if (!StringUtils.hasText(notice.getTargetScope()) || isPlatformScope(notice.getTargetScope())) {
             messageWebSocketRegistry.sendToTenant(notice.getTenantId(), event);
             return;
         }
@@ -62,5 +62,9 @@ public class MessageEventDeliveryService {
             return;
         }
         messageWebSocketRegistry.sendToTenant(tenantId, event);
+    }
+
+    private boolean isPlatformScope(String targetScope) {
+        return "PLATFORM".equalsIgnoreCase(targetScope) || "TENANT".equalsIgnoreCase(targetScope);
     }
 }

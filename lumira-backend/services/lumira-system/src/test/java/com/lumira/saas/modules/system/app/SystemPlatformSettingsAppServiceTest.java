@@ -44,7 +44,7 @@ class SystemPlatformSettingsAppServiceTest {
         );
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(configValues);
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1L, "platform", "runtime-appearance")).thenReturn(1L);
+        when(readModelVersionService.getOrInitialize(1001L, "platform", "runtime-appearance")).thenReturn(1L);
 
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         OwnerRuntimeMetrics ownerRuntimeMetrics = new OwnerRuntimeMetrics(meterRegistry);
@@ -57,7 +57,7 @@ class SystemPlatformSettingsAppServiceTest {
         assertThat(first.getWebsiteName()).isEqualTo("Lumira");
         assertThat(second.getWebsiteName()).isEqualTo("Lumira");
         assertThat(queryOperations.queryForListCount()).isEqualTo(1);
-        verify(readModelVersionService, times(1)).getOrInitialize(1L, "platform", "runtime-appearance");
+        verify(readModelVersionService, times(1)).getOrInitialize(1001L, "platform", "runtime-appearance");
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_MISS)).isEqualTo(1.0);
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_HIT)).isEqualTo(1.0);
         assertThat(first.getCopyrightStartYear()).isEqualTo(2020);
@@ -73,7 +73,7 @@ class SystemPlatformSettingsAppServiceTest {
         );
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(configValues);
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1L, "platform", "runtime-appearance")).thenReturn(5L, 6L);
+        when(readModelVersionService.getOrInitialize(1001L, "platform", "runtime-appearance")).thenReturn(5L, 6L);
 
         SystemPlatformSettingsAppService service = newService(queryOperations, readModelVersionService, null, mock(SmtpMailService.class));
 
@@ -87,7 +87,7 @@ class SystemPlatformSettingsAppServiceTest {
 
         assertThat(third.getWebsiteName()).isEqualTo("Lumira");
         assertThat(queryOperations.queryForListCount()).isEqualTo(2);
-        verify(readModelVersionService, times(2)).getOrInitialize(1L, "platform", "runtime-appearance");
+        verify(readModelVersionService, times(2)).getOrInitialize(1001L, "platform", "runtime-appearance");
         assertThat(System.identityHashCode(first)).isNotEqualTo(System.identityHashCode(third));
     }
 
@@ -101,7 +101,7 @@ class SystemPlatformSettingsAppServiceTest {
         );
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(configValues);
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1L, "platform", "runtime-appearance")).thenReturn(2L);
+        when(readModelVersionService.getOrInitialize(1001L, "platform", "runtime-appearance")).thenReturn(2L);
 
         SystemPlatformSettingsAppService service = newService(queryOperations, readModelVersionService, null, mock(SmtpMailService.class));
 
@@ -132,7 +132,7 @@ class SystemPlatformSettingsAppServiceTest {
             assertThat(setting.getWebsiteName()).isEqualTo(expect.getWebsiteName());
         }
         assertThat(queryOperations.queryForListCount()).isEqualTo(1);
-        verify(readModelVersionService, times(1)).getOrInitialize(1L, "platform", "runtime-appearance");
+        verify(readModelVersionService, times(1)).getOrInitialize(1001L, "platform", "runtime-appearance");
     }
 
     @Test
@@ -171,7 +171,7 @@ class SystemPlatformSettingsAppServiceTest {
         service.updateSmtpSettings(currentUser, request);
         service.resetSmtpSettings(currentUser);
 
-        verify(smtpMailService, times(2)).invalidateTenant(1L);
+        verify(smtpMailService, times(2)).invalidateTenant(1001L);
     }
 
     @Test
@@ -186,7 +186,7 @@ class SystemPlatformSettingsAppServiceTest {
                 "branding.footer-copyright", ""
         ));
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1L, "platform", "runtime-appearance")).thenReturn(1L);
+        when(readModelVersionService.getOrInitialize(1001L, "platform", "runtime-appearance")).thenReturn(1L);
         SystemPlatformSettingsAppService service = newService(queryOperations, readModelVersionService, null, mock(SmtpMailService.class));
 
         assertThat(service.getBrandingSettings(currentUser).getFooterCopyright()).contains("Acme Corp");
@@ -210,7 +210,7 @@ class SystemPlatformSettingsAppServiceTest {
         assertThat(updated.getFooterCopyright()).isEqualTo("Custom copyright text");
         assertThat(updated.getGithubLinkEnabled()).isFalse();
         assertThat(updated.getGithubLinkUrl()).isEqualTo("https://github.com/example/lumira");
-        verify(readModelVersionService).bump(1L, "platform", "runtime-appearance", "branding-update");
+        verify(readModelVersionService).bump(1001L, "platform", "runtime-appearance", "branding-update");
     }
 
     private static SystemPlatformSettingsAppService newService(

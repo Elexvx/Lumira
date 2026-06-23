@@ -148,7 +148,7 @@ class SystemRoleManagementAppServiceTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(1001L);
+        currentUser.setCurrentTenantId(2002L);
         return currentUser;
     }
 

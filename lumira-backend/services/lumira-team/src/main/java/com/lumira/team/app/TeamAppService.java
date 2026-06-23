@@ -3,18 +3,17 @@ package com.lumira.team.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.team.infrastructure.persistence.BeanPropertyRowMapper;
-import com.lumira.team.infrastructure.persistence.MyBatisQueryOperations;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.team.dto.TeamDTO;
+import com.lumira.team.repository.TeamInviteRepository;
+import com.lumira.team.repository.TeamJoinRequestRepository;
+import com.lumira.team.repository.TeamMemberRepository;
+import com.lumira.team.repository.TeamRepository;
 import com.lumira.team.vo.TeamVO;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -28,18 +27,26 @@ public class TeamAppService {
     private static final Set<String> VISIBILITIES = Set.of("PRIVATE", "PUBLIC");
     private static final Set<String> JOIN_MODES = Set.of("INVITE_ONLY", "APPLY", "OPEN");
     private static final Set<String> MEMBER_ROLES = Set.of("OWNER", "ADMIN", "MANAGER", "MEMBER");
-    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    private final MyBatisQueryOperations jdbcTemplate;
+    private final TeamRepository teamRepository;
+    private final TeamMemberRepository teamMemberRepository;
+    private final TeamInviteRepository teamInviteRepository;
+    private final TeamJoinRequestRepository teamJoinRequestRepository;
     private final TeamPermissionService permissionService;
     private final TeamAuditPort auditPort;
 
     public TeamAppService(
-            MyBatisQueryOperations jdbcTemplate,
+            TeamRepository teamRepository,
+            TeamMemberRepository teamMemberRepository,
+            TeamInviteRepository teamInviteRepository,
+            TeamJoinRequestRepository teamJoinRequestRepository,
             TeamPermissionService permissionService,
             TeamAuditPort auditPort
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.teamRepository = teamRepository;
+        this.teamMemberRepository = teamMemberRepository;
+        this.teamInviteRepository = teamInviteRepository;
+        this.teamJoinRequestRepository = teamJoinRequestRepository;
         this.permissionService = permissionService;
         this.auditPort = auditPort;
     }
@@ -48,82 +55,22 @@ public class TeamAppService {
     public TeamVO.Team createTeam(CurrentUser currentUser, TeamDTO.TeamCreateRequest request) {
         Long tenantId = requireTenantId(currentUser);
         Long userId = requireUserId(currentUser);
-        String code = nextTeamCode(tenantId);
-        jdbcTemplate.update(
-                """
-                        insert into team (
-                            tenant_id, team_code, team_name, team_type, avatar_url, description,
-                            visibility, join_mode, owner_user_id, member_count, status,
-                            created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'ACTIVE', ?, ?, 0)
-                        """,
-                tenantId,
-                code,
-                trimRequired(request.getTeamName(), "Team name is required"),
-                normalizeDictValue(tenantId, request.getTeamType(), "GENERAL", TEAM_TYPE_DICT_CODE, TEAM_TYPES, "Invalid team type"),
-                trimToNull(request.getAvatarUrl()),
-                trimToNull(request.getDescription()),
-                normalizeDictValue(tenantId, request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"),
-                normalizeDictValue(tenantId, request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"),
-                userId,
-                userId,
-                userId
-        );
-        Long teamId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        jdbcTemplate.update(
-                """
-                        insert into team_member (tenant_id, team_id, user_id, role, status, joined_at, created_at, updated_at, deleted)
-                        values (?, ?, ?, 'OWNER', 'ACTIVE', ?, ?, ?, 0)
-                        """,
-                tenantId,
-                teamId,
-                userId,
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
-        audit(currentUser, "team", "create", "CREATE", "Created team " + request.getTeamName());
+        TeamDTO.TeamCreateRequest normalizedRequest = normalizeCreateRequest(tenantId, request);
+        Long teamId = teamRepository.createTeam(tenantId, teamRepository.nextTeamCode(tenantId), userId, normalizedRequest);
+        teamMemberRepository.addOwner(tenantId, teamId, userId);
+        audit(currentUser, "team", "create", "CREATE", "Created team " + normalizedRequest.getTeamName());
         return getTeam(currentUser, teamId);
     }
 
     public List<TeamVO.Team> myTeams(CurrentUser currentUser) {
         Long tenantId = requireTenantId(currentUser);
-        return jdbcTemplate.query(
-                teamSelect("""
-                        join team_member m on m.team_id = t.id
-                         and m.tenant_id = t.tenant_id
-                         and m.user_id = ?
-                         and m.status = 'ACTIVE'
-                         and m.deleted = 0
-                        where t.tenant_id = ?
-                          and t.deleted = 0
-                          and t.status = 'ACTIVE'
-                        order by t.updated_at desc, t.id desc
-                        """),
-                new BeanPropertyRowMapper<>(TeamVO.Team.class),
-                currentUser.getUserId(),
-                tenantId
-        );
+        return teamRepository.listMyTeams(tenantId, currentUser.getUserId());
     }
 
     public List<TeamVO.Team> listTeamsForAdmin(CurrentUser currentUser) {
         Long tenantId = requireTenantId(currentUser);
         Long userId = requireUserId(currentUser);
-        return jdbcTemplate.query(
-                teamSelect("""
-                        left join team_member m on m.team_id = t.id
-                         and m.tenant_id = t.tenant_id
-                         and m.user_id = ?
-                         and m.status = 'ACTIVE'
-                         and m.deleted = 0
-                        where t.tenant_id = ?
-                          and t.deleted = 0
-                        order by t.updated_at desc, t.id desc
-                        """),
-                new BeanPropertyRowMapper<>(TeamVO.Team.class),
-                userId,
-                tenantId
-        );
+        return teamRepository.listTeamsForAdmin(tenantId, userId);
     }
 
     public TeamVO.Team getTeam(CurrentUser currentUser, Long teamId) {
@@ -145,10 +92,7 @@ public class TeamAppService {
         if (!permissionService.canUpdateTeam(role)) {
             throw biz(ErrorCode.FORBIDDEN, "Team update requires owner, admin, or manager");
         }
-        int updated = updateTeamRow(currentUser, tenantId, teamId, request);
-        if (updated == 0) {
-            throw biz(ErrorCode.NOT_FOUND, "Team not found");
-        }
+        updateTeamProfile(currentUser, tenantId, teamId, request);
         audit(currentUser, "team", "update", "UPDATE", "Updated team " + teamId);
         return getTeam(currentUser, teamId);
     }
@@ -156,10 +100,7 @@ public class TeamAppService {
     @Transactional
     public TeamVO.Team updateTeamForAdmin(CurrentUser currentUser, Long teamId, TeamDTO.TeamUpdateRequest request) {
         Long tenantId = requireTenantId(currentUser);
-        int updated = updateTeamRow(currentUser, tenantId, teamId, request);
-        if (updated == 0) {
-            throw biz(ErrorCode.NOT_FOUND, "Team not found");
-        }
+        updateTeamProfile(currentUser, tenantId, teamId, request);
         audit(currentUser, "team", "adminUpdate", "UPDATE", "Admin updated team " + teamId);
         TeamVO.Team team = queryTeam(tenantId, teamId, currentUser.getUserId());
         if (team == null) {
@@ -172,83 +113,21 @@ public class TeamAppService {
     public boolean deleteTeam(CurrentUser currentUser, Long teamId) {
         Long tenantId = requireTenantId(currentUser);
         permissionService.requireTeamOwner(tenantId, teamId, currentUser.getUserId());
-        deleteTeamRow(currentUser, tenantId, teamId, "delete", "Deleted team ");
+        deleteTeamAggregate(currentUser, tenantId, teamId, "delete", "Deleted team ");
         return true;
     }
 
     @Transactional
     public boolean deleteTeamForAdmin(CurrentUser currentUser, Long teamId) {
         Long tenantId = requireTenantId(currentUser);
-        deleteTeamRow(currentUser, tenantId, teamId, "adminDelete", "Admin deleted team ");
+        deleteTeamAggregate(currentUser, tenantId, teamId, "adminDelete", "Admin deleted team ");
         return true;
-    }
-
-    private int updateTeamRow(CurrentUser currentUser, Long tenantId, Long teamId, TeamDTO.TeamUpdateRequest request) {
-        return jdbcTemplate.update(
-                """
-                        update team
-                        set team_name = ?,
-                            team_type = ?,
-                            avatar_url = ?,
-                            description = ?,
-                            visibility = ?,
-                            join_mode = ?,
-                            updated_by = ?,
-                            updated_at = ?
-                        where tenant_id = ?
-                          and id = ?
-                          and deleted = 0
-                          and status = 'ACTIVE'
-                        """,
-                trimRequired(request.getTeamName(), "Team name is required"),
-                normalizeDictValue(tenantId, request.getTeamType(), "GENERAL", TEAM_TYPE_DICT_CODE, TEAM_TYPES, "Invalid team type"),
-                trimToNull(request.getAvatarUrl()),
-                trimToNull(request.getDescription()),
-                normalizeDictValue(tenantId, request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"),
-                normalizeDictValue(tenantId, request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"),
-                currentUser.getUserId(),
-                LocalDateTime.now(),
-                tenantId,
-                teamId
-        );
-    }
-
-    private void deleteTeamRow(CurrentUser currentUser, Long tenantId, Long teamId, String action, String messagePrefix) {
-        LocalDateTime now = LocalDateTime.now();
-        int updated = jdbcTemplate.update(
-                "update team set deleted = 1, status = 'DELETED', updated_by = ?, updated_at = ? where tenant_id = ? and id = ? and deleted = 0",
-                currentUser.getUserId(),
-                now,
-                tenantId,
-                teamId
-        );
-        if (updated == 0) {
-            throw biz(ErrorCode.NOT_FOUND, "Team not found");
-        }
-        jdbcTemplate.update("update team_member set deleted = 1, status = 'REMOVED', updated_at = ? where tenant_id = ? and team_id = ? and deleted = 0", now, tenantId, teamId);
-        jdbcTemplate.update("update team_invite set deleted = 1, status = 'DISABLED', updated_at = ? where tenant_id = ? and team_id = ? and deleted = 0", now, tenantId, teamId);
-        jdbcTemplate.update("update team_join_request set deleted = 1, status = 'CLOSED', updated_at = ? where tenant_id = ? and team_id = ? and deleted = 0", now, tenantId, teamId);
-        audit(currentUser, "team", action, "DELETE", messagePrefix + teamId);
     }
 
     public List<TeamVO.Member> listMembers(CurrentUser currentUser, Long teamId) {
         Long tenantId = requireTenantId(currentUser);
         permissionService.requireTeamMember(tenantId, teamId, currentUser.getUserId());
-        return jdbcTemplate.query(
-                """
-                        select id, tenant_id as tenantId, team_id as teamId, user_id as userId, role,
-                               member_alias as memberAlias, status, invited_by as invitedBy,
-                               joined_at as joinedAt, created_at as createdAt
-                        from team_member
-                        where tenant_id = ?
-                          and team_id = ?
-                          and deleted = 0
-                        order by field(role, 'OWNER', 'ADMIN', 'MANAGER', 'MEMBER'), id asc
-                        """,
-                new BeanPropertyRowMapper<>(TeamVO.Member.class),
-                tenantId,
-                teamId
-        );
+        return teamMemberRepository.listMembers(tenantId, teamId);
     }
 
     @Transactional
@@ -266,14 +145,7 @@ public class TeamAppService {
         if (TeamPermissionService.OWNER.equals(target.getRole())) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Cannot downgrade the team owner directly");
         }
-        jdbcTemplate.update(
-                "update team_member set role = ?, updated_at = ? where tenant_id = ? and team_id = ? and id = ? and deleted = 0",
-                newRole,
-                LocalDateTime.now(),
-                tenantId,
-                teamId,
-                memberId
-        );
+        teamMemberRepository.updateMemberRole(tenantId, teamId, memberId, newRole);
         return requireMember(tenantId, teamId, memberId);
     }
 
@@ -286,14 +158,8 @@ public class TeamAppService {
         if (!permissionService.canRemoveMember(actor == null ? null : actor.getRole(), target.getRole(), self)) {
             throw biz(ErrorCode.FORBIDDEN, "Cannot remove this team member");
         }
-        jdbcTemplate.update(
-                "update team_member set status = 'REMOVED', deleted = 1, updated_at = ? where tenant_id = ? and team_id = ? and id = ? and deleted = 0",
-                LocalDateTime.now(),
-                tenantId,
-                teamId,
-                memberId
-        );
-        refreshMemberCount(tenantId, teamId);
+        teamMemberRepository.removeMember(tenantId, teamId, memberId);
+        teamMemberRepository.refreshMemberCount(tenantId, teamId);
         return true;
     }
 
@@ -319,43 +185,18 @@ public class TeamAppService {
             throw biz(ErrorCode.VALIDATION_ERROR, "New owner must be an active member");
         }
         String previousRole = normalizeEnum(request.getPreviousOwnerRole(), "ADMIN", Set.of("ADMIN", "MANAGER", "MEMBER"), "Invalid previous owner role");
-        LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
-                "update team_member set role = ? where tenant_id = ? and team_id = ? and user_id = ? and status = 'ACTIVE' and deleted = 0",
-                previousRole,
-                tenantId,
-                teamId,
-                currentUser.getUserId()
-        );
-        jdbcTemplate.update("update team_member set role = 'OWNER', updated_at = ? where tenant_id = ? and team_id = ? and id = ?", now, tenantId, teamId, target.getId());
-        jdbcTemplate.update("update team set owner_user_id = ?, updated_by = ?, updated_at = ? where tenant_id = ? and id = ? and deleted = 0", target.getUserId(), currentUser.getUserId(), now, tenantId, teamId);
+        teamMemberRepository.transferOwner(tenantId, teamId, currentUser.getUserId(), previousRole, target.getId());
+        teamRepository.transferOwner(tenantId, teamId, target.getUserId(), currentUser.getUserId());
         audit(currentUser, "team", "transferOwner", "UPDATE", "Transferred team owner " + teamId);
         return getTeam(currentUser, teamId);
     }
 
     TeamVO.Team queryTeam(Long tenantId, Long teamId, Long currentUserId) {
-        List<TeamVO.Team> teams = jdbcTemplate.query(
-                teamSelect("""
-                        left join team_member m on m.team_id = t.id
-                         and m.tenant_id = t.tenant_id
-                         and m.user_id = ?
-                         and m.status = 'ACTIVE'
-                         and m.deleted = 0
-                        where t.tenant_id = ?
-                          and t.id = ?
-                          and t.deleted = 0
-                        limit 1
-                        """),
-                new BeanPropertyRowMapper<>(TeamVO.Team.class),
-                currentUserId,
-                tenantId,
-                teamId
-        );
-        return teams.isEmpty() ? null : teams.get(0);
+        return teamRepository.findTeam(tenantId, teamId, currentUserId);
     }
 
     TeamVO.Member requireMember(Long tenantId, Long teamId, Long memberId) {
-        TeamVO.Member member = permissionService.memberById(tenantId, teamId, memberId);
+        TeamVO.Member member = teamMemberRepository.findMemberById(tenantId, teamId, memberId);
         if (member == null) {
             throw biz(ErrorCode.NOT_FOUND, "Team member not found");
         }
@@ -363,73 +204,19 @@ public class TeamAppService {
     }
 
     void ensureDirectMember(Long tenantId, Long teamId, Long userId, Long invitedBy, String role) {
-        try {
-            int updated = jdbcTemplate.update(
-                    """
-                            update team_member
-                            set status = 'ACTIVE', role = ?, invited_by = ?, joined_at = ?, updated_at = ?, deleted = 0
-                            where tenant_id = ?
-                              and team_id = ?
-                              and user_id = ?
-                              and deleted = 1
-                            """,
-                    role,
-                    invitedBy,
-                    LocalDateTime.now(),
-                    LocalDateTime.now(),
-                    tenantId,
-                    teamId,
-                    userId
-            );
-            if (updated == 0) {
-                jdbcTemplate.update(
-                        """
-                                insert into team_member (tenant_id, team_id, user_id, role, status, invited_by, joined_at, created_at, updated_at, deleted)
-                                values (?, ?, ?, ?, 'ACTIVE', ?, ?, ?, ?, 0)
-                                """,
-                        tenantId,
-                        teamId,
-                        userId,
-                        role,
-                        invitedBy,
-                        LocalDateTime.now(),
-                        LocalDateTime.now(),
-                        LocalDateTime.now()
-                );
-            }
-        } catch (DuplicateKeyException exception) {
-            // Existing active member is an idempotent success path.
-        }
-        refreshMemberCount(tenantId, teamId);
+        teamMemberRepository.ensureDirectMember(tenantId, teamId, userId, invitedBy, role);
+        teamMemberRepository.refreshMemberCount(tenantId, teamId);
     }
 
     void refreshMemberCount(Long tenantId, Long teamId) {
-        jdbcTemplate.update(
-                """
-                        update team
-                        set member_count = (
-                            select count(1)
-                            from team_member
-                            where tenant_id = ?
-                              and team_id = ?
-                              and status = 'ACTIVE'
-                              and deleted = 0
-                        )
-                        where tenant_id = ?
-                          and id = ?
-                        """,
-                tenantId,
-                teamId,
-                tenantId,
-                teamId
-        );
+        teamMemberRepository.refreshMemberCount(tenantId, teamId);
     }
 
     Long requireTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw biz(ErrorCode.UNAUTHORIZED, "Login required");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
     Long requireUserId(CurrentUser currentUser) {
@@ -437,29 +224,6 @@ public class TeamAppService {
             throw biz(ErrorCode.UNAUTHORIZED, "Login required");
         }
         return currentUser.getUserId();
-    }
-
-    private String nextTeamCode(Long tenantId) {
-        for (int i = 0; i < 10; i += 1) {
-            byte[] bytes = new byte[6];
-            SECURE_RANDOM.nextBytes(bytes);
-            String code = "T" + HexFormat.of().formatHex(bytes).toUpperCase(Locale.ROOT);
-            if (!jdbcTemplate.exists("select 1 from team where tenant_id = ? and team_code = ? and deleted = 0 limit 1", tenantId, code)) {
-                return code;
-            }
-        }
-        throw biz(ErrorCode.SYSTEM_ERROR, "Unable to allocate team code");
-    }
-
-    private String teamSelect(String tail) {
-        return """
-                select t.id, t.tenant_id as tenantId, t.team_code as teamCode, t.team_name as teamName,
-                       t.team_type as teamType, t.avatar_url as avatarUrl, t.description,
-                       t.visibility, t.join_mode as joinMode, t.owner_user_id as ownerUserId,
-                       t.member_count as memberCount, t.status, m.role as myRole,
-                       t.created_at as createdAt, t.updated_at as updatedAt
-                from team t
-                """ + tail;
     }
 
     String normalizeEnum(String value, String defaultValue, Set<String> allowed, String message) {
@@ -472,7 +236,7 @@ public class TeamAppService {
 
     private String normalizeDictValue(Long tenantId, String value, String defaultValue, String dictCode, Set<String> fallbackAllowed, String message) {
         String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : defaultValue;
-        Set<String> allowed = loadEnabledDictValues(tenantId, dictCode);
+        Set<String> allowed = teamRepository.loadEnabledDictValues(tenantId, dictCode);
         if (allowed.isEmpty()) {
             allowed = fallbackAllowed;
         }
@@ -482,37 +246,51 @@ public class TeamAppService {
         return normalized;
     }
 
-    private Set<String> loadEnabledDictValues(Long tenantId, String dictCode) {
-        try {
-            List<String> values = jdbcTemplate.queryForList(
-                    """
-                            select i.item_value
-                            from sys_dict_type t
-                            join sys_dict_item i
-                              on i.tenant_id = t.tenant_id
-                             and i.dict_type_id = t.id
-                             and i.deleted = 0
-                            where t.tenant_id = ?
-                              and t.dict_code = ?
-                              and t.deleted = 0
-                              and t.status = 'ENABLED'
-                              and i.status = 'ENABLED'
-                            order by i.sort_no asc, i.id asc
-                            """,
-                    String.class,
-                    tenantId,
-                    dictCode
-            );
-            Set<String> normalizedValues = new java.util.LinkedHashSet<>();
-            for (String itemValue : values) {
-                if (StringUtils.hasText(itemValue)) {
-                    normalizedValues.add(itemValue.trim().toUpperCase(Locale.ROOT));
-                }
-            }
-            return normalizedValues;
-        } catch (RuntimeException exception) {
-            return Set.of();
+    String trimToNull(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
         }
+        return value.trim();
+    }
+
+    private TeamDTO.TeamCreateRequest normalizeCreateRequest(Long tenantId, TeamDTO.TeamCreateRequest request) {
+        TeamDTO.TeamCreateRequest normalized = new TeamDTO.TeamCreateRequest();
+        normalized.setTeamName(trimRequired(request.getTeamName(), "Team name is required"));
+        normalized.setTeamType(normalizeDictValue(tenantId, request.getTeamType(), "GENERAL", TEAM_TYPE_DICT_CODE, TEAM_TYPES, "Invalid team type"));
+        normalized.setAvatarUrl(trimToNull(request.getAvatarUrl()));
+        normalized.setDescription(trimToNull(request.getDescription()));
+        normalized.setVisibility(normalizeDictValue(tenantId, request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"));
+        normalized.setJoinMode(normalizeDictValue(tenantId, request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"));
+        return normalized;
+    }
+
+    private TeamDTO.TeamUpdateRequest normalizeUpdateRequest(Long tenantId, TeamDTO.TeamUpdateRequest request) {
+        TeamDTO.TeamUpdateRequest normalized = new TeamDTO.TeamUpdateRequest();
+        normalized.setTeamName(trimRequired(request.getTeamName(), "Team name is required"));
+        normalized.setTeamType(normalizeDictValue(tenantId, request.getTeamType(), "GENERAL", TEAM_TYPE_DICT_CODE, TEAM_TYPES, "Invalid team type"));
+        normalized.setAvatarUrl(trimToNull(request.getAvatarUrl()));
+        normalized.setDescription(trimToNull(request.getDescription()));
+        normalized.setVisibility(normalizeDictValue(tenantId, request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"));
+        normalized.setJoinMode(normalizeDictValue(tenantId, request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"));
+        return normalized;
+    }
+
+    private void updateTeamProfile(CurrentUser currentUser, Long tenantId, Long teamId, TeamDTO.TeamUpdateRequest request) {
+        int updated = teamRepository.updateTeamProfile(tenantId, teamId, currentUser.getUserId(), normalizeUpdateRequest(tenantId, request));
+        if (updated == 0) {
+            throw biz(ErrorCode.NOT_FOUND, "Team not found");
+        }
+    }
+
+    private void deleteTeamAggregate(CurrentUser currentUser, Long tenantId, Long teamId, String action, String messagePrefix) {
+        int updated = teamRepository.softDeleteTeam(tenantId, teamId, currentUser.getUserId());
+        if (updated == 0) {
+            throw biz(ErrorCode.NOT_FOUND, "Team not found");
+        }
+        teamMemberRepository.removeMembersByTeam(tenantId, teamId);
+        teamInviteRepository.disableInvitesByTeam(tenantId, teamId);
+        teamJoinRequestRepository.closeRequestsByTeam(tenantId, teamId);
+        audit(currentUser, "team", action, "DELETE", messagePrefix + teamId);
     }
 
     private String trimRequired(String value, String message) {
@@ -523,16 +301,9 @@ public class TeamAppService {
         return trimmed;
     }
 
-    String trimToNull(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        return value.trim();
-    }
-
     private void audit(CurrentUser currentUser, String module, String action, String type, String message) {
         if (auditPort != null) {
-            auditPort.log(currentUser.getCurrentTenantId(), currentUser.getUserId(), currentUser.getUsername(), module, action, type, "SUCCESS", message);
+            auditPort.log(PlatformContext.compatibilityTenantId(), currentUser.getUserId(), currentUser.getUsername(), module, action, type, "SUCCESS", message);
         }
     }
 

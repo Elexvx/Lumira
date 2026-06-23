@@ -38,20 +38,12 @@ public class IamReadinessV2Controller {
                         "sys_menu",
                         "sys_permission",
                         "sys_user_role",
-                        "sys_user_tenant*",
                         "sys_department",
                         "sys_user_department",
-                        "sys_role_data_scope",
-                        "sys_tenant"
+                        "sys_role_data_scope"
                 ),
                 List.of(
                         "/api/v2/iam",
-                        "/api/v2/iam/tenants",
-                        "/api/v2/iam/tenants/{id}",
-                        "/api/v2/iam/tenants/{id}/status",
-                        "/api/v2/iam/tenants/{tenantId}/members/{userId}",
-                        "/api/v2/iam/tenants/current",
-                        "/api/v2/iam/tenants/mine",
                         "/api/v2/iam/users/export-fields",
                         "/api/v2/iam/users/export",
                         "/api/v2/iam/export-tasks/{taskId}",
@@ -96,7 +88,7 @@ public class IamReadinessV2Controller {
                         "keep v1 user/role/permission APIs during compatibility window"
                 ),
                 List.of(
-                        "IAM v2 adapter is available for tenant read/write lifecycle, users, user export, roles, permissions, menus, and departments; legacy v1 system endpoints stay during compatibility window",
+                        "IAM v2 adapter is available for users, user export, roles, permissions, menus, and departments; tenant lifecycle APIs are no longer exposed in the single-platform model",
                         "cross-instance permission snapshot invalidation runbook still needs runtime drill"
                 )
         ), TraceContext.getRequestId());

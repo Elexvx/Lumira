@@ -27,18 +27,14 @@ class IamReadinessV2ControllerTest {
         assertThat(readiness.apiContracts())
                 .contains(
                         "/api/v2/iam",
-                        "/api/v2/iam/tenants",
-                        "/api/v2/iam/tenants/{id}",
-                        "/api/v2/iam/tenants/{id}/status",
-                        "/api/v2/iam/tenants/{tenantId}/members/{userId}",
-                        "/api/v2/iam/tenants/current",
-                        "/api/v2/iam/tenants/mine",
                         "/api/v2/iam/users/export-fields",
                         "/api/v2/iam/users/export",
                         "/api/v2/iam/export-tasks/{taskId}",
                         "/api/v2/iam/readiness",
                         "SystemInternalApi.currentPermissionSnapshot"
                 );
+        assertThat(readiness.apiContracts())
+                .noneMatch(contract -> contract.contains("/tenants"));
         assertThat(readiness.eventContracts())
                 .contains("RolePermissionsChanged", "iam/permission_snapshot read-model version bump");
         assertThat(readiness.healthChecks())

@@ -4,6 +4,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.security.model.AuthSession;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
@@ -253,15 +254,10 @@ public class OnlineSessionManagementAppService {
                 """
                         select u.id, u.username, u.nickname, u.real_name as realName
                         from sys_user u
-                        join sys_user_tenant ut
-                          on ut.user_id = u.id
-                         and ut.tenant_id = ?
-                         and ut.deleted = 0
                         where u.id = ? and u.deleted = 0
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(TenantUserRow.class),
-                tenantId,
                 userId
         );
         return rows.stream().findFirst();
@@ -288,10 +284,10 @@ public class OnlineSessionManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
     private void ensureTenantMatch(Long currentTenantId, AuthSession session) {

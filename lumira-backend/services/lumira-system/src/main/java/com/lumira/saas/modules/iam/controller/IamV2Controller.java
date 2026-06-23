@@ -6,8 +6,6 @@ import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
 import com.lumira.saas.common.annotation.RepeatSubmit;
 import com.lumira.saas.common.vo.PageResponse;
-import com.lumira.saas.modules.iam.app.IamTenantCommandService;
-import com.lumira.saas.modules.iam.app.IamTenantQueryService;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.department.app.SystemDepartmentAppService;
 import com.lumira.saas.modules.system.department.dto.DepartmentUpsertRequest;
@@ -38,8 +36,6 @@ public class IamV2Controller {
 
     private final SystemManagementAppService systemManagementAppService;
     private final SystemDepartmentAppService departmentAppService;
-    private final IamTenantCommandService tenantCommandService;
-    private final IamTenantQueryService tenantQueryService;
     private final UserExportAppService userExportAppService;
     private final ExportTaskService exportTaskService;
     private final SecurityContextFacade securityContextFacade;
@@ -48,8 +44,6 @@ public class IamV2Controller {
     public IamV2Controller(
             SystemManagementAppService systemManagementAppService,
             SystemDepartmentAppService departmentAppService,
-            IamTenantCommandService tenantCommandService,
-            IamTenantQueryService tenantQueryService,
             UserExportAppService userExportAppService,
             ExportTaskService exportTaskService,
             SecurityContextFacade securityContextFacade,
@@ -57,8 +51,6 @@ public class IamV2Controller {
     ) {
         this.systemManagementAppService = systemManagementAppService;
         this.departmentAppService = departmentAppService;
-        this.tenantCommandService = tenantCommandService;
-        this.tenantQueryService = tenantQueryService;
         this.userExportAppService = userExportAppService;
         this.exportTaskService = exportTaskService;
         this.securityContextFacade = securityContextFacade;
@@ -75,61 +67,6 @@ public class IamV2Controller {
     public ApiResponse<List<SystemVO.PermissionTreeVO>> permissionTree() {
         require("system:role:view");
         return ApiResponse.success(systemManagementAppService.listPermissionTree(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
-    }
-
-    @GetMapping("/tenants/current")
-    public ApiResponse<IamTenantQueryService.TenantSnapshot> currentTenant() {
-        return ApiResponse.success(tenantQueryService.currentTenant(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
-    }
-
-    @GetMapping("/tenants/mine")
-    public ApiResponse<List<IamTenantQueryService.TenantSnapshot>> myTenants() {
-        return ApiResponse.success(tenantQueryService.listCurrentUserTenants(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
-    }
-
-    @PostMapping("/tenants")
-    @RepeatSubmit
-    public ApiResponse<IamTenantQueryService.TenantSnapshot> createTenant(@Valid @RequestBody IamTenantCommandService.TenantUpsertRequest request) {
-        require("system:tenant:create");
-        return ApiResponse.success(tenantCommandService.createTenant(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
-    }
-
-    @PutMapping("/tenants/{id}")
-    @RepeatSubmit
-    public ApiResponse<IamTenantQueryService.TenantSnapshot> updateTenant(
-            @PathVariable("id") Long id,
-            @Valid @RequestBody IamTenantCommandService.TenantUpsertRequest request
-    ) {
-        require("system:tenant:update");
-        return ApiResponse.success(tenantCommandService.updateTenant(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
-    }
-
-    @PatchMapping("/tenants/{id}/status")
-    @RepeatSubmit
-    public ApiResponse<IamTenantQueryService.TenantSnapshot> changeTenantStatus(
-            @PathVariable("id") Long id,
-            @Valid @RequestBody IamTenantCommandService.TenantStatusRequest request
-    ) {
-        require("system:tenant:update");
-        return ApiResponse.success(tenantCommandService.changeTenantStatus(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
-    }
-
-    @DeleteMapping("/tenants/{id}")
-    @RepeatSubmit
-    public ApiResponse<Boolean> archiveTenant(@PathVariable("id") Long id) {
-        require("system:tenant:delete");
-        return ApiResponse.success(tenantCommandService.archiveTenant(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
-    }
-
-    @PutMapping("/tenants/{tenantId}/members/{userId}")
-    @RepeatSubmit
-    public ApiResponse<IamTenantQueryService.TenantSnapshot> upsertTenantMember(
-            @PathVariable("tenantId") Long tenantId,
-            @PathVariable("userId") Long userId,
-            @Valid @RequestBody IamTenantCommandService.TenantMemberRequest request
-    ) {
-        require("system:tenant:member");
-        return ApiResponse.success(tenantCommandService.upsertTenantMember(securityContextFacade.getCurrentUser(), tenantId, userId, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/users")
@@ -291,7 +228,7 @@ public class IamV2Controller {
     @PutMapping("/roles/{id}/permissions")
     @RepeatSubmit
     public ApiResponse<Boolean> updateRolePermissions(@PathVariable("id") Long id, @RequestBody SystemDTO.RolePermissionRequest request) {
-        require("system:role:permissions");
+        require("system:role:grant");
         return ApiResponse.success(systemManagementAppService.updateRolePermissions(securityContextFacade.getCurrentUser(), id, request.getPermissionKeys()), TraceContext.getRequestId());
     }
 

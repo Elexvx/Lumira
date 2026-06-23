@@ -111,7 +111,7 @@ class PermissionSnapshotServiceTest {
     }
 
     @Test
-    void invalidateTenantOnlyInvalidatesMatchingLocalCacheEntries() {
+    void requestedTenantIdDoesNotPartitionPlatformSnapshotCache() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("ai:view"));
         PermissionSnapshotService service = new PermissionSnapshotService(
                 new MyBatisQueryOperations(jdbcTemplate),
@@ -120,20 +120,32 @@ class PermissionSnapshotServiceTest {
         );
 
         service.loadSnapshot(1L, 1001L);
-        service.loadSnapshot(2L, 1001L);
+        int queryCountAfterFirstLoad = jdbcTemplate.queryCount();
+
         service.loadSnapshot(2L, 1001L);
 
+        assertEquals(queryCountAfterFirstLoad, jdbcTemplate.queryCount(), "Requested tenant ids should share the platform snapshot cache");
+        assertTrue(jdbcTemplate.usedTenantIds.stream().allMatch(tenantId -> tenantId == 1001L));
+    }
+
+    @Test
+    void invalidateTenantRefreshesPlatformSnapshotRegardlessOfRequestedTenant() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("ai:view"));
+        PermissionSnapshotService service = new PermissionSnapshotService(
+                new MyBatisQueryOperations(jdbcTemplate),
+                new InMemoryCacheTemplate(),
+                new ObjectMapper().findAndRegisterModules()
+        );
+
+        service.loadSnapshot(1L, 1001L);
         int queryCountAfterWarmup = jdbcTemplate.queryCount();
         assertTrue(queryCountAfterWarmup > 0);
 
-        service.invalidateTenant(1L);
+        service.invalidateTenant(2L);
         int queryCountAfterInvalidate = jdbcTemplate.queryCount();
 
-        service.loadSnapshot(2L, 1001L);
-        assertEquals(queryCountAfterInvalidate, jdbcTemplate.queryCount(), "Tenant 2 local snapshot should remain cached after invalidating tenant 1");
-
         service.loadSnapshot(1L, 1001L);
-        assertTrue(jdbcTemplate.queryCount() > queryCountAfterInvalidate, "Tenant 1 should be rebuilt after tenant invalidation");
+        assertTrue(jdbcTemplate.queryCount() > queryCountAfterInvalidate, "Platform snapshot should be rebuilt after compatibility invalidation");
     }
 
     @Test
@@ -185,7 +197,7 @@ class PermissionSnapshotServiceTest {
     void loadSnapshotFallsBackWhenReadModelVersionServiceUnavailable() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("ai:view"));
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1L, "IAM", "permission-snapshot"))
+        when(readModelVersionService.getOrInitialize(1001L, "IAM", "permission-snapshot"))
                 .thenThrow(new RuntimeException("version service unavailable"));
         InMemoryCacheTemplate cacheTemplate = new InMemoryCacheTemplate();
 
@@ -202,14 +214,14 @@ class PermissionSnapshotServiceTest {
         assertNotNull(snapshot);
         assertFalse(snapshot.getVersion().isBlank());
         assertTrue(snapshot.getPermissions().contains("ai:view"));
-        assertNotNull(cacheTemplate.get(CacheKeyConstants.tenantKey("1", "permission_version")));
+        assertNotNull(cacheTemplate.get(CacheKeyConstants.tenantKey("1001", "permission_version")));
     }
 
     @Test
     void getOrCreateTenantVersionIsCachedAcrossSnapshotTypes() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("ai:view"));
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1L, "IAM", "permission-snapshot")).thenReturn(123L);
+        when(readModelVersionService.getOrInitialize(1001L, "IAM", "permission-snapshot")).thenReturn(123L);
         PermissionSnapshotService service = new PermissionSnapshotService(
                 new MyBatisQueryOperations(jdbcTemplate),
                 new InMemoryCacheTemplate(),
@@ -224,7 +236,7 @@ class PermissionSnapshotServiceTest {
 
         assertEquals("v123:data-scope-cache-v4", userSnapshot.getVersion());
         assertEquals(userSnapshot.getVersion(), roleSnapshot.getVersion());
-        verify(readModelVersionService, times(1)).getOrInitialize(1L, "IAM", "permission-snapshot");
+        verify(readModelVersionService, times(1)).getOrInitialize(1001L, "IAM", "permission-snapshot");
     }
 
     private static PermissionSnapshotService newService(List<String> permissions) {
@@ -261,6 +273,7 @@ class PermissionSnapshotServiceTest {
     private static final class RecordingJdbcTemplate extends JdbcTemplate {
         private final List<String> permissions;
         private final AtomicInteger queryCount = new AtomicInteger();
+        private final List<Long> usedTenantIds = java.util.Collections.synchronizedList(new ArrayList<>());
 
         private RecordingJdbcTemplate(List<String> permissions) {
             this.permissions = permissions;
@@ -281,6 +294,7 @@ class PermissionSnapshotServiceTest {
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             queryCount.incrementAndGet();
+            recordTenantArgs(args);
             try {
                 if (sql.contains("from sys_user_role ur") && sql.contains("select distinct ur.role_id")) {
                     return List.of(rowMapper.mapRow(row("role_id", 3001L), 0));
@@ -300,6 +314,7 @@ class PermissionSnapshotServiceTest {
         @Override
         public <T> List<T> queryForList(String sql, Class<T> requiredType, Object... args) {
             queryCount.incrementAndGet();
+            recordTenantArgs(args);
             return List.of();
         }
 
@@ -322,6 +337,17 @@ class PermissionSnapshotServiceTest {
                 when(resultSet.getLong(column)).thenReturn(longValue);
             }
             return resultSet;
+        }
+
+        private void recordTenantArgs(Object... args) {
+            if (args == null) {
+                return;
+            }
+            for (Object arg : args) {
+                if (arg instanceof Long tenantId && (tenantId == 1001L || tenantId == 1L || tenantId == 2L)) {
+                    usedTenantIds.add(tenantId);
+                }
+            }
         }
     }
 

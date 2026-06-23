@@ -19,7 +19,6 @@ class DefaultAuthorizationServiceTest {
         DefaultAuthorizationService service = service(allowGrant("ai:tool:file.delete", "HIGH", false, false));
 
         assertThat(service.evaluate(null).reasonCode()).isEqualTo("AUTHZ_REQUEST_MISSING");
-        assertThat(service.evaluate(request(null, "WEB", user(1001L, "x"), "x", null, null, null)).reasonCode()).isEqualTo("TENANT_MISSING");
         assertThat(service.evaluate(request(1001L, "WEB", user(1001L, "*"), null, null, null, null)).reasonCode()).isEqualTo("AUTHZ_TARGET_MISSING");
     }
 
@@ -27,18 +26,22 @@ class DefaultAuthorizationServiceTest {
     void allowsAndDeniesHumanPermission() {
         DefaultAuthorizationService service = service(allowGrant("unused", "LOW", false, false));
 
+        assertThat(AuthorizationRequest.permission(user(null, "system:user:view"), "system:user:view").tenantId())
+                .isEqualTo(1001L);
         assertThat(service.evaluate(AuthorizationRequest.permission(user(1001L, "system:user:view"), "system:user:view")).verdict())
+                .isEqualTo(AuthorizationVerdict.ALLOW);
+        assertThat(service.evaluate(AuthorizationRequest.permission(user(null, "system:user:view"), "system:user:view")).verdict())
                 .isEqualTo(AuthorizationVerdict.ALLOW);
         assertThat(service.evaluate(AuthorizationRequest.permission(user(1001L, "system:user:view"), "system:user:delete")).reasonCode())
                 .isEqualTo("RBAC_PERMISSION_MISSING");
     }
 
     @Test
-    void deniesTenantMismatchAndCrossTenantScope() {
+    void allowsRbacWithoutTenantMatchButStillDeniesCrossTenantResourceScope() {
         DefaultAuthorizationService service = service(allowGrant("ai:tool:file.delete", "HIGH", false, false));
 
-        assertThat(service.evaluate(request(2002L, "WEB", user(1001L, "system:user:view"), "system:user:view", null, null, null)).reasonCode())
-                .isEqualTo("TENANT_MISMATCH");
+        assertThat(service.evaluate(request(2002L, "WEB", user(1001L, "system:user:view"), "system:user:view", null, null, null)).verdict())
+                .isEqualTo(AuthorizationVerdict.ALLOW);
         assertThat(service.evaluate(aiRequest(user(1001L, "ai:tool:*"), 300L, "file.delete", "ai:tool:file.delete", "LOW", true, true,
                 Map.of("resourceTenantId", 2002L))).reasonCode()).isEqualTo("DATA_SCOPE_TENANT_MISMATCH");
     }

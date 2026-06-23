@@ -50,6 +50,7 @@ class SystemProfileSettingsAppServiceTest {
                 "profile.field.mobile.weight", "22",
                 "profile.field.mobile.required", "true",
                 "profile.field.mobile.sort", "77",
+                "profile.field.system.overrides", "[{\"fieldKey\":\"mobile\",\"fieldLabel\":\"Contact phone\",\"fieldDescription\":\"Editable phone label\",\"placeholder\":\"Enter contact phone\",\"custom\":false}]",
                 "profile.field.email.visible", "false"
         ));
         SystemProfileSettingsAppService service = newService(jdbcTemplate);
@@ -64,6 +65,9 @@ class SystemProfileSettingsAppServiceTest {
         assertEquals(22, mobile.getWeight());
         assertTrue(mobile.getRequired());
         assertEquals(77, mobile.getSortNo());
+        assertEquals("Contact phone", mobile.getFieldLabel());
+        assertEquals("Editable phone label", mobile.getFieldDescription());
+        assertEquals("Enter contact phone", mobile.getPlaceholder());
         assertEquals("联系方式", mobile.getGroupLabel());
         assertTrue(avatar.getVisible());
         assertEquals(10, avatar.getWeight());
@@ -80,6 +84,9 @@ class SystemProfileSettingsAppServiceTest {
         List<ProfileFieldSettingItem> items = new ArrayList<>();
         items.add(profileFieldSetting("avatarUrl", true, 12));
         ProfileFieldSettingItem mobile = profileFieldSetting("mobile", false, 20);
+        mobile.setFieldLabel("Contact phone");
+        mobile.setFieldDescription("Editable phone label");
+        mobile.setPlaceholder("Enter contact phone");
         mobile.setRequired(true);
         mobile.setSortNo(77);
         items.add(mobile);
@@ -93,10 +100,13 @@ class SystemProfileSettingsAppServiceTest {
         assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.mobile.weight"));
         assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.mobile.required"));
         assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.mobile.sort"));
+        assertTrue(jdbcTemplate.insertedConfigKeys().contains("profile.field.system.overrides"));
         assertTrue(jdbcTemplate.hasInsertValue("profile.field.avatar.weight", "12"));
         assertTrue(jdbcTemplate.hasInsertValue("profile.field.mobile.visible", "false"));
         assertTrue(jdbcTemplate.hasInsertValue("profile.field.mobile.required", "true"));
         assertTrue(jdbcTemplate.hasInsertValue("profile.field.mobile.sort", "77"));
+        assertTrue(jdbcTemplate.hasInsertValueContaining("profile.field.system.overrides", "\"fieldLabel\":\"Contact phone\""));
+        assertTrue(jdbcTemplate.hasInsertValueContaining("profile.field.system.overrides", "\"placeholder\":\"Enter contact phone\""));
     }
 
     @Test

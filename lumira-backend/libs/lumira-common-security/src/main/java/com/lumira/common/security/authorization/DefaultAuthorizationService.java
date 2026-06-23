@@ -43,9 +43,6 @@ public class DefaultAuthorizationService implements AuthorizationService {
         if (request == null) {
             return AuthorizationDecision.deny("AUTHZ_REQUEST_MISSING", "Authorization request is missing");
         }
-        if (request.tenantId() == null) {
-            return AuthorizationDecision.deny("TENANT_MISSING", "Tenant context is required");
-        }
         String channel = normalizeChannel(request.channel());
         if (!StringUtils.hasText(channel)) {
             return AuthorizationDecision.deny("CHANNEL_MISSING", "Authorization channel is required");
@@ -64,9 +61,6 @@ public class DefaultAuthorizationService implements AuthorizationService {
         CurrentUser currentUser = request.currentUser();
         if (currentUser == null) {
             return AuthorizationDecision.deny("CURRENT_USER_MISSING", "Current user is required");
-        }
-        if (currentUser.getCurrentTenantId() == null || !request.tenantId().equals(currentUser.getCurrentTenantId())) {
-            return AuthorizationDecision.deny("TENANT_MISMATCH", "Tenant context does not match current user");
         }
         if (currentUser.getPermissions() == null || currentUser.getPermissions().isEmpty()) {
             return AuthorizationDecision.deny("SUBJECT_PERMISSION_MISSING", "Subject permissions are missing");
@@ -107,7 +101,7 @@ public class DefaultAuthorizationService implements AuthorizationService {
         }
 
         return new AuthorizationDecision(AuthorizationVerdict.ALLOW, "AUTHZ_POLICY_ALLOW", "Permission granted",
-                isHighRisk(request), false, false, "default-enterprise-pdp", List.copyOf(matched), "tenant");
+                isHighRisk(request), false, false, "default-enterprise-pdp", List.copyOf(matched), "platform");
     }
 
     @Override
@@ -219,7 +213,7 @@ public class DefaultAuthorizationService implements AuthorizationService {
 
     private AuthorizationDecision evaluateDataScope(AuthorizationRequest request, CurrentUser currentUser) {
         Long resourceTenantId = argumentLong(request.arguments(), "resourceTenantId", "tenantId");
-        if (resourceTenantId != null && !request.tenantId().equals(resourceTenantId)) {
+        if (resourceTenantId != null && request.tenantId() != null && !request.tenantId().equals(resourceTenantId)) {
             return deny("DATA_SCOPE_TENANT_MISMATCH", "Resource tenant is outside current scope", List.of());
         }
         String dataScope = normalizeArgument(request.arguments(), "dataScope");

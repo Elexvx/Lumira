@@ -7,6 +7,7 @@ import com.lumira.ai.provider.AiProviderRuntime;
 import com.lumira.ai.vo.AiToolVO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
+import com.lumira.common.security.PlatformContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -78,7 +79,7 @@ class AiCommandServiceTest {
             public ToolExecution execute(CurrentUser currentUser, AiToolVO tool, Map<String, Object> arguments) {
                 return new ToolExecution(Map.of(
                         "userId", currentUser.getUserId(),
-                        "tenantId", currentUser.getCurrentTenantId(),
+                        "tenantId", PlatformContext.compatibilityTenantId(),
                         "username", currentUser.getUsername(),
                         "permissions", currentUser.getPermissions()
                 ), false, false);
@@ -116,10 +117,10 @@ class AiCommandServiceTest {
     }
 
     private CurrentUser user() {
-        return new CurrentUser(7L, "ai-user", 1001L, "s1", 1, true, Set.of("*"));
+        return new CurrentUser(7L, "ai-user", null, "s1", 1, true, Set.of("*"));
     }
 
     private CurrentUser userWithPermissions(String... permissions) {
-        return new CurrentUser(7L, "ai-user", 1001L, "s1", 1, true, Set.of(permissions));
+        return new CurrentUser(7L, "ai-user", 2002L, "s1", 1, true, Set.of(permissions));
     }
 }

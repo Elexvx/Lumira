@@ -3,6 +3,7 @@ package com.lumira.saas.infrastructure.security.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.saas.common.constant.CacheKeyConstants;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.redis.CacheTemplate;
@@ -63,19 +64,19 @@ public class AuthSessionStore {
     public void save(AuthSession session, Duration ttl, boolean publishChange) {
         AuthSession previousSession = publishChange ? findBySessionId(session.getSessionId()).orElse(null) : null;
         try {
+            Long effectiveTenantId = platformTenantId();
+            session.setCurrentTenantId(effectiveTenantId);
             Duration effectiveTtl = ttl == null || ttl.isZero() || ttl.isNegative()
                     ? Duration.ofSeconds(1)
                     : ttl;
             cacheTemplate.put(CacheKeyConstants.sessionKey(session.getSessionId()), objectMapper.writeValueAsString(session), effectiveTtl);
             cacheTemplate.put(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()), "1", effectiveTtl);
             cacheTemplate.addToSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId(), toScore(session));
-            if (session.getCurrentTenantId() != null) {
-                cacheTemplate.addToSortedSet(CacheKeyConstants.onlineSessionTenantKey(session.getCurrentTenantId()), session.getSessionId(), toScore(session));
-            }
+            cacheTemplate.addToSortedSet(CacheKeyConstants.onlineSessionTenantKey(effectiveTenantId), session.getSessionId(), toScore(session));
             cacheLatestSessionId(session, effectiveTtl);
             if (previousSession != null
                     && previousSession.getCurrentTenantId() != null
-                    && !previousSession.getCurrentTenantId().equals(session.getCurrentTenantId())) {
+                    && !previousSession.getCurrentTenantId().equals(effectiveTenantId)) {
                 cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionTenantKey(previousSession.getCurrentTenantId()), session.getSessionId());
             }
             if (publishChange) {
@@ -168,9 +169,7 @@ public class AuthSessionStore {
         cacheTemplate.remove(CacheKeyConstants.sessionKey(session.getSessionId()));
         cacheTemplate.remove(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()));
         cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId());
-        if (session.getCurrentTenantId() != null) {
-            cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionTenantKey(session.getCurrentTenantId()), session.getSessionId());
-        }
+        removeTenantIndexReferences(session.getCurrentTenantId(), session.getSessionId());
         clearLatestSessionIdIfMatch(session);
         removes.incrementAndGet();
         if (publishChange) {
@@ -283,9 +282,7 @@ public class AuthSessionStore {
                 keysToDelete.add(CacheKeyConstants.sessionKey(session.getSessionId()));
                 keysToDelete.add(CacheKeyConstants.userSessionKey(session.getUserId(), session.getSessionId()));
                 cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionUserKey(session.getUserId()), session.getSessionId());
-                if (session.getCurrentTenantId() != null) {
-                    cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionTenantKey(session.getCurrentTenantId()), session.getSessionId());
-                }
+                removeTenantIndexReferences(session.getCurrentTenantId(), session.getSessionId());
                 if (publishChange) {
                     publishEvent(OnlineSessionEvent.ACTION_REMOVED, session);
                 }
@@ -436,7 +433,7 @@ public class AuthSessionStore {
     private void publishEvent(String action, AuthSession session) {
         OnlineSessionEvent event = new OnlineSessionEvent();
         event.setAction(action);
-        event.setTenantId(session.getCurrentTenantId());
+        event.setTenantId(platformTenantId());
         event.setUserId(session.getUserId());
         event.setSessionId(session.getSessionId());
         event.setOccurredAt(Instant.now());
@@ -464,6 +461,21 @@ public class AuthSessionStore {
                 cacheTemplate.removeFromSortedSet(key, sessionId);
             }
         }
+    }
+
+    private void removeTenantIndexReferences(Long storedTenantId, String sessionId) {
+        if (!StringUtils.hasText(sessionId)) {
+            return;
+        }
+        Long platformTenantId = platformTenantId();
+        cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionTenantKey(platformTenantId), sessionId);
+        if (storedTenantId != null && !storedTenantId.equals(platformTenantId)) {
+            cacheTemplate.removeFromSortedSet(CacheKeyConstants.onlineSessionTenantKey(storedTenantId), sessionId);
+        }
+    }
+
+    private Long platformTenantId() {
+        return PlatformContext.compatibilityTenantId();
     }
 
     private void removeUserSessionReference(Long userId, String sessionId) {

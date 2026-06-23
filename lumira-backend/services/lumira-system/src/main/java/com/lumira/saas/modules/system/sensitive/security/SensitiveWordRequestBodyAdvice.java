@@ -57,7 +57,7 @@ public class SensitiveWordRequestBodyAdvice extends RequestBodyAdviceAdapter {
             return body;
         }
         SensitiveWordVO.CheckResult result = sensitiveWordService.checkPayload(currentUser, body);
-        if (result.isHit()) {
+        if (result.isBlocked()) {
             throw buildException(result);
         }
         return body;

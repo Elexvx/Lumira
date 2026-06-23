@@ -11,6 +11,7 @@ import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.modules.audit.app.LoginAuditService;
@@ -2597,10 +2598,10 @@ public class SystemManagementAppService {
     }
 
     private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null || currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
         }
-        return currentUser.getCurrentTenantId();
+        return PlatformContext.compatibilityTenantId();
     }
 
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {
@@ -2720,11 +2721,9 @@ public class SystemManagementAppService {
                                u.created_at as createdAt, u.updated_at as updatedAt
                         from sys_user u
                         left join iam_user iu on iu.id = u.id and iu.deleted = 0
-                        join sys_user_tenant ut on ut.user_id = u.id and ut.tenant_id = ? and ut.deleted = 0
                         where u.id = ? and u.deleted = 0
                         """,
                 SystemVO.UserVO.class,
-                tenantId,
                 userId
         );
         if (user == null) {
@@ -2820,22 +2819,6 @@ public class SystemManagementAppService {
     private boolean isProtectedAdminAccount(Long userId, String username) {
         return DEFAULT_ADMIN_USER_ID.equals(userId)
                 || (StringUtils.hasText(username) && DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(username));
-    }
-
-    private void upsertUserTenantRelation(Long userId, Long tenantId, boolean isDefault, Long operatorId) {
-        jdbcTemplate.update(
-                """
-                        insert into sys_user_tenant (tenant_id, user_id, is_default, status, created_by, updated_by, deleted)
-                        values (?, ?, ?, 'ENABLED', ?, ?, 0)
-                        on duplicate key update is_default = values(is_default), status = values(status),
-                                                 updated_by = values(updated_by), updated_at = current_timestamp, deleted = 0
-                        """,
-                tenantId,
-                userId,
-                isDefault ? 1 : 0,
-                operatorId,
-                operatorId
-        );
     }
 
     private void replaceUserRoles(Long userId, Long tenantId, List<Long> roleIds, Long operatorId) {

@@ -142,7 +142,8 @@ class AiNativeToolRuntimeServiceTest {
                 new StubFileInternalApi(),
                 authorization(request -> "system.user.create".equals(request.toolCode())
                         ? AuthorizationDecision.requireConfirm("TEST_CONFIRM", "confirm", List.of("TEST_CONFIRM"))
-                        : AuthorizationDecision.deny("TEST_DENY", "deny"))
+                        : AuthorizationDecision.deny("TEST_DENY", "deny")),
+                true
         );
 
         List<AiVO.ToolVO> tools = service.listTools(currentUser(), 1L);
@@ -150,6 +151,17 @@ class AiNativeToolRuntimeServiceTest {
         assertThat(tools).extracting(AiVO.ToolVO::getToolCode)
                 .contains("system.user.create")
                 .doesNotContain("system.permission.snapshot", "system.user.delete");
+    }
+
+    @Test
+    void writeToolsAreDisabledByDefault() {
+        DefaultAiNativeToolRuntimeService service = newService(new StubQueryOperations(), mock(AiSkillPermissionChecker.class));
+
+        assertThat(service.listTools(currentUser())).extracting(AiVO.ToolVO::getToolCode)
+                .doesNotContain("system.user.create", "system.config.create", "platform.floating_window.update");
+        assertThatThrownBy(() -> service.execute(currentUser(), request("system.user.create", Map.of())))
+                .isInstanceOf(BizException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.NOT_FOUND);
     }
 
     private DefaultAiNativeToolRuntimeService newService(
@@ -173,7 +185,8 @@ class AiNativeToolRuntimeServiceTest {
                 new StubPlatformQueryFacade(),
                 new StubIamQueryFacade(),
                 null,
-                fileInternalApi
+                fileInternalApi,
+                false
         );
     }
 
@@ -182,6 +195,16 @@ class AiNativeToolRuntimeServiceTest {
             AiSkillPermissionChecker permissionChecker,
             FileInternalApi fileInternalApi,
             AuthorizationService authorizationService
+    ) {
+        return newService(jdbcTemplate, permissionChecker, fileInternalApi, authorizationService, false);
+    }
+
+    private DefaultAiNativeToolRuntimeService newService(
+            MyBatisQueryOperations jdbcTemplate,
+            AiSkillPermissionChecker permissionChecker,
+            FileInternalApi fileInternalApi,
+            AuthorizationService authorizationService,
+            boolean writeToolsEnabled
     ) {
         return new DefaultAiNativeToolRuntimeService(
                 jdbcTemplate,
@@ -192,7 +215,8 @@ class AiNativeToolRuntimeServiceTest {
                 new StubPlatformQueryFacade(),
                 new StubIamQueryFacade(),
                 null,
-                fileInternalApi
+                fileInternalApi,
+                writeToolsEnabled
         );
     }
 
@@ -324,7 +348,7 @@ class AiNativeToolRuntimeServiceTest {
         private boolean searchCalled;
 
         @Override
-        public FileObjectDTO uploadImage(org.springframework.web.multipart.MultipartFile file, String category, String remark) {
+        public FileObjectDTO uploadImage(org.springframework.web.multipart.MultipartFile file, String category, String remark, String bucket) {
             throw new UnsupportedOperationException();
         }
 

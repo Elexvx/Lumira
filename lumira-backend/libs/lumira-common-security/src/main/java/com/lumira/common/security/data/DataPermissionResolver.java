@@ -30,9 +30,6 @@ public final class DataPermissionResolver {
         if (matchedRules.stream().anyMatch(rule -> rule.scopeType() == DataScopeType.ALL)) {
             return DataPermissionDecision.all();
         }
-        if (matchedRules.stream().anyMatch(rule -> rule.scopeType() == DataScopeType.TENANT)) {
-            return DataPermissionDecision.tenant();
-        }
 
         Set<Long> resolvedDeptIds = new LinkedHashSet<>();
         Set<Long> resolvedUserIds = new LinkedHashSet<>();

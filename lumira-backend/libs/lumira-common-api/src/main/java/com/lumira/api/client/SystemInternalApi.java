@@ -46,7 +46,7 @@ public interface SystemInternalApi {
     List<SystemUserContactSnapshotDTO> userContactsByRole( Long tenantId, Long roleId);
 
 
-    List<SystemUserContactSnapshotDTO> tenantUserContacts( Long tenantId);
+    List<SystemUserContactSnapshotDTO> platformUserContacts( Long tenantId);
 
 
     List<Long> userIdsByRole( Long tenantId, Long roleId);

@@ -46,7 +46,7 @@ class SystemManagementAppServiceAuditTenantTest {
 
     @Test
     void loginLogsRejectsTenantIdDifferentFromCurrentTenant() {
-        CurrentUser currentUser = currentUser(1001L, Set.of("audit:login:view"));
+        CurrentUser currentUser = currentUser(2002L, Set.of("audit:login:view"));
 
         assertThrows(BizException.class, () -> service.listLoginLogs(currentUser, null, 2002L, 1, 10));
         assertEquals(null, queryOperations.lastQuerySql);
@@ -54,7 +54,7 @@ class SystemManagementAppServiceAuditTenantTest {
 
     @Test
     void operationLogsUseCurrentTenantWhenTenantIdOmitted() {
-        CurrentUser currentUser = currentUser(1001L, Set.of("audit:operation:view"));
+        CurrentUser currentUser = currentUser(2002L, Set.of("audit:operation:view"));
 
         service.listOperationLogs(currentUser, null, null, 1, 10);
 
@@ -65,7 +65,7 @@ class SystemManagementAppServiceAuditTenantTest {
 
     @Test
     void aiCallLogsAllowExplicitTenantForPlatformAdministrator() {
-        CurrentUser currentUser = currentUser(1001L, Set.of("*"));
+        CurrentUser currentUser = currentUser(2002L, Set.of("*"));
 
         service.listAiCallLogs(currentUser, 2002L, null, null, null, null, null, 1, 10);
 

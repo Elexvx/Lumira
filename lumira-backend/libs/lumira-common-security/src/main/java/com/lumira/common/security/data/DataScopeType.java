@@ -4,7 +4,6 @@ import java.util.Locale;
 
 public enum DataScopeType {
     ALL,
-    TENANT,
     DEPT_AND_CHILD,
     DEPT,
     CUSTOM,
@@ -13,6 +12,9 @@ public enum DataScopeType {
     public static DataScopeType from(String value) {
         if (value == null || value.isBlank()) {
             return SELF;
+        }
+        if ("TENANT".equalsIgnoreCase(value.trim())) {
+            return ALL;
         }
         try {
             return DataScopeType.valueOf(value.trim().toUpperCase(Locale.ROOT));

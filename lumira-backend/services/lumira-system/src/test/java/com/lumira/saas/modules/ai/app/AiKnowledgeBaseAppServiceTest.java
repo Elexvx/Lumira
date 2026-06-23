@@ -340,7 +340,7 @@ class AiKnowledgeBaseAppServiceTest {
         }
 
         @Override
-        public FileObjectDTO uploadImage(MultipartFile file, String category, String remark) {
+        public FileObjectDTO uploadImage(MultipartFile file, String category, String remark, String bucket) {
             throw new UnsupportedOperationException();
         }
 
@@ -377,7 +377,7 @@ class AiKnowledgeBaseAppServiceTest {
     private static final class FailingFileInternalApi implements FileInternalApi {
 
         @Override
-        public FileObjectDTO uploadImage(MultipartFile file, String category, String remark) {
+        public FileObjectDTO uploadImage(MultipartFile file, String category, String remark, String bucket) {
             throw new UnsupportedOperationException();
         }
 

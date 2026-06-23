@@ -1,5 +1,6 @@
 package com.lumira.file;
 
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.common.vo.PageResponse;
@@ -150,6 +151,7 @@ class FileManagementAppServiceTest {
         when(fileStorageSpaceMapper.listWithUsage(1001L, 2L, 0L)).thenReturn(storageSpaceEntities(2, 1001L));
 
         CurrentUser currentUser = currentUser();
+        currentUser.setCurrentTenantId(null);
         PageResponse<?> response = service.listStorageSpaces(currentUser, 1, 2);
 
         assertThat(response).isInstanceOf(FileVO.StorageSpacePageResponse.class);
@@ -192,7 +194,33 @@ class FileManagementAppServiceTest {
                 .extracting(FileStorageSpaceEntity::getStorageKey)
                 .containsExactly("local", "ai_chat", "avatar");
         assertThat(captor.getAllValues().getFirst().getDefaultFlag()).isEqualTo(1);
+        assertThat(captor.getAllValues())
+                .filteredOn(entity -> "local".equals(entity.getStorageKey()) || "avatar".equals(entity.getStorageKey()))
+                .extracting(FileStorageSpaceEntity::getAnonymousAccessAllowed)
+                .containsOnly(1);
         assertThat(response.getRecords()).hasSize(3);
+    }
+
+    @Test
+    void listStorageSpaces_shouldMergeLegacySystemPublicStorageIntoLocal() {
+        FileStorageSpaceEntity legacyStorage = storageSpaceEntities(1, 1001L).getFirst();
+        legacyStorage.setStorageKey("system_public");
+        when(fileStorageSpaceMapper.findByStorageKey(1001L, "system_public")).thenReturn(legacyStorage);
+        when(fileStorageSpaceMapper.countDefaultStorage(1001L)).thenReturn(1L);
+        when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
+                .thenReturn(List.of());
+        when(fileStorageSpaceMapper.listWithUsage(1001L, 10L, 0L)).thenReturn(List.of());
+
+        service.listStorageSpaces(currentUser(), 1, 10);
+
+        verify(fileObjectMapper).update(
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.<UpdateWrapper<FileObjectEntity>>any()
+        );
+        verify(fileStorageSpaceMapper).update(
+                ArgumentMatchers.isNull(),
+                ArgumentMatchers.<UpdateWrapper<FileStorageSpaceEntity>>any()
+        );
     }
 
     @Test
@@ -247,7 +275,7 @@ class FileManagementAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        return new CurrentUser(11L, "alice", 1001L, "sid", 1, true, Set.of("*"));
+        return new CurrentUser(11L, "alice", 2002L, "sid", 1, true, Set.of("*"));
     }
 
     private List<FileObjectEntity> fileObjectEntities(int size) {

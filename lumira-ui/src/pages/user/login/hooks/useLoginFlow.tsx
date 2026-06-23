@@ -17,7 +17,7 @@ import { showErrorMessage } from '@/utils/errorMessage';
 import type { LoginFormValues, LoginMode } from '@/pages/user/login/components/LoginFormFields';
 import { useLoginFlowRuntime } from './useLoginFlowRuntime';
 import { request } from '@/services/common/request';
-import type { BrandingSettings, LoginCapabilities } from '@/types/api';
+import type { AgreementSettings, BrandingSettings, LoginCapabilities } from '@/types/api';
 
 const INITIAL_PASSWORD = '123456';
 type ForcedPasswordChangeFormValues = {
@@ -134,6 +134,51 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
       disposed = true;
     };
   }, [initialState?.loginCapabilities, setInitialState]);
+
+  useEffect(() => {
+    if (initialState?.currentUser) {
+      return;
+    }
+
+    let disposed = false;
+
+    void request<AgreementSettings>('/v1/public/agreement-settings', {
+      method: 'GET',
+      skipAuth: true,
+      silent: true,
+      autoRedirectOnUnauthorized: false,
+      allowUnauthorizedWithoutRedirect: true,
+    })
+      .then((settings) => {
+        if (disposed) {
+          return;
+        }
+        const normalizedAgreement = normalizeAgreementSettings(settings);
+        setInitialState((prev: AppInitialState | undefined) => {
+          if (!prev) {
+            return prev;
+          }
+          const currentAgreement = normalizeAgreementSettings(prev.agreementSettings || DEFAULT_AGREEMENT_SETTINGS);
+          if (
+            currentAgreement.userAgreementMarkdown === normalizedAgreement.userAgreementMarkdown &&
+            currentAgreement.privacyAgreementMarkdown === normalizedAgreement.privacyAgreementMarkdown
+          ) {
+            return prev;
+          }
+          return {
+            ...prev,
+            agreementSettings: normalizedAgreement,
+          };
+        });
+      })
+      .catch(() => {
+        // Keep the bootstrap snapshot values when the public agreement endpoint is temporarily unavailable.
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [initialState?.currentUser, setInitialState]);
 
   useEffect(() => {
     if (initialState?.currentUser) {

@@ -22,7 +22,7 @@ public final class MessageDTO {
         @Size(max = 2000, message = "content长度不能超过2000个字符")
         private String content;
         @NotBlank
-        @Pattern(regexp = "^(TENANT|USER|ROLE)$", message = "targetScope只能是TENANT、USER或ROLE")
+        @Pattern(regexp = "^(PLATFORM|TENANT|USER|ROLE)$", message = "targetScope只能是PLATFORM、USER或ROLE")
         private String targetScope;
         private List<@Pattern(regexp = "^(INBOX|EMAIL|WECHAT_OFFICIAL)$", message = "channels只能包含INBOX、EMAIL或WECHAT_OFFICIAL") String> channels = List.of("INBOX");
         @Positive(message = "targetUserId必须大于0")
@@ -94,7 +94,7 @@ public final class MessageDTO {
         private String keyword;
         @Pattern(regexp = "^(MESSAGE)$", message = "messageType只能是MESSAGE")
         private String messageType;
-        @Pattern(regexp = "^(TENANT|USER|ROLE)$", message = "targetScope只能是TENANT、USER或ROLE")
+        @Pattern(regexp = "^(PLATFORM|TENANT|USER|ROLE)$", message = "targetScope只能是PLATFORM、USER或ROLE")
         private String targetScope;
         @Pattern(regexp = "^(MANUAL)$", message = "sourceType只能是MANUAL")
         private String sourceType;

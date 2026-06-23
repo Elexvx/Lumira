@@ -200,6 +200,28 @@ class AiManagementAppServiceTest {
     }
 
     @Test
+    void createEmployeeShouldKeepBlankSystemPromptEmpty() {
+        RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
+        AiManagementAppService service = new AiManagementAppService(
+                jdbcTemplate,
+                mock(OperationAuditService.class),
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        AiDTO.EmployeeUpsertRequest request = new AiDTO.EmployeeUpsertRequest();
+        request.setUsername("assistant");
+        request.setNickname("鍔╂墜");
+        request.setSystemPrompt("   ");
+
+        service.createEmployee(currentUser(), request);
+
+        assertThat(jdbcTemplate.lastUpdateArgs).isNotNull();
+        assertThat(jdbcTemplate.lastUpdateArgs[7]).isNull();
+    }
+
+    @Test
     void createLlmServiceShouldRejectDuplicateCodeViaExistsCheck() {
         RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
         jdbcTemplate.llmServiceCodeExists = true;
@@ -366,6 +388,13 @@ class AiManagementAppServiceTest {
         private boolean employeeExistsChecked;
         private boolean llmServiceExistsChecked;
         private boolean countQueryCalled;
+        private Object[] lastUpdateArgs;
+
+        @Override
+        public int update(String sql, Object... args) {
+            lastUpdateArgs = args;
+            return 1;
+        }
 
         @Override
         public boolean exists(String sql, Object... args) {

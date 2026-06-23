@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -38,10 +39,10 @@ public class OnlineSessionStreamService {
 
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
         String subscriberId = UUID.randomUUID().toString();
-        if (currentUser.getCurrentTenantId() == null) {
+        if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
         }
-        Long tenantId = currentUser.getCurrentTenantId();
+        Long tenantId = PlatformContext.compatibilityTenantId();
         Subscriber subscriber = new Subscriber(subscriberId, currentUser.getSessionId(), tenantId, emitter);
 
         subscribers.put(subscriberId, subscriber);

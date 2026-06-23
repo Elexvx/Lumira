@@ -26,6 +26,15 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v2")
 public class TeamV2Controller {
+    private static final String TEAM_VIEW = "team:view";
+    private static final String TEAM_CREATE = "team:create";
+    private static final String TEAM_UPDATE = "team:update";
+    private static final String TEAM_DELETE = "team:delete";
+    private static final String TEAM_MEMBER_VIEW = "team:member:view";
+    private static final String TEAM_MEMBER_INVITE = "team:member:invite";
+    private static final String TEAM_MEMBER_REMOVE = "team:member:remove";
+    private static final String TEAM_MEMBER_ROLE_UPDATE = "team:member:role-update";
+
     private final TeamAppService teamAppService;
     private final TeamInviteService teamInviteService;
     private final SecurityContextFacade securityContextFacade;
@@ -46,6 +55,7 @@ public class TeamV2Controller {
     @PostMapping("/teams")
     @RepeatSubmit
     public ApiResponse<TeamVO.Team> createTeam(@Valid @RequestBody TeamDTO.TeamCreateRequest request) {
+        require(TEAM_CREATE);
         return ApiResponse.success(teamAppService.createTeam(currentUser(), request), TraceContext.getRequestId());
     }
 
@@ -56,7 +66,7 @@ public class TeamV2Controller {
 
     @GetMapping("/admin/teams")
     public ApiResponse<List<TeamVO.Team>> adminTeams() {
-        require("team:view");
+        require(TEAM_VIEW);
         return ApiResponse.success(teamAppService.listTeamsForAdmin(currentUser()), TraceContext.getRequestId());
     }
 
@@ -68,29 +78,32 @@ public class TeamV2Controller {
     @PutMapping("/teams/{teamId}")
     @RepeatSubmit
     public ApiResponse<TeamVO.Team> updateTeam(@PathVariable("teamId") Long teamId, @Valid @RequestBody TeamDTO.TeamUpdateRequest request) {
+        require(TEAM_UPDATE);
         return ApiResponse.success(teamAppService.updateTeam(currentUser(), teamId, request), TraceContext.getRequestId());
     }
 
     @PutMapping("/admin/teams/{teamId}")
     @RepeatSubmit
     public ApiResponse<TeamVO.Team> adminUpdateTeam(@PathVariable("teamId") Long teamId, @Valid @RequestBody TeamDTO.TeamUpdateRequest request) {
-        require("team:view");
+        require(TEAM_UPDATE);
         return ApiResponse.success(teamAppService.updateTeamForAdmin(currentUser(), teamId, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/teams/{teamId}")
     public ApiResponse<Boolean> deleteTeam(@PathVariable("teamId") Long teamId) {
+        require(TEAM_DELETE);
         return ApiResponse.success(teamAppService.deleteTeam(currentUser(), teamId), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/admin/teams/{teamId}")
     public ApiResponse<Boolean> adminDeleteTeam(@PathVariable("teamId") Long teamId) {
-        require("team:view");
+        require(TEAM_DELETE);
         return ApiResponse.success(teamAppService.deleteTeamForAdmin(currentUser(), teamId), TraceContext.getRequestId());
     }
 
     @GetMapping("/teams/{teamId}/members")
     public ApiResponse<List<TeamVO.Member>> members(@PathVariable("teamId") Long teamId) {
+        require(TEAM_MEMBER_VIEW);
         return ApiResponse.success(teamAppService.listMembers(currentUser(), teamId), TraceContext.getRequestId());
     }
 
@@ -101,11 +114,13 @@ public class TeamV2Controller {
             @PathVariable("memberId") Long memberId,
             @Valid @RequestBody TeamDTO.MemberRoleRequest request
     ) {
+        require(TEAM_MEMBER_ROLE_UPDATE);
         return ApiResponse.success(teamAppService.updateMemberRole(currentUser(), teamId, memberId, request), TraceContext.getRequestId());
     }
 
     @DeleteMapping("/teams/{teamId}/members/{memberId}")
     public ApiResponse<Boolean> removeMember(@PathVariable("teamId") Long teamId, @PathVariable("memberId") Long memberId) {
+        require(TEAM_MEMBER_REMOVE);
         return ApiResponse.success(teamAppService.removeMember(currentUser(), teamId, memberId), TraceContext.getRequestId());
     }
 
@@ -118,22 +133,26 @@ public class TeamV2Controller {
     @PostMapping("/teams/{teamId}/transfer-owner")
     @RepeatSubmit
     public ApiResponse<TeamVO.Team> transferOwner(@PathVariable("teamId") Long teamId, @Valid @RequestBody TeamDTO.TransferOwnerRequest request) {
+        require(TEAM_MEMBER_ROLE_UPDATE);
         return ApiResponse.success(teamAppService.transferOwner(currentUser(), teamId, request), TraceContext.getRequestId());
     }
 
     @PostMapping("/teams/{teamId}/invites")
     @RepeatSubmit
     public ApiResponse<TeamVO.Invite> createInvite(@PathVariable("teamId") Long teamId, @Valid @RequestBody TeamDTO.InviteCreateRequest request) {
+        require(TEAM_MEMBER_INVITE);
         return ApiResponse.success(teamInviteService.createInvite(currentUser(), teamId, request), TraceContext.getRequestId());
     }
 
     @GetMapping("/teams/{teamId}/invites")
     public ApiResponse<List<TeamVO.Invite>> invites(@PathVariable("teamId") Long teamId) {
+        require(TEAM_MEMBER_INVITE);
         return ApiResponse.success(teamInviteService.listInvites(currentUser(), teamId), TraceContext.getRequestId());
     }
 
     @PatchMapping("/teams/{teamId}/invites/{inviteId}/disable")
     public ApiResponse<Boolean> disableInvite(@PathVariable("teamId") Long teamId, @PathVariable("inviteId") Long inviteId) {
+        require(TEAM_MEMBER_INVITE);
         return ApiResponse.success(teamInviteService.disableInvite(currentUser(), teamId, inviteId), TraceContext.getRequestId());
     }
 
@@ -162,6 +181,7 @@ public class TeamV2Controller {
 
     @GetMapping("/teams/{teamId}/join-requests")
     public ApiResponse<List<TeamVO.JoinRequest>> joinRequests(@PathVariable("teamId") Long teamId) {
+        require(TEAM_MEMBER_INVITE);
         return ApiResponse.success(teamInviteService.listJoinRequests(currentUser(), teamId), TraceContext.getRequestId());
     }
 
@@ -172,6 +192,7 @@ public class TeamV2Controller {
             @PathVariable("requestId") Long requestId,
             @RequestBody(required = false) TeamDTO.JoinReviewRequest request
     ) {
+        require(TEAM_MEMBER_INVITE);
         return ApiResponse.success(teamInviteService.approveJoinRequest(currentUser(), teamId, requestId, request), TraceContext.getRequestId());
     }
 
@@ -182,6 +203,7 @@ public class TeamV2Controller {
             @PathVariable("requestId") Long requestId,
             @RequestBody(required = false) TeamDTO.JoinReviewRequest request
     ) {
+        require(TEAM_MEMBER_INVITE);
         return ApiResponse.success(teamInviteService.rejectJoinRequest(currentUser(), teamId, requestId, request), TraceContext.getRequestId());
     }
 

@@ -90,7 +90,8 @@ class AiNativeToolRuntimeVisibilityTest {
                 mock(AiPlatformQueryFacade.class),
                 mock(AiIamQueryFacade.class),
                 null,
-                mock(FileInternalApi.class)
+                mock(FileInternalApi.class),
+                true
         );
     }
 

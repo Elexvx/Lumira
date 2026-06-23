@@ -136,6 +136,9 @@ public final class SystemRouteCatalog {
         if (menu == null) {
             return false;
         }
+        if (menu.isBuiltin() && "BUTTON".equalsIgnoreCase(menu.getMenuType())) {
+            return true;
+        }
         return isBuiltInMenuPath(menu.getPath()) || isBuiltInMenuComponent(menu.getComponent());
     }
 
@@ -172,9 +175,22 @@ public final class SystemRouteCatalog {
                 "system:view"
         );
 
+        SystemVO.MenuVO settingsMenus = menu(-1001L, -1000L, "settings.menus", "菜单管理", "MENU", "/settings/menus", "@/pages/settings/menus", "AppstoreOutlined", 2, "system:menu:view");
+        settingsMenus.setChildren(new ArrayList<>(List.of(
+                menu(-1020L, -1001L, "settings.menus.create", "创建菜单", "BUTTON", null, null, null, 1, "system:menu:create"),
+                menu(-1021L, -1001L, "settings.menus.update", "编辑菜单", "BUTTON", null, null, null, 2, "system:menu:update"),
+                menu(-1022L, -1001L, "settings.menus.delete", "删除菜单", "BUTTON", null, null, null, 3, "system:menu:delete")
+        )));
+        SystemVO.MenuVO settingsDicts = menu(-1002L, -1000L, "settings.dicts", "字典管理", "MENU", "/settings/dicts", "@/pages/settings/dicts", "DatabaseOutlined", 3, "system:dict:view");
+        settingsDicts.setChildren(new ArrayList<>(List.of(
+                menu(-1023L, -1002L, "settings.dicts.create", "创建字典", "BUTTON", null, null, null, 1, "system:dict:create"),
+                menu(-1024L, -1002L, "settings.dicts.update", "编辑字典", "BUTTON", null, null, null, 2, "system:dict:update"),
+                menu(-1025L, -1002L, "settings.dicts.delete", "删除字典", "BUTTON", null, null, null, 3, "system:dict:delete")
+        )));
+
         settingsRoot.setChildren(new ArrayList<>(List.of(
-                menu(-1001L, -1000L, "settings.menus", "菜单管理", "MENU", "/settings/menus", "@/pages/settings/menus", "AppstoreOutlined", 2, "system:menu:view"),
-                menu(-1002L, -1000L, "settings.dicts", "字典管理", "MENU", "/settings/dicts", "@/pages/settings/dicts", "DatabaseOutlined", 3, "system:dict:view"),
+                settingsMenus,
+                settingsDicts,
                 menu(-1003L, -1000L, "settings.profile-fields", "字段管理", "MENU", "/settings/profile-fields", "@/pages/settings/profile-fields", "FormOutlined", 4, "system:config:view"),
                 menu(-1004L, -1000L, "settings.personalization", "个性化设置", "MENU", "/settings/personalization", "@/pages/settings/personalization", "SkinOutlined", 5, "system:config:view"),
                 menu(-1005L, -1000L, "settings.security", "安全设置", "MENU", "/settings/security", "@/pages/settings/security", "SafetyOutlined", 6, "system:config:view"),
@@ -193,13 +209,37 @@ public final class SystemRouteCatalog {
         roots.add(menu(-955L, 0L, "dashboard.home", "首页", "MENU", "/dashboard/home", "@/pages/dashboard/DashboardHomePage", "DashboardOutlined", 0, "dashboard:view"));
         roots.add(menu(-956L, 0L, "files.download-center", "下载中心", "MENU", "/download-center", "@/pages/files/DownloadCenter", "DownloadOutlined", 1, "download:center:view"));
         roots.add(aiRoot);
-        roots.add(menu(-957L, 0L, "team.root", "团队", "MENU", "/team", "@/pages/team", "TeamOutlined", 3, "team:view"));
+        SystemVO.MenuVO teamRoot = menu(-957L, 0L, "team.root", "团队", "MENU", "/team", "@/pages/team", "TeamOutlined", 3, "team:view");
+        teamRoot.setChildren(new ArrayList<>(List.of(
+                menu(-958L, -957L, "team.create", "创建团队", "BUTTON", null, null, null, 1, "team:create"),
+                menu(-959L, -957L, "team.update", "编辑团队", "BUTTON", null, null, null, 2, "team:update"),
+                menu(-960L, -957L, "team.delete", "删除团队", "BUTTON", null, null, null, 3, "team:delete"),
+                menu(-961L, -957L, "team.member.view", "查看成员", "BUTTON", null, null, null, 4, "team:member:view"),
+                menu(-962L, -957L, "team.member.invite", "邀请成员", "BUTTON", null, null, null, 5, "team:member:invite"),
+                menu(-963L, -957L, "team.member.remove", "移除成员", "BUTTON", null, null, null, 6, "team:member:remove"),
+                menu(-964L, -957L, "team.member.role-update", "更新成员角色", "BUTTON", null, null, null, 7, "team:member:role-update")
+        )));
+        roots.add(teamRoot);
         SystemVO.MenuVO userCenterRoot = menu(-950L, 0L, "user.center.root", "用户中心", "CATALOG", "/user-center", "@/layouts/SettingsLayout", "TeamOutlined", 18, "user:center:view");
+        SystemVO.MenuVO systemUsers = menu(-951L, -950L, "system.users", "用户管理", "MENU", "/user-center/users", "@/pages/system/users", "TeamOutlined", 21, "system:user:view");
+        systemUsers.setChildren(new ArrayList<>(List.of(
+                menu(-965L, -951L, "system.users.create", "创建用户", "BUTTON", null, null, null, 1, "system:user:create"),
+                menu(-966L, -951L, "system.users.update", "编辑用户", "BUTTON", null, null, null, 2, "system:user:update"),
+                menu(-967L, -951L, "system.users.delete", "删除用户", "BUTTON", null, null, null, 3, "system:user:delete"),
+                menu(-968L, -951L, "system.users.export", "导出用户", "BUTTON", null, null, null, 4, "system:user:export")
+        )));
+        SystemVO.MenuVO systemRoles = menu(-953L, -950L, "system.roles", "角色管理", "MENU", "/user-center/roles", "@/pages/system/roles", "SafetyOutlined", 24, "system:role:view");
+        systemRoles.setChildren(new ArrayList<>(List.of(
+                menu(-969L, -953L, "system.roles.create", "创建角色", "BUTTON", null, null, null, 1, "system:role:create"),
+                menu(-970L, -953L, "system.roles.update", "编辑角色", "BUTTON", null, null, null, 2, "system:role:update"),
+                menu(-971L, -953L, "system.roles.delete", "删除角色", "BUTTON", null, null, null, 3, "system:role:delete"),
+                menu(-972L, -953L, "system.roles.grant", "授权角色", "BUTTON", null, null, null, 4, "system:role:grant")
+        )));
         userCenterRoot.setChildren(new ArrayList<>(List.of(
-                menu(-951L, -950L, "system.users", "用户管理", "MENU", "/user-center/users", "@/pages/system/users", "TeamOutlined", 21, "system:user:view"),
+                systemUsers,
                 menu(-954L, -950L, "system.departments", "组织部门", "MENU", "/user-center/departments", "@/pages/system/departments", "ApartmentOutlined", 22, "system:department:view"),
                 menu(-952L, -950L, "system.online-users", "在线用户", "MENU", "/user-center/online-users", "@/pages/system/online-users", "UserSwitchOutlined", 23, "system:online-user:view"),
-                menu(-953L, -950L, "system.roles", "角色管理", "MENU", "/user-center/roles", "@/pages/system/roles", "SafetyOutlined", 24, "system:role:view")
+                systemRoles
         )));
         SystemVO.MenuVO personalCenterRoot = menu(-940L, 0L, "user.center.personal", "个人中心", "CATALOG", "/user-center/personal-center", "@/layouts/SettingsLayout", "IdcardOutlined", 19, "profile:view");
         personalCenterRoot.setChildren(new ArrayList<>(List.of(

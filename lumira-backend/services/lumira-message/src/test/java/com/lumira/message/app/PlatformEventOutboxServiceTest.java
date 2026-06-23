@@ -177,7 +177,7 @@ class PlatformEventOutboxServiceTest {
         MessageNoticeDTO notice = new MessageNoticeDTO();
         notice.setId(9001L);
         notice.setTenantId(1001L);
-        notice.setTargetScope("TENANT");
+        notice.setTargetScope("PLATFORM");
         notice.setTitle("系统提醒");
         notice.setContent("内容");
         notice.setSourceType("MANUAL");

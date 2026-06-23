@@ -4,6 +4,7 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.web.security.SensitiveErrorMessageSanitizer;
@@ -62,9 +63,7 @@ public class PluginGatewayController {
         runtimeSecurityPolicy.validateMethod(request.getMethod());
         runtimeSecurityPolicy.validateBodySize(request.getContentLengthLong());
         String pluginCode = resolvePluginCode(request.getRequestURI());
-        Long tenantId = currentUser.getCurrentTenantId() == null
-                ? com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID
-                : currentUser.getCurrentTenantId();
+        Long tenantId = PlatformContext.compatibilityTenantId();
         PluginRuntimeDescriptor runtimeDescriptor = pluginManagementAppService.requireTenantRuntime(tenantId, pluginCode);
         PluginHttpRequest pluginRequest = new PluginHttpRequest(
                 request.getMethod(),
