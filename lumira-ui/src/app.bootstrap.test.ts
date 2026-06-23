@@ -270,8 +270,21 @@ describe('getAppInitialState', () => {
     expect(initialState.watermarkSettings).toEqual(mocks.defaultWatermarkSettings);
   });
 
+  it('restores a server session before showing the login page when the tab has no access token', async () => {
+    mocks.isLoggedIn.mockReturnValue(false);
+
+    const { getAppInitialState } = await import('@/app.bootstrap');
+    const initialState = await getAppInitialState();
+
+    expect(mocks.restoreSession).toHaveBeenCalledTimes(1);
+    expect(initialState.currentUser?.username).toBe('ordinary');
+    expect(mocks.request).toHaveBeenCalledWith('/v2/platform/runtime-appearance-settings', expect.objectContaining({ method: 'GET' }));
+    expect(mocks.request).not.toHaveBeenCalledWith('/v2/platform/public/bootstrap', expect.any(Object));
+  });
+
   it('loads guest bootstrap through the aggregated public endpoint', async () => {
     mocks.isLoggedIn.mockReturnValue(false);
+    mocks.restoreSession.mockResolvedValue(null);
     mocks.request.mockImplementation(async (url: string) => {
       if (url === '/v2/platform/public/bootstrap') {
         return {
@@ -311,6 +324,7 @@ describe('getAppInitialState', () => {
 
   it('falls back to split public endpoints when aggregated guest bootstrap is unavailable', async () => {
     mocks.isLoggedIn.mockReturnValue(false);
+    mocks.restoreSession.mockResolvedValue(null);
     mocks.request.mockImplementation(async (url: string) => {
       if (url === '/v2/platform/public/bootstrap') {
         throw new Error('new endpoint not deployed');

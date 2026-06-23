@@ -74,7 +74,10 @@ export const initializeAfterLogin = async (
 export const restoreSession = async (): Promise<SessionBootstrapResult | null> =>
   withBootstrapFlow(async () => {
     if (!tokenManager.hasToken()) {
-      return null;
+      const refreshed = await tryRefreshToken();
+      if (!refreshed) {
+        return null;
+      }
     }
 
     const authBootstrap = await loadAuthBootstrap();

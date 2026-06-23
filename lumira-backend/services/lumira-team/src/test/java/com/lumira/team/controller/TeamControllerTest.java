@@ -133,20 +133,26 @@ class TeamControllerTest {
 
         TeamDTO.MemberRoleRequest roleRequest = new TeamDTO.MemberRoleRequest();
         roleRequest.setRole("MANAGER");
+        TeamDTO.MemberCreateRequest createRequest = new TeamDTO.MemberCreateRequest();
+        createRequest.setMemberName("Draft Member");
         TeamDTO.TransferOwnerRequest transferRequest = new TeamDTO.TransferOwnerRequest();
         transferRequest.setMemberId(3002L);
         TeamVO.Member member = new TeamVO.Member();
         TeamVO.Team team = new TeamVO.Team();
+        when(appService.addMember(user, 2001L, createRequest)).thenReturn(member);
         when(appService.updateMemberRole(user, 2001L, 3002L, roleRequest)).thenReturn(member);
         when(appService.removeMember(user, 2001L, 3002L)).thenReturn(true);
         when(appService.transferOwner(user, 2001L, transferRequest)).thenReturn(team);
 
+        assertThat(controller.addMember(2001L, createRequest).getData()).isSameAs(member);
         assertThat(controller.updateMemberRole(2001L, 3002L, roleRequest).getData()).isSameAs(member);
         assertThat(controller.removeMember(2001L, 3002L).getData()).isTrue();
         assertThat(controller.transferOwner(2001L, transferRequest).getData()).isSameAs(team);
 
         verify(permissionGuard, times(2)).requirePermission(user, "team:member:role-update");
+        verify(permissionGuard).requirePermission(user, "team:member:invite");
         verify(permissionGuard).requirePermission(user, "team:member:remove");
+        verify(appService).addMember(user, 2001L, createRequest);
         verify(appService).updateMemberRole(user, 2001L, 3002L, roleRequest);
         verify(appService).removeMember(user, 2001L, 3002L);
         verify(appService).transferOwner(user, 2001L, transferRequest);

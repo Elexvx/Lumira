@@ -56,6 +56,19 @@ public class PluginManagementAppService {
     private static final TypeReference<List<String>> STRING_LIST_TYPE = new TypeReference<>() {
     };
     private static final String BUILTIN_SENSITIVE_WORDS_PLUGIN = "sensitive-words";
+    private static final String BUILTIN_WORK_ORDER_FEEDBACK_PLUGIN = "work-order-feedback";
+    private static final Map<String, BuiltinPluginRuntime> BUILTIN_PLUGIN_RUNTIMES = Map.of(
+            BUILTIN_SENSITIVE_WORDS_PLUGIN,
+            new BuiltinPluginRuntime(
+                    List.of("/plugins/sensitive-words"),
+                    List.of("routes", "menus", "permissions", "importers", "interceptors")
+            ),
+            BUILTIN_WORK_ORDER_FEEDBACK_PLUGIN,
+            new BuiltinPluginRuntime(
+                    List.of("/plugins/work-order-feedback"),
+                    List.of("routes", "menus", "permissions", "rich-text-upload")
+            )
+    );
 
     private final PluginArtifactLoader pluginArtifactLoader;
     private final PluginPersistenceService pluginPersistenceService;
@@ -612,15 +625,16 @@ public class PluginManagementAppService {
                         plugin.getPluginCode()
                 )
                 .orElse(null);
-        if (isBuiltinCorePlugin(plugin.getPluginCode())) {
+        BuiltinPluginRuntime builtinRuntime = builtinPluginRuntime(plugin.getPluginCode());
+        if (builtinRuntime != null) {
             plugin.setSharedDeps(List.of());
-            plugin.setRoutes(List.of("/plugins/sensitive-words"));
+            plugin.setRoutes(builtinRuntime.routes());
             plugin.setMenus(buildPluginMenus(plugin.getPluginCode(), plugin.getVersion()));
             plugin.setLifecycleStatus(status == null ? "ENABLED" : status.getLifecycleStatus());
             plugin.setSchemaStatus(status == null ? "READY" : status.getSchemaStatus());
             plugin.setSupportsHotDisable(status == null ? Boolean.TRUE : status.getSupportsHotDisable());
             plugin.setSupportsDataPurge(status == null ? Boolean.TRUE : status.getSupportsDataPurge());
-            plugin.setRuntimeContributions(status == null ? resolveRuntimeContributions(plugin.getPluginCode()) : status.getRuntimeContributions());
+            plugin.setRuntimeContributions(status == null ? builtinRuntime.runtimeContributions() : status.getRuntimeContributions());
             return;
         }
         PluginVersionEntity versionEntity = requireVersion(plugin.getPluginCode(), plugin.getVersion());
@@ -828,7 +842,11 @@ public class PluginManagementAppService {
     }
 
     private boolean isBuiltinCorePlugin(String pluginCode) {
-        return BUILTIN_SENSITIVE_WORDS_PLUGIN.equals(pluginCode);
+        return builtinPluginRuntime(pluginCode) != null;
+    }
+
+    private BuiltinPluginRuntime builtinPluginRuntime(String pluginCode) {
+        return BUILTIN_PLUGIN_RUNTIMES.get(pluginCode);
     }
 
     private void invalidateTenantBootstrapCaches(Long tenantId) {
@@ -888,8 +906,9 @@ public class PluginManagementAppService {
     }
 
     private List<String> resolveRuntimeContributions(String pluginCode) {
-        if (isBuiltinCorePlugin(pluginCode)) {
-            return List.of("routes", "menus", "permissions", "importers", "interceptors");
+        BuiltinPluginRuntime builtinRuntime = builtinPluginRuntime(pluginCode);
+        if (builtinRuntime != null) {
+            return builtinRuntime.runtimeContributions();
         }
         return List.of();
     }
@@ -1056,5 +1075,8 @@ public class PluginManagementAppService {
     }
 
     private static final record BootstrapCacheKey(Long tenantId, long version, String permissionSignature) {
+    }
+
+    private record BuiltinPluginRuntime(List<String> routes, List<String> runtimeContributions) {
     }
 }

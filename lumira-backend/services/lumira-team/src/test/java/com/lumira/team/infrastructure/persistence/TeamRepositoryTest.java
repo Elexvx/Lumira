@@ -40,6 +40,25 @@ class TeamRepositoryTest {
     }
 
     @Test
+    void jdbcTeamMemberRepositoryAddsDraftMemberWithoutUserId() {
+        RecordingQueries queries = new RecordingQueries();
+        JdbcTeamMemberRepository repository = new JdbcTeamMemberRepository(queries);
+        TeamDTO.DraftMemberRequest request = new TeamDTO.DraftMemberRequest();
+        request.setMemberName("Alice");
+        request.setEmployeeNo("E001");
+        request.setDepartmentName("Product");
+        request.setRole("MEMBER");
+
+        Long id = repository.addDraftMember(1001L, 2001L, request);
+
+        assertThat(id).isEqualTo(2001L);
+        assertThat(queries.lastWriteSql).contains("insert into team_member");
+        assertThat(queries.lastWriteSql).contains("user_id");
+        assertThat(queries.lastWriteSql).contains("null");
+        assertThat(queries.lastWriteArgs).contains(1001L, 2001L, "Alice", "E001", "Product");
+    }
+
+    @Test
     void jdbcTeamInviteRepositoryConsumesQuotaWithCurrentInviteGuards() {
         RecordingQueries queries = new RecordingQueries();
         JdbcTeamInviteRepository repository = new JdbcTeamInviteRepository(queries);

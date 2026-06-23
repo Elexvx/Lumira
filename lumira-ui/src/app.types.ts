@@ -26,11 +26,13 @@ export interface AppInitialState {
 }
 
 export interface RuntimeMenuDataItem {
+  key?: string;
   path?: string;
   name?: string;
   title?: string;
   locale?: false | string;
   icon?: React.ReactNode | string;
+  parentKeys?: string[];
   children?: RuntimeMenuDataItem[];
   hideInMenu?: boolean;
 }

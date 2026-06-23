@@ -29,7 +29,6 @@ import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.system.verification.WechatLoginSettingsService;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
-import com.lumira.saas.modules.system.app.SystemRouteCatalog;
 import com.lumira.saas.infrastructure.security.service.CaptchaService;
 import com.lumira.saas.modules.audit.app.LoginAuditService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
@@ -39,6 +38,7 @@ import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
+import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import jakarta.validation.Valid;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
@@ -57,6 +57,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -721,7 +723,55 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
 
     @GetMapping("/menus/builtin")
     public List<MenuNodeDTO> builtinMenus() {
-        return SystemRouteCatalog.buildBuiltinPermissionMenus().stream().map(this::toMenuNode).toList();
+        return listSystemMenusFromDatabase(1001L).stream().map(this::toMenuNode).toList();
+    }
+
+    private List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> listSystemMenusFromDatabase(Long tenantId) {
+        List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> menus = jdbcTemplate.query(
+                """
+                        select id, tenant_id as tenantId, parent_id as parentId, menu_code as menuCode,
+                               menu_name as menuName, menu_type as menuType, path, component, icon, sort_no as sortNo,
+                               permission_key as permissionKey, status
+                        from sys_menu
+                        where tenant_id = ? and deleted = 0 and status = 'ENABLED'
+                        order by sort_no asc, id asc
+                        """,
+                new BeanPropertyRowMapper<>(com.lumira.saas.modules.system.vo.SystemVO.MenuVO.class),
+                tenantId
+        );
+        return buildSystemMenuTree(menus);
+    }
+
+    private List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> buildSystemMenuTree(List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> flatMenus) {
+        Map<Long, com.lumira.saas.modules.system.vo.SystemVO.MenuVO> index = new LinkedHashMap<>();
+        List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> roots = new ArrayList<>();
+        for (com.lumira.saas.modules.system.vo.SystemVO.MenuVO menu : flatMenus) {
+            menu.setBuiltin(true);
+            menu.setChildren(new ArrayList<>());
+            index.put(menu.getId(), menu);
+        }
+        for (com.lumira.saas.modules.system.vo.SystemVO.MenuVO menu : flatMenus) {
+            Long parentId = menu.getParentId();
+            if (parentId == null || parentId == 0 || !index.containsKey(parentId)) {
+                roots.add(menu);
+            } else {
+                index.get(parentId).getChildren().add(menu);
+            }
+        }
+        sortSystemMenuTree(roots);
+        return roots;
+    }
+
+    private void sortSystemMenuTree(List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> roots) {
+        Comparator<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> comparator = Comparator
+                .comparingInt((com.lumira.saas.modules.system.vo.SystemVO.MenuVO item) -> item.getSortNo() == null ? 0 : item.getSortNo())
+                .thenComparing(item -> item.getId() == null ? 0L : item.getId());
+        roots.sort(comparator);
+        for (com.lumira.saas.modules.system.vo.SystemVO.MenuVO root : roots) {
+            if (root.getChildren() != null) {
+                sortSystemMenuTree(root.getChildren());
+            }
+        }
     }
 
     private SystemUserSnapshotDTO toSnapshot(SysUserEntity user) {

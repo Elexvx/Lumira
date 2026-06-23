@@ -1,0 +1,40 @@
+.work-order-rich-editor {
+  border: 1px solid var(--ant-color-border, #d9d9d9);
+  border-radius: 8px;
+  background: var(--ant-color-bg-container, #fff);
+}
+
+.work-order-rich-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+}
+
+.work-order-rich-editor-body {
+  min-height: 220px;
+  max-height: 420px;
+  overflow: auto;
+  padding: 12px;
+  outline: none;
+}
+
+.work-order-rich-editor-body:empty::before {
+  color: var(--ant-color-text-placeholder, #bfbfbf);
+  content: attr(data-placeholder);
+}
+
+.work-order-rich-editor-body img,
+.work-order-detail-html img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+.work-order-detail-html {
+  padding: 12px;
+  border: 1px solid var(--ant-color-border-secondary, #f0f0f0);
+  border-radius: 8px;
+  background: var(--ant-color-fill-quaternary, #fafafa);
+}

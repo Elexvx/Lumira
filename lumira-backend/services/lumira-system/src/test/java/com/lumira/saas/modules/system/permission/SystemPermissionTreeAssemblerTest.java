@@ -49,7 +49,7 @@ class SystemPermissionTreeAssemblerTest {
 
         List<SystemVO.PermissionTreeVO> tree = assembler.build(
                 List.of(
-                        menu("我的文件", "/user-center/files", "system:file:view"),
+                        menu("我的文件", "/user-center/personal-center/files", "system:file:view"),
                         menu("全站文件管理", "/settings/files/all", "system:file:manage")
                 ),
                 List.of(
@@ -83,12 +83,42 @@ class SystemPermissionTreeAssemblerTest {
         assertTrue(tree.isEmpty());
     }
 
+    @Test
+    void shouldAttachDatabaseButtonMenusAsPageActions() {
+        SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
+        SystemVO.MenuVO page = menu("AI 助手", "/ai/assistant", "ai:assistant:view");
+        page.setChildren(List.of(button("发送消息", "ai:chat:send")));
+
+        List<SystemVO.PermissionTreeVO> tree = assembler.build(
+                List.of(page),
+                List.of(
+                        permission("ai:assistant:view", "访问 AI 助手"),
+                        permission("ai:chat:send", "发送 AI 对话")
+                )
+        );
+
+        Set<String> actionKeys = tree.getFirst().getActionPermissions().stream()
+                .map(SystemVO.PermissionActionVO::getPermissionKey)
+                .collect(Collectors.toSet());
+
+        assertTrue(actionKeys.contains("ai:chat:send"));
+    }
+
     private SystemVO.MenuVO menu(String name, String path, String permissionKey) {
         SystemVO.MenuVO menu = new SystemVO.MenuVO();
         menu.setId(1L);
         menu.setMenuName(name);
         menu.setMenuType("MENU");
         menu.setPath(path);
+        menu.setPermissionKey(permissionKey);
+        return menu;
+    }
+
+    private SystemVO.MenuVO button(String name, String permissionKey) {
+        SystemVO.MenuVO menu = new SystemVO.MenuVO();
+        menu.setId(2L);
+        menu.setMenuName(name);
+        menu.setMenuType("BUTTON");
         menu.setPermissionKey(permissionKey);
         return menu;
     }

@@ -83,8 +83,10 @@ public class FileManagementAppService {
     private static final String VISIBILITY_SCOPE_PUBLIC = "PUBLIC";
     private static final List<DefaultStorageSpace> DEFAULT_STORAGE_SPACES = List.of(
             new DefaultStorageSpace("用户上传文件", STORAGE_KEY_LOCAL, "storage/uploads/", "", true, 20, true),
+            new DefaultStorageSpace("下载中心", STORAGE_KEY_DOWNLOAD_CENTER, "storage/uploads/download_center/", "", false, 100, true),
             new DefaultStorageSpace("AI 聊天附件", "ai_chat", "storage/uploads/ai_chat/", "", false, 20, false),
-            new DefaultStorageSpace("头像文件", "avatar", "storage/uploads/avatar/", "", false, 10, true)
+            new DefaultStorageSpace("头像文件", "avatar", "storage/uploads/avatar/", "", false, 10, true),
+            new DefaultStorageSpace("Support feedback images", "support_feedback", "storage/uploads/support_feedback/", "", false, 20, true)
     );
     private static final Map<String, String> SORT_COLUMN_MAPPING = Map.ofEntries(
             Map.entry("createdAt", "created_at"),
@@ -1111,9 +1113,7 @@ public class FileManagementAppService {
 
     private void applyFileVisibilityScope(QueryWrapper<FileObjectEntity> queryWrapper, boolean downloadCenterScope) {
         if (downloadCenterScope) {
-            queryWrapper
-                    .eq("visibility_scope", VISIBILITY_SCOPE_DOWNLOAD_CENTER)
-                    .eq("bucket", STORAGE_KEY_DOWNLOAD_CENTER);
+            queryWrapper.eq("visibility_scope", VISIBILITY_SCOPE_DOWNLOAD_CENTER);
             return;
         }
         queryWrapper
@@ -1188,7 +1188,7 @@ public class FileManagementAppService {
     private StorageSpaceUploadContext resolveUploadContext(Long tenantId, String bucket) {
         String normalizedBucket = StringUtils.hasText(bucket) ? normalizeStorageKey(bucket) : null;
         StorageSpaceDTO storageSpace = normalizedBucket != null
-                ? queryStorageSpace(tenantId, normalizedBucket)
+                ? findUploadStorageSpaceOrDefault(tenantId, normalizedBucket)
                 : getDefaultStorageSpace(tenantId);
         if (!"LOCAL".equalsIgnoreCase(storageSpace.provider())) {
             throw visibleBizException(ErrorCode.BAD_REQUEST, "当前仅支持本地存储空间上传");
@@ -1198,7 +1198,17 @@ public class FileManagementAppService {
         }
         Path storageRoot = resolveStorageRoot(storageSpace);
         String publicPath = resolvePublicPath(storageRoot);
-        return new StorageSpaceUploadContext(storageSpace, normalizedBucket != null ? normalizedBucket : storageSpace.storageKey(), storageRoot, publicPath, maxFileSizeBytes(storageSpace.maxFileSizeMb()));
+        return new StorageSpaceUploadContext(storageSpace, storageSpace.storageKey(), storageRoot, publicPath, maxFileSizeBytes(storageSpace.maxFileSizeMb()));
+    }
+
+    private StorageSpaceDTO findUploadStorageSpaceOrDefault(Long tenantId, String storageKey) {
+        ensureDefaultStorageSpaces(tenantId);
+        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByStorageKey(tenantId, storageKey);
+        if (entity != null) {
+            return mapStorageSpace(entity);
+        }
+        log.warn("Upload storage space '{}' is missing for tenant {}, falling back to default storage space", storageKey, tenantId);
+        return getDefaultStorageSpace(tenantId);
     }
 
     private long maxFileSizeBytes(Integer maxFileSizeMb) {

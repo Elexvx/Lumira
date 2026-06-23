@@ -1056,6 +1056,36 @@ export interface FileStorageSpaceTestResult {
   responseTimeMs?: number | null;
 }
 
+export type WorkOrderFeedbackStatus = 'OPEN' | 'PROCESSING' | 'RESOLVED' | 'CLOSED';
+export type WorkOrderFeedbackPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+
+export interface WorkOrderFeedbackRecord {
+  id: number;
+  tenantId?: number | null;
+  title: string;
+  detailHtml: string;
+  priority: WorkOrderFeedbackPriority;
+  status: WorkOrderFeedbackStatus;
+  submitterId: number;
+  submitterName?: string | null;
+  adminReply?: string | null;
+  handledBy?: number | null;
+  handledAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface WorkOrderFeedbackPayload {
+  title: string;
+  detailHtml: string;
+  priority?: WorkOrderFeedbackPriority;
+}
+
+export interface WorkOrderFeedbackStatusPayload {
+  status: WorkOrderFeedbackStatus;
+  adminReply?: string | null;
+}
+
 export interface AuditLogRecord {
   id: number;
   tenantId?: number | null;

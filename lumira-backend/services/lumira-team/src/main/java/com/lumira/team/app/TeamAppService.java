@@ -58,6 +58,7 @@ public class TeamAppService {
         TeamDTO.TeamCreateRequest normalizedRequest = normalizeCreateRequest(tenantId, request);
         Long teamId = teamRepository.createTeam(tenantId, teamRepository.nextTeamCode(tenantId), userId, normalizedRequest);
         teamMemberRepository.addOwner(tenantId, teamId, userId);
+        addDraftMembers(tenantId, teamId, normalizedRequest.getInitialMembers());
         audit(currentUser, "team", "create", "CREATE", "Created team " + normalizedRequest.getTeamName());
         return getTeam(currentUser, teamId);
     }
@@ -128,6 +129,19 @@ public class TeamAppService {
         Long tenantId = requireTenantId(currentUser);
         permissionService.requireTeamMember(tenantId, teamId, currentUser.getUserId());
         return teamMemberRepository.listMembers(tenantId, teamId);
+    }
+
+    @Transactional
+    public TeamVO.Member addMember(CurrentUser currentUser, Long teamId, TeamDTO.MemberCreateRequest request) {
+        Long tenantId = requireTenantId(currentUser);
+        String actorRole = permissionService.activeRole(tenantId, teamId, currentUser.getUserId());
+        if (!permissionService.canUpdateTeam(actorRole)) {
+            throw biz(ErrorCode.FORBIDDEN, "Team member creation requires owner, admin, or manager");
+        }
+        Long memberId = teamMemberRepository.addDraftMember(tenantId, teamId, normalizeDraftMember(request));
+        teamMemberRepository.refreshMemberCount(tenantId, teamId);
+        audit(currentUser, "team", "addMember", "CREATE", "Added draft team member " + memberId);
+        return requireMember(tenantId, teamId, memberId);
     }
 
     @Transactional
@@ -261,6 +275,11 @@ public class TeamAppService {
         normalized.setDescription(trimToNull(request.getDescription()));
         normalized.setVisibility(normalizeDictValue(tenantId, request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"));
         normalized.setJoinMode(normalizeDictValue(tenantId, request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"));
+        if (request.getInitialMembers() != null) {
+            normalized.setInitialMembers(request.getInitialMembers().stream()
+                    .map(this::normalizeDraftMember)
+                    .toList());
+        }
         return normalized;
     }
 
@@ -273,6 +292,29 @@ public class TeamAppService {
         normalized.setVisibility(normalizeDictValue(tenantId, request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"));
         normalized.setJoinMode(normalizeDictValue(tenantId, request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"));
         return normalized;
+    }
+
+    private TeamDTO.DraftMemberRequest normalizeDraftMember(TeamDTO.DraftMemberRequest request) {
+        TeamDTO.DraftMemberRequest normalized = new TeamDTO.DraftMemberRequest();
+        normalized.setMemberName(trimRequired(request.getMemberName(), "Member name is required"));
+        normalized.setEmployeeNo(trimToNull(request.getEmployeeNo()));
+        normalized.setDepartmentName(trimToNull(request.getDepartmentName()));
+        normalized.setRole(normalizeEnum(request.getRole(), "MEMBER", MEMBER_ROLES, "Invalid team member role"));
+        if ("OWNER".equals(normalized.getRole())) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Draft members cannot be owner");
+        }
+        normalized.setRemark(trimToNull(request.getRemark()));
+        return normalized;
+    }
+
+    private void addDraftMembers(Long tenantId, Long teamId, List<TeamDTO.DraftMemberRequest> members) {
+        if (members == null || members.isEmpty()) {
+            return;
+        }
+        for (TeamDTO.DraftMemberRequest member : members) {
+            teamMemberRepository.addDraftMember(tenantId, teamId, member);
+        }
+        teamMemberRepository.refreshMemberCount(tenantId, teamId);
     }
 
     private void updateTeamProfile(CurrentUser currentUser, Long tenantId, Long teamId, TeamDTO.TeamUpdateRequest request) {

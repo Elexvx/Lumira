@@ -113,18 +113,15 @@
 .saas-user-management-main {
   display: flex;
   flex-direction: column;
-  min-height: var(--saas-spacing-420);
+  height: var(--saas-user-management-height);
+  min-height: 0;
   min-width: 0;
 }
 
 .saas-user-management-main > .saas-table-wrap {
   flex: 1 1 auto;
-  min-height: var(--saas-spacing-420);
+  min-height: 0;
   overflow: visible;
-}
-
-.saas-user-management-main .ant-pro-table-search {
-  margin-bottom: var(--saas-spacing-md);
 }
 
 .saas-user-management-main .ant-pro-table-search .ant-pro-card-body,
@@ -135,7 +132,7 @@
 }
 
 .saas-user-management-main .ant-pro-table-list {
-  min-height: var(--saas-spacing-360);
+  min-height: 0;
 }
 
 .saas-user-management-main .ant-table-body {
@@ -169,5 +166,10 @@
 
   .saas-user-department-card .ant-card-body {
     min-height: auto;
+  }
+
+  .saas-user-management-main {
+    height: auto;
+    min-height: 0;
   }
 }

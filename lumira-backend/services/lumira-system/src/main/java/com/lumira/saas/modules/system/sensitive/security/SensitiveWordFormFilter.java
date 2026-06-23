@@ -16,7 +16,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -52,20 +51,10 @@ public class SensitiveWordFormFilter extends OncePerRequestFilter {
             return true;
         }
         String path = request.getRequestURI();
-        if (!StringUtils.hasText(path)
-                || path.startsWith("/api/v1/sensitive-words")
-                || path.startsWith("/api/v1/plugins")
-                || path.startsWith("/api/v1/auth/")
-                || path.startsWith("/api/v1/public/")
-                || path.startsWith("/api/auth/")
-                || path.startsWith("/api/public/")) {
+        if (SensitiveWordRequestSkipMatcher.shouldSkipPath(path)) {
             return true;
         }
-        String contentType = request.getContentType();
-        if (!StringUtils.hasText(contentType)) {
-            return true;
-        }
-        return !contentType.toLowerCase().startsWith(MediaType.APPLICATION_FORM_URLENCODED_VALUE);
+        return SensitiveWordRequestSkipMatcher.shouldSkipFormUrlEncoded(request.getContentType());
     }
 
     @Override

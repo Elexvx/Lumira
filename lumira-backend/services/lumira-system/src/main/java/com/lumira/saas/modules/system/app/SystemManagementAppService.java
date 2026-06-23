@@ -94,6 +94,16 @@ public class SystemManagementAppService {
     private static final long MENU_COUNT_CACHE_TTL_MS = 30_000L;
     private static final int PERMISSION_CATALOG_CACHE_MAX_ENTRIES = 1024;
     private static final long PERMISSION_CATALOG_CACHE_TTL_MS = 30_000L;
+    private static final Set<String> BUILTIN_ROOT_MENU_CODES = Set.of(
+            "dashboard.home",
+            "files.download-center",
+            "ai.root",
+            "aiadc.root",
+            "team.root",
+            "user.center.root",
+            "user.center.personal",
+            "settings.root"
+    );
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final DomainEventPublisher NOOP_DOMAIN_EVENT_PUBLISHER = event -> {
     };
@@ -866,7 +876,6 @@ public class SystemManagementAppService {
                 new BeanPropertyRowMapper<>(SystemVO.PermissionVO.class),
                 tenantId
         ));
-        permissions.addAll(buildPaymentPermissions());
         permissions.sort(Comparator.comparing(SystemVO.PermissionVO::getPermissionGroup, Comparator.nullsLast(String::compareTo))
                 .thenComparing(SystemVO.PermissionVO::getPermissionKey, Comparator.nullsLast(String::compareTo)));
         return List.copyOf(permissions);
@@ -879,18 +888,12 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.MenuVO> listMenus(CurrentUser currentUser) {
-        List<SystemVO.MenuVO> persistedMenus = listCustomMenus(currentUser);
-        if (!persistedMenus.isEmpty()) {
-            sortMenuTree(persistedMenus);
-            return persistedMenus;
-        }
-
-        List<SystemVO.MenuVO> menus = new ArrayList<>(SystemRouteCatalog.buildBuiltinPermissionMenus());
+        List<SystemVO.MenuVO> menus = listPersistedMenus(currentUser);
         sortMenuTree(menus);
         return menus;
     }
 
-    private List<SystemVO.MenuVO> listCustomMenus(CurrentUser currentUser) {
+    private List<SystemVO.MenuVO> listPersistedMenus(CurrentUser currentUser) {
         Long tenantId = currentTenantId(currentUser);
         List<SystemVO.MenuVO> menus = jdbcTemplate.query(
                 """
@@ -905,31 +908,19 @@ public class SystemManagementAppService {
                 tenantId
         ).stream()
                 .toList();
+        normalizeBuiltinRootMenuParents(menus);
         return buildMenuTree(menus);
     }
 
-    private List<SystemVO.PermissionVO> buildPaymentPermissions() {
-        List<SystemVO.PermissionVO> permissions = new ArrayList<>();
-        permissions.add(permission("payment:view", "支付设置查看", "payment", "CORE"));
-        permissions.add(permission("payment:config:view", "支付配置查看", "payment", "CORE"));
-        permissions.add(permission("payment:config:update", "支付配置修改", "payment", "CORE"));
-        permissions.add(permission("payment:config:test", "支付配置测试", "payment", "CORE"));
-        permissions.add(permission("payment:order:view", "支付订单查看", "payment", "CORE"));
-        permissions.add(permission("payment:order:create", "支付订单创建", "payment", "CORE"));
-        permissions.add(permission("payment:refund:view", "退款单查看", "payment", "CORE"));
-        permissions.add(permission("payment:refund:create", "退款单创建", "payment", "CORE"));
-        permissions.add(permission("payment:webhook:view", "Webhook 查看", "payment", "CORE"));
-        permissions.add(permission("payment:webhook:retry", "Webhook 重试", "payment", "CORE"));
-        return permissions;
-    }
-
-    private SystemVO.PermissionVO permission(String permissionKey, String permissionName, String permissionGroup, String sourceType) {
-        SystemVO.PermissionVO permission = new SystemVO.PermissionVO();
-        permission.setPermissionKey(permissionKey);
-        permission.setPermissionName(permissionName);
-        permission.setPermissionGroup(permissionGroup);
-        permission.setSourceType(sourceType);
-        return permission;
+    private void normalizeBuiltinRootMenuParents(List<SystemVO.MenuVO> menus) {
+        for (SystemVO.MenuVO menu : menus) {
+            if (menu == null || menu.getMenuCode() == null) {
+                continue;
+            }
+            if (BUILTIN_ROOT_MENU_CODES.contains(menu.getMenuCode())) {
+                menu.setParentId(0L);
+            }
+        }
     }
 
     @Transactional

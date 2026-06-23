@@ -1,5 +1,6 @@
 package com.lumira.team.repository;
 
+import com.lumira.team.dto.TeamDTO;
 import com.lumira.team.vo.TeamVO;
 
 import java.util.List;
@@ -18,6 +19,8 @@ public interface TeamMemberRepository {
     void transferOwner(Long tenantId, Long teamId, Long previousOwnerUserId, String previousOwnerRole, Long newOwnerMemberId);
 
     void ensureDirectMember(Long tenantId, Long teamId, Long userId, Long invitedBy, String role);
+
+    Long addDraftMember(Long tenantId, Long teamId, TeamDTO.DraftMemberRequest request);
 
     void refreshMemberCount(Long tenantId, Long teamId);
 

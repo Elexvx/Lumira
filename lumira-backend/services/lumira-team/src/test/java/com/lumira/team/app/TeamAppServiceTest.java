@@ -27,6 +27,8 @@ class TeamAppServiceTest {
         Fixtures fixtures = fixtures("OWNER");
         TeamDTO.TeamCreateRequest request = new TeamDTO.TeamCreateRequest();
         request.setTeamName("Core Team");
+        TeamDTO.DraftMemberRequest draftMember = draftMember("Alice");
+        request.setInitialMembers(List.of(draftMember));
 
         TeamVO.Team team = fixtures.service.createTeam(currentUser(3001L), request);
 
@@ -34,6 +36,26 @@ class TeamAppServiceTest {
         verify(fixtures.teamRepository).nextTeamCode(1001L);
         verify(fixtures.teamRepository).createTeam(anyLong(), any(), anyLong(), any());
         verify(fixtures.teamMemberRepository).addOwner(1001L, 2001L, 3001L);
+        verify(fixtures.teamMemberRepository).addDraftMember(anyLong(), anyLong(), any());
+        verify(fixtures.teamMemberRepository).refreshMemberCount(1001L, 2001L);
+    }
+
+    @Test
+    void managerCanAddDraftMemberWithoutRegisteredUser() {
+        Fixtures fixtures = fixtures("MANAGER");
+        TeamDTO.MemberCreateRequest request = new TeamDTO.MemberCreateRequest();
+        request.setMemberName("External Member");
+        request.setEmployeeNo("E001");
+        request.setDepartmentName("Design");
+        request.setRole("MEMBER");
+        when(fixtures.teamMemberRepository.addDraftMember(anyLong(), anyLong(), any())).thenReturn(9L);
+        when(fixtures.teamMemberRepository.findMemberById(1001L, 2001L, 9L)).thenReturn(member(9L, null, "MEMBER"));
+
+        TeamVO.Member member = fixtures.service.addMember(currentUser(3001L), 2001L, request);
+
+        assertThat(member.getId()).isEqualTo(9L);
+        verify(fixtures.teamMemberRepository).addDraftMember(anyLong(), anyLong(), any());
+        verify(fixtures.teamMemberRepository).refreshMemberCount(1001L, 2001L);
     }
 
     @Test
@@ -139,6 +161,13 @@ class TeamAppServiceTest {
     private static TeamDTO.TeamUpdateRequest updateRequest() {
         TeamDTO.TeamUpdateRequest request = new TeamDTO.TeamUpdateRequest();
         request.setTeamName("Updated");
+        return request;
+    }
+
+    private static TeamDTO.DraftMemberRequest draftMember(String name) {
+        TeamDTO.DraftMemberRequest request = new TeamDTO.DraftMemberRequest();
+        request.setMemberName(name);
+        request.setRole("MEMBER");
         return request;
     }
 

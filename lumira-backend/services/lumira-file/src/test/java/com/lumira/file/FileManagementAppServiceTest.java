@@ -1,6 +1,7 @@
 package com.lumira.file;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.common.vo.PageResponse;
@@ -26,6 +27,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -73,6 +75,9 @@ class FileManagementAppServiceTest {
 
     @Mock
     private FileStorageMetrics storageMetrics;
+
+    @Mock
+    private MultipartFile multipartFile;
 
     @TempDir
     Path tempDir;
@@ -144,6 +149,23 @@ class FileManagementAppServiceTest {
     }
 
     @Test
+    void listFiles_downloadCenterScopeShouldIncludeRecordsSavedInLegacyLocalBucket() {
+        when(fileObjectMapper.selectList(ArgumentMatchers.<QueryWrapper<FileObjectEntity>>any()))
+                .thenReturn(List.of(), fileObjectEntities(1, 1001L));
+
+        PageResponse<?> response = service.listFiles(currentUser(), null, null, null, null, null, "download-center", 1, 10, null, null);
+
+        assertThat(response.getRecords()).hasSize(1);
+        ArgumentCaptor<QueryWrapper<FileObjectEntity>> captor = ArgumentCaptor.forClass(QueryWrapper.class);
+        verify(fileObjectMapper, times(2)).selectList(captor.capture());
+        assertThat(captor.getAllValues())
+                .allSatisfy(wrapper -> {
+                    assertThat(wrapper.getSqlSegment()).contains("visibility_scope");
+                    assertThat(wrapper.getSqlSegment()).doesNotContain("bucket");
+                });
+    }
+
+    @Test
     void listStorageSpaces_shouldReportCappedTotalForLargePageWindow() {
         AtomicInteger countInvocation = new AtomicInteger();
         when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
@@ -189,13 +211,13 @@ class FileManagementAppServiceTest {
         PageResponse<?> response = service.listStorageSpaces(currentUser(), 1, 10);
 
         ArgumentCaptor<FileStorageSpaceEntity> captor = ArgumentCaptor.forClass(FileStorageSpaceEntity.class);
-        verify(fileStorageSpaceMapper, times(3)).insert(captor.capture());
+        verify(fileStorageSpaceMapper, times(4)).insert(captor.capture());
         assertThat(captor.getAllValues())
                 .extracting(FileStorageSpaceEntity::getStorageKey)
-                .containsExactly("local", "ai_chat", "avatar");
+                .containsExactly("local", "download_center", "ai_chat", "avatar");
         assertThat(captor.getAllValues().getFirst().getDefaultFlag()).isEqualTo(1);
         assertThat(captor.getAllValues())
-                .filteredOn(entity -> "local".equals(entity.getStorageKey()) || "avatar".equals(entity.getStorageKey()))
+                .filteredOn(entity -> "local".equals(entity.getStorageKey()) || "download_center".equals(entity.getStorageKey()) || "avatar".equals(entity.getStorageKey()))
                 .extracting(FileStorageSpaceEntity::getAnonymousAccessAllowed)
                 .containsOnly(1);
         assertThat(response.getRecords()).hasSize(3);
@@ -221,6 +243,68 @@ class FileManagementAppServiceTest {
                 ArgumentMatchers.isNull(),
                 ArgumentMatchers.<UpdateWrapper<FileStorageSpaceEntity>>any()
         );
+    }
+
+    @Test
+    void uploadDocument_shouldFallbackToDefaultStorageWhenRequestedBucketIsMissing() {
+        FileStorageSpaceEntity localStorage = storageSpaceEntities(1, 1001L).getFirst();
+        localStorage.setStorageKey("local");
+        localStorage.setTitle("Local storage");
+        localStorage.setRootPath("storage/uploads/");
+        localStorage.setBucketName("");
+        localStorage.setDefaultFlag(1);
+        localStorage.setAnonymousAccessAllowed(1);
+        localStorage.setAllowedMimeTypes("*");
+        localStorage.setMaxFileSizeMb(20);
+        localStorage.setStatus("ENABLED");
+        when(fileStorageSpaceMapper.findByStorageKey(ArgumentMatchers.eq(1001L), ArgumentMatchers.anyString()))
+                .thenAnswer(invocation -> "local".equals(invocation.getArgument(1)) ? localStorage : null);
+        when(fileStorageSpaceMapper.countDefaultStorage(1001L)).thenReturn(1L);
+        when(fileStorageSpaceMapper.findDefault(1001L)).thenReturn(localStorage);
+        when(uploadProperties.getStorageRoot()).thenReturn(tempDir.resolve("uploads").toString());
+        when(uploadProperties.getPublicPath()).thenReturn("/api/uploads");
+        when(documentUploadService.upload(
+                any(MultipartFile.class),
+                any(Path.class),
+                any(String.class),
+                any(Long.class),
+                any(String.class),
+                any(String.class)
+        )).thenReturn(new DocumentUploadService.StoredDocument(
+                "report.pdf",
+                "report.pdf",
+                "pdf",
+                "application/pdf",
+                128L,
+                "2026/06/23/report.pdf",
+                "/api/uploads/2026/06/23/report.pdf",
+                "PDF",
+                true
+        ));
+        when(fileObjectMapper.insert(any(FileObjectEntity.class))).thenAnswer(invocation -> {
+            FileObjectEntity entity = invocation.getArgument(0);
+            entity.setId(99L);
+            return 1;
+        });
+        FileObjectEntity inserted = fileObjectEntities(1, 1001L).getFirst();
+        inserted.setId(99L);
+        inserted.setBucket("local");
+        inserted.setStorageType("LOCAL");
+        inserted.setObjectKey("2026/06/23/report.pdf");
+        inserted.setOriginalFilename("report.pdf");
+        inserted.setContentType("application/pdf");
+        inserted.setFileExtension("pdf");
+        inserted.setFileSize(128L);
+        inserted.setPublicUrl("/api/uploads/2026/06/23/report.pdf");
+        inserted.setPreviewMode("PDF");
+        inserted.setPreviewableFlag(1);
+        when(fileObjectMapper.selectById(99L)).thenReturn(inserted);
+
+        service.uploadDocument(currentUser(), multipartFile, "资料", null, null, "missing_bucket");
+
+        ArgumentCaptor<FileObjectEntity> captor = ArgumentCaptor.forClass(FileObjectEntity.class);
+        verify(fileObjectMapper).insert(captor.capture());
+        assertThat(captor.getValue().getBucket()).isEqualTo("local");
     }
 
     @Test

@@ -25,9 +25,14 @@ export interface TeamMemberRecord {
   id: number;
   tenantId: number;
   teamId: number;
-  userId: number;
+  userId?: number | null;
   role: TeamRole;
   memberAlias?: string | null;
+  memberName?: string | null;
+  employeeNo?: string | null;
+  departmentName?: string | null;
+  remark?: string | null;
+  memberSource?: string | null;
   status: string;
   invitedBy?: number | null;
   joinedAt?: string | null;
@@ -38,6 +43,8 @@ export interface TeamInviteRecord {
   id: number;
   tenantId: number;
   teamId: number;
+  teamName?: string;
+  teamType?: string;
   inviteCode?: string | null;
   inviteType: string;
   roleOnJoin: TeamRole;
@@ -78,6 +85,15 @@ export interface TeamUpsertPayload {
   description?: string;
   visibility?: TeamVisibility;
   joinMode?: TeamJoinMode;
+  initialMembers?: TeamDraftMemberPayload[];
+}
+
+export interface TeamDraftMemberPayload {
+  memberName: string;
+  employeeNo?: string;
+  departmentName?: string;
+  role?: Exclude<TeamRole, 'OWNER'>;
+  remark?: string;
 }
 
 export interface TeamInviteCreatePayload {

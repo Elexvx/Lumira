@@ -61,6 +61,11 @@ public final class TeamVO {
         private Long userId;
         private String role;
         private String memberAlias;
+        private String memberName;
+        private String employeeNo;
+        private String departmentName;
+        private String remark;
+        private String memberSource;
         private String status;
         private Long invitedBy;
         private LocalDateTime joinedAt;
@@ -77,6 +82,16 @@ public final class TeamVO {
         public void setRole(String role) { this.role = role; }
         public String getMemberAlias() { return memberAlias; }
         public void setMemberAlias(String memberAlias) { this.memberAlias = memberAlias; }
+        public String getMemberName() { return memberName; }
+        public void setMemberName(String memberName) { this.memberName = memberName; }
+        public String getEmployeeNo() { return employeeNo; }
+        public void setEmployeeNo(String employeeNo) { this.employeeNo = employeeNo; }
+        public String getDepartmentName() { return departmentName; }
+        public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+        public String getRemark() { return remark; }
+        public void setRemark(String remark) { this.remark = remark; }
+        public String getMemberSource() { return memberSource; }
+        public void setMemberSource(String memberSource) { this.memberSource = memberSource; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
         public Long getInvitedBy() { return invitedBy; }

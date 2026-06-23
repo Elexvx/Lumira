@@ -335,6 +335,33 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
+    void availablePlugins_shouldExposeBuiltinWorkOrderFeedbackWithoutRuntimeAssets() {
+        PluginVO.TenantPluginVO tenantPlugin = new PluginVO.TenantPluginVO();
+        tenantPlugin.setPluginCode("work-order-feedback");
+        tenantPlugin.setPluginName("工单反馈");
+        tenantPlugin.setVersion("1.0.0");
+        tenantPlugin.setSharedDeps(new ArrayList<>());
+        tenantPlugin.setRoutes(new ArrayList<>());
+        tenantPlugin.setMenus(new ArrayList<>());
+
+        PluginMenuRelEntity menuRelation = createMenuRelation("work-order-feedback", "1.0.0", "plugin.work-order-feedback");
+
+        when(pluginPersistenceService.listTenantPlugins(1001L)).thenReturn(List.of(tenantPlugin));
+        when(pluginPersistenceService.pluginStatus(anyLong(), eq("work-order-feedback"))).thenReturn(Optional.empty());
+        when(pluginPersistenceService.listMenuRelations("work-order-feedback", "1.0.0")).thenReturn(List.of(menuRelation));
+
+        List<PluginVO.TenantPluginVO> plugins = pluginManagementAppService.availablePlugins(1001L);
+
+        assertThat(plugins).hasSize(1);
+        PluginVO.TenantPluginVO plugin = plugins.get(0);
+        assertThat(plugin.getPluginCode()).isEqualTo("work-order-feedback");
+        assertThat(plugin.getRoutes()).containsExactly("/plugins/work-order-feedback");
+        assertThat(plugin.getRuntimeContributions()).contains("routes", "menus", "permissions", "rich-text-upload");
+        assertThat(plugin.getMenus()).hasSize(1);
+        verify(pluginPersistenceService, never()).findVersion(eq("work-order-feedback"), any());
+    }
+
+    @Test
     void availablePlugins_shouldSkipRuntimeEntriesWithMissingAssets() throws Exception {
         Path versionHome = tempDir.resolve("sms").resolve("1.0.0");
         Files.createDirectories(versionHome.resolve("lumira-ui"));

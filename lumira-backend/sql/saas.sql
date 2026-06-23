@@ -1377,6 +1377,28 @@ CREATE TABLE `sys_sensitive_word` (
   KEY `idx_sys_sensitive_word_tenant_enabled` (`tenant_id`,`enabled`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `sys_work_order_feedback` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `title` varchar(160) NOT NULL,
+  `detail_html` mediumtext NOT NULL,
+  `priority` varchar(32) NOT NULL DEFAULT 'NORMAL',
+  `status` varchar(32) NOT NULL DEFAULT 'OPEN',
+  `submitter_id` bigint NOT NULL,
+  `submitter_name` varchar(128) DEFAULT NULL,
+  `admin_reply` varchar(4000) DEFAULT NULL,
+  `handled_by` bigint DEFAULT NULL,
+  `handled_at` datetime DEFAULT NULL,
+  `created_by` bigint DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT '0',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_sys_work_order_tenant_status_updated` (`tenant_id`,`status`,`deleted`,`updated_at`),
+  KEY `idx_sys_work_order_submitter_updated` (`tenant_id`,`submitter_id`,`deleted`,`updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE `sys_tenant` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `tenant_code` varchar(64) NOT NULL,
@@ -1631,13 +1653,138 @@ CREATE TABLE `team` (
   KEY `idx_team_status` (`tenant_id`,`status`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `aiadc_activity` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `code` varchar(64) NOT NULL,
+  `locale` varchar(16) NOT NULL DEFAULT 'zh',
+  `title` varchar(128) NOT NULL,
+  `subtitle` varchar(64) DEFAULT NULL,
+  `description` varchar(1000) DEFAULT NULL,
+  `image_url` varchar(512) DEFAULT NULL,
+  `icon_key` varchar(64) DEFAULT NULL,
+  `sort` int NOT NULL DEFAULT '100',
+  `status` varchar(32) NOT NULL DEFAULT 'draft',
+  `tags` varchar(1000) DEFAULT NULL,
+  `cta_label` varchar(64) DEFAULT NULL,
+  `cta_href` varchar(512) DEFAULT NULL,
+  `badge_text` varchar(64) DEFAULT NULL,
+  `badge_tone` varchar(32) DEFAULT NULL,
+  `activity_date` varchar(64) NOT NULL,
+  `activity_time` varchar(64) NOT NULL,
+  `location` varchar(255) NOT NULL,
+  `featured` tinyint NOT NULL DEFAULT '0',
+  `created_by` bigint NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_aiadc_activity_code` (`tenant_id`,`code`,`locale`,`deleted`),
+  KEY `idx_aiadc_activity_status` (`tenant_id`,`status`,`deleted`,`sort`),
+  KEY `idx_aiadc_activity_featured` (`tenant_id`,`featured`,`deleted`,`sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `aiadc_competition` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `code` varchar(64) NOT NULL,
+  `locale` varchar(16) NOT NULL DEFAULT 'zh',
+  `title` varchar(128) NOT NULL,
+  `category` varchar(64) NOT NULL,
+  `level` varchar(64) DEFAULT NULL,
+  `organizer` varchar(128) DEFAULT NULL,
+  `registration_start` varchar(64) DEFAULT NULL,
+  `registration_end` varchar(64) DEFAULT NULL,
+  `competition_start` varchar(64) NOT NULL,
+  `competition_end` varchar(64) DEFAULT NULL,
+  `location` varchar(255) NOT NULL,
+  `description` varchar(1000) DEFAULT NULL,
+  `image_url` varchar(512) DEFAULT NULL,
+  `tags` varchar(1000) DEFAULT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'draft',
+  `featured` tinyint NOT NULL DEFAULT '0',
+  `sort` int NOT NULL DEFAULT '100',
+  `created_by` bigint NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_aiadc_competition_code` (`tenant_id`,`code`,`locale`,`deleted`),
+  KEY `idx_aiadc_competition_category` (`tenant_id`,`category`,`deleted`,`sort`),
+  KEY `idx_aiadc_competition_status` (`tenant_id`,`status`,`deleted`,`sort`),
+  KEY `idx_aiadc_competition_featured` (`tenant_id`,`featured`,`deleted`,`sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `aiadc_expert` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `code` varchar(64) NOT NULL,
+  `name` varchar(64) NOT NULL,
+  `title` varchar(128) DEFAULT NULL,
+  `organization` varchar(128) DEFAULT NULL,
+  `position` varchar(128) DEFAULT NULL,
+  `expertise` varchar(255) NOT NULL,
+  `phone` varchar(64) DEFAULT NULL,
+  `email` varchar(128) DEFAULT NULL,
+  `avatar_url` varchar(512) DEFAULT NULL,
+  `bio` varchar(1000) DEFAULT NULL,
+  `tags` varchar(1000) DEFAULT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'active',
+  `sort` int NOT NULL DEFAULT '100',
+  `created_by` bigint NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_aiadc_expert_code` (`tenant_id`,`code`,`deleted`),
+  KEY `idx_aiadc_expert_status` (`tenant_id`,`status`,`deleted`,`sort`),
+  KEY `idx_aiadc_expert_name` (`tenant_id`,`name`,`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `aiadc_project` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `tenant_id` bigint NOT NULL,
+  `code` varchar(64) NOT NULL,
+  `locale` varchar(16) NOT NULL DEFAULT 'zh',
+  `title` varchar(128) NOT NULL,
+  `category` varchar(64) NOT NULL,
+  `description` varchar(1000) DEFAULT NULL,
+  `image_url` varchar(512) DEFAULT NULL,
+  `owner_name` varchar(128) DEFAULT NULL,
+  `rating` varchar(32) NOT NULL DEFAULT 'popular',
+  `sort` int NOT NULL DEFAULT '100',
+  `status` varchar(32) NOT NULL DEFAULT 'draft',
+  `tags` varchar(1000) DEFAULT NULL,
+  `cta_label` varchar(64) DEFAULT NULL,
+  `cta_href` varchar(512) DEFAULT NULL,
+  `featured` tinyint NOT NULL DEFAULT '0',
+  `created_by` bigint NOT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_aiadc_project_code` (`tenant_id`,`code`,`locale`,`deleted`),
+  KEY `idx_aiadc_project_category` (`tenant_id`,`category`,`deleted`,`sort`),
+  KEY `idx_aiadc_project_status` (`tenant_id`,`status`,`deleted`,`sort`),
+  KEY `idx_aiadc_project_featured` (`tenant_id`,`featured`,`deleted`,`sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE `team_member` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `tenant_id` bigint NOT NULL,
   `team_id` bigint NOT NULL,
-  `user_id` bigint NOT NULL,
+  `user_id` bigint DEFAULT NULL,
   `role` varchar(32) NOT NULL DEFAULT 'MEMBER',
   `member_alias` varchar(128) DEFAULT NULL,
+  `member_name` varchar(128) DEFAULT NULL,
+  `employee_no` varchar(64) DEFAULT NULL,
+  `department_name` varchar(128) DEFAULT NULL,
+  `remark` varchar(512) DEFAULT NULL,
+  `member_source` varchar(32) NOT NULL DEFAULT 'REGISTERED',
   `status` varchar(32) NOT NULL DEFAULT 'ACTIVE',
   `invited_by` bigint DEFAULT NULL,
   `joined_at` datetime DEFAULT NULL,
@@ -1938,6 +2085,7 @@ INSERT INTO `sys_permission` (
     `created_by`, `updated_by`, `deleted`
 )
 VALUES
+    (1001, 'ai:assistant:view', 'ai:assistant:view', 'ai', 'CORE', NULL, 0, 0, 0),
     (1001, 'ai:chat:send', 'ai:chat:send', 'ai', 'CORE', NULL, 0, 0, 0),
     (1001, 'ai:employee:create', 'ai:employee:create', 'ai', 'CORE', NULL, 0, 0, 0),
     (1001, 'ai:employee:delete', 'ai:employee:delete', 'ai', 'CORE', NULL, 0, 0, 0),
@@ -1965,6 +2113,22 @@ VALUES
     (1001, 'audit:login:view', 'audit:login:view', 'audit', 'CORE', NULL, 0, 0, 0),
     (1001, 'audit:operation:view', 'audit:operation:view', 'audit', 'CORE', NULL, 0, 0, 0),
     (1001, 'audit:view', 'audit:view', 'audit', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:activity:view', 'aiadc:activity:view', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:activity:create', 'aiadc:activity:create', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:activity:update', 'aiadc:activity:update', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:activity:delete', 'aiadc:activity:delete', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:competition:view', 'aiadc:competition:view', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:competition:create', 'aiadc:competition:create', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:competition:update', 'aiadc:competition:update', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:competition:delete', 'aiadc:competition:delete', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'expert:view', 'expert:view', 'expert', 'CORE', NULL, 0, 0, 0),
+    (1001, 'expert:create', 'expert:create', 'expert', 'CORE', NULL, 0, 0, 0),
+    (1001, 'expert:update', 'expert:update', 'expert', 'CORE', NULL, 0, 0, 0),
+    (1001, 'expert:delete', 'expert:delete', 'expert', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:project:view', 'aiadc:project:view', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:project:create', 'aiadc:project:create', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:project:update', 'aiadc:project:update', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    (1001, 'aiadc:project:delete', 'aiadc:project:delete', 'aiadc', 'CORE', NULL, 0, 0, 0),
     (1001, 'dashboard:view', 'dashboard:view', 'dashboard', 'CORE', NULL, 0, 0, 0),
     (1001, 'download:center:view', 'download:center:view', 'download', 'CORE', NULL, 0, 0, 0),
     (1001, 'localization:view', 'localization:view', 'localization', 'CORE', NULL, 0, 0, 0),
@@ -1982,6 +2146,9 @@ VALUES
     (1001, 'plugin:sensitive-words:import', 'plugin:sensitive-words:import', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
     (1001, 'plugin:sensitive-words:manage', 'plugin:sensitive-words:manage', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
     (1001, 'plugin:sensitive-words:view', 'plugin:sensitive-words:view', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
+    (1001, 'plugin:work-order-feedback:create', 'plugin:work-order-feedback:create', 'plugin', 'PLUGIN', 'work-order-feedback', 0, 0, 0),
+    (1001, 'plugin:work-order-feedback:manage', 'plugin:work-order-feedback:manage', 'plugin', 'PLUGIN', 'work-order-feedback', 0, 0, 0),
+    (1001, 'plugin:work-order-feedback:view', 'plugin:work-order-feedback:view', 'plugin', 'PLUGIN', 'work-order-feedback', 0, 0, 0),
     (1001, 'profile:view', 'profile:view', 'profile', 'CORE', NULL, 0, 0, 0),
     (1001, 'system:config:update', 'system:config:update', 'system', 'CORE', NULL, 0, 0, 0),
     (1001, 'system:config:view', 'system:config:view', 'system', 'CORE', NULL, 0, 0, 0),
@@ -2047,6 +2214,94 @@ ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
 
+INSERT INTO `sys_menu` (
+    `id`, `tenant_id`, `parent_id`, `menu_code`, `menu_name`, `menu_type`, `path`, `component`, `icon`,
+    `sort_no`, `permission_key`, `status`, `created_by`, `updated_by`, `deleted`
+)
+VALUES
+    (-955, 1001, 0, 'dashboard.home', '首页', 'MENU', '/dashboard/home', '@/pages/dashboard/DashboardHomePage', 'DashboardOutlined', 0, 'dashboard:view', 'ENABLED', 0, 0, 0),
+    (-956, 1001, 0, 'files.download-center', '下载中心', 'MENU', '/download-center', '@/pages/files/DownloadCenter', 'DownloadOutlined', 1, 'download:center:view', 'ENABLED', 0, 0, 0),
+    (-990, 1001, 0, 'ai.root', 'AI', 'CATALOG', '/ai', 'redirect:/ai/assistant', 'RobotOutlined', 2, NULL, 'ENABLED', 0, 0, 0),
+    (-989, 1001, -990, 'ai.assistant', 'AI 助手', 'MENU', '/ai/assistant', '@/pages/ai/Assistant', 'RobotOutlined', 1, 'ai:assistant:view', 'ENABLED', 0, 0, 0),
+    (-1051, 1001, -989, 'ai.assistant.send', '发送对话', 'BUTTON', NULL, NULL, NULL, 1, 'ai:chat:send', 'ENABLED', 0, 0, 0),
+    (-988, 1001, -990, 'ai.knowledge', '知识库', 'MENU', '/ai/knowledge', '@/pages/ai/knowledge/KnowledgePage', 'FileSearchOutlined', 2, 'ai:knowledge:view', 'ENABLED', 0, 0, 0),
+    (-1041, 1001, 0, 'activity.root', '活动', 'CATALOG', '/activities', 'redirect:/activities/management', 'CalendarOutlined', 3, NULL, 'ENABLED', 0, 0, 0),
+    (-1052, 1001, -1041, 'activity.activities', '活动管理', 'MENU', '/activities/management', '@/pages/activity', 'CalendarOutlined', 1, 'aiadc:activity:view', 'ENABLED', 0, 0, 0),
+    (-1053, 1001, -1041, 'activity.search', '活动查询', 'MENU', '/activities/search', '@/pages/activity', 'SearchOutlined', 2, 'aiadc:activity:view', 'ENABLED', 0, 0, 0),
+    (-1043, 1001, -1052, 'activity.activities.create', '新增活动', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:activity:create', 'ENABLED', 0, 0, 0),
+    (-1044, 1001, -1052, 'activity.activities.update', '编辑活动', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:activity:update', 'ENABLED', 0, 0, 0),
+    (-1045, 1001, -1052, 'activity.activities.delete', '删除活动', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:activity:delete', 'ENABLED', 0, 0, 0),
+    (-1070, 1001, 0, 'competition.root', '赛事', 'CATALOG', '/competitions', 'redirect:/competitions/management', 'TrophyOutlined', 4, NULL, 'ENABLED', 0, 0, 0),
+    (-1071, 1001, -1070, 'competition.management', '赛事管理', 'MENU', '/competitions/management', '@/pages/competition', 'TrophyOutlined', 1, 'aiadc:competition:view', 'ENABLED', 0, 0, 0),
+    (-1072, 1001, -1071, 'competition.management.create', '新增赛事', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:competition:create', 'ENABLED', 0, 0, 0),
+    (-1073, 1001, -1071, 'competition.management.update', '编辑赛事', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:competition:update', 'ENABLED', 0, 0, 0),
+    (-1074, 1001, -1071, 'competition.management.delete', '删除赛事', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:competition:delete', 'ENABLED', 0, 0, 0),
+    (-1060, 1001, 0, 'expert.root', 'Expert Library', 'CATALOG', '/experts', 'redirect:/experts/management', 'SolutionOutlined', 5, NULL, 'ENABLED', 0, 0, 0),
+    (-1061, 1001, -1060, 'expert.management', 'Expert Management', 'MENU', '/experts/management', '@/pages/expert', 'SolutionOutlined', 1, 'expert:view', 'ENABLED', 0, 0, 0),
+    (-1062, 1001, -1061, 'expert.management.create', 'Create Expert', 'BUTTON', NULL, NULL, NULL, 1, 'expert:create', 'ENABLED', 0, 0, 0),
+    (-1063, 1001, -1061, 'expert.management.update', 'Edit Expert', 'BUTTON', NULL, NULL, NULL, 2, 'expert:update', 'ENABLED', 0, 0, 0),
+    (-1064, 1001, -1061, 'expert.management.delete', 'Delete Expert', 'BUTTON', NULL, NULL, NULL, 3, 'expert:delete', 'ENABLED', 0, 0, 0),
+    (-957, 1001, 0, 'team.root', '团队', 'CATALOG', '/team', 'redirect:/team/management', 'TeamOutlined', 6, 'team:view', 'ENABLED', 0, 0, 0),
+    (-1040, 1001, -957, 'team.management', '团队管理', 'MENU', '/team/management', '@/pages/team', 'TeamOutlined', 1, 'team:view', 'ENABLED', 0, 0, 0),
+    (-1050, 1001, -957, 'team.search', '团队', 'MENU', '/team/search', '@/pages/team', 'SearchOutlined', 2, 'team:view', 'ENABLED', 0, 0, 0),
+    (-958, 1001, -1040, 'team.create', '创建团队', 'BUTTON', NULL, NULL, NULL, 1, 'team:create', 'ENABLED', 0, 0, 0),
+    (-959, 1001, -1040, 'team.update', '编辑团队', 'BUTTON', NULL, NULL, NULL, 2, 'team:update', 'ENABLED', 0, 0, 0),
+    (-960, 1001, -1040, 'team.delete', '删除团队', 'BUTTON', NULL, NULL, NULL, 3, 'team:delete', 'ENABLED', 0, 0, 0),
+    (-961, 1001, -1040, 'team.member.view', '查看成员', 'BUTTON', NULL, NULL, NULL, 4, 'team:member:view', 'ENABLED', 0, 0, 0),
+    (-962, 1001, -1040, 'team.member.invite', '邀请成员', 'BUTTON', NULL, NULL, NULL, 5, 'team:member:invite', 'ENABLED', 0, 0, 0),
+    (-963, 1001, -1040, 'team.member.remove', '移除成员', 'BUTTON', NULL, NULL, NULL, 6, 'team:member:remove', 'ENABLED', 0, 0, 0),
+    (-964, 1001, -1040, 'team.member.role-update', '更新成员角色', 'BUTTON', NULL, NULL, NULL, 7, 'team:member:role-update', 'ENABLED', 0, 0, 0),
+    (-950, 1001, 0, 'user.center.root', '用户中心', 'CATALOG', '/user-center', '@/layouts/SettingsLayout', 'TeamOutlined', 18, 'user:center:view', 'ENABLED', 0, 0, 0),
+    (-951, 1001, -950, 'system.users', '用户管理', 'MENU', '/user-center/users', '@/pages/system/users', 'TeamOutlined', 21, 'system:user:view', 'ENABLED', 0, 0, 0),
+    (-965, 1001, -951, 'system.users.create', '创建用户', 'BUTTON', NULL, NULL, NULL, 1, 'system:user:create', 'ENABLED', 0, 0, 0),
+    (-966, 1001, -951, 'system.users.update', '编辑用户', 'BUTTON', NULL, NULL, NULL, 2, 'system:user:update', 'ENABLED', 0, 0, 0),
+    (-967, 1001, -951, 'system.users.delete', '删除用户', 'BUTTON', NULL, NULL, NULL, 3, 'system:user:delete', 'ENABLED', 0, 0, 0),
+    (-968, 1001, -951, 'system.users.export', '导出用户', 'BUTTON', NULL, NULL, NULL, 4, 'system:user:export', 'ENABLED', 0, 0, 0),
+    (-954, 1001, -950, 'system.departments', '组织部门', 'MENU', '/user-center/departments', '@/pages/system/departments', 'ApartmentOutlined', 22, 'system:department:view', 'ENABLED', 0, 0, 0),
+    (-952, 1001, -950, 'system.online-users', '在线用户', 'MENU', '/user-center/online-users', '@/pages/system/online-users', 'UserSwitchOutlined', 23, 'system:online-user:view', 'ENABLED', 0, 0, 0),
+    (-953, 1001, -950, 'system.roles', '角色管理', 'MENU', '/user-center/roles', '@/pages/system/roles', 'SafetyOutlined', 24, 'system:role:view', 'ENABLED', 0, 0, 0),
+    (-969, 1001, -953, 'system.roles.create', '创建角色', 'BUTTON', NULL, NULL, NULL, 1, 'system:role:create', 'ENABLED', 0, 0, 0),
+    (-970, 1001, -953, 'system.roles.update', '编辑角色', 'BUTTON', NULL, NULL, NULL, 2, 'system:role:update', 'ENABLED', 0, 0, 0),
+    (-971, 1001, -953, 'system.roles.delete', '删除角色', 'BUTTON', NULL, NULL, NULL, 3, 'system:role:delete', 'ENABLED', 0, 0, 0),
+    (-972, 1001, -953, 'system.roles.grant', '授权角色', 'BUTTON', NULL, NULL, NULL, 4, 'system:role:grant', 'ENABLED', 0, 0, 0),
+    (-940, 1001, 0, 'user.center.personal', '个人中心', 'CATALOG', '/user-center/personal-center', '@/layouts/SettingsLayout', 'IdcardOutlined', 19, 'profile:view', 'ENABLED', 0, 0, 0),
+    (-941, 1001, -940, 'profile.center', '个人资料', 'MENU', '/user-center/personal-center/profile', '@/pages/profile/Center', 'UserOutlined', 1, 'profile:view', 'ENABLED', 0, 0, 0),
+    (-942, 1001, -940, 'files.my', '我的文件', 'MENU', '/user-center/personal-center/files', '@/pages/files/Center', 'FileOutlined', 2, 'system:file:view', 'ENABLED', 0, 0, 0),
+    (-1000, 1001, 0, 'settings.root', '系统设置', 'CATALOG', '/settings', '@/layouts/SettingsLayout', 'SettingOutlined', 20, 'system:view', 'ENABLED', 0, 0, 0),
+    (-1001, 1001, -1000, 'settings.menus', '菜单管理', 'MENU', '/settings/menus', '@/pages/settings/menus', 'AppstoreOutlined', 2, 'system:menu:view', 'ENABLED', 0, 0, 0),
+    (-1020, 1001, -1001, 'settings.menus.create', '创建菜单', 'BUTTON', NULL, NULL, NULL, 1, 'system:menu:create', 'ENABLED', 0, 0, 0),
+    (-1021, 1001, -1001, 'settings.menus.update', '编辑菜单', 'BUTTON', NULL, NULL, NULL, 2, 'system:menu:update', 'ENABLED', 0, 0, 0),
+    (-1022, 1001, -1001, 'settings.menus.delete', '删除菜单', 'BUTTON', NULL, NULL, NULL, 3, 'system:menu:delete', 'ENABLED', 0, 0, 0),
+    (-1002, 1001, -1000, 'settings.dicts', '字典管理', 'MENU', '/settings/dicts', '@/pages/settings/dicts', 'DatabaseOutlined', 3, 'system:dict:view', 'ENABLED', 0, 0, 0),
+    (-1023, 1001, -1002, 'settings.dicts.create', '创建字典', 'BUTTON', NULL, NULL, NULL, 1, 'system:dict:create', 'ENABLED', 0, 0, 0),
+    (-1024, 1001, -1002, 'settings.dicts.update', '编辑字典', 'BUTTON', NULL, NULL, NULL, 2, 'system:dict:update', 'ENABLED', 0, 0, 0),
+    (-1025, 1001, -1002, 'settings.dicts.delete', '删除字典', 'BUTTON', NULL, NULL, NULL, 3, 'system:dict:delete', 'ENABLED', 0, 0, 0),
+    (-1003, 1001, -1000, 'settings.profile-fields', '字段管理', 'MENU', '/settings/profile-fields', '@/pages/settings/profile-fields', 'FormOutlined', 4, 'system:config:view', 'ENABLED', 0, 0, 0),
+    (-1004, 1001, -1000, 'settings.personalization', '个性化设置', 'MENU', '/settings/personalization', '@/pages/settings/personalization', 'SkinOutlined', 5, 'system:config:view', 'ENABLED', 0, 0, 0),
+    (-1005, 1001, -1000, 'settings.security', '安全设置', 'MENU', '/settings/security', '@/pages/settings/security', 'SafetyOutlined', 6, 'system:config:view', 'ENABLED', 0, 0, 0),
+    (-1006, 1001, -1000, 'settings.verification', '验证管理', 'MENU', '/settings/verification', '@/pages/settings/verification', 'SafetyOutlined', 7, 'system:verification:view', 'ENABLED', 0, 0, 0),
+    (-1007, 1001, -1000, 'settings.payment', '支付设置', 'MENU', '/settings/payment', '@/pages/settings/payment', 'CreditCardOutlined', 8, 'payment:view', 'ENABLED', 0, 0, 0),
+    (-1012, 1001, -1000, 'settings.files', '全站文件管理', 'MENU', '/settings/files/all', '@/pages/settings/files/Center', 'FolderOpenOutlined', 9, 'system:file:manage', 'ENABLED', 0, 0, 0),
+    (-1008, 1001, -1000, 'settings.notifications', '通知中心', 'MENU', '/settings/notifications', '@/pages/settings/notifications/index', 'NotificationOutlined', 9, 'system:notification:view', 'ENABLED', 0, 0, 0),
+    (-1015, 1001, -1000, 'settings.monitoring', '系统监控', 'MENU', '/settings/monitoring', '@/pages/settings/monitoring/index', 'FundOutlined', 10, 'system:monitor:view', 'ENABLED', 0, 0, 0),
+    (-1013, 1001, -1000, 'settings.monitoring.api-docs', '接口文档', 'MENU', '/settings/api-docs', '@/pages/settings/monitoring/ApiDocs', 'FileTextOutlined', 11, 'system:monitor:docs:view', 'ENABLED', 0, 0, 0),
+    (-1014, 1001, -1000, 'settings.monitoring.audit', '审计中心', 'MENU', '/settings/audit', '@/pages/settings/monitoring/Audit', 'AuditOutlined', 12, 'audit:view', 'ENABLED', 0, 0, 0),
+    (-1009, 1001, -1000, 'settings.plugins', '插件管理中心', 'MENU', '/settings/plugins', '@/pages/settings/plugins', 'ApiOutlined', 10, 'plugin:management:view', 'ENABLED', 0, 0, 0),
+    (-1010, 1001, -1000, 'settings.ai-employees', '数字员工', 'MENU', '/settings/ai-employees', '@/pages/settings/ai-employees', 'RobotOutlined', 24, 'ai:view', 'ENABLED', 0, 0, 0),
+    (-1011, 1001, -1000, 'localization.root', '本地化中心', 'MENU', '/settings/localization', '@/pages/settings/localization', 'TranslationOutlined', 29, 'localization:view', 'ENABLED', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `parent_id` = VALUES(`parent_id`),
+    `menu_name` = VALUES(`menu_name`),
+    `menu_type` = VALUES(`menu_type`),
+    `path` = VALUES(`path`),
+    `component` = VALUES(`component`),
+    `icon` = VALUES(`icon`),
+    `sort_no` = VALUES(`sort_no`),
+    `permission_key` = VALUES(`permission_key`),
+    `status` = VALUES(`status`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
 INSERT INTO `sys_role` (`id`, `tenant_id`, `role_code`, `role_name`, `role_type`, `default_home_path`, `created_by`, `updated_by`, `deleted`)
 VALUES (1001, 1001, 'ADMIN', 'Administrator', 'SYSTEM', '/dashboard/home', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
@@ -2103,8 +2358,16 @@ WHERE p.`tenant_id` = 1001
       'system:file:view',
       'system:file:upload',
       'ai:view',
+      'ai:assistant:view',
       'ai:chat:send',
       'ai:knowledge:view',
+      'aiadc:activity:view',
+      'aiadc:competition:view',
+      'expert:view',
+      'expert:create',
+      'expert:update',
+      'expert:delete',
+      'aiadc:project:view',
       'team:view'
   )
 ON DUPLICATE KEY UPDATE
@@ -2281,7 +2544,7 @@ INSERT INTO `sys_config` (
     `created_by`, `updated_by`, `deleted`
 )
 VALUES
-    (1001, 'branding.website-name', '站点名称', '宏翔商道', 'PLATFORM', 0, '控制台顶部与浏览器标题展示名称', 0, 0, 0),
+    (1001, 'branding.website-name', '站点名称', 'Lumira', 'PLATFORM', 0, '控制台顶部与浏览器标题展示名称', 0, 0, 0),
     (1001, 'branding.website-favicon-url', '站点图标地址', '', 'PLATFORM', 0, '浏览器标签页 icon 地址', 0, 0, 0),
     (1001, 'branding.website-logo-url', '站点 Logo 地址', '', 'PLATFORM', 0, '控制台左上角品牌 Logo 地址', 0, 0, 0),
     (1001, 'branding.login-background-url', '登录页背景图地址', '', 'PLATFORM', 0, '登录页背景图地址', 0, 0, 0),
@@ -2289,11 +2552,11 @@ VALUES
     (1001, 'branding.github-link-url', 'GitHub 链接', '', 'PLATFORM', 0, '顶部 GitHub 图标跳转地址', 0, 0, 0),
     (1001, 'branding.help-link-enabled', '帮助链接开关', 'true', 'PLATFORM', 0, '是否显示顶部帮助图标', 0, 0, 0),
     (1001, 'branding.help-link-url', '帮助链接', '', 'PLATFORM', 0, '顶部帮助图标跳转地址', 0, 0, 0),
-    (1001, 'branding.company-name', '公司名称', '宏翔商道', 'PLATFORM', 0, '页脚版权主体名称', 0, 0, 0),
+    (1001, 'branding.company-name', '公司名称', 'Lumira', 'PLATFORM', 0, '页脚版权主体名称', 0, 0, 0),
     (1001, 'branding.copyright-start-year', '版权起始年份', CAST(YEAR(CURRENT_DATE()) AS CHAR), 'PLATFORM', 0, '页脚版权起始年份', 0, 0, 0),
     (1001, 'branding.footer-icp', '页脚备案', '', 'PLATFORM', 0, '页脚备案信息', 0, 0, 0),
     (1001, 'branding.footer-police-beian', '页脚公安备案', '', 'PLATFORM', 0, '页脚公安备案信息', 0, 0, 0),
-    (1001, 'branding.footer-copyright', '页脚版权声明', CONCAT('Copyright ', YEAR(CURRENT_DATE()), ' 宏翔商道 All Rights Reserved'), 'PLATFORM', 0, '页脚版权声明', 0, 0, 0),
+    (1001, 'branding.footer-copyright', '页脚版权声明', CONCAT('Copyright ', YEAR(CURRENT_DATE()), ' Lumira All Rights Reserved'), 'PLATFORM', 0, '页脚版权声明', 0, 0, 0),
     (1001, 'agreement.user-agreement-markdown', '用户协议', '', 'PLATFORM', 0, '用户协议 Markdown', 0, 0, 0),
     (1001, 'agreement.privacy-agreement-markdown', '隐私协议', '', 'PLATFORM', 0, '隐私协议 Markdown', 0, 0, 0),
     (1001, 'watermark.enabled', '水印开关', 'false', 'PLATFORM', 0, '全局水印开关', 0, 0, 0),
@@ -2547,7 +2810,7 @@ INSERT INTO `sys_plugin_definition` (
     `runtime_contributions_json`, `created_by`, `updated_by`, `deleted`
 )
 VALUES (
-    'sensitive-words', '敏感词拦截插件', 'SECURITY', '提供敏感词词库维护、请求内容拦截和导入能力。',
+    'sensitive-words', '敏感词拦截插件, 'SECURITY', '提供敏感词词库维护、请求内容拦截和导入能力。,
     'Lumira', '1.0', 1, 'ENABLED', 10, 'SHARED', 1, 0,
     JSON_ARRAY('routes', 'menus', 'permissions', 'importers', 'interceptors'), 0, 0, 0
 )
@@ -2577,7 +2840,7 @@ VALUES (
     'INSTALLED', 'READY', 1, 0,
     JSON_OBJECT(
         'pluginCode', 'sensitive-words',
-        'pluginName', '敏感词拦截插件',
+        'pluginName', '敏感词拦截插件,
         'version', '1.0.0',
         'kind', 'SECURITY',
         'builtin', true
@@ -2601,7 +2864,7 @@ INSERT INTO `sys_plugin_menu_rel` (
     `permission_key`, `parent_menu_code`, `sort_no`, `created_by`, `updated_by`, `deleted`
 )
 VALUES (
-    'sensitive-words', '1.0.0', 'plugin.sensitive-words', '敏感词管理', '/plugins/sensitive-words', 'SafetyOutlined',
+    'sensitive-words', '1.0.0', 'plugin.sensitive-words', '敏感词管理, '/plugins/sensitive-words', 'SafetyOutlined',
     'plugin:sensitive-words:view', 'settings.plugins', 10, 0, 0, 0
 )
 ON DUPLICATE KEY UPDATE
@@ -2619,9 +2882,96 @@ INSERT INTO `sys_plugin_permission_rel` (
     `created_by`, `updated_by`, `deleted`
 )
 VALUES
-    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:view', '查看敏感词插件', 'sensitive-words', 0, 0, 0),
-    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:manage', '管理敏感词插件', 'sensitive-words', 0, 0, 0),
-    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:import', '导入敏感词', 'sensitive-words', 0, 0, 0)
+    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:view', '查看敏感词插件, 'sensitive-words', 0, 0, 0),
+    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:manage', '管理敏感词插件, 'sensitive-words', 0, 0, 0),
+    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:import', '导入敏感词, 'sensitive-words', 0, 0, 0)
+ON DUPLICATE KEY UPDATE
+    `permission_name` = VALUES(`permission_name`),
+    `permission_group` = VALUES(`permission_group`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_plugin_definition` (
+    `plugin_code`, `plugin_name`, `plugin_type`, `description`, `author`, `plugin_api_version`,
+    `builtin_flag`, `status`, `sort_no`, `schema_mode`, `supports_hot_disable`, `supports_data_purge`,
+    `runtime_contributions_json`, `created_by`, `updated_by`, `deleted`
+)
+VALUES (
+    'work-order-feedback', '工单反馈', 'BUSINESS', '允许用户提交富文本问题反馈，管理员可跟进处理。,
+    'Lumira', '1.0', 1, 'ENABLED', 20, 'SHARED', 1, 0,
+    JSON_ARRAY('routes', 'menus', 'permissions', 'rich-text-upload'), 0, 0, 0
+)
+ON DUPLICATE KEY UPDATE
+    `plugin_name` = VALUES(`plugin_name`),
+    `plugin_type` = VALUES(`plugin_type`),
+    `description` = VALUES(`description`),
+    `author` = VALUES(`author`),
+    `plugin_api_version` = VALUES(`plugin_api_version`),
+    `builtin_flag` = VALUES(`builtin_flag`),
+    `status` = VALUES(`status`),
+    `sort_no` = VALUES(`sort_no`),
+    `schema_mode` = VALUES(`schema_mode`),
+    `supports_hot_disable` = VALUES(`supports_hot_disable`),
+    `supports_data_purge` = VALUES(`supports_data_purge`),
+    `runtime_contributions_json` = VALUES(`runtime_contributions_json`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_plugin_version` (
+    `plugin_code`, `version`, `min_platform_version`, `install_status`, `load_status`, `health_status`,
+    `lifecycle_status`, `schema_status`, `is_active`, `rollbackable`, `metadata_json`, `validation_report_json`,
+    `installed_at`, `created_by`, `updated_by`, `deleted`
+)
+VALUES (
+    'work-order-feedback', '1.0.0', '1.0.0', 'INSTALLED', 'LOADED', 'HEALTHY',
+    'INSTALLED', 'READY', 1, 0,
+    JSON_OBJECT(
+        'pluginCode', 'work-order-feedback',
+        'pluginName', '工单反馈',
+        'version', '1.0.0',
+        'kind', 'BUSINESS',
+        'builtin', true
+    ),
+    JSON_OBJECT('builtin', true, 'status', 'VERIFIED'), CURRENT_TIMESTAMP, 0, 0, 0
+)
+ON DUPLICATE KEY UPDATE
+    `min_platform_version` = VALUES(`min_platform_version`),
+    `install_status` = VALUES(`install_status`),
+    `load_status` = VALUES(`load_status`),
+    `health_status` = VALUES(`health_status`),
+    `schema_status` = VALUES(`schema_status`),
+    `is_active` = VALUES(`is_active`),
+    `metadata_json` = VALUES(`metadata_json`),
+    `validation_report_json` = VALUES(`validation_report_json`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_plugin_menu_rel` (
+    `plugin_code`, `plugin_version`, `menu_code`, `menu_name`, `route_path`, `icon`,
+    `permission_key`, `parent_menu_code`, `sort_no`, `created_by`, `updated_by`, `deleted`
+)
+VALUES (
+    'work-order-feedback', '1.0.0', 'plugin.work-order-feedback', '工单反馈', '/plugins/work-order-feedback', 'CustomerServiceOutlined',
+    'plugin:work-order-feedback:view', 'settings.plugins', 20, 0, 0, 0
+)
+ON DUPLICATE KEY UPDATE
+    `menu_name` = VALUES(`menu_name`),
+    `route_path` = VALUES(`route_path`),
+    `icon` = VALUES(`icon`),
+    `permission_key` = VALUES(`permission_key`),
+    `parent_menu_code` = VALUES(`parent_menu_code`),
+    `sort_no` = VALUES(`sort_no`),
+    `updated_by` = VALUES(`updated_by`),
+    `deleted` = 0;
+
+INSERT INTO `sys_plugin_permission_rel` (
+    `plugin_code`, `plugin_version`, `permission_key`, `permission_name`, `permission_group`,
+    `created_by`, `updated_by`, `deleted`
+)
+VALUES
+    ('work-order-feedback', '1.0.0', 'plugin:work-order-feedback:view', '查看工单反馈', 'work-order-feedback', 0, 0, 0),
+    ('work-order-feedback', '1.0.0', 'plugin:work-order-feedback:create', '提交工单反馈', 'work-order-feedback', 0, 0, 0),
+    ('work-order-feedback', '1.0.0', 'plugin:work-order-feedback:manage', '处理工单反馈', 'work-order-feedback', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `permission_name` = VALUES(`permission_name`),
     `permission_group` = VALUES(`permission_group`),
@@ -2632,7 +2982,7 @@ ON DUPLICATE KEY UPDATE
 CREATE TABLE `xxl_job_group` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `app_name` varchar(64) NOT NULL COMMENT '执行器AppName',
-  `title` varchar(64) NOT NULL COMMENT '执行器名称',
+  `title` varchar(64) NOT NULL COMMENT '执行器名称,
   `address_type` tinyint(4) NOT NULL DEFAULT '0' COMMENT '执行器地址类型：0=自动注册、1=手动录入',
   `address_list` text COMMENT '执行器地址列表，多地址逗号分隔',
   `update_time` datetime DEFAULT NULL,
@@ -2660,18 +3010,18 @@ CREATE TABLE `xxl_job_info` (
   `schedule_type` varchar(50) NOT NULL DEFAULT 'NONE' COMMENT '调度类型',
   `schedule_conf` varchar(128) DEFAULT NULL COMMENT '调度配置，值含义取决于调度类型',
   `misfire_strategy` varchar(50) NOT NULL DEFAULT 'DO_NOTHING' COMMENT '调度过期策略',
-  `executor_route_strategy` varchar(50) DEFAULT NULL COMMENT '执行器路由策略',
+  `executor_route_strategy` varchar(50) DEFAULT NULL COMMENT '执行器路由策略,
   `executor_handler` varchar(255) DEFAULT NULL COMMENT '任务handler',
   `executor_param` text DEFAULT NULL COMMENT '任务参数',
   `executor_block_strategy` varchar(50) DEFAULT NULL COMMENT '阻塞处理策略',
   `executor_timeout` int(11) NOT NULL DEFAULT '0' COMMENT '任务执行超时时间，单位秒',
   `executor_fail_retry_count` int(11) NOT NULL DEFAULT '0' COMMENT '失败重试次数',
   `glue_type` varchar(50) NOT NULL COMMENT 'GLUE类型',
-  `glue_source` mediumtext COMMENT 'GLUE源代码',
+  `glue_source` mediumtext COMMENT 'GLUE源代码,
   `glue_remark` varchar(128) DEFAULT NULL COMMENT 'GLUE备注',
   `glue_updatetime` datetime DEFAULT NULL COMMENT 'GLUE更新时间',
   `child_jobid` varchar(255) DEFAULT NULL COMMENT '子任务ID，多个逗号分隔',
-  `trigger_status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '调度状态：0-停止，1-运行',
+  `trigger_status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '调度状态：0-停止、1-运行',
   `trigger_last_time` bigint(13) NOT NULL DEFAULT '0' COMMENT '上次调度时间',
   `trigger_next_time` bigint(13) NOT NULL DEFAULT '0' COMMENT '下次调度时间',
   PRIMARY KEY (`id`)
@@ -2681,7 +3031,7 @@ CREATE TABLE `xxl_job_logglue` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `job_id` int(11) NOT NULL COMMENT '任务，主键ID',
   `glue_type` varchar(50) DEFAULT NULL COMMENT 'GLUE类型',
-  `glue_source` mediumtext COMMENT 'GLUE源代码',
+  `glue_source` mediumtext COMMENT 'GLUE源代码,
   `glue_remark` varchar(128) NOT NULL COMMENT 'GLUE备注',
   `add_time` datetime DEFAULT NULL,
   `update_time` datetime DEFAULT NULL,
@@ -2714,7 +3064,7 @@ CREATE TABLE `xxl_job_log` (
 CREATE TABLE `xxl_job_log_report` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `trigger_day` datetime DEFAULT NULL COMMENT '调度-时间',
-  `running_count` int(11) NOT NULL DEFAULT '0' COMMENT '运行中-日志数量',
+  `running_count` int(11) NOT NULL DEFAULT '0' COMMENT '运行中日志数量',
   `suc_count` int(11) NOT NULL DEFAULT '0' COMMENT '执行成功-日志数量',
   `fail_count` int(11) NOT NULL DEFAULT '0' COMMENT '执行失败-日志数量',
   `update_time` datetime DEFAULT NULL,
@@ -2723,7 +3073,7 @@ CREATE TABLE `xxl_job_log_report` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `xxl_job_lock` (
-  `lock_name` varchar(50) NOT NULL COMMENT '锁名称',
+  `lock_name` varchar(50) NOT NULL COMMENT '锁名称,
   PRIMARY KEY (`lock_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -2732,14 +3082,14 @@ CREATE TABLE `xxl_job_user` (
   `username` varchar(50) NOT NULL COMMENT '账号',
   `password` varchar(100) NOT NULL COMMENT '密码加密信息',
   `token` varchar(100) DEFAULT NULL COMMENT '登录token',
-  `role` tinyint(4) NOT NULL COMMENT '角色：0-普通用户、1-管理员',
+  `role` tinyint(4) NOT NULL COMMENT '角色：0-普通用户，1-管理员',
   `permission` varchar(255) DEFAULT NULL COMMENT '权限：执行器ID列表，多个逗号分割',
   PRIMARY KEY (`id`),
   UNIQUE KEY `i_username` (`username`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `xxl_job_group` (`id`, `app_name`, `title`, `address_type`, `address_list`, `update_time`)
-VALUES (1, 'lumira-server', 'Lumira 后端执行器', 0, NULL, NOW());
+VALUES (1, 'lumira-server', 'Lumira 后端执行器, 0, NULL, NOW());
 
 INSERT INTO `xxl_job_user` (`id`, `username`, `password`, `role`, `permission`)
 VALUES (1, 'admin', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 1, NULL);

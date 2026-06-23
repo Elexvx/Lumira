@@ -18,6 +18,7 @@ import type { LoginFormValues, LoginMode } from '@/pages/user/login/components/L
 import { useLoginFlowRuntime } from './useLoginFlowRuntime';
 import { request } from '@/services/common/request';
 import type { AgreementSettings, BrandingSettings, LoginCapabilities } from '@/types/api';
+import { loadSecuritySettings } from '@/auth/sessionSecurity';
 
 const INITIAL_PASSWORD = '123456';
 type ForcedPasswordChangeFormValues = {
@@ -173,6 +174,40 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
       })
       .catch(() => {
         // Keep the bootstrap snapshot values when the public agreement endpoint is temporarily unavailable.
+      });
+
+    return () => {
+      disposed = true;
+    };
+  }, [initialState?.currentUser, setInitialState]);
+
+  useEffect(() => {
+    if (initialState?.currentUser) {
+      return;
+    }
+
+    let disposed = false;
+
+    void loadSecuritySettings({
+      allowUnauthorizedWithoutRedirect: true,
+      timeoutMs: 3000,
+    })
+      .then((securitySettings) => {
+        if (disposed) {
+          return;
+        }
+
+        setInitialState((prev: AppInitialState | undefined) =>
+          prev
+            ? {
+                ...prev,
+                securitySettings,
+              }
+            : prev,
+        );
+      })
+      .catch(() => {
+        // Keep the current login-page snapshot when the public security endpoint is temporarily unavailable.
       });
 
     return () => {

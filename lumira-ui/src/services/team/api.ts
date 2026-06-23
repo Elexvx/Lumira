@@ -6,6 +6,7 @@ import type {
   TeamJoinResult,
   TeamMemberRecord,
   TeamRecord,
+  TeamDraftMemberPayload,
   TeamRole,
   TeamUpsertPayload,
 } from './types';
@@ -21,6 +22,8 @@ export const deleteTeam = (teamId: number) => request<boolean>(`/v2/teams/${team
 export const adminDeleteTeam = (teamId: number) => request<boolean>(`/v2/admin/teams/${teamId}`, { method: 'DELETE' });
 
 export const listTeamMembers = (teamId: number) => request<TeamMemberRecord[]>(`/v2/teams/${teamId}/members`);
+export const createTeamMember = (teamId: number, data: TeamDraftMemberPayload) =>
+  request<TeamMemberRecord>(`/v2/teams/${teamId}/members`, { method: 'POST', data });
 export const updateTeamMemberRole = (teamId: number, memberId: number, role: TeamRole) =>
   request<TeamMemberRecord>(`/v2/teams/${teamId}/members/${memberId}/role`, { method: 'PATCH', data: { role } });
 export const removeTeamMember = (teamId: number, memberId: number) =>

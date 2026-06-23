@@ -510,6 +510,11 @@ export async function getAppInitialState(): Promise<AppInitialState> {
   const storedBrandingSettings = normalizeBrandingSettings(getStoredBrandingSettings() || DEFAULT_BRANDING_SETTINGS);
 
   if (!isLoggedIn()) {
+    const restored = await restoreSession().catch(() => null);
+    if (restored?.currentUser) {
+      return await buildAuthenticatedInitialState(restored.currentUser, restored.securitySettings, storedBrandingSettings);
+    }
+
     setBootstrapSnapshot({
       phase: 'ready',
       progress: 100,
