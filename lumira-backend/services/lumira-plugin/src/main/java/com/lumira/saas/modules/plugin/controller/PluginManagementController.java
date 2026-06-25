@@ -1,12 +1,9 @@
 package com.lumira.saas.modules.plugin.controller;
 
 import com.lumira.common.api.ApiResponse;
-import com.lumira.common.enums.ErrorCode;
-import com.lumira.common.exception.BizException;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.saas.modules.plugin.app.PluginManagementAppService;
@@ -132,7 +129,6 @@ public class PluginManagementController {
     @RepeatSubmit
     public ApiResponse<Boolean> enable(@Valid @RequestBody PluginDTO.EnableRequest request) {
         require("plugin:management:enable");
-        requireCurrentTenant(request.getTenantId());
         pluginManagementAppService.enable(request, currentUser());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
@@ -142,7 +138,6 @@ public class PluginManagementController {
     public ApiResponse<Boolean> enable(@PathVariable("pluginCode") String pluginCode, @RequestBody(required = false) PluginDTO.EnableRequest request) {
         require("plugin:management:enable");
         PluginDTO.EnableRequest enableRequest = request == null ? new PluginDTO.EnableRequest() : request;
-        enableRequest.setTenantId(currentTenantId());
         enableRequest.setPluginCode(pluginCode);
         pluginManagementAppService.enable(enableRequest, currentUser());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
@@ -152,7 +147,6 @@ public class PluginManagementController {
     @RepeatSubmit
     public ApiResponse<Boolean> disable(@Valid @RequestBody PluginDTO.DisableRequest request) {
         require("plugin:management:disable");
-        requireCurrentTenant(request.getTenantId());
         pluginManagementAppService.disable(request, currentUser());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
@@ -162,7 +156,6 @@ public class PluginManagementController {
     public ApiResponse<Boolean> disable(@PathVariable("pluginCode") String pluginCode, @RequestBody(required = false) PluginDTO.DisableRequest request) {
         require("plugin:management:disable");
         PluginDTO.DisableRequest disableRequest = request == null ? new PluginDTO.DisableRequest() : request;
-        disableRequest.setTenantId(currentTenantId());
         disableRequest.setPluginCode(pluginCode);
         pluginManagementAppService.disable(disableRequest, currentUser());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
@@ -171,7 +164,7 @@ public class PluginManagementController {
     @GetMapping("/{pluginCode}/status")
     public ApiResponse<PluginVO.PluginStatusVO> status(@PathVariable("pluginCode") String pluginCode) {
         require("plugin:management:view");
-        return ApiResponse.success(pluginManagementAppService.status(currentTenantId(), pluginCode), TraceContext.getRequestId());
+        return ApiResponse.success(pluginManagementAppService.status(pluginCode), TraceContext.getRequestId());
     }
 
     @PostMapping("/{pluginCode}/uninstall")
@@ -203,9 +196,9 @@ public class PluginManagementController {
     }
 
     @GetMapping("/current/available")
-    public ApiResponse<List<PluginVO.TenantPluginVO>> currentAvailable() {
+    public ApiResponse<List<PluginVO.PluginAvailabilityVO>> currentAvailable() {
         return ApiResponse.success(
-                pluginManagementAppService.availablePlugins(currentTenantId()),
+                pluginManagementAppService.availablePlugins(),
                 TraceContext.getRequestId()
         );
     }
@@ -215,7 +208,7 @@ public class PluginManagementController {
         CurrentUser currentUser = currentUser();
         List<String> permissions = currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions().stream().toList();
         return ApiResponse.success(
-                pluginManagementAppService.currentBootstrap(currentTenantId(), permissions),
+                pluginManagementAppService.currentBootstrap(permissions),
                 TraceContext.getRequestId()
         );
     }
@@ -225,7 +218,7 @@ public class PluginManagementController {
         CurrentUser currentUser = currentUser();
         List<String> permissions = currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions().stream().toList();
         return ApiResponse.success(
-                pluginManagementAppService.currentMenus(currentTenantId(), permissions),
+                pluginManagementAppService.currentMenus(permissions),
                 TraceContext.getRequestId()
         );
     }
@@ -238,7 +231,7 @@ public class PluginManagementController {
 
     @GetMapping("/current/{pluginCode}/manifest")
     public ResponseEntity<Resource> currentManifest(@PathVariable("pluginCode") String pluginCode) {
-        PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(currentTenantId()).stream()
+        PluginVO.PluginAvailabilityVO plugin = pluginManagementAppService.availablePlugins().stream()
                 .filter(item -> pluginCode.equals(item.getPluginCode()))
                 .findFirst()
                 .orElseThrow();
@@ -250,7 +243,7 @@ public class PluginManagementController {
 
     @GetMapping("/current/{pluginCode}/assets/**")
     public ResponseEntity<Resource> currentAsset(@PathVariable("pluginCode") String pluginCode, HttpServletRequest request) {
-        PluginVO.TenantPluginVO plugin = pluginManagementAppService.availablePlugins(currentTenantId()).stream()
+        PluginVO.PluginAvailabilityVO plugin = pluginManagementAppService.availablePlugins().stream()
                 .filter(item -> pluginCode.equals(item.getPluginCode()))
                 .findFirst()
                 .orElseThrow();
@@ -268,15 +261,5 @@ public class PluginManagementController {
 
     private void require(String permissionKey) {
         permissionGuard.requirePermission(currentUser(), permissionKey);
-    }
-
-    private void requireCurrentTenant(Long tenantId) {
-        if (tenantId == null || !tenantId.equals(currentTenantId())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "只能管理当前租户的插件");
-        }
-    }
-
-    private Long currentTenantId() {
-        return PlatformContext.compatibilityTenantId();
     }
 }

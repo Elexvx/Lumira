@@ -2,7 +2,6 @@ package com.lumira.team.api;
 
 public class TeamSummaryDTO {
     private Long id;
-    private Long tenantId;
     private String teamCode;
     private String teamName;
     private String teamType;
@@ -12,8 +11,6 @@ public class TeamSummaryDTO {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getTeamCode() { return teamCode; }
     public void setTeamCode(String teamCode) { this.teamCode = teamCode; }
     public String getTeamName() { return teamName; }

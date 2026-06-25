@@ -11,7 +11,6 @@ public class MessageDeliveryLogEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long tenantId;
     private Long noticeId;
     private String channel;
     private String targetScope;
@@ -29,8 +28,6 @@ public class MessageDeliveryLogEntity {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getNoticeId() { return noticeId; }
     public void setNoticeId(Long noticeId) { this.noticeId = noticeId; }
     public String getChannel() { return channel; }

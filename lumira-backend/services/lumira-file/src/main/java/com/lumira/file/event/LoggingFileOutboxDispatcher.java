@@ -12,9 +12,8 @@ public class LoggingFileOutboxDispatcher implements FileOutboxDispatcher {
     @Override
     public void dispatch(PlatformEventOutboxEntity row) {
         logger.info(
-                "file outbox event delivered id={} tenantId={} eventType={} eventKey={}",
+                "file outbox event delivered id={} eventType={} eventKey={}",
                 row == null ? null : row.getId(),
-                row == null ? null : row.getTenantId(),
                 row == null ? null : row.getEventType(),
                 row == null ? null : row.getEventKey()
         );

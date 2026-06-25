@@ -54,7 +54,7 @@ export default {
   'system.files.delete.title': '删除文件',
   'system.files.delete.okText': '确认删除',
   'system.files.delete.confirmMine': '确认删除文件「{name}」吗？删除后文件和记录都会被清理。',
-  'system.files.delete.confirmTenant': '确认删除文件「{name}」吗？删除后文件和记录都会被清理，可能影响头像、Logo、品牌图等正在引用这个文件的业务展示。',
+  'system.files.delete.confirmShared': '确认删除文件「{name}」吗？删除后文件和记录都会被清理，可能影响头像、Logo、品牌图等正在引用这个文件的业务展示。',
   'system.files.search.keywordLabel': '关键字',
   'system.files.search.categoryLabel': '分类',
   'system.files.search.keyword': '文件名、标签、备注',

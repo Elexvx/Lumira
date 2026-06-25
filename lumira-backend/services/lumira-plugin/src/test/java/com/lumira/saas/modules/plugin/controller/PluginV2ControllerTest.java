@@ -60,25 +60,9 @@ class PluginV2ControllerTest {
     }
 
     @Test
-    void enable_shouldRejectTenantMismatchBeforeApplicationService() {
-        CurrentUser currentUser = currentUser("plugin:management:enable");
-        PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
-        request.setTenantId(2002L);
-        request.setPluginCode("sms");
-        when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-
-        assertThatThrownBy(() -> controller.enable(request))
-                .isInstanceOf(BizException.class)
-                .hasMessageContaining("只能管理当前租户的插件");
-
-        verify(permissionGuard).requirePermission(currentUser, "plugin:management:enable");
-    }
-
-    @Test
     void enable_shouldDelegateToApplicationServiceWithCurrentUser() {
         CurrentUser currentUser = currentUser("plugin:management:enable");
         PluginDTO.EnableRequest request = new PluginDTO.EnableRequest();
-        request.setTenantId(1001L);
         request.setPluginCode("sms");
         request.setVersion("1.0.0");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
@@ -86,21 +70,22 @@ class PluginV2ControllerTest {
         var response = controller.enable(request);
 
         assertThat(response.getData()).isTrue();
+        verify(permissionGuard).requirePermission(currentUser, "plugin:management:enable");
         verify(pluginManagementAppService).enable(request, currentUser);
     }
 
     @Test
-    void currentBootstrap_shouldUseCurrentTenantAndSortedPermissionSnapshot() {
+    void currentBootstrap_shouldUseSortedPermissionSnapshot() {
         CurrentUser currentUser = currentUser("plugin:sms:view", "dashboard:view");
         Map<String, Object> bootstrap = Map.of("plugins", List.of());
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(pluginManagementAppService.currentBootstrap(1001L, List.of("dashboard:view", "plugin:sms:view")))
+        when(pluginManagementAppService.currentBootstrap(List.of("dashboard:view", "plugin:sms:view")))
                 .thenReturn(bootstrap);
 
         var response = controller.currentBootstrap();
 
         assertThat(response.getData()).isSameAs(bootstrap);
-        verify(pluginManagementAppService).currentBootstrap(1001L, List.of("dashboard:view", "plugin:sms:view"));
+        verify(pluginManagementAppService).currentBootstrap(List.of("dashboard:view", "plugin:sms:view"));
     }
 
     @Test
@@ -108,12 +93,12 @@ class PluginV2ControllerTest {
         CurrentUser currentUser = currentUser("plugin:sms:view");
         List<Map<String, Object>> menus = List.of(Map.of("menuCode", "plugin.sms"));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(pluginManagementAppService.currentMenus(1001L, List.of("plugin:sms:view"))).thenReturn(menus);
+        when(pluginManagementAppService.currentMenus(List.of("plugin:sms:view"))).thenReturn(menus);
 
         var response = controller.currentMenus();
 
         assertThat(response.getData()).isSameAs(menus);
-        verify(pluginManagementAppService).currentMenus(1001L, List.of("plugin:sms:view"));
+        verify(pluginManagementAppService).currentMenus(List.of("plugin:sms:view"));
     }
 
     @Test
@@ -140,12 +125,12 @@ class PluginV2ControllerTest {
     void definitions_shouldRejectMissingPermissionBeforeApplicationService() {
         CurrentUser currentUser = currentUser("plugin:other:view");
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        doThrow(new BizException(com.lumira.common.enums.ErrorCode.FORBIDDEN, "缺少权限: plugin:management:view"))
+        doThrow(new BizException(com.lumira.common.enums.ErrorCode.FORBIDDEN, "missing permission: plugin:management:view"))
                 .when(permissionGuard).requirePermission(currentUser, "plugin:management:view");
 
         assertThatThrownBy(() -> controller.definitions())
                 .isInstanceOf(BizException.class)
-                .hasMessageContaining("缺少权限");
+                .hasMessageContaining("plugin:management:view");
     }
 
     private CurrentUser currentUser(String... permissions) {

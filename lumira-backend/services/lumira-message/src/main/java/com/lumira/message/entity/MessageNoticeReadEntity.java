@@ -11,7 +11,6 @@ public class MessageNoticeReadEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long tenantId;
     private Long noticeId;
     private Long userId;
     private LocalDateTime readAt;
@@ -21,8 +20,6 @@ public class MessageNoticeReadEntity {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getNoticeId() { return noticeId; }
     public void setNoticeId(Long noticeId) { this.noticeId = noticeId; }
     public Long getUserId() { return userId; }

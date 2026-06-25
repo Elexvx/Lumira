@@ -57,7 +57,7 @@ const run = async () => {
       () =>
         request('/ai/knowledge-bases', {
           method: 'POST',
-          data: { name: 'test', status: 'ENABLED', visibilityScope: 'TENANT' },
+          data: { name: 'test', status: 'ENABLED', visibilityScope: 'PLATFORM' },
           skipAuth: true,
           silent: true,
         }),

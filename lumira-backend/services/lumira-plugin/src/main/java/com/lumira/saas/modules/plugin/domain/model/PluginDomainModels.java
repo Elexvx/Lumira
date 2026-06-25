@@ -11,13 +11,11 @@ public final class PluginDomainModels {
     private PluginDomainModels() {
     }
 
-    public static final class TenantPluginAggregate extends AggregateRoot<String> {
-        private final Long tenantId;
+    public static final class PluginActivationAggregate extends AggregateRoot<String> {
         private boolean enabled;
 
-        public TenantPluginAggregate(String pluginCode, Long tenantId, boolean enabled) {
+        public PluginActivationAggregate(String pluginCode, boolean enabled) {
             super(EntityId.of(pluginCode));
-            this.tenantId = tenantId;
             this.enabled = enabled;
         }
 
@@ -27,10 +25,9 @@ public final class PluginDomainModels {
             }
             enabled = true;
             registerEvent(StandardDomainEvent.of(
-                    "PLUGIN_TENANT_ENABLED",
-                    "plugin.tenant-plugin",
+                    "PLUGIN_ENABLED",
+                    "plugin.activation",
                     id().value(),
-                    tenantId,
                     Map.of("version", version == null ? "" : version)
             ));
         }
@@ -41,17 +38,15 @@ public final class PluginDomainModels {
             }
             enabled = false;
             registerEvent(StandardDomainEvent.of(
-                    "PLUGIN_TENANT_DISABLED",
-                    "plugin.tenant-plugin",
+                    "PLUGIN_DISABLED",
+                    "plugin.activation",
                     id().value(),
-                    tenantId,
                     Map.of("reason", reason == null ? "unspecified" : reason)
             ));
         }
     }
 
     public record PluginManifestReadModel(
-            Long tenantId,
             String pluginCode,
             String version,
             Map<String, Object> manifest

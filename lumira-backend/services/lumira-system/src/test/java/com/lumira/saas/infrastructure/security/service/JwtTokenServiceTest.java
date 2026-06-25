@@ -112,7 +112,6 @@ class JwtTokenServiceTest {
         session.setSessionId("session-1");
         session.setUserId(1L);
         session.setUsername("tester");
-        session.setCurrentTenantId(10L);
         session.setSessionVersion(2);
         session.setLoginTime(Instant.now());
         session.setExpireTime(Instant.now().plusSeconds(604800));

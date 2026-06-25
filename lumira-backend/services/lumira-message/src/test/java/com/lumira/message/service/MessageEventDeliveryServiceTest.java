@@ -31,21 +31,12 @@ class MessageEventDeliveryServiceTest {
     }
 
     @Test
-    void deliverShouldRoutePlatformBroadcastToTenantSubscribers() {
+    void deliverShouldRoutePlatformBroadcastToAllSubscribers() {
         MessageEventDTO event = buildEvent("PLATFORM", null, null);
 
         deliveryService.deliver(event);
 
-        verify(registry).sendToTenant(1001L, event);
-    }
-
-    @Test
-    void deliverShouldKeepLegacyTenantBroadcastCompatible() {
-        MessageEventDTO event = buildEvent("TENANT", null, null);
-
-        deliveryService.deliver(event);
-
-        verify(registry).sendToTenant(1001L, event);
+        verify(registry).sendToAll(event);
     }
 
     @Test
@@ -54,7 +45,7 @@ class MessageEventDeliveryServiceTest {
 
         deliveryService.deliver(event);
 
-        verify(registry).sendToUser(1001L, 2001L, event);
+        verify(registry).sendToUser(2001L, event);
     }
 
     @Test
@@ -64,19 +55,17 @@ class MessageEventDeliveryServiceTest {
 
         deliveryService.deliver(event);
 
-        verify(registry).sendToUser(eq(1001L), eq(2001L), eq(event));
-        verify(registry).sendToUser(eq(1001L), eq(2002L), eq(event));
+        verify(registry).sendToUser(eq(2001L), eq(event));
+        verify(registry).sendToUser(eq(2002L), eq(event));
     }
 
     private MessageEventDTO buildEvent(String targetScope, Long targetUserId, Long targetRoleId) {
         MessageNoticeDTO notice = new MessageNoticeDTO();
-        notice.setTenantId(1001L);
         notice.setTargetScope(targetScope);
         notice.setTargetUserId(targetUserId);
         notice.setTargetRoleId(targetRoleId);
 
         MessageEventDTO event = new MessageEventDTO();
-        event.setTenantId(1001L);
         event.setUserId(targetUserId);
         event.setNotice(notice);
         event.setEventType("NOTICE_CREATED");

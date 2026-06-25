@@ -7,9 +7,8 @@ public final class CacheKeyConstants {
 
     public static final String PREFIX = "saas";
     public static final String SESSION = "session";
-    public static final String TENANT_CONTEXT = "tenant_context";
     public static final String SESSION_USER = "session_user";
-    public static final String ONLINE_SESSION_TENANT = "online_session_tenant";
+    public static final String ONLINE_SESSION = "online_session";
     public static final String ONLINE_SESSION_USER = "online_session_user";
     public static final String ONLINE_SESSION_LATEST_USER = "online_session_latest_user";
     public static final String ONLINE_SESSION_EVENTS = "online_session_events";
@@ -19,12 +18,12 @@ public final class CacheKeyConstants {
     public static final String WECHAT_LOGIN_STATE = "wechat_login_state";
     public static final String REPEAT_SUBMIT = "repeat_submit";
 
-    public static String tenantKey(String tenantId, String suffix) {
-        return String.join(":", PREFIX, "tenant", tenantId, suffix);
+    public static String globalKey(String suffix) {
+        return String.join(":", PREFIX, "global", suffix);
     }
 
-    public static String userKey(String tenantId, String userId, String suffix) {
-        return String.join(":", PREFIX, "tenant", tenantId, "user", userId, suffix);
+    public static String userKey(String userId, String suffix) {
+        return String.join(":", PREFIX, "user", userId, suffix);
     }
 
     public static String sessionKey(String sessionId) {
@@ -35,8 +34,8 @@ public final class CacheKeyConstants {
         return String.join(":", PREFIX, SESSION_USER, String.valueOf(userId), sessionId);
     }
 
-    public static String onlineSessionTenantKey(Long tenantId) {
-        return String.join(":", PREFIX, ONLINE_SESSION_TENANT, String.valueOf(tenantId));
+    public static String onlineSessionKey() {
+        return String.join(":", PREFIX, ONLINE_SESSION);
     }
 
     public static String onlineSessionUserKey(Long userId) {

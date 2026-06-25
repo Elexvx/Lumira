@@ -1,13 +1,11 @@
 package com.lumira.saas.modules.ai.app;
 
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.vo.AiVO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +32,7 @@ public interface AiToolPolicyService {
 
     boolean deletePolicy(CurrentUser currentUser, Long id);
 
-    PolicyDecision evaluate(Long tenantId, String toolCode, String actionType, String riskLevel, String message, Map<String, Object> arguments);
+    PolicyDecision evaluate(String toolCode, String actionType, String riskLevel, String message, Map<String, Object> arguments);
 
     record PolicyDecision(String verdict, String message, List<String> matches) {
         boolean denied() {
@@ -58,33 +56,30 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
 
     @Override
     public PageResponse<AiVO.ToolPolicyVO> listPolicies(CurrentUser currentUser, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
+        requireLogin(currentUser);
         long safePageNo = Math.max(1, pageNo);
         long safePageSize = Math.max(1, Math.min(MAX_PAGE_SIZE, pageSize));
         long offset = (safePageNo - 1) * safePageSize;
         List<AiVO.ToolPolicyVO> records = jdbcTemplate.query(
                 """
-                        select id, tenant_id as tenantId, policy_name as policyName, tool_code as toolCode,
+                        select id, policy_name as policyName, tool_code as toolCode,
                                action_type as actionType, risk_level as riskLevel, match_type as matchType,
                                match_value as matchValue, verdict, message, enabled,
                                create_time as createTime, update_time as updateTime
                         from ai_tool_policy
-                        where tenant_id = ?
-                          and is_deleted = 0
+                        where is_deleted = 0
                         order by id desc
                         limit ? offset ?
                         """,
                 new BeanPropertyRowMapper<>(AiVO.ToolPolicyVO.class),
-                tenantId,
                 safePageSize,
                 offset
         );
         long total = safePageNo == 1 && records.size() < safePageSize
                 ? records.size()
                 : nullToZero(jdbcTemplate.queryForObject(
-                "select count(1) from ai_tool_policy where tenant_id = ? and is_deleted = 0",
-                Long.class,
-                tenantId
+                "select count(1) from ai_tool_policy where is_deleted = 0",
+                Long.class
         ));
         PageResponse<AiVO.ToolPolicyVO> response = new PageResponse<>();
         response.setRecords(records);
@@ -101,15 +96,14 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
     @Override
     @Transactional
     public AiVO.ToolPolicyVO createPolicy(CurrentUser currentUser, AiDTO.ToolPolicyUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
+        requireLogin(currentUser);
         jdbcTemplate.update(
                 """
                         insert into ai_tool_policy (
-                            tenant_id, policy_name, tool_code, action_type, risk_level, match_type,
+                            policy_name, tool_code, action_type, risk_level, match_type,
                             match_value, verdict, message, enabled, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                         """,
-                tenantId,
                 requiredText(request.getPolicyName(), "策略名称不能为空"),
                 defaultText(request.getToolCode(), "*"),
                 normalizeText(request.getActionType()),
@@ -123,20 +117,20 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
                 LocalDateTime.now()
         );
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        return requirePolicy(tenantId, id);
+        return requirePolicy(id);
     }
 
     @Override
     @Transactional
     public AiVO.ToolPolicyVO updatePolicy(CurrentUser currentUser, Long id, AiDTO.ToolPolicyUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        requirePolicy(tenantId, id);
+        requireLogin(currentUser);
+        requirePolicy(id);
         jdbcTemplate.update(
                 """
                         update ai_tool_policy
                         set policy_name = ?, tool_code = ?, action_type = ?, risk_level = ?, match_type = ?,
                             match_value = ?, verdict = ?, message = ?, enabled = ?, update_time = ?
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 requiredText(request.getPolicyName(), "策略名称不能为空"),
                 defaultText(request.getToolCode(), "*"),
@@ -148,22 +142,20 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
                 normalizeText(request.getMessage()),
                 Boolean.FALSE.equals(request.getEnabled()) ? 0 : 1,
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
-        return requirePolicy(tenantId, id);
+        return requirePolicy(id);
     }
 
     @Override
     @Transactional
     public boolean updatePolicyEnabled(CurrentUser currentUser, Long id, boolean enabled) {
-        Long tenantId = currentTenantId(currentUser);
-        requirePolicy(tenantId, id);
+        requireLogin(currentUser);
+        requirePolicy(id);
         jdbcTemplate.update(
-                "update ai_tool_policy set enabled = ?, update_time = ? where tenant_id = ? and id = ? and is_deleted = 0",
+                "update ai_tool_policy set enabled = ?, update_time = ? where id = ? and is_deleted = 0",
                 enabled ? 1 : 0,
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
         return true;
@@ -172,32 +164,29 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
     @Override
     @Transactional
     public boolean deletePolicy(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
-        requirePolicy(tenantId, id);
+        requireLogin(currentUser);
+        requirePolicy(id);
         jdbcTemplate.update(
-                "update ai_tool_policy set is_deleted = 1, update_time = ? where tenant_id = ? and id = ? and is_deleted = 0",
+                "update ai_tool_policy set is_deleted = 1, update_time = ? where id = ? and is_deleted = 0",
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
         return true;
     }
 
     @Override
-    public PolicyDecision evaluate(Long tenantId, String toolCode, String actionType, String riskLevel, String message, Map<String, Object> arguments) {
+    public PolicyDecision evaluate(String toolCode, String actionType, String riskLevel, String message, Map<String, Object> arguments) {
         List<AiVO.ToolPolicyVO> policies = jdbcTemplate.query(
                 """
                         select id, policy_name as policyName, tool_code as toolCode, action_type as actionType,
                                risk_level as riskLevel, match_type as matchType, match_value as matchValue,
                                verdict, message, enabled
                         from ai_tool_policy
-                        where tenant_id = ?
-                          and enabled = 1
+                        where enabled = 1
                           and is_deleted = 0
                         order by id asc
                         """,
-                new BeanPropertyRowMapper<>(AiVO.ToolPolicyVO.class),
-                tenantId
+                new BeanPropertyRowMapper<>(AiVO.ToolPolicyVO.class)
         );
         String haystack = (String.valueOf(message) + "\n" + String.valueOf(arguments)).toLowerCase(Locale.ROOT);
         List<String> matches = new ArrayList<>();
@@ -220,22 +209,21 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
         return new PolicyDecision("ALLOW", firstText(decisionMessage, "平台防护规则通过"), matches);
     }
 
-    private AiVO.ToolPolicyVO requirePolicy(Long tenantId, Long id) {
+    private AiVO.ToolPolicyVO requirePolicy(Long id) {
         if (id == null) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "策略 ID 不能为空");
         }
         return jdbcTemplate.query(
                 """
-                        select id, tenant_id as tenantId, policy_name as policyName, tool_code as toolCode,
+                        select id, policy_name as policyName, tool_code as toolCode,
                                action_type as actionType, risk_level as riskLevel, match_type as matchType,
                                match_value as matchValue, verdict, message, enabled,
                                create_time as createTime, update_time as updateTime
                         from ai_tool_policy
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(AiVO.ToolPolicyVO.class),
-                tenantId,
                 id
         ).stream().findFirst().orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "AI 工具策略不存在"));
     }
@@ -293,10 +281,9 @@ class DefaultAiToolPolicyService implements AiToolPolicyService {
         return StringUtils.hasText(value) ? value : fallback;
     }
 
-    private Long currentTenantId(CurrentUser currentUser) {
+    private void requireLogin(CurrentUser currentUser) {
         if (currentUser == null) {
             throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 }

@@ -29,12 +29,9 @@ import type { ColumnsType } from 'antd/es/table';
 import {
   CopyOutlined,
   DeleteOutlined,
-  LikeOutlined,
   LinkOutlined,
-  MessageOutlined,
   PlusOutlined,
   SearchOutlined,
-  StarOutlined,
   TeamOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
@@ -361,7 +358,6 @@ const TeamListPage = () => {
     { title: '类型', dataIndex: 'teamType', render: (value) => <Tag>{optionLabel(teamTypeOptions, String(value))}</Tag> },
     { title: '可见性', dataIndex: 'visibility', render: (value) => optionLabel(visibilityOptions, String(value)) },
     { title: '加入方式', dataIndex: 'joinMode', render: (value) => optionLabel(joinModeOptions, String(value)) },
-    { title: 'Owner ID', dataIndex: 'ownerUserId' },
     { title: '成员数', dataIndex: 'memberCount' },
     { title: '状态', dataIndex: 'status', render: (value) => <Tag color={value === 'ACTIVE' ? 'green' : 'default'}>{statusLabel[String(value)] || String(value)}</Tag> },
     { title: '更新时间', dataIndex: 'updatedAt', render: (value) => value || '-' },
@@ -501,7 +497,7 @@ const TeamSearchPage = () => {
     return teams.filter((team) => {
       const matchesKeyword =
         !normalizedKeyword ||
-        [team.teamName, team.teamCode, team.description, String(team.ownerUserId)]
+        [team.teamName, team.teamCode, team.description]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(normalizedKeyword));
       const matchesType = activeType === 'ALL' || team.teamType === activeType;
@@ -522,7 +518,7 @@ const TeamSearchPage = () => {
             allowClear
             enterButton="搜索"
             prefix={<SearchOutlined />}
-            placeholder="请输入团队名称、编码、简介或 Owner ID"
+            placeholder="请输入团队名称、编码或简介"
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
             onSearch={setKeyword}
@@ -596,20 +592,8 @@ const TeamSearchPage = () => {
                       {team.description || '暂无团队简介，团队管理员可以在团队管理中补充说明。'}
                     </Typography.Paragraph>
                     <Space wrap className="team-search-result__meta">
-                      <Typography.Text type="secondary">Owner {team.ownerUserId}</Typography.Text>
                       <Typography.Link onClick={() => history.push(`/team/${team.id}`)}>{team.teamCode}</Typography.Link>
                       <Typography.Text type="secondary">{team.updatedAt || team.createdAt || '-'}</Typography.Text>
-                    </Space>
-                    <Space split={<Divider type="vertical" />} className="team-search-result__stats">
-                      <Typography.Text type="secondary">
-                        <StarOutlined /> {team.memberCount || 0}
-                      </Typography.Text>
-                      <Typography.Text type="secondary">
-                        <LikeOutlined /> {team.visibility === 'PUBLIC' ? 1 : 0}
-                      </Typography.Text>
-                      <Typography.Text type="secondary">
-                        <MessageOutlined /> {team.joinMode === 'APPLY' ? 1 : 0}
-                      </Typography.Text>
                     </Space>
                   </div>
                 </article>

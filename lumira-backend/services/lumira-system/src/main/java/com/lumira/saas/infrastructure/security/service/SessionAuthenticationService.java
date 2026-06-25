@@ -3,7 +3,6 @@ package com.lumira.saas.infrastructure.security.service;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.security.model.AuthSession;
 import com.lumira.saas.infrastructure.security.model.TokenClaims;
 import com.lumira.saas.infrastructure.security.model.TokenType;
@@ -137,7 +136,6 @@ public class SessionAuthenticationService {
             claims.setSessionId(sessionId);
             claims.setUserId(userId);
             claims.setUsername(session.getUsername());
-            claims.setCurrentTenantId(PlatformContext.compatibilityTenantId());
             claims.setSessionVersion(sessionVersion);
             claims.setTokenType(TokenType.ACCESS);
             validateSession(claims, session, Instant.now());
@@ -217,7 +215,6 @@ public class SessionAuthenticationService {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(claims.getUserId());
         currentUser.setUsername(claims.getUsername());
-        currentUser.setCurrentTenantId(PlatformContext.compatibilityTenantId());
         currentUser.setSimulatedRoleId(session.getSimulatedRoleId());
         currentUser.setSessionId(claims.getSessionId());
         currentUser.setSessionVersion(session.getSessionVersion());
@@ -258,21 +255,18 @@ public class SessionAuthenticationService {
             if (ownerRuntimeMetrics != null) {
                 ownerRuntimeMetrics.recordAuthPermissionSnapshotFromRole();
             }
-            PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadRoleSnapshot(
-                    PlatformContext.compatibilityTenantId(),
-                    session.getSimulatedRoleId()
-            );
+            PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadRoleSnapshot(session.getSimulatedRoleId());
             return new PermissionSnapshotResolution(snapshot, false);
         }
         if (hasPermissionSnapshot(session)) {
-            if (permissionSnapshotService.isSessionPermissionSnapshotCurrent(PlatformContext.compatibilityTenantId(), session.getPermissionsVersion())) {
+            if (permissionSnapshotService.isSessionPermissionSnapshotCurrent(session.getPermissionsVersion())) {
                 if (ownerRuntimeMetrics != null) {
                     ownerRuntimeMetrics.recordAuthPermissionSnapshotFromSession();
                 }
                 return new PermissionSnapshotResolution(fromSession(session), false);
             }
         }
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(PlatformContext.compatibilityTenantId(), claims.getUserId());
+        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(claims.getUserId());
         if (ownerRuntimeMetrics != null) {
             ownerRuntimeMetrics.recordAuthPermissionSnapshotFromUser();
         }

@@ -27,8 +27,6 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -61,16 +59,16 @@ class PaymentV2ControllerTest {
 
     @Test
     void providers_shouldAllowProtectedAdminAndDelegateToManagementService() {
-        CurrentUser admin = currentUser(1001L, "admin", 2002L, "payment:settings:view");
+        CurrentUser admin = currentUser(1001L, "admin", 0L, "payment:settings:view");
         PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
         settings.setProviderCode("stripe");
         when(securityContextFacade.getCurrentUser()).thenReturn(admin);
-        when(paymentManagementAppService.listProviderSettings(1001L)).thenReturn(List.of(settings));
+        when(paymentManagementAppService.listProviderSettings()).thenReturn(List.of(settings));
 
         var response = controller.providers();
 
         assertThat(response.getData()).containsExactly(settings);
-        verify(paymentManagementAppService).listProviderSettings(1001L);
+        verify(paymentManagementAppService).listProviderSettings();
         verify(permissionGuard, never()).requirePermission(admin, "payment:settings:view");
     }
 
@@ -82,27 +80,27 @@ class PaymentV2ControllerTest {
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("仅超级管理员");
 
-        verify(paymentManagementAppService, never()).listProviderSettings(1001L);
+        verify(paymentManagementAppService, never()).listProviderSettings();
     }
 
     @Test
-    void updateProvider_shouldDelegateWithPlatformTenantAndOperator() {
+    void updateProvider_shouldDelegateWithOperator() {
         CurrentUser admin = currentUser(1001L, "admin", null, "payment:settings:manage");
         PaymentProviderSettingsDTO request = new PaymentProviderSettingsDTO();
         PaymentProviderSettingsDTO result = new PaymentProviderSettingsDTO();
         result.setProviderCode("stripe");
         when(securityContextFacade.getCurrentUser()).thenReturn(admin);
-        when(paymentManagementAppService.updatePaymentProviderSettings(1001L, 1001L, "stripe", request)).thenReturn(result);
+        when(paymentManagementAppService.updatePaymentProviderSettings(1001L, "stripe", request)).thenReturn(result);
 
         var response = controller.updateProvider("stripe", request);
 
         assertThat(response.getData()).isSameAs(result);
-        verify(paymentManagementAppService).updatePaymentProviderSettings(1001L, 1001L, "stripe", request);
+        verify(paymentManagementAppService).updatePaymentProviderSettings(1001L, "stripe", request);
     }
 
     @Test
     void createOrder_shouldCheckPermissionAndDelegateToTransactionService() {
-        CurrentUser currentUser = currentUser(42L, "alice", 2002L, "payment:order:create");
+        CurrentUser currentUser = currentUser(42L, "alice", 0L, "payment:order:create");
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -117,13 +115,13 @@ class PaymentV2ControllerTest {
         );
         PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po_1", "会员订阅", 9900L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(paymentTransactionService.createOrder(1001L, 42L, request)).thenReturn(order);
+        when(paymentTransactionService.createOrder(42L, request)).thenReturn(order);
 
         var response = controller.createOrder(request);
 
         assertThat(response.getData()).isSameAs(order);
         verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
-        verify(paymentTransactionService).createOrder(1001L, 42L, request);
+        verify(paymentTransactionService).createOrder(42L, request);
     }
 
     @Test
@@ -132,25 +130,23 @@ class PaymentV2ControllerTest {
         PaymentCreateRefundRequestDTO request = new PaymentCreateRefundRequestDTO("REF-1", 100L, "CNY", "重复付款", Map.of(), "rid-1");
         PaymentRefundDTO refund = new PaymentRefundDTO("REF-1", "ORD-1", "stripe", "pr_1", 100L, "CNY", "PENDING", "重复付款", Map.of(), null, null, null, null, null);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(paymentTransactionService.createRefund(1001L, 42L, "ORD-1", request)).thenReturn(refund);
+        when(paymentTransactionService.createRefund(42L, "ORD-1", request)).thenReturn(refund);
 
         var response = controller.createRefund("ORD-1", request);
 
         assertThat(response.getData()).isSameAs(refund);
         verify(permissionGuard).requirePermission(currentUser, "payment:refund:create");
-        verify(paymentTransactionService).createRefund(1001L, 42L, "ORD-1", request);
+        verify(paymentTransactionService).createRefund(42L, "ORD-1", request);
     }
 
     @Test
-    void webhook_shouldResolveTenantFromProviderIdentityAndForwardHeaders() {
+    void webhook_shouldForwardProviderHeaders() {
         HttpServletRequest request = requestWithHeaders(Map.of(
-                "X-Tenant-Id", "2002",
                 "X-Signature", "sig",
                 "X-Nonce", "nonce-1"
         ));
         PaymentWebhookEventDTO event = new PaymentWebhookEventDTO("stripe", "evt-1", "payment.succeeded", true, true, "ok", LocalDateTime.now(), LocalDateTime.now());
         when(paymentWebhookService.handleWebhook("stripe", "{\"eventId\":\"evt-1\"}", Map.of(
-                "X-Tenant-Id", "2002",
                 "X-Signature", "sig",
                 "X-Nonce", "nonce-1"
         ))).thenReturn(event);
@@ -158,33 +154,30 @@ class PaymentV2ControllerTest {
         var response = controller.webhook("stripe", "{\"eventId\":\"evt-1\"}", request);
 
         assertThat(response.getData()).isSameAs(event);
-        verify(paymentManagementAppService, never()).resolveWebhookTenantId(anyString(), anyString(), anyMap());
         verify(paymentWebhookService).handleWebhook("stripe", "{\"eventId\":\"evt-1\"}", Map.of(
-                "X-Tenant-Id", "2002",
                 "X-Signature", "sig",
                 "X-Nonce", "nonce-1"
         ));
     }
 
     @Test
-    void webhook_shouldNotUseTenantHeaderAsTrustSource() {
-        HttpServletRequest request = requestWithHeaders(Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"));
+    void webhook_shouldOnlyNeedProviderHeader() {
+        HttpServletRequest request = requestWithHeaders(Map.of("X-Webhook-Token", "token-1"));
         PaymentWebhookEventDTO event = new PaymentWebhookEventDTO("paypal", "evt-2", "payment", false, false, "签名校验失败", LocalDateTime.now(), null);
-        when(paymentWebhookService.handleWebhook("paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"))).thenReturn(event);
+        when(paymentWebhookService.handleWebhook("paypal", "{}", Map.of("X-Webhook-Token", "token-1"))).thenReturn(event);
 
         var response = controller.webhook("paypal", "{}", request);
 
         assertThat(response.getData()).isSameAs(event);
-        verify(paymentManagementAppService, never()).resolveWebhookTenantId(anyString(), anyString(), anyMap());
-        verify(paymentWebhookService).handleWebhook("paypal", "{}", Map.of("X-Tenant-Id", "bad", "X-Webhook-Token", "token-1"));
+        verify(paymentWebhookService).handleWebhook("paypal", "{}", Map.of("X-Webhook-Token", "token-1"));
     }
 
     private CurrentUser currentUser(Long userId, String username, String permission) {
         return currentUser(userId, username, 1001L, permission);
     }
 
-    private CurrentUser currentUser(Long userId, String username, Long tenantId, String permission) {
-        return new CurrentUser(userId, username, tenantId, "session-1", 1, true, Set.of(permission));
+    private CurrentUser currentUser(Long userId, String username, Long legacyScopeId, String permission) {
+        return new CurrentUser(userId, username, legacyScopeId, "session-1", 1, true, Set.of(permission));
     }
 
     private HttpServletRequest requestWithHeaders(Map<String, String> headers) {

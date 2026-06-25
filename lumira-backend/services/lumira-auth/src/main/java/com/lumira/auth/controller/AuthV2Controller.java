@@ -58,12 +58,14 @@ public class AuthV2Controller {
     }
 
     @GetMapping("/current-user")
-    public ApiResponse<CurrentUserDTO> currentUser() {
+    public ApiResponse<CurrentUserDTO> currentUser(HttpServletResponse httpServletResponse) {
+        authCookieService.writeCsrfToken(httpServletResponse);
         return ApiResponse.success(authAppService.currentUser(), TraceContext.getRequestId());
     }
 
     @GetMapping("/bootstrap")
-    public ApiResponse<AuthBootstrapDTO> bootstrap() {
+    public ApiResponse<AuthBootstrapDTO> bootstrap(HttpServletResponse httpServletResponse) {
+        authCookieService.writeCsrfToken(httpServletResponse);
         return ApiResponse.success(authAppService.bootstrap(), TraceContext.getRequestId());
     }
 
@@ -77,7 +79,8 @@ public class AuthV2Controller {
     }
 
     @PostMapping("/session/keepalive")
-    public ApiResponse<Boolean> keepalive() {
+    public ApiResponse<Boolean> keepalive(HttpServletResponse httpServletResponse) {
+        authCookieService.writeCsrfToken(httpServletResponse);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 }

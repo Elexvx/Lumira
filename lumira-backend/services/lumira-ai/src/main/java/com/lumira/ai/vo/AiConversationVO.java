@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public record AiConversationVO(
         Long id,
-        Long tenantId,
         Long employeeId,
         Long ownerUserId,
         String employeeName,

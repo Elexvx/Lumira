@@ -3,7 +3,6 @@ package com.lumira.saas.modules.system.workorder.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 
@@ -23,18 +22,19 @@ public class WorkOrderFeedbackPluginStateService {
         if (currentUser == null || !currentUser.isAuthenticated()) {
             return false;
         }
-        Long tenantId = PlatformContext.compatibilityTenantId();
         boolean enabled = jdbcTemplate.exists(
                 """
                         select 1
-                        from sys_plugin_tenant
-                        where tenant_id = ?
-                          and plugin_code = ?
-                          and enabled = 1
-                          and deleted = 0
+                        from sys_plugin_definition d
+                        join sys_plugin_version v
+                          on v.plugin_code = d.plugin_code
+                         and v.is_active = 1
+                         and v.deleted = 0
+                        where d.plugin_code = ?
+                          and d.status = 'ENABLED'
+                          and d.deleted = 0
                         limit 1
                         """,
-                tenantId,
                 PLUGIN_CODE
         );
         return enabled && hasWorkOrderTable();

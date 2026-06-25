@@ -34,14 +34,14 @@ class FileSecurityScanProcessorTest {
         mockLocation(jdbcTemplate, "LOCAL", source, "txt");
         FileSecurityScanProcessor processor = processor(jdbcTemplate);
 
-        FileSecurityScanProcessor.SecurityScanResult result = processor.scan(1001L, 3001L, 2001L);
+        FileSecurityScanProcessor.SecurityScanResult result = processor.scan(3001L, 2001L);
 
         assertThat(result.engine()).isEqualTo(FileSecurityScanProcessor.ENGINE_NAME);
         assertThat(result.verdict()).isEqualTo(FileSecurityScanProcessor.VERDICT_CLEAN);
         assertThat(result.scannedBytes()).isEqualTo("hello Lumira".getBytes(StandardCharsets.ISO_8859_1).length);
         verifyArtifact(jdbcTemplate, "\"engine\":\"LUMIRA_INLINE_RULES\"");
         verifyArtifact(jdbcTemplate, "\"verdict\":\"CLEAN\"");
-        verify(jdbcTemplate, never()).update(anyString(), eq("QUARANTINED"), eq(2001L), eq(1001L), eq(3001L));
+        verify(jdbcTemplate, never()).update(anyString(), eq("QUARANTINED"), eq(2001L), eq(3001L));
     }
 
     @Test
@@ -54,12 +54,12 @@ class FileSecurityScanProcessorTest {
         mockLocation(jdbcTemplate, "LOCAL", source, "txt");
         FileSecurityScanProcessor processor = processor(jdbcTemplate);
 
-        FileSecurityScanProcessor.SecurityScanResult result = processor.scan(1001L, 3001L, 2001L);
+        FileSecurityScanProcessor.SecurityScanResult result = processor.scan(3001L, 2001L);
 
         assertThat(result.verdict()).isEqualTo(FileSecurityScanProcessor.VERDICT_THREAT_DETECTED);
         assertThat(result.reason()).isEqualTo("EICAR_TEST_SIGNATURE");
         verifyArtifact(jdbcTemplate, "\"verdict\":\"THREAT_DETECTED\"");
-        verify(jdbcTemplate).update(anyString(), eq("QUARANTINED"), eq(2001L), eq(1001L), eq(3001L));
+        verify(jdbcTemplate).update(anyString(), eq("QUARANTINED"), eq(2001L), eq(3001L));
     }
 
     @Test
@@ -69,12 +69,12 @@ class FileSecurityScanProcessorTest {
         mockLocation(jdbcTemplate, "LOCAL", source, "exe");
         FileSecurityScanProcessor processor = processor(jdbcTemplate);
 
-        FileSecurityScanProcessor.SecurityScanResult result = processor.scan(1001L, 3001L, 2001L);
+        FileSecurityScanProcessor.SecurityScanResult result = processor.scan(3001L, 2001L);
 
         assertThat(result.verdict()).isEqualTo(FileSecurityScanProcessor.VERDICT_REVIEW_REQUIRED);
         assertThat(result.reason()).isEqualTo("HIGH_RISK_EXTENSION");
         verifyArtifact(jdbcTemplate, "\"verdict\":\"REVIEW_REQUIRED\"");
-        verify(jdbcTemplate, never()).update(anyString(), eq("QUARANTINED"), eq(2001L), eq(1001L), eq(3001L));
+        verify(jdbcTemplate, never()).update(anyString(), eq("QUARANTINED"), eq(2001L), eq(3001L));
     }
 
     @Test
@@ -83,12 +83,12 @@ class FileSecurityScanProcessorTest {
         mockRemoteLocation(jdbcTemplate);
         FileSecurityScanProcessor processor = processor(jdbcTemplate);
 
-        FileSecurityScanProcessor.SecurityScanResult result = processor.scan(1001L, 3001L, 2001L);
+        FileSecurityScanProcessor.SecurityScanResult result = processor.scan(3001L, 2001L);
 
         assertThat(result.verdict()).isEqualTo(FileSecurityScanProcessor.VERDICT_UNSUPPORTED_STORAGE);
         assertThat(result.reason()).isEqualTo("REMOTE_STORAGE_NOT_SCANNED");
         verifyArtifact(jdbcTemplate, "\"verdict\":\"UNSUPPORTED_STORAGE\"");
-        verify(jdbcTemplate, never()).update(anyString(), eq("QUARANTINED"), eq(2001L), eq(1001L), eq(3001L));
+        verify(jdbcTemplate, never()).update(anyString(), eq("QUARANTINED"), eq(2001L), eq(3001L));
     }
 
     private Path writeFile(String relativePath, String content) throws Exception {
@@ -115,7 +115,7 @@ class FileSecurityScanProcessorTest {
 
     private void mockLocation(JdbcTemplate jdbcTemplate, String storageType, Path source, String extension) {
         String objectKey = tempDir.relativize(source).toString().replace('\\', '/');
-        when(jdbcTemplate.query(anyString(), Mockito.<RowMapper<?>>any(), eq(1001L), eq(3001L)))
+        when(jdbcTemplate.query(anyString(), Mockito.<RowMapper<?>>any(), eq(3001L)))
                 .thenAnswer(invocation -> {
                     RowMapper<?> mapper = invocation.getArgument(1);
                     var resultSet = mock(java.sql.ResultSet.class);
@@ -128,7 +128,7 @@ class FileSecurityScanProcessorTest {
     }
 
     private void mockRemoteLocation(JdbcTemplate jdbcTemplate) {
-        when(jdbcTemplate.query(anyString(), Mockito.<RowMapper<?>>any(), eq(1001L), eq(3001L)))
+        when(jdbcTemplate.query(anyString(), Mockito.<RowMapper<?>>any(), eq(3001L)))
                 .thenAnswer(invocation -> {
                     RowMapper<?> mapper = invocation.getArgument(1);
                     var resultSet = mock(java.sql.ResultSet.class);
@@ -144,7 +144,6 @@ class FileSecurityScanProcessorTest {
         ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
         verify(jdbcTemplate).update(
                 anyString(),
-                eq(1001L),
                 eq(3001L),
                 eq(FileProcessingTaskService.TASK_SECURITY_SCAN),
                 eq(FileSecurityScanProcessor.ARTIFACT_SECURITY_SCAN_RESULT),

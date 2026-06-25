@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public record FileProcessingArtifactDTO(
         Long id,
-        Long tenantId,
         Long fileId,
         String taskType,
         String artifactType,

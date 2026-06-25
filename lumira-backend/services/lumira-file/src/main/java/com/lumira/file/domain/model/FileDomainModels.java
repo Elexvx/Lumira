@@ -11,16 +11,14 @@ public final class FileDomainModels {
     }
 
     public static final class FileObjectAggregate extends AggregateRoot<Long> {
-        private final Long tenantId;
         private final long sizeBytes;
         private boolean deleted;
 
-        public FileObjectAggregate(Long fileId, Long tenantId, long sizeBytes) {
+        public FileObjectAggregate(Long fileId, long sizeBytes) {
             super(EntityId.of(fileId));
             if (sizeBytes < 0) {
                 throw new IllegalArgumentException("sizeBytes must not be negative");
             }
-            this.tenantId = tenantId;
             this.sizeBytes = sizeBytes;
         }
 
@@ -29,7 +27,6 @@ public final class FileDomainModels {
                     "FILE_OBJECT_UPLOADED",
                     "file.object",
                     String.valueOf(id().value()),
-                    tenantId,
                     Map.of("sizeBytes", sizeBytes, "contentType", contentType == null ? "" : contentType)
             ));
         }
@@ -43,13 +40,12 @@ public final class FileDomainModels {
                     "FILE_OBJECT_DELETED",
                     "file.object",
                     String.valueOf(id().value()),
-                    tenantId,
                     Map.of("sizeBytes", sizeBytes)
             ));
         }
     }
 
-    public record StorageSpace(Long spaceId, Long tenantId, long quotaBytes, long usedBytes) {
+    public record StorageSpace(Long spaceId, long quotaBytes, long usedBytes) {
 
         public boolean canAccept(long uploadBytes) {
             return uploadBytes >= 0 && usedBytes + uploadBytes <= quotaBytes;

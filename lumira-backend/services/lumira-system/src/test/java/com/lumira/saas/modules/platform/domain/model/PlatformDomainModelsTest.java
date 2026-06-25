@@ -12,7 +12,7 @@ class PlatformDomainModelsTest {
 
     @Test
     void configAggregateEmitsEventOnlyWhenValueChanges() {
-        ConfigAggregate config = new ConfigAggregate("branding.website-name", 1L, "Lumira");
+        ConfigAggregate config = new ConfigAggregate("branding.website-name", "Lumira");
 
         config.changeValue("Lumira");
         assertThat(config.domainEvents()).isEmpty();
@@ -24,20 +24,18 @@ class PlatformDomainModelsTest {
         assertThat(event.eventType()).isEqualTo("PLATFORM_CONFIG_CHANGED");
         assertThat(event.aggregateType()).isEqualTo("platform.config");
         assertThat(event.aggregateId()).isEqualTo("branding.website-name");
-        assertThat(event.tenantId()).isEqualTo(1L);
         assertThat(event.attributes()).containsEntry("configKey", "branding.website-name");
     }
 
     @Test
-    void runtimeAppearanceReadModelUsesTenantVersionScopeCacheKey() {
+    void runtimeAppearanceReadModelUsesVersionScopeCacheKey() {
         RuntimeAppearanceReadModel readModel = new RuntimeAppearanceReadModel(
-                1L,
                 5L,
                 Map.of("websiteName", "Lumira", "watermarkEnabled", true)
         );
 
         assertThat(readModel.cacheScope()).isEqualTo("platform.runtime-appearance");
-        assertThat(readModel.cacheKey()).isEqualTo("1:5:platform.runtime-appearance");
+        assertThat(readModel.cacheKey()).isEqualTo("5:platform.runtime-appearance");
         assertThat(readModel.settings()).containsEntry("websiteName", "Lumira");
     }
 }

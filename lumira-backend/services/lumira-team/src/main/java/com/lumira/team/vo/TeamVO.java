@@ -1,5 +1,7 @@
 package com.lumira.team.vo;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.LocalDateTime;
 
 public final class TeamVO {
@@ -8,7 +10,6 @@ public final class TeamVO {
 
     public static class Team {
         private Long id;
-        private Long tenantId;
         private String teamCode;
         private String teamName;
         private String teamType;
@@ -16,6 +17,7 @@ public final class TeamVO {
         private String description;
         private String visibility;
         private String joinMode;
+        @JsonIgnore
         private Long ownerUserId;
         private Integer memberCount;
         private String status;
@@ -24,8 +26,6 @@ public final class TeamVO {
         private LocalDateTime updatedAt;
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public String getTeamCode() { return teamCode; }
         public void setTeamCode(String teamCode) { this.teamCode = teamCode; }
         public String getTeamName() { return teamName; }
@@ -56,7 +56,6 @@ public final class TeamVO {
 
     public static class Member {
         private Long id;
-        private Long tenantId;
         private Long teamId;
         private Long userId;
         private String role;
@@ -72,8 +71,6 @@ public final class TeamVO {
         private LocalDateTime createdAt;
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public Long getTeamId() { return teamId; }
         public void setTeamId(Long teamId) { this.teamId = teamId; }
         public Long getUserId() { return userId; }
@@ -104,7 +101,6 @@ public final class TeamVO {
 
     public static class Invite {
         private Long id;
-        private Long tenantId;
         private Long teamId;
         private String inviteCode;
         private String inviteType;
@@ -119,8 +115,6 @@ public final class TeamVO {
         private String inviteUrl;
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public Long getTeamId() { return teamId; }
         public void setTeamId(Long teamId) { this.teamId = teamId; }
         public String getInviteCode() { return inviteCode; }
@@ -170,7 +164,6 @@ public final class TeamVO {
 
     public static class JoinRequest {
         private Long id;
-        private Long tenantId;
         private Long teamId;
         private Long userId;
         private Long inviteId;
@@ -182,8 +175,6 @@ public final class TeamVO {
         private LocalDateTime createdAt;
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public Long getTeamId() { return teamId; }
         public void setTeamId(Long teamId) { this.teamId = teamId; }
         public Long getUserId() { return userId; }

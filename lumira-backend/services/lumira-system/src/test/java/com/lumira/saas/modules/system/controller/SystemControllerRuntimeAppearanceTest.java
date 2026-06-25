@@ -64,7 +64,6 @@ class SystemControllerRuntimeAppearanceTest {
         CurrentUser currentUser = new CurrentUser(2001L, "alice", 1001L, "session-1", 1, true, Set.of("system:config:update"));
         FileObjectDTO uploaded = new FileObjectDTO(
                 10L,
-                1001L,
                 2001L,
                 "alice",
                 "logo.png",

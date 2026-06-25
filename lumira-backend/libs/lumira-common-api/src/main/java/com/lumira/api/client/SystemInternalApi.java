@@ -34,40 +34,40 @@ public interface SystemInternalApi {
     SystemUserSnapshotDTO findUserById( Long id);
 
 
-    List<SystemUserSnapshotDTO> usersByIds( Long tenantId, List<Long> userIds);
+    List<SystemUserSnapshotDTO> usersByIds(List<Long> userIds);
 
 
-    List<SystemRoleSnapshotDTO> rolesByIds( Long tenantId, List<Long> roleIds);
+    List<SystemRoleSnapshotDTO> rolesByIds(List<Long> roleIds);
 
 
-    List<SystemUserContactSnapshotDTO> userContactsByIds( Long tenantId, List<Long> userIds);
+    List<SystemUserContactSnapshotDTO> userContactsByIds(List<Long> userIds);
 
 
-    List<SystemUserContactSnapshotDTO> userContactsByRole( Long tenantId, Long roleId);
+    List<SystemUserContactSnapshotDTO> userContactsByRole(Long roleId);
 
 
-    List<SystemUserContactSnapshotDTO> platformUserContacts( Long tenantId);
+    List<SystemUserContactSnapshotDTO> platformUserContacts();
 
 
-    List<Long> userIdsByRole( Long tenantId, Long roleId);
+    List<Long> userIdsByRole(Long roleId);
 
     
     SystemUserSnapshotDTO resolveWechatLoginUser( WechatLoginUserRequestDTO request);
 
     
-    PermissionSnapshotDTO permissionSnapshot( Long tenantId,  Long userId);
+    PermissionSnapshotDTO permissionSnapshot(Long userId);
 
     
-    Boolean invalidatePermissionSnapshot( Long tenantId);
+    Boolean invalidatePermissionSnapshot();
 
 
     Boolean registerPluginPermissions( PluginPermissionRegistrationRequestDTO request);
 
 
-    Boolean bumpReadModelVersion( Long tenantId, String contextName, String scope, String eventKey);
+    Boolean bumpReadModelVersion(String contextName, String scope, String eventKey);
 
 
-    Long readModelVersion( Long tenantId, String contextName, String scope);
+    Long readModelVersion(String contextName, String scope);
 
     
     Boolean validateCaptcha( CaptchaValidationRequestDTO request);
@@ -79,25 +79,25 @@ public interface SystemInternalApi {
     Boolean recordOperationAudit( OperationAuditRecordRequestDTO request);
 
     
-    LoginCapabilitiesDTO loginCapabilities( Long tenantId);
+    LoginCapabilitiesDTO loginCapabilities();
 
     
-    SecuritySettingsDTO securitySettings( Long tenantId);
+    SecuritySettingsDTO securitySettings();
 
 
-    Map<String, String> platformConfigValues( Long tenantId, List<String> keys);
-
-    
-    WechatLoginSettingsDTO wechatLoginSettings( Long tenantId);
+    Map<String, String> platformConfigValues(List<String> keys);
 
     
-    PasskeySettingsDTO passkeySettings( Long tenantId);
+    WechatLoginSettingsDTO wechatLoginSettings();
+
+    
+    PasskeySettingsDTO passkeySettings();
 
     
     PasskeyCredentialDTO passkeyCredentialByCredentialId( String credentialId);
 
     
-    List<PasskeyCredentialDTO> passkeyCredentials( Long tenantId,  Long userId);
+    List<PasskeyCredentialDTO> passkeyCredentials(Long userId);
 
     
     PasskeyCredentialDTO savePasskeyCredential( PasskeyCredentialSaveRequestDTO request);
@@ -107,55 +107,48 @@ public interface SystemInternalApi {
 
     
     PasskeyCredentialDTO renamePasskeyCredential(
-             Long id,
-             Long tenantId,
-             Long userId,
-             String label
+              Long id,
+              Long userId,
+              String label
     );
 
     
-    Boolean deletePasskeyCredential( Long id,  Long tenantId,  Long userId);
+    Boolean deletePasskeyCredential(Long id, Long userId);
 
     
-    List<VerificationProviderDTO> listVerificationProviders( Long tenantId,  Long userId);
+    List<VerificationProviderDTO> listVerificationProviders(Long userId);
 
     
     List<com.lumira.api.auth.LoginResponseDTO.SecondFactorOptionDTO> listLoginSecondFactorOptions(
-             Long tenantId,
              Long userId
     );
 
     
     VerificationProviderDTO verificationProvider(
-             Long tenantId,
              Long userId,
              String factorCode
     );
 
     
     VerificationChallengeDTO bindVerificationProvider(
-             Long tenantId,
              Long userId,
              String factorCode
     );
 
     
     Boolean unbindVerificationProvider(
-             Long tenantId,
              Long userId,
              String factorCode
     );
 
     
     VerificationChallengeDTO verificationChallenge(
-             Long tenantId,
              Long userId,
              String factorCode
     );
 
     
     VerificationVerificationDTO verificationVerify(
-             Long tenantId,
              Long userId,
              String factorCode,
              String challengeId,
@@ -164,7 +157,6 @@ public interface SystemInternalApi {
 
     
     com.lumira.api.auth.LoginCodeChallengeDTO loginCodeChallenge(
-             Long tenantId,
              String account,
              String loginType
     );

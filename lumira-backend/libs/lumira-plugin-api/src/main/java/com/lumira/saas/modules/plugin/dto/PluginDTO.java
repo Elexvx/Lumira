@@ -2,7 +2,6 @@ package com.lumira.saas.modules.plugin.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
@@ -35,20 +34,10 @@ public final class PluginDTO {
     }
 
     public static class EnableRequest {
-        @NotNull
-        private Long tenantId;
         @NotBlank
         private String pluginCode;
         private String version;
         private String configJson;
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
 
         public String getPluginCode() {
             return pluginCode;
@@ -76,19 +65,9 @@ public final class PluginDTO {
     }
 
     public static class DisableRequest {
-        @NotNull
-        private Long tenantId;
         @NotBlank
         private String pluginCode;
         private Boolean purgeData;
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
 
         public String getPluginCode() {
             return pluginCode;
@@ -523,19 +502,6 @@ public final class PluginDTO {
 
         public void setSharedDeps(List<String> sharedDeps) {
             this.sharedDeps = sharedDeps;
-        }
-    }
-
-    public static class PluginStatusRequest {
-        @NotNull
-        private Long tenantId;
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
         }
     }
 }

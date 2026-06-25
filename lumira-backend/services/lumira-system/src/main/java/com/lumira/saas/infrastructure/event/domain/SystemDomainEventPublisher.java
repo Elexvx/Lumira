@@ -25,7 +25,6 @@ public class SystemDomainEventPublisher implements DomainEventPublisher {
         platformEventPublisher.publishAfterCommit(
                 resolveSourceType(event),
                 event.eventType(),
-                event.tenantId(),
                 null,
                 event.aggregateType(),
                 parseLong(event.aggregateId()),

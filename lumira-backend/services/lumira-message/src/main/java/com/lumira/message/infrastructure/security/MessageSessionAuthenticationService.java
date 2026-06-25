@@ -2,7 +2,6 @@ package com.lumira.message.infrastructure.security;
 
 import com.lumira.api.auth.CurrentUserDTO;
 import com.lumira.api.client.AuthInternalApi;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -69,7 +68,6 @@ public class MessageSessionAuthenticationService {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(snapshot.userId());
         currentUser.setUsername(snapshot.username());
-        currentUser.setCurrentTenantId(PlatformConstants.PLATFORM_TENANT_ID);
         currentUser.setSessionId(snapshot.sessionId());
         currentUser.setSessionVersion(snapshot.sessionVersion());
         currentUser.setAuthenticated(true);

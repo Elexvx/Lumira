@@ -24,9 +24,48 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AiEmployeeRuntimeServiceTest {
+
+    @Test
+    void defaultConversationUsesPersistedAssistantEmployeeId() {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        AiConversationService conversationService = mock(AiConversationService.class);
+        AiChatModelFactory chatModelFactory = mock(AiChatModelFactory.class);
+        AiChatModelFactory.AiChatClient chatClient = mock(AiChatModelFactory.AiChatClient.class);
+        AiLlmServiceConfigProvider configProvider = mock(AiLlmServiceConfigProvider.class);
+        DefaultAiEmployeeRuntimeService service = newService(
+                jdbcTemplate,
+                configProvider,
+                chatModelFactory,
+                conversationService,
+                mock(AiToolRegistry.class),
+                mock(AiSkillPermissionChecker.class),
+                mock(AiKnowledgeBaseAppService.class)
+        );
+        AiDTO.ChatRequest request = new AiDTO.ChatRequest();
+        request.setMessage("hello");
+        AiVO.ChatResponseVO modelResponse = new AiVO.ChatResponseVO();
+        modelResponse.setReplyText("OK");
+
+        when(conversationService.ensureConversation(anyLong(), eq(1L), isNull(), any())).thenReturn(10L);
+        when(conversationService.recordMessage(eq(10L), eq("USER"), any())).thenReturn(100L);
+        when(configProvider.findDefault()).thenReturn(Optional.empty());
+        when(chatModelFactory.create(nullable(AiLlmServiceConfig.class))).thenReturn(chatClient);
+        when(chatClient.chat(any(), any(), anyList())).thenReturn(modelResponse);
+
+        AiVO.ChatResponseVO response = service.chat(currentUser(), request);
+
+        assertThat(response.getConversationId()).isEqualTo(10L);
+        assertThat(jdbcTemplate.lastUpdateSql).contains("insert into ai_tool_audit_log");
+        assertThat(jdbcTemplate.lastUpdateArgs[3]).isEqualTo("chat.general");
+        assertThat(jdbcTemplate.lastUpdateArgs[6]).isEqualTo(0);
+        assertThat(jdbcTemplate.lastUpdateArgs[8]).isEqualTo("SUCCESS");
+        verify(conversationService).ensureConversation(anyLong(), eq(1L), isNull(), any());
+    }
 
     @Test
     void recordsFailureAuditWhenModelCallFails() {
@@ -49,11 +88,11 @@ class AiEmployeeRuntimeServiceTest {
         );
         AiDTO.ChatRequest request = chatRequest(List.of("customer.reply"));
 
-        when(conversationService.ensureConversation(anyLong(), anyLong(), anyLong(), isNull(), any())).thenReturn(10L);
-        when(conversationService.recordMessage(anyLong(), eq(10L), eq("USER"), any())).thenReturn(100L);
-        when(configProvider.findById(anyLong(), isNull())).thenReturn(Optional.empty());
-        when(configProvider.findDefaultForEmployee(anyLong(), anyLong())).thenReturn(Optional.empty());
-        when(toolRegistry.listRegisteredSkills(anyLong(), anyLong())).thenReturn(List.of());
+        when(conversationService.ensureConversation(anyLong(), anyLong(), isNull(), any())).thenReturn(10L);
+        when(conversationService.recordMessage(eq(10L), eq("USER"), any())).thenReturn(100L);
+        when(configProvider.findById(isNull())).thenReturn(Optional.empty());
+        when(configProvider.findDefaultForEmployee(anyLong())).thenReturn(Optional.empty());
+        when(toolRegistry.listRegisteredSkills(anyLong())).thenReturn(List.of());
         when(chatModelFactory.create(nullable(AiLlmServiceConfig.class))).thenReturn(chatClient);
         when(chatClient.chat(any(), any(), anyList())).thenThrow(new BizException(ErrorCode.BIZ_ERROR, "LLM 调用失败: timeout"));
 
@@ -89,7 +128,7 @@ class AiEmployeeRuntimeServiceTest {
 
         doThrow(new BizException(ErrorCode.FORBIDDEN, "技能已被禁用: data.export"))
                 .when(permissionChecker)
-                .verifyAllowed(anyLong(), anyLong(), eq(List.of("data.export")), eq(false));
+                .verifyAllowed(anyLong(), eq(List.of("data.export")), eq(false));
 
         assertThatThrownBy(() -> service.chat(currentUser(), request))
                 .isInstanceOf(BizException.class)
@@ -102,6 +141,42 @@ class AiEmployeeRuntimeServiceTest {
         assertThat(jdbcTemplate.lastUpdateArgs[5]).isEqualTo("deny");
         assertThat(jdbcTemplate.lastUpdateArgs[8]).isEqualTo("FAIL");
         assertThat(jdbcTemplate.lastUpdateArgs[9]).isEqualTo("技能已被禁用: data.export");
+    }
+
+    @Test
+    void skipsSkillPermissionCheckForPlainEmployeeChatWithoutRequestedSkills() {
+        StubQueryOperations jdbcTemplate = new StubQueryOperations();
+        AiConversationService conversationService = mock(AiConversationService.class);
+        AiChatModelFactory chatModelFactory = mock(AiChatModelFactory.class);
+        AiChatModelFactory.AiChatClient chatClient = mock(AiChatModelFactory.AiChatClient.class);
+        AiLlmServiceConfigProvider configProvider = mock(AiLlmServiceConfigProvider.class);
+        AiToolRegistry toolRegistry = mock(AiToolRegistry.class);
+        AiSkillPermissionChecker permissionChecker = mock(AiSkillPermissionChecker.class);
+        DefaultAiEmployeeRuntimeService service = newService(
+                jdbcTemplate,
+                configProvider,
+                chatModelFactory,
+                conversationService,
+                toolRegistry,
+                permissionChecker,
+                mock(AiKnowledgeBaseAppService.class)
+        );
+        AiDTO.ChatRequest request = chatRequest(List.of());
+        AiVO.ChatResponseVO modelResponse = new AiVO.ChatResponseVO();
+        modelResponse.setReplyText("OK");
+
+        when(conversationService.ensureConversation(anyLong(), anyLong(), isNull(), any())).thenReturn(10L);
+        when(conversationService.recordMessage(eq(10L), eq("USER"), any())).thenReturn(100L);
+        when(configProvider.findById(isNull())).thenReturn(Optional.empty());
+        when(configProvider.findDefaultForEmployee(anyLong())).thenReturn(Optional.empty());
+        when(toolRegistry.listRegisteredSkills(anyLong())).thenReturn(List.of());
+        when(chatModelFactory.create(nullable(AiLlmServiceConfig.class))).thenReturn(chatClient);
+        when(chatClient.chat(any(), any(), anyList())).thenReturn(modelResponse);
+
+        AiVO.ChatResponseVO response = service.chat(currentUser(), request);
+
+        assertThat(response.getConversationId()).isEqualTo(10L);
+        verify(permissionChecker, never()).verifyAllowed(anyLong(), anyList(), eq(false));
     }
 
     @Test
@@ -132,8 +207,8 @@ class AiEmployeeRuntimeServiceTest {
         toolResult.setMessage("工具调用成功");
         toolResult.setData(Map.of("total", 3L, "count", 1, "limit", 1));
 
-        when(conversationService.ensureConversation(anyLong(), anyLong(), anyLong(), isNull(), any())).thenReturn(10L);
-        when(conversationService.recordMessage(anyLong(), eq(10L), eq("USER"), any())).thenReturn(100L);
+        when(conversationService.ensureConversation(anyLong(), anyLong(), isNull(), any())).thenReturn(10L);
+        when(conversationService.recordMessage(eq(10L), eq("USER"), any())).thenReturn(100L);
         when(orchestrationService.tryPropose(any(), any())).thenReturn(Optional.of(plan));
         when(orchestrationService.confirm(any(), any())).thenReturn(toolResult);
 

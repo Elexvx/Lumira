@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public class PluginOutboxRow {
     private Long id;
-    private Long tenantId;
     private Long userId;
     private String eventType;
     private String eventKey;
@@ -21,8 +20,6 @@ public class PluginOutboxRow {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
     public String getEventType() { return eventType; }

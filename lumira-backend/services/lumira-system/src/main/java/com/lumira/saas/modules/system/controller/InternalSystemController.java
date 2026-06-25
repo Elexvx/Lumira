@@ -130,10 +130,9 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
 
     @GetMapping("/users")
     public List<SystemUserSnapshotDTO> usersByIds(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("ids") List<Long> userIds
     ) {
-        if (tenantId == null || userIds == null || userIds.isEmpty()) {
+        if (userIds == null || userIds.isEmpty()) {
             return List.of();
         }
         List<Long> normalizedIds = userIds.stream()
@@ -193,10 +192,9 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
 
     @GetMapping("/roles")
     public List<SystemRoleSnapshotDTO> rolesByIds(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("ids") List<Long> roleIds
     ) {
-        if (tenantId == null || roleIds == null || roleIds.isEmpty()) {
+        if (roleIds == null || roleIds.isEmpty()) {
             return List.of();
         }
         List<Long> normalizedIds = roleIds.stream()
@@ -209,14 +207,12 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         }
         String placeholders = String.join(",", normalizedIds.stream().map(ignored -> "?").toList());
         List<Object> params = new java.util.ArrayList<>();
-        params.add(tenantId);
         params.addAll(normalizedIds);
         return jdbcTemplate.query(
                 """
                         select id, role_code, role_name
                         from sys_role
-                        where tenant_id = ?
-                          and deleted = 0
+                        where deleted = 0
                           and id in (
                         """ + placeholders + """
                           )
@@ -232,31 +228,28 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     }
 
     @GetMapping("/roles/{roleId}/users")
-    public List<Long> userIdsByRole(@RequestParam("tenantId") Long tenantId, @PathVariable("roleId") Long roleId) {
-        if (tenantId == null || roleId == null) {
+    public List<Long> userIdsByRole(@PathVariable("roleId") Long roleId) {
+        if (roleId == null) {
             return List.of();
         }
         return jdbcTemplate.queryForList(
                 """
                         select distinct user_id
                         from sys_user_role
-                        where tenant_id = ?
-                          and role_id = ?
+                        where role_id = ?
                           and deleted = 0
                         order by user_id asc
                         """,
                 Long.class,
-                tenantId,
                 roleId
         );
     }
 
     @GetMapping("/users/contacts")
     public List<SystemUserContactSnapshotDTO> userContactsByIds(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("ids") List<Long> userIds
     ) {
-        if (tenantId == null || userIds == null || userIds.isEmpty()) {
+        if (userIds == null || userIds.isEmpty()) {
             return List.of();
         }
         List<Long> normalizedIds = userIds.stream()
@@ -291,10 +284,9 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
 
     @GetMapping("/roles/{roleId}/user-contacts")
     public List<SystemUserContactSnapshotDTO> userContactsByRole(
-            @RequestParam("tenantId") Long tenantId,
             @PathVariable("roleId") Long roleId
     ) {
-        if (tenantId == null || roleId == null) {
+        if (roleId == null) {
             return List.of();
         }
         return jdbcTemplate.query(
@@ -303,7 +295,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                         from sys_user u
                         join sys_user_role ur
                           on ur.user_id = u.id
-                         and ur.tenant_id = ?
                          and ur.role_id = ?
                          and ur.deleted = 0
                         left join sys_user_wechat_binding wb
@@ -314,16 +305,12 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                         order by u.id asc
                         """,
                 this::toContactSnapshot,
-                tenantId,
                 roleId
         );
     }
 
     @Override
-    public List<SystemUserContactSnapshotDTO> platformUserContacts(Long tenantId) {
-        if (tenantId == null) {
-            return List.of();
-        }
+    public List<SystemUserContactSnapshotDTO> platformUserContacts() {
         return jdbcTemplate.query(
                 """
                         select distinct u.id as user_id, u.username, u.email, wb.openid as wechat_openid
@@ -350,8 +337,8 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     }
 
     @GetMapping("/permissions/snapshot")
-    public PermissionSnapshotDTO permissionSnapshot(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
-        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(tenantId, userId);
+    public PermissionSnapshotDTO permissionSnapshot(@RequestParam("userId") Long userId) {
+        PermissionSnapshotService.PermissionSnapshot snapshot = permissionSnapshotService.loadSnapshot(userId);
         return new PermissionSnapshotDTO(
                 snapshot.getVersion(),
                 snapshot.getPermissionList(),
@@ -365,15 +352,15 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     }
 
     @PostMapping("/permissions/invalidate")
-    public Boolean invalidatePermissionSnapshot(@RequestParam("tenantId") Long tenantId) {
-        permissionSnapshotService.invalidateTenant(tenantId);
+    public Boolean invalidatePermissionSnapshot() {
+        permissionSnapshotService.invalidatePermissions();
         return Boolean.TRUE;
     }
 
     @PostMapping("/permissions/plugin")
     @Transactional
     public Boolean registerPluginPermissions(@Valid @RequestBody PluginPermissionRegistrationRequestDTO request) {
-        if (request == null || request.tenantId() == null || !StringUtils.hasText(request.pluginCode())) {
+        if (request == null || !StringUtils.hasText(request.pluginCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "插件权限注册参数不完整");
         }
         if (request.permissions() == null || request.permissions().isEmpty()) {
@@ -386,9 +373,9 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
             jdbcTemplate.update(
                     """
                             insert into sys_permission (
-                                tenant_id, permission_key, permission_name, permission_group, source_type,
+                                permission_key, permission_name, permission_group, source_type,
                                 plugin_code, created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, 'PLUGIN', ?, 0, 0, 0)
+                            ) values (?, ?, ?, 'PLUGIN', ?, 0, 0, 0)
                             on duplicate key update
                                 permission_name = values(permission_name),
                                 permission_group = values(permission_group),
@@ -396,7 +383,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                                 updated_at = current_timestamp,
                                 deleted = 0
                             """,
-                    request.tenantId(),
                     permission.permissionKey(),
                     StringUtils.hasText(permission.permissionName()) ? permission.permissionName() : permission.permissionKey(),
                     StringUtils.hasText(permission.permissionGroup()) ? permission.permissionGroup() : request.pluginCode(),
@@ -407,12 +393,10 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 """
                         select id
                         from sys_role
-                        where tenant_id = ?
-                          and role_code = 'ADMIN'
+                        where role_code = 'ADMIN'
                           and deleted = 0
                         """,
-                Long.class,
-                request.tenantId()
+                Long.class
         );
         for (Long roleId : adminRoleIds) {
             for (PluginPermissionRegistrationRequestDTO.Permission permission : request.permissions()) {
@@ -422,43 +406,41 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 jdbcTemplate.update(
                         """
                                 insert into sys_role_permission (
-                                    tenant_id, role_id, permission_key, created_by, updated_by, deleted
-                                ) values (?, ?, ?, 0, 0, 0)
+                                    role_id, permission_key, created_by, updated_by, deleted
+                                ) values (?, ?, 0, 0, 0)
                                 on duplicate key update
                                     updated_at = current_timestamp,
                                     deleted = 0
                                 """,
-                        request.tenantId(),
                         roleId,
                         permission.permissionKey()
                 );
             }
         }
-        permissionSnapshotService.invalidateTenant(request.tenantId());
+        permissionSnapshotService.invalidatePermissions();
         return Boolean.TRUE;
     }
 
     @PostMapping("/read-model-version/bump")
     public Boolean bumpReadModelVersion(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("contextName") String contextName,
             @RequestParam("scope") String scope,
             @RequestParam(value = "eventKey", required = false) String eventKey
     ) {
-        readModelVersionService.bump(tenantId, contextName, scope, eventKey);
+        readModelVersionService.bump(contextName, scope, eventKey);
         return Boolean.TRUE;
     }
 
     @GetMapping("/read-model-version")
     public Long readModelVersion(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("contextName") String contextName,
             @RequestParam("scope") String scope
     ) {
         try {
-            return readModelVersionService.getOrInitialize(tenantId, contextName, scope);
+            Long version = readModelVersionService.currentVersion(contextName, scope);
+            return version == null ? 0L : version;
         } catch (Exception exception) {
-            log.warn("Failed to read current read-model version for tenantId={} context={} scope={}", tenantId, contextName, scope, exception);
+            log.warn("Failed to read current read-model version for context={} scope={}", contextName, scope, exception);
             return 0L;
         }
     }
@@ -473,7 +455,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     public Boolean recordLoginAudit(@RequestBody LoginAuditRecordRequestDTO request) {
         loginAuditService.log(
                 request.userId(),
-                request.tenantId(),
                 request.username(),
                 request.loginType(),
                 request.loginResult(),
@@ -487,7 +468,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     @PostMapping("/audit/operation")
     public Boolean recordOperationAudit(@RequestBody OperationAuditRecordRequestDTO request) {
         operationAuditService.log(
-                request.tenantId(),
                 request.userId(),
                 request.username(),
                 request.moduleName(),
@@ -500,8 +480,8 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     }
 
     @GetMapping("/verification/login-capabilities")
-    public LoginCapabilitiesDTO loginCapabilities(@RequestParam("tenantId") Long tenantId) {
-        var capabilities = verificationAppService.loadLoginCapabilities(tenantId);
+    public LoginCapabilitiesDTO loginCapabilities() {
+        var capabilities = verificationAppService.loadLoginCapabilities();
         return new LoginCapabilitiesDTO(
                 Boolean.TRUE.equals(capabilities.getPasswordLoginAvailable()),
                 Boolean.TRUE.equals(capabilities.getSmsLoginAvailable()),
@@ -514,7 +494,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     }
 
     @GetMapping("/security/settings")
-    public SecuritySettingsDTO securitySettings(@RequestParam("tenantId") Long tenantId) {
+    public SecuritySettingsDTO securitySettings() {
         var settings = securitySettingsService.loadSettings();
         return new SecuritySettingsDTO(
                 settings.getIdleTimeoutSeconds(),
@@ -533,23 +513,19 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
 
     @GetMapping("/config/platform-values")
     public Map<String, String> platformConfigValues(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("keys") List<String> keys
     ) {
         if (keys == null || keys.isEmpty()) {
             return Map.of();
         }
-        Long effectiveTenantId = tenantId == null ? com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
         String placeholders = String.join(",", keys.stream().map(ignored -> "?").toList());
         List<Object> params = new java.util.ArrayList<>();
-        params.add(effectiveTenantId);
         params.addAll(keys);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 """
                         select config_key, config_value
                         from sys_config
-                        where tenant_id = ?
-                          and config_scope = 'PLATFORM'
+                        where config_scope = 'PLATFORM'
                           and deleted = 0
                           and config_key in (
                         """ + placeholders + """
@@ -570,13 +546,13 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     }
 
     @GetMapping("/verification/wechat-settings")
-    public WechatLoginSettingsDTO wechatLoginSettings(@RequestParam("tenantId") Long tenantId) {
-        return wechatLoginSettingsService.getInternalSettings(tenantId);
+    public WechatLoginSettingsDTO wechatLoginSettings() {
+        return wechatLoginSettingsService.getInternalSettings();
     }
 
     @GetMapping("/verification/passkey-settings")
-    public PasskeySettingsDTO passkeySettings(@RequestParam("tenantId") Long tenantId) {
-        var settings = verificationAppService.getPasskeySettings(tenantId);
+    public PasskeySettingsDTO passkeySettings() {
+        var settings = verificationAppService.getPasskeySettings();
         return new PasskeySettingsDTO(
                 settings.getEnabled(),
                 settings.getPasswordlessEnabled(),
@@ -594,8 +570,8 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     }
 
     @GetMapping("/passkeys")
-    public List<PasskeyCredentialDTO> passkeyCredentials(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
-        return passkeyCredentialAppService.list(tenantId, userId);
+    public List<PasskeyCredentialDTO> passkeyCredentials(@RequestParam("userId") Long userId) {
+        return passkeyCredentialAppService.list(userId);
     }
 
     @PostMapping("/passkeys")
@@ -611,87 +587,80 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     @PostMapping("/passkeys/{id}/label")
     public PasskeyCredentialDTO renamePasskeyCredential(
             @PathVariable("id") Long id,
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @RequestParam("label") String label
     ) {
-        return passkeyCredentialAppService.rename(id, tenantId, userId, label);
+        return passkeyCredentialAppService.rename(id, userId, label);
     }
 
     @PostMapping("/passkeys/{id}/delete")
-    public Boolean deletePasskeyCredential(@PathVariable("id") Long id, @RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
-        return passkeyCredentialAppService.delete(id, tenantId, userId);
+    public Boolean deletePasskeyCredential(@PathVariable("id") Long id, @RequestParam("userId") Long userId) {
+        return passkeyCredentialAppService.delete(id, userId);
     }
 
     @GetMapping("/verification/providers")
-    public List<VerificationProviderDTO> listVerificationProviders(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
-        return verificationAppService.listProviders(tenantId, userId).stream().map(this::toProvider).toList();
+    public List<VerificationProviderDTO> listVerificationProviders(@RequestParam("userId") Long userId) {
+        return verificationAppService.listProviders(userId).stream().map(this::toProvider).toList();
     }
 
     @GetMapping("/verification/login-options")
-    public List<LoginResponseDTO.SecondFactorOptionDTO> listLoginSecondFactorOptions(@RequestParam("tenantId") Long tenantId, @RequestParam("userId") Long userId) {
+    public List<LoginResponseDTO.SecondFactorOptionDTO> listLoginSecondFactorOptions(@RequestParam("userId") Long userId) {
         return userDomainService.findById(userId)
-                .map(user -> verificationAppService.listLoginOptions(user, tenantId).stream().map(this::toSecondFactorOption).toList())
+                .map(user -> verificationAppService.listLoginOptions(user).stream().map(this::toSecondFactorOption).toList())
                 .orElseGet(List::of);
     }
 
     @GetMapping("/verification/providers/{factorCode}")
     public VerificationProviderDTO verificationProvider(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @PathVariable("factorCode") String factorCode
     ) {
-        return toProvider(verificationAppService.provider(tenantId, userId, factorCode));
+        return toProvider(verificationAppService.provider(userId, factorCode));
     }
 
     @PostMapping("/verification/providers/{factorCode}/bind")
     public VerificationChallengeDTO bindVerificationProvider(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @PathVariable("factorCode") String factorCode
     ) {
-        return toChallenge(verificationAppService.bind(tenantId, userId, factorCode));
+        return toChallenge(verificationAppService.bind(userId, factorCode));
     }
 
     @PostMapping("/verification/providers/{factorCode}/unbind")
     public Boolean unbindVerificationProvider(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @PathVariable("factorCode") String factorCode
     ) {
-        return verificationAppService.unbind(tenantId, userId, factorCode);
+        return verificationAppService.unbind(userId, factorCode);
     }
 
     @PostMapping("/verification/providers/{factorCode}/challenge")
     public VerificationChallengeDTO verificationChallenge(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @PathVariable("factorCode") String factorCode
     ) {
-        return toChallenge(verificationAppService.challenge(tenantId, userId, factorCode));
+        return toChallenge(verificationAppService.challenge(userId, factorCode));
     }
 
     @PostMapping("/verification/providers/{factorCode}/verify")
     public VerificationVerificationDTO verificationVerify(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @PathVariable("factorCode") String factorCode,
             @RequestParam("challengeId") String challengeId,
             @RequestParam("verificationCode") String verificationCode
     ) {
-        return toVerification(verificationAppService.completeBind(tenantId, userId, factorCode, challengeId, verificationCode), factorCode);
+        return toVerification(verificationAppService.completeBind(userId, factorCode, challengeId, verificationCode), factorCode);
     }
 
     @PostMapping("/verification/login-code/challenge")
     @Transactional
     public LoginCodeChallengeDTO loginCodeChallenge(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("account") String account,
             @RequestParam("loginType") String loginType
     ) {
         SysUserEntity user = userDomainService.findLoginUser(account)
-                .orElseGet(() -> registerLoginCodeUser(tenantId, account, loginType));
-        var challenge = verificationAppService.startLoginCodeChallenge(user, tenantId, loginType);
+                .orElseGet(() -> registerLoginCodeUser(account, loginType));
+        var challenge = verificationAppService.startLoginCodeChallenge(user, loginType);
         LoginCodeChallengeDTO dto = new LoginCodeChallengeDTO();
         dto.setLoginType(challenge.getLoginType());
         dto.setFactorName(challenge.getFactorName());
@@ -723,21 +692,20 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
 
     @GetMapping("/menus/builtin")
     public List<MenuNodeDTO> builtinMenus() {
-        return listSystemMenusFromDatabase(1001L).stream().map(this::toMenuNode).toList();
+        return listSystemMenusFromDatabase().stream().map(this::toMenuNode).toList();
     }
 
-    private List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> listSystemMenusFromDatabase(Long tenantId) {
+    private List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> listSystemMenusFromDatabase() {
         List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> menus = jdbcTemplate.query(
                 """
-                        select id, tenant_id as tenantId, parent_id as parentId, menu_code as menuCode,
+                        select id, parent_id as parentId, menu_code as menuCode,
                                menu_name as menuName, menu_type as menuType, path, component, icon, sort_no as sortNo,
                                permission_key as permissionKey, status
                         from sys_menu
-                        where tenant_id = ? and deleted = 0 and status = 'ENABLED'
+                        where deleted = 0 and status = 'ENABLED'
                         order by sort_no asc, id asc
                         """,
-                new BeanPropertyRowMapper<>(com.lumira.saas.modules.system.vo.SystemVO.MenuVO.class),
-                tenantId
+                new BeanPropertyRowMapper<>(com.lumira.saas.modules.system.vo.SystemVO.MenuVO.class)
         );
         return buildSystemMenuTree(menus);
     }
@@ -805,7 +773,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
 
     private SysUserEntity findWechatBoundUser(String unionid, String openid) {
         if (!StringUtils.hasText(openid)) {
-            throw new IllegalArgumentException("寰俊 openid 涓嶈兘涓虹┖");
+            throw new IllegalArgumentException("微信 openid 不能为空");
         }
         String normalizedUnionid = StringUtils.hasText(unionid) ? unionid.trim() : "";
         List<Long> userIds = jdbcTemplate.query(
@@ -841,7 +809,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 username,
                 passwordEncoder.encode(UUID.randomUUID().toString()),
                 null,
-                "寰俊鐢ㄦ埛",
+                "微信用户",
                 null,
                 null,
                 null,
@@ -855,26 +823,26 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 0L
         );
         SysUserEntity user = userDomainService.findLoginUser(username)
-                .orElseThrow(() -> new IllegalStateException("寰俊鐧诲綍鑷姩娉ㄥ唽鐢ㄦ埛澶辫触"));
-        grantDefaultLoginRole(user.getId(), com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
-        permissionSnapshotService.invalidateTenant(com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID);
+                .orElseThrow(() -> new IllegalStateException("微信登录自动注册用户失败"));
+        grantDefaultLoginRole(user.getId());
+        permissionSnapshotService.invalidatePermissions();
         return user;
     }
 
-    private SysUserEntity registerLoginCodeUser(Long tenantId, String account, String loginType) {
+    private SysUserEntity registerLoginCodeUser(String account, String loginType) {
         String normalizedLoginType = normalizeLoginCodeType(loginType);
         String identityType = iamUserService.detectIdentityType(account);
         if (FACTOR_SMS.equals(normalizedLoginType) && !IamUserService.IDENTITY_MOBILE.equals(identityType)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "短信验证码登录请使用手机号");
         }
         if (FACTOR_EMAIL.equals(normalizedLoginType) && !IamUserService.IDENTITY_EMAIL.equals(identityType)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "閭楠岃瘉鐮佺櫥褰曡浣跨敤閭鍦板潃");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "邮箱验证码登录请使用邮箱地址");
         }
 
         String normalizedAccount = iamUserService.normalizeIdentifier(identityType, account);
         String username = nextLoginCodeUsername(normalizedLoginType, normalizedAccount);
         String randomPassword = passwordEncoder.encode(UUID.randomUUID().toString());
-        String nickname = FACTOR_SMS.equals(normalizedLoginType) ? "鐭俊娉ㄥ唽鐢ㄦ埛" : "閭娉ㄥ唽鐢ㄦ埛";
+        String nickname = FACTOR_SMS.equals(normalizedLoginType) ? "短信注册用户" : "邮箱注册用户";
         jdbcTemplate.update(
                 """
                         insert into sys_user (
@@ -905,18 +873,18 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 .orElseThrow(() -> new IllegalStateException("验证码登录自动注册用户失败"));
         iamUserService.createUserWithIdentity(user, normalizedAccount, "LOGIN_CODE_REGISTER");
         iamUserService.recordUserRegistered(user.getId(), "LOGIN_CODE_REGISTER", null, null);
-        grantDefaultLoginRole(user.getId(), tenantId);
-        permissionSnapshotService.invalidateTenant(tenantId);
+        grantDefaultLoginRole(user.getId());
+        permissionSnapshotService.invalidatePermissions();
         return user;
     }
 
     private String normalizeLoginCodeType(String loginType) {
         if (!StringUtils.hasText(loginType)) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "鐧诲綍鏂瑰紡涓嶈兘涓虹┖");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "登录方式不能为空");
         }
         String normalized = loginType.trim().toLowerCase(Locale.ROOT);
         if (!FACTOR_SMS.equals(normalized) && !FACTOR_EMAIL.equals(normalized)) {
-            throw new BizException(ErrorCode.NOT_FOUND, "楠岃瘉鐮佺櫥褰曟柟寮忎笉瀛樺湪");
+            throw new BizException(ErrorCode.NOT_FOUND, "验证码登录方式不存在");
         }
         return normalized;
     }
@@ -985,18 +953,17 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         );
     }
 
-    private void grantDefaultLoginRole(Long userId, Long tenantId) {
-        String roleCode = resolveDefaultRegistrationRoleCode(tenantId);
+    private void grantDefaultLoginRole(Long userId) {
+        String roleCode = resolveDefaultRegistrationRoleCode();
         Long roleId = jdbcTemplate.query(
                 """
                         select id
                         from sys_role
-                        where tenant_id = ? and role_code = ? and deleted = 0
+                        where role_code = ? and deleted = 0
                         order by id desc
                         limit 1
                         """,
                 rs -> rs.next() ? rs.getLong("id") : null,
-                tenantId,
                 roleCode
         );
         if (roleId == null) {
@@ -1004,31 +971,29 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                     """
                             select id
                             from sys_role
-                            where tenant_id = ? and role_code = ? and deleted = 0
+                            where role_code = ? and deleted = 0
                             order by id desc
                             limit 1
                             """,
                     rs -> rs.next() ? rs.getLong("id") : null,
-                    tenantId,
                     DEFAULT_REGISTRATION_ROLE_CODE
             );
         }
         if (roleId == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "榛樿娉ㄥ唽瑙掕壊涓嶅瓨鍦紝璇峰厛鍒涘缓鍙敤瑙掕壊");
+            throw new BizException(ErrorCode.NOT_FOUND, "默认注册角色不存在，请先创建可用角色");
         }
         jdbcTemplate.update(
                 """
-                        insert into sys_user_role (tenant_id, user_id, role_id, created_by, updated_by, deleted)
-                        values (?, ?, ?, 0, 0, 0)
+                        insert into sys_user_role (user_id, role_id, created_by, updated_by, deleted)
+                        values (?, ?, 0, 0, 0)
                         on duplicate key update updated_by = 0, updated_at = current_timestamp, deleted = 0
                         """,
-                tenantId,
                 userId,
                 roleId
         );
     }
 
-    private String resolveDefaultRegistrationRoleCode(Long tenantId) {
+    private String resolveDefaultRegistrationRoleCode() {
         String roleCode = jdbcTemplate.query(
                 """
                         select config_value
@@ -1036,14 +1001,11 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                         where deleted = 0
                           and config_scope = 'PLATFORM'
                           and config_key = ?
-                          and (tenant_id = ? or tenant_id is null)
-                        order by case when tenant_id = ? then 0 else 1 end, id desc
+                        order by id desc
                         limit 1
                         """,
                 rs -> rs.next() ? rs.getString("config_value") : null,
-                DEFAULT_REGISTRATION_ROLE_CODE_KEY,
-                tenantId,
-                tenantId
+                DEFAULT_REGISTRATION_ROLE_CODE_KEY
         );
         return StringUtils.hasText(roleCode) ? roleCode.trim() : DEFAULT_REGISTRATION_ROLE_CODE;
     }
@@ -1087,7 +1049,6 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                 Boolean.TRUE.equals(verification.getVerified()),
                 verification.getMessage(),
                 verification.getUserId(),
-                verification.getTenantId(),
                 factorCode
         );
     }

@@ -6,10 +6,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TeamInviteRepository {
-    boolean existsActiveCode(Long tenantId, String inviteCode);
+    boolean existsActiveCode(String inviteCode);
 
     Long createInvite(
-            Long tenantId,
             Long teamId,
             String inviteCode,
             String tokenHash,
@@ -21,17 +20,17 @@ public interface TeamInviteRepository {
             Long createdBy
     );
 
-    TeamVO.Invite findById(Long tenantId, Long teamId, Long inviteId);
+    TeamVO.Invite findById(Long teamId, Long inviteId);
 
     TeamVO.Invite findByTokenHash(String tokenHash);
 
-    TeamVO.Invite findByCode(Long tenantId, String inviteCode);
+    TeamVO.Invite findByCode(String inviteCode);
 
-    List<TeamVO.Invite> listInvites(Long tenantId, Long teamId);
+    List<TeamVO.Invite> listInvites(Long teamId);
 
     boolean consumeInviteQuota(TeamVO.Invite invite);
 
-    boolean disableInvite(Long tenantId, Long teamId, Long inviteId);
+    boolean disableInvite(Long teamId, Long inviteId);
 
-    void disableInvitesByTeam(Long tenantId, Long teamId);
+    void disableInvitesByTeam(Long teamId);
 }

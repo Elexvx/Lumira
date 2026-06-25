@@ -31,7 +31,7 @@ public class DddArchitectureCatalogController {
                             context("Platform", "system-service", "supporting", "Config, Dict, Audit, RuntimeAppearance, Monitor, OnlineSession"),
                             context("Message", "message-service", "supporting", "Notice, ReadState, DeliveryLog, RealtimeTicket"),
                             context("File", "file-service", "generic", "FileObject, StorageSpace, UploadSession, FileProcessingTask"),
-                            context("Plugin", "plugin-service", "supporting", "PluginDefinition, PluginVersion, TenantPlugin, RuntimePolicy"),
+                            context("Plugin", "plugin-service", "supporting", "PluginDefinition, PluginVersion, PluginAvailability, RuntimePolicy"),
                             context("Localization", "localization-service", "supporting", "Language, Namespace, Entry, Translation, Release"),
                             context("Payment", "payment-service", "supporting", "PaymentOrder, Refund, ProviderConfig, WebhookEvent"),
                             context("AI", "system-service", "enhancement", "AiEmployee, Skill, LlmService, KnowledgeBase, Conversation"),
@@ -58,7 +58,7 @@ public class DddArchitectureCatalogController {
                     domainType,
                     primaryModels,
                     List.of(name.toUpperCase() + "_EVENTS"),
-                    "tenantId:version:scope"
+                    "context:scope:version"
             );
         }
     }

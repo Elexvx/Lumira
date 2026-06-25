@@ -41,7 +41,6 @@ interface NotificationChannelRecord {
 
 const TARGET_SCOPE_LABELS: Record<string, string> = {
   PLATFORM: t('全员', 'All users'),
-  TENANT: t('全员', 'All users'),
   USER: t('指定用户', 'Specific users'),
   ROLE: t('角色分组', 'Role groups'),
 };

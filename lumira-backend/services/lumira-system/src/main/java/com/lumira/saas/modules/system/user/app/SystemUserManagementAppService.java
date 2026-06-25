@@ -8,7 +8,6 @@ import com.lumira.common.security.data.DataPermissionRule;
 import com.lumira.common.security.data.DataPermissionResolver;
 import com.lumira.common.security.data.DataScopeType;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserAccount;
@@ -44,7 +43,6 @@ import java.util.concurrent.CompletableFuture;
 @Service
 public class SystemUserManagementAppService {
 
-    private static final Long DEFAULT_PUBLIC_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
     private static final String RESOURCE_SYSTEM_USER = "system:user";
@@ -99,7 +97,7 @@ public class SystemUserManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long tenantId = currentTenantId(currentUser);
+        assertAuthenticated(currentUser);
         String baseSql = """
                 from sys_user u
                 left join iam_user iu
@@ -149,7 +147,7 @@ public class SystemUserManagementAppService {
             params.add(iamUserService.normalizeIdentifier(IamUserService.IDENTITY_EMAIL, email));
         }
         if (deptId != null) {
-            Set<Long> visibleDeptIds = queryDepartmentAndDescendantIds(tenantId, deptId);
+            Set<Long> visibleDeptIds = queryDepartmentAndDescendantIds(deptId);
             if (visibleDeptIds.isEmpty()) {
                 baseSql += " and 1 = 0";
             } else {
@@ -157,13 +155,11 @@ public class SystemUserManagementAppService {
                          and exists (
                              select 1
                              from sys_user_department ud_filter
-                             where ud_filter.tenant_id = ?
-                               and ud_filter.user_id = u.id
+                             where ud_filter.user_id = u.id
                                and ud_filter.dept_id in (%s)
                                and ud_filter.deleted = 0
-                         )
-                        """.formatted(placeholders(visibleDeptIds.size()));
-                params.add(tenantId);
+                          )
+                         """.formatted(placeholders(visibleDeptIds.size()));
                 params.addAll(visibleDeptIds);
             }
         }
@@ -225,18 +221,19 @@ public class SystemUserManagementAppService {
         PageResponse<SystemVO.UserVO> page = cursorMode
                 ? cursorQuery(selectSql, SystemVO.UserVO.class, pageSize, params)
                 : pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.UserVO.class, pageNo, pageSize, params);
-        decorateUsers(page.getRecords(), tenantId);
+        decorateUsers(page.getRecords());
         maskSensitiveUsers(page.getRecords(), canViewSensitiveUserInfo(currentUser));
         return page;
     }
 
     public SystemVO.UserDetailVO getUser(CurrentUser currentUser, Long userId) {
+        assertAuthenticated(currentUser);
         requireAccessibleUserRecord(currentUser, userId);
         return buildUserDetail(currentUser, userId);
     }
 
     private SystemVO.UserDetailVO buildUserDetail(CurrentUser currentUser, Long userId) {
-        Long tenantId = currentTenantId(currentUser);
+        assertAuthenticated(currentUser);
         SystemVO.UserVO user = queryUser(userId);
         boolean canViewSensitive = canViewSensitiveUserInfo(currentUser);
         if (!canViewSensitive) {
@@ -244,10 +241,10 @@ public class SystemUserManagementAppService {
         }
         SystemVO.UserDetailVO detail = new SystemVO.UserDetailVO();
         copyUser(detail, user);
-        CompletableFuture<List<Long>> roleIdsFuture = CompletableFuture.supplyAsync(() -> listUserRoleIds(userId, tenantId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<Long>> deptIdsFuture = CompletableFuture.supplyAsync(() -> listUserDeptIds(userId, tenantId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(() -> listUserRoleNames(userId, tenantId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<String>> deptNamesFuture = CompletableFuture.supplyAsync(() -> listUserDeptNames(userId, tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<Long>> roleIdsFuture = CompletableFuture.supplyAsync(() -> listUserRoleIds(userId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<Long>> deptIdsFuture = CompletableFuture.supplyAsync(() -> listUserDeptIds(userId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(() -> listUserRoleNames(userId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<List<String>> deptNamesFuture = CompletableFuture.supplyAsync(() -> listUserDeptNames(userId), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<UserDetailVO.UserIdentityVO>> identitiesFuture = CompletableFuture.supplyAsync(
                 () -> iamUserService.listIdentities(userId).stream()
                         .map(identity -> toUserIdentityVO(identity, canViewSensitive))
@@ -270,8 +267,6 @@ public class SystemUserManagementAppService {
         List<Long> deptIds = deptIdsFuture.join();
         detail.setDeptIds(deptIds);
         detail.setPrimaryDeptId(deptIds.isEmpty() ? null : deptIds.get(0));
-        detail.setTenantIds(List.of());
-        detail.setTenantNames(List.of());
         detail.setRoleNames(roleNamesFuture.join());
         detail.setDeptNames(deptNamesFuture.join());
         detail.setIdentities(identitiesFuture.join());
@@ -282,29 +277,30 @@ public class SystemUserManagementAppService {
 
     @Transactional
     public SystemVO.UserDetailVO createUser(CurrentUser currentUser, SystemDTO.UserUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
+        assertAuthenticated(currentUser);
         Long userId = insertOrUpdateUser(null, request, currentUser.getUserId());
-        replaceUserRoles(userId, tenantId, request.getRoleIds(), currentUser.getUserId());
-        replaceUserDepartments(userId, tenantId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), true);
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "创建用户: " + request.getUsername());
+        replaceUserRoles(userId, request.getRoleIds(), currentUser.getUserId());
+        replaceUserDepartments(userId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), true);
+        permissionSnapshotService.invalidatePermissions();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "user", "create", "CREATE", "SUCCESS", "创建用户: " + request.getUsername());
         return buildUserDetail(currentUser, userId);
     }
 
     @Transactional
     public SystemVO.UserDetailVO updateUser(CurrentUser currentUser, Long userId, SystemDTO.UserUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
+        assertAuthenticated(currentUser);
         requireAccessibleUserRecord(currentUser, userId);
         insertOrUpdateUser(userId, request, currentUser.getUserId());
-        replaceUserRoles(userId, tenantId, request.getRoleIds(), currentUser.getUserId());
-        replaceUserDepartments(userId, tenantId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), false);
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
+        replaceUserRoles(userId, request.getRoleIds(), currentUser.getUserId());
+        replaceUserDepartments(userId, request.getDeptIds(), request.getPrimaryDeptId(), currentUser.getUserId(), false);
+        permissionSnapshotService.invalidatePermissions();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "user", "update", "UPDATE", "SUCCESS", "更新用户: " + request.getUsername());
         return buildUserDetail(currentUser, userId);
     }
 
     @Transactional
     public boolean updateUserStatus(CurrentUser currentUser, Long userId, String status) {
+        assertAuthenticated(currentUser);
         requireAccessibleUserRecord(currentUser, userId);
         String normalizedStatus = normalizeUserStatus(status);
         if (isProtectedAdminAccount(userId, null) && "DISABLED".equals(normalizedStatus)) {
@@ -321,56 +317,51 @@ public class SystemUserManagementAppService {
         if ("DISABLED".equals(normalizedStatus)) {
             onlineSessionManagementAppService.revokeUserSessions(userId);
         }
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + normalizedStatus);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "user", "status", "UPDATE", "SUCCESS", "更新用户状态: " + userId + " -> " + normalizedStatus);
         return true;
     }
 
     @Transactional
     public boolean deleteUser(CurrentUser currentUser, Long userId) {
+        assertAuthenticated(currentUser);
         if (currentUser.getUserId().equals(userId)) {
             throw new BizException(ErrorCode.FORBIDDEN, "不能删除当前登录用户");
         }
         if (isProtectedAdminAccount(userId, null)) {
             throw new BizException(ErrorCode.FORBIDDEN, "默认管理员账户不允许被删除");
         }
-        Long tenantId = currentTenantId(currentUser);
         requireAccessibleUserRecord(currentUser, userId);
         SystemVO.UserVO user = queryUser(userId);
         LocalDateTime now = LocalDateTime.now();
 
         jdbcTemplate.update(
-                "update sys_user_role set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
+                "update sys_user_role set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
                 currentUser.getUserId(),
                 now,
-                tenantId,
                 userId
         );
         jdbcTemplate.update(
-                "update sys_user_department set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
+                "update sys_user_department set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
                 currentUser.getUserId(),
                 now,
-                tenantId,
                 userId
         );
         jdbcTemplate.update(
-                "update sys_user_passkey_credential set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
+                "update sys_user_passkey_credential set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
                 currentUser.getUserId(),
                 now,
-                tenantId,
                 userId
         );
         jdbcTemplate.update(
-                "update sys_verification_binding set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
+                "update sys_verification_binding set deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
                 currentUser.getUserId(),
                 now,
-                tenantId,
                 userId
         );
         jdbcTemplate.update(
-                "update sys_verification_challenge set consumed_flag = 1, deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and user_id = ? and deleted = 0",
+                "update sys_verification_challenge set consumed_flag = 1, deleted = 1, updated_by = ?, updated_at = ? where user_id = ? and deleted = 0",
                 currentUser.getUserId(),
                 now,
-                tenantId,
                 userId
         );
 
@@ -397,24 +388,22 @@ public class SystemUserManagementAppService {
         iamUserService.softDeleteUser(userId);
 
         onlineSessionManagementAppService.revokeUserSessions(userId);
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "user", "delete", "DELETE", "SUCCESS", "删除用户: " + user.getUsername());
+        permissionSnapshotService.invalidatePermissions();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "user", "delete", "DELETE", "SUCCESS", "删除用户: " + user.getUsername());
         return true;
     }
 
     public List<SystemVO.RoleVO> listUserRoles(CurrentUser currentUser, Long userId) {
-        Long tenantId = currentTenantId(currentUser);
         return jdbcTemplate.query(
                 """
-                        select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
+                        select r.id, r.role_code as roleCode, r.role_name as roleName,
                                r.role_type as roleType, r.created_at as createdAt, r.updated_at as updatedAt
                         from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
-                        where ur.tenant_id = ? and ur.user_id = ? and ur.deleted = 0
+                        join sys_role r on r.id = ur.role_id and r.deleted = 0
+                        where ur.user_id = ? and ur.deleted = 0
                         order by r.id desc
                         """,
                 new BeanPropertyRowMapper<>(SystemVO.RoleVO.class),
-                tenantId,
                 userId
         );
     }
@@ -572,10 +561,9 @@ public class SystemUserManagementAppService {
         }
     }
 
-    private void replaceUserRoles(Long userId, Long tenantId, List<Long> roleIds, Long operatorId) {
+    private void replaceUserRoles(Long userId, List<Long> roleIds, Long operatorId) {
         jdbcTemplate.update(
-                "delete from sys_user_role where tenant_id = ? and user_id = ?",
-                tenantId,
+                "delete from sys_user_role where user_id = ?",
                 userId
         );
         if (CollectionUtils.isEmpty(roleIds)) {
@@ -586,9 +574,9 @@ public class SystemUserManagementAppService {
         }
         List<Long> distinctRoleIds = new ArrayList<>(new LinkedHashSet<>(roleIds));
         Long existingRoleCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_role where tenant_id = ? and deleted = 0 and id in (" + placeholders(distinctRoleIds.size()) + ")",
+                "select count(1) from sys_role where deleted = 0 and id in (" + placeholders(distinctRoleIds.size()) + ")",
                 Long.class,
-                buildTenantAndIdsParams(tenantId, distinctRoleIds)
+                distinctRoleIds.toArray()
         );
         if (existingRoleCount == null || existingRoleCount != distinctRoleIds.size()) {
             throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
@@ -596,10 +584,9 @@ public class SystemUserManagementAppService {
         for (Long roleId : distinctRoleIds) {
             jdbcTemplate.update(
                     """
-                            insert into sys_user_role (tenant_id, user_id, role_id, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, 0)
+                            insert into sys_user_role (user_id, role_id, created_by, updated_by, deleted)
+                            values (?, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     userId,
                     roleId,
                     operatorId,
@@ -610,7 +597,6 @@ public class SystemUserManagementAppService {
 
     private void replaceUserDepartments(
             Long userId,
-            Long tenantId,
             List<Long> deptIds,
             Long primaryDeptId,
             Long operatorId,
@@ -620,8 +606,7 @@ public class SystemUserManagementAppService {
             return;
         }
         jdbcTemplate.update(
-                "delete from sys_user_department where tenant_id = ? and user_id = ?",
-                tenantId,
+                "delete from sys_user_department where user_id = ?",
                 userId
         );
         if (CollectionUtils.isEmpty(deptIds)) {
@@ -632,9 +617,9 @@ public class SystemUserManagementAppService {
         }
         List<Long> distinctDeptIds = new ArrayList<>(new LinkedHashSet<>(deptIds));
         Long existingDeptCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_department where tenant_id = ? and deleted = 0 and status = 'ENABLED' and id in (" + placeholders(distinctDeptIds.size()) + ")",
+                "select count(1) from sys_department where deleted = 0 and status = 'ENABLED' and id in (" + placeholders(distinctDeptIds.size()) + ")",
                 Long.class,
-                buildTenantAndIdsParams(tenantId, distinctDeptIds)
+                distinctDeptIds.toArray()
         );
         if (existingDeptCount == null || existingDeptCount != distinctDeptIds.size()) {
             throw new BizException(ErrorCode.NOT_FOUND, "部门不存在或已停用");
@@ -645,10 +630,9 @@ public class SystemUserManagementAppService {
         for (Long deptId : distinctDeptIds) {
             jdbcTemplate.update(
                     """
-                            insert into sys_user_department (tenant_id, user_id, dept_id, primary_flag, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, ?, 0)
+                            insert into sys_user_department (user_id, dept_id, primary_flag, created_by, updated_by, deleted)
+                            values (?, ?, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     userId,
                     deptId,
                     deptId.equals(effectivePrimaryDeptId) ? 1 : 0,
@@ -658,7 +642,7 @@ public class SystemUserManagementAppService {
         }
     }
 
-    private void decorateUsers(List<SystemVO.UserVO> users, Long tenantId) {
+    private void decorateUsers(List<SystemVO.UserVO> users) {
         List<Long> userIds = users.stream()
                 .map(SystemVO.UserVO::getId)
                 .filter(id -> id != null)
@@ -668,10 +652,9 @@ public class SystemUserManagementAppService {
             return;
         }
 
-        Map<Long, List<String>> roleNames = listUserRoleNames(userIds, tenantId);
-        Map<Long, List<String>> deptNames = listUserDeptNames(userIds, tenantId);
+        Map<Long, List<String>> roleNames = listUserRoleNames(userIds);
+        Map<Long, List<String>> deptNames = listUserDeptNames(userIds);
         users.forEach(user -> {
-            user.setTenantNames(List.of());
             user.setRoleNames(roleNames.getOrDefault(user.getId(), List.of()));
             user.setDeptNames(deptNames.getOrDefault(user.getId(), List.of()));
         });
@@ -689,86 +672,77 @@ public class SystemUserManagementAppService {
                 .orElse(null));
     }
 
-    private List<Long> listUserRoleIds(Long userId, Long tenantId) {
+    private List<Long> listUserRoleIds(Long userId) {
         return jdbcTemplate.queryForList(
                 """
                         select ur.role_id
                         from sys_user_role ur
-                        where ur.user_id = ? and ur.tenant_id = ? and ur.deleted = 0
+                        where ur.user_id = ? and ur.deleted = 0
                         order by ur.role_id asc
                         """,
                 Long.class,
-                userId,
-                tenantId
+                userId
         );
     }
 
-    private List<Long> listUserDeptIds(Long userId, Long tenantId) {
+    private List<Long> listUserDeptIds(Long userId) {
         return jdbcTemplate.queryForList(
                 """
                         select ud.dept_id
                         from sys_user_department ud
                         join sys_department d
                           on d.id = ud.dept_id
-                         and d.tenant_id = ud.tenant_id
                          and d.deleted = 0
                         where ud.user_id = ?
-                          and ud.tenant_id = ?
                           and ud.deleted = 0
                         order by ud.primary_flag desc, ud.dept_id asc
                         """,
                 Long.class,
-                userId,
-                tenantId
+                userId
         );
     }
 
-    private List<String> listUserRoleNames(Long userId, Long tenantId) {
+    private List<String> listUserRoleNames(Long userId) {
         return jdbcTemplate.queryForList(
                 """
                         select r.role_name
                         from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
-                        where ur.user_id = ? and ur.tenant_id = ? and ur.deleted = 0
+                        join sys_role r on r.id = ur.role_id and r.deleted = 0
+                        where ur.user_id = ? and ur.deleted = 0
                         order by r.id asc
                         """,
                 String.class,
-                userId,
-                tenantId
+                userId
         );
     }
 
-    private List<String> listUserDeptNames(Long userId, Long tenantId) {
+    private List<String> listUserDeptNames(Long userId) {
         return jdbcTemplate.queryForList(
                 """
                         select d.dept_name
                         from sys_user_department ud
                         join sys_department d
                           on d.id = ud.dept_id
-                         and d.tenant_id = ud.tenant_id
                          and d.deleted = 0
                         where ud.user_id = ?
-                          and ud.tenant_id = ?
                           and ud.deleted = 0
                         order by ud.primary_flag desc, d.sort_no asc, d.id asc
                         """,
                 String.class,
-                userId,
-                tenantId
+                userId
         );
     }
 
-    private Map<Long, List<String>> listUserRoleNames(List<Long> userIds, Long tenantId) {
+    private Map<Long, List<String>> listUserRoleNames(List<Long> userIds) {
         String placeholders = placeholders(userIds.size());
         List<Object> params = new ArrayList<>();
         params.addAll(userIds);
-        params.add(tenantId);
         return jdbcTemplate.query(
                 """
                         select ur.user_id as userId, r.role_name as roleName
                         from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
-                        where ur.user_id in (%s) and ur.tenant_id = ? and ur.deleted = 0
+                        join sys_role r on r.id = ur.role_id and r.deleted = 0
+                        where ur.user_id in (%s) and ur.deleted = 0
                         order by ur.user_id asc, r.id asc
                         """.formatted(placeholders),
                 rs -> {
@@ -783,21 +757,18 @@ public class SystemUserManagementAppService {
         );
     }
 
-    private Map<Long, List<String>> listUserDeptNames(List<Long> userIds, Long tenantId) {
+    private Map<Long, List<String>> listUserDeptNames(List<Long> userIds) {
         String placeholders = placeholders(userIds.size());
         List<Object> params = new ArrayList<>();
         params.addAll(userIds);
-        params.add(tenantId);
         return jdbcTemplate.query(
                 """
                         select ud.user_id as userId, d.dept_name as deptName
                         from sys_user_department ud
                         join sys_department d
                           on d.id = ud.dept_id
-                         and d.tenant_id = ud.tenant_id
                          and d.deleted = 0
                         where ud.user_id in (%s)
-                          and ud.tenant_id = ?
                           and ud.deleted = 0
                         order by ud.user_id asc, ud.primary_flag desc, d.sort_no asc, d.id asc
                         """.formatted(placeholders),
@@ -1034,10 +1005,9 @@ public class SystemUserManagementAppService {
         return String.join(", ", java.util.Collections.nCopies(count, "?"));
     }
 
-    private Set<Long> queryDepartmentAndDescendantIds(Long tenantId, Long deptId) {
+    private Set<Long> queryDepartmentAndDescendantIds(Long deptId) {
         boolean rootExists = existsByQuery(
-                "select 1 from sys_department where tenant_id = ? and id = ? and deleted = 0 limit 1",
-                tenantId,
+                "select 1 from sys_department where id = ? and deleted = 0 limit 1",
                 deptId
         );
         if (!rootExists) {
@@ -1050,10 +1020,9 @@ public class SystemUserManagementAppService {
         frontier.add(deptId);
         while (!frontier.isEmpty()) {
             List<Object> params = new ArrayList<>();
-            params.add(tenantId);
             params.addAll(frontier);
             List<Long> children = jdbcTemplate.queryForList(
-                    "select id from sys_department where tenant_id = ? and deleted = 0 and parent_id in (" + placeholders(frontier.size()) + ")",
+                    "select id from sys_department where deleted = 0 and parent_id in (" + placeholders(frontier.size()) + ")",
                     Long.class,
                     params.toArray()
             );
@@ -1067,18 +1036,10 @@ public class SystemUserManagementAppService {
         return result;
     }
 
-    private Object[] buildTenantAndIdsParams(Long tenantId, List<Long> ids) {
-        List<Object> params = new ArrayList<>();
-        params.add(tenantId);
-        params.addAll(ids);
-        return params.toArray();
-    }
-
-    private Long currentTenantId(CurrentUser currentUser) {
+    private void assertAuthenticated(CurrentUser currentUser) {
         if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
+            throw new BizException(ErrorCode.UNAUTHORIZED, "未登录");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 
     private void requireAccessibleUserRecord(CurrentUser currentUser, Long userId) {
@@ -1146,13 +1107,11 @@ public class SystemUserManagementAppService {
                     exists (
                         select 1
                         from sys_user_department sud
-                        where sud.tenant_id = ?
-                          and sud.user_id = %s.id
+                        where sud.user_id = %s.id
                           and sud.dept_id in (%s)
                           and sud.deleted = 0
                     )
                     """.formatted(userAlias, placeholders(deptIds.size())));
-            params.add(currentTenantId(currentUser));
             params.addAll(deptIds);
         }
         if (!userIds.isEmpty()) {
@@ -1167,10 +1126,10 @@ public class SystemUserManagementAppService {
             if (currentUser == null || currentUser.getSimulatedRoleId() == null || currentUser.getUserId() == null) {
                 return PermissionSnapshotService.PermissionSnapshot.empty();
             }
-            return permissionSnapshotService.loadRoleSnapshot(currentTenantId(currentUser), currentUser.getSimulatedRoleId());
+            return permissionSnapshotService.loadRoleSnapshot(currentUser.getSimulatedRoleId());
         }
         if (!org.springframework.util.StringUtils.hasText(currentUser.getPermissionsVersion())) {
-            return permissionSnapshotService.loadSnapshot(currentTenantId(currentUser), currentUser.getUserId());
+            return permissionSnapshotService.loadSnapshot(currentUser.getUserId());
         }
         return new PermissionSnapshotService.PermissionSnapshot(
                 currentUser.getPermissionsVersion(),
@@ -1222,7 +1181,6 @@ public class SystemUserManagementAppService {
         target.setSource(source.getSource());
         target.setRegisteredAt(source.getRegisteredAt());
         target.setLastLoginAt(source.getLastLoginAt());
-        target.setTenantNames(source.getTenantNames());
         target.setRoleNames(source.getRoleNames());
         target.setCreatedAt(source.getCreatedAt());
         target.setUpdatedAt(source.getUpdatedAt());

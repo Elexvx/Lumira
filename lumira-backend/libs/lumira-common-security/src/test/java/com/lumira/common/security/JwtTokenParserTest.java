@@ -24,7 +24,6 @@ class JwtTokenParserTest {
         assertThat(claims.getSessionId()).isEqualTo("session-1");
         assertThat(claims.getUserId()).isEqualTo(100L);
         assertThat(claims.getUsername()).isEqualTo("alice");
-        assertThat(claims.getCurrentTenantId()).isEqualTo(1001L);
         assertThat(claims.getSessionVersion()).isEqualTo(3);
         assertThat(claims.getTokenId()).isEqualTo("token-1");
         assertThat(claims.getTokenType()).isEqualTo(JwtTokenType.ACCESS);
@@ -74,7 +73,6 @@ class JwtTokenParserTest {
                 .claim(JwtTokenParser.CLAIM_SESSION_ID, "session-1")
                 .claim(JwtTokenParser.CLAIM_USER_ID, 100L)
                 .claim(JwtTokenParser.CLAIM_USERNAME, "alice")
-                .claim(JwtTokenParser.CLAIM_TENANT_ID, 1001L)
                 .claim(JwtTokenParser.CLAIM_SESSION_VERSION, 3)
                 .claim(JwtTokenParser.CLAIM_TOKEN_TYPE, JwtTokenType.ACCESS.name())
                 .signWith(JwtSecretKeyFactory.createHmacKey(secret))

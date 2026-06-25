@@ -305,7 +305,6 @@ const moveMenuNode = (menus: MenuRecord[], draggedId: number, targetId: number, 
 const toRuntimeMenuNodes = (menus: MenuRecord[]): MenuNode[] =>
   menus.map((menu) => ({
     id: menu.id,
-    tenantId: menu.tenantId,
     parentId: menu.parentId ?? undefined,
     menuCode: menu.menuCode,
     name: menu.menuName,

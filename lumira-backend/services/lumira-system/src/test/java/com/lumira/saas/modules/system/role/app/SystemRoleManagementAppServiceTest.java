@@ -81,7 +81,7 @@ class SystemRoleManagementAppServiceTest {
         assertEquals(1, jdbcTemplate.lastInsertIdQueries);
         assertTrue(jdbcTemplate.deletedRolePermissions);
         assertTrue(jdbcTemplate.insertedPermissionKeys.isEmpty());
-        verify(permissionSnapshotService).invalidateTenant(1001L);
+        verify(permissionSnapshotService).invalidatePermissions();
         assertEquals(2001L, role.getId());
     }
 
@@ -96,7 +96,7 @@ class SystemRoleManagementAppServiceTest {
         assertTrue(updated);
         assertTrue(jdbcTemplate.deletedRolePermissions);
         assertEquals(List.of("system:user:view", "system:role:view"), jdbcTemplate.insertedPermissionKeys);
-        verify(permissionSnapshotService).invalidateTenant(1001L);
+        verify(permissionSnapshotService).invalidatePermissions();
     }
 
     @Test
@@ -110,7 +110,7 @@ class SystemRoleManagementAppServiceTest {
         assertTrue(updated);
         assertTrue(jdbcTemplate.deletedRolePermissions);
         assertEquals(List.of("system:user:view", "system:role:view"), jdbcTemplate.insertedPermissionKeys);
-        verify(permissionSnapshotService).invalidateTenant(1001L);
+        verify(permissionSnapshotService).invalidatePermissions();
     }
 
     @Test
@@ -148,7 +148,6 @@ class SystemRoleManagementAppServiceTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(2002L);
         return currentUser;
     }
 
@@ -164,7 +163,6 @@ class SystemRoleManagementAppServiceTest {
     private static SystemVO.RoleVO role(Long id, String roleCode, String roleName) {
         SystemVO.RoleVO role = new SystemVO.RoleVO();
         role.setId(id);
-        role.setTenantId(1001L);
         role.setRoleCode(roleCode);
         role.setRoleName(roleName);
         role.setRoleType("BUSINESS");
@@ -191,10 +189,13 @@ class SystemRoleManagementAppServiceTest {
                 deletedRolePermissions = true;
             }
             if (sql.contains("insert into sys_role_permission")) {
-                insertedPermissionKeys.add(String.valueOf(args[2]));
+                insertedPermissionKeys.add(String.valueOf(args[1]));
             }
-            if (sql.contains("insert into sys_config") || sql.contains("update sys_config")) {
-                upsertedDefaultRoleCode = String.valueOf(args[3]);
+            if (sql.contains("insert into sys_config")) {
+                upsertedDefaultRoleCode = String.valueOf(args[2]);
+            }
+            if (sql.contains("update sys_config")) {
+                upsertedDefaultRoleCode = String.valueOf(args[1]);
             }
             return 1;
         }
@@ -289,7 +290,7 @@ class SystemRoleManagementAppServiceTest {
         }
 
         @Override
-        public void log(Long tenantId, Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
+        public void log(Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
             jdbcTemplate.auditLogged = true;
         }
     }

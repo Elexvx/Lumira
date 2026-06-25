@@ -14,12 +14,10 @@ public final class IamDomainModels {
     }
 
     public static final class UserAggregate extends AggregateRoot<Long> {
-        private final Long tenantId;
         private boolean enabled;
 
-        public UserAggregate(Long userId, Long tenantId, boolean enabled) {
+        public UserAggregate(Long userId, boolean enabled) {
             super(EntityId.of(userId));
-            this.tenantId = tenantId;
             this.enabled = enabled;
         }
 
@@ -32,19 +30,16 @@ public final class IamDomainModels {
                     "IAM_USER_STATUS_CHANGED",
                     "iam.user",
                     String.valueOf(id().value()),
-                    tenantId,
                     Map.of("enabled", enabled)
             ));
         }
     }
 
     public static final class RoleAggregate extends AggregateRoot<Long> {
-        private final Long tenantId;
         private final Set<String> permissionCodes;
 
-        public RoleAggregate(Long roleId, Long tenantId, Set<String> permissionCodes) {
+        public RoleAggregate(Long roleId, Set<String> permissionCodes) {
             super(EntityId.of(roleId));
-            this.tenantId = tenantId;
             this.permissionCodes = new LinkedHashSet<>(permissionCodes == null ? Set.of() : permissionCodes);
         }
 
@@ -59,14 +54,12 @@ public final class IamDomainModels {
                     "IAM_ROLE_PERMISSIONS_CHANGED",
                     "iam.role",
                     String.valueOf(id().value()),
-                    tenantId,
                     Map.of("permissionCount", permissionCodes.size())
             ));
         }
     }
 
     public record PermissionSnapshotReadModel(
-            Long tenantId,
             Long userId,
             long version,
             Set<String> permissions

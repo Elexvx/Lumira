@@ -9,7 +9,6 @@ public final class MessageQueryModels {
     }
 
     public static class NoticeArchiveQuery {
-        private Long tenantId;
         private Long userId;
         private boolean manageArchive;
         private String keyword;
@@ -27,8 +26,6 @@ public final class MessageQueryModels {
         private long countLimit;
         private List<Long> roleIds = List.of();
 
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
         public boolean isManageArchive() { return manageArchive; }
@@ -64,7 +61,6 @@ public final class MessageQueryModels {
     }
 
     public static class DeliveryLogQuery {
-        private Long tenantId;
         private String keyword;
         private String channel;
         private String targetScope;
@@ -75,8 +71,6 @@ public final class MessageQueryModels {
         private long offset;
         private long countLimit;
 
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public String getKeyword() { return keyword; }
         public void setKeyword(String keyword) { this.keyword = keyword; }
         public String getChannel() { return channel; }

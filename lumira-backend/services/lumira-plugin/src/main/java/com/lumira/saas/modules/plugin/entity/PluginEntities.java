@@ -426,110 +426,6 @@ public final class PluginEntities {
         }
     }
 
-    @TableName("sys_plugin_tenant")
-    public static class PluginTenantEntity {
-        @TableId(type = IdType.AUTO)
-        private Long id;
-        private Long tenantId;
-        private String pluginCode;
-        private String pluginVersion;
-        private Integer enabled;
-        private String configJson;
-        private Long createdBy;
-        private LocalDateTime createdAt;
-        private Long updatedBy;
-        private LocalDateTime updatedAt;
-        private Integer deleted;
-
-        public Long getId() {
-            return id;
-        }
-
-        public void setId(Long id) {
-            this.id = id;
-        }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public String getPluginCode() {
-            return pluginCode;
-        }
-
-        public void setPluginCode(String pluginCode) {
-            this.pluginCode = pluginCode;
-        }
-
-        public String getPluginVersion() {
-            return pluginVersion;
-        }
-
-        public void setPluginVersion(String pluginVersion) {
-            this.pluginVersion = pluginVersion;
-        }
-
-        public Integer getEnabled() {
-            return enabled;
-        }
-
-        public void setEnabled(Integer enabled) {
-            this.enabled = enabled;
-        }
-
-        public String getConfigJson() {
-            return configJson;
-        }
-
-        public void setConfigJson(String configJson) {
-            this.configJson = configJson;
-        }
-
-        public Long getCreatedBy() {
-            return createdBy;
-        }
-
-        public void setCreatedBy(Long createdBy) {
-            this.createdBy = createdBy;
-        }
-
-        public LocalDateTime getCreatedAt() {
-            return createdAt;
-        }
-
-        public void setCreatedAt(LocalDateTime createdAt) {
-            this.createdAt = createdAt;
-        }
-
-        public Long getUpdatedBy() {
-            return updatedBy;
-        }
-
-        public void setUpdatedBy(Long updatedBy) {
-            this.updatedBy = updatedBy;
-        }
-
-        public LocalDateTime getUpdatedAt() {
-            return updatedAt;
-        }
-
-        public void setUpdatedAt(LocalDateTime updatedAt) {
-            this.updatedAt = updatedAt;
-        }
-
-        public Integer getDeleted() {
-            return deleted;
-        }
-
-        public void setDeleted(Integer deleted) {
-            this.deleted = deleted;
-        }
-    }
-
     @TableName("sys_plugin_dependency")
     public static class PluginDependencyEntity {
         @TableId(type = IdType.AUTO)
@@ -620,7 +516,6 @@ public final class PluginEntities {
     public static class PluginRuntimeLogEntity {
         @TableId(type = IdType.AUTO)
         private Long id;
-        private Long tenantId;
         private String pluginCode;
         private String pluginVersion;
         private String operationType;
@@ -640,14 +535,6 @@ public final class PluginEntities {
 
         public void setId(Long id) {
             this.id = id;
-        }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
         }
 
         public String getPluginCode() {

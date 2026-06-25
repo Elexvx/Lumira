@@ -11,7 +11,6 @@ public class FileObjectEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long tenantId;
     private String storageType;
     private String bucket;
     private String objectKey;
@@ -43,14 +42,6 @@ public class FileObjectEntity {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public Long getTenantId() {
-        return tenantId;
-    }
-
-    public void setTenantId(Long tenantId) {
-        this.tenantId = tenantId;
     }
 
     public String getStorageType() {

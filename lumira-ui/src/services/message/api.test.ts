@@ -54,7 +54,6 @@ describe('message api fallback wrappers', () => {
   it('falls back to legacy create endpoint when v2 is unavailable', async () => {
     const legacyMessage = {
       id: 100,
-      tenantId: 1,
       messageType: 'MESSAGE',
       targetScope: 'PLATFORM',
       title: 'Welcome',

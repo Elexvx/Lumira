@@ -27,6 +27,7 @@ public class WechatLoginSettingsService {
     private static final String APP_SECRET_KEY = "verification.wechat-login.app-secret";
     private static final String REDIRECT_URI_KEY = "verification.wechat-login.redirect-uri";
     private static final String STATE_EXPIRE_MINUTES_KEY = "verification.wechat-login.state-expire-minutes";
+    private static final String GLOBAL_SETTINGS_CACHE_KEY = "global";
 
     private final SysConfigMapper sysConfigMapper;
     private final WechatLoginProperties properties;
@@ -48,20 +49,20 @@ public class WechatLoginSettingsService {
                 .build();
     }
 
-    public WechatLoginSettingsRecord loadSettings(Long tenantId) {
-        String cacheKey = cacheKey(tenantId);
+    public WechatLoginSettingsRecord loadSettings() {
+        String cacheKey = cacheKey();
         WechatLoginSettingsRecord cached = settingsCache.getIfPresent(cacheKey);
         if (cached != null) {
             return cached;
         }
-        return loadSettingsWithSingleFlight(tenantId, cacheKey);
+        return loadSettingsWithSingleFlight(cacheKey);
     }
 
-    private WechatLoginSettingsRecord loadSettingsWithSingleFlight(Long tenantId, String cacheKey) {
+    private WechatLoginSettingsRecord loadSettingsWithSingleFlight(String cacheKey) {
         try {
             CompletableFuture<WechatLoginSettingsRecord> future = settingsLoadInFlight.get(
                     cacheKey,
-                    () -> CompletableFuture.completedFuture(loadSettingsFresh(tenantId, cacheKey))
+                    () -> CompletableFuture.completedFuture(loadSettingsFresh(cacheKey))
             );
             WechatLoginSettingsRecord loaded = future.join();
             settingsLoadInFlight.invalidate(cacheKey);
@@ -79,12 +80,12 @@ public class WechatLoginSettingsService {
         }
     }
 
-    private WechatLoginSettingsRecord loadSettingsFresh(Long tenantId, String cacheKey) {
+    private WechatLoginSettingsRecord loadSettingsFresh(String cacheKey) {
         WechatLoginSettingsRecord cached = settingsCache.getIfPresent(cacheKey);
         if (cached != null) {
             return cached;
         }
-        Map<String, String> values = loadConfigValuesByKeys(tenantId, keys());
+        Map<String, String> values = loadConfigValuesByKeys(keys());
         boolean enabled = Boolean.parseBoolean(defaultIfBlank(values.get(ENABLED_KEY), String.valueOf(properties.isEnabled())));
         String appId = defaultIfBlank(values.get(APP_ID_KEY), properties.getAppId());
         String appSecret = defaultIfBlank(values.get(APP_SECRET_KEY), properties.getAppSecret());
@@ -99,12 +100,12 @@ public class WechatLoginSettingsService {
         return record;
     }
 
-    public boolean isAvailable(Long tenantId) {
-        return loadSettings(tenantId).configured();
+    public boolean isAvailable() {
+        return loadSettings().configured();
     }
 
-    public SystemVO.WechatLoginSettingsVO getSettings(Long tenantId) {
-        WechatLoginSettingsRecord record = loadSettings(tenantId);
+    public SystemVO.WechatLoginSettingsVO getSettings() {
+        WechatLoginSettingsRecord record = loadSettings();
         SystemVO.WechatLoginSettingsVO vo = new SystemVO.WechatLoginSettingsVO();
         vo.setEnabled(record.enabled());
         vo.setAppId(record.appId());
@@ -116,8 +117,8 @@ public class WechatLoginSettingsService {
         return vo;
     }
 
-    public WechatLoginSettingsDTO getInternalSettings(Long tenantId) {
-        WechatLoginSettingsRecord record = loadSettings(tenantId);
+    public WechatLoginSettingsDTO getInternalSettings() {
+        WechatLoginSettingsRecord record = loadSettings();
         return new WechatLoginSettingsDTO(
                 record.enabled(),
                 record.appId(),
@@ -129,8 +130,8 @@ public class WechatLoginSettingsService {
         );
     }
 
-    public SystemVO.WechatLoginSettingsVO updateSettings(Long tenantId, Long operatorId, SystemDTO.WechatLoginSettingsRequest request) {
-        WechatLoginSettingsRecord current = loadSettings(tenantId);
+    public SystemVO.WechatLoginSettingsVO updateSettings(Long operatorId, SystemDTO.WechatLoginSettingsRequest request) {
+        WechatLoginSettingsRecord current = loadSettings();
         boolean enabled = request.getEnabled() == null ? current.enabled() : Boolean.TRUE.equals(request.getEnabled());
         String appId = sanitizeText(request.getAppId(), current.appId());
         String existingSecret = defaultIfBlank(current.appSecret(), "");
@@ -140,28 +141,27 @@ public class WechatLoginSettingsService {
                 ? current.stateExpireMinutes()
                 : Math.max(1, request.getStateExpireMinutes());
 
-        upsertConfigValue(tenantId, ENABLED_KEY, "微信登录启用", String.valueOf(enabled), "是否启用微信扫码登录", operatorId);
-        upsertConfigValue(tenantId, APP_ID_KEY, "微信 AppID", appId, "微信开放平台网站应用 AppID", operatorId);
-        upsertConfigValue(tenantId, APP_SECRET_KEY, "微信 AppSecret", appSecret, "微信开放平台网站应用 AppSecret", operatorId);
-        upsertConfigValue(tenantId, REDIRECT_URI_KEY, "微信登录回调地址", redirectUri, "微信开放平台授权回调地址", operatorId);
-        upsertConfigValue(tenantId, STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(stateExpireMinutes), "微信登录 state 缓存有效期，单位分钟", operatorId);
-        invalidateTenantCache(tenantId);
-        return getSettings(tenantId);
+        upsertConfigValue(ENABLED_KEY, "微信登录启用", String.valueOf(enabled), "是否启用微信扫码登录", operatorId);
+        upsertConfigValue(APP_ID_KEY, "微信 AppID", appId, "微信开放平台网站应用 AppID", operatorId);
+        upsertConfigValue(APP_SECRET_KEY, "微信 AppSecret", appSecret, "微信开放平台网站应用 AppSecret", operatorId);
+        upsertConfigValue(REDIRECT_URI_KEY, "微信登录回调地址", redirectUri, "微信开放平台授权回调地址", operatorId);
+        upsertConfigValue(STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(stateExpireMinutes), "微信登录 state 缓存有效期，单位分钟", operatorId);
+        invalidateSettingsCache();
+        return getSettings();
     }
 
-    public SystemVO.WechatLoginSettingsVO resetSettings(Long tenantId, Long operatorId) {
-        upsertConfigValue(tenantId, ENABLED_KEY, "微信登录启用", "false", "是否启用微信扫码登录", operatorId);
-        upsertConfigValue(tenantId, APP_ID_KEY, "微信 AppID", "", "微信开放平台网站应用 AppID", operatorId);
-        upsertConfigValue(tenantId, APP_SECRET_KEY, "微信 AppSecret", "", "微信开放平台网站应用 AppSecret", operatorId);
-        upsertConfigValue(tenantId, REDIRECT_URI_KEY, "微信登录回调地址", "", "微信开放平台授权回调地址", operatorId);
-        upsertConfigValue(tenantId, STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(Math.max(1, properties.getStateExpireMinutes())), "微信登录 state 缓存有效期，单位分钟", operatorId);
-        invalidateTenantCache(tenantId);
-        return getSettings(tenantId);
+    public SystemVO.WechatLoginSettingsVO resetSettings(Long operatorId) {
+        upsertConfigValue(ENABLED_KEY, "微信登录启用", "false", "是否启用微信扫码登录", operatorId);
+        upsertConfigValue(APP_ID_KEY, "微信 AppID", "", "微信开放平台网站应用 AppID", operatorId);
+        upsertConfigValue(APP_SECRET_KEY, "微信 AppSecret", "", "微信开放平台网站应用 AppSecret", operatorId);
+        upsertConfigValue(REDIRECT_URI_KEY, "微信登录回调地址", "", "微信开放平台授权回调地址", operatorId);
+        upsertConfigValue(STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(Math.max(1, properties.getStateExpireMinutes())), "微信登录 state 缓存有效期，单位分钟", operatorId);
+        invalidateSettingsCache();
+        return getSettings();
     }
 
-    private void upsertConfigValue(Long tenantId, String configKey, String configName, String configValue, String remark, Long operatorId) {
+    private void upsertConfigValue(String configKey, String configName, String configValue, String remark, Long operatorId) {
         SysConfigEntity entity = new SysConfigEntity();
-        entity.setTenantId(effectiveTenantId(tenantId));
         entity.setConfigKey(configKey);
         entity.setConfigName(configName);
         entity.setConfigValue(encryptConfigValue(configKey, normalizeConfigText(configValue)));
@@ -172,9 +172,8 @@ public class WechatLoginSettingsService {
         sysConfigMapper.upsertPlatformConfig(entity);
     }
 
-    private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
-        Long effectiveTenantId = effectiveTenantId(tenantId);
-        List<SysConfigEntity> rows = sysConfigMapper.listEffectiveValues(effectiveTenantId, "PLATFORM", keys);
+    private Map<String, String> loadConfigValuesByKeys(List<String> keys) {
+        List<SysConfigEntity> rows = sysConfigMapper.listEffectiveValues("PLATFORM", keys);
         Map<String, String> valueByKey = new LinkedHashMap<>();
         for (SysConfigEntity row : rows) {
             String configKey = row.getConfigKey();
@@ -185,14 +184,14 @@ public class WechatLoginSettingsService {
         return valueByKey;
     }
 
-    private void invalidateTenantCache(Long tenantId) {
-        String cacheKey = cacheKey(tenantId);
+    private void invalidateSettingsCache() {
+        String cacheKey = cacheKey();
         settingsCache.invalidate(cacheKey);
         settingsLoadInFlight.invalidate(cacheKey);
     }
 
-    private String cacheKey(Long tenantId) {
-        return effectiveTenantId(tenantId) + ":" + String.join(",", keys());
+    private String cacheKey() {
+        return GLOBAL_SETTINGS_CACHE_KEY + ":" + String.join(",", keys());
     }
 
     private String encryptConfigValue(String configKey, String configValue) {
@@ -205,10 +204,6 @@ public class WechatLoginSettingsService {
 
     private List<String> keys() {
         return List.of(ENABLED_KEY, APP_ID_KEY, APP_SECRET_KEY, REDIRECT_URI_KEY, STATE_EXPIRE_MINUTES_KEY);
-    }
-
-    private Long effectiveTenantId(Long tenantId) {
-        return tenantId == null ? com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
     }
 
     private String sanitizeText(String value, String fallback) {

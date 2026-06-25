@@ -3,7 +3,6 @@ package com.lumira.saas.infrastructure.security.service;
 import com.lumira.common.security.JwtSecretKeyFactory;
 import com.lumira.common.security.JwtTokenParser;
 import com.lumira.common.security.JwtTokenType;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.security.model.AuthSession;
@@ -44,7 +43,6 @@ public class JwtTokenService {
                 .claim(JwtTokenParser.CLAIM_SESSION_ID, session.getSessionId())
                 .claim(JwtTokenParser.CLAIM_USER_ID, session.getUserId())
                 .claim(JwtTokenParser.CLAIM_USERNAME, session.getUsername())
-                .claim(JwtTokenParser.CLAIM_TENANT_ID, PlatformContext.compatibilityTenantId())
                 .claim(JwtTokenParser.CLAIM_SESSION_VERSION, session.getSessionVersion())
                 .claim(JwtTokenParser.CLAIM_TOKEN_TYPE, JwtTokenType.ACCESS.name())
                 .signWith(secretKey)
@@ -113,7 +111,6 @@ public class JwtTokenService {
         tokenClaims.setSessionId(claims.getSessionId());
         tokenClaims.setUserId(claims.getUserId());
         tokenClaims.setUsername(claims.getUsername());
-        tokenClaims.setCurrentTenantId(PlatformContext.compatibilityTenantId());
         tokenClaims.setSessionVersion(claims.getSessionVersion());
         tokenClaims.setTokenId(claims.getTokenId());
         tokenClaims.setTokenType(claims.getTokenType() == null ? null : TokenType.valueOf(claims.getTokenType().name()));

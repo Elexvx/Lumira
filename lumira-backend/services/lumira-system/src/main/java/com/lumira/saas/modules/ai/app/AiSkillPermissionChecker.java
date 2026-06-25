@@ -18,9 +18,9 @@ import java.util.Map;
 
 public interface AiSkillPermissionChecker {
 
-    void verifyAllowed(Long tenantId, Long employeeId, List<String> skillCodes, boolean confirmed);
+    void verifyAllowed(Long employeeId, List<String> skillCodes, boolean confirmed);
 
-    void verifyToolAllowed(Long tenantId, Long employeeId, String toolCode, String permissionKey, String riskLevel, boolean confirmed);
+    void verifyToolAllowed(Long employeeId, String toolCode, String permissionKey, String riskLevel, boolean confirmed);
 }
 
 @Service
@@ -36,8 +36,8 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
     }
 
     @Override
-    public void verifyAllowed(Long tenantId, Long employeeId, List<String> skillCodes, boolean confirmed) {
-        if (tenantId == null || employeeId == null || CollectionUtils.isEmpty(skillCodes)) {
+    public void verifyAllowed(Long employeeId, List<String> skillCodes, boolean confirmed) {
+        if (employeeId == null || CollectionUtils.isEmpty(skillCodes)) {
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool permission context is incomplete");
         }
 
@@ -49,12 +49,10 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
                         from ai_skill k
                         left join ai_employee_skill r
                           on r.skill_code = k.skill_code
-                         and r.tenant_id = ?
                          and r.employee_id = ?
                          and r.is_deleted = 0
                         where k.is_deleted = 0
                         """,
-                tenantId,
                 employeeId
         );
         Map<String, Map<String, Object>> skillMap = new HashMap<>();
@@ -88,14 +86,13 @@ class DefaultAiSkillPermissionChecker implements AiSkillPermissionChecker {
     }
 
     @Override
-    public void verifyToolAllowed(Long tenantId, Long employeeId, String toolCode, String permissionKey, String riskLevel, boolean confirmed) {
-        if (tenantId == null || employeeId == null || employeeId <= 0 || !StringUtils.hasText(toolCode)) {
+    public void verifyToolAllowed(Long employeeId, String toolCode, String permissionKey, String riskLevel, boolean confirmed) {
+        if (employeeId == null || employeeId <= 0 || !StringUtils.hasText(toolCode)) {
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool permission context is incomplete");
         }
         AgentToolGrantDecision grant = agentToolGrantEvaluator.evaluate(new AuthorizationRequest(
-                tenantId,
                 null,
-                com.lumira.common.security.authorization.SubjectRef.digitalEmployee(tenantId, employeeId),
+                com.lumira.common.security.authorization.SubjectRef.digitalEmployee(employeeId),
                 null,
                 employeeId,
                 "ai_tool",
@@ -168,8 +165,7 @@ class DefaultAgentToolGrantEvaluator implements AgentToolGrantEvaluator {
 
     @Override
     public AgentToolGrantDecision evaluate(AuthorizationRequest request) {
-        if (request == null || request.tenantId() == null || request.employeeId() == null
-                || request.employeeId() <= 0 || !StringUtils.hasText(request.toolCode())) {
+        if (request == null || request.employeeId() == null || request.employeeId() <= 0 || !StringUtils.hasText(request.toolCode())) {
             return AgentToolGrantDecision.deny("AGENT_CONTEXT_INCOMPLETE");
         }
         Map<String, Object> grant = jdbcTemplate.queryForList(
@@ -184,13 +180,11 @@ class DefaultAgentToolGrantEvaluator implements AgentToolGrantEvaluator {
                         from ai_skill k
                         left join ai_employee_tool_grant g
                           on g.tool_code = k.skill_code
-                         and g.tenant_id = ?
                          and g.employee_id = ?
                          and g.deleted = 0
                          and g.enabled = 1
                         left join ai_employee_skill r
                           on r.skill_code = k.skill_code
-                         and r.tenant_id = ?
                          and r.employee_id = ?
                          and r.is_deleted = 0
                         where k.is_deleted = 0
@@ -198,9 +192,7 @@ class DefaultAgentToolGrantEvaluator implements AgentToolGrantEvaluator {
                         limit 1
                         """,
                 request.permissionKey(),
-                request.tenantId(),
                 request.employeeId(),
-                request.tenantId(),
                 request.employeeId(),
                 request.toolCode().trim()
         ).stream().findFirst().orElse(null);

@@ -14,7 +14,7 @@ class PaymentServiceSqlHotPathTest {
     void hotPathSqlInOutboxServiceShouldUseDeleteAwareDispatchFiltersAndBoundedLimit() throws Exception {
         String source = serviceSource("src/main/java/com/lumira/payment/service/PaymentOutboxService.java");
 
-        assertThat(source).contains(normalizeSql("select id, tenant_id as tenantId"));
+        assertThat(source).contains(normalizeSql("select id, user_id as userId"));
         assertThat(source).contains(normalizeSql("from payment_event_outbox"));
         assertThat(source).contains(normalizeSql("where deleted = 0"));
         assertThat(source).contains(normalizeSql("source_type = ?"));
@@ -30,8 +30,8 @@ class PaymentServiceSqlHotPathTest {
     void hotPathSqlInWebhookServiceShouldUseReplaySafeLookupAndOrderLimits() throws Exception {
         String source = serviceSource("src/main/java/com/lumira/payment/service/PaymentWebhookService.java");
 
-        assertThat(source).contains(normalizeSql("where tenant_id = ? and provider_code = ? and nonce = ? and deleted = 0 and received_at >= ?"));
-        assertThat(source).contains(normalizeSql("where tenant_id = ? and provider_code = ? and event_id = ? and deleted = 0"));
+        assertThat(source).contains(normalizeSql("where provider_code = ? and nonce = ? and deleted = 0 and received_at >= ?"));
+        assertThat(source).contains(normalizeSql("where provider_code = ? and event_id = ? and deleted = 0"));
         assertThat(source).contains(normalizeSql("order by id desc"));
         assertThat(source).contains(normalizeSql("limit 1"));
     }
@@ -40,7 +40,7 @@ class PaymentServiceSqlHotPathTest {
     void hotPathSqlInManagementServiceShouldHonorSoftDeleteReadWithStableOrdering() throws Exception {
         String source = serviceSource("src/main/java/com/lumira/payment/service/PaymentManagementAppService.java");
 
-        assertThat(source).contains(normalizeSql("where tenant_id = ? and provider_code = ? and deleted = 0"));
+        assertThat(source).contains(normalizeSql("where provider_code = ? and deleted = 0"));
         assertThat(source).contains(normalizeSql("order by id desc"));
         assertThat(source).contains(normalizeSql("update payment_provider_config"));
         assertThat(source).contains(normalizeSql("insert into payment_provider_config"));
@@ -52,9 +52,9 @@ class PaymentServiceSqlHotPathTest {
 
         assertThat(migrationSql).contains("idx_payment_outbox_deleted_status_retry_created");
         assertThat(migrationSql).contains("idx_payment_outbox_deleted_status");
-        assertThat(migrationSql).contains("idx_payment_webhook_event_tenant_provider_nonce_deleted_received");
-        assertThat(migrationSql).contains("idx_payment_webhook_event_tenant_provider_event_deleted_id");
-        assertThat(migrationSql).contains("idx_payment_provider_config_tenant_provider_deleted_id");
+        assertThat(migrationSql).contains("idx_payment_webhook_event_provider_nonce_deleted_received");
+        assertThat(migrationSql).contains("idx_payment_webhook_event_provider_event_deleted_id");
+        assertThat(migrationSql).contains("idx_payment_provider_config_provider_deleted_id");
     }
 
     @Test

@@ -16,15 +16,14 @@ public class JdbcTeamJoinRequestRepository implements TeamJoinRequestRepository 
     }
 
     @Override
-    public Long createPending(Long tenantId, Long teamId, Long userId, Long inviteId, String applyMessage) {
+    public Long createPending(Long teamId, Long userId, Long inviteId, String applyMessage) {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
                         insert into team_join_request (
-                            tenant_id, team_id, user_id, invite_id, apply_message, status, created_at, updated_at, deleted
-                        ) values (?, ?, ?, ?, ?, 'PENDING', ?, ?, 0)
+                            team_id, user_id, invite_id, apply_message, status, created_at, updated_at, deleted
+                        ) values (?, ?, ?, ?, 'PENDING', ?, ?, 0)
                         """,
-                tenantId,
                 teamId,
                 userId,
                 inviteId,
@@ -36,18 +35,16 @@ public class JdbcTeamJoinRequestRepository implements TeamJoinRequestRepository 
     }
 
     @Override
-    public TeamVO.JoinRequest findPending(Long tenantId, Long teamId, Long userId) {
+    public TeamVO.JoinRequest findPending(Long teamId, Long userId) {
         List<TeamVO.JoinRequest> rows = jdbcTemplate.query(
                 joinRequestSelect("""
-                        where tenant_id = ?
-                          and team_id = ?
+                        where team_id = ?
                           and user_id = ?
                           and status = 'PENDING'
                           and deleted = 0
                         limit 1
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.JoinRequest.class),
-                tenantId,
                 teamId,
                 userId
         );
@@ -55,17 +52,15 @@ public class JdbcTeamJoinRequestRepository implements TeamJoinRequestRepository 
     }
 
     @Override
-    public TeamVO.JoinRequest findById(Long tenantId, Long teamId, Long requestId) {
+    public TeamVO.JoinRequest findById(Long teamId, Long requestId) {
         List<TeamVO.JoinRequest> rows = jdbcTemplate.query(
                 joinRequestSelect("""
-                        where tenant_id = ?
-                          and team_id = ?
+                        where team_id = ?
                           and id = ?
                           and deleted = 0
                         limit 1
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.JoinRequest.class),
-                tenantId,
                 teamId,
                 requestId
         );
@@ -73,33 +68,30 @@ public class JdbcTeamJoinRequestRepository implements TeamJoinRequestRepository 
     }
 
     @Override
-    public List<TeamVO.JoinRequest> listByTeam(Long tenantId, Long teamId) {
+    public List<TeamVO.JoinRequest> listByTeam(Long teamId) {
         return jdbcTemplate.query(
                 joinRequestSelect("""
-                        where tenant_id = ?
-                          and team_id = ?
+                        where team_id = ?
                           and deleted = 0
                         order by created_at desc, id desc
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.JoinRequest.class),
-                tenantId,
                 teamId
         );
     }
 
     @Override
-    public boolean approve(Long tenantId, Long teamId, Long requestId, Long reviewedBy, String reviewMessage) {
+    public boolean approve(Long teamId, Long requestId, Long reviewedBy, String reviewMessage) {
         int updated = jdbcTemplate.update(
                 """
                         update team_join_request
                         set status = 'APPROVED', reviewed_by = ?, reviewed_at = ?, review_message = ?, updated_at = ?
-                        where tenant_id = ? and team_id = ? and id = ? and status = 'PENDING' and deleted = 0
+                        where team_id = ? and id = ? and status = 'PENDING' and deleted = 0
                         """,
                 reviewedBy,
                 LocalDateTime.now(),
                 reviewMessage,
                 LocalDateTime.now(),
-                tenantId,
                 teamId,
                 requestId
         );
@@ -107,18 +99,17 @@ public class JdbcTeamJoinRequestRepository implements TeamJoinRequestRepository 
     }
 
     @Override
-    public boolean reject(Long tenantId, Long teamId, Long requestId, Long reviewedBy, String reviewMessage) {
+    public boolean reject(Long teamId, Long requestId, Long reviewedBy, String reviewMessage) {
         int updated = jdbcTemplate.update(
                 """
                         update team_join_request
                         set status = 'REJECTED', reviewed_by = ?, reviewed_at = ?, review_message = ?, updated_at = ?
-                        where tenant_id = ? and team_id = ? and id = ? and status = 'PENDING' and deleted = 0
+                        where team_id = ? and id = ? and status = 'PENDING' and deleted = 0
                         """,
                 reviewedBy,
                 LocalDateTime.now(),
                 reviewMessage,
                 LocalDateTime.now(),
-                tenantId,
                 teamId,
                 requestId
         );
@@ -126,18 +117,17 @@ public class JdbcTeamJoinRequestRepository implements TeamJoinRequestRepository 
     }
 
     @Override
-    public void closeRequestsByTeam(Long tenantId, Long teamId) {
+    public void closeRequestsByTeam(Long teamId) {
         jdbcTemplate.update(
-                "update team_join_request set deleted = 1, status = 'CLOSED', updated_at = ? where tenant_id = ? and team_id = ? and deleted = 0",
+                "update team_join_request set deleted = 1, status = 'CLOSED', updated_at = ? where team_id = ? and deleted = 0",
                 LocalDateTime.now(),
-                tenantId,
                 teamId
         );
     }
 
     private String joinRequestSelect(String tail) {
         return """
-                select id, tenant_id as tenantId, team_id as teamId, user_id as userId,
+                select id, team_id as teamId, user_id as userId,
                        invite_id as inviteId, apply_message as applyMessage, status,
                        reviewed_by as reviewedBy, reviewed_at as reviewedAt,
                        review_message as reviewMessage, created_at as createdAt

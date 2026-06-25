@@ -34,7 +34,7 @@ class DddArchitectureCatalogControllerTest {
                 .allSatisfy(context -> {
                     assertThat(context.ownerModule()).isNotBlank();
                     assertThat(context.primaryModels()).isNotBlank();
-                    assertThat(context.readModelCacheKey()).isEqualTo("tenantId:version:scope");
+                    assertThat(context.readModelCacheKey()).isEqualTo("context:scope:version");
                 });
         assertThat(response.getData().invariants())
                 .contains(

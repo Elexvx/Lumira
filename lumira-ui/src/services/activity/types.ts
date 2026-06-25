@@ -4,9 +4,8 @@ export type ActivityBadgeTone = 'blue' | 'gold' | 'silver' | 'bronze' | 'slate' 
 
 export interface ActivityRecord {
   id: number;
-  tenantId?: number;
   code: string;
-  locale: ActivityLocale;
+  locale: string;
   title: string;
   subtitle?: string | null;
   description?: string | null;
@@ -29,7 +28,7 @@ export interface ActivityRecord {
 
 export interface ActivityUpsertPayload {
   code?: string;
-  locale: ActivityLocale;
+  locale: string;
   title: string;
   subtitle?: string;
   description?: string;
@@ -50,7 +49,7 @@ export interface ActivityUpsertPayload {
 
 export interface ActivityQueryParams {
   keyword?: string;
-  locale?: ActivityLocale;
+  locale?: string;
   status?: ActivityStatus;
   featured?: boolean;
   pageNo?: number;

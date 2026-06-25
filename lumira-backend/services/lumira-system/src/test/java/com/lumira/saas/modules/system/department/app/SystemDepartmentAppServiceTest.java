@@ -31,7 +31,7 @@ class SystemDepartmentAppServiceTest {
                 permissionSnapshotService,
                 new OperationAuditService(null) {
                     @Override
-                    public void log(Long tenantId, Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
+                    public void log(Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
                     }
                 }
         );
@@ -42,8 +42,8 @@ class SystemDepartmentAppServiceTest {
         assertThat(queryOperations.existsCallCount).isEqualTo(2);
         assertThat(queryOperations.countQueryCalled).isFalse();
         assertThat(queryOperations.updateCalled).isTrue();
-        assertThat(queryOperations.seenMismatchedTenantArgument).isFalse();
-        verify(permissionSnapshotService).invalidateTenant(1001L);
+        assertThat(queryOperations.seenTenantReference).isFalse();
+        verify(permissionSnapshotService).invalidatePermissions();
     }
 
     @Test
@@ -55,7 +55,7 @@ class SystemDepartmentAppServiceTest {
                 mock(PermissionSnapshotService.class),
                 new OperationAuditService(null) {
                     @Override
-                    public void log(Long tenantId, Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
+                    public void log(Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
                     }
                 }
         );
@@ -76,14 +76,12 @@ class SystemDepartmentAppServiceTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(2001L);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(2002L);
         return currentUser;
     }
 
     private static DepartmentVO department(Long id, Long parentId, String deptCode, String deptName) {
         DepartmentVO department = new DepartmentVO();
         department.setId(id);
-        department.setTenantId(1001L);
         department.setParentId(parentId);
         department.setDeptCode(deptCode);
         department.setDeptName(deptName);
@@ -99,19 +97,19 @@ class SystemDepartmentAppServiceTest {
         private boolean departmentCodeExists;
         private boolean countQueryCalled;
         private boolean updateCalled;
-        private boolean seenMismatchedTenantArgument;
+        private boolean seenTenantReference;
         private int existsCallCount;
 
         @Override
         public boolean exists(String sql, Object... args) {
-            recordMismatchedTenant(args);
+            recordTenantUsage(sql, args);
             existsCallCount += 1;
             return departmentCodeExists && sql.contains("dept_code = ?");
         }
 
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
-            recordMismatchedTenant(args);
+            recordTenantUsage(sql, args);
             if (sql.contains("from sys_department d")) {
                 return castList(List.of(department(2001L, null, "sales", "销售部")));
             }
@@ -120,7 +118,7 @@ class SystemDepartmentAppServiceTest {
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            recordMismatchedTenant(args);
+            recordTenantUsage(sql, args);
             if (sql.contains("count(1)")) {
                 countQueryCalled = true;
             }
@@ -132,15 +130,18 @@ class SystemDepartmentAppServiceTest {
 
         @Override
         public int update(String sql, Object... args) {
-            recordMismatchedTenant(args);
+            recordTenantUsage(sql, args);
             updateCalled = true;
             return 1;
         }
 
-        private void recordMismatchedTenant(Object... args) {
+        private void recordTenantUsage(String sql, Object... args) {
+            if (sql != null && sql.toLowerCase().contains("tenant")) {
+                seenTenantReference = true;
+            }
             for (Object arg : args) {
                 if (Long.valueOf(2002L).equals(arg)) {
-                    seenMismatchedTenantArgument = true;
+                    seenTenantReference = true;
                 }
             }
         }

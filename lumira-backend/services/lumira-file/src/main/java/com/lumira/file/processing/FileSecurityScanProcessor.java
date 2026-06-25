@@ -37,11 +37,11 @@ public class FileSecurityScanProcessor {
         this.scanEngineSelector = scanEngineSelector;
     }
 
-    public SecurityScanResult scan(Long tenantId, Long fileId, Long userId) {
+    public SecurityScanResult scan(Long fileId, Long userId) {
         Instant startedAt = Instant.now();
         FileSecurityScanEngine engine = scanEngineSelector.select();
         try {
-            FileLocation location = findFileLocation(tenantId, fileId);
+            FileLocation location = findFileLocation(fileId);
             if (location == null) {
                 throw new IllegalStateException("File object is unavailable for security scan: " + fileId);
             }
@@ -51,9 +51,9 @@ public class FileSecurityScanProcessor {
             } else {
                 result = scanLocal(engine, location, fileId);
             }
-            upsertArtifact(tenantId, fileId, result, userId);
+            upsertArtifact(fileId, result, userId);
             if (VERDICT_THREAT_DETECTED.equals(result.verdict())) {
-                quarantineFile(tenantId, fileId, userId);
+                quarantineFile(fileId, userId);
             }
             securityScanMetrics.recordVerdict(result.engine(), result.verdict(), Duration.between(startedAt, Instant.now()));
             return result;
@@ -72,17 +72,16 @@ public class FileSecurityScanProcessor {
         return new SecurityScanResult(fileId, scanResult.engine(), scanResult.verdict(), scanResult.reason(), scanResult.scannedBytes());
     }
 
-    private FileLocation findFileLocation(Long tenantId, Long fileId) {
+    private FileLocation findFileLocation(Long fileId) {
         List<FileLocation> locations = jdbcTemplate.query(
                 """
                         select fo.storage_type as storageType, fo.object_key as objectKey,
                                fo.file_extension as fileExtension, coalesce(fs.root_path, '') as rootPath
                         from file_object fo
                         left join file_storage_space fs
-                          on fs.tenant_id = fo.tenant_id
-                         and fs.storage_key = fo.bucket
+                          on fs.storage_key = fo.bucket
                          and fs.deleted = 0
-                        where fo.tenant_id = ? and fo.id = ? and fo.deleted = 0
+                        where fo.id = ? and fo.deleted = 0
                         limit 1
                         """,
                 (rs, rowNum) -> new FileLocation(
@@ -91,7 +90,6 @@ public class FileSecurityScanProcessor {
                         rs.getString("rootPath"),
                         rs.getString("fileExtension")
                 ),
-                tenantId,
                 fileId
         );
         return locations.isEmpty() ? null : locations.getFirst();
@@ -137,14 +135,14 @@ public class FileSecurityScanProcessor {
         return uploadRoot.resolve(normalizedRootPath).normalize();
     }
 
-    private void upsertArtifact(Long tenantId, Long fileId, SecurityScanResult result, Long userId) {
+    private void upsertArtifact(Long fileId, SecurityScanResult result, Long userId) {
         String payload = buildPayload(result);
         jdbcTemplate.update(
                 """
                         insert into file_processing_artifact (
-                            tenant_id, file_id, task_type, artifact_type, content_text, content_length,
+                            file_id, task_type, artifact_type, content_text, content_length,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, 0)
                         on duplicate key update
                             task_type = values(task_type),
                             content_text = values(content_text),
@@ -153,7 +151,6 @@ public class FileSecurityScanProcessor {
                             updated_at = current_timestamp,
                             updated_by = values(updated_by)
                         """,
-                tenantId,
                 fileId,
                 FileProcessingTaskService.TASK_SECURITY_SCAN,
                 ARTIFACT_SECURITY_SCAN_RESULT,
@@ -164,16 +161,15 @@ public class FileSecurityScanProcessor {
         );
     }
 
-    private void quarantineFile(Long tenantId, Long fileId, Long userId) {
+    private void quarantineFile(Long fileId, Long userId) {
         jdbcTemplate.update(
                 """
                         update file_object
                         set status = ?, updated_at = current_timestamp, updated_by = ?
-                        where tenant_id = ? and id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 "QUARANTINED",
                 userId == null ? 0L : userId,
-                tenantId,
                 fileId
         );
     }

@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/public")
 public class PublicSystemController {
 
-    private static final Long PLATFORM_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
-
     private final SystemManagementAppService systemManagementAppService;
     private final SystemVerificationAppService systemVerificationAppService;
     private final PlatformBootstrapService platformBootstrapService;
@@ -32,13 +30,13 @@ public class PublicSystemController {
 
     @GetMapping("/bootstrap")
     public ApiResponse<SystemVO.PublicBootstrapVO> bootstrap() {
-        return ApiResponse.success(platformBootstrapService.getPublicBootstrap(PLATFORM_TENANT_ID), TraceContext.getRequestId());
+        return ApiResponse.success(platformBootstrapService.getPublicBootstrap(), TraceContext.getRequestId());
     }
 
     @GetMapping("/branding-settings")
     public ApiResponse<SystemVO.BrandingSettingsVO> brandingSettings() {
         return ApiResponse.success(
-                systemManagementAppService.getPublicBrandingSettings(PLATFORM_TENANT_ID),
+                systemManagementAppService.getPublicBrandingSettings(),
                 TraceContext.getRequestId()
         );
     }
@@ -59,7 +57,7 @@ public class PublicSystemController {
     @GetMapping("/login-capabilities")
     public ApiResponse<SystemVO.LoginCapabilitiesVO> loginCapabilities() {
         return ApiResponse.success(
-                systemVerificationAppService.loadLoginCapabilities(PLATFORM_TENANT_ID),
+                systemVerificationAppService.loadLoginCapabilities(),
                 TraceContext.getRequestId()
         );
     }

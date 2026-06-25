@@ -45,16 +45,23 @@ const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const realPagePathSet = new Set(realPageRouteMetaMap.keys());
 const resolveIsMobileViewport = () =>
   typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches;
-const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai', '/activities', '/competitions', '/experts', '/team', '/user-center'];
+const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai', '/data-management', '/certificates', '/experts', '/user-center'];
 const DASHBOARD_GROUP_PATH = '/dashboard';
 const DASHBOARD_HOME_PATH = '/dashboard/home';
 const USER_CENTER_GROUP_PATH = '/user-center';
 const PERSONAL_CENTER_GROUP_PATH = '/user-center/personal-center';
 const PERSONAL_CENTER_CHILD_PATHS = ['/user-center/personal-center/profile', '/user-center/personal-center/files'];
+const DATA_MANAGEMENT_GROUP_PATH = '/data-management';
+const DATA_QUERY_CENTER_GROUP_PATH = '/data-management/query-center';
+const DATA_MANAGEMENT_DIRECT_CHILD_PATHS = ['/competitions/management', '/activities/management', '/projects/management', '/team/management', '/payments/management'];
+const DATA_QUERY_CHILD_PATHS = ['/team/search', '/projects/search', '/activities/search', '/payments/status'];
+const DATA_SOURCE_GROUP_PATHS = ['/activities', '/competitions', '/projects', '/team', '/payments'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
 const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
   [USER_CENTER_GROUP_PATH]: 'main:user-center',
   [PERSONAL_CENTER_GROUP_PATH]: 'main:personal-center',
+  [DATA_MANAGEMENT_GROUP_PATH]: 'main:data-management',
+  [DATA_QUERY_CENTER_GROUP_PATH]: 'main:data-query-center',
 };
 const STORAGE_ACTIVITY_KEY = getSessionActivityStorageKey();
 const MOUSE_MOVE_THROTTLE_MS = 1000;
@@ -699,6 +706,14 @@ const resolveSelectedMenuPath = (pathname: string, menuTree: MenuNode[] | undefi
 const hasMenuPathOrChild = (paths: Set<string>, targetPath: string) =>
   paths.has(targetPath) || [...paths].some((path) => path.startsWith(`${targetPath}/`));
 
+const looksLikeRoutePath = (value?: string | null) => Boolean(value?.trim().startsWith('/'));
+
+const resolveNavigationMenuName = (labelId?: string | null, fallback?: string | null) =>
+  resolveBuiltinMessage(
+    labelId,
+    fallback && !looksLikeRoutePath(fallback) ? fallback : undefined,
+  );
+
 const removeMenuPathsForLayout = (
   items: RuntimeMenuDataItem[],
   pathsToRemove: Set<string>,
@@ -709,6 +724,10 @@ const removeMenuPathsForLayout = (
 
     if (normalizedPath && pathsToRemove.has(normalizedPath)) {
       return children;
+    }
+
+    if (!normalizedPath && item.children?.length && !children.length) {
+      return [];
     }
 
     return {
@@ -761,12 +780,18 @@ const buildStableRouteMenuItemForLayout = (
   }
 
   if (localMenu) {
-    return { ...localMenu, hideInMenu: false };
+    return {
+      ...localMenu,
+      name: resolveNavigationMenuName(meta.name, typeof localMenu.name === 'string' ? localMenu.name : undefined),
+      locale: false as const,
+      icon: resolveNavigationIcon(localMenu.icon) ?? resolveNavigationIcon(meta.icon),
+      hideInMenu: false,
+    };
   }
 
   return {
     path: meta.path,
-    name: resolveBuiltinMessage(meta.name, formatMessage({ id: meta.name, defaultMessage: meta.name })),
+    name: resolveNavigationMenuName(meta.name, formatMessage({ id: meta.name, defaultMessage: meta.name })),
     locale: false as const,
     icon: resolveNavigationIcon(meta.icon),
     hideInMenu: false,
@@ -789,7 +814,53 @@ const buildPersonalCenterMenuGroupForLayout = (
   return {
     key: MAIN_MENU_KEY_BY_PATH[PERSONAL_CENTER_GROUP_PATH],
     path: PERSONAL_CENTER_GROUP_PATH,
-    name: resolveBuiltinMessage(
+    name: resolveNavigationMenuName(
+      groupMeta.name,
+      formatMessage({ id: groupMeta.name, defaultMessage: groupMeta.name }),
+    ),
+    locale: false as const,
+    icon: resolveNavigationIcon(groupMeta.icon),
+    hideInMenu: false,
+    children,
+  };
+};
+
+const buildDataManagementMenuGroupForLayout = (
+  fallbackByPath: Map<string, RuntimeMenuDataItem>,
+  accessMap: Record<string, unknown>,
+): RuntimeMenuDataItem | null => {
+  const groupMeta = routeMetaMap.get(DATA_MANAGEMENT_GROUP_PATH);
+  const directChildren = DATA_MANAGEMENT_DIRECT_CHILD_PATHS
+    .map((path) => buildStableRouteMenuItemForLayout(path, fallbackByPath, accessMap))
+    .filter(Boolean) as RuntimeMenuDataItem[];
+  const queryChildren = DATA_QUERY_CHILD_PATHS
+    .map((path) => buildStableRouteMenuItemForLayout(path, fallbackByPath, accessMap))
+    .filter(Boolean) as RuntimeMenuDataItem[];
+  const queryMeta = routeMetaMap.get(DATA_QUERY_CENTER_GROUP_PATH);
+  const queryMenu = queryMeta && queryChildren.length
+    ? {
+        key: MAIN_MENU_KEY_BY_PATH[DATA_QUERY_CENTER_GROUP_PATH],
+        path: DATA_QUERY_CENTER_GROUP_PATH,
+        name: resolveNavigationMenuName(
+          queryMeta.name,
+          formatMessage({ id: queryMeta.name, defaultMessage: queryMeta.name }),
+        ),
+        locale: false as const,
+        icon: resolveNavigationIcon(queryMeta.icon),
+        hideInMenu: false,
+        children: queryChildren,
+      }
+    : null;
+  const children = [...directChildren, ...(queryMenu ? [queryMenu] : [])];
+
+  if (!groupMeta || !children.length) {
+    return null;
+  }
+
+  return {
+    key: MAIN_MENU_KEY_BY_PATH[DATA_MANAGEMENT_GROUP_PATH],
+    path: DATA_MANAGEMENT_GROUP_PATH,
+    name: resolveNavigationMenuName(
       groupMeta.name,
       formatMessage({ id: groupMeta.name, defaultMessage: groupMeta.name }),
     ),
@@ -871,13 +942,15 @@ const composeMenuItemForLayout = (
   const icon = resolveNavigationIcon(backendNode.icon) ?? resolveNavigationIcon(localMeta?.icon) ?? resolveNavigationIcon(mergedMeta?.icon);
   const isRedirectGroup = children.length > 0 && Boolean(backendNode.component?.startsWith('redirect:'));
   const isUserCenterMenuGroup = normalizedPath === USER_CENTER_GROUP_PATH && children.length > 0;
-  const menuLabelId = backendNode.name || mergedMeta?.name || backendNode.menuCode;
+  const menuLabelId = backendNode.name && !looksLikeRoutePath(backendNode.name)
+    ? backendNode.name
+    : mergedMeta?.name || backendNode.menuCode;
 
   return {
     ...localItemMeta,
     key: MAIN_MENU_KEY_BY_PATH[normalizedPath] || localItemMeta.key,
     path: isRedirectGroup || isUserCenterMenuGroup ? undefined : normalizedPath || localMeta?.path,
-    name: resolveBuiltinMessage(menuLabelId, formatMessage({ id: menuLabelId, defaultMessage: backendNode.name })),
+    name: resolveNavigationMenuName(menuLabelId, mergedMeta?.name || backendNode.name),
     locale: false as const,
     icon,
     hideInMenu: localMeta?.hideInMenu || mergedMeta?.hideInMenu,
@@ -916,14 +989,31 @@ const buildMainMenuDataForLayout = (
   const hasPersonalCenterSource =
     hasMenuPathOrChild(sourcePaths, PERSONAL_CENTER_GROUP_PATH)
     || PERSONAL_CENTER_CHILD_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path));
+  const hasDataManagementSource =
+    hasMenuPathOrChild(sourcePaths, DATA_MANAGEMENT_GROUP_PATH)
+    || DATA_MANAGEMENT_DIRECT_CHILD_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path))
+    || DATA_QUERY_CHILD_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path))
+    || DATA_SOURCE_GROUP_PATHS.some((path) => hasMenuPathOrChild(sourcePaths, path));
   const dashboardMenu = allowMissingStableMenus || hasDashboardSource
     ? buildDashboardMenuGroupForLayout(fallbackByPath, accessMap)
+    : null;
+  const dataManagementMenu = allowMissingStableMenus || hasDataManagementSource
+    ? buildDataManagementMenuGroupForLayout(fallbackByPath, accessMap)
     : null;
   const personalCenterMenu = allowMissingStableMenus || hasPersonalCenterSource
     ? buildPersonalCenterMenuGroupForLayout(fallbackByPath, accessMap)
     : null;
   const pathsToRemove = new Set([
     ...(dashboardMenu ? [DASHBOARD_HOME_PATH] : []),
+    ...(dataManagementMenu
+      ? [
+          DATA_MANAGEMENT_GROUP_PATH,
+          DATA_QUERY_CENTER_GROUP_PATH,
+          ...DATA_MANAGEMENT_DIRECT_CHILD_PATHS,
+          ...DATA_QUERY_CHILD_PATHS,
+          ...DATA_SOURCE_GROUP_PATHS,
+        ]
+      : []),
     ...(personalCenterMenu ? [PERSONAL_CENTER_GROUP_PATH, ...PERSONAL_CENTER_CHILD_PATHS] : []),
   ]);
   const visibleMenus = pathsToRemove.size
@@ -934,6 +1024,7 @@ const buildMainMenuDataForLayout = (
   const fallbackMenus = allowMissingStableMenus
     ? STABLE_MAIN_ROUTE_PATHS
       .filter((path) => path !== DASHBOARD_HOME_PATH)
+      .filter((path) => path !== DATA_MANAGEMENT_GROUP_PATH)
       .filter((path) => !hasMenuPathOrChild(existingPaths, path))
       .map((path) => {
         const localMenu = fallbackByPath.get(path);
@@ -962,7 +1053,13 @@ const buildMainMenuDataForLayout = (
       .filter(Boolean) as RuntimeMenuDataItem[]
     : [];
 
-  return [...(dashboardMenu ? [dashboardMenu] : []), ...fallbackMenus, ...visibleMenus, ...(personalCenterMenu ? [personalCenterMenu] : [])].sort((a, b) => {
+  return [
+    ...(dashboardMenu ? [dashboardMenu] : []),
+    ...(dataManagementMenu ? [dataManagementMenu] : []),
+    ...fallbackMenus,
+    ...visibleMenus,
+    ...(personalCenterMenu ? [personalCenterMenu] : []),
+  ].sort((a, b) => {
     const leftPath = resolveStableMainMenuSortPath(a);
     const rightPath = resolveStableMainMenuSortPath(b);
     const leftIndex = STABLE_MAIN_ROUTE_PATHS.indexOf(leftPath);

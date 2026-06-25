@@ -15,8 +15,6 @@ public interface DomainEvent extends Serializable {
 
     String aggregateId();
 
-    Long tenantId();
-
     int schemaVersion();
 
     String eventKey();

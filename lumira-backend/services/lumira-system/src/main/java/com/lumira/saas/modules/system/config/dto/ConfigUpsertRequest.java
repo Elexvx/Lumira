@@ -10,8 +10,6 @@ public class ConfigUpsertRequest {
     private String configName;
     @NotBlank
     private String configValue;
-    @NotBlank
-    private String configScope;
     private String remark;
 
     public String getConfigKey() { return configKey; }
@@ -20,8 +18,6 @@ public class ConfigUpsertRequest {
     public void setConfigName(String configName) { this.configName = configName; }
     public String getConfigValue() { return configValue; }
     public void setConfigValue(String configValue) { this.configValue = configValue; }
-    public String getConfigScope() { return configScope; }
-    public void setConfigScope(String configScope) { this.configScope = configScope; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
 }

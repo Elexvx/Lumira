@@ -17,6 +17,13 @@ import org.junit.jupiter.api.Test;
 class ArchitecturePersistenceBoundaryTest {
     private static final Pattern IMPORT_PATTERN = Pattern.compile("(?m)^import\\s+([\\w.]+);");
     private static final Pattern SQL_WRITE_PATTERN = Pattern.compile("(?is)\\b(?:insert\\s+into|delete\\s+from|update\\s+(?!requires\\b))\\s+`?[a-zA-Z0-9_]+`?");
+    private static final Pattern APP_DIRECT_PERSISTENCE_PATTERN = Pattern.compile(
+            "(?is)\\b(?:JdbcTemplate|MyBatisQueryOperations)\\b|\\bjdbcTemplate\\s*\\.\\s*(?:update|batchUpdate)\\s*\\(|\\bMyBatisQueryOperations\\s*\\.\\s*update\\s*\\(|\\bmyBatisQueryOperations\\s*\\.\\s*update\\s*\\(|\\b(?:insert\\s+into|delete\\s+from|update\\s+(?!requires\\b))\\s+`?[a-zA-Z0-9_]+`?"
+    );
+    private static final Pattern DIRECT_SQL_DEBT_ROW_PATTERN = Pattern.compile("(?m)^\\| `([^`]+)` \\| (?:direct SQL(?: / direct persistence dependency)?|direct persistence dependency) \\|");
+    private static final Set<String> NON_APP_DIRECT_SQL_DEBT = Set.of(
+            "InternalSystemController"
+    );
     private static final Set<String> CONTROLLER_PERSISTENCE_DEBT = Set.of(
             "services/lumira-system/src/main/java/com/lumira/saas/modules/system/controller/InternalSystemController.java"
     );
@@ -30,12 +37,39 @@ class ArchitecturePersistenceBoundaryTest {
             "SystemRoleManagementAppService",
             "SystemDepartmentAppService",
             "IamUserService",
+            "DefaultDelegationGrantEvaluator",
             "AiToolPolicyService",
             "AiConversationService",
             "AiToolOrchestrationService",
             "AiKnowledgeBaseAppService",
             "AiNativeToolRuntimeService",
-            "SensitiveWordService"
+            "AiCommandService",
+            "AiEmployeeRuntimeService",
+            "AiIamQueryFacade",
+            "AiLlmServiceConfigProvider",
+            "AiManagementAppService",
+            "AiOwnerMetricsService",
+            "AiPlatformQueryFacade",
+            "AiReadQueryService",
+            "AiSkillPermissionChecker",
+            "AiToolRegistry",
+            "ActivityManagementAppService",
+            "CompetitionManagementAppService",
+            "CompetitionRegistrationAppService",
+            "ExpertManagementAppService",
+            "FileManagementAppService",
+            "OnlineSessionManagementAppService",
+            "ProjectManagementAppService",
+            "DictRuntimeService",
+            "SensitiveWordService",
+            "SensitiveWordDictionaryCache",
+            "SensitiveWordPluginStateService",
+            "SystemPlatformSettingsAppService",
+            "SystemProfileSettingsAppService",
+            "TeamInternalApiService",
+            "TeamPermissionService",
+            "WorkOrderFeedbackService",
+            "WorkOrderFeedbackPluginStateService"
     );
 
     @Test
@@ -60,6 +94,26 @@ class ArchitecturePersistenceBoundaryTest {
         }
         assertThat(violations)
                 .as("controllers must delegate to application services/internal APIs, not persistence")
+                .isEmpty();
+    }
+
+    @Test
+    void appPackagesMustNotAddDirectWriteSqlOutsideDocumentedHistoricalDebt() throws IOException {
+        Path root = repositoryRoot();
+        Set<String> allowedHistoricalDebt = allowedHistoricalAppDirectSqlDebt();
+        List<String> violations = new ArrayList<>();
+        for (Path file : serviceMainAppJavaFiles(root).toList()) {
+            String className = simpleClassName(file);
+            if (allowedHistoricalDebt.contains(className)) {
+                continue;
+            }
+            String source = Files.readString(file);
+            if (APP_DIRECT_PERSISTENCE_PATTERN.matcher(source).find()) {
+                violations.add(root.relativize(file) + " direct app persistence");
+            }
+        }
+        assertThat(violations)
+                .as("app packages must route writes through repositories/persistence adapters; only documented historical debt may keep direct persistence")
                 .isEmpty();
     }
 
@@ -98,16 +152,18 @@ class ArchitecturePersistenceBoundaryTest {
 
     @Test
     void historicalDirectSqlDebtMustStayDocumentedAndTeamMustNotBeListed() throws IOException {
-        Path debtFile = repositoryRoot().getParent().resolve("doc/architecture/persistence-boundary-debt.md");
-        String debt = Files.readString(debtFile);
+        Set<String> documentedDirectSqlDebt = documentedDirectSqlDebt();
         for (String debtName : HISTORICAL_DIRECT_SQL_DEBT) {
-            assertThat(debt)
+            assertThat(documentedDirectSqlDebt)
                     .as("%s must stay documented until migrated", debtName)
                     .contains(debtName);
         }
-        assertThat(debt)
-                .doesNotContain("TeamAppService direct SQL")
-                .doesNotContain("TeamInviteService direct SQL");
+        assertThat(documentedDirectSqlDebt)
+                .as("Team must not be temporarily allowed back into app direct SQL debt")
+                .doesNotContain("TeamAppService", "TeamInviteService");
+        assertThat(documentedDirectSqlDebt)
+                .as("direct SQL debt list may only contain the known historical app debt plus explicitly tracked non-app debt")
+                .isSubsetOf(union(HISTORICAL_DIRECT_SQL_DEBT, NON_APP_DIRECT_SQL_DEBT));
     }
 
     @Test
@@ -133,6 +189,44 @@ class ArchitecturePersistenceBoundaryTest {
                 .filter(path -> normalized(path).contains("/src/main/java/"))
                 .filter(path -> path.toString().endsWith(".java"))
                 .filter(path -> !normalized(path).contains("/target/"));
+    }
+
+    private static Set<String> documentedDirectSqlDebt() throws IOException {
+        Path debtFile = repositoryRoot().getParent().resolve("doc/architecture/persistence-boundary-debt.md");
+        String debt = Files.readString(debtFile);
+        Matcher matcher = DIRECT_SQL_DEBT_ROW_PATTERN.matcher(debt);
+        Set<String> debtNames = new java.util.LinkedHashSet<>();
+        while (matcher.find()) {
+            debtNames.add(matcher.group(1));
+        }
+        return debtNames;
+    }
+
+    private static Set<String> allowedHistoricalAppDirectSqlDebt() throws IOException {
+        Set<String> documentedDebt = documentedDirectSqlDebt();
+        Set<String> allowedDebt = new java.util.LinkedHashSet<>(documentedDebt);
+        allowedDebt.retainAll(HISTORICAL_DIRECT_SQL_DEBT);
+        return allowedDebt;
+    }
+
+    private static Stream<Path> serviceMainAppJavaFiles(Path root) throws IOException {
+        return Files.walk(root.resolve("services"))
+                .filter(Files::isRegularFile)
+                .filter(path -> normalized(path).contains("/src/main/java/"))
+                .filter(path -> normalized(path).contains("/app/"))
+                .filter(path -> path.toString().endsWith(".java"))
+                .filter(path -> !normalized(path).contains("/target/"));
+    }
+
+    private static Set<String> union(Set<String> first, Set<String> second) {
+        Set<String> result = new java.util.LinkedHashSet<>(first);
+        result.addAll(second);
+        return result;
+    }
+
+    private static String simpleClassName(Path path) {
+        String fileName = path.getFileName().toString();
+        return fileName.substring(0, fileName.length() - ".java".length());
     }
 
     private static Path repositoryRoot() {

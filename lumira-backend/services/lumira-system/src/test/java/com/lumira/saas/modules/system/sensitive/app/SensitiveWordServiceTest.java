@@ -82,12 +82,13 @@ class SensitiveWordServiceTest {
         assertThat(response.getTotal()).isZero();
         assertThat(queryOperations.countQueryCalled).isFalse();
         assertThat(queryOperations.lastListSql).contains("from sys_sensitive_word");
+        assertThat(queryOperations.lastListSql).doesNotContain("tenant_id");
     }
 
     @Test
     void checkTextShouldNotBlockLogOnlyWord() {
         SensitiveWordDictionaryCache dictionaryCache = mock(SensitiveWordDictionaryCache.class);
-        when(dictionaryCache.getMatcher(1001L)).thenReturn(new SensitiveWordMatcher(List.of(
+        when(dictionaryCache.getMatcher()).thenReturn(new SensitiveWordMatcher(List.of(
                 new SensitiveWordMatcher.DictionaryEntry(1L, "敏感词", "敏感词", "DEFAULT", "MEDIUM", "LOG_ONLY", 20)
         )));
         SensitiveWordService service = new SensitiveWordService(
@@ -110,7 +111,6 @@ class SensitiveWordServiceTest {
 
     private CurrentUser currentUser() {
         CurrentUser currentUser = new CurrentUser();
-        currentUser.setCurrentTenantId(2002L);
         currentUser.setUserId(2001L);
         currentUser.setUsername("admin");
         currentUser.setAuthenticated(true);
@@ -150,7 +150,7 @@ class SensitiveWordServiceTest {
         public <T> List<T> queryForList(String sql, Class<T> requiredType, Object... args) {
             if (sql.contains("normalized_word in")) {
                 batchLookupCallCount += 1;
-                return wordExists ? List.of(requiredType.cast(args[1])) : List.of();
+                return wordExists ? List.of(requiredType.cast(args[0])) : List.of();
             }
             return List.of();
         }

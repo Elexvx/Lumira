@@ -35,7 +35,7 @@ class TeamInviteServiceTest {
         assertThat(invite.getRawToken()).isNotBlank();
         assertThat(invite.getInviteUrl()).contains(invite.getRawToken());
         verify(fixtures.teamInviteRepository).createInvite(
-                anyLong(), anyLong(), anyString(), org.mockito.ArgumentMatchers.matches("[0-9a-f]{64}"),
+                org.mockito.ArgumentMatchers.eq(2001L), anyString(), org.mockito.ArgumentMatchers.matches("[0-9a-f]{64}"),
                 anyString(), anyString(), any(), any(), anyBoolean(), anyLong()
         );
     }
@@ -44,15 +44,15 @@ class TeamInviteServiceTest {
     void blankInviteCodeShouldBeGeneratedAndJoinable() {
         Fixtures fixtures = fixtures();
         TeamDTO.InviteCreateRequest request = new TeamDTO.InviteCreateRequest();
-        when(fixtures.permissionService.activeMember(1001L, 2001L, 3002L)).thenReturn(null);
+        when(fixtures.permissionService.activeMember(2001L, 3002L)).thenReturn(null);
 
         TeamVO.Invite invite = fixtures.service.createInvite(currentUser(3001L), 2001L, request);
-        when(fixtures.teamInviteRepository.findByCode(1001L, invite.getInviteCode())).thenReturn(invite);
+        when(fixtures.teamInviteRepository.findByCode(invite.getInviteCode())).thenReturn(invite);
         TeamVO.JoinResult result = fixtures.service.joinByCode(currentUser(3002L), invite.getInviteCode());
 
         assertThat(invite.getInviteCode()).matches("[A-Z0-9]{8,}");
         assertThat(result.getStatus()).isEqualTo("JOINED");
-        verify(fixtures.teamAppService).ensureDirectMember(1001L, 2001L, 3002L, null, "MEMBER");
+        verify(fixtures.teamAppService).ensureDirectMember(2001L, 3002L, null, "MEMBER");
     }
 
     @Test
@@ -73,15 +73,15 @@ class TeamInviteServiceTest {
     @Test
     void inviteWithoutApprovalShouldJoinDirectlyAndRepeatJoinIsIdempotent() {
         Fixtures fixtures = fixtures();
-        when(fixtures.permissionService.activeMember(1001L, 2001L, 3002L)).thenReturn(null);
+        when(fixtures.permissionService.activeMember(2001L, 3002L)).thenReturn(null);
 
         TeamVO.JoinResult result = fixtures.service.joinByToken(currentUser(3002L), "raw");
 
         assertThat(result.getStatus()).isEqualTo("JOINED");
         verify(fixtures.teamInviteRepository).consumeInviteQuota(any());
-        verify(fixtures.teamAppService).ensureDirectMember(1001L, 2001L, 3002L, null, "MEMBER");
+        verify(fixtures.teamAppService).ensureDirectMember(2001L, 3002L, null, "MEMBER");
 
-        when(fixtures.permissionService.activeMember(1001L, 2001L, 3002L)).thenReturn(member());
+        when(fixtures.permissionService.activeMember(2001L, 3002L)).thenReturn(member());
         TeamVO.JoinResult repeat = fixtures.service.joinByToken(currentUser(3002L), "raw");
         assertThat(repeat.getStatus()).isEqualTo("JOINED");
     }
@@ -91,12 +91,12 @@ class TeamInviteServiceTest {
         Fixtures fixtures = fixtures();
         TeamVO.Invite approvalInvite = invite(false, false, true);
         when(fixtures.teamInviteRepository.findByTokenHash(anyString())).thenReturn(approvalInvite);
-        when(fixtures.teamJoinRequestRepository.findPending(1001L, 2001L, 3002L)).thenReturn(null);
+        when(fixtures.teamJoinRequestRepository.findPending(2001L, 3002L)).thenReturn(null);
 
         TeamVO.JoinResult result = fixtures.service.joinByToken(currentUser(3002L), "raw");
 
         assertThat(result.getStatus()).isEqualTo("PENDING");
-        verify(fixtures.teamJoinRequestRepository).createPending(1001L, 2001L, 3002L, 5001L, null);
+        verify(fixtures.teamJoinRequestRepository).createPending(2001L, 3002L, 5001L, null);
         verify(fixtures.teamInviteRepository).consumeInviteQuota(approvalInvite);
     }
 
@@ -106,7 +106,7 @@ class TeamInviteServiceTest {
         TeamVO.Invite approvalInvite = invite(false, false, true);
         TeamVO.JoinRequest pending = joinRequest();
         when(fixtures.teamInviteRepository.findByTokenHash(anyString())).thenReturn(approvalInvite);
-        when(fixtures.teamJoinRequestRepository.findPending(1001L, 2001L, 3002L)).thenReturn(pending);
+        when(fixtures.teamJoinRequestRepository.findPending(2001L, 3002L)).thenReturn(pending);
 
         TeamVO.JoinResult result = fixtures.service.joinByToken(currentUser(3002L), "raw");
 
@@ -132,39 +132,39 @@ class TeamInviteServiceTest {
         TeamPermissionService permissionService = mock(TeamPermissionService.class);
         TeamInviteRepository teamInviteRepository = mock(TeamInviteRepository.class);
         TeamJoinRequestRepository teamJoinRequestRepository = mock(TeamJoinRequestRepository.class);
-        when(permissionService.activeRole(1001L, 2001L, 3001L)).thenReturn("OWNER");
+        when(permissionService.activeRole(2001L, 3001L)).thenReturn("OWNER");
         when(permissionService.canInvite("OWNER")).thenReturn(true);
         TeamVO.Invite invite = invite(false, false, false);
-        when(teamInviteRepository.createInvite(anyLong(), anyLong(), anyString(), anyString(), anyString(), anyString(), any(), any(), anyBoolean(), anyLong()))
+        when(teamInviteRepository.createInvite(anyLong(), anyString(), anyString(), anyString(), anyString(), any(), any(), anyBoolean(), anyLong()))
                 .thenAnswer(invocation -> {
-                    invite.setInviteCode(invocation.getArgument(2));
+                    invite.setInviteCode(invocation.getArgument(1));
                     return 5001L;
                 });
-        when(teamInviteRepository.findById(1001L, 2001L, 5001L)).thenReturn(invite);
+        when(teamInviteRepository.findById(2001L, 5001L)).thenReturn(invite);
         when(teamInviteRepository.findByTokenHash(anyString())).thenReturn(invite);
-        when(teamInviteRepository.findByCode(1001L, "JOIN2026")).thenReturn(invite);
+        when(teamInviteRepository.findByCode("JOIN2026")).thenReturn(invite);
         when(teamInviteRepository.consumeInviteQuota(any())).thenReturn(true);
-        when(teamJoinRequestRepository.createPending(anyLong(), anyLong(), anyLong(), any(), any())).thenReturn(6001L);
-        when(teamJoinRequestRepository.findById(1001L, 2001L, 6001L)).thenReturn(joinRequest());
+        when(teamJoinRequestRepository.createPending(anyLong(), anyLong(), any(), any())).thenReturn(6001L);
+        when(teamJoinRequestRepository.findById(2001L, 6001L)).thenReturn(joinRequest());
         TeamInviteService service = new TeamInviteService(
                 teamAppService,
                 permissionService,
                 teamInviteRepository,
                 teamJoinRequestRepository,
-                (tenantId, userId, username, moduleName, actionName, operationType, resultStatus, detailMessage) -> {}
+                (userId, username, moduleName, actionName, operationType, resultStatus, detailMessage) -> {}
         );
         return new Fixtures(service, teamAppService, permissionService, teamInviteRepository, teamJoinRequestRepository);
     }
 
     private TeamAppService teamService() {
         TeamAppService service = mock(TeamAppService.class);
-        when(service.requireTenantId(org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
+        when(service.requireUserId(org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
         when(service.normalizeEnum(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(Set.class), org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
         when(service.trimToNull(org.mockito.ArgumentMatchers.any())).thenCallRealMethod();
-        when(service.queryTeam(1001L, 2001L, 3001L)).thenReturn(team("OWNER", "INVITE_ONLY"));
-        when(service.queryTeam(1001L, 2001L, 3002L)).thenReturn(team("MEMBER", "INVITE_ONLY"));
-        when(service.queryTeam(1001L, 2001L, null)).thenReturn(team(null, "INVITE_ONLY"));
-        doNothing().when(service).ensureDirectMember(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString());
+        when(service.queryTeam(2001L, 3001L)).thenReturn(team("OWNER", "INVITE_ONLY"));
+        when(service.queryTeam(2001L, 3002L)).thenReturn(team("MEMBER", "INVITE_ONLY"));
+        when(service.queryTeam(2001L, null)).thenReturn(team(null, "INVITE_ONLY"));
+        doNothing().when(service).ensureDirectMember(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyString());
         return service;
     }
 
@@ -172,14 +172,12 @@ class TeamInviteServiceTest {
         CurrentUser user = new CurrentUser();
         user.setUserId(userId);
         user.setUsername("user" + userId);
-        user.setCurrentTenantId(1001L);
         return user;
     }
 
     private static TeamVO.Team team(String role, String joinMode) {
         TeamVO.Team team = new TeamVO.Team();
         team.setId(2001L);
-        team.setTenantId(1001L);
         team.setTeamName("Core Team");
         team.setTeamType("GENERAL");
         team.setVisibility("PRIVATE");
@@ -201,7 +199,6 @@ class TeamInviteServiceTest {
     private static TeamVO.Invite invite(boolean expired, boolean full, boolean approval) {
         TeamVO.Invite invite = new TeamVO.Invite();
         invite.setId(5001L);
-        invite.setTenantId(1001L);
         invite.setTeamId(2001L);
         invite.setInviteCode("JOIN2026");
         invite.setRoleOnJoin("MEMBER");
@@ -216,7 +213,6 @@ class TeamInviteServiceTest {
     private static TeamVO.JoinRequest joinRequest() {
         TeamVO.JoinRequest request = new TeamVO.JoinRequest();
         request.setId(6001L);
-        request.setTenantId(1001L);
         request.setTeamId(2001L);
         request.setUserId(3002L);
         request.setStatus("PENDING");

@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "dev": "node scripts/console-banner.mjs && max dev",
+    "dev": "node scripts/console-banner.mjs && node scripts/dev-server.mjs",
+    "dev:8899": "node scripts/console-banner.mjs && node scripts/dev-server.mjs --host 0.0.0.0 --port 8899",
     "build": "max setup && max build && node scripts/adapt-cdn-assets.mjs",
     "start": "node scripts/console-banner.mjs && max preview",
     "lint": "max lint",

@@ -1,7 +1,6 @@
 package com.lumira.api.system;
 
 public record PasskeyCredentialSaveRequestDTO(
-        Long tenantId,
         Long userId,
         String userHandle,
         String credentialId,

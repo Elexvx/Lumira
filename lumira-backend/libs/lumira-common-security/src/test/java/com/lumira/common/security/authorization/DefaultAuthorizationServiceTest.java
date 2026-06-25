@@ -26,8 +26,6 @@ class DefaultAuthorizationServiceTest {
     void allowsAndDeniesHumanPermission() {
         DefaultAuthorizationService service = service(allowGrant("unused", "LOW", false, false));
 
-        assertThat(AuthorizationRequest.permission(user(null, "system:user:view"), "system:user:view").tenantId())
-                .isEqualTo(1001L);
         assertThat(service.evaluate(AuthorizationRequest.permission(user(1001L, "system:user:view"), "system:user:view")).verdict())
                 .isEqualTo(AuthorizationVerdict.ALLOW);
         assertThat(service.evaluate(AuthorizationRequest.permission(user(null, "system:user:view"), "system:user:view")).verdict())
@@ -37,13 +35,13 @@ class DefaultAuthorizationServiceTest {
     }
 
     @Test
-    void allowsRbacWithoutTenantMatchButStillDeniesCrossTenantResourceScope() {
+    void allowsRbacWithoutTenantScope() {
         DefaultAuthorizationService service = service(allowGrant("ai:tool:file.delete", "HIGH", false, false));
 
         assertThat(service.evaluate(request(2002L, "WEB", user(1001L, "system:user:view"), "system:user:view", null, null, null)).verdict())
                 .isEqualTo(AuthorizationVerdict.ALLOW);
         assertThat(service.evaluate(aiRequest(user(1001L, "ai:tool:*"), 300L, "file.delete", "ai:tool:file.delete", "LOW", true, true,
-                Map.of("resourceTenantId", 2002L))).reasonCode()).isEqualTo("DATA_SCOPE_TENANT_MISMATCH");
+                Map.of("resourceTenantId", 2002L))).verdict()).isEqualTo(AuthorizationVerdict.ALLOW);
     }
 
     @Test
@@ -93,7 +91,7 @@ class DefaultAuthorizationServiceTest {
                 .isEqualTo("PLUGIN_PERMISSION_MISSING");
         assertThat(service.evaluate(request(1001L, "SYSTEM_JOB", null, null, "file", null, "test")).reasonCode())
                 .isEqualTo("SYSTEM_PRINCIPAL_MISSING");
-        assertThat(service.evaluate(AuthorizationRequest.systemJob(1001L, "file", "test", "req-1")).verdict())
+        assertThat(service.evaluate(AuthorizationRequest.systemJob("file", "test", "req-1")).verdict())
                 .isEqualTo(AuthorizationVerdict.ALLOW);
     }
 
@@ -121,7 +119,7 @@ class DefaultAuthorizationServiceTest {
 
     private AuthorizationRequest request(Long tenantId, String channel, CurrentUser user, String permissionKey,
                                          String resource, String tool, String action) {
-        return new AuthorizationRequest(tenantId, null, null, user == null ? null : user.getUserId(), null,
+        return new AuthorizationRequest(null, null, user == null ? null : user.getUserId(), null,
                 resource, action, permissionKey, tool, "LOW", null, Map.of(), false, false, channel,
                 "req-1", "trace-1", user);
     }

@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.auth.vo.CurrentUserVO;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -38,7 +37,7 @@ import java.util.stream.Collectors;
 @Service
 public class SystemProfileSettingsAppService {
 
-    private static final Long DEFAULT_PUBLIC_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+    private static final String PROFILE_SETTINGS_CACHE_KEY = "global-profile-field-settings";
     private static final long PROFILE_SETTINGS_CACHE_TTL_MS = 30_000L;
     private static final int PROFILE_SETTINGS_CACHE_MAX_ENTRIES = 2048;
     private static final Integer PROFILE_SCORE_MAX = 100;
@@ -71,8 +70,8 @@ public class SystemProfileSettingsAppService {
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final OperationAuditService operationAuditService;
-    private final Cache<Long, List<ProfileFieldSettingVO>> profileFieldSettingsCache;
-    private final Cache<Long, CompletableFuture<List<ProfileFieldSettingVO>>> profileFieldSettingsLoadInFlight;
+    private final Cache<String, List<ProfileFieldSettingVO>> profileFieldSettingsCache;
+    private final Cache<String, CompletableFuture<List<ProfileFieldSettingVO>>> profileFieldSettingsLoadInFlight;
 
     public SystemProfileSettingsAppService(MyBatisQueryOperations jdbcTemplate, OperationAuditService operationAuditService) {
         this.jdbcTemplate = jdbcTemplate;
@@ -88,18 +87,16 @@ public class SystemProfileSettingsAppService {
     }
 
     public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
-        return loadProfileFieldSettings(currentTenantId(currentUser));
+        return loadProfileFieldSettings();
     }
 
     @Transactional
     public List<ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request) {
-        Long tenantId = currentTenantId(currentUser);
         Map<String, ProfileFieldSettingItem> requestedSettings = new LinkedHashMap<>();
         request.getItems().forEach(item -> requestedSettings.put(item.getFieldKey(), item));
         List<ProfileFieldMetadataOverride> systemOverrides = normalizeSystemFieldOverrides(request.getItems());
         List<ProfileFieldDefinition> customDefinitions = normalizeCustomDefinitions(request.getItems(), requestedSettings.keySet());
         PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
-                tenantId,
                 definition.visibleConfigKey(),
                 definition.fieldLabel() + "展示开关",
                 String.valueOf(requestedVisibility(requestedSettings.get(definition.fieldKey()), definition.defaultVisible())),
@@ -107,7 +104,6 @@ public class SystemProfileSettingsAppService {
                 currentUser.getUserId()
         ));
         PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
-                tenantId,
                 definition.weightConfigKey(),
                 definition.fieldLabel() + "评分权重",
                 String.valueOf(resolveRequestedWeight(requestedSettings.get(definition.fieldKey()), definition.defaultWeight())),
@@ -115,7 +111,6 @@ public class SystemProfileSettingsAppService {
                 currentUser.getUserId()
         ));
         PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
-                tenantId,
                 definition.requiredConfigKey(),
                 definition.fieldLabel() + " required",
                 String.valueOf(requestedRequired(requestedSettings.get(definition.fieldKey()), definition.required())),
@@ -123,7 +118,6 @@ public class SystemProfileSettingsAppService {
                 currentUser.getUserId()
         ));
         PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
-                tenantId,
                 definition.sortConfigKey(),
                 definition.fieldLabel() + " sort",
                 String.valueOf(resolveRequestedSortNo(requestedSettings.get(definition.fieldKey()), definition.sortNo())),
@@ -131,7 +125,6 @@ public class SystemProfileSettingsAppService {
                 currentUser.getUserId()
         ));
         upsertConfigValue(
-                tenantId,
                 SYSTEM_PROFILE_FIELD_OVERRIDES_KEY,
                 "System profile field metadata overrides",
                 serializeSystemFieldOverrides(systemOverrides),
@@ -139,54 +132,53 @@ public class SystemProfileSettingsAppService {
                 currentUser.getUserId()
         );
         upsertConfigValue(
-                tenantId,
                 CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY,
                 "自定义资料字段定义",
                 serializeCustomDefinitions(customDefinitions),
                 "保存个人中心可扩展的自定义资料字段定义",
                 currentUser.getUserId()
         );
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
-        invalidateProfileFieldSettingsCache(tenantId);
-        return loadProfileFieldSettings(tenantId);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
+        invalidateProfileFieldSettingsCache();
+        return loadProfileFieldSettings();
     }
 
-    private List<ProfileFieldSettingVO> loadProfileFieldSettings(Long tenantId) {
-        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(tenantId);
+    private List<ProfileFieldSettingVO> loadProfileFieldSettings() {
+        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(PROFILE_SETTINGS_CACHE_KEY);
         if (cached != null) {
             return new ArrayList<>(cached);
         }
-        return loadProfileFieldSettingsWithSingleFlight(tenantId);
+        return loadProfileFieldSettingsWithSingleFlight();
     }
 
-    private List<ProfileFieldSettingVO> loadProfileFieldSettingsWithSingleFlight(Long tenantId) {
+    private List<ProfileFieldSettingVO> loadProfileFieldSettingsWithSingleFlight() {
         try {
             CompletableFuture<List<ProfileFieldSettingVO>> future = profileFieldSettingsLoadInFlight.get(
-                    tenantId,
-                    () -> CompletableFuture.completedFuture(loadProfileFieldSettingsFresh(tenantId))
+                    PROFILE_SETTINGS_CACHE_KEY,
+                    () -> CompletableFuture.completedFuture(loadProfileFieldSettingsFresh())
             );
             List<ProfileFieldSettingVO> settings = future.join();
-            profileFieldSettingsLoadInFlight.invalidate(tenantId);
+            profileFieldSettingsLoadInFlight.invalidate(PROFILE_SETTINGS_CACHE_KEY);
             return settings;
         } catch (ExecutionException ex) {
-            profileFieldSettingsLoadInFlight.invalidate(tenantId);
+            profileFieldSettingsLoadInFlight.invalidate(PROFILE_SETTINGS_CACHE_KEY);
             Throwable cause = ex.getCause();
             if (cause instanceof RuntimeException runtimeException) {
                 throw runtimeException;
             }
             throw new IllegalStateException("Failed to load profile field settings", cause);
         } catch (RuntimeException ex) {
-            profileFieldSettingsLoadInFlight.invalidate(tenantId);
+            profileFieldSettingsLoadInFlight.invalidate(PROFILE_SETTINGS_CACHE_KEY);
             throw ex;
         }
     }
 
-    private List<ProfileFieldSettingVO> loadProfileFieldSettingsFresh(Long tenantId) {
-        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(tenantId);
+    private List<ProfileFieldSettingVO> loadProfileFieldSettingsFresh() {
+        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(PROFILE_SETTINGS_CACHE_KEY);
         if (cached != null) {
             return new ArrayList<>(cached);
         }
-        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, PROFILE_FIELD_CONFIG_KEYS);
+        Map<String, String> valueByKey = loadConfigValuesByKeys(PROFILE_FIELD_CONFIG_KEYS);
         Map<String, ProfileFieldMetadataOverride> systemOverrides = parseSystemFieldOverrides(valueByKey.get(SYSTEM_PROFILE_FIELD_OVERRIDES_KEY));
         List<ProfileFieldDefinition> definitions = new ArrayList<>(PROFILE_FIELD_DEFINITIONS);
         definitions.addAll(parseCustomDefinitions(valueByKey.get(CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY)));
@@ -217,13 +209,13 @@ public class SystemProfileSettingsAppService {
             item.setCustom(definition.custom());
             return item;
         }).toList();
-        profileFieldSettingsCache.put(tenantId, new ArrayList<>(settings));
+        profileFieldSettingsCache.put(PROFILE_SETTINGS_CACHE_KEY, new ArrayList<>(settings));
         return settings;
     }
 
-    private void invalidateProfileFieldSettingsCache(Long tenantId) {
-        profileFieldSettingsCache.invalidate(tenantId);
-        profileFieldSettingsLoadInFlight.invalidate(tenantId);
+    private void invalidateProfileFieldSettingsCache() {
+        profileFieldSettingsCache.invalidate(PROFILE_SETTINGS_CACHE_KEY);
+        profileFieldSettingsLoadInFlight.invalidate(PROFILE_SETTINGS_CACHE_KEY);
     }
 
     public ProfileCompletionSummaryVO buildProfileCompletionSummary(
@@ -490,21 +482,17 @@ public class SystemProfileSettingsAppService {
         return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
     }
 
-    private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
-        Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
+    private Map<String, String> loadConfigValuesByKeys(List<String> keys) {
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
-                select tenant_id as tenantId, config_key as configKey, config_value as configValue
+                select config_key as configKey, config_value as configValue
                 from sys_config
                 where deleted = 0
                   and config_scope = 'PLATFORM'
                   and config_key in (%s)
-                  and (tenant_id = ? or tenant_id is null)
-                order by case when tenant_id = ? then 0 else 1 end, id desc
+                order by id desc
                 """.formatted(placeholders);
         List<Object> params = new ArrayList<>(keys);
-        params.add(effectiveTenantId);
-        params.add(effectiveTenantId);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
         Map<String, String> valueByKey = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
@@ -517,23 +505,21 @@ public class SystemProfileSettingsAppService {
     }
 
     private void upsertConfigValue(
-            Long tenantId,
             String configKey,
             String configName,
             String configValue,
             String remark,
             Long operatorId
     ) {
-        Long existingId = queryConfigId(configKey, tenantId);
+        Long existingId = queryConfigId(configKey);
         if (existingId == null) {
             jdbcTemplate.update(
                     """
                             insert into sys_config (
-                                tenant_id, config_key, config_name, config_value, config_scope, is_system, remark,
+                                config_key, config_name, config_value, config_scope, is_system, remark,
                                 created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
+                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     configKey,
                     configName,
                     configValue,
@@ -559,19 +545,18 @@ public class SystemProfileSettingsAppService {
         );
     }
 
-    private Long queryConfigId(String configKey, Long tenantId) {
+    private Long queryConfigId(String configKey) {
         try {
             return jdbcTemplate.queryForObject(
                     """
                             select id
                             from sys_config
-                            where config_key = ? and tenant_id <=> ?
+                            where config_key = ?
                             order by id desc
                             limit 1
                             """,
                     Long.class,
-                    configKey,
-                    tenantId
+                    configKey
             );
         } catch (EmptyResultDataAccessException exception) {
             return null;
@@ -754,13 +739,6 @@ public class SystemProfileSettingsAppService {
 
     private String normalizeConfigText(Object value) {
         return value == null ? "" : String.valueOf(value).trim();
-    }
-
-    private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
-        }
-        return PlatformContext.compatibilityTenantId();
     }
 
     private static final class ProfileFieldMetadataOverride {

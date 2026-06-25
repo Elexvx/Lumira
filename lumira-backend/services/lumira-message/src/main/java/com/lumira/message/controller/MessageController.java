@@ -128,16 +128,9 @@ public class MessageController {
     private MessageVO.WebSocketRuntimeVO toWebSocketRuntimeVO(MessageWebSocketRegistry.Snapshot snapshot) {
         MessageVO.WebSocketRuntimeVO vo = new MessageVO.WebSocketRuntimeVO();
         vo.setActiveConnections(snapshot.activeConnections());
-        vo.setTenantCount(snapshot.tenantCount());
         vo.setUserCount(snapshot.userCount());
         vo.setEarliestConnectedAt(snapshot.earliestConnectedAt());
         vo.setSampledAt(snapshot.sampledAt());
-        vo.setTenants(snapshot.tenants().stream().map(item -> {
-            MessageVO.TenantConnectionVO tenant = new MessageVO.TenantConnectionVO();
-            tenant.setTenantId(item.tenantId());
-            tenant.setConnectionCount(item.connectionCount());
-            return tenant;
-        }).toList());
         vo.setTopUsers(snapshot.topUsers().stream().map(item -> {
             MessageVO.UserConnectionVO user = new MessageVO.UserConnectionVO();
             user.setUserId(item.userId());

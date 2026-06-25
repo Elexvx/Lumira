@@ -12,12 +12,10 @@ public final class PlatformDomainModels {
     }
 
     public static final class ConfigAggregate extends AggregateRoot<String> {
-        private final Long tenantId;
         private String value;
 
-        public ConfigAggregate(String configKey, Long tenantId, String value) {
+        public ConfigAggregate(String configKey, String value) {
             super(EntityId.of(configKey));
-            this.tenantId = tenantId;
             this.value = value;
         }
 
@@ -30,14 +28,12 @@ public final class PlatformDomainModels {
                     "PLATFORM_CONFIG_CHANGED",
                     "platform.config",
                     id().value(),
-                    tenantId,
                     Map.of("configKey", id().value())
             ));
         }
     }
 
     public record RuntimeAppearanceReadModel(
-            Long tenantId,
             long version,
             Map<String, Object> settings
     ) implements VersionedReadModel {

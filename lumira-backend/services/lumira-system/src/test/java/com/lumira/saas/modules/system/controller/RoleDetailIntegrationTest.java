@@ -209,8 +209,7 @@ class RoleDetailIntegrationTest {
                 """
                         update sys_config
                         set config_value = '0'
-                        where tenant_id in (1001, 1002)
-                          and config_key = 'security.captcha-enabled'
+                        where config_key = 'security.captcha-enabled'
                           and deleted = 0
                         """
         );

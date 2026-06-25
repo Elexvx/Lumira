@@ -15,7 +15,6 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-import java.util.Map;
 import java.lang.reflect.Field;
 import io.micrometer.core.instrument.Counter;
 import java.util.concurrent.CompletableFuture;
@@ -38,12 +37,12 @@ class PlatformBootstrapServiceTest {
         SystemVO.AgreementSettingsVO agreementSettings = new SystemVO.AgreementSettingsVO();
         SystemVO.LoginCapabilitiesVO loginCapabilities = new SystemVO.LoginCapabilitiesVO();
 
-        when(systemManagementAppService.getPublicBrandingSettings(1L)).thenReturn(brandingSettings);
+        when(systemManagementAppService.getPublicBrandingSettings()).thenReturn(brandingSettings);
         when(systemManagementAppService.getPublicSecuritySettings()).thenReturn(securitySettings);
         when(systemManagementAppService.getPublicAgreementSettings()).thenReturn(agreementSettings);
-        when(systemVerificationAppService.loadLoginCapabilities(1L)).thenReturn(loginCapabilities);
+        when(systemVerificationAppService.loadLoginCapabilities()).thenReturn(loginCapabilities);
 
-        when(readModelVersionService.getOrInitialize(1L, "platform", "runtime-appearance"))
+        when(readModelVersionService.currentVersion("platform", "runtime-appearance"))
                 .thenReturn(10L, 11L);
 
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
@@ -56,48 +55,46 @@ class PlatformBootstrapServiceTest {
                 ownerRuntimeMetrics
         );
 
-        SystemVO.PublicBootstrapVO first = service.getPublicBootstrap(1L);
-        SystemVO.PublicBootstrapVO second = service.getPublicBootstrap(1L);
+        SystemVO.PublicBootstrapVO first = service.getPublicBootstrap();
+        SystemVO.PublicBootstrapVO second = service.getPublicBootstrap();
 
         assertThat(first.getBrandingSettings()).isSameAs(brandingSettings);
         assertThat(first).isSameAs(second);
-        verify(readModelVersionService, times(1)).getOrInitialize(1L, "platform", "runtime-appearance");
-        verify(systemManagementAppService, times(1)).getPublicBrandingSettings(1L);
+        verify(readModelVersionService, times(1)).currentVersion("platform", "runtime-appearance");
+        verify(systemManagementAppService, times(1)).getPublicBrandingSettings();
         verify(systemManagementAppService, times(1)).getPublicSecuritySettings();
         verify(systemManagementAppService, times(1)).getPublicAgreementSettings();
-        verify(systemVerificationAppService, times(1)).loadLoginCapabilities(1L);
+        verify(systemVerificationAppService, times(1)).loadLoginCapabilities();
 
-        Field cacheField = PlatformBootstrapService.class.getDeclaredField("cacheByTenant");
+        Field cacheField = PlatformBootstrapService.class.getDeclaredField("publicBootstrapCache");
         cacheField.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        Map<Long, Object> cacheByTenant = (Map<Long, Object>) cacheField.get(service);
-        cacheByTenant.clear();
+        cacheField.set(service, null);
         Field inFlightField = PlatformBootstrapService.class.getDeclaredField("publicBootstrapLoadInFlight");
         inFlightField.setAccessible(true);
         @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<Long, CompletableFuture<SystemVO.PublicBootstrapVO>> inFlightCache =
-                (com.google.common.cache.Cache<Long, CompletableFuture<SystemVO.PublicBootstrapVO>>) inFlightField.get(service);
+        com.google.common.cache.Cache<String, CompletableFuture<SystemVO.PublicBootstrapVO>> inFlightCache =
+                (com.google.common.cache.Cache<String, CompletableFuture<SystemVO.PublicBootstrapVO>>) inFlightField.get(service);
         inFlightCache.invalidateAll();
         Field versionField = PlatformBootstrapService.class.getDeclaredField("runtimeAppearanceVersionCache");
         versionField.setAccessible(true);
         @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<Long, Long> runtimeAppearanceVersionCache = (com.google.common.cache.Cache<Long, Long>) versionField.get(service);
+        com.google.common.cache.Cache<String, Long> runtimeAppearanceVersionCache = (com.google.common.cache.Cache<String, Long>) versionField.get(service);
         runtimeAppearanceVersionCache.invalidateAll();
         Field versionInFlightField = PlatformBootstrapService.class.getDeclaredField("runtimeAppearanceVersionLoadInFlight");
         versionInFlightField.setAccessible(true);
         @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<Long, CompletableFuture<Long>> runtimeAppearanceVersionLoadInFlight =
-                (com.google.common.cache.Cache<Long, CompletableFuture<Long>>) versionInFlightField.get(service);
+        com.google.common.cache.Cache<String, CompletableFuture<Long>> runtimeAppearanceVersionLoadInFlight =
+                (com.google.common.cache.Cache<String, CompletableFuture<Long>>) versionInFlightField.get(service);
         runtimeAppearanceVersionLoadInFlight.invalidateAll();
 
-        SystemVO.PublicBootstrapVO third = service.getPublicBootstrap(1L);
+        SystemVO.PublicBootstrapVO third = service.getPublicBootstrap();
 
         assertThat(third).isNotSameAs(first);
-        verify(readModelVersionService, times(2)).getOrInitialize(1L, "platform", "runtime-appearance");
-        verify(systemManagementAppService, times(2)).getPublicBrandingSettings(1L);
+        verify(readModelVersionService, times(2)).currentVersion("platform", "runtime-appearance");
+        verify(systemManagementAppService, times(2)).getPublicBrandingSettings();
         verify(systemManagementAppService, times(2)).getPublicSecuritySettings();
         verify(systemManagementAppService, times(2)).getPublicAgreementSettings();
-        verify(systemVerificationAppService, times(2)).loadLoginCapabilities(1L);
+        verify(systemVerificationAppService, times(2)).loadLoginCapabilities();
 
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_BOOTSTRAP_CACHE_HIT)).isEqualTo(1.0);
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_BOOTSTRAP_CACHE_MISS)).isEqualTo(2.0);
@@ -115,11 +112,11 @@ class PlatformBootstrapServiceTest {
         SystemVO.AgreementSettingsVO agreementSettings = new SystemVO.AgreementSettingsVO();
         SystemVO.LoginCapabilitiesVO loginCapabilities = new SystemVO.LoginCapabilitiesVO();
 
-        when(systemManagementAppService.getPublicBrandingSettings(1L)).thenReturn(brandingSettings);
+        when(systemManagementAppService.getPublicBrandingSettings()).thenReturn(brandingSettings);
         when(systemManagementAppService.getPublicSecuritySettings()).thenReturn(securitySettings);
         when(systemManagementAppService.getPublicAgreementSettings()).thenReturn(agreementSettings);
-        when(systemVerificationAppService.loadLoginCapabilities(1L)).thenReturn(loginCapabilities);
-        when(readModelVersionService.getOrInitialize(1L, "platform", "runtime-appearance")).thenReturn(10L);
+        when(systemVerificationAppService.loadLoginCapabilities()).thenReturn(loginCapabilities);
+        when(readModelVersionService.currentVersion("platform", "runtime-appearance")).thenReturn(10L);
 
         PlatformBootstrapService service = new PlatformBootstrapService(
                 systemManagementAppService,
@@ -138,7 +135,7 @@ class PlatformBootstrapServiceTest {
             futures[i] = CompletableFuture.supplyAsync(() -> {
                 try {
                     ready.await();
-                    return service.getPublicBootstrap(1L);
+                    return service.getPublicBootstrap();
                 } catch (InterruptedException exception) {
                     errors.incrementAndGet();
                     Thread.currentThread().interrupt();
@@ -156,11 +153,11 @@ class PlatformBootstrapServiceTest {
             assertThat(future.join()).isSameAs(expect);
         }
         assertThat(errors.get()).isZero();
-        verify(readModelVersionService, times(1)).getOrInitialize(1L, "platform", "runtime-appearance");
-        verify(systemManagementAppService, times(1)).getPublicBrandingSettings(1L);
+        verify(readModelVersionService, times(1)).currentVersion("platform", "runtime-appearance");
+        verify(systemManagementAppService, times(1)).getPublicBrandingSettings();
         verify(systemManagementAppService, times(1)).getPublicSecuritySettings();
         verify(systemManagementAppService, times(1)).getPublicAgreementSettings();
-        verify(systemVerificationAppService, times(1)).loadLoginCapabilities(1L);
+        verify(systemVerificationAppService, times(1)).loadLoginCapabilities();
     }
 
     private double counterCount(SimpleMeterRegistry meterRegistry, String counterName) {

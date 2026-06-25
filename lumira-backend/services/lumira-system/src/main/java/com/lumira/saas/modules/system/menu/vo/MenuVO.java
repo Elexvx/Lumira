@@ -5,7 +5,6 @@ import java.util.List;
 public class MenuVO {
 
     private Long id;
-    private Long tenantId;
     private Long parentId;
     private String menuCode;
     private String menuName;
@@ -20,8 +19,6 @@ public class MenuVO {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getParentId() { return parentId; }
     public void setParentId(Long parentId) { this.parentId = parentId; }
     public String getMenuCode() { return menuCode; }

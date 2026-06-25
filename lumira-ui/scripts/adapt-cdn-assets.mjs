@@ -3,7 +3,13 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 const distRoot = fileURLToPath(new URL('../dist/', import.meta.url));
-const safeAssetName = (name) => name.replaceAll('.', '__dot__');
+const safeAssetName = (name) => {
+  const extensionIndex = name.lastIndexOf('.');
+  if (extensionIndex <= 0) {
+    return name.replaceAll('.', '__dot__');
+  }
+  return `${name.slice(0, extensionIndex).replaceAll('.', '__dot__')}${name.slice(extensionIndex)}`;
+};
 
 const copyMatchingAssets = (targetType, matcher) => {
   const targetDir = join(distRoot, 'cdn-assets', targetType);
@@ -57,8 +63,8 @@ const rewriteCssAssetUrls = () => {
 const rewriteIndex = () => {
   const indexPath = join(distRoot, 'index.html');
   let html = readFileSync(indexPath, 'utf8');
-  html = html.replace(/href="\/([^"]+\.css)"/g, (_match, file) => `href="/cdn-assets/css/${safeAssetName(file)}"`);
-  html = html.replace(/src="\/([^"]+\.js)"/g, (_match, file) => `src="/cdn-assets/js/${safeAssetName(file)}"`);
+  html = html.replace(/href="\/(?!cdn-assets\/)([^"/]+\.css)"/g, (_match, file) => `href="/cdn-assets/css/${safeAssetName(file)}"`);
+  html = html.replace(/src="\/(?!cdn-assets\/)([^"/]+\.js)"/g, (_match, file) => `src="/cdn-assets/js/${safeAssetName(file)}"`);
   writeFileSync(indexPath, html);
 };
 
@@ -71,7 +77,7 @@ const patchUmiRuntime = () => {
   let runtime = readFileSync(runtimePath, 'utf8');
 
   const originalPathResolver = 'function q(e,t="/"){return`${C(t)}${e.split("/").map(e=>encodeURIComponent(e)).join("/")}`}';
-  const cdnPathResolver = 'function q(e,t="/"){if("/"===t&&"string"==typeof e){let t=e.split("/").pop();if(/\\.css(?:[?#]|$)/.test(e))return"/cdn-assets/css/"+t.replaceAll(".","__dot__");if(/\\.js(?:[?#]|$)/.test(e))return"/cdn-assets/js/"+t.replaceAll(".","__dot__")}return`${C(t)}${e.split("/").map(e=>encodeURIComponent(e)).join("/")}`}';
+  const cdnPathResolver = 'function q(e,t="/"){if("/"===t&&"string"==typeof e){let t=e.split("/").pop(),s=t.lastIndexOf("."),i=s>0?t.slice(0,s).replaceAll(".","__dot__")+t.slice(s):t.replaceAll(".","__dot__");if(/\\.css(?:[?#]|$)/.test(e))return"/cdn-assets/css/"+i;if(/\\.js(?:[?#]|$)/.test(e))return"/cdn-assets/js/"+i}return`${C(t)}${e.split("/").map(e=>encodeURIComponent(e)).join("/")}`}';
   if (!runtime.includes(originalPathResolver)) {
     throw new Error('Cannot patch Umi runtime path resolver.');
   }

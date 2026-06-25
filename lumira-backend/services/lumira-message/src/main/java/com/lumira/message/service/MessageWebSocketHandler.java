@@ -1,6 +1,5 @@
 package com.lumira.message.service;
 
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.TextMessage;
@@ -34,7 +33,7 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
             session.close();
             return;
         }
-        webSocketRegistry.register(session, PlatformConstants.PLATFORM_TENANT_ID, currentUser.getUserId());
+        webSocketRegistry.register(session, currentUser.getUserId());
         connectionSnapshotService.emitSnapshot(currentUser);
     }
 

@@ -4,7 +4,6 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
-import com.lumira.common.security.PlatformContext;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -23,7 +22,6 @@ public class JwtTokenService {
     private static final String CLAIM_SESSION_ID = "sid";
     private static final String CLAIM_USER_ID = "uid";
     private static final String CLAIM_USERNAME = "uname";
-    private static final String CLAIM_TENANT_ID = "tid";
     private static final String CLAIM_SESSION_VERSION = "sv";
     private static final String CLAIM_TOKEN_TYPE = "tt";
 
@@ -43,7 +41,6 @@ public class JwtTokenService {
             tokenClaims.setSessionId(claims.get(CLAIM_SESSION_ID, String.class));
             tokenClaims.setUserId(claims.get(CLAIM_USER_ID, Long.class));
             tokenClaims.setUsername(claims.get(CLAIM_USERNAME, String.class));
-            tokenClaims.setCurrentTenantId(PlatformContext.compatibilityTenantId());
             tokenClaims.setSessionVersion(claims.get(CLAIM_SESSION_VERSION, Integer.class));
             tokenClaims.setTokenId(claims.getId());
             String tokenType = claims.get(CLAIM_TOKEN_TYPE, String.class);
@@ -65,7 +62,6 @@ public class JwtTokenService {
                 .claim(CLAIM_SESSION_ID, claims.getSessionId())
                 .claim(CLAIM_USER_ID, claims.getUserId())
                 .claim(CLAIM_USERNAME, claims.getUsername())
-                .claim(CLAIM_TENANT_ID, PlatformContext.compatibilityTenantId())
                 .claim(CLAIM_SESSION_VERSION, claims.getSessionVersion())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))

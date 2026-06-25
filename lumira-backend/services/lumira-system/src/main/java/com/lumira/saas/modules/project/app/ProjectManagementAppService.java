@@ -3,7 +3,6 @@ package com.lumira.saas.modules.project.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -44,12 +43,11 @@ public class ProjectManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long tenantId = requireTenantId(currentUser);
+        requireAuthenticated(currentUser);
         long normalizedPageNo = Math.max(1L, pageNo);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         List<Object> params = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" from aiadc_project where tenant_id = ? and deleted = 0");
-        params.add(tenantId);
+        StringBuilder where = new StringBuilder(" from aiadc_project where deleted = 0");
         if (StringUtils.hasText(keyword)) {
             where.append(" and (title like ? or code like ? or description like ? or tags like ?)");
             String pattern = "%" + keyword.trim() + "%";
@@ -103,7 +101,8 @@ public class ProjectManagementAppService {
     }
 
     public ProjectVO.Project getProject(CurrentUser currentUser, Long id) {
-        ProjectVO.Project project = findProject(requireTenantId(currentUser), id);
+        requireAuthenticated(currentUser);
+        ProjectVO.Project project = findProject(id);
         if (project == null) {
             throw biz(ErrorCode.NOT_FOUND, "Project not found");
         }
@@ -112,18 +111,16 @@ public class ProjectManagementAppService {
 
     @Transactional
     public ProjectVO.Project createProject(CurrentUser currentUser, ProjectDTO.ProjectUpsertRequest request) {
-        Long tenantId = requireTenantId(currentUser);
         Long userId = requireUserId(currentUser);
         ProjectDTO.ProjectUpsertRequest normalized = normalizeRequest(request);
         jdbcTemplate.update(
                 """
                         insert into aiadc_project (
-                            tenant_id, code, locale, title, category, description, image_url,
+                            code, locale, title, category, description, image_url,
                             owner_name, rating, sort, status, tags, cta_label, cta_href,
                             featured, created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
-                tenantId,
                 normalized.getCode(),
                 normalized.getLocale(),
                 normalized.getTitle(),
@@ -147,7 +144,6 @@ public class ProjectManagementAppService {
 
     @Transactional
     public ProjectVO.Project updateProject(CurrentUser currentUser, Long id, ProjectDTO.ProjectUpsertRequest request) {
-        Long tenantId = requireTenantId(currentUser);
         ProjectDTO.ProjectUpsertRequest normalized = normalizeRequest(request);
         int updated = jdbcTemplate.update(
                 """
@@ -155,7 +151,7 @@ public class ProjectManagementAppService {
                         set code = ?, locale = ?, title = ?, category = ?, description = ?, image_url = ?,
                             owner_name = ?, rating = ?, sort = ?, status = ?, tags = ?, cta_label = ?,
                             cta_href = ?, featured = ?, updated_by = ?, updated_at = ?
-                        where tenant_id = ? and id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 normalized.getCode(),
                 normalized.getLocale(),
@@ -173,7 +169,6 @@ public class ProjectManagementAppService {
                 Boolean.TRUE.equals(normalized.getFeatured()) ? 1 : 0,
                 requireUserId(currentUser),
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
         if (updated == 0) {
@@ -185,10 +180,9 @@ public class ProjectManagementAppService {
     @Transactional
     public boolean deleteProject(CurrentUser currentUser, Long id) {
         int updated = jdbcTemplate.update(
-                "update aiadc_project set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and id = ? and deleted = 0",
+                "update aiadc_project set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 requireUserId(currentUser),
                 LocalDateTime.now(),
-                requireTenantId(currentUser),
                 id
         );
         if (updated == 0) {
@@ -197,11 +191,10 @@ public class ProjectManagementAppService {
         return true;
     }
 
-    private ProjectVO.Project findProject(Long tenantId, Long id) {
+    private ProjectVO.Project findProject(Long id) {
         List<ProjectVO.Project> records = jdbcTemplate.query(
-                projectSelect() + " from aiadc_project where tenant_id = ? and id = ? and deleted = 0 limit 1",
+                projectSelect() + " from aiadc_project where id = ? and deleted = 0 limit 1",
                 new BeanPropertyRowMapper<>(ProjectVO.Project.class),
-                tenantId,
                 id
         );
         return records.isEmpty() ? null : records.get(0);
@@ -226,11 +219,10 @@ public class ProjectManagementAppService {
         return normalized;
     }
 
-    private Long requireTenantId(CurrentUser currentUser) {
+    private void requireAuthenticated(CurrentUser currentUser) {
         if (currentUser == null) {
             throw biz(ErrorCode.UNAUTHORIZED, "Login required");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 
     private Long requireUserId(CurrentUser currentUser) {
@@ -262,7 +254,7 @@ public class ProjectManagementAppService {
 
     private String projectSelect() {
         return """
-                select id, tenant_id as tenantId, code, locale, title, category, description,
+                select id, code, locale, title, category, description,
                        image_url as imageUrl, owner_name as ownerName, rating, sort, status,
                        tags, cta_label as ctaLabel, cta_href as ctaHref, featured,
                        created_at as createdAt, updated_at as updatedAt

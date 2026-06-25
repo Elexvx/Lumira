@@ -11,7 +11,7 @@ class FileDomainModelsTest {
 
     @Test
     void fileObjectAggregateEmitsUploadAndDeleteEvents() {
-        FileObjectAggregate file = new FileObjectAggregate(100L, 1L, 4096L);
+        FileObjectAggregate file = new FileObjectAggregate(100L, 4096L);
 
         file.recordUploaded("application/pdf");
         file.delete();
@@ -24,7 +24,7 @@ class FileDomainModelsTest {
 
     @Test
     void storageSpaceRejectsUploadsBeyondQuota() {
-        StorageSpace space = new StorageSpace(1L, 1L, 100L, 80L);
+        StorageSpace space = new StorageSpace(1L, 100L, 80L);
 
         assertThat(space.canAccept(20L)).isTrue();
         assertThat(space.canAccept(21L)).isFalse();
@@ -33,7 +33,7 @@ class FileDomainModelsTest {
 
     @Test
     void fileObjectRejectsNegativeSize() {
-        assertThatThrownBy(() -> new FileObjectAggregate(100L, 1L, -1L))
+        assertThatThrownBy(() -> new FileObjectAggregate(100L, -1L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("sizeBytes");
     }

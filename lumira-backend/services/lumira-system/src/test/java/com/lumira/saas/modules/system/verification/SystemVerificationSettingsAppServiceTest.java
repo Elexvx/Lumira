@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 class SystemVerificationSettingsAppServiceTest {
@@ -24,9 +23,9 @@ class SystemVerificationSettingsAppServiceTest {
     void loadLoginCapabilitiesShouldReuseCachedConfigSnapshots() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
         SmtpMailService smtpMailService = Mockito.mock(SmtpMailService.class);
-        when(smtpMailService.isConfigured(anyLong())).thenReturn(false);
+        when(smtpMailService.isConfigured()).thenReturn(false);
         WechatLoginSettingsService wechatLoginSettingsService = Mockito.mock(WechatLoginSettingsService.class);
-        when(wechatLoginSettingsService.isAvailable(anyLong())).thenReturn(false);
+        when(wechatLoginSettingsService.isAvailable()).thenReturn(false);
         FieldCryptoService fieldCryptoService = Mockito.mock(FieldCryptoService.class);
         when(fieldCryptoService.encrypt(Mockito.anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(fieldCryptoService.decrypt(Mockito.anyString())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -39,8 +38,8 @@ class SystemVerificationSettingsAppServiceTest {
                 fieldCryptoService
         );
 
-        SystemVO.LoginCapabilitiesVO first = service.loadLoginCapabilities(1001L);
-        SystemVO.LoginCapabilitiesVO second = service.loadLoginCapabilities(1001L);
+        SystemVO.LoginCapabilitiesVO first = service.loadLoginCapabilities();
+        SystemVO.LoginCapabilitiesVO second = service.loadLoginCapabilities();
 
         assertThat(first.getPasswordLoginAvailable()).isTrue();
         assertThat(second.getPasswordLoginAvailable()).isTrue();
@@ -52,9 +51,9 @@ class SystemVerificationSettingsAppServiceTest {
     void updateVerificationSettingsShouldInvalidateCachedConfigSnapshots() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(defaultConfigValues());
         SmtpMailService smtpMailService = Mockito.mock(SmtpMailService.class);
-        when(smtpMailService.isConfigured(anyLong())).thenReturn(false);
+        when(smtpMailService.isConfigured()).thenReturn(false);
         WechatLoginSettingsService wechatLoginSettingsService = Mockito.mock(WechatLoginSettingsService.class);
-        when(wechatLoginSettingsService.isAvailable(anyLong())).thenReturn(false);
+        when(wechatLoginSettingsService.isAvailable()).thenReturn(false);
         FieldCryptoService fieldCryptoService = Mockito.mock(FieldCryptoService.class);
         when(fieldCryptoService.encrypt(Mockito.anyString())).thenAnswer(invocation -> invocation.getArgument(0));
         when(fieldCryptoService.decrypt(Mockito.anyString())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -67,7 +66,7 @@ class SystemVerificationSettingsAppServiceTest {
                 fieldCryptoService
         );
 
-        SystemVO.LoginCapabilitiesVO before = service.loadLoginCapabilities(1001L);
+        SystemVO.LoginCapabilitiesVO before = service.loadLoginCapabilities();
         assertThat(before.getPasswordLoginAvailable()).isTrue();
 
         SystemDTO.VerificationSettingsRequest request = new SystemDTO.VerificationSettingsRequest();
@@ -84,7 +83,6 @@ class SystemVerificationSettingsAppServiceTest {
 
     private CurrentUser currentUser() {
         CurrentUser currentUser = new CurrentUser();
-        currentUser.setCurrentTenantId(1001L);
         currentUser.setUserId(9L);
         currentUser.setUsername("admin");
         currentUser.setAuthenticated(true);
@@ -151,8 +149,8 @@ class SystemVerificationSettingsAppServiceTest {
         @Override
         public int update(String sql, Object... args) {
             updateCount.incrementAndGet();
-            if (args != null && args.length >= 4 && args[1] instanceof String key && args[3] != null) {
-                values.put(key, String.valueOf(args[3]));
+            if (args != null && args.length >= 3 && args[0] instanceof String key && args[2] != null) {
+                values.put(key, String.valueOf(args[2]));
             }
             return 1;
         }

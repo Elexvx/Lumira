@@ -7,7 +7,6 @@ import java.util.List;
 public class DepartmentVO {
 
     private Long id;
-    private Long tenantId;
     private Long parentId;
     private String deptCode;
     private String deptName;
@@ -24,14 +23,6 @@ public class DepartmentVO {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public Long getTenantId() {
-        return tenantId;
-    }
-
-    public void setTenantId(Long tenantId) {
-        this.tenantId = tenantId;
     }
 
     public Long getParentId() {

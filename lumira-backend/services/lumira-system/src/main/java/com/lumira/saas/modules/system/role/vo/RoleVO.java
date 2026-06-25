@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 public class RoleVO {
 
     private Long id;
-    private Long tenantId;
     private String roleCode;
     private String roleName;
     private String roleType;
@@ -18,8 +17,6 @@ public class RoleVO {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getRoleCode() { return roleCode; }
     public void setRoleCode(String roleCode) { this.roleCode = roleCode; }
     public String getRoleName() { return roleName; }

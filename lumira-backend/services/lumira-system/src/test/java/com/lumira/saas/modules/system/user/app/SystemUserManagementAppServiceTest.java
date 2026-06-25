@@ -40,14 +40,13 @@ import static org.mockito.Mockito.when;
 class SystemUserManagementAppServiceTest {
 
     @Test
-    void getUserShouldNotExposeTenantMembership() {
+    void getUserShouldNotQueryTenantMembership() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         SystemUserManagementAppService service = buildService(jdbcTemplate);
 
-        SystemVO.UserDetailVO user = service.getUser(currentUser(), 2001L);
+        service.getUser(currentUser(), 2001L);
 
-        assertEquals(List.of(), user.getTenantIds());
-        assertEquals(List.of(), user.getTenantNames());
+        assertFalse(jdbcTemplate.seenTenantReference);
     }
 
     @Test
@@ -56,10 +55,9 @@ class SystemUserManagementAppServiceTest {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         SystemUserManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
 
-        SystemVO.UserDetailVO user = service.getUser(currentUserWithPermissionSnapshot(), 2001L);
+        service.getUser(currentUserWithPermissionSnapshot(), 2001L);
 
-        assertEquals(List.of(), user.getTenantIds());
-        verify(permissionSnapshotService, never()).loadSnapshot(anyLong(), anyLong());
+        verify(permissionSnapshotService, never()).loadSnapshot(anyLong());
     }
 
     @Test
@@ -74,8 +72,8 @@ class SystemUserManagementAppServiceTest {
         assertTrue(jdbcTemplate.deletedUserRoles);
         assertEquals(0, jdbcTemplate.roleExistenceChecks);
         assertEquals(0, jdbcTemplate.insertedUserRoles);
-        assertFalse(jdbcTemplate.seenMismatchedTenantArgument);
-        verify(permissionSnapshotService).invalidateTenant(1001L);
+        assertFalse(jdbcTemplate.seenTenantReference);
+        verify(permissionSnapshotService).invalidatePermissions();
     }
 
     @Test
@@ -106,6 +104,7 @@ class SystemUserManagementAppServiceTest {
         assertTrue(jdbcTemplate.deletedUserDepartments);
         assertEquals(1, jdbcTemplate.departmentExistenceChecks);
         assertEquals(2, jdbcTemplate.insertedUserDepartments);
+        assertFalse(jdbcTemplate.seenTenantReference);
     }
 
     @Test
@@ -230,7 +229,6 @@ class SystemUserManagementAppServiceTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(2002L);
         currentUser.setPermissions(java.util.Set.of("*"));
         return currentUser;
     }
@@ -266,13 +264,13 @@ class SystemUserManagementAppServiceTest {
         private int lastInsertIdQueries;
         private boolean deletedUserRoles;
         private boolean deletedUserDepartments;
-        private boolean seenMismatchedTenantArgument;
+        private boolean seenTenantReference;
         private Long lastInsertedId = 2001L;
         private String lastInsertedUsername = "demo-user";
 
         @Override
         public int update(String sql, Object... args) {
-            recordMismatchedTenant(args);
+            recordTenantUsage(sql, args);
             updateCount += 1;
             if (sql.contains("insert into sys_user") && args.length > 0 && args[0] != null) {
                 lastInsertedUsername = String.valueOf(args[0]);
@@ -294,13 +292,13 @@ class SystemUserManagementAppServiceTest {
 
         @Override
         public <T> T queryForObject(String sql, RowMapper<T> rowMapper, Object... args) {
-            recordMismatchedTenant(args);
+            recordTenantUsage(sql, args);
             return rowMapperResult();
         }
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            recordMismatchedTenant(args);
+            recordTenantUsage(sql, args);
             if (sql.contains("select last_insert_id()")) {
                 lastInsertIdQueries += 1;
                 return requiredType.cast(lastInsertedId);
@@ -331,7 +329,7 @@ class SystemUserManagementAppServiceTest {
 
         @Override
         public List<java.util.Map<String, Object>> queryForList(String sql, Object... args) {
-            recordMismatchedTenant(args);
+            recordTenantUsage(sql, args);
             if (sql.contains("from sys_user u")) {
                 if (userRecordAccessCount <= 0) {
                     return new ArrayList<>();
@@ -343,7 +341,7 @@ class SystemUserManagementAppServiceTest {
 
         @Override
         public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
-            recordMismatchedTenant(args);
+            recordTenantUsage(sql, args);
             if (sql.contains("from sys_user u") && Long.class.equals(elementType)) {
                 if (userRecordAccessCount <= 0) {
                     return new ArrayList<>();
@@ -368,10 +366,13 @@ class SystemUserManagementAppServiceTest {
             return new ArrayList<>();
         }
 
-        private void recordMismatchedTenant(Object... args) {
+        private void recordTenantUsage(String sql, Object... args) {
+            if (sql != null && sql.toLowerCase().contains("tenant")) {
+                seenTenantReference = true;
+            }
             for (Object arg : args) {
                 if (Long.valueOf(2002L).equals(arg)) {
-                    seenMismatchedTenantArgument = true;
+                    seenTenantReference = true;
                 }
             }
         }

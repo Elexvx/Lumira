@@ -1,6 +1,6 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Form, Input, InputNumber, Modal, Select, Space, Tag, Typography } from 'antd';
+import { Avatar, Button, Form, Input, InputNumber, Modal, Select, Space, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { history, useLocation } from '@umijs/max';
@@ -11,13 +11,22 @@ import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { useResponsive } from '@/hooks/useResponsive';
-import { createExpert, deleteExpert, listExperts, updateExpert } from '@/services/expert/api';
+import { useDictOptions } from '@/hooks/useDictOptions';
+import { createExpert, deleteExpert, listExperts, updateExpert, uploadExpertAvatar } from '@/services/expert/api';
 import type { ExpertRecord, ExpertStatus, ExpertUpsertPayload } from '@/services/expert/types';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
+import { normalizeUploadUrl } from '@/utils/uploadUrl';
+import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } from '@/utils/validators';
 import './ExpertPage.css';
 
-type ExpertFormValues = ExpertUpsertPayload;
+type ExpertFormValues = Omit<ExpertUpsertPayload, 'expertise' | 'tags'> & {
+  expertise?: string[];
+  tags?: string[];
+};
+type ExpertPageMode = 'management' | 'query';
+
+const isExpertQueryRoute = (pathname: string) => pathname === '/experts/query';
 
 const statusOptions: Array<{ label: string; value: ExpertStatus }> = [
   { label: '启用', value: 'active' },
@@ -34,10 +43,47 @@ const statusColor: Record<ExpertStatus, string> = {
   inactive: 'default',
 };
 
+const expertTitleFallbackOptions = [
+  { label: '教授', value: '教授' },
+  { label: '副教授', value: '副教授' },
+  { label: '研究员', value: '研究员' },
+  { label: '高级工程师', value: '高级工程师' },
+  { label: '行业专家', value: '行业专家' },
+];
+
+const expertPositionFallbackOptions = [
+  { label: '主任', value: '主任' },
+  { label: '院长', value: '院长' },
+  { label: '总工程师', value: '总工程师' },
+  { label: '技术负责人', value: '技术负责人' },
+  { label: '投资合伙人', value: '投资合伙人' },
+];
+
+const expertExpertiseFallbackOptions = [
+  { label: '人工智能', value: '人工智能' },
+  { label: '智能制造', value: '智能制造' },
+  { label: '产业投资', value: '产业投资' },
+  { label: '数字经济', value: '数字经济' },
+  { label: '科技成果转化', value: '科技成果转化' },
+];
+
+const expertTagFallbackOptions = [
+  { label: '评审专家', value: '评审专家' },
+  { label: '导师', value: '导师' },
+  { label: '产业资源', value: '产业资源' },
+  { label: '投融资', value: '投融资' },
+  { label: '技术顾问', value: '技术顾问' },
+];
+
+const EXPERT_NAME_PATTERN = /^[\u4e00-\u9fa5A-Za-z·\s]{2,64}$/;
+const OPTIONAL_PHONE_PATTERN = /^(?:1[3-9]\d{9}|0\d{2,3}-?\d{7,8}(?:-\d{1,6})?)$/;
+
 const trimOptional = (value?: string) => {
   const trimmed = value?.trim();
   return trimmed || undefined;
 };
+
+const joinOptions = (values?: string[]) => values?.map((value) => value.trim()).filter(Boolean).join(',') || undefined;
 
 const normalizePayload = (values: ExpertFormValues): ExpertUpsertPayload => ({
   code: trimOptional(values.code),
@@ -45,12 +91,14 @@ const normalizePayload = (values: ExpertFormValues): ExpertUpsertPayload => ({
   title: trimOptional(values.title),
   organization: trimOptional(values.organization),
   position: trimOptional(values.position),
-  expertise: values.expertise.trim(),
+  expertise: joinOptions(values.expertise) || '',
   phone: trimOptional(values.phone),
+  mobile: trimOptional(values.mobile),
+  idCardNumber: trimOptional(values.idCardNumber),
   email: trimOptional(values.email),
   avatarUrl: trimOptional(values.avatarUrl),
   bio: trimOptional(values.bio),
-  tags: trimOptional(values.tags),
+  tags: joinOptions(values.tags),
   status: values.status || 'active',
   sort: values.sort ?? 100,
 });
@@ -61,64 +109,157 @@ const splitTags = (tags?: string | null) =>
     .map((tag) => tag.trim())
     .filter(Boolean);
 
-const ExpertForm = ({ form }: { form: FormInstance<ExpertFormValues> }) => (
-  <Form<ExpertFormValues>
-    form={form}
-    layout="vertical"
-    initialValues={{
-      status: 'active',
-      sort: 100,
-    }}
-  >
-    <Form.Item name="name" label="专家姓名" rules={[{ required: true, message: '请输入专家姓名' }]}>
-      <Input maxLength={64} />
-    </Form.Item>
-    <Space size="middle" style={{ width: '100%' }} align="start">
-      <Form.Item name="title" label="专家头衔" style={{ flex: 1 }}>
-        <Input maxLength={128} placeholder="例如 教授 / 高级工程师" />
-      </Form.Item>
-      <Form.Item name="position" label="职务" style={{ flex: 1 }}>
-        <Input maxLength={128} />
-      </Form.Item>
-    </Space>
-    <Form.Item name="organization" label="所属机构">
-      <Input maxLength={128} />
-    </Form.Item>
-    <Form.Item name="expertise" label="专业领域" rules={[{ required: true, message: '请输入专业领域' }]}>
-      <Input maxLength={255} placeholder="例如 人工智能、产业投资、智能制造" />
-    </Form.Item>
-    <Space size="middle" style={{ width: '100%' }} align="start">
-      <Form.Item name="phone" label="联系电话" style={{ flex: 1 }}>
-        <Input maxLength={64} />
-      </Form.Item>
-      <Form.Item name="email" label="邮箱" style={{ flex: 1 }} rules={[{ type: 'email', message: '请输入有效邮箱' }]}>
-        <Input maxLength={128} />
-      </Form.Item>
-    </Space>
-    <Form.Item name="avatarUrl" label="头像 URL">
-      <Input maxLength={512} />
-    </Form.Item>
-    <Form.Item name="bio" label="专家简介">
-      <Input.TextArea rows={4} maxLength={1000} />
-    </Form.Item>
-    <Form.Item name="tags" label="标签">
-      <Input maxLength={1000} placeholder="多个标签用英文逗号分隔" />
-    </Form.Item>
-    <Space size="middle" style={{ width: '100%' }} align="start">
-      <Form.Item name="status" label="状态" rules={[{ required: true }]} style={{ flex: 1 }}>
-        <Select options={statusOptions} />
-      </Form.Item>
-      <Form.Item name="sort" label="排序" style={{ flex: 1 }}>
-        <InputNumber min={0} max={9999} style={{ width: '100%' }} />
-      </Form.Item>
-    </Space>
-    <Form.Item name="code" label="专家编码">
-      <Input maxLength={64} placeholder="不填时自动生成" />
-    </Form.Item>
-  </Form>
-);
+const validateOptionalPhone = async (_: unknown, value?: string) => {
+  const normalizedValue = value?.trim();
+  if (!normalizedValue || OPTIONAL_PHONE_PATTERN.test(normalizedValue)) {
+    return;
+  }
+  throw new Error('请输入有效联系电话');
+};
 
-const ExpertManagementView = () => {
+const ExpertForm = ({
+  form,
+  uploadingAvatar,
+  onAvatarUpload,
+}: {
+  form: FormInstance<ExpertFormValues>;
+  uploadingAvatar: boolean;
+  onAvatarUpload: (file: File) => Promise<void>;
+}) => {
+  const { options: titleOptions, loading: titleLoading } = useDictOptions('aiadc_expert_title', expertTitleFallbackOptions);
+  const { options: positionOptions, loading: positionLoading } = useDictOptions('aiadc_expert_position', expertPositionFallbackOptions);
+  const { options: expertiseOptions, loading: expertiseLoading } = useDictOptions('aiadc_expert_expertise', expertExpertiseFallbackOptions);
+  const { options: tagOptions, loading: tagLoading } = useDictOptions('aiadc_expert_tag', expertTagFallbackOptions);
+
+  return (
+    <Form<ExpertFormValues>
+      form={form}
+      layout="vertical"
+      initialValues={{
+        status: 'active',
+        sort: 100,
+      }}
+    >
+      <div className="expert-form-grid">
+        <Form.Item
+          name="name"
+          label="专家姓名"
+          className="expert-form-grid__full"
+          normalize={trimString}
+          rules={[
+            { required: true, message: '请输入专家姓名' },
+            { pattern: EXPERT_NAME_PATTERN, message: '专家姓名只能包含中文、英文字母、空格和间隔号' },
+          ]}
+        >
+          <Input maxLength={64} placeholder="例如 张三" />
+        </Form.Item>
+
+        <Form.Item name="title" label="专家头衔" normalize={trimString}>
+          <Select allowClear showSearch loading={titleLoading} options={titleOptions} placeholder="请选择专家头衔" optionFilterProp="label" />
+        </Form.Item>
+
+        <Form.Item name="position" label="职务" normalize={trimString}>
+          <Select allowClear showSearch loading={positionLoading} options={positionOptions} placeholder="请选择职务" optionFilterProp="label" />
+        </Form.Item>
+
+        <Form.Item name="organization" label="所属机构" className="expert-form-grid__full" normalize={trimString}>
+          <Input maxLength={128} />
+        </Form.Item>
+
+        <Form.Item name="expertise" label="专业领域" className="expert-form-grid__full" rules={[{ required: true, message: '请选择专业领域' }]}>
+          <Select
+            mode="multiple"
+            allowClear
+            showSearch
+            loading={expertiseLoading}
+            options={expertiseOptions}
+            placeholder="请选择专业领域"
+            optionFilterProp="label"
+          />
+        </Form.Item>
+
+        <Form.Item name="phone" label="联系电话" rules={[{ validator: validateOptionalPhone }]} normalize={trimString}>
+          <Input maxLength={64} placeholder="座机或手机号" />
+        </Form.Item>
+
+        <Form.Item name="mobile" label="手机号码" rules={[{ validator: validateOptionalChinaMobile }]} normalize={trimString}>
+          <Input maxLength={32} placeholder="11 位手机号" />
+        </Form.Item>
+
+        <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入有效邮箱' }]} normalize={trimString}>
+          <Input maxLength={128} />
+        </Form.Item>
+
+        <Form.Item name="idCardNumber" label="身份证号码" rules={[{ validator: validateOptionalChinaIdCard }]} normalize={trimString}>
+          <Input maxLength={32} />
+        </Form.Item>
+
+        <Form.Item name="avatarUrl" hidden>
+          <Input />
+        </Form.Item>
+
+        <Form.Item label="头像" className="expert-form-grid__full">
+          <Form.Item noStyle shouldUpdate={(previous, next) => previous.avatarUrl !== next.avatarUrl}>
+            {({ getFieldValue }) => {
+              const avatarUrl = getFieldValue('avatarUrl');
+              return (
+                <Space align="center" size="middle" wrap>
+                  <Avatar size={64} src={avatarUrl ? normalizeUploadUrl(avatarUrl) : undefined}>
+                    {form.getFieldValue('name')?.slice(0, 1) || '专'}
+                  </Avatar>
+                  <Upload
+                    accept="image/*"
+                    showUploadList={false}
+                    beforeUpload={async (file) => {
+                      if (!file.type.startsWith('image/')) {
+                        message.warning('请上传图片文件');
+                        return Upload.LIST_IGNORE;
+                      }
+                      await onAvatarUpload(file);
+                      return Upload.LIST_IGNORE;
+                    }}
+                  >
+                    <Button icon={<UploadOutlined />} loading={uploadingAvatar}>
+                      上传头像
+                    </Button>
+                  </Upload>
+                  {avatarUrl ? (
+                    <Button type="link" danger onClick={() => form.setFieldValue('avatarUrl', undefined)}>
+                      清除
+                    </Button>
+                  ) : null}
+                </Space>
+              );
+            }}
+          </Form.Item>
+        </Form.Item>
+
+        <Form.Item name="bio" label="专家简介" className="expert-form-grid__full" normalize={trimString}>
+          <Input.TextArea rows={4} maxLength={1000} showCount />
+        </Form.Item>
+
+        <Form.Item name="tags" label="标签" className="expert-form-grid__full">
+          <Select mode="multiple" allowClear showSearch loading={tagLoading} options={tagOptions} placeholder="请选择标签" optionFilterProp="label" />
+        </Form.Item>
+
+        <Form.Item name="status" label="状态" rules={[{ required: true, message: '请选择状态' }]}>
+          <Select options={statusOptions} />
+        </Form.Item>
+
+        <Form.Item name="sort" label="排序">
+          <InputNumber min={0} max={9999} style={{ width: '100%' }} />
+        </Form.Item>
+
+        <Form.Item name="code" label="专家编码" className="expert-form-grid__full" normalize={trimString}>
+          <Input maxLength={64} placeholder="不填时自动生成" />
+        </Form.Item>
+      </div>
+    </Form>
+  );
+};
+
+const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }) => {
+  const isQueryMode = mode === 'query';
   const responsive = useResponsive();
   const actionPermission = useActionPermission();
   const actionRef = useRef<ActionType | undefined>(undefined);
@@ -126,6 +267,7 @@ const ExpertManagementView = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<ExpertRecord>();
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const closeDrawer = () => {
     setDrawerOpen(false);
@@ -144,16 +286,32 @@ const ExpertManagementView = () => {
     form.resetFields();
     form.setFieldsValue({
       ...record,
+      expertise: splitTags(record.expertise),
       title: record.title || undefined,
       organization: record.organization || undefined,
       position: record.position || undefined,
       phone: record.phone || undefined,
+      mobile: record.mobile || undefined,
+      idCardNumber: record.idCardNumber || undefined,
       email: record.email || undefined,
       avatarUrl: record.avatarUrl || undefined,
       bio: record.bio || undefined,
-      tags: record.tags || undefined,
+      tags: splitTags(record.tags),
     });
     setDrawerOpen(true);
+  };
+
+  const handleAvatarUpload = async (file: File) => {
+    setUploadingAvatar(true);
+    try {
+      const avatarUrl = await uploadExpertAvatar(file);
+      form.setFieldValue('avatarUrl', avatarUrl);
+      message.success('头像已上传');
+    } catch (error) {
+      showErrorMessage(error, '头像上传失败');
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const saveExpert = async () => {
@@ -164,8 +322,22 @@ const ExpertManagementView = () => {
         await updateExpert(editingRecord.id, normalizePayload(values));
         message.success('专家已更新');
       } else {
-        await createExpert(normalizePayload(values));
+        const created = await createExpert(normalizePayload(values));
         message.success('专家已新增');
+        if (created.initialPassword) {
+          const username = `expert_${created.code.replace(/[^A-Za-z0-9_-]/g, '_')}`;
+          Modal.info({
+            title: '专家账号已生成',
+            content: (
+              <Space direction="vertical" size={8}>
+                <Typography.Text>登录账号：{username}</Typography.Text>
+                <Typography.Text copyable strong>
+                  初始密码：{created.initialPassword}
+                </Typography.Text>
+              </Space>
+            ),
+          });
+        }
       }
       closeDrawer();
       actionRef.current?.reload();
@@ -176,17 +348,28 @@ const ExpertManagementView = () => {
     }
   };
 
-  const columns = useMemo<ProColumns<ExpertRecord>[]>(
-    () => [
+  const columns = useMemo<ProColumns<ExpertRecord>[]>(() => {
+    const baseColumns: ProColumns<ExpertRecord>[] = [
       {
         title: '专家',
         dataIndex: 'keyword',
+        fieldProps: {
+          placeholder: '输入专家姓名/编码/机构/领域',
+        },
         render: (_, record) => (
           <Space className="expert-name-cell" direction="vertical" size={0}>
             <Typography.Text strong>{record.name}</Typography.Text>
             <span className="expert-name-cell__meta">{record.code}</span>
           </Space>
         ),
+      },
+      {
+        title: '赛事查询',
+        dataIndex: 'competitionKeyword',
+        hideInTable: true,
+        fieldProps: {
+          placeholder: '输入赛事名称/编码/主办方',
+        },
       },
       {
         title: '头衔',
@@ -229,6 +412,13 @@ const ExpertManagementView = () => {
         ),
       },
       {
+        title: '账号',
+        dataIndex: 'accountStatus',
+        search: false,
+        width: 120,
+        render: (_, record) => (record.userId ? <Tag color="green">{record.accountStatus || 'ENABLED'}</Tag> : <Tag>未生成</Tag>),
+      },
+      {
         title: '状态',
         dataIndex: 'status',
         valueType: 'select',
@@ -252,6 +442,14 @@ const ExpertManagementView = () => {
         width: 172,
         render: (value) => value || '-',
       },
+    ];
+
+    if (isQueryMode) {
+      return baseColumns;
+    }
+
+    return [
+      ...baseColumns,
       {
         title: '操作',
         valueType: 'option',
@@ -293,12 +491,11 @@ const ExpertManagementView = () => {
           />
         ),
       },
-    ],
-    [actionPermission, responsive.isDesktop, responsive.isMobile],
-  );
+    ];
+  }, [actionPermission, isQueryMode, responsive.isDesktop, responsive.isMobile]);
 
   return (
-    <ManagementPage title="专家库">
+    <ManagementPage title={isQueryMode ? '专家查询' : '专家库'}>
       <ManagementPageBody className="expert-page">
         <ManagementTable<ExpertRecord>
           actionRef={actionRef}
@@ -308,7 +505,12 @@ const ExpertManagementView = () => {
           scroll={{ x: 1180 }}
           request={async (params) => {
             const response = await listExperts({
-              keyword: typeof params.keyword === 'string' ? params.keyword : undefined,
+              keyword:
+                typeof params.keyword === 'string'
+                  ? params.keyword
+                  : typeof params.competitionKeyword === 'string'
+                    ? params.competitionKeyword
+                    : undefined,
               status: params.status as ExpertStatus | undefined,
               pageNo: params.current,
               pageSize: params.pageSize,
@@ -320,39 +522,44 @@ const ExpertManagementView = () => {
             };
           }}
           pagination={{ pageSize: 10, showSizeChanger: true }}
-          toolBarRender={() =>
-            actionPermission.buildToolbarActions([
-              {
-                permission: 'expert:create',
-                value: (
-                  <Button key="create" type="primary" icon={<PlusOutlined />} onClick={openCreateDrawer}>
-                    新增专家
-                  </Button>
-                ),
-              },
-            ])
+          toolBarRender={
+            isQueryMode
+              ? false
+              : () =>
+                  actionPermission.buildToolbarActions([
+                    {
+                      permission: 'expert:create',
+                      value: (
+                        <Button key="create" type="primary" icon={<PlusOutlined />} onClick={openCreateDrawer}>
+                          新增专家
+                        </Button>
+                      ),
+                    },
+                  ])
           }
         />
       </ManagementPageBody>
 
-      <ManagementDrawer
-        title={editingRecord ? '编辑专家' : '新增专家'}
-        open={drawerOpen}
-        onClose={closeDrawer}
-        destroyOnHidden
-        footerActions={[
-          { key: 'cancel', label: '取消', onClick: closeDrawer },
-          {
-            key: 'save',
-            label: '保存',
-            type: 'primary',
-            loading: saving,
-            onClick: () => void saveExpert(),
-          },
-        ]}
-      >
-        <ExpertForm form={form} />
-      </ManagementDrawer>
+      {isQueryMode ? null : (
+        <ManagementDrawer
+          title={editingRecord ? '编辑专家' : '新增专家'}
+          open={drawerOpen}
+          onClose={closeDrawer}
+          destroyOnHidden
+          footerActions={[
+            { key: 'cancel', label: '取消', onClick: closeDrawer },
+            {
+              key: 'save',
+              label: '保存',
+              type: 'primary',
+              loading: saving,
+              onClick: () => void saveExpert(),
+            },
+          ]}
+        >
+          <ExpertForm form={form} uploadingAvatar={uploadingAvatar} onAvatarUpload={handleAvatarUpload} />
+        </ManagementDrawer>
+      )}
     </ManagementPage>
   );
 };
@@ -366,7 +573,7 @@ const ExpertPage = () => {
     }
   }, [location.pathname]);
 
-  return <ExpertManagementView />;
+  return <ExpertManagementView mode={isExpertQueryRoute(location.pathname) ? 'query' : 'management'} />;
 };
 
 export default ExpertPage;

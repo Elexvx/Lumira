@@ -54,12 +54,11 @@ public class SecurityAuditEventService {
         try {
             operations.update("""
                     INSERT INTO security_audit_event (
-                        tenant_id, user_id, employee_id, event_type, severity, source_ip, user_agent,
+                        user_id, employee_id, event_type, severity, source_ip, user_agent,
                         request_id, trace_id, resource_code, action_code, target_id, result, reason_code,
                         message, metadata_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    sanitized.tenantId(),
                     sanitized.userId(),
                     sanitized.employeeId(),
                     sanitized.eventType(),
@@ -103,7 +102,6 @@ public class SecurityAuditEventService {
             sanitizedMetadata = metadata;
         }
         return new SecurityAuditEvent(
-                event.tenantId(),
                 event.userId(),
                 event.employeeId(),
                 sanitizer.sanitize(event.eventType()),

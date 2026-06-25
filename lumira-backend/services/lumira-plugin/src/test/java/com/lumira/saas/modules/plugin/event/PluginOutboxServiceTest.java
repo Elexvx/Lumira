@@ -167,10 +167,9 @@ class PluginOutboxServiceTest {
     private PluginOutboxRow outboxRow(Long id, String status, int retryCount) {
         PluginOutboxRow row = new PluginOutboxRow();
         row.setId(id);
-        row.setTenantId(1001L);
         row.setUserId(9L);
         row.setEventType("plugin.enabled");
-        row.setEventKey("plugin:sms:1001");
+        row.setEventKey("plugin:sms");
         row.setPayloadJson("{}");
         row.setStatus(status);
         row.setRetryCount(retryCount);

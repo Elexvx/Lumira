@@ -1,11 +1,8 @@
 package com.lumira.saas.modules.plugin.controller;
 
 import com.lumira.common.api.ApiResponse;
-import com.lumira.common.enums.ErrorCode;
-import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.web.repeatsubmit.RepeatSubmit;
@@ -66,14 +63,13 @@ public class PluginV2Controller {
     @GetMapping("/{pluginCode}/status")
     public ApiResponse<PluginVO.PluginStatusVO> status(@PathVariable("pluginCode") String pluginCode) {
         require("plugin:management:view");
-        return ApiResponse.success(pluginManagementAppService.status(currentTenantId(), pluginCode), TraceContext.getRequestId());
+        return ApiResponse.success(pluginManagementAppService.status(pluginCode), TraceContext.getRequestId());
     }
 
     @PostMapping("/enable")
     @RepeatSubmit
     public ApiResponse<Boolean> enable(@Valid @RequestBody PluginDTO.EnableRequest request) {
         require("plugin:management:enable");
-        requireCurrentTenant(request.getTenantId());
         pluginManagementAppService.enable(request, currentUser());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
@@ -82,21 +78,20 @@ public class PluginV2Controller {
     @RepeatSubmit
     public ApiResponse<Boolean> disable(@Valid @RequestBody PluginDTO.DisableRequest request) {
         require("plugin:management:disable");
-        requireCurrentTenant(request.getTenantId());
         pluginManagementAppService.disable(request, currentUser());
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
     @GetMapping("/current/available")
-    public ApiResponse<List<PluginVO.TenantPluginVO>> currentAvailable() {
-        return ApiResponse.success(pluginManagementAppService.availablePlugins(currentTenantId()), TraceContext.getRequestId());
+    public ApiResponse<List<PluginVO.PluginAvailabilityVO>> currentAvailable() {
+        return ApiResponse.success(pluginManagementAppService.availablePlugins(), TraceContext.getRequestId());
     }
 
     @GetMapping("/current/bootstrap")
     public ApiResponse<Map<String, Object>> currentBootstrap() {
         CurrentUser currentUser = currentUser();
         return ApiResponse.success(
-                pluginManagementAppService.currentBootstrap(currentTenantId(), permissionList(currentUser)),
+                pluginManagementAppService.currentBootstrap(permissionList(currentUser)),
                 TraceContext.getRequestId()
         );
     }
@@ -105,7 +100,7 @@ public class PluginV2Controller {
     public ApiResponse<List<Map<String, Object>>> currentMenus() {
         CurrentUser currentUser = currentUser();
         return ApiResponse.success(
-                pluginManagementAppService.currentMenus(currentTenantId(), permissionList(currentUser)),
+                pluginManagementAppService.currentMenus(permissionList(currentUser)),
                 TraceContext.getRequestId()
         );
     }
@@ -133,16 +128,6 @@ public class PluginV2Controller {
 
     private void require(String permissionKey) {
         permissionGuard.requirePermission(currentUser(), permissionKey);
-    }
-
-    private void requireCurrentTenant(Long tenantId) {
-        if (tenantId == null || !tenantId.equals(currentTenantId())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "只能管理当前租户的插件");
-        }
-    }
-
-    private Long currentTenantId() {
-        return PlatformContext.compatibilityTenantId();
     }
 
     private List<String> permissionList(CurrentUser currentUser) {

@@ -63,13 +63,12 @@ class OnlineSessionManagementAppServiceTest {
 
     @Test
     void listOnlineSessionsOnlyReturnsRecentlyActiveSessions() {
-        long tenantId = 1001L;
         long userId = 2001L;
         Instant now = Instant.now();
 
-        AuthSession activeSession = buildSession("active-session", tenantId, userId, now.minusSeconds(60), now.plusSeconds(3600));
-        AuthSession staleSession = buildSession("stale-session", tenantId, userId, now.minusSeconds(3600), now.plusSeconds(3600));
-        AuthSession expiredSession = buildSession("expired-session", tenantId, userId, now.minusSeconds(60), now.minusSeconds(60));
+        AuthSession activeSession = buildSession("active-session", userId, now.minusSeconds(60), now.plusSeconds(3600));
+        AuthSession staleSession = buildSession("stale-session", userId, now.minusSeconds(3600), now.plusSeconds(3600));
+        AuthSession expiredSession = buildSession("expired-session", userId, now.minusSeconds(60), now.minusSeconds(60));
 
         authSessionStore.put(activeSession);
         authSessionStore.put(staleSession);
@@ -78,11 +77,9 @@ class OnlineSessionManagementAppServiceTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(userId);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(2002L);
 
         var page = service.listOnlineSessions(currentUser, 1, 10);
 
-        assertEquals(1001L, authSessionStore.lastListedTenantId);
         assertEquals(1L, page.getTotal());
         assertEquals(1, page.getRecords().size());
         assertEquals(activeSession.getSessionId(), page.getRecords().getFirst().getSessionId());
@@ -114,12 +111,11 @@ class OnlineSessionManagementAppServiceTest {
                 }
         );
 
-        long tenantId = 1001L;
         Instant now = Instant.now();
 
-        AuthSession newerSession = buildSession("newer-session", tenantId, 2001L, now.minusSeconds(30), now.plusSeconds(3610));
-        AuthSession olderSession = buildSession("older-session", tenantId, 2001L, now.minusSeconds(60), now.plusSeconds(3600));
-        AuthSession otherUserSession = buildSession("other-user-session", tenantId, 2002L, now.minusSeconds(20), now.plusSeconds(3600));
+        AuthSession newerSession = buildSession("newer-session", 2001L, now.minusSeconds(30), now.plusSeconds(3610));
+        AuthSession olderSession = buildSession("older-session", 2001L, now.minusSeconds(60), now.plusSeconds(3600));
+        AuthSession otherUserSession = buildSession("other-user-session", 2002L, now.minusSeconds(20), now.plusSeconds(3600));
 
         authSessionStore.put(olderSession);
         authSessionStore.put(newerSession);
@@ -128,11 +124,9 @@ class OnlineSessionManagementAppServiceTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(9999L);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(2002L);
 
         var page = service.listOnlineSessions(currentUser, 1, 10);
 
-        assertEquals(1001L, authSessionStore.lastListedTenantId);
         assertEquals(2L, page.getTotal());
         assertEquals(2, page.getRecords().size());
         assertEquals(newerSession.getSessionId(), page.getRecords().get(0).getSessionId());
@@ -141,10 +135,9 @@ class OnlineSessionManagementAppServiceTest {
         assertEquals(1, authSessionStore.batchLookupCounts);
     }
 
-    private static AuthSession buildSession(String sessionId, long tenantId, long userId, Instant lastActivityAt, Instant expireTime) {
+    private static AuthSession buildSession(String sessionId, long userId, Instant lastActivityAt, Instant expireTime) {
         AuthSession session = new AuthSession();
         session.setSessionId(sessionId);
-        session.setCurrentTenantId(tenantId);
         session.setUserId(userId);
         session.setUsername("admin");
         session.setLoginTime(lastActivityAt);
@@ -160,7 +153,6 @@ class OnlineSessionManagementAppServiceTest {
         private final Map<Long, Integer> latestSessionLookupCounts = new HashMap<>();
         private final List<String> sessionOrder = new ArrayList<>();
         private final List<AuthSession> removedSessions = new ArrayList<>();
-        private Long lastListedTenantId;
         private int batchLookupCounts;
 
         private StubAuthSessionStore() {
@@ -173,8 +165,7 @@ class OnlineSessionManagementAppServiceTest {
         }
 
         @Override
-        public List<String> listActiveTenantSessionIds(Long tenantId, long start, long end) {
-            lastListedTenantId = tenantId;
+        public List<String> listActiveSessionIds(long start, long end) {
             return sessions.values().stream()
                     .sorted((left, right) -> {
                         Instant leftExpire = left.getExpireTime();

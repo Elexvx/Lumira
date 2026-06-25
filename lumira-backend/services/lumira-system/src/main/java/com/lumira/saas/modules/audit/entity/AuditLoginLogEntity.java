@@ -11,7 +11,6 @@ public class AuditLoginLogEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long tenantId;
     private Long userId;
     private String username;
     private String loginType;
@@ -29,14 +28,6 @@ public class AuditLoginLogEntity {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public Long getTenantId() {
-        return tenantId;
-    }
-
-    public void setTenantId(Long tenantId) {
-        this.tenantId = tenantId;
     }
 
     public Long getUserId() {

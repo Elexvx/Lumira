@@ -18,14 +18,13 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
     }
 
     @Override
-    public void addOwner(Long tenantId, Long teamId, Long userId) {
+    public void addOwner(Long teamId, Long userId) {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
-                        insert into team_member (tenant_id, team_id, user_id, role, member_name, member_source, status, joined_at, created_at, updated_at, deleted)
-                        values (?, ?, ?, 'OWNER', 'Owner', 'REGISTERED', 'ACTIVE', ?, ?, ?, 0)
+                        insert into team_member (team_id, user_id, role, member_name, member_source, status, joined_at, created_at, updated_at, deleted)
+                        values (?, ?, 'OWNER', 'Owner', 'REGISTERED', 'ACTIVE', ?, ?, ?, 0)
                         """,
-                tenantId,
                 teamId,
                 userId,
                 now,
@@ -35,32 +34,28 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
     }
 
     @Override
-    public List<TeamVO.Member> listMembers(Long tenantId, Long teamId) {
+    public List<TeamVO.Member> listMembers(Long teamId) {
         return jdbcTemplate.query(
                 memberSelect("""
-                        where tenant_id = ?
-                          and team_id = ?
+                        where team_id = ?
                           and deleted = 0
                         order by field(role, 'OWNER', 'ADMIN', 'MANAGER', 'MEMBER'), id asc
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.Member.class),
-                tenantId,
                 teamId
         );
     }
 
     @Override
-    public TeamVO.Member findMemberById(Long tenantId, Long teamId, Long memberId) {
+    public TeamVO.Member findMemberById(Long teamId, Long memberId) {
         List<TeamVO.Member> members = jdbcTemplate.query(
                 memberSelect("""
-                        where tenant_id = ?
-                          and team_id = ?
+                        where team_id = ?
                           and id = ?
                           and deleted = 0
                         limit 1
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.Member.class),
-                tenantId,
                 teamId,
                 memberId
         );
@@ -68,56 +63,51 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
     }
 
     @Override
-    public void updateMemberRole(Long tenantId, Long teamId, Long memberId, String role) {
+    public void updateMemberRole(Long teamId, Long memberId, String role) {
         jdbcTemplate.update(
-                "update team_member set role = ?, updated_at = ? where tenant_id = ? and team_id = ? and id = ? and deleted = 0",
+                "update team_member set role = ?, updated_at = ? where team_id = ? and id = ? and deleted = 0",
                 role,
                 LocalDateTime.now(),
-                tenantId,
                 teamId,
                 memberId
         );
     }
 
     @Override
-    public void removeMember(Long tenantId, Long teamId, Long memberId) {
+    public void removeMember(Long teamId, Long memberId) {
         jdbcTemplate.update(
-                "update team_member set status = 'REMOVED', deleted = 1, updated_at = ? where tenant_id = ? and team_id = ? and id = ? and deleted = 0",
+                "update team_member set status = 'REMOVED', deleted = 1, updated_at = ? where team_id = ? and id = ? and deleted = 0",
                 LocalDateTime.now(),
-                tenantId,
                 teamId,
                 memberId
         );
     }
 
     @Override
-    public void transferOwner(Long tenantId, Long teamId, Long previousOwnerUserId, String previousOwnerRole, Long newOwnerMemberId) {
+    public void transferOwner(Long teamId, Long previousOwnerUserId, String previousOwnerRole, Long newOwnerMemberId) {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
-                "update team_member set role = ? where tenant_id = ? and team_id = ? and user_id = ? and status = 'ACTIVE' and deleted = 0",
+                "update team_member set role = ? where team_id = ? and user_id = ? and status = 'ACTIVE' and deleted = 0",
                 previousOwnerRole,
-                tenantId,
                 teamId,
                 previousOwnerUserId
         );
         jdbcTemplate.update(
-                "update team_member set role = 'OWNER', updated_at = ? where tenant_id = ? and team_id = ? and id = ?",
+                "update team_member set role = 'OWNER', updated_at = ? where team_id = ? and id = ?",
                 now,
-                tenantId,
                 teamId,
                 newOwnerMemberId
         );
     }
 
     @Override
-    public void ensureDirectMember(Long tenantId, Long teamId, Long userId, Long invitedBy, String role) {
+    public void ensureDirectMember(Long teamId, Long userId, Long invitedBy, String role) {
         try {
             int updated = jdbcTemplate.update(
                     """
                             update team_member
                             set status = 'ACTIVE', role = ?, invited_by = ?, joined_at = ?, updated_at = ?, deleted = 0
-                            where tenant_id = ?
-                              and team_id = ?
+                            where team_id = ?
                               and user_id = ?
                               and deleted = 1
                             """,
@@ -125,17 +115,15 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
                     invitedBy,
                     LocalDateTime.now(),
                     LocalDateTime.now(),
-                    tenantId,
                     teamId,
                     userId
             );
             if (updated == 0) {
                 jdbcTemplate.update(
                         """
-                                insert into team_member (tenant_id, team_id, user_id, role, member_source, status, invited_by, joined_at, created_at, updated_at, deleted)
-                                values (?, ?, ?, ?, 'REGISTERED', 'ACTIVE', ?, ?, ?, ?, 0)
+                                insert into team_member (team_id, user_id, role, member_source, status, invited_by, joined_at, created_at, updated_at, deleted)
+                                values (?, ?, ?, 'REGISTERED', 'ACTIVE', ?, ?, ?, ?, 0)
                                 """,
-                        tenantId,
                         teamId,
                         userId,
                         role,
@@ -151,17 +139,16 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
     }
 
     @Override
-    public Long addDraftMember(Long tenantId, Long teamId, TeamDTO.DraftMemberRequest request) {
+    public Long addDraftMember(Long teamId, TeamDTO.DraftMemberRequest request) {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
                         insert into team_member (
-                            tenant_id, team_id, user_id, role, member_alias, member_name,
+                            team_id, user_id, role, member_alias, member_name,
                             employee_no, department_name, remark, member_source, status,
                             joined_at, created_at, updated_at, deleted
-                        ) values (?, ?, null, ?, ?, ?, ?, ?, ?, 'DRAFT', 'ACTIVE', ?, ?, ?, 0)
+                        ) values (?, null, ?, ?, ?, ?, ?, ?, 'DRAFT', 'ACTIVE', ?, ?, ?, 0)
                         """,
-                tenantId,
                 teamId,
                 request.getRole(),
                 request.getMemberName(),
@@ -177,41 +164,36 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
     }
 
     @Override
-    public void refreshMemberCount(Long tenantId, Long teamId) {
+    public void refreshMemberCount(Long teamId) {
         jdbcTemplate.update(
                 """
                         update team
                         set member_count = (
                             select count(1)
                             from team_member
-                            where tenant_id = ?
-                              and team_id = ?
+                            where team_id = ?
                               and status = 'ACTIVE'
                               and deleted = 0
                         )
-                        where tenant_id = ?
-                          and id = ?
+                        where id = ?
                         """,
-                tenantId,
                 teamId,
-                tenantId,
                 teamId
         );
     }
 
     @Override
-    public void removeMembersByTeam(Long tenantId, Long teamId) {
+    public void removeMembersByTeam(Long teamId) {
         jdbcTemplate.update(
-                "update team_member set deleted = 1, status = 'REMOVED', updated_at = ? where tenant_id = ? and team_id = ? and deleted = 0",
+                "update team_member set deleted = 1, status = 'REMOVED', updated_at = ? where team_id = ? and deleted = 0",
                 LocalDateTime.now(),
-                tenantId,
                 teamId
         );
     }
 
     private String memberSelect(String tail) {
         return """
-                select id, tenant_id as tenantId, team_id as teamId, user_id as userId, role,
+                select id, team_id as teamId, user_id as userId, role,
                        member_alias as memberAlias, member_name as memberName,
                        employee_no as employeeNo, department_name as departmentName,
                        remark, member_source as memberSource, status, invited_by as invitedBy,

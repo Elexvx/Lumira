@@ -1,7 +1,7 @@
 <configuration>
     <springProperty scope="context" name="SERVICE_NAME" source="spring.application.name" defaultValue="system-service"/>
     <property name="CONSOLE_PATTERN"
-              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level serviceName=${SERVICE_NAME} %logger{36} traceId=%X{traceId} trace_id=%X{trace_id} spanId=%X{spanId} span_id=%X{span_id} requestId=%X{requestId} tenantId=%X{tenantId} - %msg%n"/>
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level serviceName=${SERVICE_NAME} %logger{36} traceId=%X{traceId} trace_id=%X{trace_id} spanId=%X{spanId} span_id=%X{span_id} requestId=%X{requestId} - %msg%n"/>
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>

@@ -2,7 +2,7 @@ import { formatMessage } from '@umijs/max';
 import type { MenuProps } from 'antd';
 import type { RuntimeMenuDataItem } from '@/app.types';
 import { resolveBuiltinMessage } from '@/i18n/messages';
-import type { MenuNode, TenantPlugin } from '@/types/api';
+import type { MenuNode, PluginAvailability } from '@/types/api';
 import { resolveNavigationIcon } from './settingsNavigationIcon';
 import { buildSettingsSourceItems, normalizeMenuPath } from './settingsNavigationTree';
 import type { SettingsNavigationSourceItem } from './settingsNavigationConfig';
@@ -55,15 +55,15 @@ const flattenRuntimeMenuItems = (items: RuntimeMenuDataItem[]) => {
   return result;
 };
 
-const buildVisibleSettingsNavigationTree = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean, availablePlugins: TenantPlugin[] | undefined = []) =>
+const buildVisibleSettingsNavigationTree = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean, availablePlugins: PluginAvailability[] | undefined = []) =>
   buildSettingsSourceItems(menuTree, availablePlugins)
     .map((item) => mapSourceItemToRuntimeMenuItem(item, canVisitAccessKey))
     .filter(Boolean) as RuntimeMenuDataItem[];
 
-export const buildVisibleSettingsNavigationItems = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean, availablePlugins: TenantPlugin[] | undefined = []) =>
+export const buildVisibleSettingsNavigationItems = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean, availablePlugins: PluginAvailability[] | undefined = []) =>
   buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey, availablePlugins);
 
-export const buildSettingsDropdownItems = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean, availablePlugins: TenantPlugin[] | undefined = []): MenuProps['items'] =>
+export const buildSettingsDropdownItems = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean, availablePlugins: PluginAvailability[] | undefined = []): MenuProps['items'] =>
   flattenRuntimeMenuItems(buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey, availablePlugins))
     .filter((item): item is RuntimeMenuDataItem & { path: string; name: string } => Boolean(item.path && item.name))
     .map((item) => ({
@@ -72,7 +72,7 @@ export const buildSettingsDropdownItems = (menuTree: MenuNode[] | undefined, can
       label: item.name,
     }));
 
-export const resolveActiveSettingsNavigationPath = (pathname: string, menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean, availablePlugins: TenantPlugin[] | undefined = []) => {
+export const resolveActiveSettingsNavigationPath = (pathname: string, menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean, availablePlugins: PluginAvailability[] | undefined = []) => {
   const normalizedPathname = normalizeMenuPath(pathname) || pathname;
   const visibleItems = flattenRuntimeMenuItems(buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey, availablePlugins));
   const exactMatch = visibleItems.find((item) => item.path === normalizedPathname);
@@ -87,7 +87,7 @@ export const resolveActiveSettingsNavigationPath = (pathname: string, menuTree: 
   return matchedItem?.path || normalizedPathname;
 };
 
-export const resolveFirstSettingsNavigationPath = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean, availablePlugins: TenantPlugin[] | undefined = []) => {
+export const resolveFirstSettingsNavigationPath = (menuTree: MenuNode[] | undefined, canVisitAccessKey: (accessKey: string) => boolean, availablePlugins: PluginAvailability[] | undefined = []) => {
   const visibleItems = flattenRuntimeMenuItems(buildVisibleSettingsNavigationTree(menuTree, canVisitAccessKey, availablePlugins));
   return visibleItems[0]?.path;
 };

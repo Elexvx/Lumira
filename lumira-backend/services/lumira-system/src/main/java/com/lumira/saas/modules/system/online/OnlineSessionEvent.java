@@ -9,7 +9,6 @@ public class OnlineSessionEvent {
     public static final String ACTION_HEARTBEAT = "HEARTBEAT";
 
     private String action;
-    private Long tenantId;
     private Long userId;
     private String sessionId;
     private String operatorUsername;
@@ -21,14 +20,6 @@ public class OnlineSessionEvent {
 
     public void setAction(String action) {
         this.action = action;
-    }
-
-    public Long getTenantId() {
-        return tenantId;
-    }
-
-    public void setTenantId(Long tenantId) {
-        this.tenantId = tenantId;
     }
 
     public Long getUserId() {

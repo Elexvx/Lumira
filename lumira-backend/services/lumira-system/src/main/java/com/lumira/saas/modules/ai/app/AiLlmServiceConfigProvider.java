@@ -11,13 +11,13 @@ import java.util.Optional;
 
 public interface AiLlmServiceConfigProvider {
 
-    Optional<AiLlmServiceConfig> findById(Long tenantId, Long serviceId);
+    Optional<AiLlmServiceConfig> findById(Long serviceId);
 
-    Optional<AiLlmServiceConfig> findDefault(Long tenantId);
+    Optional<AiLlmServiceConfig> findDefault();
 
-    Optional<AiLlmServiceConfig> findDefaultForEmployee(Long tenantId, Long employeeId);
+    Optional<AiLlmServiceConfig> findDefaultForEmployee(Long employeeId);
 
-    Optional<AiLlmServiceConfig> findSupervisor(Long tenantId);
+    Optional<AiLlmServiceConfig> findSupervisor();
 }
 
 
@@ -34,8 +34,8 @@ class JdbcAiLlmServiceConfigProvider implements AiLlmServiceConfigProvider {
     }
 
     @Override
-    public Optional<AiLlmServiceConfig> findById(Long tenantId, Long serviceId) {
-        if (tenantId == null || serviceId == null) {
+    public Optional<AiLlmServiceConfig> findById(Long serviceId) {
+        if (serviceId == null) {
             return Optional.empty();
         }
         return jdbcTemplate.query(
@@ -43,14 +43,12 @@ class JdbcAiLlmServiceConfigProvider implements AiLlmServiceConfigProvider {
                         select id, provider, code, title, base_url as baseUrl, api_key_encrypted as apiKey, default_model as defaultModel,
                                timeout_ms as timeoutMs, temperature, max_tokens as maxTokens
                         from ai_llm_service
-                        where tenant_id = ?
-                          and id = ?
+                        where id = ?
                           and is_deleted = 0
                           and enabled = 1
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(AiLlmServiceConfig.class),
-                tenantId,
                 serviceId
         ).stream()
                 .findFirst()
@@ -58,31 +56,26 @@ class JdbcAiLlmServiceConfigProvider implements AiLlmServiceConfigProvider {
     }
 
     @Override
-    public Optional<AiLlmServiceConfig> findDefault(Long tenantId) {
-        if (tenantId == null) {
-            return Optional.empty();
-        }
+    public Optional<AiLlmServiceConfig> findDefault() {
         return jdbcTemplate.query(
                 """
                         select id, provider, code, title, base_url as baseUrl, api_key_encrypted as apiKey, default_model as defaultModel,
                                timeout_ms as timeoutMs, temperature, max_tokens as maxTokens
                         from ai_llm_service
-                        where tenant_id = ?
-                          and is_deleted = 0
+                        where is_deleted = 0
                           and enabled = 1
                         order by id asc
                         limit 1
                         """,
-                new BeanPropertyRowMapper<>(AiLlmServiceConfig.class),
-                tenantId
+                new BeanPropertyRowMapper<>(AiLlmServiceConfig.class)
         ).stream()
                 .findFirst()
                 .map(this::decryptApiKey);
     }
 
     @Override
-    public Optional<AiLlmServiceConfig> findDefaultForEmployee(Long tenantId, Long employeeId) {
-        if (tenantId == null || employeeId == null) {
+    public Optional<AiLlmServiceConfig> findDefaultForEmployee(Long employeeId) {
+        if (employeeId == null) {
             return Optional.empty();
         }
         return jdbcTemplate.query(
@@ -92,15 +85,12 @@ class JdbcAiLlmServiceConfigProvider implements AiLlmServiceConfigProvider {
                         from ai_employee e
                         left join ai_llm_service s
                           on s.id = e.default_llm_service_id
-                         and s.tenant_id = e.tenant_id
                          and s.is_deleted = 0
-                        where e.tenant_id = ?
-                          and e.id = ?
+                        where e.id = ?
                           and e.is_deleted = 0
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(AiLlmServiceConfig.class),
-                tenantId,
                 employeeId
         ).stream()
                 .findFirst()
@@ -109,17 +99,13 @@ class JdbcAiLlmServiceConfigProvider implements AiLlmServiceConfigProvider {
     }
 
     @Override
-    public Optional<AiLlmServiceConfig> findSupervisor(Long tenantId) {
-        if (tenantId == null) {
-            return Optional.empty();
-        }
+    public Optional<AiLlmServiceConfig> findSupervisor() {
         return jdbcTemplate.query(
                 """
                         select id, provider, code, title, base_url as baseUrl, api_key_encrypted as apiKey, default_model as defaultModel,
                                timeout_ms as timeoutMs, temperature, max_tokens as maxTokens
                         from ai_llm_service
-                        where tenant_id = ?
-                          and is_deleted = 0
+                        where is_deleted = 0
                           and enabled = 1
                           and (
                             lower(code) in ('supervisor', 'ai-supervisor', 'guardrail', 'ai-guardrail')
@@ -130,8 +116,7 @@ class JdbcAiLlmServiceConfigProvider implements AiLlmServiceConfigProvider {
                         order by id asc
                         limit 1
                         """,
-                new BeanPropertyRowMapper<>(AiLlmServiceConfig.class),
-                tenantId
+                new BeanPropertyRowMapper<>(AiLlmServiceConfig.class)
         ).stream()
                 .findFirst()
                 .map(this::decryptApiKey);

@@ -33,7 +33,7 @@ class AiToolRegistryTest {
                 securityContextFacade
         );
 
-        List<AiVO.SkillVO> skills = registry.listRegisteredSkills(1001L, 3001L);
+        List<AiVO.SkillVO> skills = registry.listRegisteredSkills(3001L);
 
         assertThat(skills).isEmpty();
     }
@@ -51,7 +51,7 @@ class AiToolRegistryTest {
                 securityContextFacade
         );
 
-        List<AiVO.SkillVO> skills = registry.listRegisteredSkills(1001L, 3001L);
+        List<AiVO.SkillVO> skills = registry.listRegisteredSkills(3001L);
 
         assertThat(skills).hasSize(1);
         assertThat(skills.get(0).getSkillCode()).isEqualTo("file.search");

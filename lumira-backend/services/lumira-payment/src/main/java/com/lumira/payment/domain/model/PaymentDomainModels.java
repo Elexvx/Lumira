@@ -12,16 +12,14 @@ public final class PaymentDomainModels {
     }
 
     public static final class PaymentOrderAggregate extends AggregateRoot<String> {
-        private final Long tenantId;
         private final BigDecimal amount;
         private String status;
 
-        public PaymentOrderAggregate(String orderNo, Long tenantId, BigDecimal amount, String status) {
+        public PaymentOrderAggregate(String orderNo, BigDecimal amount, String status) {
             super(EntityId.of(orderNo));
             if (amount == null || amount.signum() <= 0) {
                 throw new IllegalArgumentException("amount must be positive");
             }
-            this.tenantId = tenantId;
             this.amount = amount;
             this.status = status == null ? "CREATED" : status;
         }
@@ -31,7 +29,6 @@ public final class PaymentDomainModels {
                     "PAYMENT_ORDER_CREATED",
                     "payment.order",
                     id().value(),
-                    tenantId,
                     Map.of(
                             "amount", amount,
                             "providerCode", providerCode == null ? "" : providerCode,
@@ -50,7 +47,6 @@ public final class PaymentDomainModels {
                     "PAYMENT_ORDER_PAID",
                     "payment.order",
                     id().value(),
-                    tenantId,
                     Map.of("amount", amount, "providerTxnId", providerTxnId == null ? "" : providerTxnId)
             ));
         }
@@ -58,8 +54,8 @@ public final class PaymentDomainModels {
 
     public record WebhookEvent(String providerCode, String eventId, String signature, String payload) {
 
-        public String idempotencyKey(Long tenantId) {
-            return tenantId + ":" + providerCode + ":" + eventId;
+        public String idempotencyKey() {
+            return providerCode + ":" + eventId;
         }
     }
 }

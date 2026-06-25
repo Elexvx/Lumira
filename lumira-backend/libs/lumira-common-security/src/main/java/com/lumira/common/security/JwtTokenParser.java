@@ -13,7 +13,6 @@ public class JwtTokenParser {
     public static final String CLAIM_SESSION_ID = "sid";
     public static final String CLAIM_USER_ID = "uid";
     public static final String CLAIM_USERNAME = "uname";
-    public static final String CLAIM_TENANT_ID = "tid";
     public static final String CLAIM_SESSION_VERSION = "sv";
     public static final String CLAIM_TOKEN_TYPE = "tt";
 
@@ -34,7 +33,6 @@ public class JwtTokenParser {
             tokenClaims.setSessionId(claims.get(CLAIM_SESSION_ID, String.class));
             tokenClaims.setUserId(claims.get(CLAIM_USER_ID, Long.class));
             tokenClaims.setUsername(claims.get(CLAIM_USERNAME, String.class));
-            tokenClaims.setCurrentTenantId(claims.get(CLAIM_TENANT_ID, Long.class));
             tokenClaims.setSessionVersion(claims.get(CLAIM_SESSION_VERSION, Integer.class));
             tokenClaims.setTokenId(claims.getId());
             String tokenType = claims.get(CLAIM_TOKEN_TYPE, String.class);

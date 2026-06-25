@@ -14,7 +14,6 @@ public final class PluginRuntimeModels {
             Map<String, List<String>> queryParameters,
             Map<String, String> headers,
             String body,
-            Long tenantId,
             Long userId,
             String username,
             String requestId,
@@ -101,17 +100,16 @@ public final class PluginRuntimeModels {
 
     public record PluginSecondFactorVerification(
             boolean verified,
-            Long tenantId,
             Long userId,
             String username,
             String message
     ) {
-        public static PluginSecondFactorVerification success(Long tenantId, Long userId, String username, String message) {
-            return new PluginSecondFactorVerification(true, tenantId, userId, username, message);
+        public static PluginSecondFactorVerification success(Long userId, String username, String message) {
+            return new PluginSecondFactorVerification(true, userId, username, message);
         }
 
         public static PluginSecondFactorVerification failure(String message) {
-            return new PluginSecondFactorVerification(false, null, null, null, message);
+            return new PluginSecondFactorVerification(false, null, null, message);
         }
     }
 }

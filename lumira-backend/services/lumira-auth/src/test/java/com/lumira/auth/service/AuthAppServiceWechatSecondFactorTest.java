@@ -9,7 +9,6 @@ import com.lumira.api.system.VerificationChallengeDTO;
 import com.lumira.api.system.VerificationProviderDTO;
 import com.lumira.auth.config.AuthSecurityProperties;
 import com.lumira.common.web.repeatsubmit.ClientIpResolver;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.SecurityContextFacade;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
@@ -87,9 +86,9 @@ class AuthAppServiceWechatSecondFactorTest {
         when(wechatLoginService.exchangeCode("code", "state"))
                 .thenReturn(new WechatLoginService.WechatOAuthUser("openid", "unionid", "snsapi_login"));
         when(systemInternalApi.resolveWechatLoginUser(any())).thenReturn(user);
-        when(systemInternalApi.permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, user.userId())).thenReturn(snapshot);
-        when(systemInternalApi.listVerificationProviders(PlatformConstants.PLATFORM_TENANT_ID, user.userId())).thenReturn(List.of(provider));
-        when(systemInternalApi.verificationChallenge(PlatformConstants.PLATFORM_TENANT_ID, user.userId(), "totp")).thenReturn(challenge);
+        when(systemInternalApi.permissionSnapshot(user.userId())).thenReturn(snapshot);
+        when(systemInternalApi.listVerificationProviders(user.userId())).thenReturn(List.of(provider));
+        when(systemInternalApi.verificationChallenge(user.userId(), "totp")).thenReturn(challenge);
         when(clientIpResolver.resolve(request)).thenReturn("127.0.0.1");
         when(request.getHeader("User-Agent")).thenReturn("JUnit");
 

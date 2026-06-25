@@ -11,7 +11,6 @@ import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
 import com.lumira.saas.modules.audit.app.LoginAuditService;
@@ -38,9 +37,6 @@ import com.lumira.saas.modules.user.entity.SysUserEntity;
 import com.lumira.saas.infrastructure.security.service.PasswordPolicyService;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -55,7 +51,6 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Properties;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -73,7 +68,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class SystemManagementAppService {
 
-    private static final Long DEFAULT_PUBLIC_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+    private static final String PERMISSION_CATALOG_CACHE_KEY = "global-permission-catalog";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
@@ -92,6 +87,7 @@ public class SystemManagementAppService {
     private static final int CUSTOM_PROFILE_VALUE_MAX_LENGTH = 1000;
     private static final int MENU_COUNT_CACHE_MAX_ENTRIES = 1024;
     private static final long MENU_COUNT_CACHE_TTL_MS = 30_000L;
+    private static final String MENU_COUNT_CACHE_KEY = "global-menu-count";
     private static final int PERMISSION_CATALOG_CACHE_MAX_ENTRIES = 1024;
     private static final long PERMISSION_CATALOG_CACHE_TTL_MS = 30_000L;
     private static final Set<String> BUILTIN_ROOT_MENU_CODES = Set.of(
@@ -211,8 +207,8 @@ public class SystemManagementAppService {
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final SystemRoleManagementAppService systemRoleManagementAppService;
     private final FieldCryptoService fieldCryptoService;
-    private final Cache<Long, Integer> menuCountCache;
-    private final Cache<Long, List<SystemVO.PermissionVO>> permissionCatalogCache;
+    private final Cache<String, Integer> menuCountCache;
+    private final Cache<String, List<SystemVO.PermissionVO>> permissionCatalogCache;
     private final SystemPermissionTreeAssembler permissionTreeAssembler = new SystemPermissionTreeAssembler();
 
     @Autowired
@@ -421,25 +417,24 @@ public class SystemManagementAppService {
 
     public SystemVO.DashboardSummaryVO dashboardSummary(CurrentUser currentUser) {
         PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(currentUser);
-        Long tenantId = currentTenantId(currentUser);
         CompletableFuture<CurrentUserVO> currentUserFuture = CompletableFuture.supplyAsync(() -> buildCurrentUser(currentUser, snapshot), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<List<PluginVO.TenantPluginVO>> tenantPluginsFuture = CompletableFuture.supplyAsync(
-                () -> systemPluginViewService.availablePlugins(tenantId),
+        CompletableFuture<List<PluginVO.PluginAvailabilityVO>> availablePluginsFuture = CompletableFuture.supplyAsync(
+                systemPluginViewService::availablePlugins,
                 BLOCKING_IO_EXECUTOR
         );
-        CompletableFuture<Integer> menuCountFuture = CompletableFuture.supplyAsync(() -> countMenus(tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Integer> menuCountFuture = CompletableFuture.supplyAsync(this::countMenus, BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<AuditLogVO>> recentLoginLogsFuture = CompletableFuture.supplyAsync(
                 () -> new ArrayList<>(listCurrentUserSuccessfulLoginLogs(currentUser, 5)),
                 BLOCKING_IO_EXECUTOR
         );
         CompletableFuture<List<AuditLogVO>> recentOperationLogsFuture = CompletableFuture.supplyAsync(
-                () -> new ArrayList<>(listRecentOperationLogs(currentUser, currentUser.getUsername(), tenantId, 5)),
+                () -> new ArrayList<>(listRecentOperationLogs(currentUser, currentUser.getUsername(), 5)),
                 BLOCKING_IO_EXECUTOR
         );
 
         SystemVO.DashboardSummaryVO summary = new SystemVO.DashboardSummaryVO();
         summary.setCurrentUser(currentUserFuture.join());
-        summary.setTenantPlugins(tenantPluginsFuture.join());
+        summary.setAvailablePlugins(availablePluginsFuture.join());
         summary.setMenuCount(menuCountFuture.join());
         summary.setPermissionCount(snapshot.getPermissionList().size());
         summary.setRecentLoginLogs(recentLoginLogsFuture.join());
@@ -450,10 +445,9 @@ public class SystemManagementAppService {
 
     public SystemVO.ProfileSummaryVO profileSummary(CurrentUser currentUser) {
         PermissionSnapshotService.PermissionSnapshot snapshot = resolvePermissionSnapshot(currentUser);
-        Long tenantId = currentTenantId(currentUser);
         CompletableFuture<CurrentUserVO> currentUserFuture = CompletableFuture.supplyAsync(() -> buildCurrentUser(currentUser, snapshot), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<String>> roleNamesFuture = CompletableFuture.supplyAsync(
-                () -> listCurrentTenantRoleNames(currentUser.getUserId(), tenantId),
+                () -> listCurrentRoleNames(currentUser.getUserId()),
                 BLOCKING_IO_EXECUTOR
         );
         CompletableFuture<List<AuditLogVO>> recentLoginLogsFuture = CompletableFuture.supplyAsync(
@@ -465,11 +459,11 @@ public class SystemManagementAppService {
                 BLOCKING_IO_EXECUTOR
         );
         CompletableFuture<Boolean> mobileBindAvailableFuture = CompletableFuture.supplyAsync(
-                () -> systemVerificationAppService.isContactBindAvailable(tenantId, "mobile"),
+                () -> systemVerificationAppService.isContactBindAvailable("mobile"),
                 BLOCKING_IO_EXECUTOR
         );
         CompletableFuture<Boolean> emailBindAvailableFuture = CompletableFuture.supplyAsync(
-                () -> systemVerificationAppService.isContactBindAvailable(tenantId, "email"),
+                () -> systemVerificationAppService.isContactBindAvailable("email"),
                 BLOCKING_IO_EXECUTOR
         );
 
@@ -500,17 +494,16 @@ public class SystemManagementAppService {
     public CurrentUserVO updateCurrentUserProfile(CurrentUser currentUser, com.lumira.saas.modules.system.dto.ProfileDTO.BasicInfoUpdateRequest request) {
         SysUserEntity user = userDomainService.findById(currentUser.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
-        Long tenantId = currentTenantId(currentUser);
         String nextMobile = normalizeNullableText(request.getMobile());
         String nextEmail = normalizeNullableText(request.getEmail());
         if (contactValueChanged(user.getMobile(), nextMobile)) {
-            if (!systemVerificationAppService.isContactBindAvailable(tenantId, "mobile")) {
+            if (!systemVerificationAppService.isContactBindAvailable("mobile")) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用短信验证码，暂不允许绑定手机号");
             }
             throw new BizException(ErrorCode.VALIDATION_ERROR, "手机号绑定需要验证码，请在已绑定登录方式中修改");
         }
         if (contactValueChanged(user.getEmail(), nextEmail)) {
-            if (!systemVerificationAppService.isContactBindAvailable(tenantId, "email")) {
+            if (!systemVerificationAppService.isContactBindAvailable("email")) {
                 throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用邮箱验证码，暂不允许绑定邮箱");
             }
             throw new BizException(ErrorCode.VALIDATION_ERROR, "邮箱绑定需要验证码，请在已绑定登录方式中修改");
@@ -540,7 +533,7 @@ public class SystemManagementAppService {
         if (request.getExtraProfileValues() != null) {
             updateCurrentUserExtraProfileValues(currentUser, user.getId(), request.getExtraProfileValues());
         }
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "update", "UPDATE", "SUCCESS", "更新个人资料");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "update", "UPDATE", "SUCCESS", "更新个人资料");
         return buildCurrentUser(currentUser);
     }
 
@@ -551,7 +544,6 @@ public class SystemManagementAppService {
         }
         SysUserEntity user = userDomainService.findById(currentUser.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
-        Long tenantId = currentTenantId(currentUser);
         String normalizedAvatarUrl = normalizeNullableText(avatarUrl);
         jdbcTemplate.update(
                 """
@@ -564,25 +556,8 @@ public class SystemManagementAppService {
                 LocalDateTime.now(),
                 user.getId()
         );
-        jdbcTemplate.update(
-                """
-                        insert into sys_user_tenant_profile
-                            (tenant_id, user_id, display_name, avatar_url, created_by, updated_by)
-                        values (?, ?, ?, ?, ?, ?)
-                        on duplicate key update
-                            avatar_url = values(avatar_url),
-                            updated_by = values(updated_by),
-                            updated_at = current_timestamp
-                        """,
-                tenantId,
-                user.getId(),
-                resolveProfileDisplayName(user),
-                normalizedAvatarUrl,
-                currentUser.getUserId(),
-                currentUser.getUserId()
-        );
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile", "avatar", "UPDATE", "SUCCESS", "更新个人头像");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "avatar", "UPDATE", "SUCCESS", "更新个人头像");
         return buildCurrentUser(currentUser);
     }
 
@@ -590,16 +565,14 @@ public class SystemManagementAppService {
     public CurrentUserVO updateCurrentUserEmail(CurrentUser currentUser, ProfileDTO.EmailUpdateRequest request) {
         SysUserEntity user = userDomainService.findById(currentUser.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
-        Long tenantId = currentTenantId(currentUser);
         String email = normalizeContactValue("email", request.getEmail());
-        if (!systemVerificationAppService.isContactBindAvailable(tenantId, "email")) {
+        if (!systemVerificationAppService.isContactBindAvailable("email")) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用邮箱验证码，暂不允许绑定邮箱");
         }
         if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
         }
         systemVerificationAppService.completeContactBind(
-                tenantId,
                 currentUser.getUserId(),
                 "email",
                 request.getChallengeId(),
@@ -624,7 +597,7 @@ public class SystemManagementAppService {
     public SystemVO.VerificationChallengeVO startCurrentUserContactBindChallenge(CurrentUser currentUser, ProfileDTO.ContactBindChallengeRequest request) {
         String contactType = normalizeContactType(request.getContactType());
         String value = normalizeContactValue(contactType, request.getValue());
-        return systemVerificationAppService.startContactBindChallenge(currentTenantId(currentUser), currentUser.getUserId(), contactType, value);
+        return systemVerificationAppService.startContactBindChallenge(currentUser.getUserId(), contactType, value);
     }
 
     @Transactional
@@ -633,16 +606,14 @@ public class SystemManagementAppService {
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
         String contactType = normalizeContactType(request.getContactType());
         String value = normalizeContactValue(contactType, request.getValue());
-        Long tenantId = currentTenantId(currentUser);
 
-        if (!systemVerificationAppService.isContactBindAvailable(tenantId, contactType)) {
+        if (!systemVerificationAppService.isContactBindAvailable(contactType)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "当前未启用该绑定方式");
         }
         if (!StringUtils.hasText(request.getChallengeId()) || !StringUtils.hasText(request.getVerificationCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "请先获取验证码");
         }
         systemVerificationAppService.completeContactBind(
-                tenantId,
                 currentUser.getUserId(),
                 contactType,
                 request.getChallengeId(),
@@ -679,7 +650,7 @@ public class SystemManagementAppService {
         }
 
         userDomainService.findById(user.getId()).ifPresent(iamUserService::updateProfile);
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "更新绑定信息");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "bind", "UPDATE", "SUCCESS", "更新绑定信息");
         return buildCurrentUser(currentUser);
     }
 
@@ -687,29 +658,26 @@ public class SystemManagementAppService {
     public CurrentUserVO updateCurrentUserLocale(CurrentUser currentUser, ProfileDTO.LocaleUpdateRequest request) {
         SysUserEntity user = userDomainService.findById(currentUser.getUserId())
                 .orElseThrow(() -> new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "用户不存在"));
-        Long tenantId = currentTenantId(currentUser);
         String locale = normalizeLocale(request.getLocale());
         jdbcTemplate.update(
                 """
-                        insert into sys_user_tenant_profile
-                            (tenant_id, user_id, display_name, avatar_url, locale, created_by, updated_by)
-                        values (?, ?, ?, ?, ?, ?, ?)
+                        insert into iam_user_profile (
+                            user_id, nickname, real_name, gender, birth_month, region, locale, timezone, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, 'Asia/Shanghai', 0)
                         on duplicate key update
-                            display_name = values(display_name),
-                            avatar_url = values(avatar_url),
                             locale = values(locale),
-                            updated_by = values(updated_by),
+                            deleted = 0,
                             updated_at = current_timestamp
                         """,
-                tenantId,
                 user.getId(),
-                resolveProfileDisplayName(user),
-                normalizeNullableText(user.getAvatarUrl()),
-                locale,
-                currentUser.getUserId(),
-                currentUser.getUserId()
+                user.getNickname(),
+                user.getRealName(),
+                user.getGender(),
+                user.getBirthMonth(),
+                user.getRegion(),
+                locale
         );
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "profile", "update-locale", "UPDATE", "SUCCESS", "更新语言偏好");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "update-locale", "UPDATE", "SUCCESS", "更新语言偏好");
         return buildCurrentUser(currentUser);
     }
 
@@ -753,7 +721,7 @@ public class SystemManagementAppService {
         );
         iamUserService.upsertPasswordCredential(user.getId(), encodedPassword);
         authSessionStore.revokeUserSessionsExcept(currentUser.getUserId(), currentUser.getSessionId(), true);
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "profile", "password", "UPDATE", "SUCCESS", "修改登录密码");
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "password", "UPDATE", "SUCCESS", "修改登录密码");
         return true;
     }
 
@@ -852,9 +820,8 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.PermissionVO> listPermissions(CurrentUser currentUser) {
-        Long tenantId = currentTenantId(currentUser);
         try {
-            return permissionCatalogCache.get(tenantId, () -> loadPermissionCatalog(tenantId));
+            return permissionCatalogCache.get(PERMISSION_CATALOG_CACHE_KEY, this::loadPermissionCatalog);
         } catch (ExecutionException ex) {
             Throwable cause = ex.getCause();
             if (cause instanceof RuntimeException runtimeException) {
@@ -864,17 +831,16 @@ public class SystemManagementAppService {
         }
     }
 
-    private List<SystemVO.PermissionVO> loadPermissionCatalog(Long tenantId) {
+    private List<SystemVO.PermissionVO> loadPermissionCatalog() {
         List<SystemVO.PermissionVO> permissions = new ArrayList<>(jdbcTemplate.query(
                 """
                         select permission_key as permissionKey, permission_name as permissionName,
                                permission_group as permissionGroup, source_type as sourceType, plugin_code as pluginCode
                         from sys_permission
-                        where tenant_id = ? and deleted = 0
+                        where deleted = 0
                         order by permission_group asc, permission_key asc
                         """,
-                new BeanPropertyRowMapper<>(SystemVO.PermissionVO.class),
-                tenantId
+                new BeanPropertyRowMapper<>(SystemVO.PermissionVO.class)
         ));
         permissions.sort(Comparator.comparing(SystemVO.PermissionVO::getPermissionGroup, Comparator.nullsLast(String::compareTo))
                 .thenComparing(SystemVO.PermissionVO::getPermissionKey, Comparator.nullsLast(String::compareTo)));
@@ -894,18 +860,16 @@ public class SystemManagementAppService {
     }
 
     private List<SystemVO.MenuVO> listPersistedMenus(CurrentUser currentUser) {
-        Long tenantId = currentTenantId(currentUser);
         List<SystemVO.MenuVO> menus = jdbcTemplate.query(
                 """
-                        select id, tenant_id as tenantId, parent_id as parentId, menu_code as menuCode,
+                        select id, parent_id as parentId, menu_code as menuCode,
                                menu_name as menuName, menu_type as menuType, path, component, icon, sort_no as sortNo,
                                permission_key as permissionKey, status
                         from sys_menu
-                        where tenant_id = ? and deleted = 0
+                        where deleted = 0
                         order by sort_no asc, id asc
                 """,
-                new BeanPropertyRowMapper<>(SystemVO.MenuVO.class),
-                tenantId
+                new BeanPropertyRowMapper<>(SystemVO.MenuVO.class)
         ).stream()
                 .toList();
         normalizeBuiltinRootMenuParents(menus);
@@ -925,7 +889,6 @@ public class SystemManagementAppService {
 
     @Transactional
     public boolean reorderMenus(CurrentUser currentUser, SystemDTO.MenuReorderRequest request) {
-        Long tenantId = currentTenantId(currentUser);
         LocalDateTime now = LocalDateTime.now();
         if (request == null || CollectionUtils.isEmpty(request.getItems())) {
             return true;
@@ -938,25 +901,23 @@ public class SystemManagementAppService {
             if (item.getId() <= 0) {
                 continue;
             }
-            ensureEditableMenu(item.getId(), tenantId);
-            ensureEditableParentMenu(item.getParentId(), tenantId);
+            ensureEditableMenu(item.getId());
+            ensureEditableParentMenu(item.getParentId());
             jdbcTemplate.update(
                     """
                             update sys_menu
                             set parent_id = ?, sort_no = ?, updated_by = ?, updated_at = ?
-                            where id = ? and tenant_id = ? and deleted = 0
+                            where id = ? and deleted = 0
                             """,
                     item.getParentId() == null ? 0L : item.getParentId(),
                     item.getSortNo(),
                     currentUser.getUserId(),
                     now,
-                    item.getId(),
-                    tenantId
+                    item.getId()
             );
         }
 
         operationAuditService.log(
-                tenantId,
                 currentUser.getUserId(),
                 currentUser.getUsername(),
                 "menu",
@@ -965,23 +926,21 @@ public class SystemManagementAppService {
                 "SUCCESS",
                 "调整菜单顺序"
         );
-        invalidateMenuCountCache(tenantId);
+        invalidateMenuCountCache();
         return true;
     }
 
     public SystemVO.MenuVO getMenu(CurrentUser currentUser, Long menuId) {
-        Long tenantId = currentTenantId(currentUser);
         SystemVO.MenuVO menu = queryOne(
                 """
-                        select id, tenant_id as tenantId, parent_id as parentId, menu_code as menuCode,
+                        select id, parent_id as parentId, menu_code as menuCode,
                                menu_name as menuName, menu_type as menuType, path, component, icon, sort_no as sortNo,
                                permission_key as permissionKey, status
                         from sys_menu
-                        where id = ? and tenant_id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 SystemVO.MenuVO.class,
-                menuId,
-                tenantId
+                menuId
         );
         if (menu == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "菜单不存在");
@@ -992,50 +951,44 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.MenuVO createMenu(CurrentUser currentUser, SystemDTO.MenuUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
         ensureEditableMenuRequest(request);
-        ensureEditableParentMenu(request.getParentId(), tenantId);
-        Long menuId = insertMenu(null, tenantId, request, currentUser.getUserId());
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "create", "CREATE", "SUCCESS", "创建菜单: " + request.getMenuName());
-        invalidateMenuCountCache(tenantId);
+        ensureEditableParentMenu(request.getParentId());
+        Long menuId = insertMenu(null, request, currentUser.getUserId());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "create", "CREATE", "SUCCESS", "创建菜单: " + request.getMenuName());
+        invalidateMenuCountCache();
         return getMenu(currentUser, menuId);
     }
 
     @Transactional
     public SystemVO.MenuVO updateMenu(CurrentUser currentUser, Long menuId, SystemDTO.MenuUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        ensureEditableMenu(menuId, tenantId);
-        ensureEditableParentMenu(request.getParentId(), tenantId);
-        insertMenu(menuId, tenantId, request, currentUser.getUserId());
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "update", "UPDATE", "SUCCESS", "更新菜单: " + request.getMenuName());
-        invalidateMenuCountCache(tenantId);
+        ensureEditableMenu(menuId);
+        ensureEditableParentMenu(request.getParentId());
+        insertMenu(menuId, request, currentUser.getUserId());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "update", "UPDATE", "SUCCESS", "更新菜单: " + request.getMenuName());
+        invalidateMenuCountCache();
         return getMenu(currentUser, menuId);
     }
 
     @Transactional
     public boolean updateMenuStatus(CurrentUser currentUser, Long menuId, String status) {
-        Long tenantId = currentTenantId(currentUser);
-        ensureEditableMenu(menuId, tenantId);
+        ensureEditableMenu(menuId);
         jdbcTemplate.update(
-                "update sys_menu set status = ?, updated_by = ?, updated_at = ? where id = ? and tenant_id = ? and deleted = 0",
+                "update sys_menu set status = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 status,
                 currentUser.getUserId(),
                 LocalDateTime.now(),
-                menuId,
-                tenantId
+                menuId
         );
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "status", "UPDATE", "SUCCESS", "更新菜单状态: " + menuId + " -> " + status);
-        invalidateMenuCountCache(tenantId);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "status", "UPDATE", "SUCCESS", "更新菜单状态: " + menuId + " -> " + status);
+        invalidateMenuCountCache();
         return true;
     }
 
     @Transactional
     public boolean deleteMenu(CurrentUser currentUser, Long menuId) {
-        Long tenantId = currentTenantId(currentUser);
-        ensureEditableMenu(menuId, tenantId);
+        ensureEditableMenu(menuId);
         boolean hasChildMenu = jdbcTemplate.exists(
-                "select 1 from sys_menu where tenant_id = ? and parent_id = ? and deleted = 0 limit 1",
-                tenantId,
+                "select 1 from sys_menu where parent_id = ? and deleted = 0 limit 1",
                 menuId
         );
         if (hasChildMenu) {
@@ -1044,8 +997,7 @@ public class SystemManagementAppService {
         SystemVO.MenuVO menu = getMenu(currentUser, menuId);
         if (StringUtils.hasText(menu.getPermissionKey())) {
             boolean permissionReferenced = jdbcTemplate.exists(
-                    "select 1 from sys_role_permission where tenant_id = ? and permission_key = ? and deleted = 0 limit 1",
-                    tenantId,
+                    "select 1 from sys_role_permission where permission_key = ? and deleted = 0 limit 1",
                     menu.getPermissionKey()
             );
             if (permissionReferenced) {
@@ -1053,26 +1005,23 @@ public class SystemManagementAppService {
             }
         }
         jdbcTemplate.update(
-                "update sys_menu set deleted = 1, updated_by = ?, updated_at = ? where id = ? and tenant_id = ? and deleted = 0",
+                "update sys_menu set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 currentUser.getUserId(),
                 LocalDateTime.now(),
-                menuId,
-                tenantId
+                menuId
         );
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "menu", "delete", "DELETE", "SUCCESS", "删除菜单: " + menu.getMenuName());
-        permissionSnapshotService.invalidateTenant(tenantId);
-        invalidateMenuCountCache(tenantId);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "delete", "DELETE", "SUCCESS", "删除菜单: " + menu.getMenuName());
+        permissionSnapshotService.invalidatePermissions();
+        invalidateMenuCountCache();
         return true;
     }
 
     public PageResponse<SystemVO.DictTypeVO> listDictTypes(CurrentUser currentUser, String dictCode, String dictName, String status, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
         String baseSql = """
                 from sys_dict_type t
-                where t.deleted = 0 and (t.tenant_id is null or t.tenant_id = ?)
+                where t.deleted = 0
                 """;
         List<Object> params = new ArrayList<>();
-        params.add(tenantId);
         if (StringUtils.hasText(dictCode)) {
             baseSql += " and t.dict_code like ?";
             params.add(like(dictCode));
@@ -1086,7 +1035,7 @@ public class SystemManagementAppService {
             params.add(status);
         }
         String selectSql = """
-                select t.id, t.tenant_id as tenantId, t.dict_code as dictCode, t.dict_name as dictName,
+                select t.id, t.dict_code as dictCode, t.dict_name as dictName,
                        t.status, t.is_system as isSystem, t.remark
                 """ + baseSql + " order by t.is_system desc, t.id desc";
         PageResponse<SystemVO.DictTypeVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.DictTypeVO.class, pageNo, pageSize, params);
@@ -1094,17 +1043,15 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.DictTypeVO getDictType(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
         SystemVO.DictTypeVO type = queryOne(
                 """
-                        select id, tenant_id as tenantId, dict_code as dictCode, dict_name as dictName,
+                        select id, dict_code as dictCode, dict_name as dictName,
                                status, is_system as isSystem, remark
                         from sys_dict_type
-                        where id = ? and deleted = 0 and (tenant_id is null or tenant_id = ?)
+                        where id = ? and deleted = 0
                         """,
                 SystemVO.DictTypeVO.class,
-                id,
-                tenantId
+                id
         );
         if (type == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "字典类型不存在");
@@ -1114,23 +1061,20 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.DictTypeVO createDictType(CurrentUser currentUser, SystemDTO.DictTypeUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        Long id = upsertDictType(null, tenantId, request, currentUser.getUserId());
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "dict", "create", "CREATE", "SUCCESS", "创建字典类型: " + request.getDictCode());
+        Long id = upsertDictType(null, request, currentUser.getUserId());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "create", "CREATE", "SUCCESS", "创建字典类型: " + request.getDictCode());
         return getDictType(currentUser, id);
     }
 
     @Transactional
     public SystemVO.DictTypeVO updateDictType(CurrentUser currentUser, Long id, SystemDTO.DictTypeUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        upsertDictType(id, tenantId, request, currentUser.getUserId());
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "dict", "update", "UPDATE", "SUCCESS", "更新字典类型: " + request.getDictCode());
+        upsertDictType(id, request, currentUser.getUserId());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "update", "UPDATE", "SUCCESS", "更新字典类型: " + request.getDictCode());
         return getDictType(currentUser, id);
     }
 
     @Transactional
     public boolean deleteDictType(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
         SystemVO.DictTypeVO type = getDictType(currentUser, id);
         if (isSystemDictType(type)) {
             throw new BizException(ErrorCode.FORBIDDEN, "系统字典不允许删除");
@@ -1142,11 +1086,10 @@ public class SystemManagementAppService {
                             item_value = concat(left(item_value, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
                             updated_by = ?,
                             updated_at = ?
-                        where tenant_id = ? and dict_type_id = ? and deleted = 0
+                        where dict_type_id = ? and deleted = 0
                         """,
                 currentUser.getUserId(),
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
         jdbcTemplate.update(
@@ -1156,36 +1099,32 @@ public class SystemManagementAppService {
                             dict_code = concat(left(dict_code, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
                             updated_by = ?,
                             updated_at = ?
-                        where id = ? and (tenant_id is null or tenant_id = ?) and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 currentUser.getUserId(),
                 LocalDateTime.now(),
-                id,
-                tenantId
+                id
         );
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "dict", "delete", "DELETE", "SUCCESS", "删除字典类型: " + type.getDictCode());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "delete", "DELETE", "SUCCESS", "删除字典类型: " + type.getDictCode());
         return true;
     }
 
     public List<SystemVO.DictItemVO> listDictItems(CurrentUser currentUser, Long dictTypeId) {
-        Long tenantId = currentTenantId(currentUser);
         getDictType(currentUser, dictTypeId);
         return jdbcTemplate.query(
                 """
                         select id, dict_type_id as dictTypeId, item_label as itemLabel, item_value as itemValue,
                                sort_no as sortNo, status, remark
                         from sys_dict_item
-                        where tenant_id = ? and dict_type_id = ? and deleted = 0
+                        where dict_type_id = ? and deleted = 0
                         order by sort_no asc, id asc
                         """,
                 new BeanPropertyRowMapper<>(SystemVO.DictItemVO.class),
-                tenantId,
                 dictTypeId
         );
     }
 
     public List<SystemVO.DictItemVO> listEnabledDictItemsByCode(CurrentUser currentUser, String dictCode) {
-        Long tenantId = currentTenantId(currentUser);
         if (!StringUtils.hasText(dictCode)) {
             return List.of();
         }
@@ -1196,35 +1135,30 @@ public class SystemManagementAppService {
                                i.sort_no as sortNo, i.status, i.remark
                         from sys_dict_type t
                         join sys_dict_item i
-                          on i.tenant_id = t.tenant_id
-                         and i.dict_type_id = t.id
+                          on i.dict_type_id = t.id
                          and i.deleted = 0
-                        where t.tenant_id = ?
-                          and t.dict_code = ?
+                        where t.dict_code = ?
                           and t.deleted = 0
                           and t.status = 'ENABLED'
                           and i.status = 'ENABLED'
                         order by i.sort_no asc, i.id asc
                         """,
                 new BeanPropertyRowMapper<>(SystemVO.DictItemVO.class),
-                tenantId,
                 normalizedCode
         );
     }
 
     public SystemVO.DictItemVO getDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId) {
-        Long tenantId = currentTenantId(currentUser);
         getDictType(currentUser, dictTypeId);
         SystemVO.DictItemVO item = queryOne(
                 """
                         select id, dict_type_id as dictTypeId, item_label as itemLabel, item_value as itemValue,
                                sort_no as sortNo, status, remark
                         from sys_dict_item
-                        where id = ? and tenant_id = ? and dict_type_id = ? and deleted = 0
+                        where id = ? and dict_type_id = ? and deleted = 0
                         """,
                 SystemVO.DictItemVO.class,
                 itemId,
-                tenantId,
                 dictTypeId
         );
         if (item == null) {
@@ -1235,24 +1169,21 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.DictItemVO createDictItem(CurrentUser currentUser, Long dictTypeId, SystemDTO.DictItemUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
         getDictType(currentUser, dictTypeId);
-        Long id = upsertDictItem(null, tenantId, dictTypeId, request, currentUser.getUserId());
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "dict", "item-create", "CREATE", "SUCCESS", "创建字典项: " + request.getItemLabel());
+        Long id = upsertDictItem(null, dictTypeId, request, currentUser.getUserId());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "item-create", "CREATE", "SUCCESS", "创建字典项: " + request.getItemLabel());
         return getDictItem(currentUser, dictTypeId, id);
     }
 
     @Transactional
     public SystemVO.DictItemVO updateDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId, SystemDTO.DictItemUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        upsertDictItem(itemId, tenantId, dictTypeId, request, currentUser.getUserId());
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "dict", "item-update", "UPDATE", "SUCCESS", "更新字典项: " + request.getItemLabel());
+        upsertDictItem(itemId, dictTypeId, request, currentUser.getUserId());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "item-update", "UPDATE", "SUCCESS", "更新字典项: " + request.getItemLabel());
         return getDictItem(currentUser, dictTypeId, itemId);
     }
 
     @Transactional
     public boolean deleteDictItem(CurrentUser currentUser, Long dictTypeId, Long itemId) {
-        Long tenantId = currentTenantId(currentUser);
         SystemVO.DictItemVO item = getDictItem(currentUser, dictTypeId, itemId);
         jdbcTemplate.update(
                 """
@@ -1261,26 +1192,23 @@ public class SystemManagementAppService {
                             item_value = concat(left(item_value, greatest(0, 64 - char_length(concat('__deleted_', id)))), '__deleted_', id),
                             updated_by = ?,
                             updated_at = ?
-                        where id = ? and tenant_id = ? and dict_type_id = ? and deleted = 0
+                        where id = ? and dict_type_id = ? and deleted = 0
                         """,
                 currentUser.getUserId(),
                 LocalDateTime.now(),
                 itemId,
-                tenantId,
                 dictTypeId
         );
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "dict", "item-delete", "DELETE", "SUCCESS", "删除字典项: " + item.getItemLabel());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "dict", "item-delete", "DELETE", "SUCCESS", "删除字典项: " + item.getItemLabel());
         return true;
     }
 
-    public PageResponse<SystemVO.ConfigVO> listConfigs(CurrentUser currentUser, String configKey, String configName, String configScope, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
+    public PageResponse<SystemVO.ConfigVO> listConfigs(CurrentUser currentUser, String configKey, String configName, long pageNo, long pageSize) {
         String baseSql = """
                 from sys_config c
-                where c.deleted = 0 and (c.tenant_id is null or c.tenant_id = ?)
+                where c.deleted = 0
                 """;
         List<Object> params = new ArrayList<>();
-        params.add(tenantId);
         if (StringUtils.hasText(configKey)) {
             baseSql += " and c.config_key like ?";
             params.add(like(configKey));
@@ -1289,13 +1217,9 @@ public class SystemManagementAppService {
             baseSql += " and c.config_name like ?";
             params.add(like(configName));
         }
-        if (StringUtils.hasText(configScope)) {
-            baseSql += " and c.config_scope = ?";
-            params.add(configScope);
-        }
         String selectSql = """
-                select c.id, c.tenant_id as tenantId, c.config_key as configKey, c.config_name as configName,
-                       c.config_value as configValue, c.config_scope as configScope, c.is_system as isSystem, c.remark
+                select c.id, c.config_key as configKey, c.config_name as configName,
+                       c.config_value as configValue, c.is_system as isSystem, c.remark
                 """ + baseSql + " order by c.is_system desc, c.id desc";
         PageResponse<SystemVO.ConfigVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.ConfigVO.class, pageNo, pageSize, params);
         maskSensitiveConfigValues(page.getRecords());
@@ -1303,17 +1227,15 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.ConfigVO getConfig(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
         SystemVO.ConfigVO config = queryOne(
                 """
-                        select id, tenant_id as tenantId, config_key as configKey, config_name as configName,
-                               config_value as configValue, config_scope as configScope, is_system as isSystem, remark
+                        select id, config_key as configKey, config_name as configName,
+                               config_value as configValue, is_system as isSystem, remark
                         from sys_config
-                        where id = ? and deleted = 0 and (tenant_id is null or tenant_id = ?)
+                        where id = ? and deleted = 0
                         """,
                 SystemVO.ConfigVO.class,
-                id,
-                tenantId
+                id
         );
         if (config == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "配置不存在");
@@ -1345,25 +1267,22 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.ConfigVO updateConfig(CurrentUser currentUser, Long id, SystemDTO.ConfigUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
         jdbcTemplate.update(
                 """
                         update sys_config
-                        set config_key = ?, config_name = ?, config_value = ?, config_scope = ?, remark = ?,
+                        set config_key = ?, config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
                             updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0 and (tenant_id is null or tenant_id = ?)
+                        where id = ? and deleted = 0
                         """,
                 request.getConfigKey(),
                 request.getConfigName(),
                 resolveStoredConfigValue(id, request.getConfigKey(), request.getConfigValue()),
-                request.getConfigScope(),
                 request.getRemark(),
                 currentUser.getUserId(),
                 LocalDateTime.now(),
-                id,
-                tenantId
+                id
         );
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "config", "update", "UPDATE", "SUCCESS", "更新配置: " + request.getConfigKey());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "config", "update", "UPDATE", "SUCCESS", "更新配置: " + request.getConfigKey());
         return getConfig(currentUser, id);
     }
 
@@ -1396,36 +1315,32 @@ public class SystemManagementAppService {
 
     @Transactional
     public SystemVO.ConfigVO createConfig(CurrentUser currentUser, SystemDTO.ConfigUpsertRequest request) {
-        Long tenantId = "TENANT".equalsIgnoreCase(request.getConfigScope()) ? currentTenantId(currentUser) : null;
         jdbcTemplate.update(
                 """
                         insert into sys_config (
-                            tenant_id, config_key, config_name, config_value, config_scope, is_system, remark,
+                            config_key, config_name, config_value, config_scope, is_system, remark,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, 0, ?, ?, ?, 0)
+                        ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
                         """,
-                tenantId,
                 request.getConfigKey(),
                 request.getConfigName(),
                 encryptConfigValue(request.getConfigKey(), request.getConfigValue()),
-                request.getConfigScope(),
                 request.getRemark(),
                 currentUser.getUserId(),
                 currentUser.getUserId()
         );
-        operationAuditService.log(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getUsername(), "config", "create", "CREATE", "SUCCESS", "创建配置: " + request.getConfigKey());
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "config", "create", "CREATE", "SUCCESS", "创建配置: " + request.getConfigKey());
         SystemVO.ConfigVO config = jdbcTemplate.queryForObject(
                 """
-                        select id, tenant_id as tenantId, config_key as configKey, config_name as configName,
-                               config_value as configValue, config_scope as configScope, is_system as isSystem, remark
+                        select id, config_key as configKey, config_name as configName,
+                               config_value as configValue, is_system as isSystem, remark
                         from sys_config
-                        where config_key = ? and deleted = 0 and tenant_id <=> ?
+                        where config_key = ? and deleted = 0
                         order by id desc
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(SystemVO.ConfigVO.class),
-                request.getConfigKey(),
-                tenantId
+                request.getConfigKey()
         );
         maskSensitiveConfigValue(config);
         return config;
@@ -1467,7 +1382,6 @@ public class SystemManagementAppService {
             onlineSessionManagementAppService.retainLatestSessionForEachUser();
         }
         operationAuditService.log(
-                currentTenantId(currentUser),
                 currentUser.getUserId(),
                 currentUser.getUsername(),
                 "security",
@@ -1491,8 +1405,8 @@ public class SystemManagementAppService {
         return settings;
     }
 
-    public SystemVO.BrandingSettingsVO getPublicBrandingSettings(Long preferredTenantId) {
-        return systemPlatformSettingsAppService.getPublicBrandingSettings(preferredTenantId);
+    public SystemVO.BrandingSettingsVO getPublicBrandingSettings() {
+        return systemPlatformSettingsAppService.getPublicBrandingSettings();
     }
 
     public SystemVO.SecuritySettingsVO getPublicSecuritySettings() {
@@ -1536,41 +1450,19 @@ public class SystemManagementAppService {
         return systemPlatformSettingsAppService.updateFloatingWindowSettings(currentUser, request);
     }
 
-    private SystemVO.WatermarkSettingsVO loadWatermarkSettings(Long tenantId) {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, WATERMARK_CONFIG_KEYS);
-        SystemVO.WatermarkSettingsVO settings = new SystemVO.WatermarkSettingsVO();
-        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(WATERMARK_ENABLED_KEY), "false")));
-        settings.setMode(defaultIfBlank(valueByKey.get(WATERMARK_MODE_KEY), "TEXT"));
-        settings.setTextLines(parseWatermarkTextLines(valueByKey.get(WATERMARK_TEXT_LINES_KEY)));
-        settings.setImageUrl(defaultIfBlank(valueByKey.get(WATERMARK_IMAGE_URL_KEY), ""));
-        settings.setFontColor(defaultIfBlank(valueByKey.get(WATERMARK_FONT_COLOR_KEY), "rgba(0,0,0,0.15)"));
-        settings.setFontSize(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_FONT_SIZE_KEY), "14")));
-        settings.setFontWeight(defaultIfBlank(valueByKey.get(WATERMARK_FONT_WEIGHT_KEY), "normal"));
-        settings.setRotate(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_ROTATE_KEY), "-22")));
-        settings.setGapX(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_GAP_X_KEY), "100")));
-        settings.setGapY(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_GAP_Y_KEY), "100")));
-        settings.setOffsetX(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_OFFSET_X_KEY), "0")));
-        settings.setOffsetY(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_OFFSET_Y_KEY), "0")));
-        settings.setZIndex(Integer.parseInt(defaultIfBlank(valueByKey.get(WATERMARK_Z_INDEX_KEY), "9")));
-        settings.setOpacity(Double.parseDouble(defaultIfBlank(valueByKey.get(WATERMARK_OPACITY_KEY), "0.15")));
-        return settings;
-    }
-
-    public PageResponse<SystemVO.AuditLogVO> listLoginLogs(CurrentUser currentUser, String username, Long tenantId, long pageNo, long pageSize) {
-        return listLoginLogs(currentUser, username, tenantId, null, null, null, pageNo, pageSize);
+    public PageResponse<SystemVO.AuditLogVO> listLoginLogs(CurrentUser currentUser, String username, long pageNo, long pageSize) {
+        return listLoginLogs(currentUser, username, null, null, null, pageNo, pageSize);
     }
 
     public PageResponse<SystemVO.AuditLogVO> listLoginLogs(
             CurrentUser currentUser,
             String username,
-            Long tenantId,
             String loginType,
             String startTime,
             String endTime,
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
         String baseSql = """
                 from audit_login_log l
                 where 1 = 1
@@ -1584,10 +1476,6 @@ public class SystemManagementAppService {
             baseSql += " and l.login_type = ?";
             params.add(loginType);
         }
-        if (effectiveTenantId != null) {
-            baseSql += " and l.tenant_id = ?";
-            params.add(effectiveTenantId);
-        }
         if (StringUtils.hasText(startTime)) {
             baseSql += " and l.created_at >= ?";
             params.add(parseDateTime(startTime));
@@ -1597,32 +1485,20 @@ public class SystemManagementAppService {
             params.add(parseDateTime(endTime));
         }
         String selectSql = """
-                select l.id, l.tenant_id as tenantId, l.user_id as userId, l.username, l.login_type as logType,
+                select l.id, l.user_id as userId, l.username, l.login_type as logType,
                        l.login_result as logResult, l.fail_reason as failReason, l.login_ip as loginIp,
                        l.user_agent as userAgent, l.request_id as requestId, l.trace_id as traceId, l.created_at as createdAt
                 """ + baseSql + " order by l.id desc";
         return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
     }
 
-    private Long resolveAuditTenantId(CurrentUser currentUser, Long requestedTenantId) {
-        Long currentTenantId = currentTenantId(currentUser);
-        if (requestedTenantId == null || requestedTenantId.equals(currentTenantId)) {
-            return requestedTenantId == null ? currentTenantId : requestedTenantId;
-        }
-        if (currentUser != null && currentUser.getPermissions().contains("*")) {
-            return requestedTenantId;
-        }
-        throw new BizException(ErrorCode.FORBIDDEN, "只能查看当前租户的审计日志");
-    }
-
     private List<AuditLogVO> listCurrentUserSuccessfulLoginLogs(CurrentUser currentUser, long pageSize) {
         String selectSql = """
-                select l.id, l.tenant_id as tenantId, l.user_id as userId, l.username, l.login_type as logType,
+                select l.id, l.user_id as userId, l.username, l.login_type as logType,
                        l.login_result as logResult, l.fail_reason as failReason, l.login_ip as loginIp,
                        l.user_agent as userAgent, l.request_id as requestId, l.trace_id as traceId, l.created_at as createdAt
                 from audit_login_log l
                 where l.user_id = ?
-                  and l.tenant_id = ?
                   and l.login_result = 'SUCCESS'
                   and l.login_type <> 'LOGOUT'
                 order by l.created_at desc, l.id desc
@@ -1631,13 +1507,11 @@ public class SystemManagementAppService {
                 selectSql + " limit ?",
                 new BeanPropertyRowMapper<>(AuditLogVO.class),
                 currentUser.getUserId(),
-                currentTenantId(currentUser),
                 Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE))
         );
     }
 
-    private List<AuditLogVO> listRecentOperationLogs(CurrentUser currentUser, String username, Long tenantId, long pageSize) {
-        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
+    private List<AuditLogVO> listRecentOperationLogs(CurrentUser currentUser, String username, long pageSize) {
         String baseSql = """
                 from audit_operation_log l
                 where 1 = 1
@@ -1647,12 +1521,8 @@ public class SystemManagementAppService {
             baseSql += " and l.username like ?";
             params.add(like(username));
         }
-        if (effectiveTenantId != null) {
-            baseSql += " and l.tenant_id = ?";
-            params.add(effectiveTenantId);
-        }
         String selectSql = """
-                select l.id, l.tenant_id as tenantId, l.user_id as userId, l.username, l.module_name as moduleName,
+                select l.id, l.user_id as userId, l.username, l.module_name as moduleName,
                        l.action_name as actionName, l.operation_type as operationType, l.result_status as logResult,
                        l.detail_message as detailMessage, l.request_id as requestId, l.trace_id as traceId,
                        l.created_at as createdAt
@@ -1661,20 +1531,18 @@ public class SystemManagementAppService {
         return jdbcTemplate.query(selectSql, new BeanPropertyRowMapper<>(AuditLogVO.class), params.toArray());
     }
 
-    public PageResponse<SystemVO.AuditLogVO> listOperationLogs(CurrentUser currentUser, String username, Long tenantId, long pageNo, long pageSize) {
-        return listOperationLogs(currentUser, username, tenantId, null, null, pageNo, pageSize);
+    public PageResponse<SystemVO.AuditLogVO> listOperationLogs(CurrentUser currentUser, String username, long pageNo, long pageSize) {
+        return listOperationLogs(currentUser, username, null, null, pageNo, pageSize);
     }
 
     public PageResponse<SystemVO.AuditLogVO> listOperationLogs(
             CurrentUser currentUser,
             String username,
-            Long tenantId,
             String startTime,
             String endTime,
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = resolveAuditTenantId(currentUser, tenantId);
         String baseSql = """
                 from audit_operation_log l
                 where 1 = 1
@@ -1683,10 +1551,6 @@ public class SystemManagementAppService {
         if (StringUtils.hasText(username)) {
             baseSql += " and l.username like ?";
             params.add(like(username));
-        }
-        if (effectiveTenantId != null) {
-            baseSql += " and l.tenant_id = ?";
-            params.add(effectiveTenantId);
         }
         if (StringUtils.hasText(startTime)) {
             baseSql += " and l.created_at >= ?";
@@ -1697,7 +1561,7 @@ public class SystemManagementAppService {
             params.add(parseDateTime(endTime));
         }
         String selectSql = """
-                select l.id, l.tenant_id as tenantId, l.user_id as userId, l.username, l.module_name as moduleName,
+                select l.id, l.user_id as userId, l.username, l.module_name as moduleName,
                        l.action_name as actionName, l.operation_type as operationType, l.result_status as logResult,
                        l.detail_message as detailMessage, l.request_id as requestId, l.trace_id as traceId,
                        l.created_at as createdAt
@@ -1707,7 +1571,6 @@ public class SystemManagementAppService {
 
     public PageResponse<SystemVO.AuditLogVO> listVerificationLogs(
             CurrentUser currentUser,
-            Long tenantId,
             String channel,
             String scene,
             String resultStatus,
@@ -1716,17 +1579,12 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = resolveVerificationLogTenantId(currentUser, tenantId);
         String baseSql = """
                 from audit_operation_log l
                 where l.deleted = 0
                   and l.module_name = 'verification'
                 """;
         List<Object> params = new ArrayList<>();
-        if (effectiveTenantId != null) {
-            baseSql += " and l.tenant_id = ?";
-            params.add(effectiveTenantId);
-        }
         if (StringUtils.hasText(channel)) {
             baseSql += " and l.operation_type = ?";
             params.add(channel.trim().toUpperCase(Locale.ROOT));
@@ -1748,7 +1606,7 @@ public class SystemManagementAppService {
             params.add(parseDateTime(endTime));
         }
         String selectSql = """
-                select l.id, l.tenant_id as tenantId, l.user_id as userId, l.username, l.module_name as moduleName,
+                select l.id, l.user_id as userId, l.username, l.module_name as moduleName,
                        l.action_name as actionName, l.operation_type as operationType, l.result_status as logResult,
                        l.detail_message as detailMessage, l.request_id as requestId, l.trace_id as traceId,
                        l.created_at as createdAt
@@ -1758,7 +1616,6 @@ public class SystemManagementAppService {
 
     public PageResponse<SystemVO.AuditLogVO> listAiCallLogs(
             CurrentUser currentUser,
-            Long tenantId,
             Long employeeId,
             String skillCode,
             String resultStatus,
@@ -1767,16 +1624,11 @@ public class SystemManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long effectiveTenantId = resolveAuthorizedAiAuditTenantId(currentUser, tenantId);
         String baseSql = """
                 from ai_tool_audit_log l
                 where l.is_deleted = 0
                 """;
         List<Object> params = new ArrayList<>();
-        if (effectiveTenantId != null) {
-            baseSql += " and l.tenant_id = ?";
-            params.add(effectiveTenantId);
-        }
         if (employeeId != null) {
             baseSql += " and l.employee_id = ?";
             params.add(employeeId);
@@ -1798,7 +1650,7 @@ public class SystemManagementAppService {
             params.add(parseDateTime(endTime));
         }
         String selectSql = """
-                select l.id, l.tenant_id as tenantId, l.conversation_id as conversationId,
+                select l.id, l.conversation_id as conversationId,
                        l.employee_id as employeeId, l.skill_code as skillCode, l.tool_name as toolName,
                        l.permission_mode as permissionMode, l.confirm_required as confirmRequired,
                        l.confirm_result as confirmResult, l.result_status as logResult,
@@ -1809,263 +1661,22 @@ public class SystemManagementAppService {
         return pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.AuditLogVO.class, pageNo, pageSize, params);
     }
 
-    private Long resolveAuthorizedAiAuditTenantId(CurrentUser currentUser, Long requestedTenantId) {
-        Long currentTenantId = currentTenantId(currentUser);
-        if (requestedTenantId == null) {
-            return currentTenantId;
-        }
-        if (isPlatformAuditUser(currentUser, currentTenantId) || requestedTenantId.equals(currentTenantId)) {
-            return requestedTenantId;
-        }
-        throw new BizException(ErrorCode.FORBIDDEN, "无权查看其他租户的 AI 调用审计日志");
-    }
-
-    private boolean isPlatformAuditUser(CurrentUser currentUser, Long currentTenantId) {
-        return DEFAULT_PUBLIC_TENANT_ID.equals(currentTenantId)
-                && currentUser != null
-                && currentUser.getPermissions().contains("*");
-    }
-
-    public Integer countMenus(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
-        Integer cached = menuCountCache.getIfPresent(effectiveTenantId);
+    public Integer countMenus() {
+        Integer cached = menuCountCache.getIfPresent(MENU_COUNT_CACHE_KEY);
         if (cached != null) {
             return cached;
         }
         Long count = jdbcTemplate.queryForObject(
-                "select count(1) from sys_menu where tenant_id = ? and deleted = 0 and status = 'ENABLED'",
-                Long.class,
-                effectiveTenantId
+                "select count(1) from sys_menu where deleted = 0 and status = 'ENABLED'",
+                Long.class
         );
         Integer result = count == null ? 0 : count.intValue();
-        menuCountCache.put(effectiveTenantId, result);
+        menuCountCache.put(MENU_COUNT_CACHE_KEY, result);
         return result;
     }
 
-    private void invalidateMenuCountCache(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
-        menuCountCache.invalidate(effectiveTenantId);
-    }
-
-    private SystemVO.BrandingSettingsVO loadBrandingSettings(Long tenantId) {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, BRANDING_CONFIG_KEYS);
-
-        SystemVO.BrandingSettingsVO settings = new SystemVO.BrandingSettingsVO();
-        settings.setWebsiteName(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_NAME_KEY), "宏翔商道"));
-        settings.setWebsiteFaviconUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_FAVICON_URL_KEY), ""));
-        settings.setWebsiteLogoUrl(defaultIfBlank(valueByKey.get(BRANDING_WEBSITE_LOGO_URL_KEY), ""));
-        settings.setLoginBackgroundUrl(defaultIfBlank(valueByKey.get(BRANDING_LOGIN_BACKGROUND_URL_KEY), ""));
-        settings.setGithubLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_GITHUB_LINK_URL_KEY), ""));
-        settings.setHelpLinkUrl(defaultIfBlank(valueByKey.get(BRANDING_HELP_LINK_URL_KEY), ""));
-        settings.setCompanyName(defaultIfBlank(valueByKey.get(BRANDING_COMPANY_NAME_KEY), settings.getWebsiteName()));
-        settings.setCopyrightStartYear(parseInteger(valueByKey.get(BRANDING_COPYRIGHT_START_YEAR_KEY), LocalDate.now().getYear()));
-        settings.setFooterIcp(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_ICP_KEY), ""));
-        settings.setFooterPoliceBeian(defaultIfBlank(valueByKey.get(BRANDING_FOOTER_POLICE_BEIAN_KEY), ""));
-        settings.setFooterCopyright(defaultIfBlank(
-                valueByKey.get(BRANDING_FOOTER_COPYRIGHT_KEY),
-                buildCopyrightText(settings.getCompanyName(), settings.getCopyrightStartYear())
-        ));
-        return settings;
-    }
-
-    private SystemVO.AgreementSettingsVO loadAgreementSettings(Long tenantId) {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, AGREEMENT_CONFIG_KEYS, false);
-
-        SystemVO.AgreementSettingsVO settings = new SystemVO.AgreementSettingsVO();
-        settings.setUserAgreementMarkdown(defaultIfBlank(valueByKey.get(AGREEMENT_USER_MARKDOWN_KEY), ""));
-        settings.setPrivacyAgreementMarkdown(defaultIfBlank(valueByKey.get(AGREEMENT_PRIVACY_MARKDOWN_KEY), ""));
-        return settings;
-    }
-
-    private SystemVO.SmtpSettingsVO loadSmtpSettings(Long tenantId) {
-        Map<String, String> valueByKey = loadConfigValuesByKeys(tenantId, SMTP_CONFIG_KEYS);
-        SystemVO.SmtpSettingsVO settings = new SystemVO.SmtpSettingsVO();
-        settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_ENABLED_KEY), "true")));
-        settings.setHost(defaultIfBlank(valueByKey.get(SMTP_HOST_KEY), ""));
-        settings.setPort(parseInteger(valueByKey.get(SMTP_PORT_KEY), 25));
-        settings.setUsername(defaultIfBlank(valueByKey.get(SMTP_USERNAME_KEY), ""));
-        settings.setPassword("");
-        settings.setPasswordConfigured(StringUtils.hasText(valueByKey.get(SMTP_PASSWORD_KEY)));
-        settings.setFrom(defaultIfBlank(valueByKey.get(SMTP_FROM_KEY), ""));
-        settings.setAuthEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_AUTH_ENABLED_KEY), "true")));
-        settings.setStartTlsEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_STARTTLS_ENABLED_KEY), "true")));
-        settings.setSslEnabled(Boolean.parseBoolean(defaultIfBlank(valueByKey.get(SMTP_SSL_ENABLED_KEY), "false")));
-        settings.setConfigured(
-                Boolean.TRUE.equals(settings.getEnabled())
-                        && StringUtils.hasText(settings.getHost())
-                        && settings.getPort() != null
-                        && settings.getPort() > 0
-                        && StringUtils.hasText(settings.getFrom())
-        );
-        return settings;
-    }
-
-    private void upsertPlatformConfig(
-            Long tenantId,
-            String configKey,
-            String configName,
-            String configValue,
-            String remark,
-            Long operatorId
-    ) {
-        upsertBrandingConfig(tenantId, configKey, configName, configValue, remark, operatorId);
-    }
-
-    private JavaMailSenderImpl buildSmtpSender(Map<String, String> values) {
-        String host = defaultIfBlank(values.get(SMTP_HOST_KEY), "");
-        Integer port = parseInteger(values.get(SMTP_PORT_KEY), 25);
-        String username = defaultIfBlank(values.get(SMTP_USERNAME_KEY), "");
-        String password = defaultIfBlank(values.get(SMTP_PASSWORD_KEY), "");
-        if (!StringUtils.hasText(host)) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "请先配置 SMTP 主机");
-        }
-        JavaMailSenderImpl sender = new JavaMailSenderImpl();
-        sender.setHost(host);
-        sender.setPort(port == null ? 25 : port);
-        sender.setUsername(username);
-        sender.setPassword(password);
-        Properties properties = sender.getJavaMailProperties();
-        properties.put("mail.smtp.auth", String.valueOf(Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_AUTH_ENABLED_KEY), "true"))));
-        properties.put("mail.smtp.starttls.enable", String.valueOf(Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_STARTTLS_ENABLED_KEY), "true"))));
-        properties.put("mail.smtp.ssl.enable", String.valueOf(Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_SSL_ENABLED_KEY), "false"))));
-        properties.put("mail.smtp.connectiontimeout", "5000");
-        properties.put("mail.smtp.timeout", "5000");
-        properties.put("mail.smtp.writetimeout", "5000");
-        return sender;
-    }
-
-
-    private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
-        return loadConfigValuesByKeys(tenantId, keys, true);
-    }
-
-    private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys, boolean trimValues) {
-        Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
-        String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
-        String sql = """
-                select tenant_id as tenantId, config_key as configKey, config_value as configValue
-                from sys_config
-                where deleted = 0
-                  and config_scope = 'PLATFORM'
-                  and config_key in (%s)
-                  and (tenant_id = ? or tenant_id is null)
-                order by case when tenant_id = ? then 0 else 1 end, id desc
-                """.formatted(placeholders);
-        List<Object> params = new ArrayList<>(keys);
-        params.add(effectiveTenantId);
-        params.add(effectiveTenantId);
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
-        Map<String, String> valueByKey = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String configKey = String.valueOf(row.get("configKey"));
-            if (!valueByKey.containsKey(configKey)) {
-                valueByKey.put(
-                        configKey,
-                        trimValues ? normalizeConfigText(row.get("configValue")) : normalizeConfigTextRaw(row.get("configValue"))
-                );
-            }
-        }
-        return valueByKey;
-    }
-
-    private void upsertBrandingConfig(
-            Long tenantId,
-            String configKey,
-            String configName,
-            String configValue,
-            String remark,
-            Long operatorId
-    ) {
-        Long existingId = queryConfigId(configKey, tenantId);
-        upsertConfigRecord(existingId, tenantId, configKey, configName, configValue, remark, operatorId);
-    }
-
-    private void upsertConfigValue(
-            Long tenantId,
-            String configKey,
-            String configName,
-            String configValue,
-            String remark,
-            Long operatorId
-    ) {
-        Long existingId = queryConfigId(configKey, tenantId);
-        upsertConfigRecord(existingId, tenantId, configKey, configName, configValue, remark, operatorId);
-    }
-
-    private void upsertConfigRecord(
-            Long existingId,
-            Long tenantId,
-            String configKey,
-            String configName,
-            String configValue,
-            String remark,
-            Long operatorId
-    ) {
-        if (existingId == null) {
-            jdbcTemplate.update(
-                    """
-                            insert into sys_config (
-                                tenant_id, config_key, config_name, config_value, config_scope, is_system, remark,
-                                created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
-                            """,
-                    tenantId,
-                    configKey,
-                    configName,
-                    configValue,
-                    remark,
-                    operatorId,
-                    operatorId
-            );
-            return;
-        }
-        jdbcTemplate.update(
-                """
-                        update sys_config
-                        set config_name = ?, config_value = ?, config_scope = 'PLATFORM', remark = ?,
-                            updated_by = ?, updated_at = ?, deleted = 0
-                        where id = ?
-                        """,
-                configName,
-                configValue,
-                remark,
-                operatorId,
-                LocalDateTime.now(),
-                existingId
-        );
-    }
-
-    private Long queryBrandingConfigId(String configKey, Long tenantId) {
-        return queryConfigId(configKey, tenantId);
-    }
-
-    private Long queryConfigId(String configKey, Long tenantId) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    """
-                            select id
-                            from sys_config
-                            where config_key = ? and tenant_id <=> ?
-                            order by id desc
-                            limit 1
-                            """,
-                    Long.class,
-                    configKey,
-                    tenantId
-            );
-        } catch (EmptyResultDataAccessException exception) {
-            return null;
-        }
-    }
-
-    private String sanitizeBrandingText(String value, String fallback) {
-        String normalized = normalizeConfigText(value);
-        return StringUtils.hasText(normalized) ? normalized : fallback;
-    }
-
-    private String sanitizeText(String value, String fallback) {
-        String normalized = normalizeConfigText(value);
-        return StringUtils.hasText(normalized) ? normalized : fallback;
+    private void invalidateMenuCountCache() {
+        menuCountCache.invalidate(MENU_COUNT_CACHE_KEY);
     }
 
     private String normalizeNullableText(String value) {
@@ -2235,16 +1846,6 @@ public class SystemManagementAppService {
         }
     }
 
-    private String resolveProfileDisplayName(SysUserEntity user) {
-        if (StringUtils.hasText(user.getNickname())) {
-            return user.getNickname().trim();
-        }
-        if (StringUtils.hasText(user.getRealName())) {
-            return user.getRealName().trim();
-        }
-        return user.getUsername();
-    }
-
     private String normalizeLocale(String locale) {
         if (!StringUtils.hasText(locale)) {
             return DEFAULT_LOCALE;
@@ -2369,11 +1970,10 @@ public class SystemManagementAppService {
                         "会话关联用户不存在: " + currentUser.getUserId(),
                         ErrorCode.SESSION_EXPIRED.getDefaultUserMessage()
                 ));
-        Long tenantId = currentTenantId(currentUser);
         CompletableFuture<Map<String, String>> extraProfileValuesFuture = CompletableFuture.supplyAsync(() -> loadExtraProfileValues(user.getId()), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<String> localeFuture = CompletableFuture.supplyAsync(() -> resolveLocale(tenantId, user.getId()), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<String> localeFuture = CompletableFuture.supplyAsync(() -> resolveLocale(user.getId()), BLOCKING_IO_EXECUTOR);
         CompletableFuture<List<CurrentUserVO.RoleOptionVO>> availableRolesFuture = CompletableFuture.supplyAsync(
-                () -> listAvailableRoles(currentUser.getUserId(), tenantId),
+                () -> listAvailableRoles(currentUser.getUserId()),
                 BLOCKING_IO_EXECUTOR
         );
         CurrentUserVO response = new CurrentUserVO();
@@ -2484,21 +2084,21 @@ public class SystemManagementAppService {
         if (currentUser == null) {
             return PermissionSnapshotService.PermissionSnapshot.empty();
         }
-        return resolvePermissionSnapshot(currentTenantId(currentUser), currentUser.getUserId(), currentUser.getSimulatedRoleId(), currentUser);
+        return resolvePermissionSnapshot(currentUser.getUserId(), currentUser.getSimulatedRoleId(), currentUser);
     }
 
-    private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(Long tenantId, Long userId, Long simulatedRoleId, CurrentUser currentUser) {
-        if (tenantId == null || userId == null) {
+    private PermissionSnapshotService.PermissionSnapshot resolvePermissionSnapshot(Long userId, Long simulatedRoleId, CurrentUser currentUser) {
+        if (userId == null) {
             return PermissionSnapshotService.PermissionSnapshot.empty();
         }
         if (simulatedRoleId != null) {
-            return permissionSnapshotService.loadRoleSnapshot(tenantId, simulatedRoleId);
+            return permissionSnapshotService.loadRoleSnapshot(simulatedRoleId);
         }
         PermissionSnapshotService.PermissionSnapshot snapshotFromCurrentUser = snapshotFromCurrentUser(currentUser);
         if (snapshotFromCurrentUser != null) {
             return snapshotFromCurrentUser;
         }
-        return permissionSnapshotService.loadSnapshot(tenantId, userId);
+        return permissionSnapshotService.loadSnapshot(userId);
     }
 
     private PermissionSnapshotService.PermissionSnapshot snapshotFromCurrentUser(CurrentUser currentUser) {
@@ -2517,8 +2117,8 @@ public class SystemManagementAppService {
         );
     }
 
-    private List<CurrentUserVO.RoleOptionVO> listAvailableRoles(Long userId, Long tenantId) {
-        if (userId == null || tenantId == null) {
+    private List<CurrentUserVO.RoleOptionVO> listAvailableRoles(Long userId) {
+        if (userId == null) {
             return List.of();
         }
         return jdbcTemplate.query(
@@ -2529,9 +2129,9 @@ public class SystemManagementAppService {
                                r.role_type as roleType,
                                count(rp.permission_key) as permissionCount
                         from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
-                        left join sys_role_permission rp on rp.role_id = r.id and rp.tenant_id = r.tenant_id and rp.deleted = 0
-                        where ur.tenant_id = ? and ur.user_id = ? and ur.deleted = 0
+                        join sys_role r on r.id = ur.role_id and r.deleted = 0
+                        left join sys_role_permission rp on rp.role_id = r.id and rp.deleted = 0
+                        where ur.user_id = ? and ur.deleted = 0
                         group by r.id, r.role_code, r.role_name, r.role_type
                         order by r.id desc
                         """,
@@ -2544,24 +2144,23 @@ public class SystemManagementAppService {
                     role.setPermissionCount(rs.getInt("permissionCount"));
                     return role;
                 },
-                tenantId,
                 userId
         );
     }
 
-    private String resolveLocale(Long tenantId, Long userId) {
-        if (tenantId == null || userId == null) {
+    private String resolveLocale(Long userId) {
+        if (userId == null) {
             return DEFAULT_LOCALE;
         }
         try {
             String locale = jdbcTemplate.queryForObject(
                     """
                             select locale
-                            from sys_user_tenant_profile
-                            where tenant_id = ? and user_id = ? and deleted = 0
+                            from iam_user_profile
+                            where user_id = ? and deleted = 0
+                            limit 1
                             """,
                     String.class,
-                    tenantId,
                     userId
             );
             return normalizeLocale(locale);
@@ -2570,55 +2169,25 @@ public class SystemManagementAppService {
         }
     }
 
-
-    private Long resolveVerificationLogTenantId(CurrentUser currentUser, Long requestedTenantId) {
-        Long currentTenantId = currentTenantId(currentUser);
-        Long effectiveTenantId = requestedTenantId == null ? currentTenantId : requestedTenantId;
-        if (effectiveTenantId != null
-                && !effectiveTenantId.equals(currentTenantId)
-                && !canReadCrossTenantAuditLogs(currentUser, currentTenantId)) {
-            throw new BizException(ErrorCode.FORBIDDEN, "无权查看其他租户的验证码审计日志");
-        }
-        return effectiveTenantId;
-    }
-
-    private boolean canReadCrossTenantAuditLogs(CurrentUser currentUser, Long currentTenantId) {
-        return DEFAULT_PUBLIC_TENANT_ID.equals(currentTenantId)
-                && currentUser != null
-                && currentUser.getPermissions().contains("*");
-    }
-
-    private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
-        }
-        return PlatformContext.compatibilityTenantId();
-    }
-
     private LocalDateTime toLocalDateTime(Timestamp timestamp) {
         return timestamp == null ? null : timestamp.toLocalDateTime();
     }
 
-    private List<String> listCurrentTenantRoleNames(Long userId, Long tenantId) {
+    private List<String> listCurrentRoleNames(Long userId) {
         return jdbcTemplate.queryForList(
                 """
                         select r.role_name
                         from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
-                        where ur.user_id = ? and ur.tenant_id = ? and ur.deleted = 0
+                        join sys_role r on r.id = ur.role_id and r.deleted = 0
+                        where ur.user_id = ? and ur.deleted = 0
                         order by r.id asc
                         """,
                 String.class,
-                userId,
-                tenantId
+                userId
         );
     }
 
-    private List<String> listUserTenantNames(Long userId) {
-        return List.of();
-    }
-
-    private void decorateUsers(List<SystemVO.UserVO> users, Long tenantId) {
+    private void decorateUsers(List<SystemVO.UserVO> users) {
         List<Long> userIds = users.stream()
                 .map(SystemVO.UserVO::getId)
                 .filter(id -> id != null)
@@ -2628,61 +2197,49 @@ public class SystemManagementAppService {
             return;
         }
 
-        Map<Long, List<String>> roleNames = listUserRoleNames(userIds, tenantId);
+        Map<Long, List<String>> roleNames = listUserRoleNames(userIds);
         users.forEach(user -> {
-            user.setTenantNames(List.of());
             user.setRoleNames(roleNames.getOrDefault(user.getId(), List.of()));
         });
     }
 
-    private Map<Long, List<String>> listUserTenantNames(List<Long> userIds) {
-        return Map.of();
-    }
-
-    private List<Long> listUserTenantIds(Long userId) {
-        return List.of();
-    }
-
-    private List<Long> listUserRoleIds(Long userId, Long tenantId) {
+    private List<Long> listUserRoleIds(Long userId) {
         return jdbcTemplate.queryForList(
                 """
                         select ur.role_id
                         from sys_user_role ur
-                        where ur.user_id = ? and ur.tenant_id = ? and ur.deleted = 0
+                        where ur.user_id = ? and ur.deleted = 0
                         order by ur.role_id asc
                         """,
                 Long.class,
-                userId,
-                tenantId
+                userId
         );
     }
 
-    private List<String> listUserRoleNames(Long userId, Long tenantId) {
+    private List<String> listUserRoleNames(Long userId) {
         return jdbcTemplate.queryForList(
                 """
                         select r.role_name
                         from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
-                        where ur.user_id = ? and ur.tenant_id = ? and ur.deleted = 0
+                        join sys_role r on r.id = ur.role_id and r.deleted = 0
+                        where ur.user_id = ? and ur.deleted = 0
                         order by r.id asc
                         """,
                 String.class,
-                userId,
-                tenantId
+                userId
         );
     }
 
-    private Map<Long, List<String>> listUserRoleNames(List<Long> userIds, Long tenantId) {
+    private Map<Long, List<String>> listUserRoleNames(List<Long> userIds) {
         String placeholders = placeholders(userIds.size());
         List<Object> params = new ArrayList<>();
         params.addAll(userIds);
-        params.add(tenantId);
         return jdbcTemplate.query(
                 """
                         select ur.user_id as userId, r.role_name as roleName
                         from sys_user_role ur
-                        join sys_role r on r.id = ur.role_id and r.tenant_id = ur.tenant_id and r.deleted = 0
-                        where ur.user_id in (%s) and ur.tenant_id = ? and ur.deleted = 0
+                        join sys_role r on r.id = ur.role_id and r.deleted = 0
+                        where ur.user_id in (%s) and ur.deleted = 0
                         order by ur.user_id asc, r.id asc
                         """.formatted(placeholders),
                 rs -> {
@@ -2701,7 +2258,7 @@ public class SystemManagementAppService {
         return String.join(", ", java.util.Collections.nCopies(count, "?"));
     }
 
-    private SystemVO.UserVO queryUser(Long tenantId, Long userId) {
+    private SystemVO.UserVO queryUser(Long userId) {
         SystemVO.UserVO user = queryOne(
                 """
                         select u.id, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName, u.avatar_url as avatarUrl,
@@ -2720,8 +2277,7 @@ public class SystemManagementAppService {
         if (user == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "用户不存在");
         }
-        user.setTenantNames(listUserTenantNames(user.getId()));
-        user.setRoleNames(listUserRoleNames(user.getId(), tenantId));
+        user.setRoleNames(listUserRoleNames(user.getId()));
         return user;
     }
 
@@ -2812,31 +2368,29 @@ public class SystemManagementAppService {
                 || (StringUtils.hasText(username) && DEFAULT_ADMIN_USERNAME.equalsIgnoreCase(username));
     }
 
-    private void replaceUserRoles(Long userId, Long tenantId, List<Long> roleIds, Long operatorId) {
+    private void replaceUserRoles(Long userId, List<Long> roleIds, Long operatorId) {
         if (CollectionUtils.isEmpty(roleIds)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "用户角色不能为空");
         }
         List<Long> distinctRoleIds = new ArrayList<>(new LinkedHashSet<>(roleIds));
         Long existingRoleCount = jdbcTemplate.queryForObject(
-                "select count(1) from sys_role where tenant_id = ? and deleted = 0 and id in (" + placeholders(distinctRoleIds.size()) + ")",
+                "select count(1) from sys_role where deleted = 0 and id in (" + placeholders(distinctRoleIds.size()) + ")",
                 Long.class,
-                buildTenantAndIdsParams(tenantId, distinctRoleIds)
+                distinctRoleIds.toArray()
         );
         if (existingRoleCount == null || existingRoleCount != distinctRoleIds.size()) {
             throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
         }
         jdbcTemplate.update(
-                "delete from sys_user_role where tenant_id = ? and user_id = ?",
-                tenantId,
+                "delete from sys_user_role where user_id = ?",
                 userId
         );
         for (Long roleId : distinctRoleIds) {
             jdbcTemplate.update(
                     """
-                            insert into sys_user_role (tenant_id, user_id, role_id, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, 0)
+                            insert into sys_user_role (user_id, role_id, created_by, updated_by, deleted)
+                            values (?, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     userId,
                     roleId,
                     operatorId,
@@ -2856,23 +2410,15 @@ public class SystemManagementAppService {
         return normalized;
     }
 
-    private Object[] buildTenantAndIdsParams(Long tenantId, List<Long> ids) {
-        List<Object> params = new ArrayList<>();
-        params.add(tenantId);
-        params.addAll(ids);
-        return params.toArray();
-    }
-
-    private Long insertMenu(Long menuId, Long tenantId, SystemDTO.MenuUpsertRequest request, Long operatorId) {
+    private Long insertMenu(Long menuId, SystemDTO.MenuUpsertRequest request, Long operatorId) {
         if (menuId == null) {
             jdbcTemplate.update(
                     """
                             insert into sys_menu (
-                                tenant_id, parent_id, menu_code, menu_name, menu_type, path, component, icon, sort_no,
+                                parent_id, menu_code, menu_name, menu_type, path, component, icon, sort_no,
                                 permission_key, status, created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     request.getParentId() == null ? 0L : request.getParentId(),
                     request.getMenuCode(),
                     request.getMenuName(),
@@ -2893,7 +2439,7 @@ public class SystemManagementAppService {
                         update sys_menu
                         set parent_id = ?, menu_code = ?, menu_name = ?, menu_type = ?, path = ?, component = ?,
                             icon = ?, sort_no = ?, permission_key = ?, status = ?, updated_by = ?, updated_at = ?
-                        where id = ? and tenant_id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 request.getParentId() == null ? 0L : request.getParentId(),
                 request.getMenuCode(),
@@ -2907,27 +2453,25 @@ public class SystemManagementAppService {
                 request.getStatus(),
                 operatorId,
                 LocalDateTime.now(),
-                menuId,
-                tenantId
+                menuId
         );
         return menuId;
     }
 
-    private void ensureEditableMenu(Long menuId, Long tenantId) {
+    private void ensureEditableMenu(Long menuId) {
         if (menuId == null || menuId <= 0) {
             return;
         }
         SystemVO.MenuVO menu = queryOne(
                 """
-                        select id, tenant_id as tenantId, parent_id as parentId, menu_code as menuCode,
+                        select id, parent_id as parentId, menu_code as menuCode,
                                menu_name as menuName, menu_type as menuType, path, component, icon, sort_no as sortNo,
                                permission_key as permissionKey, status
                         from sys_menu
-                        where id = ? and tenant_id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 SystemVO.MenuVO.class,
-                menuId,
-                tenantId
+                menuId
         );
         if (menu == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "菜单不存在");
@@ -2941,14 +2485,14 @@ public class SystemManagementAppService {
         }
     }
 
-    private void ensureEditableParentMenu(Long parentId, Long tenantId) {
+    private void ensureEditableParentMenu(Long parentId) {
         if (parentId == null || parentId == 0) {
             return;
         }
         if (parentId < 0) {
             throw new BizException(ErrorCode.FORBIDDEN, "内置设置菜单不允许修改");
         }
-        ensureEditableMenu(parentId, tenantId);
+        ensureEditableMenu(parentId);
     }
 
     private void ensureEditableMenuRequest(SystemDTO.MenuUpsertRequest request) {
@@ -2960,14 +2504,13 @@ public class SystemManagementAppService {
         }
     }
 
-    private Long upsertDictType(Long id, Long tenantId, SystemDTO.DictTypeUpsertRequest request, Long operatorId) {
+    private Long upsertDictType(Long id, SystemDTO.DictTypeUpsertRequest request, Long operatorId) {
         if (id == null) {
             jdbcTemplate.update(
                     """
-                            insert into sys_dict_type (tenant_id, dict_code, dict_name, status, is_system, remark, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, 0, ?, ?, ?, 0)
+                            insert into sys_dict_type (dict_code, dict_name, status, is_system, remark, created_by, updated_by, deleted)
+                            values (?, ?, ?, 0, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     request.getDictCode(),
                     request.getDictName(),
                     request.getStatus(),
@@ -2994,14 +2537,13 @@ public class SystemManagementAppService {
         return id;
     }
 
-    private Long upsertDictItem(Long id, Long tenantId, Long dictTypeId, SystemDTO.DictItemUpsertRequest request, Long operatorId) {
+    private Long upsertDictItem(Long id, Long dictTypeId, SystemDTO.DictItemUpsertRequest request, Long operatorId) {
         if (id == null) {
             jdbcTemplate.update(
                     """
-                            insert into sys_dict_item (tenant_id, dict_type_id, item_label, item_value, sort_no, status, remark, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            insert into sys_dict_item (dict_type_id, item_label, item_value, sort_no, status, remark, created_by, updated_by, deleted)
+                            values (?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     dictTypeId,
                     request.getItemLabel(),
                     request.getItemValue(),
@@ -3017,7 +2559,7 @@ public class SystemManagementAppService {
                 """
                         update sys_dict_item
                         set item_label = ?, item_value = ?, sort_no = ?, status = ?, remark = ?, updated_by = ?, updated_at = ?
-                        where id = ? and tenant_id = ? and dict_type_id = ? and deleted = 0
+                        where id = ? and dict_type_id = ? and deleted = 0
                         """,
                 request.getItemLabel(),
                 request.getItemValue(),
@@ -3027,7 +2569,6 @@ public class SystemManagementAppService {
                 operatorId,
                 LocalDateTime.now(),
                 id,
-                tenantId,
                 dictTypeId
         );
         return id;
@@ -3154,7 +2695,6 @@ public class SystemManagementAppService {
         target.setSource(source.getSource());
         target.setRegisteredAt(source.getRegisteredAt());
         target.setLastLoginAt(source.getLastLoginAt());
-        target.setTenantNames(source.getTenantNames());
         target.setRoleNames(source.getRoleNames());
         target.setCreatedAt(source.getCreatedAt());
         target.setUpdatedAt(source.getUpdatedAt());

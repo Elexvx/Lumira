@@ -16,7 +16,7 @@ class AiIamQueryFacadeTest {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         DefaultAiIamQueryFacade facade = new DefaultAiIamQueryFacade(queryOperations);
 
-        AiIamQueryFacade.UserSearchResult result = facade.searchUsers(1001L, "admin", "ENABLED", 500);
+        AiIamQueryFacade.UserSearchResult result = facade.searchUsers("admin", "ENABLED", 500);
 
         assertThat(result.items()).hasSize(1);
         assertThat(result.total()).isEqualTo(1L);
@@ -24,7 +24,7 @@ class AiIamQueryFacadeTest {
         assertThat(result.items().getFirst().get("email")).isEqualTo("a***@example.com");
         assertThat(queryOperations.countQueryCalled).isFalse();
         assertThat(queryOperations.requestedLimit).isEqualTo(100);
-        assertThat(queryOperations.lastUserSearchSql).doesNotContain("sys_user_tenant");
+        assertThat(queryOperations.lastUserSearchSql).doesNotContain("tenant");
     }
 
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {

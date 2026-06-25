@@ -35,7 +35,7 @@ class PluginReadinessV2ControllerTest {
                         "/plugin/internal/jobs/outbox/{id}/replay"
                 );
         assertThat(readiness.eventContracts())
-                .contains("TenantPluginEnabled", "TenantPluginDisabled", "plugin/bootstrap read-model version bump");
+                .contains("PluginEnabled", "PluginDisabled", "plugin/bootstrap read-model version bump");
         assertThat(readiness.metrics())
                 .contains("plugin.outbox.dead_letter_count", "plugin.outbox.dispatchable_backlog", "plugin.bootstrap.p95");
         assertThat(readiness.blockers())

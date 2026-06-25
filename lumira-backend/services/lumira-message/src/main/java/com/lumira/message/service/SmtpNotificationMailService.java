@@ -1,7 +1,6 @@
 package com.lumira.message.service;
 
 import com.lumira.api.client.SystemInternalApi;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import org.springframework.mail.SimpleMailMessage;
@@ -41,8 +40,8 @@ public class SmtpNotificationMailService {
         this.systemInternalApi = systemInternalApi;
     }
 
-    public boolean isConfigured(Long tenantId) {
-        Map<String, String> values = loadValues(tenantId);
+    public boolean isConfigured() {
+        Map<String, String> values = loadValues();
         String host = defaultIfBlank(values.get(SMTP_HOST_KEY), "");
         String from = defaultIfBlank(values.get(SMTP_FROM_KEY), "");
         int port = parseInt(defaultIfBlank(values.get(SMTP_PORT_KEY), "0"), 0);
@@ -51,11 +50,11 @@ public class SmtpNotificationMailService {
         return StringUtils.hasText(host) && port > 0 && StringUtils.hasText(from) && !usernameMissing;
     }
 
-    public void send(Long tenantId, String toEmail, String subject, String content) {
+    public void send(String toEmail, String subject, String content) {
         if (!StringUtils.hasText(toEmail)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "收件人邮箱不能为空");
         }
-        Map<String, String> values = loadValues(tenantId);
+        Map<String, String> values = loadValues();
         JavaMailSenderImpl sender = buildSmtpSender(values);
         String from = defaultIfBlank(values.get(SMTP_FROM_KEY), values.get(SMTP_USERNAME_KEY));
         if (!StringUtils.hasText(from)) {
@@ -69,9 +68,8 @@ public class SmtpNotificationMailService {
         sender.send(message);
     }
 
-    private Map<String, String> loadValues(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        Map<String, String> values = systemInternalApi.platformConfigValues(effectiveTenantId, SMTP_CONFIG_KEYS);
+    private Map<String, String> loadValues() {
+        Map<String, String> values = systemInternalApi.platformConfigValues(SMTP_CONFIG_KEYS);
         return values == null ? Map.of() : values;
     }
 

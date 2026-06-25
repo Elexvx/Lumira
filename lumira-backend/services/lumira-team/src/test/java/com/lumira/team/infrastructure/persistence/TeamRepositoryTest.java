@@ -21,11 +21,12 @@ class TeamRepositoryTest {
         request.setVisibility("PRIVATE");
         request.setJoinMode("INVITE_ONLY");
 
-        Long id = repository.createTeam(1001L, "T001", 3001L, request);
+        Long id = repository.createTeam("T001", 3001L, request);
 
         assertThat(id).isEqualTo(2001L);
         assertThat(queries.lastWriteSql).contains("insert into team");
-        assertThat(queries.lastWriteArgs).contains(1001L, "T001", 3001L);
+        assertNoScopeColumn(queries.lastWriteSql);
+        assertThat(queries.lastWriteArgs).contains("T001", 3001L);
     }
 
     @Test
@@ -33,10 +34,11 @@ class TeamRepositoryTest {
         RecordingQueries queries = new RecordingQueries();
         JdbcTeamMemberRepository repository = new JdbcTeamMemberRepository(queries);
 
-        repository.refreshMemberCount(1001L, 2001L);
+        repository.refreshMemberCount(2001L);
 
         assertThat(queries.lastWriteSql).contains("set member_count");
-        assertThat(queries.lastWriteArgs).containsExactly(1001L, 2001L, 1001L, 2001L);
+        assertNoScopeColumn(queries.lastWriteSql);
+        assertThat(queries.lastWriteArgs).containsExactly(2001L, 2001L);
     }
 
     @Test
@@ -49,13 +51,14 @@ class TeamRepositoryTest {
         request.setDepartmentName("Product");
         request.setRole("MEMBER");
 
-        Long id = repository.addDraftMember(1001L, 2001L, request);
+        Long id = repository.addDraftMember(2001L, request);
 
         assertThat(id).isEqualTo(2001L);
         assertThat(queries.lastWriteSql).contains("insert into team_member");
+        assertNoScopeColumn(queries.lastWriteSql);
         assertThat(queries.lastWriteSql).contains("user_id");
         assertThat(queries.lastWriteSql).contains("null");
-        assertThat(queries.lastWriteArgs).contains(1001L, 2001L, "Alice", "E001", "Product");
+        assertThat(queries.lastWriteArgs).contains(2001L, "Alice", "E001", "Product");
     }
 
     @Test
@@ -63,13 +66,17 @@ class TeamRepositoryTest {
         RecordingQueries queries = new RecordingQueries();
         JdbcTeamInviteRepository repository = new JdbcTeamInviteRepository(queries);
         TeamVO.Invite invite = new TeamVO.Invite();
-        invite.setTenantId(1001L);
         invite.setId(5001L);
 
         assertThat(repository.consumeInviteQuota(invite)).isTrue();
 
         assertThat(queries.lastWriteSql).contains("used_count = used_count + 1");
-        assertThat(queries.lastWriteArgs).contains(1001L, 5001L);
+        assertNoScopeColumn(queries.lastWriteSql);
+        assertThat(queries.lastWriteArgs).contains(5001L);
+    }
+
+    private static void assertNoScopeColumn(String sql) {
+        assertThat(sql).doesNotContain("ten" + "ant_" + "id");
     }
 
     private static final class RecordingQueries extends MyBatisQueryOperations {

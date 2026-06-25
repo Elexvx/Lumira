@@ -66,7 +66,6 @@ export interface PasskeyOptions {
 
 export interface PasskeyCredentialRecord {
   id: number;
-  tenantId: number;
   userId: number;
   username?: string;
   credentialId: string;
@@ -383,7 +382,6 @@ export interface MenuNode {
 
 export interface AiEmployeeRecord {
   id: number;
-  tenantId?: number | null;
   username: string;
   nickname: string;
   position?: string | null;
@@ -431,7 +429,6 @@ export interface AiGovernanceOverviewRecord {
 
 export interface AiConversationRecord {
   id: number;
-  tenantId?: number | null;
   employeeId?: number | null;
   employeeName?: string | null;
   conversationCode: string;
@@ -493,7 +490,6 @@ export interface AiConversationExportRecord {
 
 export interface AiKnowledgeBaseRecord {
   id: number;
-  tenantId?: number | null;
   kbCode?: string | null;
   name: string;
   description?: string | null;
@@ -509,7 +505,6 @@ export interface AiKnowledgeBaseRecord {
 
 export interface AiKnowledgeDocumentRecord {
   id: number;
-  tenantId?: number | null;
   knowledgeBaseId: number;
   fileId?: number | null;
   title: string;
@@ -540,7 +535,6 @@ export interface AiKnowledgeReferenceRecord {
 
 export interface AiLlmServiceRecord {
   id: number;
-  tenantId?: number | null;
   provider: string;
   code: string;
   title: string;
@@ -639,7 +633,6 @@ export interface AiChatRequestPayload {
 
 export interface AiToolPlanRecord {
   id: number;
-  tenantId?: number | null;
   conversationId?: number | null;
   employeeId?: number | null;
   toolCode: string;
@@ -669,7 +662,6 @@ export interface AiToolExecuteResultRecord {
 
 export interface AiToolPolicyRecord {
   id: number;
-  tenantId?: number | null;
   policyName: string;
   toolCode?: string | null;
   actionType?: string | null;
@@ -799,7 +791,6 @@ export interface PluginUploadResult {
 
 export interface PluginRuntimeLog {
   id: number;
-  tenantId?: number;
   pluginCode: string;
   pluginVersion?: string;
   operationType: string;
@@ -819,7 +810,7 @@ export interface PluginRuntimeSecurityPolicy {
   blockedHeaders: string[];
 }
 
-export interface TenantPlugin {
+export interface PluginAvailability {
   pluginCode: string;
   pluginName: string;
   version: string;
@@ -838,7 +829,7 @@ export interface PluginStatus {
   pluginCode: string;
   pluginName: string;
   version?: string;
-  tenantEnabled: boolean;
+  enabled: boolean;
   lifecycleStatus: string;
   schemaStatus: string;
   builtin?: boolean;
@@ -850,7 +841,6 @@ export interface PluginStatus {
 
 export interface SensitiveWordRecord {
   id: number;
-  tenantId: number;
   word: string;
   normalizedWord: string;
   category?: string | null;
@@ -891,7 +881,7 @@ export interface NotificationRecord {
 }
 
 export type MessageNoticeType = 'MESSAGE';
-export type MessageTargetScope = 'PLATFORM' | 'TENANT' | 'USER' | 'ROLE';
+export type MessageTargetScope = 'PLATFORM' | 'USER' | 'ROLE';
 export type MessagePublishStatus = 'PUBLISHED' | 'RETRACTED';
 export type MessageSourceType = 'MANUAL';
 export type MessageChannel = 'INBOX' | 'EMAIL' | 'WECHAT_OFFICIAL';
@@ -899,7 +889,6 @@ export type MessageSendStatus = 'SUCCESS' | 'FAILED' | 'SKIPPED';
 
 export interface MessageNoticeRecord {
   id: number;
-  tenantId: number;
   messageType: MessageNoticeType;
   targetScope: MessageTargetScope;
   targetUserId?: number | null;
@@ -923,11 +912,6 @@ export interface MessageUnreadCount {
   unreadCount: number;
 }
 
-export interface MessageWebSocketTenantRuntime {
-  tenantId: number;
-  connectionCount: number;
-}
-
 export interface MessageWebSocketUserRuntime {
   userId: number;
   connectionCount: number;
@@ -935,17 +919,14 @@ export interface MessageWebSocketUserRuntime {
 
 export interface MessageWebSocketRuntime {
   activeConnections: number;
-  tenantCount: number;
   userCount: number;
   earliestConnectedAt?: string | null;
   sampledAt?: string | null;
-  tenants?: MessageWebSocketTenantRuntime[];
   topUsers?: MessageWebSocketUserRuntime[];
 }
 
 export interface MessageDeliveryLogRecord {
   id: number;
-  tenantId: number;
   noticeId?: number | null;
   channel: MessageChannel;
   targetScope: MessageTargetScope;
@@ -976,7 +957,6 @@ export type FilePreviewMode = 'IMAGE' | 'PDF' | 'TEXT' | 'UNSUPPORTED';
 
 export interface FileObjectRecord {
   id: number;
-  tenantId?: number | null;
   uploadedBy?: number | null;
   uploadedByName?: string | null;
   originalFileName: string;
@@ -1006,7 +986,6 @@ export type FileRenameStrategy = 'APPEND_RANDOM_ID' | 'RANDOM_STRING' | 'KEEP_OR
 
 export interface FileStorageSpaceRecord {
   id: number;
-  tenantId?: number | null;
   title: string;
   storageKey: string;
   provider: FileStorageProvider;
@@ -1061,7 +1040,6 @@ export type WorkOrderFeedbackPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 
 export interface WorkOrderFeedbackRecord {
   id: number;
-  tenantId?: number | null;
   title: string;
   detailHtml: string;
   priority: WorkOrderFeedbackPriority;
@@ -1088,7 +1066,6 @@ export interface WorkOrderFeedbackStatusPayload {
 
 export interface AuditLogRecord {
   id: number;
-  tenantId?: number | null;
   userId?: number | null;
   username?: string | null;
   loginType?: string;
@@ -1143,7 +1120,6 @@ export interface SecondFactorChallenge {
 
 export interface SecondFactorVerification {
   verified: boolean;
-  tenantId?: number | null;
   userId?: number | null;
   username?: string | null;
   message?: string | null;
@@ -1263,7 +1239,7 @@ export interface SmtpTestResult {
 
 export interface DashboardSummary {
   currentUser: CurrentUser;
-  tenantPlugins: TenantPlugin[];
+  availablePlugins: PluginAvailability[];
   menuCount: number;
   permissionCount: number;
   recentLoginLogs: AuditLogRecord[];
@@ -1589,7 +1565,6 @@ export interface OnlineSessionRecord {
 
 export interface OnlineSessionEventRecord {
   action: string;
-  tenantId?: number | null;
   userId?: number | null;
   sessionId?: string | null;
   operatorUsername?: string | null;
@@ -1598,7 +1573,6 @@ export interface OnlineSessionEventRecord {
 
 export interface RoleRecord {
   id: number;
-  tenantId: number;
   roleCode: string;
   roleName: string;
   roleType: string;
@@ -1626,7 +1600,6 @@ export interface RoleDataScope {
 
 export interface DepartmentRecord {
   id: number;
-  tenantId: number;
   parentId?: number | null;
   deptCode: string;
   deptName: string;
@@ -1670,7 +1643,6 @@ export interface PermissionTreeRecord {
 
 export interface MenuRecord {
   id: number;
-  tenantId: number;
   parentId?: number | null;
   menuCode: string;
   menuName: string;
@@ -1687,7 +1659,6 @@ export interface MenuRecord {
 
 export interface DictTypeRecord {
   id: number;
-  tenantId?: number | null;
   dictCode: string;
   dictName: string;
   status: string;
@@ -1707,11 +1678,9 @@ export interface DictItemRecord {
 
 export interface SystemConfigRecord {
   id: number;
-  tenantId?: number | null;
   configKey: string;
   configName: string;
   configValue: string;
-  configScope: string;
   isSystem: number;
   remark?: string | null;
 }

@@ -125,6 +125,7 @@ saas:
       - /api/v1/public/login-capabilities
       - /api/v1/public/security-settings
       - /api/v1/public/captcha/**
+      - /api/public/certificates/**
       - /api/v2/platform/public/bootstrap
       - /api/v2/team-invites/preview
       - /api/v2/localization/bundles

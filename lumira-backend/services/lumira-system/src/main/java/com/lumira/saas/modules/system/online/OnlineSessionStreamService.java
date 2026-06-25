@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -26,7 +25,6 @@ public class OnlineSessionStreamService {
     private final ObjectMapper objectMapper;
     private final Map<String, Subscriber> subscribers = new ConcurrentHashMap<>();
     private final Map<String, Set<String>> subscriberIdsBySessionId = new ConcurrentHashMap<>();
-    private final Map<Long, Set<String>> subscriberIdsByTenantId = new ConcurrentHashMap<>();
 
     public OnlineSessionStreamService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -39,15 +37,10 @@ public class OnlineSessionStreamService {
 
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MILLIS);
         String subscriberId = UUID.randomUUID().toString();
-        if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
-        }
-        Long tenantId = PlatformContext.compatibilityTenantId();
-        Subscriber subscriber = new Subscriber(subscriberId, currentUser.getSessionId(), tenantId, emitter);
+        Subscriber subscriber = new Subscriber(subscriberId, currentUser.getSessionId(), emitter);
 
         subscribers.put(subscriberId, subscriber);
         subscriberIdsBySessionId.computeIfAbsent(currentUser.getSessionId(), key -> ConcurrentHashMap.newKeySet()).add(subscriberId);
-        subscriberIdsByTenantId.computeIfAbsent(tenantId, key -> ConcurrentHashMap.newKeySet()).add(subscriberId);
 
         emitter.onCompletion(() -> removeSubscriber(subscriberId));
         emitter.onTimeout(() -> {
@@ -81,18 +74,7 @@ public class OnlineSessionStreamService {
             return;
         }
 
-        Collection<Subscriber> targets = new ArrayList<>();
-        if (event.getTenantId() != null) {
-            Set<String> subscriberIds = subscriberIdsByTenantId.get(event.getTenantId());
-            if (subscriberIds != null) {
-                subscriberIds.stream()
-                        .map(subscribers::get)
-                        .filter(subscriber -> subscriber != null)
-                        .forEach(targets::add);
-            }
-        } else {
-            targets.addAll(subscribers.values());
-        }
+        Collection<Subscriber> targets = new ArrayList<>(subscribers.values());
 
         for (Subscriber subscriber : targets) {
             send(subscriber, event);
@@ -128,13 +110,6 @@ public class OnlineSessionStreamService {
         for (String subscriberId : subscriberIds) {
             Subscriber subscriber = subscribers.remove(subscriberId);
             if (subscriber != null) {
-                Set<String> tenantSubscribers = subscriberIdsByTenantId.get(subscriber.tenantId());
-                if (tenantSubscribers != null) {
-                    tenantSubscribers.remove(subscriberId);
-                    if (tenantSubscribers.isEmpty()) {
-                        subscriberIdsByTenantId.remove(subscriber.tenantId());
-                    }
-                }
                 subscriber.emitter().complete();
             }
         }
@@ -172,15 +147,8 @@ public class OnlineSessionStreamService {
             }
         }
 
-        Set<String> tenantSubscribers = subscriberIdsByTenantId.get(subscriber.tenantId());
-        if (tenantSubscribers != null) {
-            tenantSubscribers.remove(subscriberId);
-            if (tenantSubscribers.isEmpty()) {
-                subscriberIdsByTenantId.remove(subscriber.tenantId());
-            }
-        }
     }
 
-    private record Subscriber(String subscriberId, String sessionId, Long tenantId, SseEmitter emitter) {
+    private record Subscriber(String subscriberId, String sessionId, SseEmitter emitter) {
     }
 }

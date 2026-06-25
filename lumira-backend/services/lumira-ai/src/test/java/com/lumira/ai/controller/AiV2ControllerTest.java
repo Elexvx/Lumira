@@ -57,7 +57,6 @@ class AiV2ControllerTest {
     private AiEmployeeVO employee() {
         AiEmployeeVO employee = new AiEmployeeVO();
         employee.setId(1L);
-        employee.setTenantId(1001L);
         employee.setUsername("assistant");
         employee.setNickname("AI Assistant");
         employee.setDefaultLlmServiceTitle("OpenAI");

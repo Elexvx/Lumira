@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 public class ExportTaskEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long tenantId;
     private String moduleKey;
     private String status;
     private String requestPayload;
@@ -27,8 +26,6 @@ public class ExportTaskEntity {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getModuleKey() { return moduleKey; }
     public void setModuleKey(String moduleKey) { this.moduleKey = moduleKey; }
     public String getStatus() { return status; }

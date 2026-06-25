@@ -9,7 +9,7 @@ import java.util.List;
 public class DashboardSummaryVO {
 
     private CurrentUserVO currentUser;
-    private List<PluginVO.TenantPluginVO> tenantPlugins;
+    private List<PluginVO.PluginAvailabilityVO> availablePlugins;
     private Integer menuCount;
     private Integer permissionCount;
     private List<AuditLogVO> recentLoginLogs;
@@ -18,8 +18,8 @@ public class DashboardSummaryVO {
 
     public CurrentUserVO getCurrentUser() { return currentUser; }
     public void setCurrentUser(CurrentUserVO currentUser) { this.currentUser = currentUser; }
-    public List<PluginVO.TenantPluginVO> getTenantPlugins() { return tenantPlugins; }
-    public void setTenantPlugins(List<PluginVO.TenantPluginVO> tenantPlugins) { this.tenantPlugins = tenantPlugins; }
+    public List<PluginVO.PluginAvailabilityVO> getAvailablePlugins() { return availablePlugins; }
+    public void setAvailablePlugins(List<PluginVO.PluginAvailabilityVO> availablePlugins) { this.availablePlugins = availablePlugins; }
     public Integer getMenuCount() { return menuCount; }
     public void setMenuCount(Integer menuCount) { this.menuCount = menuCount; }
     public Integer getPermissionCount() { return permissionCount; }

@@ -8,7 +8,6 @@ public final class ExpertVO {
 
     public static class Expert {
         private Long id;
-        private Long tenantId;
         private String code;
         private String name;
         private String title;
@@ -16,6 +15,12 @@ public final class ExpertVO {
         private String position;
         private String expertise;
         private String phone;
+        private String mobile;
+        private String idCardNumber;
+        private Long userId;
+        private String accountStatus;
+        private Boolean initialPasswordResetRequired;
+        private String initialPassword;
         private String email;
         private String avatarUrl;
         private String bio;
@@ -27,8 +32,6 @@ public final class ExpertVO {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public String getCode() { return code; }
         public void setCode(String code) { this.code = code; }
         public String getName() { return name; }
@@ -43,6 +46,18 @@ public final class ExpertVO {
         public void setExpertise(String expertise) { this.expertise = expertise; }
         public String getPhone() { return phone; }
         public void setPhone(String phone) { this.phone = phone; }
+        public String getMobile() { return mobile; }
+        public void setMobile(String mobile) { this.mobile = mobile; }
+        public String getIdCardNumber() { return idCardNumber; }
+        public void setIdCardNumber(String idCardNumber) { this.idCardNumber = idCardNumber; }
+        public Long getUserId() { return userId; }
+        public void setUserId(Long userId) { this.userId = userId; }
+        public String getAccountStatus() { return accountStatus; }
+        public void setAccountStatus(String accountStatus) { this.accountStatus = accountStatus; }
+        public Boolean getInitialPasswordResetRequired() { return initialPasswordResetRequired; }
+        public void setInitialPasswordResetRequired(Boolean initialPasswordResetRequired) { this.initialPasswordResetRequired = initialPasswordResetRequired; }
+        public String getInitialPassword() { return initialPassword; }
+        public void setInitialPassword(String initialPassword) { this.initialPassword = initialPassword; }
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
         public String getAvatarUrl() { return avatarUrl; }

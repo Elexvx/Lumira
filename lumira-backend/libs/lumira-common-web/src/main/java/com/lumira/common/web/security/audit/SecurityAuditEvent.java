@@ -3,7 +3,6 @@ package com.lumira.common.web.security.audit;
 import java.util.Map;
 
 public record SecurityAuditEvent(
-        Long tenantId,
         Long userId,
         Long employeeId,
         String eventType,
@@ -26,7 +25,6 @@ public record SecurityAuditEvent(
     }
 
     public static final class Builder {
-        private Long tenantId;
         private Long userId;
         private Long employeeId;
         private final String eventType;
@@ -49,7 +47,6 @@ public record SecurityAuditEvent(
             this.result = result;
         }
 
-        public Builder tenantId(Long tenantId) { this.tenantId = tenantId; return this; }
         public Builder userId(Long userId) { this.userId = userId; return this; }
         public Builder employeeId(Long employeeId) { this.employeeId = employeeId; return this; }
         public Builder sourceIp(String sourceIp) { this.sourceIp = sourceIp; return this; }
@@ -65,7 +62,7 @@ public record SecurityAuditEvent(
 
         public SecurityAuditEvent build() {
             return new SecurityAuditEvent(
-                    tenantId, userId, employeeId, eventType, severity, sourceIp, userAgent, requestId, traceId,
+                    userId, employeeId, eventType, severity, sourceIp, userAgent, requestId, traceId,
                     resourceCode, actionCode, targetId, result, reasonCode, message, metadata);
         }
     }

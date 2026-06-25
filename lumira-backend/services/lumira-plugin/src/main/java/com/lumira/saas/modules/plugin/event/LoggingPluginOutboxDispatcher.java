@@ -16,7 +16,7 @@ public class LoggingPluginOutboxDispatcher implements PluginOutboxDispatcher {
             return;
         }
         String payload = StringUtils.hasText(row.getPayloadJson()) ? row.getPayloadJson() : "{}";
-        logger.info("plugin outbox dispatch: id={}, tenantId={}, eventType={}, eventKey={}, payload={}",
-                row.getId(), row.getTenantId(), row.getEventType(), row.getEventKey(), payload);
+        logger.info("plugin outbox dispatch: id={}, eventType={}, eventKey={}, payload={}",
+                row.getId(), row.getEventType(), row.getEventKey(), payload);
     }
 }

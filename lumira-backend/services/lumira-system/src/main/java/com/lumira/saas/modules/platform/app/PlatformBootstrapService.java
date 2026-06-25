@@ -8,8 +8,6 @@ import com.lumira.saas.modules.system.vo.SystemVO;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -24,9 +22,10 @@ public class PlatformBootstrapService {
 
     private static final Logger log = LoggerFactory.getLogger(PlatformBootstrapService.class);
 
-    private static final Long DEFAULT_PUBLIC_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final String PLATFORM_CONTEXT = "platform";
     private static final String PLATFORM_RUNTIME_APPEARANCE_SCOPE = "runtime-appearance";
+    private static final String PUBLIC_BOOTSTRAP_CACHE_KEY = "public-bootstrap";
+    private static final String RUNTIME_APPEARANCE_CACHE_KEY = "runtime-appearance";
     private static final Duration PUBLIC_BOOTSTRAP_CACHE_TTL = Duration.ofSeconds(10);
     private static final int PUBLIC_BOOTSTRAP_CACHE_MAX_ENTRIES = 256;
     private static final Duration RUNTIME_APPEARANCE_VERSION_CACHE_TTL = Duration.ofSeconds(30);
@@ -37,10 +36,10 @@ public class PlatformBootstrapService {
     private final SystemVerificationAppService systemVerificationAppService;
     private final ReadModelVersionService readModelVersionService;
     private final OwnerRuntimeMetrics ownerRuntimeMetrics;
-    private final Map<Long, PublicBootstrapCache> cacheByTenant;
-    private final Cache<Long, CompletableFuture<SystemVO.PublicBootstrapVO>> publicBootstrapLoadInFlight;
-    private final Cache<Long, Long> runtimeAppearanceVersionCache;
-    private final Cache<Long, CompletableFuture<Long>> runtimeAppearanceVersionLoadInFlight;
+    private volatile PublicBootstrapCache publicBootstrapCache;
+    private final Cache<String, CompletableFuture<SystemVO.PublicBootstrapVO>> publicBootstrapLoadInFlight;
+    private final Cache<String, Long> runtimeAppearanceVersionCache;
+    private final Cache<String, CompletableFuture<Long>> runtimeAppearanceVersionLoadInFlight;
 
     public PlatformBootstrapService(
             SystemManagementAppService systemManagementAppService,
@@ -61,7 +60,6 @@ public class PlatformBootstrapService {
         this.systemVerificationAppService = systemVerificationAppService;
         this.readModelVersionService = readModelVersionService;
         this.ownerRuntimeMetrics = ownerRuntimeMetrics;
-        this.cacheByTenant = new ConcurrentHashMap<>();
         this.publicBootstrapLoadInFlight = CacheBuilder.newBuilder()
                 .maximumSize(PUBLIC_BOOTSTRAP_CACHE_MAX_ENTRIES)
                 .expireAfterWrite(PUBLIC_BOOTSTRAP_CACHE_TTL.toMillis(), TimeUnit.MILLISECONDS)
@@ -77,18 +75,13 @@ public class PlatformBootstrapService {
     }
 
     public SystemVO.PublicBootstrapVO getPublicBootstrap() {
-        return getPublicBootstrap(DEFAULT_PUBLIC_TENANT_ID);
-    }
-
-    public SystemVO.PublicBootstrapVO getPublicBootstrap(Long preferredTenantId) {
-        Long tenantId = preferredTenantId == null ? DEFAULT_PUBLIC_TENANT_ID : preferredTenantId;
-        PublicBootstrapCache current = cacheByTenant.get(tenantId);
+        PublicBootstrapCache current = publicBootstrapCache;
         long now = System.currentTimeMillis();
         if (current != null && current.payload != null && now < current.expiresAtMillis) {
             recordBootstrapCacheHit();
             return current.payload;
         }
-        return getPublicBootstrapWithSingleFlight(tenantId, current);
+        return getPublicBootstrapWithSingleFlight(current);
     }
 
     private void recordBootstrapCacheHit() {
@@ -109,43 +102,43 @@ public class PlatformBootstrapService {
         }
     }
 
-    private SystemVO.PublicBootstrapVO getPublicBootstrapWithSingleFlight(Long tenantId, PublicBootstrapCache staleCache) {
+    private SystemVO.PublicBootstrapVO getPublicBootstrapWithSingleFlight(PublicBootstrapCache staleCache) {
         try {
             CompletableFuture<SystemVO.PublicBootstrapVO> inFlight = publicBootstrapLoadInFlight.get(
-                    tenantId,
-                    () -> CompletableFuture.supplyAsync(() -> buildPublicBootstrap(tenantId, staleCache), BLOCKING_IO_EXECUTOR)
+                    PUBLIC_BOOTSTRAP_CACHE_KEY,
+                    () -> CompletableFuture.supplyAsync(() -> buildPublicBootstrap(staleCache), BLOCKING_IO_EXECUTOR)
             );
             return inFlight.join();
         } catch (CompletionException exception) {
-            publicBootstrapLoadInFlight.invalidate(tenantId);
+            publicBootstrapLoadInFlight.invalidate(PUBLIC_BOOTSTRAP_CACHE_KEY);
             Throwable cause = exception.getCause() == null ? exception : exception.getCause();
             if (cause instanceof RuntimeException runtimeException) {
                 throw runtimeException;
             }
-            log.warn("Failed to load public bootstrap for tenantId={} with single-flight path", tenantId, cause);
+            log.warn("Failed to load public bootstrap with single-flight path", cause);
             return fallbackPublicBootstrap(staleCache);
         } catch (ExecutionException exception) {
-            publicBootstrapLoadInFlight.invalidate(tenantId);
-            log.warn("Failed to load public bootstrap for tenantId={} with single-flight", tenantId, exception);
+            publicBootstrapLoadInFlight.invalidate(PUBLIC_BOOTSTRAP_CACHE_KEY);
+            log.warn("Failed to load public bootstrap with single-flight", exception);
             return fallbackPublicBootstrap(staleCache);
         }
     }
 
-    private SystemVO.PublicBootstrapVO buildPublicBootstrap(Long tenantId, PublicBootstrapCache staleCache) {
-        long runtimeAppearanceVersion = loadRuntimeAppearanceVersion(tenantId, staleCache);
+    private SystemVO.PublicBootstrapVO buildPublicBootstrap(PublicBootstrapCache staleCache) {
+        long runtimeAppearanceVersion = loadRuntimeAppearanceVersion(staleCache);
         if (staleCache != null
                 && staleCache.payload != null
                 && staleCache.runtimeAppearanceVersion == runtimeAppearanceVersion
         ) {
             recordBootstrapCacheRefresh();
-            cacheByTenant.put(tenantId, staleCache.withExpiresAt(System.currentTimeMillis() + PUBLIC_BOOTSTRAP_CACHE_TTL.toMillis()));
+            publicBootstrapCache = staleCache.withExpiresAt(System.currentTimeMillis() + PUBLIC_BOOTSTRAP_CACHE_TTL.toMillis());
             return staleCache.payload;
         }
         recordBootstrapCacheMiss();
 
         SystemVO.PublicBootstrapVO bootstrap = new SystemVO.PublicBootstrapVO();
         CompletableFuture<SystemVO.BrandingSettingsVO> brandingFuture = CompletableFuture.supplyAsync(
-                () -> systemManagementAppService.getPublicBrandingSettings(tenantId),
+                systemManagementAppService::getPublicBrandingSettings,
                 BLOCKING_IO_EXECUTOR
         );
         CompletableFuture<SystemVO.SecuritySettingsVO> securityFuture = CompletableFuture.supplyAsync(
@@ -157,7 +150,7 @@ public class PlatformBootstrapService {
                 BLOCKING_IO_EXECUTOR
         );
         CompletableFuture<SystemVO.LoginCapabilitiesVO> loginCapabilitiesFuture = CompletableFuture.supplyAsync(
-                () -> systemVerificationAppService.loadLoginCapabilities(tenantId),
+                systemVerificationAppService::loadLoginCapabilities,
                 BLOCKING_IO_EXECUTOR
         );
 
@@ -165,45 +158,47 @@ public class PlatformBootstrapService {
         bootstrap.setSecuritySettings(securityFuture.join());
         bootstrap.setAgreementSettings(agreementFuture.join());
         bootstrap.setLoginCapabilities(loginCapabilitiesFuture.join());
-        cacheByTenant.put(tenantId, new PublicBootstrapCache(
+        publicBootstrapCache = new PublicBootstrapCache(
                 runtimeAppearanceVersion,
                 bootstrap,
                 System.currentTimeMillis() + PUBLIC_BOOTSTRAP_CACHE_TTL.toMillis()
-        ));
+        );
         return bootstrap;
     }
 
-    private long loadRuntimeAppearanceVersion(Long tenantId, PublicBootstrapCache staleCache) {
-        Long cachedVersion = runtimeAppearanceVersionCache.getIfPresent(tenantId);
+    private long loadRuntimeAppearanceVersion(PublicBootstrapCache staleCache) {
+        Long cachedVersion = runtimeAppearanceVersionCache.getIfPresent(RUNTIME_APPEARANCE_CACHE_KEY);
         if (cachedVersion != null) {
             return cachedVersion;
         }
 
         try {
             CompletableFuture<Long> inFlight = runtimeAppearanceVersionLoadInFlight.get(
-                    tenantId,
+                    RUNTIME_APPEARANCE_CACHE_KEY,
                     () -> CompletableFuture.supplyAsync(
-                            () -> readModelVersionService.getOrInitialize(
-                                    tenantId,
-                                    PLATFORM_CONTEXT,
-                                    PLATFORM_RUNTIME_APPEARANCE_SCOPE
-                            ),
+                            () -> {
+                                Long version = readModelVersionService.currentVersion(
+                                        PLATFORM_CONTEXT,
+                                        PLATFORM_RUNTIME_APPEARANCE_SCOPE
+                                );
+                                return version == null ? 0L : version;
+                            },
                             BLOCKING_IO_EXECUTOR
                     )
             );
             long version = inFlight.join();
-            runtimeAppearanceVersionCache.put(tenantId, version);
+            runtimeAppearanceVersionCache.put(RUNTIME_APPEARANCE_CACHE_KEY, version);
             return version;
         } catch (CompletionException exception) {
-            runtimeAppearanceVersionLoadInFlight.invalidate(tenantId);
-            log.debug("Failed to load runtime-appearance version for tenantId={} with single-flight path", tenantId, exception);
+            runtimeAppearanceVersionLoadInFlight.invalidate(RUNTIME_APPEARANCE_CACHE_KEY);
+            log.debug("Failed to load runtime-appearance version with single-flight path", exception);
             if (staleCache != null && staleCache.runtimeAppearanceVersion > 0) {
                 return staleCache.runtimeAppearanceVersion;
             }
             return staleCache != null && staleCache.payload != null ? staleCache.runtimeAppearanceVersion : 0L;
         } catch (ExecutionException exception) {
-            runtimeAppearanceVersionLoadInFlight.invalidate(tenantId);
-            log.debug("Failed to load runtime-appearance version single-flight for tenantId={}", tenantId, exception);
+            runtimeAppearanceVersionLoadInFlight.invalidate(RUNTIME_APPEARANCE_CACHE_KEY);
+            log.debug("Failed to load runtime-appearance version single-flight", exception);
             if (staleCache != null && staleCache.runtimeAppearanceVersion > 0) {
                 return staleCache.runtimeAppearanceVersion;
             }

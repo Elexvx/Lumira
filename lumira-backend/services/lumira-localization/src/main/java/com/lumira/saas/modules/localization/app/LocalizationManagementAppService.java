@@ -6,9 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.lumira.api.client.SystemInternalApi;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.localization.dto.LocalizationDTO;
 import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.EntryQuery;
 import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.LanguageStatRow;
@@ -500,7 +498,6 @@ public class LocalizationManagementAppService {
             releaseMapper.insert(release);
             ReleaseAggregate releaseAggregate = new ReleaseAggregate(
                     release.id == null ? nextVersion : release.id,
-                    PlatformContext.compatibilityTenantId(),
                     localeCode,
                     false
             );
@@ -535,7 +532,6 @@ public class LocalizationManagementAppService {
                 .eq("deleted", 0));
         ReleaseAggregate releaseAggregate = new ReleaseAggregate(
                 request.getReleaseId(),
-                PlatformContext.compatibilityTenantId(),
                 release.getLocaleCode(),
                 false
         );
@@ -863,13 +859,12 @@ public class LocalizationManagementAppService {
     }
 
     private long readModelVersionForLocale(String localeCode) {
-        return readModelVersionForTenantAndScope(PlatformConstants.PLATFORM_TENANT_ID, normalizeLocale(localeCode));
+        return readModelVersionForScope(normalizeLocale(localeCode));
     }
 
-    private long readModelVersionForTenantAndScope(Long tenantId, String scope) {
+    private long readModelVersionForScope(String scope) {
         String normalizedScope = normalizeLocale(scope);
-        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        String cacheKey = readModelVersionCacheKey(effectiveTenantId, normalizedScope);
+        String cacheKey = readModelVersionCacheKey(normalizedScope);
         CachedReadModelVersion cached = readModelVersionCache.get(cacheKey);
         long now = System.currentTimeMillis();
         if (cached != null && cached.expiresAtEpochMillis() > now) {
@@ -886,7 +881,7 @@ public class LocalizationManagementAppService {
             readModelVersionCacheMisses.increment();
         }
         try {
-            Long actualVersion = systemInternalApi.readModelVersion(effectiveTenantId, READ_MODEL_CONTEXT_LOCALIZATION, normalizedScope);
+            Long actualVersion = systemInternalApi.readModelVersion(READ_MODEL_CONTEXT_LOCALIZATION, normalizedScope);
             if (actualVersion != null) {
                 version = actualVersion;
             } else {
@@ -902,11 +897,9 @@ public class LocalizationManagementAppService {
 
     private void bumpRuntimeBundleReadModelVersion(String localeCode, CurrentUser currentUser) {
         String normalizedLocale = normalizeLocale(localeCode);
-        Long tenantId = PlatformContext.compatibilityTenantId();
-        readModelVersionCache.remove(readModelVersionCacheKey(tenantId, normalizedLocale));
+        readModelVersionCache.remove(readModelVersionCacheKey(normalizedLocale));
         try {
             systemInternalApi.bumpReadModelVersion(
-                    tenantId,
                     READ_MODEL_CONTEXT_LOCALIZATION,
                     normalizedLocale,
                     READ_MODEL_EVENT_LOCALIZATION_RUNTIME_BUNDLE
@@ -916,8 +909,8 @@ public class LocalizationManagementAppService {
         }
     }
 
-    private String readModelVersionCacheKey(Long tenantId, String scope) {
-        return tenantId + ":" + normalizeLocale(scope);
+    private String readModelVersionCacheKey(String scope) {
+        return normalizeLocale(scope);
     }
 
     private Map<String, String> loadRuntimeMessages(String localeCode, String fallbackLocale) {
@@ -1323,7 +1316,6 @@ public class LocalizationManagementAppService {
             case "page" -> "页面";
             case "message" -> "消息";
             case "theme" -> "主题";
-            case "tenant" -> "平台";
             case "auth" -> "认证";
             case "system" -> "系统";
             default -> StringUtils.hasText(sourceType) ? namespaceCode.trim() + " · " + normalizeSourceType(sourceType) : namespaceCode.trim();

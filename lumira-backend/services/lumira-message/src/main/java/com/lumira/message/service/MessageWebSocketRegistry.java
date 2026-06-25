@@ -36,7 +36,6 @@ public class MessageWebSocketRegistry {
     private final Counter sendFailureCounter;
     private final Counter heartbeatCounter;
     private final Map<String, Subscriber> subscribers = new ConcurrentHashMap<>();
-    private final Map<Long, Set<String>> subscriberIdsByTenantId = new ConcurrentHashMap<>();
     private final Map<Long, Set<String>> subscriberIdsByUserId = new ConcurrentHashMap<>();
 
     public MessageWebSocketRegistry(
@@ -56,14 +55,13 @@ public class MessageWebSocketRegistry {
                 .register(meterRegistry);
     }
 
-    public void register(WebSocketSession session, Long tenantId, Long userId) {
+    public void register(WebSocketSession session, Long userId) {
         String subscriberId = UUID.randomUUID().toString();
-        Subscriber subscriber = new Subscriber(subscriberId, session, tenantId, userId, LocalDateTime.now());
+        Subscriber subscriber = new Subscriber(subscriberId, session, userId, LocalDateTime.now());
         subscribers.put(subscriberId, subscriber);
-        subscriberIdsByTenantId.computeIfAbsent(tenantId, key -> ConcurrentHashMap.newKeySet()).add(subscriberId);
         subscriberIdsByUserId.computeIfAbsent(userId, key -> ConcurrentHashMap.newKeySet()).add(subscriberId);
         connectCounter.increment();
-        sendSafely(subscriber, messageEventFactory.toConnectedEvent(tenantId, userId));
+        sendSafely(subscriber, messageEventFactory.toConnectedEvent(userId));
     }
 
     public void unregister(WebSocketSession session) {
@@ -80,18 +78,23 @@ public class MessageWebSocketRegistry {
         subscriberIds.forEach(this::removeSubscriber);
     }
 
-    public void sendToTenant(Long tenantId, MessageEventDTO event) {
-        dispatch(subscriberIdsByTenantId.get(tenantId), event, tenantId, null);
+    public void sendToAll(MessageEventDTO event) {
+        if (event == null) {
+            return;
+        }
+        for (Subscriber subscriber : subscribers.values()) {
+            sendSafely(subscriber, event);
+        }
     }
 
-    public void sendToUser(Long tenantId, Long userId, MessageEventDTO event) {
-        dispatch(subscriberIdsByUserId.get(userId), event, tenantId, userId);
+    public void sendToUser(Long userId, MessageEventDTO event) {
+        dispatch(subscriberIdsByUserId.get(userId), event, userId);
     }
 
     public void sendHeartbeat() {
         for (Subscriber subscriber : subscribers.values()) {
             heartbeatCounter.increment();
-            sendSafely(subscriber, messageEventFactory.createHeartbeatEvent(subscriber.tenantId(), subscriber.userId()));
+            sendSafely(subscriber, messageEventFactory.createHeartbeatEvent(subscriber.userId()));
         }
     }
 
@@ -100,11 +103,6 @@ public class MessageWebSocketRegistry {
     }
 
     public Snapshot snapshot() {
-        List<TenantConnectionCount> tenants = subscriberIdsByTenantId.entrySet()
-                .stream()
-                .map(entry -> new TenantConnectionCount(entry.getKey(), entry.getValue().size()))
-                .sorted(Comparator.comparing(TenantConnectionCount::tenantId))
-                .toList();
         List<UserConnectionCount> users = subscriberIdsByUserId.entrySet()
                 .stream()
                 .map(entry -> new UserConnectionCount(entry.getKey(), entry.getValue().size()))
@@ -118,25 +116,20 @@ public class MessageWebSocketRegistry {
                 .orElse(null);
         return new Snapshot(
                 subscribers.size(),
-                subscriberIdsByTenantId.size(),
                 subscriberIdsByUserId.size(),
-                tenants,
                 users,
                 earliestConnectedAt,
                 LocalDateTime.now()
         );
     }
 
-    private void dispatch(Set<String> subscriberIds, MessageEventDTO event, Long tenantId, Long userId) {
+    private void dispatch(Set<String> subscriberIds, MessageEventDTO event, Long userId) {
         if (subscriberIds == null || subscriberIds.isEmpty() || event == null) {
             return;
         }
         for (String subscriberId : subscriberIds) {
             Subscriber subscriber = subscribers.get(subscriberId);
             if (subscriber == null) {
-                continue;
-            }
-            if (!subscriber.tenantId().equals(tenantId)) {
                 continue;
             }
             if (userId != null && !subscriber.userId().equals(userId)) {
@@ -176,14 +169,6 @@ public class MessageWebSocketRegistry {
         }
         disconnectCounter.increment();
 
-        Set<String> tenantSubscribers = subscriberIdsByTenantId.get(subscriber.tenantId());
-        if (tenantSubscribers != null) {
-            tenantSubscribers.remove(subscriberId);
-            if (tenantSubscribers.isEmpty()) {
-                subscriberIdsByTenantId.remove(subscriber.tenantId());
-            }
-        }
-
         Set<String> userSubscribers = subscriberIdsByUserId.get(subscriber.userId());
         if (userSubscribers != null) {
             userSubscribers.remove(subscriberId);
@@ -193,21 +178,16 @@ public class MessageWebSocketRegistry {
         }
     }
 
-    private record Subscriber(String subscriberId, WebSocketSession session, Long tenantId, Long userId, LocalDateTime connectedAt) {
+    private record Subscriber(String subscriberId, WebSocketSession session, Long userId, LocalDateTime connectedAt) {
     }
 
     public record Snapshot(
             int activeConnections,
-            int tenantCount,
             int userCount,
-            List<TenantConnectionCount> tenants,
             List<UserConnectionCount> topUsers,
             LocalDateTime earliestConnectedAt,
             LocalDateTime sampledAt
     ) {
-    }
-
-    public record TenantConnectionCount(Long tenantId, int connectionCount) {
     }
 
     public record UserConnectionCount(Long userId, int connectionCount) {

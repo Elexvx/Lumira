@@ -14,7 +14,6 @@ import java.util.List;
 public interface MessageNoticeMapper extends BaseMapper<MessageNoticeEntity> {
 
     List<MessageVO.NoticeVO> listVisiblePublished(
-            @Param("tenantId") Long tenantId,
             @Param("userId") Long userId,
             @Param("roleIds") List<Long> roleIds,
             @Param("limit") long limit,
@@ -22,14 +21,12 @@ public interface MessageNoticeMapper extends BaseMapper<MessageNoticeEntity> {
     );
 
     Long countUnread(
-            @Param("tenantId") Long tenantId,
             @Param("userId") Long userId,
             @Param("roleIds") List<Long> roleIds,
             @Param("limit") long limit
     );
 
     int markAllRead(
-            @Param("tenantId") Long tenantId,
             @Param("userId") Long userId,
             @Param("roleIds") List<Long> roleIds,
             @Param("readAt") LocalDateTime readAt
@@ -39,15 +36,14 @@ public interface MessageNoticeMapper extends BaseMapper<MessageNoticeEntity> {
 
     List<MessageVO.NoticeVO> listArchive(@Param("query") NoticeArchiveQuery query);
 
-    MessageVO.NoticeVO findNoticeById(@Param("tenantId") Long tenantId, @Param("noticeId") Long noticeId, @Param("userId") Long userId);
+    MessageVO.NoticeVO findNoticeById(@Param("noticeId") Long noticeId, @Param("userId") Long userId);
 
     MessageVO.NoticeVO findVisibleNoticeById(
-            @Param("tenantId") Long tenantId,
             @Param("noticeId") Long noticeId,
             @Param("userId") Long userId,
             @Param("roleIds") List<Long> roleIds
     );
 
-    int upsertRead(@Param("tenantId") Long tenantId, @Param("noticeId") Long noticeId, @Param("userId") Long userId, @Param("readAt") LocalDateTime readAt);
+    int upsertRead(@Param("noticeId") Long noticeId, @Param("userId") Long userId, @Param("readAt") LocalDateTime readAt);
 
 }

@@ -44,7 +44,7 @@ class PermissionSnapshotServiceTest {
                 List.of("system:menu:view", "system:config:view", "plugin:management:view", "ai:view")
         );
 
-        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1L, 1001L);
+        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1001L);
 
         assertTrue(snapshot.getPermissions().contains("*"));
         assertTrue(snapshot.getPermissions().contains("system:menu:view"));
@@ -58,7 +58,7 @@ class PermissionSnapshotServiceTest {
     void loadSnapshotGrantsWildcardWhenProtectedAdminRoleHasNoPermissions() {
         PermissionSnapshotService service = newService(List.of());
 
-        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1L, 1001L);
+        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1001L);
 
         assertEquals(Set.of("*"), snapshot.getPermissions());
     }
@@ -69,7 +69,7 @@ class PermissionSnapshotServiceTest {
                 List.of("system:menu:view", "system:config:view", "plugin:management:view", "ai:view")
         );
 
-        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1L, 2001L);
+        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(2001L);
 
         assertFalse(snapshot.getPermissions().contains("system:menu:view"));
         assertFalse(snapshot.getPermissions().contains("system:config:view"));
@@ -86,17 +86,17 @@ class PermissionSnapshotServiceTest {
                 new ObjectMapper().findAndRegisterModules()
         );
 
-        service.loadSnapshot(1L, 1001L);
+        service.loadSnapshot(1001L);
         int queryCountAfterWarmup = jdbcTemplate.queryCount();
 
-        PermissionSnapshotService.PermissionSnapshot cachedSnapshot = service.loadSnapshot(1L, 1001L);
+        PermissionSnapshotService.PermissionSnapshot cachedSnapshot = service.loadSnapshot(1001L);
 
         assertTrue(cachedSnapshot.getPermissions().contains("ai:view"));
         assertEquals(queryCountAfterWarmup, jdbcTemplate.queryCount());
     }
 
     @Test
-    void invalidateTenantRefreshesTenantSessionPayloads() {
+    void invalidatePermissionsRefreshesAllSessionPayloads() {
         AuthSessionStore authSessionStore = mock(AuthSessionStore.class);
         PermissionSnapshotService service = new PermissionSnapshotService(
                 new MyBatisQueryOperations(new RecordingJdbcTemplate(List.of("ai:view"))),
@@ -105,13 +105,13 @@ class PermissionSnapshotServiceTest {
                 authSessionStore
         );
 
-        service.invalidateTenant(1001L);
+        service.invalidatePermissions();
 
-        verify(authSessionStore).refreshTenantSessionPayloads(1001L);
+        verify(authSessionStore).refreshAllSessionPayloads();
     }
 
     @Test
-    void requestedTenantIdDoesNotPartitionPlatformSnapshotCache() {
+    void requestedScopeDoesNotPartitionGlobalSnapshotCache() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("ai:view"));
         PermissionSnapshotService service = new PermissionSnapshotService(
                 new MyBatisQueryOperations(jdbcTemplate),
@@ -119,17 +119,18 @@ class PermissionSnapshotServiceTest {
                 new ObjectMapper().findAndRegisterModules()
         );
 
-        service.loadSnapshot(1L, 1001L);
+        service.loadSnapshot(1001L);
         int queryCountAfterFirstLoad = jdbcTemplate.queryCount();
 
-        service.loadSnapshot(2L, 1001L);
+        service.loadSnapshot(1001L);
 
-        assertEquals(queryCountAfterFirstLoad, jdbcTemplate.queryCount(), "Requested tenant ids should share the platform snapshot cache");
-        assertTrue(jdbcTemplate.usedTenantIds.stream().allMatch(tenantId -> tenantId == 1001L));
+        assertEquals(queryCountAfterFirstLoad, jdbcTemplate.queryCount(), "Global snapshot cache should not be partitioned by request scope");
+        assertFalse(jdbcTemplate.usedLegacyScopeIds.contains(1L));
+        assertFalse(jdbcTemplate.usedLegacyScopeIds.contains(2L));
     }
 
     @Test
-    void invalidateTenantRefreshesPlatformSnapshotRegardlessOfRequestedTenant() {
+    void invalidatePermissionsRefreshesGlobalSnapshotRegardlessOfRequestScope() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("ai:view"));
         PermissionSnapshotService service = new PermissionSnapshotService(
                 new MyBatisQueryOperations(jdbcTemplate),
@@ -137,14 +138,14 @@ class PermissionSnapshotServiceTest {
                 new ObjectMapper().findAndRegisterModules()
         );
 
-        service.loadSnapshot(1L, 1001L);
+        service.loadSnapshot(1001L);
         int queryCountAfterWarmup = jdbcTemplate.queryCount();
         assertTrue(queryCountAfterWarmup > 0);
 
-        service.invalidateTenant(2L);
+        service.invalidatePermissions();
         int queryCountAfterInvalidate = jdbcTemplate.queryCount();
 
-        service.loadSnapshot(1L, 1001L);
+        service.loadSnapshot(1001L);
         assertTrue(jdbcTemplate.queryCount() > queryCountAfterInvalidate, "Platform snapshot should be rebuilt after compatibility invalidation");
     }
 
@@ -159,9 +160,9 @@ class PermissionSnapshotServiceTest {
                 new ObjectMapper().findAndRegisterModules()
         );
 
-        service.loadSnapshot(1L, 1001L);
+        service.loadSnapshot(1001L);
         int warmupQueryCount = jdbcTemplate.queryCount();
-        service.invalidateTenant(1L);
+        service.invalidatePermissions();
         int countAfterInvalidate = jdbcTemplate.queryCount();
 
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
@@ -170,7 +171,7 @@ class PermissionSnapshotServiceTest {
             futures.add(CompletableFuture.supplyAsync(() -> {
                 try {
                     startSignal.await();
-                    return service.loadSnapshot(1L, 1001L);
+                    return service.loadSnapshot(1001L);
                 } catch (InterruptedException ex) {
                     Thread.currentThread().interrupt();
                     return null;
@@ -197,7 +198,7 @@ class PermissionSnapshotServiceTest {
     void loadSnapshotFallsBackWhenReadModelVersionServiceUnavailable() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("ai:view"));
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1001L, "IAM", "permission-snapshot"))
+        when(readModelVersionService.currentVersion("IAM", "permission-snapshot"))
                 .thenThrow(new RuntimeException("version service unavailable"));
         InMemoryCacheTemplate cacheTemplate = new InMemoryCacheTemplate();
 
@@ -210,18 +211,18 @@ class PermissionSnapshotServiceTest {
                 null
         );
 
-        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1L, 1001L);
+        PermissionSnapshotService.PermissionSnapshot snapshot = service.loadSnapshot(1001L);
         assertNotNull(snapshot);
         assertFalse(snapshot.getVersion().isBlank());
         assertTrue(snapshot.getPermissions().contains("ai:view"));
-        assertNotNull(cacheTemplate.get(CacheKeyConstants.tenantKey("1001", "permission_version")));
+        assertNotNull(cacheTemplate.get(CacheKeyConstants.globalKey("permission_version")));
     }
 
     @Test
-    void getOrCreateTenantVersionIsCachedAcrossSnapshotTypes() {
+    void globalVersionIsCachedAcrossSnapshotTypes() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(List.of("ai:view"));
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1001L, "IAM", "permission-snapshot")).thenReturn(123L);
+        when(readModelVersionService.currentVersion("IAM", "permission-snapshot")).thenReturn(123L);
         PermissionSnapshotService service = new PermissionSnapshotService(
                 new MyBatisQueryOperations(jdbcTemplate),
                 new InMemoryCacheTemplate(),
@@ -231,12 +232,12 @@ class PermissionSnapshotServiceTest {
                 null
         );
 
-        PermissionSnapshotService.PermissionSnapshot userSnapshot = service.loadSnapshot(1L, 1001L);
-        PermissionSnapshotService.PermissionSnapshot roleSnapshot = service.loadRoleSnapshot(1L, 2001L);
+        PermissionSnapshotService.PermissionSnapshot userSnapshot = service.loadSnapshot(1001L);
+        PermissionSnapshotService.PermissionSnapshot roleSnapshot = service.loadRoleSnapshot(2001L);
 
         assertEquals("v123:data-scope-cache-v4", userSnapshot.getVersion());
         assertEquals(userSnapshot.getVersion(), roleSnapshot.getVersion());
-        verify(readModelVersionService, times(1)).getOrInitialize(1001L, "IAM", "permission-snapshot");
+        verify(readModelVersionService, times(1)).currentVersion("IAM", "permission-snapshot");
     }
 
     private static PermissionSnapshotService newService(List<String> permissions) {
@@ -261,7 +262,7 @@ class PermissionSnapshotServiceTest {
                 new OwnerRuntimeMetrics(meterRegistry)
         );
 
-        service.loadSnapshot(1L, 1001L);
+        service.loadSnapshot(1001L);
 
         assertEquals(1.0, metric(meterRegistry, OwnerRuntimeMetrics.IAM_PERMISSION_SNAPSHOT_ROLE_IDS_QUERY), 0.0);
         assertEquals(1.0, metric(meterRegistry, OwnerRuntimeMetrics.IAM_PERMISSION_SNAPSHOT_PERMISSIONS_QUERY), 0.0);
@@ -273,7 +274,7 @@ class PermissionSnapshotServiceTest {
     private static final class RecordingJdbcTemplate extends JdbcTemplate {
         private final List<String> permissions;
         private final AtomicInteger queryCount = new AtomicInteger();
-        private final List<Long> usedTenantIds = java.util.Collections.synchronizedList(new ArrayList<>());
+        private final List<Long> usedLegacyScopeIds = java.util.Collections.synchronizedList(new ArrayList<>());
 
         private RecordingJdbcTemplate(List<String> permissions) {
             this.permissions = permissions;
@@ -294,7 +295,7 @@ class PermissionSnapshotServiceTest {
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             queryCount.incrementAndGet();
-            recordTenantArgs(args);
+            recordLegacyScopeArgs(args);
             try {
                 if (sql.contains("from sys_user_role ur") && sql.contains("select distinct ur.role_id")) {
                     return List.of(rowMapper.mapRow(row("role_id", 3001L), 0));
@@ -314,7 +315,7 @@ class PermissionSnapshotServiceTest {
         @Override
         public <T> List<T> queryForList(String sql, Class<T> requiredType, Object... args) {
             queryCount.incrementAndGet();
-            recordTenantArgs(args);
+            recordLegacyScopeArgs(args);
             return List.of();
         }
 
@@ -339,13 +340,13 @@ class PermissionSnapshotServiceTest {
             return resultSet;
         }
 
-        private void recordTenantArgs(Object... args) {
+        private void recordLegacyScopeArgs(Object... args) {
             if (args == null) {
                 return;
             }
             for (Object arg : args) {
-                if (arg instanceof Long tenantId && (tenantId == 1001L || tenantId == 1L || tenantId == 2L)) {
-                    usedTenantIds.add(tenantId);
+                if (arg instanceof Long scopeId && (scopeId == 1001L || scopeId == 1L || scopeId == 2L)) {
+                    usedLegacyScopeIds.add(scopeId);
                 }
             }
         }

@@ -41,11 +41,10 @@ class RedisStreamPlatformEventDispatcherTest {
     private PlatformEventOutboxEntity buildEvent() {
         PlatformEventOutboxEntity event = new PlatformEventOutboxEntity();
         event.setId(10001L);
-        event.setTenantId(1001L);
         event.setUserId(2001L);
         event.setSourceType("MESSAGE");
         event.setEventType("NOTICE_CREATED");
-        event.setEventKey("NOTICE_CREATED:1001:9001:tenant:none");
+        event.setEventKey("NOTICE_CREATED:message.notice:9001");
         event.setPayloadJson("{\"noticeId\":9001}");
         event.setTraceId("trace-1");
         event.setRequestId("request-1");

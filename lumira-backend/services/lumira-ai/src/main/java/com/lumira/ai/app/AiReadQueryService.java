@@ -11,7 +11,6 @@ import com.lumira.ai.vo.PageResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -33,7 +32,6 @@ public class AiReadQueryService {
     private static final long MAX_PAGE_SIZE = 100L;
     private static final int MAX_CONVERSATION_MESSAGES = 500;
     private static final String SCOPE_PLATFORM = "PLATFORM";
-    private static final String SCOPE_LEGACY_TENANT = "TENANT";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -42,17 +40,14 @@ public class AiReadQueryService {
     }
 
     public PageResponse<AiEmployeeVO> listEmployees(CurrentUser currentUser, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
         PageBounds bounds = pageBounds(pageNo, pageSize);
         List<AiEmployeeVO> records = jdbcTemplate.query(
                 employeeSelect("""
-                        where e.tenant_id = ?
-                          and e.is_deleted = 0
+                        where e.is_deleted = 0
                         order by e.sort_order asc, e.id desc
                         limit ? offset ?
                         """),
                 this::mapEmployee,
-                tenantId,
                 bounds.limitPlusOne(),
                 bounds.offset()
         );
@@ -60,28 +55,23 @@ public class AiReadQueryService {
     }
 
     public AiEmployeeVO getAssistantEmployee(CurrentUser currentUser) {
-        Long tenantId = currentTenantId(currentUser);
         return jdbcTemplate.query(
                 employeeSelect("""
-                        where e.tenant_id = ?
-                          and e.is_deleted = 0
+                        where e.is_deleted = 0
                           and e.enabled = 1
                         order by e.sort_order asc, e.id desc
                         limit 1
                         """),
-                this::mapEmployee,
-                tenantId
+                this::mapEmployee
         ).stream().findFirst().orElse(null);
     }
 
     public PageResponse<AiConversationVO> listConversations(CurrentUser currentUser, Long employeeId, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
         Long userId = currentUserId(currentUser);
         PageBounds bounds = pageBounds(pageNo, pageSize);
         List<AiConversationVO> records = jdbcTemplate.query(
                 """
                         select c.id,
-                               c.tenant_id,
                                c.employee_id,
                                c.owner_user_id,
                                coalesce(e.nickname, e.username, 'AI 助手') as employee_name,
@@ -92,8 +82,7 @@ public class AiReadQueryService {
                                (
                                    select m.content
                                    from ai_message m
-                                   where m.tenant_id = c.tenant_id
-                                     and m.conversation_id = c.id
+                                   where m.conversation_id = c.id
                                      and m.is_deleted = 0
                                    order by m.id desc
                                    limit 1
@@ -104,17 +93,14 @@ public class AiReadQueryService {
                         from ai_conversation c
                         left join ai_employee e
                           on e.id = c.employee_id
-                         and e.tenant_id = c.tenant_id
                          and e.is_deleted = 0
-                        where c.tenant_id = ?
-                          and c.owner_user_id = ?
+                        where c.owner_user_id = ?
                           and (? is null or c.employee_id = ?)
                           and c.is_deleted = 0
                         order by c.is_pinned desc, coalesce(c.latest_message_at, c.create_time) desc, c.id desc
                         limit ? offset ?
                         """,
                 this::mapConversation,
-                tenantId,
                 userId,
                 employeeId,
                 employeeId,
@@ -125,25 +111,22 @@ public class AiReadQueryService {
     }
 
     public List<AiMessageVO> listConversationMessages(CurrentUser currentUser, Long conversationId) {
-        Long tenantId = currentTenantId(currentUser);
         Long userId = currentUserId(currentUser);
-        requireConversation(tenantId, userId, conversationId);
+        requireConversation(userId, conversationId);
         List<AiMessageVO> messages = jdbcTemplate.query(
                 """
                         select id, conversation_id, role, content, create_time
                         from ai_message
-                        where tenant_id = ?
-                          and conversation_id = ?
+                        where conversation_id = ?
                           and is_deleted = 0
                         order by id asc
                         limit ?
                         """,
                 this::mapMessage,
-                tenantId,
                 conversationId,
                 MAX_CONVERSATION_MESSAGES
         );
-        Map<Long, List<AiMessageAttachmentVO>> attachments = loadMessageAttachments(tenantId, conversationId);
+        Map<Long, List<AiMessageAttachmentVO>> attachments = loadMessageAttachments(conversationId);
         return messages.stream()
                 .map(message -> message.withAttachments(attachments.getOrDefault(message.id(), List.of())))
                 .toList();
@@ -157,11 +140,9 @@ public class AiReadQueryService {
             long pageNo,
             long pageSize
     ) {
-        Long tenantId = currentTenantId(currentUser);
         PageBounds bounds = pageBounds(pageNo, pageSize);
-        StringBuilder where = new StringBuilder(" where kb.tenant_id = ? and kb.is_deleted = 0");
+        StringBuilder where = new StringBuilder(" where kb.is_deleted = 0");
         List<Object> args = new ArrayList<>();
-        args.add(tenantId);
         appendAccessibleKnowledgeBaseFilter(where, args, currentUser, scope);
         if (StringUtils.hasText(keyword)) {
             where.append(" and (kb.name like ? or kb.description like ?)");
@@ -187,10 +168,8 @@ public class AiReadQueryService {
     }
 
     public AiKnowledgeBaseVO getKnowledgeBase(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
-        StringBuilder where = new StringBuilder(" where kb.tenant_id = ? and kb.id = ? and kb.is_deleted = 0");
+        StringBuilder where = new StringBuilder(" where kb.id = ? and kb.is_deleted = 0");
         List<Object> args = new ArrayList<>();
-        args.add(tenantId);
         args.add(id);
         appendAccessibleKnowledgeBaseFilter(where, args, currentUser, null);
         return jdbcTemplate.query(knowledgeBaseSelect(where.toString()) + " limit 1", this::mapKnowledgeBase, args.toArray())
@@ -200,23 +179,20 @@ public class AiReadQueryService {
     }
 
     public PageResponse<AiKnowledgeDocumentVO> listKnowledgeDocuments(CurrentUser currentUser, Long knowledgeBaseId, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
         getKnowledgeBase(currentUser, knowledgeBaseId);
         PageBounds bounds = pageBounds(pageNo, pageSize);
         List<AiKnowledgeDocumentVO> records = jdbcTemplate.query(
                 """
-                        select id, tenant_id, knowledge_base_id, file_id, title, original_file_name, file_extension,
+                        select id, knowledge_base_id, file_id, title, original_file_name, file_extension,
                                mime_type, file_size_bytes, status, parse_error, extracted_char_count, chunk_count,
                                created_by, create_time, update_time
                         from ai_knowledge_document
-                        where tenant_id = ?
-                          and knowledge_base_id = ?
+                        where knowledge_base_id = ?
                           and is_deleted = 0
                         order by id desc
                         limit ? offset ?
                         """,
                 this::mapKnowledgeDocument,
-                tenantId,
                 knowledgeBaseId,
                 bounds.limitPlusOne(),
                 bounds.offset()
@@ -232,14 +208,13 @@ public class AiReadQueryService {
 
     private String employeeSelect(String tail) {
         return """
-                select e.id, e.tenant_id, e.username, e.nickname, e.position, e.avatar_key,
+                select e.id, e.username, e.nickname, e.position, e.avatar_key,
                        e.description, e.greeting, e.default_llm_service_id,
                        e.enabled, e.sort_order, e.create_time, e.update_time,
                        s.title as default_llm_service_title
                 from ai_employee e
                 left join ai_llm_service s
                   on s.id = e.default_llm_service_id
-                 and s.tenant_id = e.tenant_id
                  and s.is_deleted = 0
                 """ + tail;
     }
@@ -247,7 +222,6 @@ public class AiReadQueryService {
     private String knowledgeBaseSelect(String where) {
         return """
                 select kb.id,
-                       kb.tenant_id,
                        kb.kb_code,
                        kb.name,
                        kb.description,
@@ -261,11 +235,11 @@ public class AiReadQueryService {
                        count(c.id) as chunk_count
                 from ai_knowledge_base kb
                 left join ai_knowledge_document d
-                  on d.tenant_id = kb.tenant_id and d.knowledge_base_id = kb.id and d.is_deleted = 0
+                  on d.knowledge_base_id = kb.id and d.is_deleted = 0
                 left join ai_knowledge_chunk c
-                  on c.tenant_id = kb.tenant_id and c.knowledge_base_id = kb.id and c.is_deleted = 0
+                  on c.knowledge_base_id = kb.id and c.is_deleted = 0
                 """ + where + """
-                group by kb.id, kb.tenant_id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
+                group by kb.id, kb.kb_code, kb.name, kb.description, kb.status, kb.visibility_scope,
                          kb.owner_user_id, kb.created_by, kb.create_time, kb.update_time
                 """;
     }
@@ -273,7 +247,6 @@ public class AiReadQueryService {
     private AiEmployeeVO mapEmployee(ResultSet rs, int rowNum) throws SQLException {
         AiEmployeeVO employee = new AiEmployeeVO();
         employee.setId(rs.getLong("id"));
-        employee.setTenantId(rs.getLong("tenant_id"));
         employee.setUsername(rs.getString("username"));
         employee.setNickname(rs.getString("nickname"));
         employee.setPosition(rs.getString("position"));
@@ -293,7 +266,6 @@ public class AiReadQueryService {
     private AiConversationVO mapConversation(ResultSet rs, int rowNum) throws SQLException {
         return new AiConversationVO(
                 rs.getLong("id"),
-                rs.getLong("tenant_id"),
                 rs.getLong("employee_id"),
                 rs.getLong("owner_user_id"),
                 rs.getString("employee_name"),
@@ -322,7 +294,6 @@ public class AiReadQueryService {
     private AiKnowledgeBaseVO mapKnowledgeBase(ResultSet rs, int rowNum) throws SQLException {
         return new AiKnowledgeBaseVO(
                 rs.getLong("id"),
-                rs.getLong("tenant_id"),
                 rs.getString("kb_code"),
                 rs.getString("name"),
                 rs.getString("description"),
@@ -340,7 +311,6 @@ public class AiReadQueryService {
     private AiKnowledgeDocumentVO mapKnowledgeDocument(ResultSet rs, int rowNum) throws SQLException {
         return new AiKnowledgeDocumentVO(
                 rs.getLong("id"),
-                rs.getLong("tenant_id"),
                 rs.getLong("knowledge_base_id"),
                 objectLong(rs, "file_id"),
                 rs.getString("title"),
@@ -358,18 +328,16 @@ public class AiReadQueryService {
         );
     }
 
-    private void requireConversation(Long tenantId, Long ownerUserId, Long conversationId) {
+    private void requireConversation(Long ownerUserId, Long conversationId) {
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
                 """
                         select 1
                         from ai_conversation
-                        where tenant_id = ?
-                          and owner_user_id = ?
+                        where owner_user_id = ?
                           and id = ?
                           and is_deleted = 0
                         limit 1
                         """,
-                tenantId,
                 ownerUserId,
                 conversationId
         );
@@ -378,7 +346,7 @@ public class AiReadQueryService {
         }
     }
 
-    private Map<Long, List<AiMessageAttachmentVO>> loadMessageAttachments(Long tenantId, Long conversationId) {
+    private Map<Long, List<AiMessageAttachmentVO>> loadMessageAttachments(Long conversationId) {
         Map<Long, List<AiMessageAttachmentVO>> attachmentMap = new LinkedHashMap<>();
         jdbcTemplate.query(
                 """
@@ -395,8 +363,7 @@ public class AiReadQueryService {
                                download_url,
                                preview_mode
                         from ai_message_attachment
-                        where tenant_id = ?
-                          and conversation_id = ?
+                        where conversation_id = ?
                           and is_deleted = 0
                         order by id asc
                         """,
@@ -418,7 +385,6 @@ public class AiReadQueryService {
                     attachmentMap.computeIfAbsent(messageId, ignored -> new ArrayList<>()).add(attachment);
                     return attachment;
                 },
-                tenantId,
                 conversationId
         );
         return attachmentMap;
@@ -476,20 +442,19 @@ public class AiReadQueryService {
     }
 
     private void appendPlatformVisibilityPredicate(StringBuilder where, List<Object> args) {
-        where.append("kb.visibility_scope in (?, ?)");
+        where.append("kb.visibility_scope = ?");
         args.add(SCOPE_PLATFORM);
-        args.add(SCOPE_LEGACY_TENANT);
     }
 
     private boolean isPlatformScope(String scope) {
-        return SCOPE_PLATFORM.equals(scope) || SCOPE_LEGACY_TENANT.equals(scope);
+        return SCOPE_PLATFORM.equals(scope);
     }
 
     private String buildAclExistsClause(CurrentUser currentUser, List<Object> args) {
         List<String> permissions = List.of("VIEW", "USE", "MANAGE");
         StringBuilder clause = new StringBuilder();
-        clause.append("exists (select 1 from ai_knowledge_base_acl acl where acl.tenant_id = kb.tenant_id")
-                .append(" and acl.knowledge_base_id = kb.id and acl.is_deleted = 0 and acl.permission in (")
+        clause.append("exists (select 1 from ai_knowledge_base_acl acl where acl.knowledge_base_id = kb.id")
+                .append(" and acl.is_deleted = 0 and acl.permission in (")
                 .append("?,".repeat(permissions.size()));
         clause.setLength(clause.length() - 1);
         clause.append(") and (");
@@ -521,10 +486,10 @@ public class AiReadQueryService {
                 tool("file.object.search", "检索文件对象", "file", "按关键词、类型和状态检索文件中心对象。", "MEDIUM", true, false, "system:file:view"),
                 tool("system.config.read", "读取非敏感系统配置", "system", "按配置键读取非敏感平台配置。", "MEDIUM", true, false, "system:config:view"),
                 tool("system.menu.list", "读取系统菜单与模块入口", "system", "按当前账号权限读取系统菜单、路由、权限键和状态。", "LOW", true, false, "system:menu:view"),
-                tool("system.permission.snapshot", "读取当前权限上下文", "system", "返回当前登录用户、租户、角色、部门和权限集合。", "LOW", true, false, null),
-                tool("system.user.create", "新增系统用户", "system", "在当前租户和当前账号权限范围内新增系统用户。", "HIGH", false, true, "system:user:create"),
-                tool("system.user.search", "检索系统用户", "system", "按关键词和状态检索当前租户用户。", "MEDIUM", true, false, "system:user:view"),
-                tool("system.user.update", "编辑系统用户", "system", "在当前租户和当前账号权限范围内编辑用户基础信息、角色和部门。", "HIGH", false, true, "system:user:update")
+                tool("system.permission.snapshot", "读取当前权限上下文", "system", "返回当前登录用户、角色、部门和权限集合。", "LOW", true, false, null),
+                tool("system.user.create", "新增系统用户", "system", "在当前账号权限范围内新增系统用户。", "HIGH", false, true, "system:user:create"),
+                tool("system.user.search", "检索系统用户", "system", "按关键词和状态检索当前系统用户。", "MEDIUM", true, false, "system:user:view"),
+                tool("system.user.update", "编辑系统用户", "system", "在当前账号权限范围内编辑用户基础信息、角色和部门。", "HIGH", false, true, "system:user:update")
         );
     }
 
@@ -567,13 +532,6 @@ public class AiReadQueryService {
         long safePageNo = Math.max(1L, pageNo);
         long safePageSize = Math.min(Math.max(1L, pageSize), MAX_PAGE_SIZE);
         return new PageBounds(safePageNo, safePageSize, (safePageNo - 1L) * safePageSize);
-    }
-
-    private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
-        }
-        return PlatformContext.compatibilityTenantId();
     }
 
     private Long currentUserId(CurrentUser currentUser) {

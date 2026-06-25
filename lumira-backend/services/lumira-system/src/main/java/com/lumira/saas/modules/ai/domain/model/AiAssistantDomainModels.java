@@ -11,11 +11,8 @@ public final class AiAssistantDomainModels {
     }
 
     public static final class KnowledgeBaseAggregate extends AggregateRoot<Long> {
-        private final Long tenantId;
-
-        public KnowledgeBaseAggregate(Long knowledgeBaseId, Long tenantId) {
+        public KnowledgeBaseAggregate(Long knowledgeBaseId) {
             super(EntityId.of(knowledgeBaseId));
-            this.tenantId = tenantId;
         }
 
         public void requestIndex(Long documentId, Long fileObjectId) {
@@ -23,7 +20,6 @@ public final class AiAssistantDomainModels {
                     "AI_KNOWLEDGE_INDEX_REQUESTED",
                     "ai.knowledge-base",
                     String.valueOf(id().value()),
-                    tenantId,
                     Map.of("documentId", documentId, "fileObjectId", fileObjectId)
             ));
         }

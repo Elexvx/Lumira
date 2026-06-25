@@ -9,7 +9,6 @@ import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginMenuRelEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginPermissionRelEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginRuntimeLogEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginSchemaHistoryEntity;
-import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginTenantEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginVersionEntity;
 import com.lumira.saas.modules.plugin.mapper.PluginPersistenceMapper;
 import com.lumira.saas.modules.plugin.vo.PluginVO;
@@ -92,8 +91,8 @@ public class PluginPersistenceService {
         return pluginPersistenceMapper.listRuntimeLogs(pluginCode);
     }
 
-    public Optional<PluginVO.PluginStatusVO> pluginStatus(Long tenantId, String pluginCode) {
-        PluginVO.PluginStatusVO status = pluginPersistenceMapper.pluginStatus(tenantId, pluginCode);
+    public Optional<PluginVO.PluginStatusVO> pluginStatus(String pluginCode) {
+        PluginVO.PluginStatusVO status = pluginPersistenceMapper.pluginStatus(pluginCode);
         if (status == null) {
             return Optional.empty();
         }
@@ -145,7 +144,6 @@ public class PluginPersistenceService {
     public void activateVersion(String pluginCode, String version) {
         pluginPersistenceMapper.deactivateOtherVersions(pluginCode, version);
         pluginPersistenceMapper.activateVersion(pluginCode, version);
-        pluginPersistenceMapper.updateEnabledTenantsVersion(pluginCode, version);
     }
 
     @Transactional
@@ -226,25 +224,19 @@ public class PluginPersistenceService {
     }
 
     @Transactional
-    public void enablePluginForTenant(Long tenantId, String pluginCode, String version, String configJson, Long operatorId) {
-        PluginTenantEntity entity = new PluginTenantEntity();
-        entity.setTenantId(tenantId);
-        entity.setPluginCode(pluginCode);
-        entity.setPluginVersion(version);
-        entity.setConfigJson(configJson);
-        entity.setCreatedBy(operatorId);
-        entity.setUpdatedBy(operatorId);
-        pluginPersistenceMapper.enablePluginForTenant(entity);
+    public void enablePlugin(String pluginCode, String version, String configJson, Long operatorId) {
+        pluginPersistenceMapper.setPluginDefinitionStatus(pluginCode, "ENABLED", operatorId);
+        pluginPersistenceMapper.deactivateOtherVersions(pluginCode, version);
+        pluginPersistenceMapper.activateVersion(pluginCode, version);
     }
 
     @Transactional
-    public void disablePluginForTenant(Long tenantId, String pluginCode, Long operatorId) {
-        pluginPersistenceMapper.disablePluginForTenant(tenantId, pluginCode, operatorId);
+    public void disablePlugin(String pluginCode, Long operatorId) {
+        pluginPersistenceMapper.setPluginDefinitionStatus(pluginCode, "DISABLED", operatorId);
     }
 
     @Transactional
     public void uninstallPlugin(String pluginCode, Long operatorId) {
-        pluginPersistenceMapper.markTenantsDeletedByPlugin(pluginCode, operatorId);
         pluginPersistenceMapper.uninstallVersionsByPlugin(pluginCode, operatorId);
         pluginPersistenceMapper.markMenuRelationsDeletedByPlugin(pluginCode, operatorId);
         pluginPersistenceMapper.markPermissionRelationsDeletedByPlugin(pluginCode, operatorId);
@@ -256,7 +248,6 @@ public class PluginPersistenceService {
     public void purgePluginData(String pluginCode, Long operatorId) {
         pluginPersistenceMapper.deleteRuntimeLogsByPlugin(pluginCode);
         pluginPersistenceMapper.deleteSchemaHistoryByPlugin(pluginCode);
-        pluginPersistenceMapper.deleteTenantsByPlugin(pluginCode);
         pluginPersistenceMapper.deleteVersionsByPlugin(pluginCode);
         pluginPersistenceMapper.deleteMenuRelationsByPlugin(pluginCode);
         pluginPersistenceMapper.deletePermissionRelationsByPlugin(pluginCode);
@@ -264,20 +255,16 @@ public class PluginPersistenceService {
         pluginPersistenceMapper.deleteDefinitionByPlugin(pluginCode);
     }
 
-    public Optional<PluginTenantEntity> findTenantPlugin(Long tenantId, String pluginCode) {
-        return Optional.ofNullable(pluginPersistenceMapper.findTenantPlugin(tenantId, pluginCode));
+    public Optional<PluginVersionEntity> findEnabledVersion(String pluginCode) {
+        return Optional.ofNullable(pluginPersistenceMapper.findEnabledVersion(pluginCode));
     }
 
-    public List<PluginVO.TenantPluginVO> listTenantPlugins(Long tenantId) {
-        return pluginPersistenceMapper.listTenantPlugins(tenantId);
+    public List<PluginVO.PluginAvailabilityVO> listAvailablePlugins() {
+        return pluginPersistenceMapper.listAvailablePlugins();
     }
 
-    public List<Long> listTenantIdsForPlugin(String pluginCode) {
-        return pluginPersistenceMapper.listTenantIdsForPlugin(pluginCode);
-    }
-
-    public void bumpBootstrapVersion(Long tenantId, String eventKey) {
-        systemInternalApi.bumpReadModelVersion(tenantId, "plugin", "bootstrap", eventKey);
+    public void bumpBootstrapVersion(String eventKey) {
+        systemInternalApi.bumpReadModelVersion("plugin", "bootstrap", eventKey);
     }
 
     public List<PluginVersionEntity> listInstalledVersions(String pluginCode) {
@@ -305,7 +292,6 @@ public class PluginPersistenceService {
 
     @Transactional
     public void insertRuntimeLog(
-            Long tenantId,
             String pluginCode,
             String version,
             String operationType,
@@ -318,7 +304,6 @@ public class PluginPersistenceService {
             Long operatorId
     ) {
         PluginRuntimeLogEntity entity = new PluginRuntimeLogEntity();
-        entity.setTenantId(tenantId);
         entity.setPluginCode(pluginCode);
         entity.setPluginVersion(version);
         entity.setOperationType(operationType);
@@ -332,13 +317,12 @@ public class PluginPersistenceService {
         pluginPersistenceMapper.insertRuntimeLog(entity);
     }
 
-    public void registerTenantPermissions(Long tenantId, String pluginCode, String version) {
+    public void registerPluginPermissions(String pluginCode, String version) {
         List<PluginPermissionRelEntity> permissions = listPermissionRelations(pluginCode, version);
         if (permissions.isEmpty()) {
             return;
         }
         systemInternalApi.registerPluginPermissions(new PluginPermissionRegistrationRequestDTO(
-                tenantId,
                 pluginCode,
                 permissions.stream()
                         .map(permission -> new PluginPermissionRegistrationRequestDTO.Permission(

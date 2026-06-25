@@ -4,7 +4,6 @@ public class WorkOrderFeedbackVO {
 
     public static class WorkOrderRecord {
         private Long id;
-        private Long tenantId;
         private String title;
         private String detailHtml;
         private String priority;
@@ -19,8 +18,6 @@ public class WorkOrderFeedbackVO {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public String getTitle() { return title; }
         public void setTitle(String title) { this.title = title; }
         public String getDetailHtml() { return detailHtml; }

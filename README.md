@@ -49,6 +49,10 @@ Lumira/
 - [持久化边界治理](doc/architecture/persistence-boundary.md)
 - [持久化边界历史债务](doc/architecture/persistence-boundary-debt.md)
 
+## Release Evidence Artifacts
+
+历史 DDD release evidence 输出曾保存在 `artifacts/ddd/`，对应的专用 evidence workflow 也曾位于 `.github/workflows/ddd-release-evidence.yml`。当前主线已清理这些本地生成物并收敛 CI，只保留常规后端、前端和安全检查入口。该清理是为了避免把一次性本地证据长期当作源码维护；需要 release evidence 时，应由当前代码和环境重新生成并在对应发布记录中保存，不应继续扩大删除范围到业务源码、架构文档或运行脚本。
+
 ## 常用命令
 
 启动平台：

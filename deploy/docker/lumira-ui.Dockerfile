@@ -16,7 +16,6 @@ RUN pnpm install --frozen-lockfile
 
 COPY lumira-ui/ ./
 RUN pnpm build
-RUN node scripts/adapt-cdn-assets.mjs
 
 FROM ${NGINX_IMAGE}
 

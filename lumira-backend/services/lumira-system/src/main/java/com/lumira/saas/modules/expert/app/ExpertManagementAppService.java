@@ -3,12 +3,14 @@ package com.lumira.saas.modules.expert.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.modules.expert.dto.ExpertDTO;
 import com.lumira.saas.modules.expert.vo.ExpertVO;
+import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
+import com.lumira.saas.modules.system.vo.SystemVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -26,20 +28,23 @@ public class ExpertManagementAppService {
     private static final Set<String> STATUSES = Set.of("active", "inactive");
     private static final long MAX_PAGE_SIZE = 100L;
     private static final DateTimeFormatter EXPERT_CODE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final int[] CHINA_ID_CARD_WEIGHTS = {7, 9, 10, 5, 8, 4, 2, 1, 6, 3, 7, 9, 10, 5, 8, 4, 2};
+    private static final char[] CHINA_ID_CARD_CHECK_CODES = {'1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'};
 
     private final MyBatisQueryOperations jdbcTemplate;
+    private final SystemUserManagementAppService systemUserManagementAppService;
 
-    public ExpertManagementAppService(MyBatisQueryOperations jdbcTemplate) {
+    public ExpertManagementAppService(MyBatisQueryOperations jdbcTemplate, SystemUserManagementAppService systemUserManagementAppService) {
         this.jdbcTemplate = jdbcTemplate;
+        this.systemUserManagementAppService = systemUserManagementAppService;
     }
 
     public PageResponse<ExpertVO.Expert> listExperts(CurrentUser currentUser, String keyword, String status, long pageNo, long pageSize) {
-        Long tenantId = requireTenantId(currentUser);
+        requireAuthenticated(currentUser);
         long normalizedPageNo = Math.max(1L, pageNo);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         List<Object> params = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" from aiadc_expert where tenant_id = ? and deleted = 0");
-        params.add(tenantId);
+        StringBuilder where = new StringBuilder(" from aiadc_expert where deleted = 0");
         if (StringUtils.hasText(keyword)) {
             where.append(" and (name like ? or code like ? or title like ? or organization like ? or expertise like ? or tags like ?)");
             String pattern = "%" + keyword.trim() + "%";
@@ -75,7 +80,8 @@ public class ExpertManagementAppService {
     }
 
     public ExpertVO.Expert getExpert(CurrentUser currentUser, Long id) {
-        ExpertVO.Expert expert = findExpert(requireTenantId(currentUser), id);
+        requireAuthenticated(currentUser);
+        ExpertVO.Expert expert = findExpert(id);
         if (expert == null) {
             throw biz(ErrorCode.NOT_FOUND, "Expert not found");
         }
@@ -84,17 +90,15 @@ public class ExpertManagementAppService {
 
     @Transactional
     public ExpertVO.Expert createExpert(CurrentUser currentUser, ExpertDTO.ExpertUpsertRequest request) {
-        Long tenantId = requireTenantId(currentUser);
         Long userId = requireUserId(currentUser);
         ExpertDTO.ExpertUpsertRequest normalized = normalizeRequest(request, generateExpertCode());
         jdbcTemplate.update(
                 """
                         insert into aiadc_expert (
-                            tenant_id, code, name, title, organization, position, expertise,
-                            phone, email, avatar_url, bio, tags, status, sort, created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            code, name, title, organization, position, expertise,
+                            phone, mobile, id_card_number, email, avatar_url, bio, tags, status, sort, created_by, updated_by, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
-                tenantId,
                 normalized.getCode(),
                 normalized.getName(),
                 normalized.getTitle(),
@@ -102,6 +106,8 @@ public class ExpertManagementAppService {
                 normalized.getPosition(),
                 normalized.getExpertise(),
                 normalized.getPhone(),
+                normalized.getMobile(),
+                normalized.getIdCardNumber(),
                 normalized.getEmail(),
                 normalized.getAvatarUrl(),
                 normalized.getBio(),
@@ -112,13 +118,15 @@ public class ExpertManagementAppService {
                 userId
         );
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        return getExpert(currentUser, id);
+        String initialPassword = createExpertAccount(currentUser, id, normalized);
+        ExpertVO.Expert expert = getExpert(currentUser, id);
+        expert.setInitialPassword(initialPassword);
+        return expert;
     }
 
     @Transactional
     public ExpertVO.Expert updateExpert(CurrentUser currentUser, Long id, ExpertDTO.ExpertUpsertRequest request) {
-        Long tenantId = requireTenantId(currentUser);
-        ExpertVO.Expert existing = findExpert(tenantId, id);
+        ExpertVO.Expert existing = findExpert(id);
         if (existing == null) {
             throw biz(ErrorCode.NOT_FOUND, "Expert not found");
         }
@@ -127,9 +135,9 @@ public class ExpertManagementAppService {
                 """
                         update aiadc_expert
                         set code = ?, name = ?, title = ?, organization = ?, position = ?, expertise = ?,
-                            phone = ?, email = ?, avatar_url = ?, bio = ?, tags = ?, status = ?, sort = ?,
+                            phone = ?, mobile = ?, id_card_number = ?, email = ?, avatar_url = ?, bio = ?, tags = ?, status = ?, sort = ?,
                             updated_by = ?, updated_at = ?
-                        where tenant_id = ? and id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 normalized.getCode(),
                 normalized.getName(),
@@ -138,6 +146,8 @@ public class ExpertManagementAppService {
                 normalized.getPosition(),
                 normalized.getExpertise(),
                 normalized.getPhone(),
+                normalized.getMobile(),
+                normalized.getIdCardNumber(),
                 normalized.getEmail(),
                 normalized.getAvatarUrl(),
                 normalized.getBio(),
@@ -146,7 +156,6 @@ public class ExpertManagementAppService {
                 normalized.getSort(),
                 requireUserId(currentUser),
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
         if (updated == 0) {
@@ -158,10 +167,9 @@ public class ExpertManagementAppService {
     @Transactional
     public boolean deleteExpert(CurrentUser currentUser, Long id) {
         int updated = jdbcTemplate.update(
-                "update aiadc_expert set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and id = ? and deleted = 0",
+                "update aiadc_expert set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 requireUserId(currentUser),
                 LocalDateTime.now(),
-                requireTenantId(currentUser),
                 id
         );
         if (updated == 0) {
@@ -170,11 +178,10 @@ public class ExpertManagementAppService {
         return true;
     }
 
-    private ExpertVO.Expert findExpert(Long tenantId, Long id) {
+    private ExpertVO.Expert findExpert(Long id) {
         List<ExpertVO.Expert> records = jdbcTemplate.query(
-                expertSelect() + " from aiadc_expert where tenant_id = ? and id = ? and deleted = 0 limit 1",
+                expertSelect() + " from aiadc_expert where id = ? and deleted = 0 limit 1",
                 new BeanPropertyRowMapper<>(ExpertVO.Expert.class),
-                tenantId,
                 id
         );
         return records.isEmpty() ? null : records.get(0);
@@ -184,15 +191,17 @@ public class ExpertManagementAppService {
         ExpertDTO.ExpertUpsertRequest normalized = new ExpertDTO.ExpertUpsertRequest();
         normalized.setCode(StringUtils.hasText(request.getCode()) ? request.getCode().trim() : trimRequired(fallbackCode, "Expert code is required"));
         normalized.setName(trimRequired(request.getName(), "Expert name is required"));
-        normalized.setTitle(trimToNull(request.getTitle()));
+        normalized.setTitle(validateOptionalDictValue("aiadc_expert_title", trimToNull(request.getTitle()), "专家头衔"));
         normalized.setOrganization(trimToNull(request.getOrganization()));
-        normalized.setPosition(trimToNull(request.getPosition()));
-        normalized.setExpertise(trimRequired(request.getExpertise(), "Expertise is required"));
+        normalized.setPosition(validateOptionalDictValue("aiadc_expert_position", trimToNull(request.getPosition()), "职务"));
+        normalized.setExpertise(validateDictValues("aiadc_expert_expertise", trimRequired(request.getExpertise(), "Expertise is required"), "专业领域"));
         normalized.setPhone(trimToNull(request.getPhone()));
+        normalized.setMobile(trimToNull(request.getMobile()));
+        normalized.setIdCardNumber(normalizeIdCardNumber(request.getIdCardNumber()));
         normalized.setEmail(trimToNull(request.getEmail()));
         normalized.setAvatarUrl(trimToNull(request.getAvatarUrl()));
         normalized.setBio(trimToNull(request.getBio()));
-        normalized.setTags(trimToNull(request.getTags()));
+        normalized.setTags(validateDictValues("aiadc_expert_tag", trimToNull(request.getTags()), "标签"));
         normalized.setStatus(StringUtils.hasText(request.getStatus()) ? normalizeStatus(request.getStatus()) : "active");
         normalized.setSort(request.getSort() == null ? 100 : request.getSort());
         return normalized;
@@ -203,6 +212,48 @@ public class ExpertManagementAppService {
         return "exp-" + LocalDateTime.now().format(EXPERT_CODE_TIME_FORMATTER) + "-" + random;
     }
 
+    private String createExpertAccount(CurrentUser currentUser, Long expertId, ExpertDTO.ExpertUpsertRequest expert) {
+        String username = "expert_" + expert.getCode().replaceAll("[^A-Za-z0-9_-]", "_");
+        String initialPassword = generateInitialPassword();
+        SystemDTO.UserUpsertRequest userRequest = new SystemDTO.UserUpsertRequest();
+        userRequest.setUsername(username);
+        userRequest.setPassword(initialPassword);
+        userRequest.setMobile(expert.getMobile());
+        userRequest.setEmail(expert.getEmail());
+        userRequest.setRealName(expert.getName());
+        userRequest.setNickname(expert.getName());
+        userRequest.setStatus("ENABLED");
+        Long expertRoleId = findRoleId("EXPERT");
+        userRequest.setRoleIds(expertRoleId == null ? List.of() : List.of(expertRoleId));
+        SystemVO.UserDetailVO createdUser = systemUserManagementAppService.createUser(currentUser, userRequest);
+        jdbcTemplate.update(
+                """
+                        update aiadc_expert
+                        set user_id = ?, account_status = 'ENABLED', initial_password_reset_required = 1,
+                            updated_by = ?, updated_at = ?
+                        where id = ? and deleted = 0
+                        """,
+                createdUser.getId(),
+                requireUserId(currentUser),
+                LocalDateTime.now(),
+                expertId
+        );
+        return initialPassword;
+    }
+
+    private Long findRoleId(String roleCode) {
+        return jdbcTemplate.queryForObject(
+                "select id from sys_role where role_code = ? and deleted = 0 limit 1",
+                Long.class,
+                roleCode
+        );
+    }
+
+    private String generateInitialPassword() {
+        String random = Long.toString(ThreadLocalRandom.current().nextLong(36L * 36L * 36L * 36L * 36L * 36L), 36);
+        return "Ex" + random + "Aa1!";
+    }
+
     private String normalizeStatus(String status) {
         String normalized = status.trim().toLowerCase(Locale.ROOT);
         if (!STATUSES.contains(normalized)) {
@@ -211,11 +262,10 @@ public class ExpertManagementAppService {
         return normalized;
     }
 
-    private Long requireTenantId(CurrentUser currentUser) {
+    private void requireAuthenticated(CurrentUser currentUser) {
         if (currentUser == null) {
             throw biz(ErrorCode.UNAUTHORIZED, "Login required");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 
     private Long requireUserId(CurrentUser currentUser) {
@@ -237,10 +287,86 @@ public class ExpertManagementAppService {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
+    private String validateOptionalDictValue(String dictCode, String value, String label) {
+        if (value == null || !dictTypeExists(dictCode)) {
+            return value;
+        }
+        if (!dictItemExists(dictCode, value)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, label + "必须来自字典管理");
+        }
+        return value;
+    }
+
+    private String validateDictValues(String dictCode, String value, String label) {
+        if (value == null || !dictTypeExists(dictCode)) {
+            return value;
+        }
+        List<String> values = List.of(value.split(",")).stream()
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList();
+        if (values.isEmpty()) {
+            return null;
+        }
+        for (String itemValue : values) {
+            if (!dictItemExists(dictCode, itemValue)) {
+                throw biz(ErrorCode.VALIDATION_ERROR, label + "必须来自字典管理");
+            }
+        }
+        return String.join(",", values);
+    }
+
+    private boolean dictTypeExists(String dictCode) {
+        Long count = jdbcTemplate.queryForObject(
+                "select count(1) from sys_dict_type where dict_code = ? and status = 'ENABLED' and deleted = 0",
+                Long.class,
+                dictCode
+        );
+        return count != null && count > 0;
+    }
+
+    private boolean dictItemExists(String dictCode, String itemValue) {
+        Long count = jdbcTemplate.queryForObject(
+                """
+                        select count(1)
+                        from sys_dict_type dt
+                        join sys_dict_item di on di.dict_type_id = dt.id
+                        where dt.dict_code = ? and dt.status = 'ENABLED' and dt.deleted = 0
+                          and di.item_value = ? and di.status = 'ENABLED' and di.deleted = 0
+                """,
+                Long.class,
+                dictCode,
+                itemValue
+        );
+        return count != null && count > 0;
+    }
+
+    private String normalizeIdCardNumber(String value) {
+        String normalized = trimToNull(value);
+        if (normalized == null) {
+            return null;
+        }
+        normalized = normalized.toUpperCase(Locale.ROOT);
+        if (normalized.length() == 18 && !hasValidIdCardChecksum(normalized)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "请输入有效身份证号码");
+        }
+        return normalized;
+    }
+
+    private boolean hasValidIdCardChecksum(String value) {
+        int sum = 0;
+        for (int index = 0; index < CHINA_ID_CARD_WEIGHTS.length; index += 1) {
+            sum += Character.digit(value.charAt(index), 10) * CHINA_ID_CARD_WEIGHTS[index];
+        }
+        return CHINA_ID_CARD_CHECK_CODES[sum % 11] == value.charAt(17);
+    }
+
     private String expertSelect() {
         return """
-                select id, tenant_id as tenantId, code, name, title, organization, position, expertise,
-                       phone, email, avatar_url as avatarUrl, bio, tags, status, sort,
+                select id, code, name, title, organization, position, expertise,
+                       phone, mobile, id_card_number as idCardNumber, user_id as userId, account_status as accountStatus,
+                       initial_password_reset_required as initialPasswordResetRequired,
+                       email, avatar_url as avatarUrl, bio, tags, status, sort,
                        created_at as createdAt, updated_at as updatedAt
                 """;
     }

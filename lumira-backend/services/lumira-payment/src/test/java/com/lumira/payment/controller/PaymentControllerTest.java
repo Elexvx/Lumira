@@ -19,17 +19,14 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class PaymentControllerTest {
 
     @Test
-    void createOrder_shouldUsePlatformTenantInsteadOfCurrentUserTenant() {
+    void createOrder_shouldUseCurrentUserAsOperator() {
         PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
         PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
         PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
@@ -42,7 +39,7 @@ class PaymentControllerTest {
                 securityContextFacade,
                 permissionGuard
         );
-        CurrentUser currentUser = new CurrentUser(42L, "alice", 2002L, "session-1", 1, true, Set.of("payment:order:create"));
+        CurrentUser currentUser = new CurrentUser(42L, "alice", 0L, "session-1", 1, true, Set.of("payment:order:create"));
         PaymentCreateOrderRequestDTO request = new PaymentCreateOrderRequestDTO(
                 "stripe",
                 "ORD-1",
@@ -57,17 +54,17 @@ class PaymentControllerTest {
         );
         PaymentOrderDTO order = new PaymentOrderDTO("ORD-1", "stripe", "po_1", "subscription", 9900L, "CNY", "PENDING", null, null, null, null, Map.of(), null, null, null, null, null);
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(paymentTransactionService.createOrder(1001L, 42L, request)).thenReturn(order);
+        when(paymentTransactionService.createOrder(42L, request)).thenReturn(order);
 
         var response = controller.createOrder(request);
 
         assertThat(response.getData()).isSameAs(order);
         verify(permissionGuard).requirePermission(currentUser, "payment:order:create");
-        verify(paymentTransactionService).createOrder(1001L, 42L, request);
+        verify(paymentTransactionService).createOrder(42L, request);
     }
 
     @Test
-    void webhook_shouldResolveTenantFromProviderIdentityInsteadOfTenantHeader() {
+    void webhook_shouldForwardProviderHeaders() {
         PaymentManagementAppService paymentManagementAppService = mock(PaymentManagementAppService.class);
         PaymentTransactionService paymentTransactionService = mock(PaymentTransactionService.class);
         PaymentWebhookService paymentWebhookService = mock(PaymentWebhookService.class);
@@ -79,7 +76,6 @@ class PaymentControllerTest {
                 mock(PermissionGuard.class)
         );
         Map<String, String> headers = Map.of(
-                "X-Tenant-Id", "9999",
                 "X-Webhook-Token", "endpoint-token"
         );
         HttpServletRequest request = requestWithHeaders(headers);
@@ -98,7 +94,6 @@ class PaymentControllerTest {
         var response = controller.webhook("stripe", "{}", request);
 
         assertThat(response.getData()).isSameAs(event);
-        verify(paymentManagementAppService, never()).resolveWebhookTenantId(anyString(), anyString(), anyMap());
         verify(paymentWebhookService).handleWebhook("stripe", "{}", headers);
     }
 

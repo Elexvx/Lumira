@@ -24,7 +24,7 @@ class UploadResourceSecurityInterceptorTest {
         FileObjectMapper mapper = mock(FileObjectMapper.class);
         FileStorageSpaceMapper storageSpaceMapper = mock(FileStorageSpaceMapper.class);
         when(mapper.selectOne(anyWrapper())).thenReturn(publicFile());
-        when(storageSpaceMapper.findByStorageKey(1001L, "local")).thenReturn(storageSpace(true, "ENABLED"));
+        when(storageSpaceMapper.findByStorageKey("local")).thenReturn(storageSpace(true, "ENABLED"));
         UploadResourceSecurityInterceptor interceptor = new UploadResourceSecurityInterceptor(mapper, storageSpaceMapper);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -53,7 +53,7 @@ class UploadResourceSecurityInterceptorTest {
         FileObjectMapper mapper = mock(FileObjectMapper.class);
         FileStorageSpaceMapper storageSpaceMapper = mock(FileStorageSpaceMapper.class);
         when(mapper.selectOne(anyWrapper())).thenReturn(publicFile());
-        when(storageSpaceMapper.findByStorageKey(1001L, "local")).thenReturn(storageSpace(true, "ENABLED"));
+        when(storageSpaceMapper.findByStorageKey("local")).thenReturn(storageSpace(true, "ENABLED"));
         UploadResourceSecurityInterceptor interceptor = new UploadResourceSecurityInterceptor(mapper, storageSpaceMapper);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -68,7 +68,7 @@ class UploadResourceSecurityInterceptorTest {
         FileObjectMapper mapper = mock(FileObjectMapper.class);
         FileStorageSpaceMapper storageSpaceMapper = mock(FileStorageSpaceMapper.class);
         when(mapper.selectOne(anyWrapper())).thenReturn(publicFile());
-        when(storageSpaceMapper.findByStorageKey(1001L, "local")).thenReturn(storageSpace(false, "ENABLED"));
+        when(storageSpaceMapper.findByStorageKey("local")).thenReturn(storageSpace(false, "ENABLED"));
         UploadResourceSecurityInterceptor interceptor = new UploadResourceSecurityInterceptor(mapper, storageSpaceMapper);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -91,7 +91,6 @@ class UploadResourceSecurityInterceptorTest {
 
     private static FileObjectEntity publicFile() {
         FileObjectEntity entity = new FileObjectEntity();
-        entity.setTenantId(1001L);
         entity.setBucket("local");
         return entity;
     }

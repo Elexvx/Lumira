@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public record PasskeyCredentialDTO(
         Long id,
-        Long tenantId,
         Long userId,
         String username,
         String userHandle,

@@ -6,7 +6,6 @@
 
     <sql id="noticeColumns">
         n.id,
-        n.tenant_id as tenantId,
         n.notice_type as messageType,
         n.target_scope as targetScope,
         n.target_user_id as targetUserId,
@@ -28,14 +27,13 @@
 
     <sql id="noticeJoins">
         left join msg_notice_read r
-          on r.tenant_id = n.tenant_id
-         and r.notice_id = n.id
+          on r.notice_id = n.id
          and r.user_id = #{userId}
          and r.deleted = 0
     </sql>
 
 	    <sql id="visiblePredicate">
-	        (n.target_scope = 'TENANT'
+	        (n.target_scope = 'PLATFORM'
 	         or (n.target_scope = 'USER' and n.target_user_id = #{userId})
 	         <if test="roleIds != null and roleIds.size() > 0">
 	             or (n.target_scope = 'ROLE' and n.target_role_id in
@@ -48,7 +46,7 @@
 	    </sql>
 
 	    <sql id="archiveVisiblePredicate">
-	        (n.target_scope = 'TENANT'
+	        (n.target_scope = 'PLATFORM'
 	         or (n.target_scope = 'USER' and n.target_user_id = #{query.userId})
 	         <if test="query.roleIds != null and query.roleIds.size() > 0">
 	             or (n.target_scope = 'ROLE' and n.target_role_id in
@@ -61,8 +59,7 @@
 	    </sql>
 
     <sql id="archiveFilters">
-        n.tenant_id = #{query.tenantId}
-        and n.deleted = 0
+        n.deleted = 0
 	        <if test="!query.manageArchive">
 	            and (
 	                n.created_by = #{query.userId}
@@ -96,8 +93,7 @@
         select <include refid="noticeColumns"/>
         from msg_notice n force index (idx_msg_notice_visible_recent)
         <include refid="noticeJoins"/>
-        where n.tenant_id = #{tenantId}
-          and n.deleted = 0
+        where n.deleted = 0
           and n.publish_status = 'PUBLISHED'
           and <include refid="visiblePredicate"/>
         order by n.id desc
@@ -109,15 +105,13 @@
         from (
             select n.id
             from msg_notice n force index (idx_msg_notice_visible_recent)
-            where n.tenant_id = #{tenantId}
-              and n.deleted = 0
+            where n.deleted = 0
               and n.publish_status = 'PUBLISHED'
               and <include refid="visiblePredicate"/>
               and not exists (
                     select 1
                     from msg_notice_read r
                     where r.notice_id = n.id
-                      and r.tenant_id = n.tenant_id
                       and r.user_id = #{userId}
                       and r.deleted = 0
               )
@@ -127,25 +121,22 @@
 
     <insert id="markAllRead">
         insert into msg_notice_read (
-            tenant_id, notice_id, user_id, read_at, created_by, updated_by, deleted
+            notice_id, user_id, read_at, created_by, updated_by, deleted
         )
-        select n.tenant_id,
-               n.id,
+        select n.id,
                #{userId},
                #{readAt},
                #{userId},
                #{userId},
                0
         from msg_notice n force index (idx_msg_notice_visible_recent)
-        where n.tenant_id = #{tenantId}
-          and n.deleted = 0
+        where n.deleted = 0
           and n.publish_status = 'PUBLISHED'
           and <include refid="visiblePredicate"/>
           and not exists (
                 select 1
                 from msg_notice_read r
                 where r.notice_id = n.id
-                  and r.tenant_id = n.tenant_id
                   and r.user_id = #{userId}
                   and r.deleted = 0
           )
@@ -187,8 +178,7 @@
         select <include refid="noticeColumns"/>
         from msg_notice n
         <include refid="noticeJoins"/>
-        where n.tenant_id = #{tenantId}
-          and n.id = #{noticeId}
+        where n.id = #{noticeId}
           and n.deleted = 0
         limit 1
     </select>
@@ -197,16 +187,15 @@
         select <include refid="noticeColumns"/>
         from msg_notice n
         <include refid="noticeJoins"/>
-        where n.tenant_id = #{tenantId}
-          and n.id = #{noticeId}
+        where n.id = #{noticeId}
           and n.deleted = 0
           and <include refid="visiblePredicate"/>
         limit 1
     </select>
 
     <insert id="upsertRead">
-        insert into msg_notice_read (tenant_id, notice_id, user_id, read_at, created_by, updated_by, deleted)
-        values (#{tenantId}, #{noticeId}, #{userId}, #{readAt}, #{userId}, #{userId}, 0)
+        insert into msg_notice_read (notice_id, user_id, read_at, created_by, updated_by, deleted)
+        values (#{noticeId}, #{userId}, #{readAt}, #{userId}, #{userId}, 0)
         on duplicate key update read_at = values(read_at), updated_at = values(updated_at), deleted = 0
     </insert>
 

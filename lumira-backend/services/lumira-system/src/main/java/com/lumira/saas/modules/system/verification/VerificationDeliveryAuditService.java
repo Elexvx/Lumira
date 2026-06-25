@@ -17,7 +17,6 @@ public class VerificationDeliveryAuditService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void log(
-            Long tenantId,
             Long userId,
             String username,
             String channel,
@@ -28,11 +27,10 @@ public class VerificationDeliveryAuditService {
         jdbcTemplate.update(
                 """
                         insert into audit_operation_log (
-                            tenant_id, user_id, username, module_name, action_name, operation_type,
+                            user_id, username, module_name, action_name, operation_type,
                             result_status, detail_message, request_id, trace_id, created_by, deleted
-                        ) values (?, ?, ?, 'verification', ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, 'verification', ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
-                tenantId,
                 userId,
                 username,
                 scene,

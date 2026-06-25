@@ -5,7 +5,6 @@ import com.lumira.common.exception.BizException;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.iam.domain.model.IamDomainModels.RoleAggregate;
@@ -37,7 +36,6 @@ import java.util.stream.Collectors;
 @Service
 public class SystemRoleManagementAppService {
 
-    private static final Long DEFAULT_PUBLIC_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
     private static final String DEFAULT_HOME_PATH = "/dashboard/home";
@@ -98,13 +96,11 @@ public class SystemRoleManagementAppService {
     }
 
     public PageResponse<SystemVO.RoleVO> listRoles(CurrentUser currentUser, String roleCode, String roleName, String roleType, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
         String baseSql = """
                 from sys_role r
-                where r.tenant_id = ? and r.deleted = 0
+                where r.deleted = 0
                 """;
         List<Object> params = new ArrayList<>();
-        params.add(tenantId);
         if (StringUtils.hasText(roleCode)) {
             baseSql += " and r.role_code like ?";
             params.add(like(roleCode));
@@ -118,17 +114,17 @@ public class SystemRoleManagementAppService {
             params.add(roleType);
         }
         String selectSql = """
-                select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
+                select r.id, r.role_code as roleCode, r.role_name as roleName,
                        r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
                 """ + baseSql + " order by r.id desc";
         PageResponse<SystemVO.RoleVO> page = pageQuery(selectSql, "select count(1) " + baseSql, SystemVO.RoleVO.class, pageNo, pageSize, params);
-        String defaultRegistrationRoleCode = resolveDefaultRegistrationRoleCode(tenantId);
+        String defaultRegistrationRoleCode = resolveDefaultRegistrationRoleCode();
         CompletableFuture<Map<Long, Integer>> permissionCountsFuture = CompletableFuture.supplyAsync(
-                () -> countRolePermissions(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList(), tenantId),
+                () -> countRolePermissions(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList()),
                 BLOCKING_IO_EXECUTOR
         );
         CompletableFuture<Map<Long, Integer>> userCountsFuture = CompletableFuture.supplyAsync(
-                () -> countRoleUsers(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList(), tenantId),
+                () -> countRoleUsers(page.getRecords().stream().map(SystemVO.RoleVO::getId).toList()),
                 BLOCKING_IO_EXECUTOR
         );
         Map<Long, Integer> permissionCounts = permissionCountsFuture.join();
@@ -143,135 +139,123 @@ public class SystemRoleManagementAppService {
     }
 
     public SystemVO.RoleDetailVO getRole(CurrentUser currentUser, Long roleId) {
-        Long tenantId = currentTenantId(currentUser);
         SystemVO.RoleVO role = queryOne(
                 """
-                        select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
+                        select r.id, r.role_code as roleCode, r.role_name as roleName,
                                r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
                         from sys_role r
-                        where r.id = ? and r.tenant_id = ? and r.deleted = 0
+                        where r.id = ? and r.deleted = 0
                         """,
                 SystemVO.RoleVO.class,
-                roleId,
-                tenantId
+                roleId
         );
         if (role == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
         }
         SystemVO.RoleDetailVO detail = new SystemVO.RoleDetailVO();
         copyRole(detail, role);
-        CompletableFuture<Integer> permissionCountFuture = CompletableFuture.supplyAsync(() -> countRolePermissions(roleId, tenantId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<Integer> userCountFuture = CompletableFuture.supplyAsync(() -> countRoleUsers(roleId, tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Integer> permissionCountFuture = CompletableFuture.supplyAsync(() -> countRolePermissions(roleId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Integer> userCountFuture = CompletableFuture.supplyAsync(() -> countRoleUsers(roleId), BLOCKING_IO_EXECUTOR);
         detail.setPermissionCount(permissionCountFuture.join());
         detail.setUserCount(userCountFuture.join());
-        detail.setDefaultRegistrationRole(role.getRoleCode() != null && role.getRoleCode().equals(resolveDefaultRegistrationRoleCode(tenantId)));
-        detail.setPermissionKeys(listRolePermissionKeys(roleId, tenantId));
-        detail.setDataScopes(listRoleDataScopes(roleId, tenantId));
+        detail.setDefaultRegistrationRole(role.getRoleCode() != null && role.getRoleCode().equals(resolveDefaultRegistrationRoleCode()));
+        detail.setPermissionKeys(listRolePermissionKeys(roleId));
+        detail.setDataScopes(listRoleDataScopes(roleId));
         return detail;
     }
 
     public SystemVO.DefaultRegistrationRoleVO getDefaultRegistrationRole(CurrentUser currentUser) {
-        Long tenantId = currentTenantId(currentUser);
-        String roleCode = resolveDefaultRegistrationRoleCode(tenantId);
+        String roleCode = resolveDefaultRegistrationRoleCode();
         SystemVO.RoleVO role = queryOne(
                 """
-                        select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
+                        select r.id, r.role_code as roleCode, r.role_name as roleName,
                                r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
                         from sys_role r
-                        where r.tenant_id = ? and r.role_code = ? and r.deleted = 0
+                        where r.role_code = ? and r.deleted = 0
                         order by r.id desc
                         limit 1
                         """,
                 SystemVO.RoleVO.class,
-                tenantId,
                 roleCode
         );
         if (role == null) {
             role = queryOne(
                     """
-                            select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
+                            select r.id, r.role_code as roleCode, r.role_name as roleName,
                                    r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
                             from sys_role r
-                            where r.tenant_id = ? and r.role_code = ? and r.deleted = 0
+                            where r.role_code = ? and r.deleted = 0
                             order by r.id desc
                             limit 1
                             """,
                     SystemVO.RoleVO.class,
-                    tenantId,
                     DEFAULT_REGISTRATION_ROLE_CODE
             );
         }
         if (role == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "默认注册角色不存在，请先创建可用角色");
         }
-        return toDefaultRegistrationRole(tenantId, role);
+        return toDefaultRegistrationRole(role);
     }
 
     @Transactional
     public SystemVO.DefaultRegistrationRoleVO updateDefaultRegistrationRole(CurrentUser currentUser, Long roleId) {
-        Long tenantId = currentTenantId(currentUser);
         SystemVO.RoleVO role = queryOne(
                 """
-                        select r.id, r.tenant_id as tenantId, r.role_code as roleCode, r.role_name as roleName,
+                        select r.id, r.role_code as roleCode, r.role_name as roleName,
                                r.role_type as roleType, r.default_home_path as defaultHomePath, r.created_at as createdAt, r.updated_at as updatedAt
                         from sys_role r
-                        where r.id = ? and r.tenant_id = ? and r.deleted = 0
+                        where r.id = ? and r.deleted = 0
                         """,
                 SystemVO.RoleVO.class,
-                roleId,
-                tenantId
+                roleId
         );
         if (role == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "角色不存在");
         }
         upsertConfigValue(
-                tenantId,
                 DEFAULT_REGISTRATION_ROLE_CODE_KEY,
                 "默认注册角色",
                 role.getRoleCode(),
                 "用户通过注册或验证码自动注册后默认绑定的角色编码",
                 currentUser.getUserId()
         );
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "default-registration", "UPDATE", "SUCCESS", "更新默认注册角色: " + role.getRoleName());
-        return toDefaultRegistrationRole(tenantId, role);
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "role", "default-registration", "UPDATE", "SUCCESS", "更新默认注册角色: " + role.getRoleName());
+        return toDefaultRegistrationRole(role);
     }
 
     @Transactional
     public SystemVO.RoleDetailVO createRole(CurrentUser currentUser, SystemDTO.RoleUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        Long roleId = upsertRole(null, tenantId, request, currentUser.getUserId());
-        replaceRolePermissionsWithDomainEvent(tenantId, roleId, Set.of(), request.getPermissionKeys(), currentUser.getUserId());
-        replaceRoleDataScopes(tenantId, roleId, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), true);
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "create", "CREATE", "SUCCESS", "创建角色: " + request.getRoleName());
+        Long roleId = upsertRole(null, request, currentUser.getUserId());
+        replaceRolePermissionsWithDomainEvent(roleId, Set.of(), request.getPermissionKeys(), currentUser.getUserId());
+        replaceRoleDataScopes(roleId, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), true);
+        permissionSnapshotService.invalidatePermissions();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "role", "create", "CREATE", "SUCCESS", "创建角色: " + request.getRoleName());
         return getRole(currentUser, roleId);
     }
 
     @Transactional
     public SystemVO.RoleDetailVO updateRole(CurrentUser currentUser, Long roleId, SystemDTO.RoleUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        Set<String> existingPermissions = new LinkedHashSet<>(listRolePermissionKeys(roleId, tenantId));
-        upsertRole(roleId, tenantId, request, currentUser.getUserId());
-        replaceRolePermissionsWithDomainEvent(tenantId, roleId, existingPermissions, request.getPermissionKeys(), currentUser.getUserId());
-        replaceRoleDataScopes(tenantId, roleId, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), false);
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "update", "UPDATE", "SUCCESS", "更新角色: " + request.getRoleName());
+        Set<String> existingPermissions = new LinkedHashSet<>(listRolePermissionKeys(roleId));
+        upsertRole(roleId, request, currentUser.getUserId());
+        replaceRolePermissionsWithDomainEvent(roleId, existingPermissions, request.getPermissionKeys(), currentUser.getUserId());
+        replaceRoleDataScopes(roleId, request.getDataScopes(), request.getRoleCode(), currentUser.getUserId(), false);
+        permissionSnapshotService.invalidatePermissions();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "role", "update", "UPDATE", "SUCCESS", "更新角色: " + request.getRoleName());
         return getRole(currentUser, roleId);
     }
 
     @Transactional
     public boolean updateRolePermissions(CurrentUser currentUser, Long roleId, List<String> permissionKeys) {
-        Long tenantId = currentTenantId(currentUser);
-        Set<String> existingPermissions = new LinkedHashSet<>(listRolePermissionKeys(roleId, tenantId));
-        replaceRolePermissionsWithDomainEvent(tenantId, roleId, existingPermissions, permissionKeys, currentUser.getUserId());
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "permissions", "UPDATE", "SUCCESS", "更新角色权限: " + roleId);
+        Set<String> existingPermissions = new LinkedHashSet<>(listRolePermissionKeys(roleId));
+        replaceRolePermissionsWithDomainEvent(roleId, existingPermissions, permissionKeys, currentUser.getUserId());
+        permissionSnapshotService.invalidatePermissions();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "role", "permissions", "UPDATE", "SUCCESS", "更新角色权限: " + roleId);
         return true;
     }
 
     @Transactional
     public boolean deleteRole(CurrentUser currentUser, Long roleId) {
-        Long tenantId = currentTenantId(currentUser);
         SystemVO.RoleDetailVO role = getRole(currentUser, roleId);
         if (Boolean.TRUE.equals(role.getDefaultRegistrationRole())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "默认注册角色不允许删除");
@@ -280,48 +264,46 @@ public class SystemRoleManagementAppService {
         if (userCount > 0) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "角色已被用户占用，请先移除用户角色关系");
         }
-        RoleAggregate roleAggregate = new RoleAggregate(roleId, tenantId, new LinkedHashSet<>(role.getPermissionKeys()));
+        RoleAggregate roleAggregate = new RoleAggregate(roleId, new LinkedHashSet<>(role.getPermissionKeys()));
         roleAggregate.replacePermissions(Set.of());
         domainEventPublisher.publishAll(roleAggregate.pullDomainEvents());
-        jdbcTemplate.update("delete from sys_role_permission where tenant_id = ? and role_id = ?", tenantId, roleId);
-        jdbcTemplate.update("delete from sys_role_data_scope where tenant_id = ? and role_id = ?", tenantId, roleId);
+        jdbcTemplate.update("delete from sys_role_permission where role_id = ?", roleId);
+        jdbcTemplate.update("delete from sys_role_data_scope where role_id = ?", roleId);
         jdbcTemplate.update(
-                "update sys_role set deleted = 1, updated_by = ?, updated_at = ? where id = ? and tenant_id = ? and deleted = 0",
+                "update sys_role set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 currentUser.getUserId(),
                 LocalDateTime.now(),
-                roleId,
-                tenantId
+                roleId
         );
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "role", "delete", "DELETE", "SUCCESS", "删除角色: " + role.getRoleName());
+        permissionSnapshotService.invalidatePermissions();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "role", "delete", "DELETE", "SUCCESS", "删除角色: " + role.getRoleName());
         return true;
     }
 
-    private String resolveDefaultRegistrationRoleCode(Long tenantId) {
-        Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(DEFAULT_REGISTRATION_ROLE_CODE_KEY));
+    private String resolveDefaultRegistrationRoleCode() {
+        Map<String, String> values = loadConfigValuesByKeys(List.of(DEFAULT_REGISTRATION_ROLE_CODE_KEY));
         String roleCode = values.get(DEFAULT_REGISTRATION_ROLE_CODE_KEY);
         return StringUtils.hasText(roleCode) ? roleCode.trim() : DEFAULT_REGISTRATION_ROLE_CODE;
     }
 
-    private SystemVO.DefaultRegistrationRoleVO toDefaultRegistrationRole(Long tenantId, SystemVO.RoleVO role) {
+    private SystemVO.DefaultRegistrationRoleVO toDefaultRegistrationRole(SystemVO.RoleVO role) {
         SystemVO.DefaultRegistrationRoleVO result = new SystemVO.DefaultRegistrationRoleVO();
         copyRole(result, role);
-        CompletableFuture<Integer> permissionCountFuture = CompletableFuture.supplyAsync(() -> countRolePermissions(role.getId(), tenantId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<Integer> userCountFuture = CompletableFuture.supplyAsync(() -> countRoleUsers(role.getId(), tenantId), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Integer> permissionCountFuture = CompletableFuture.supplyAsync(() -> countRolePermissions(role.getId()), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Integer> userCountFuture = CompletableFuture.supplyAsync(() -> countRoleUsers(role.getId()), BLOCKING_IO_EXECUTOR);
         result.setPermissionCount(permissionCountFuture.join());
         result.setUserCount(userCountFuture.join());
         result.setDefaultRegistrationRole(Boolean.TRUE);
         return result;
     }
 
-    private Long upsertRole(Long roleId, Long tenantId, SystemDTO.RoleUpsertRequest request, Long operatorId) {
+    private Long upsertRole(Long roleId, SystemDTO.RoleUpsertRequest request, Long operatorId) {
         if (roleId == null) {
             jdbcTemplate.update(
                     """
-                            insert into sys_role (tenant_id, role_code, role_name, role_type, default_home_path, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, ?, ?, 0)
+                            insert into sys_role (role_code, role_name, role_type, default_home_path, created_by, updated_by, deleted)
+                            values (?, ?, ?, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     request.getRoleCode(),
                     request.getRoleName(),
                     request.getRoleType(),
@@ -335,7 +317,7 @@ public class SystemRoleManagementAppService {
                 """
                         update sys_role
                         set role_code = ?, role_name = ?, role_type = ?, default_home_path = ?, updated_by = ?, updated_at = ?
-                        where id = ? and tenant_id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 request.getRoleCode(),
                 request.getRoleName(),
@@ -343,8 +325,7 @@ public class SystemRoleManagementAppService {
                 normalizeDefaultHomePath(request.getDefaultHomePath()),
                 operatorId,
                 LocalDateTime.now(),
-                roleId,
-                tenantId
+                roleId
         );
         return roleId;
     }
@@ -361,23 +342,21 @@ public class SystemRoleManagementAppService {
     }
 
     private void replaceRolePermissionsWithDomainEvent(
-            Long tenantId,
             Long roleId,
             Set<String> existingPermissionKeys,
             List<String> permissionKeys,
             Long operatorId
     ) {
         LinkedHashSet<String> effectivePermissionKeys = filterRoleAssignablePermissionKeys(permissionKeys);
-        RoleAggregate roleAggregate = new RoleAggregate(roleId, tenantId, existingPermissionKeys);
+        RoleAggregate roleAggregate = new RoleAggregate(roleId, existingPermissionKeys);
         roleAggregate.replacePermissions(effectivePermissionKeys);
         domainEventPublisher.publishAll(roleAggregate.pullDomainEvents());
-        replaceRolePermissions(tenantId, roleId, effectivePermissionKeys, operatorId);
+        replaceRolePermissions(roleId, effectivePermissionKeys, operatorId);
     }
 
-    private void replaceRolePermissions(Long tenantId, Long roleId, Set<String> permissionKeys, Long operatorId) {
+    private void replaceRolePermissions(Long roleId, Set<String> permissionKeys, Long operatorId) {
         jdbcTemplate.update(
-                "delete from sys_role_permission where tenant_id = ? and role_id = ?",
-                tenantId,
+                "delete from sys_role_permission where role_id = ?",
                 roleId
         );
         if (CollectionUtils.isEmpty(permissionKeys)) {
@@ -386,10 +365,9 @@ public class SystemRoleManagementAppService {
         for (String permissionKey : permissionKeys) {
             jdbcTemplate.update(
                     """
-                            insert into sys_role_permission (tenant_id, role_id, permission_key, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, ?, 0)
+                            insert into sys_role_permission (role_id, permission_key, created_by, updated_by, deleted)
+                            values (?, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     roleId,
                     permissionKey,
                     operatorId,
@@ -398,17 +376,16 @@ public class SystemRoleManagementAppService {
         }
     }
 
-    private List<String> listRolePermissionKeys(Long roleId, Long tenantId) {
+    private List<String> listRolePermissionKeys(Long roleId) {
         return jdbcTemplate.queryForList(
                 """
                         select permission_key
                         from sys_role_permission
-                        where role_id = ? and tenant_id = ? and deleted = 0
+                        where role_id = ? and deleted = 0
                         order by permission_key asc
                         """,
                 String.class,
-                roleId,
-                tenantId
+                roleId
         ).stream().filter(this::isRoleAssignablePermissionKey).toList();
     }
 
@@ -444,13 +421,13 @@ public class SystemRoleManagementAppService {
         return true;
     }
 
-    private List<RoleDataScopeVO> listRoleDataScopes(Long roleId, Long tenantId) {
+    private List<RoleDataScopeVO> listRoleDataScopes(Long roleId) {
         return jdbcTemplate.query(
                 """
                         select resource_code as resourceCode, scope_type as scopeType,
                                custom_dept_ids as customDeptIds, custom_user_ids as customUserIds
                         from sys_role_data_scope
-                        where role_id = ? and tenant_id = ? and deleted = 0
+                        where role_id = ? and deleted = 0
                         order by case when resource_code = '*' then 0 else 1 end, resource_code asc
                         """,
                 (rs, rowNum) -> {
@@ -461,13 +438,11 @@ public class SystemRoleManagementAppService {
                     scope.setCustomUserIds(parseIdList(rs.getString("customUserIds")));
                     return scope;
                 },
-                roleId,
-                tenantId
+                roleId
         );
     }
 
     private void replaceRoleDataScopes(
-            Long tenantId,
             Long roleId,
             List<RoleDataScopeRequest> dataScopes,
             String roleCode,
@@ -477,7 +452,7 @@ public class SystemRoleManagementAppService {
         if (dataScopes == null && !createMode) {
             return;
         }
-        jdbcTemplate.update("delete from sys_role_data_scope where tenant_id = ? and role_id = ?", tenantId, roleId);
+        jdbcTemplate.update("delete from sys_role_data_scope where role_id = ?", roleId);
         List<RoleDataScopeRequest> effectiveScopes = CollectionUtils.isEmpty(dataScopes)
                 ? List.of(defaultDataScope(roleCode))
                 : dataScopes;
@@ -491,11 +466,10 @@ public class SystemRoleManagementAppService {
             jdbcTemplate.update(
                     """
                             insert into sys_role_data_scope (
-                                tenant_id, role_id, resource_code, scope_type, custom_dept_ids, custom_user_ids,
+                                role_id, resource_code, scope_type, custom_dept_ids, custom_user_ids,
                                 created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            ) values (?, ?, ?, ?, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     roleId,
                     resourceCode,
                     scopeType,
@@ -527,9 +501,6 @@ public class SystemRoleManagementAppService {
 
     private String normalizeScopeType(String scopeType) {
         String normalized = StringUtils.hasText(scopeType) ? scopeType.trim().toUpperCase(Locale.ROOT) : "SELF";
-        if ("TENANT".equals(normalized)) {
-            return "ALL";
-        }
         if (!Set.of("ALL", "DEPT", "DEPT_AND_CHILD", "SELF", "CUSTOM").contains(normalized)) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "不支持的数据权限范围");
         }
@@ -565,35 +536,33 @@ public class SystemRoleManagementAppService {
         return ids;
     }
 
-    private Integer countRolePermissions(Long roleId, Long tenantId) {
+    private Integer countRolePermissions(Long roleId) {
         Long count = jdbcTemplate.queryForObject(
                 """
                         select count(1)
                         from sys_role_permission
-                        where role_id = ? and tenant_id = ? and deleted = 0
+                        where role_id = ? and deleted = 0
                         """,
                 Long.class,
-                roleId,
-                tenantId
+                roleId
         );
         return count == null ? 0 : count.intValue();
     }
 
-    private Integer countRoleUsers(Long roleId, Long tenantId) {
+    private Integer countRoleUsers(Long roleId) {
         Long count = jdbcTemplate.queryForObject(
                 """
                         select count(1)
                         from sys_user_role
-                        where role_id = ? and tenant_id = ? and deleted = 0
+                        where role_id = ? and deleted = 0
                         """,
                 Long.class,
-                roleId,
-                tenantId
+                roleId
         );
         return count == null ? 0 : count.intValue();
     }
 
-    private Map<Long, Integer> countRolePermissions(List<Long> roleIds, Long tenantId) {
+    private Map<Long, Integer> countRolePermissions(List<Long> roleIds) {
         List<Long> distinctRoleIds = roleIds.stream().filter(id -> id != null).distinct().toList();
         if (distinctRoleIds.isEmpty()) {
             return Map.of();
@@ -601,12 +570,11 @@ public class SystemRoleManagementAppService {
         String placeholders = placeholders(distinctRoleIds.size());
         List<Object> params = new ArrayList<>();
         params.addAll(distinctRoleIds);
-        params.add(tenantId);
         return jdbcTemplate.query(
                 """
                         select role_id as roleId, count(1) as total
                         from sys_role_permission
-                        where role_id in (%s) and tenant_id = ? and deleted = 0
+                        where role_id in (%s) and deleted = 0
                         group by role_id
                         """.formatted(placeholders),
                 rs -> {
@@ -620,7 +588,7 @@ public class SystemRoleManagementAppService {
         );
     }
 
-    private Map<Long, Integer> countRoleUsers(List<Long> roleIds, Long tenantId) {
+    private Map<Long, Integer> countRoleUsers(List<Long> roleIds) {
         List<Long> distinctRoleIds = roleIds.stream().filter(id -> id != null).distinct().toList();
         if (distinctRoleIds.isEmpty()) {
             return Map.of();
@@ -628,12 +596,11 @@ public class SystemRoleManagementAppService {
         String placeholders = placeholders(distinctRoleIds.size());
         List<Object> params = new ArrayList<>();
         params.addAll(distinctRoleIds);
-        params.add(tenantId);
         return jdbcTemplate.query(
                 """
                         select role_id as roleId, count(1) as total
                         from sys_user_role
-                        where role_id in (%s) and tenant_id = ? and deleted = 0
+                        where role_id in (%s) and deleted = 0
                         group by role_id
                         """.formatted(placeholders),
                 rs -> {
@@ -647,21 +614,17 @@ public class SystemRoleManagementAppService {
         );
     }
 
-    private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
-        Long effectiveTenantId = tenantId == null ? DEFAULT_PUBLIC_TENANT_ID : tenantId;
+    private Map<String, String> loadConfigValuesByKeys(List<String> keys) {
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
-                select tenant_id as tenantId, config_key as configKey, config_value as configValue
+                select config_key as configKey, config_value as configValue
                 from sys_config
                 where deleted = 0
                   and config_scope = 'PLATFORM'
                   and config_key in (%s)
-                  and (tenant_id = ? or tenant_id is null)
-                order by case when tenant_id = ? then 0 else 1 end, id desc
+                order by id desc
                 """.formatted(placeholders);
         List<Object> params = new ArrayList<>(keys);
-        params.add(effectiveTenantId);
-        params.add(effectiveTenantId);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
         Map<String, String> valueByKey = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
@@ -674,23 +637,21 @@ public class SystemRoleManagementAppService {
     }
 
     private void upsertConfigValue(
-            Long tenantId,
             String configKey,
             String configName,
             String configValue,
             String remark,
             Long operatorId
     ) {
-        Long existingId = queryConfigId(configKey, tenantId);
+        Long existingId = queryConfigId(configKey);
         if (existingId == null) {
             jdbcTemplate.update(
                     """
                             insert into sys_config (
-                                tenant_id, config_key, config_name, config_value, config_scope, is_system, remark,
+                                config_key, config_name, config_value, config_scope, is_system, remark,
                                 created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
+                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     configKey,
                     configName,
                     configValue,
@@ -716,19 +677,18 @@ public class SystemRoleManagementAppService {
         );
     }
 
-    private Long queryConfigId(String configKey, Long tenantId) {
+    private Long queryConfigId(String configKey) {
         try {
             return jdbcTemplate.queryForObject(
                     """
                             select id
                             from sys_config
-                            where config_key = ? and tenant_id <=> ?
+                            where config_key = ?
                             order by id desc
                             limit 1
                             """,
                     Long.class,
-                    configKey,
-                    tenantId
+                    configKey
             );
         } catch (EmptyResultDataAccessException exception) {
             return null;
@@ -769,7 +729,6 @@ public class SystemRoleManagementAppService {
 
     private void copyRole(SystemVO.RoleDetailVO target, SystemVO.RoleVO source) {
         target.setId(source.getId());
-        target.setTenantId(source.getTenantId());
         target.setRoleCode(source.getRoleCode());
         target.setRoleName(source.getRoleName());
         target.setRoleType(source.getRoleType());
@@ -792,10 +751,4 @@ public class SystemRoleManagementAppService {
         return value == null ? "" : String.valueOf(value).trim();
     }
 
-    private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
-        }
-        return PlatformContext.compatibilityTenantId();
-    }
 }

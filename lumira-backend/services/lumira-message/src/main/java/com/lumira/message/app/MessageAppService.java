@@ -8,9 +8,7 @@ import com.lumira.api.system.SystemUserContactSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.message.config.MessageProperties;
 import com.lumira.message.dto.MessageDTO;
 import com.lumira.message.dto.MessageQueryModels.DeliveryLogQuery;
@@ -55,7 +53,6 @@ public class MessageAppService {
 
     private static final String TYPE_MESSAGE = "MESSAGE";
     private static final String TARGET_SCOPE_PLATFORM = "PLATFORM";
-    private static final String TARGET_SCOPE_LEGACY_TENANT = "TENANT";
     private static final String TARGET_SCOPE_USER = "USER";
     private static final String TARGET_SCOPE_ROLE = "ROLE";
     private static final String STATUS_PUBLISHED = "PUBLISHED";
@@ -81,6 +78,7 @@ public class MessageAppService {
     private static final String IAM_PERMISSION_READ_MODEL_SCOPE = "permission-snapshot";
     private static final long READ_MODEL_VERSION_CACHE_TTL_MILLIS = 3000L;
     private static final String UNREAD_COUNT_CACHE_PREFIX = "message:unread-count";
+    private static final String GLOBAL_VERSION_CACHE_KEY = "global";
     private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
     private static final String NOTICE_TARGET_USER_NAME_CACHE_PREFIX = "message:notice-target:user-name";
     private static final String NOTICE_TARGET_ROLE_NAME_CACHE_PREFIX = "message:notice-target:role-name";
@@ -111,12 +109,12 @@ public class MessageAppService {
     private final LongAdder readModelVersionCacheHits = new LongAdder();
     private final LongAdder readModelVersionCacheMisses = new LongAdder();
     private final Map<String, CachedRoleVisibility> roleVisibilityCache = new ConcurrentHashMap<>();
-    private final Map<Long, CachedReadModelVersion> readModelVersionCache = new ConcurrentHashMap<>();
-    private final Map<Long, CachedPermissionSnapshotVersion> permissionSnapshotVersionCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedReadModelVersion> readModelVersionCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedPermissionSnapshotVersion> permissionSnapshotVersionCache = new ConcurrentHashMap<>();
     private final Map<String, CachedLong> localUnreadCountCache = new ConcurrentHashMap<>();
     private final Map<String, CachedNoticePage> localMessageListCache = new ConcurrentHashMap<>();
     private final Map<String, CompletableFuture<RoleVisibility>> roleVisibilityLoadInFlight = new ConcurrentHashMap<>();
-    private final Map<Long, CompletableFuture<Long>> permissionSnapshotVersionLoadInFlight = new ConcurrentHashMap<>();
+    private final Map<String, CompletableFuture<Long>> permissionSnapshotVersionLoadInFlight = new ConcurrentHashMap<>();
     private final LongAdder archiveTotalCappedQueryCount = new LongAdder();
     private final LongAdder deliveryLogCappedQueryCount = new LongAdder();
     private final LongAdder archiveCountCacheHits = new LongAdder();
@@ -214,12 +212,11 @@ public class MessageAppService {
     }
 
     public MessageVO.NoticeArchivePageResponse listArchive(CurrentUser currentUser, MessageDTO.MessageArchiveQueryRequest request) {
-        Long tenantId = tenantId(currentUser);
         long normalizedPageNo = Math.max(request.getPageNo() == null ? 1L : request.getPageNo(), 1L);
         long normalizedPageSize = Math.max(1L, Math.min(request.getPageSize() == null ? 20L : request.getPageSize(), 100L));
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
-        RoleVisibility roleVisibility = visibleRoleVisibility(currentUser, tenantId);
-        NoticeArchiveQuery query = buildNoticeArchiveQuery(currentUser, request, tenantId, roleVisibility, normalizedPageSize, offset);
+        RoleVisibility roleVisibility = visibleRoleVisibility(currentUser);
+        NoticeArchiveQuery query = buildNoticeArchiveQuery(currentUser, request, roleVisibility, normalizedPageSize, offset);
         Long total = readCachedArchiveTotal(query);
         if (total == null) {
             total = messageNoticeMapper.countArchive(query);
@@ -238,7 +235,7 @@ public class MessageAppService {
         response.setHasMore(totalCapped);
         response.setTotalCapped(totalCapped);
         List<MessageVO.NoticeVO> records = messageNoticeMapper.listArchive(query);
-        enrichNoticeTargets(tenantId, records);
+        enrichNoticeTargets(records);
         response.setRecords(records);
         return response;
     }
@@ -278,18 +275,17 @@ public class MessageAppService {
     public Long countUnread(CurrentUser currentUser) {
         long startedNanos = System.nanoTime();
         try {
-            Long tenantId = tenantId(currentUser);
             if (currentUser == null || currentUser.getUserId() == null) {
                 return 0L;
             }
-            UnreadContext unreadContext = resolveUnreadContext(currentUser, tenantId);
+            UnreadContext unreadContext = resolveUnreadContext(currentUser);
             RoleVisibility roleVisibility = unreadContext.roleVisibility();
             long readModelVersion = unreadContext.readModelVersion();
-            Long cached = readCachedUnreadCount(tenantId, currentUser.getUserId(), roleVisibility.version(), readModelVersion);
+            Long cached = readCachedUnreadCount(currentUser.getUserId(), roleVisibility.version(), readModelVersion);
             if (cached != null) {
                 return cached;
             }
-            Long count = countUnreadFromDb(tenantId, currentUser.getUserId(), roleVisibility.roleIds(), roleVisibility.version(), readModelVersion);
+            Long count = countUnreadFromDb(currentUser.getUserId(), roleVisibility.roleIds(), roleVisibility.version(), readModelVersion);
             return count == null ? 0L : count;
         } finally {
             recordDuration(messageUnreadCountTimer, startedNanos);
@@ -306,7 +302,6 @@ public class MessageAppService {
         MessageVO.NoticeVO notice = null;
         if (channels.contains(CHANNEL_INBOX)) {
             notice = insertInboxNotice(
-                    tenantId(currentUser),
                     currentUser.getUserId(),
                     request.getTargetScope(),
                     request.getTargetUserId(),
@@ -314,7 +309,7 @@ public class MessageAppService {
                     request.getTitle(),
                     request.getContent()
             );
-            insertDeliveryLog(tenantId(currentUser), notice.getId(), CHANNEL_INBOX, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, currentUser.getUserId());
+            insertDeliveryLog(notice.getId(), CHANNEL_INBOX, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, currentUser.getUserId());
             messagePushService.publishCreated(notice);
         }
         if (channels.contains(CHANNEL_EMAIL)) {
@@ -324,7 +319,6 @@ public class MessageAppService {
             sendWechatOfficialNotifications(currentUser, request, notice == null ? null : notice.getId());
         }
         operationAuditService.log(
-                tenantId(currentUser),
                 currentUser.getUserId(),
                 currentUser.getUsername(),
                 "message",
@@ -334,17 +328,16 @@ public class MessageAppService {
                 "发送通知: " + request.getTitle()
         );
         if (notice != null) {
-            bumpUnreadReadModelVersion(tenantId(currentUser));
+            bumpUnreadReadModelVersion();
         }
         return notice;
     }
 
     public MessageVO.DeliveryLogPageResponse listDeliveryLogs(CurrentUser currentUser, MessageDTO.MessageArchiveQueryRequest request) {
-        Long tenantId = tenantId(currentUser);
         long normalizedPageNo = Math.max(request.getPageNo() == null ? 1L : request.getPageNo(), 1L);
         long normalizedPageSize = Math.max(1L, Math.min(request.getPageSize() == null ? 20L : request.getPageSize(), 100L));
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
-        DeliveryLogQuery query = buildDeliveryLogQuery(request, tenantId, normalizedPageSize, offset);
+        DeliveryLogQuery query = buildDeliveryLogQuery(request, normalizedPageSize, offset);
         Long total = readCachedDeliveryLogTotal(query);
         if (total == null) {
             total = messageDeliveryLogMapper.countDeliveryLogs(query);
@@ -371,7 +364,6 @@ public class MessageAppService {
         MessageVO.NoticeVO notice = retractNotice(currentUser, noticeId);
         messagePushService.publishRetracted(notice);
         operationAuditService.log(
-                tenantId(currentUser),
                 currentUser.getUserId(),
                 currentUser.getUsername(),
                 "message",
@@ -380,20 +372,19 @@ public class MessageAppService {
                 "SUCCESS",
                 "撤回站内信: " + notice.getTitle()
         );
-        bumpUnreadReadModelVersion(tenantId(currentUser));
+        bumpUnreadReadModelVersion();
         return notice;
     }
 
     @Transactional
     public MessageVO.NoticeVO markMessageRead(CurrentUser currentUser, Long noticeId) {
-        Long tenantId = tenantId(currentUser);
-        UnreadContext unreadContext = resolveUnreadContext(currentUser, tenantId);
+        UnreadContext unreadContext = resolveUnreadContext(currentUser);
         RoleVisibility roleVisibility = unreadContext.roleVisibility();
         MessageVO.NoticeVO notice = markRead(currentUser, noticeId, roleVisibility.roleIds());
         long readModelVersion = unreadContext.readModelVersion();
-        Long unreadCount = countUnreadFromDb(tenantId, currentUser.getUserId(), roleVisibility.roleIds(), roleVisibility.version(), readModelVersion);
-        messagePushService.publishRead(tenantId, currentUser.getUserId(), notice, unreadCount.intValue());
-        bumpUnreadReadModelVersion(tenantId);
+        Long unreadCount = countUnreadFromDb(currentUser.getUserId(), roleVisibility.roleIds(), roleVisibility.version(), readModelVersion);
+        messagePushService.publishRead(currentUser.getUserId(), notice, unreadCount.intValue());
+        bumpUnreadReadModelVersion();
         return notice;
     }
 
@@ -402,20 +393,18 @@ public class MessageAppService {
         long startedNanos = System.nanoTime();
         try {
             LocalDateTime now = LocalDateTime.now();
-            Long tenantId = tenantId(currentUser);
-            UnreadContext unreadContext = resolveUnreadContext(currentUser, tenantId);
+            UnreadContext unreadContext = resolveUnreadContext(currentUser);
             RoleVisibility roleVisibility = unreadContext.roleVisibility();
             List<Long> roleIds = roleVisibility.roleIds();
-            messageNoticeMapper.markAllRead(tenantId, currentUser.getUserId(), roleIds, now);
+            messageNoticeMapper.markAllRead(currentUser.getUserId(), roleIds, now);
 
             long readModelVersion = unreadContext.readModelVersion();
-            Long unreadCount = countUnreadFromDb(tenantId, currentUser.getUserId(), roleIds, roleVisibility.version(), readModelVersion);
+            Long unreadCount = countUnreadFromDb(currentUser.getUserId(), roleIds, roleVisibility.version(), readModelVersion);
             messagePushService.publishUnreadCount(
-                    tenantId,
                     currentUser.getUserId(),
                     unreadCount.intValue()
             );
-            bumpUnreadReadModelVersion(tenantId);
+            bumpUnreadReadModelVersion();
 
             MessageVO.UnreadCountVO unreadCountVO = new MessageVO.UnreadCountVO();
             unreadCountVO.setUnreadCount(unreadCount);
@@ -426,14 +415,13 @@ public class MessageAppService {
     }
 
     private MessageVO.NoticePageResponse listNotices(CurrentUser currentUser, long pageNo, long pageSize) {
-        Long tenantId = tenantId(currentUser);
         long normalizedPageNo = Math.max(pageNo, 1L);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, 100L));
         long offset = (normalizedPageNo - 1) * normalizedPageSize;
-        RoleVisibility roleVisibility = visibleRoleVisibility(currentUser, tenantId);
+        RoleVisibility roleVisibility = visibleRoleVisibility(currentUser);
         List<Long> roleIds = roleVisibility.roleIds();
         Long userId = currentUser == null ? null : currentUser.getUserId();
-        String localCacheKey = buildMessageListCacheKey(tenantId, userId, roleVisibility.version(), roleIds, normalizedPageNo, normalizedPageSize);
+        String localCacheKey = buildMessageListCacheKey(userId, roleVisibility.version(), roleIds, normalizedPageNo, normalizedPageSize);
         CachedNoticePage cached = localMessageListCache.get(localCacheKey);
         Instant now = Instant.now();
         if (cached != null && cached.expireAt().isAfter(now)) {
@@ -443,12 +431,12 @@ public class MessageAppService {
             localMessageListCache.remove(localCacheKey);
         }
 
-        List<MessageVO.NoticeVO> records = messageNoticeMapper.listVisiblePublished(tenantId, userId, roleIds, normalizedPageSize + 1, offset);
+        List<MessageVO.NoticeVO> records = messageNoticeMapper.listVisiblePublished(userId, roleIds, normalizedPageSize + 1, offset);
         boolean hasMore = records.size() > normalizedPageSize;
         if (hasMore) {
             records = new ArrayList<>(records.subList(0, (int) normalizedPageSize));
         }
-        enrichNoticeTargets(tenantId, records);
+        enrichNoticeTargets(records);
 
         MessageVO.NoticePageResponse response = new MessageVO.NoticePageResponse();
         response.setPageNo(normalizedPageNo);
@@ -462,7 +450,6 @@ public class MessageAppService {
     }
 
     private MessageVO.NoticeVO insertInboxNotice(
-            Long tenantId,
             Long operatorId,
             String targetScope,
             Long targetUserId,
@@ -480,7 +467,6 @@ public class MessageAppService {
             throw new BizException(ErrorCode.BAD_REQUEST, "targetRoleId不能为空");
         }
         return insertNotice(
-                tenantId,
                 operatorId,
                 targetScope,
                 targetUserId,
@@ -491,7 +477,6 @@ public class MessageAppService {
     }
 
     private MessageVO.NoticeVO insertNotice(
-            Long tenantId,
             Long operatorId,
             String targetScope,
             Long targetUserId,
@@ -505,7 +490,6 @@ public class MessageAppService {
 
         MessageNoticeEntity entity = new MessageNoticeEntity();
         LocalDateTime now = LocalDateTime.now();
-        entity.setTenantId(tenantId);
         entity.setNoticeType(TYPE_MESSAGE);
         entity.setTargetScope(targetScope);
         entity.setTargetUserId(targetUserId);
@@ -523,7 +507,7 @@ public class MessageAppService {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "消息写入失败");
         }
         Long noticeId = entity.getId();
-        MessageVO.NoticeVO notice = findNoticeById(tenantId, noticeId, operatorId);
+        MessageVO.NoticeVO notice = findNoticeById(noticeId, operatorId);
         if (notice == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "消息写入后读取失败");
         }
@@ -534,23 +518,22 @@ public class MessageAppService {
         if (noticeId == null) {
             throw new BizException(ErrorCode.BAD_REQUEST, "通知ID不能为空");
         }
-        MessageVO.NoticeVO notice = findNoticeById(tenantId(currentUser), noticeId, currentUser.getUserId());
+        MessageVO.NoticeVO notice = findNoticeById(noticeId, currentUser.getUserId());
         if (notice == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
-        NoticeAggregate noticeAggregate = new NoticeAggregate(noticeId, tenantId(currentUser), notice.getPublishStatus());
+        NoticeAggregate noticeAggregate = new NoticeAggregate(noticeId, notice.getPublishStatus());
         noticeAggregate.retract();
         int updated = messageNoticeMapper.update(null, new UpdateWrapper<MessageNoticeEntity>()
                 .set("publish_status", STATUS_RETRACTED)
                 .set("updated_by", currentUser.getUserId())
                 .set("updated_at", LocalDateTime.now())
                 .eq("id", noticeId)
-                .eq("tenant_id", tenantId(currentUser))
                 .eq("deleted", 0));
         if (updated <= 0) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
-        MessageVO.NoticeVO retractedNotice = findNoticeById(tenantId(currentUser), noticeId, currentUser.getUserId());
+        MessageVO.NoticeVO retractedNotice = findNoticeById(noticeId, currentUser.getUserId());
         if (retractedNotice == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "通知撤回后读取失败");
         }
@@ -558,29 +541,28 @@ public class MessageAppService {
     }
 
     private MessageVO.NoticeVO markRead(CurrentUser currentUser, Long noticeId, List<Long> roleIds) {
-        Long tenantId = tenantId(currentUser);
-        MessageVO.NoticeVO notice = findVisibleNoticeById(tenantId, noticeId, currentUser.getUserId(), roleIds);
+        MessageVO.NoticeVO notice = findVisibleNoticeById(noticeId, currentUser.getUserId(), roleIds);
         if (notice == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "通知不存在或无权访问");
         }
-        NoticeAggregate noticeAggregate = new NoticeAggregate(noticeId, tenantId, notice.getPublishStatus());
+        NoticeAggregate noticeAggregate = new NoticeAggregate(noticeId, notice.getPublishStatus());
         noticeAggregate.markRead(currentUser.getUserId());
 
         LocalDateTime now = LocalDateTime.now();
-        messageNoticeMapper.upsertRead(tenantId, noticeId, currentUser.getUserId(), now);
+        messageNoticeMapper.upsertRead(noticeId, currentUser.getUserId(), now);
         notice.setReadFlag(Boolean.TRUE);
         notice.setReadAt(now);
         return notice;
     }
 
-    private MessageVO.NoticeVO findVisibleNoticeById(Long tenantId, Long noticeId, Long userId, List<Long> roleIds) {
-        MessageVO.NoticeVO notice = messageNoticeMapper.findVisibleNoticeById(tenantId, noticeId, userId, roleIds);
-        enrichNoticeTarget(tenantId, notice);
+    private MessageVO.NoticeVO findVisibleNoticeById(Long noticeId, Long userId, List<Long> roleIds) {
+        MessageVO.NoticeVO notice = messageNoticeMapper.findVisibleNoticeById(noticeId, userId, roleIds);
+        enrichNoticeTarget(notice);
         return notice;
     }
 
-    private Long readCachedUnreadCount(Long tenantId, Long userId, String version, long readModelVersion) {
-        String cacheKey = buildUnreadCountCacheKey(tenantId, userId, version, readModelVersion);
+    private Long readCachedUnreadCount(Long userId, String version, long readModelVersion) {
+        String cacheKey = buildUnreadCountCacheKey(userId, version, readModelVersion);
         Long localCached = readLocalUnreadCount(cacheKey);
         if (localCached != null) {
             unreadCountCacheHits.increment();
@@ -597,13 +579,13 @@ public class MessageAppService {
         return readCachedCount(buildDeliveryLogCountCacheKey(query), deliveryLogCountCacheHits, deliveryLogCountCacheMisses);
     }
 
-    private Long countUnreadFromDb(Long tenantId, Long userId, List<Long> roleIds, String version, long readModelVersion) {
-        Long count = messageNoticeMapper.countUnread(tenantId, userId, roleIds, UNREAD_COUNT_CAP);
+    private Long countUnreadFromDb(Long userId, List<Long> roleIds, String version, long readModelVersion) {
+        Long count = messageNoticeMapper.countUnread(userId, roleIds, UNREAD_COUNT_CAP);
         Long normalizedCount = normalizeUnreadCount(count);
         if (shouldCacheUnreadCount()) {
-            cacheLocalUnreadCount(buildUnreadCountCacheKey(tenantId, userId, version, readModelVersion), normalizedCount);
+            cacheLocalUnreadCount(buildUnreadCountCacheKey(userId, version, readModelVersion), normalizedCount);
             cacheTemplate.put(
-                    buildUnreadCountCacheKey(tenantId, userId, version, readModelVersion),
+                    buildUnreadCountCacheKey(userId, version, readModelVersion),
                     String.valueOf(normalizedCount),
                     Duration.ofSeconds(messageProperties.getUnreadCountCacheTtlSeconds())
             );
@@ -745,9 +727,8 @@ public class MessageAppService {
         return roleVisibilityCacheMisses.get();
     }
 
-    private long readModelVersionForTenant(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        CachedReadModelVersion cached = readModelVersionCache.get(effectiveTenantId);
+    private long readModelVersion() {
+        CachedReadModelVersion cached = readModelVersionCache.get(GLOBAL_VERSION_CACHE_KEY);
         long now = System.currentTimeMillis();
         if (cached != null && cached.expiresAtEpochMillis() > now) {
             readModelVersionCacheHits.increment();
@@ -758,7 +739,6 @@ public class MessageAppService {
         long version = 0L;
         try {
             Long actualVersion = systemInternalApi.readModelVersion(
-                    effectiveTenantId,
                     READ_MODEL_CONTEXT_MESSAGE,
                     READ_MODEL_SCOPE_MESSAGE_UNREAD
             );
@@ -768,16 +748,14 @@ public class MessageAppService {
         } catch (Exception ignored) {
             // Keep operation path stable even when read-model infra is unavailable.
         }
-        readModelVersionCache.put(effectiveTenantId, new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MILLIS));
+        readModelVersionCache.put(GLOBAL_VERSION_CACHE_KEY, new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MILLIS));
         return version;
     }
 
-    private void bumpUnreadReadModelVersion(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        invalidateReadModelVersionCache(effectiveTenantId);
+    private void bumpUnreadReadModelVersion() {
+        invalidateReadModelVersionCache();
         try {
             systemInternalApi.bumpReadModelVersion(
-                    effectiveTenantId,
                     READ_MODEL_CONTEXT_MESSAGE,
                     READ_MODEL_SCOPE_MESSAGE_UNREAD,
                     READ_MODEL_EVENT_MESSAGE_UNREAD
@@ -787,22 +765,17 @@ public class MessageAppService {
         }
     }
 
-    private void invalidateReadModelVersionCache(Long tenantId) {
-        if (tenantId == null) {
-            readModelVersionCache.remove(PlatformConstants.PLATFORM_TENANT_ID);
-            return;
-        }
-        readModelVersionCache.remove(tenantId);
+    private void invalidateReadModelVersionCache() {
+        readModelVersionCache.remove(GLOBAL_VERSION_CACHE_KEY);
     }
 
-    private String buildUnreadCountCacheKey(Long tenantId, Long userId, String version, long readModelVersion) {
-        return String.join(":", UNREAD_COUNT_CACHE_PREFIX, String.valueOf(tenantId), String.valueOf(userId), normalizeVersion(version), "v" + readModelVersion);
+    private String buildUnreadCountCacheKey(Long userId, String version, long readModelVersion) {
+        return String.join(":", UNREAD_COUNT_CACHE_PREFIX, String.valueOf(userId), normalizeVersion(version), "v" + readModelVersion);
     }
 
-    private String buildMessageListCacheKey(Long tenantId, Long userId, String version, List<Long> roleIds, long pageNo, long pageSize) {
+    private String buildMessageListCacheKey(Long userId, String version, List<Long> roleIds, long pageNo, long pageSize) {
         return String.join(":",
                 "message:list",
-                cacheKeyPart(tenantId),
                 cacheKeyPart(userId),
                 normalizeVersion(version),
                 cacheKeyPart(roleIds),
@@ -816,7 +789,6 @@ public class MessageAppService {
         }
         return String.join(":",
                 ARCHIVE_COUNT_CACHE_PREFIX,
-                cacheKeyPart(query.getTenantId()),
                 cacheKeyPart(query.getUserId()),
                 cacheKeyPart(query.isManageArchive()),
                 cacheKeyPart(query.getKeyword()),
@@ -839,7 +811,6 @@ public class MessageAppService {
         }
         return String.join(":",
                 DELIVERY_LOG_COUNT_CACHE_PREFIX,
-                cacheKeyPart(query.getTenantId()),
                 cacheKeyPart(query.getKeyword()),
                 cacheKeyPart(query.getChannel()),
                 cacheKeyPart(query.getTargetScope()),
@@ -899,49 +870,49 @@ public class MessageAppService {
         localUnreadCountCache.put(cacheKey, new CachedLong(normalizeUnreadCount(value), Instant.now().plus(LOCAL_UNREAD_COUNT_CACHE_TTL)));
     }
 
-    private UnreadContext resolveUnreadContext(CurrentUser currentUser, Long tenantId) {
+    private UnreadContext resolveUnreadContext(CurrentUser currentUser) {
         if (currentUser != null
                 && currentUser.getUserId() != null
-                && isPermissionVersionAligned(currentUser, tenantId)) {
+                && isPermissionVersionAligned(currentUser)) {
             RoleVisibility roleVisibility = new RoleVisibility(currentUser.getPermissionsVersion(), normalizedRoleIds(currentUser.getRoleIds()));
-            return new UnreadContext(roleVisibility, readModelVersionForTenant(tenantId));
+            return new UnreadContext(roleVisibility, readModelVersion());
         }
-        return loadUnreadContextFromSystem(currentUser, tenantId);
+        return loadUnreadContextFromSystem(currentUser);
     }
 
-    private UnreadContext loadUnreadContextFromSystem(CurrentUser currentUser, Long tenantId) {
-        CompletableFuture<RoleVisibility> roleVisibilityFuture = CompletableFuture.supplyAsync(() -> visibleRoleVisibility(currentUser, tenantId), BLOCKING_IO_EXECUTOR);
-        CompletableFuture<Long> readModelVersionFuture = CompletableFuture.supplyAsync(() -> readModelVersionForTenant(tenantId), BLOCKING_IO_EXECUTOR);
+    private UnreadContext loadUnreadContextFromSystem(CurrentUser currentUser) {
+        CompletableFuture<RoleVisibility> roleVisibilityFuture = CompletableFuture.supplyAsync(() -> visibleRoleVisibility(currentUser), BLOCKING_IO_EXECUTOR);
+        CompletableFuture<Long> readModelVersionFuture = CompletableFuture.supplyAsync(this::readModelVersion, BLOCKING_IO_EXECUTOR);
         return new UnreadContext(roleVisibilityFuture.join(), readModelVersionFuture.join());
     }
 
-    private List<Long> visibleRoleIds(Long tenantId, Long userId) {
-        return visibleRoleVisibilityFromSystem(tenantId, userId).roleIds();
+    private List<Long> visibleRoleIds(Long userId) {
+        return visibleRoleVisibilityFromSystem(userId).roleIds();
     }
 
-    private RoleVisibility visibleRoleVisibility(Long tenantId, Long userId) {
-        return visibleRoleVisibilityFromSystem(tenantId, userId);
+    private RoleVisibility visibleRoleVisibility(Long userId) {
+        return visibleRoleVisibilityFromSystem(userId);
     }
 
-    private List<Long> visibleRoleIds(CurrentUser currentUser, Long tenantId) {
-        return visibleRoleVisibility(currentUser, tenantId).roleIds();
+    private List<Long> visibleRoleIds(CurrentUser currentUser) {
+        return visibleRoleVisibility(currentUser).roleIds();
     }
 
-    private RoleVisibility visibleRoleVisibility(CurrentUser currentUser, Long tenantId) {
-        if (tenantId == null || currentUser == null || currentUser.getUserId() == null) {
+    private RoleVisibility visibleRoleVisibility(CurrentUser currentUser) {
+        if (currentUser == null || currentUser.getUserId() == null) {
             return new RoleVisibility(null, List.of());
         }
-        if (isPermissionVersionAligned(currentUser, tenantId)) {
+        if (isPermissionVersionAligned(currentUser)) {
             return new RoleVisibility(currentUser.getPermissionsVersion(), normalizedRoleIds(currentUser.getRoleIds()));
         }
-        return visibleRoleVisibilityFromSystem(tenantId, currentUser.getUserId());
+        return visibleRoleVisibilityFromSystem(currentUser.getUserId());
     }
 
-    private RoleVisibility visibleRoleVisibilityFromSystem(Long tenantId, Long userId) {
-        if (tenantId == null || userId == null) {
+    private RoleVisibility visibleRoleVisibilityFromSystem(Long userId) {
+        if (userId == null) {
             return new RoleVisibility(null, List.of());
         }
-        String cacheKey = tenantId + ":" + userId;
+        String cacheKey = String.valueOf(userId);
         CachedRoleVisibility cached = roleVisibilityCache.get(cacheKey);
         Instant now = Instant.now();
         if (cached != null && cached.expireAt().isAfter(now)) {
@@ -955,7 +926,7 @@ public class MessageAppService {
         try {
             CompletableFuture<RoleVisibility> inFlight = roleVisibilityLoadInFlight.computeIfAbsent(
                     cacheKey,
-                    key -> CompletableFuture.completedFuture(loadRoleVisibilityFromSystem(tenantId, userId, now))
+                    key -> CompletableFuture.completedFuture(loadRoleVisibilityFromSystem(userId, now))
             );
             return inFlight.join();
         } catch (java.util.concurrent.CompletionException exception) {
@@ -968,38 +939,37 @@ public class MessageAppService {
         }
     }
 
-    private RoleVisibility loadRoleVisibilityFromSystem(Long tenantId, Long userId, Instant now) {
+    private RoleVisibility loadRoleVisibilityFromSystem(Long userId, Instant now) {
         roleVisibilityCacheMisses.incrementAndGet();
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(tenantId, userId);
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(userId);
         if (snapshot == null || snapshot.roleIds() == null || snapshot.roleIds().isEmpty()) {
             RoleVisibility roleVisibility = new RoleVisibility(snapshot == null ? null : snapshot.version(), List.of());
-            roleVisibilityCache.put(tenantId + ":" + userId, new CachedRoleVisibility(roleVisibility, now.plus(ROLE_VISIBILITY_CACHE_TTL)));
+            roleVisibilityCache.put(String.valueOf(userId), new CachedRoleVisibility(roleVisibility, now.plus(ROLE_VISIBILITY_CACHE_TTL)));
             return roleVisibility;
         }
         List<Long> roleIds = normalizedRoleIds(snapshot.roleIds());
         RoleVisibility roleVisibility = new RoleVisibility(snapshot.version(), roleIds);
-        roleVisibilityCache.put(tenantId + ":" + userId, new CachedRoleVisibility(roleVisibility, now.plus(ROLE_VISIBILITY_CACHE_TTL)));
+        roleVisibilityCache.put(String.valueOf(userId), new CachedRoleVisibility(roleVisibility, now.plus(ROLE_VISIBILITY_CACHE_TTL)));
         return roleVisibility;
     }
 
-    private boolean isPermissionVersionAligned(CurrentUser currentUser, Long tenantId) {
-        if (currentUser == null || !StringUtils.hasText(currentUser.getPermissionsVersion()) || tenantId == null || currentUser.getUserId() == null) {
+    private boolean isPermissionVersionAligned(CurrentUser currentUser) {
+        if (currentUser == null || !StringUtils.hasText(currentUser.getPermissionsVersion()) || currentUser.getUserId() == null) {
             return false;
         }
         Long sessionVersion = parsePermissionSnapshotVersion(currentUser.getPermissionsVersion());
         if (sessionVersion == null) {
             return false;
         }
-        long currentVersion = permissionSnapshotVersionForTenant(tenantId);
+        long currentVersion = permissionSnapshotVersion();
         if (currentVersion <= 0L) {
             return true;
         }
         return sessionVersion == currentVersion;
     }
 
-    private long permissionSnapshotVersionForTenant(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        CachedPermissionSnapshotVersion cached = permissionSnapshotVersionCache.get(effectiveTenantId);
+    private long permissionSnapshotVersion() {
+        CachedPermissionSnapshotVersion cached = permissionSnapshotVersionCache.get(GLOBAL_VERSION_CACHE_KEY);
         long now = System.currentTimeMillis();
         if (cached != null && cached.expiresAtEpochMillis() > now) {
             return cached.version();
@@ -1009,27 +979,26 @@ public class MessageAppService {
         CompletableFuture<Long> inFlight;
         try {
             inFlight = permissionSnapshotVersionLoadInFlight.computeIfAbsent(
-                    effectiveTenantId,
+                    GLOBAL_VERSION_CACHE_KEY,
                     key -> CompletableFuture.completedFuture(loadPermissionSnapshotVersionFromSystem(key))
             );
             version = inFlight.join();
         } catch (java.util.concurrent.CompletionException exception) {
             return 0L;
         } finally {
-            CompletableFuture<Long> removeCandidate = permissionSnapshotVersionLoadInFlight.get(effectiveTenantId);
+            CompletableFuture<Long> removeCandidate = permissionSnapshotVersionLoadInFlight.get(GLOBAL_VERSION_CACHE_KEY);
             if (removeCandidate != null && removeCandidate.isDone()) {
-                permissionSnapshotVersionLoadInFlight.remove(effectiveTenantId, removeCandidate);
+                permissionSnapshotVersionLoadInFlight.remove(GLOBAL_VERSION_CACHE_KEY, removeCandidate);
             }
         }
-        permissionSnapshotVersionCache.put(effectiveTenantId, new CachedPermissionSnapshotVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MILLIS));
+        permissionSnapshotVersionCache.put(GLOBAL_VERSION_CACHE_KEY, new CachedPermissionSnapshotVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MILLIS));
         return version;
     }
 
-    private long loadPermissionSnapshotVersionFromSystem(Long tenantId) {
+    private long loadPermissionSnapshotVersionFromSystem(String cacheKey) {
         readModelVersionCacheMisses.increment();
         try {
             Long actualVersion = systemInternalApi.readModelVersion(
-                    tenantId,
                     IAM_PERMISSION_READ_MODEL_CONTEXT,
                     IAM_PERMISSION_READ_MODEL_SCOPE
             );
@@ -1071,20 +1040,20 @@ public class MessageAppService {
                 .toList();
     }
 
-    private MessageVO.NoticeVO findNoticeById(Long tenantId, Long noticeId, Long userId) {
-        MessageVO.NoticeVO notice = messageNoticeMapper.findNoticeById(tenantId, noticeId, userId);
-        enrichNoticeTarget(tenantId, notice);
+    private MessageVO.NoticeVO findNoticeById(Long noticeId, Long userId) {
+        MessageVO.NoticeVO notice = messageNoticeMapper.findNoticeById(noticeId, userId);
+        enrichNoticeTarget(notice);
         return notice;
     }
 
-    private void enrichNoticeTarget(Long tenantId, MessageVO.NoticeVO notice) {
+    private void enrichNoticeTarget(MessageVO.NoticeVO notice) {
         if (notice == null) {
             return;
         }
-        enrichNoticeTargets(tenantId, List.of(notice));
+        enrichNoticeTargets(List.of(notice));
     }
 
-    private void enrichNoticeTargets(Long tenantId, List<MessageVO.NoticeVO> notices) {
+    private void enrichNoticeTargets(List<MessageVO.NoticeVO> notices) {
         if (notices == null || notices.isEmpty()) {
             return;
         }
@@ -1101,8 +1070,8 @@ public class MessageAppService {
                 roleIds.add(notice.getTargetRoleId());
             }
         }
-        Map<Long, String> userNames = loadUserNames(tenantId, userIds);
-        Map<Long, String> roleNames = loadRoleNames(tenantId, roleIds);
+        Map<Long, String> userNames = loadUserNames(userIds);
+        Map<Long, String> roleNames = loadRoleNames(roleIds);
         for (MessageVO.NoticeVO notice : notices) {
             if (notice == null) {
                 continue;
@@ -1116,14 +1085,14 @@ public class MessageAppService {
         }
     }
 
-    private Map<Long, String> loadUserNames(Long tenantId, Set<Long> userIds) {
+    private Map<Long, String> loadUserNames(Set<Long> userIds) {
         if (userIds.isEmpty()) {
             return Map.of();
         }
         Map<Long, String> names = new LinkedHashMap<>();
         List<Long> missingUserIds = new ArrayList<>();
         for (Long userId : userIds) {
-            String cacheKey = userNameCacheKey(tenantId, userId);
+            String cacheKey = userNameCacheKey(userId);
             String cachedName = cacheTemplate.get(cacheKey);
             if (!StringUtils.hasText(cachedName)) {
                 missingUserIds.add(userId);
@@ -1139,9 +1108,9 @@ public class MessageAppService {
             return names.isEmpty() ? Collections.emptyMap() : names;
         }
 
-        List<SystemUserSnapshotDTO> users = systemInternalApi.usersByIds(tenantId, missingUserIds);
+        List<SystemUserSnapshotDTO> users = systemInternalApi.usersByIds(missingUserIds);
         if (users == null || users.isEmpty()) {
-            cacheUserNameMisses(tenantId, missingUserIds, Set.of());
+            cacheUserNameMisses(missingUserIds, Set.of());
             return Map.of();
         }
         Set<Long> resolvedIds = new LinkedHashSet<>();
@@ -1150,24 +1119,24 @@ public class MessageAppService {
                 String name = user.username();
                 if (StringUtils.hasText(name)) {
                     names.put(user.userId(), name);
-                    cacheName(userNameCacheKey(tenantId, user.userId()), name, NOTICE_TARGET_NAME_CACHE_TTL);
+                    cacheName(userNameCacheKey(user.userId()), name, NOTICE_TARGET_NAME_CACHE_TTL);
                     resolvedIds.add(user.userId());
                 }
             }
         }
 
-        cacheUserNameMisses(tenantId, missingUserIds, resolvedIds);
+        cacheUserNameMisses(missingUserIds, resolvedIds);
         return names;
     }
 
-    private Map<Long, String> loadRoleNames(Long tenantId, Set<Long> roleIds) {
+    private Map<Long, String> loadRoleNames(Set<Long> roleIds) {
         if (roleIds.isEmpty()) {
             return Map.of();
         }
         Map<Long, String> names = new LinkedHashMap<>();
         List<Long> missingRoleIds = new ArrayList<>();
         for (Long roleId : roleIds) {
-            String cacheKey = roleNameCacheKey(tenantId, roleId);
+            String cacheKey = roleNameCacheKey(roleId);
             String cachedName = cacheTemplate.get(cacheKey);
             if (!StringUtils.hasText(cachedName)) {
                 missingRoleIds.add(roleId);
@@ -1183,9 +1152,9 @@ public class MessageAppService {
             return names.isEmpty() ? Collections.emptyMap() : names;
         }
 
-        List<SystemRoleSnapshotDTO> roles = systemInternalApi.rolesByIds(tenantId, missingRoleIds);
+        List<SystemRoleSnapshotDTO> roles = systemInternalApi.rolesByIds(missingRoleIds);
         if (roles == null || roles.isEmpty()) {
-            cacheMissRoleNames(tenantId, missingRoleIds);
+            cacheMissRoleNames(missingRoleIds);
             return Map.of();
         }
         Set<Long> resolvedIds = new LinkedHashSet<>();
@@ -1194,37 +1163,37 @@ public class MessageAppService {
                 String name = role.roleName();
                 if (StringUtils.hasText(name)) {
                     names.put(role.roleId(), name);
-                    cacheName(roleNameCacheKey(tenantId, role.roleId()), name, NOTICE_TARGET_NAME_CACHE_TTL);
+                    cacheName(roleNameCacheKey(role.roleId()), name, NOTICE_TARGET_NAME_CACHE_TTL);
                     resolvedIds.add(role.roleId());
                 }
             }
         }
 
-        cacheRoleNameMisses(tenantId, missingRoleIds, resolvedIds);
+        cacheRoleNameMisses(missingRoleIds, resolvedIds);
         return names;
     }
 
-    private void cacheUserNameMisses(Long tenantId, List<Long> requestedUserIds, Set<Long> resolvedUserIds) {
+    private void cacheUserNameMisses(List<Long> requestedUserIds, Set<Long> resolvedUserIds) {
         for (Long userId : requestedUserIds) {
             if (resolvedUserIds.contains(userId)) {
                 continue;
             }
-            cacheName(userNameCacheKey(tenantId, userId), CACHED_NAME_MISS_MARKER, NOTICE_TARGET_NAME_CACHE_TTL);
+            cacheName(userNameCacheKey(userId), CACHED_NAME_MISS_MARKER, NOTICE_TARGET_NAME_CACHE_TTL);
         }
     }
 
-    private void cacheMissRoleNames(Long tenantId, List<Long> requestedRoleIds) {
+    private void cacheMissRoleNames(List<Long> requestedRoleIds) {
         for (Long roleId : requestedRoleIds) {
-            cacheName(roleNameCacheKey(tenantId, roleId), CACHED_NAME_MISS_MARKER, NOTICE_TARGET_NAME_CACHE_TTL);
+            cacheName(roleNameCacheKey(roleId), CACHED_NAME_MISS_MARKER, NOTICE_TARGET_NAME_CACHE_TTL);
         }
     }
 
-    private void cacheRoleNameMisses(Long tenantId, List<Long> requestedRoleIds, Set<Long> resolvedRoleIds) {
+    private void cacheRoleNameMisses(List<Long> requestedRoleIds, Set<Long> resolvedRoleIds) {
         for (Long roleId : requestedRoleIds) {
             if (resolvedRoleIds.contains(roleId)) {
                 continue;
             }
-            cacheName(roleNameCacheKey(tenantId, roleId), CACHED_NAME_MISS_MARKER, NOTICE_TARGET_NAME_CACHE_TTL);
+            cacheName(roleNameCacheKey(roleId), CACHED_NAME_MISS_MARKER, NOTICE_TARGET_NAME_CACHE_TTL);
         }
     }
 
@@ -1235,8 +1204,8 @@ public class MessageAppService {
         cacheTemplate.put(key, value, ttl);
     }
 
-    private String userNameCacheKey(Long tenantId, Long userId) {
-        return NOTICE_TARGET_USER_NAME_CACHE_PREFIX + ":" + String.valueOf(tenantId) + ":" + String.valueOf(userId);
+    private String userNameCacheKey(Long userId) {
+        return NOTICE_TARGET_USER_NAME_CACHE_PREFIX + ":" + String.valueOf(userId);
     }
 
     private static Timer createTimerIfAvailable(MeterRegistry meterRegistry, String timerName) {
@@ -1268,8 +1237,8 @@ public class MessageAppService {
         return timer.max(TimeUnit.MILLISECONDS);
     }
 
-    private String roleNameCacheKey(Long tenantId, Long roleId) {
-        return NOTICE_TARGET_ROLE_NAME_CACHE_PREFIX + ":" + String.valueOf(tenantId) + ":" + String.valueOf(roleId);
+    private String roleNameCacheKey(Long roleId) {
+        return NOTICE_TARGET_ROLE_NAME_CACHE_PREFIX + ":" + String.valueOf(roleId);
     }
 
     private boolean isCachedMiss(String cachedValue) {
@@ -1293,71 +1262,69 @@ public class MessageAppService {
     }
 
     private void sendEmailNotifications(CurrentUser currentUser, MessageDTO.MessageCreateRequest request, Long noticeId) {
-        Long tenantId = tenantId(currentUser);
-        if (!smtpNotificationMailService.isConfigured(tenantId)) {
-            insertDeliveryLog(tenantId, noticeId, CHANNEL_EMAIL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "SMTP 未配置或配置不完整", currentUser.getUserId());
+        if (!smtpNotificationMailService.isConfigured()) {
+            insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "SMTP 未配置或配置不完整", currentUser.getUserId());
             return;
         }
-        List<Recipient> recipients = resolveEmailRecipients(tenantId, request.getTargetScope(), request.getTargetUserId(), request.getTargetRoleId());
+        List<Recipient> recipients = resolveEmailRecipients(request.getTargetScope(), request.getTargetUserId(), request.getTargetRoleId());
         if (recipients.isEmpty()) {
-            insertDeliveryLog(tenantId, noticeId, CHANNEL_EMAIL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "未找到可接收邮箱通知的用户", currentUser.getUserId());
+            insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "未找到可接收邮箱通知的用户", currentUser.getUserId());
             return;
         }
         for (Recipient recipient : recipients) {
             if (!StringUtils.hasText(recipient.email())) {
-                insertDeliveryLog(tenantId, noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "用户未绑定邮箱", currentUser.getUserId());
+                insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "用户未绑定邮箱", currentUser.getUserId());
                 continue;
             }
             try {
-                smtpNotificationMailService.send(tenantId, recipient.email(), request.getTitle(), request.getContent());
-                insertDeliveryLog(tenantId, noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, currentUser.getUserId());
+                smtpNotificationMailService.send(recipient.email(), request.getTitle(), request.getContent());
+                insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, currentUser.getUserId());
             } catch (Exception exception) {
-                insertDeliveryLog(tenantId, noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_FAILED, abbreviate(exception.getMessage(), 1000), currentUser.getUserId());
+                insertDeliveryLog(noticeId, CHANNEL_EMAIL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.email(), request.getTitle(), request.getContent(), DELIVERY_FAILED, abbreviate(exception.getMessage(), 1000), currentUser.getUserId());
             }
         }
     }
 
     private void sendWechatOfficialNotifications(CurrentUser currentUser, MessageDTO.MessageCreateRequest request, Long noticeId) {
-        Long tenantId = tenantId(currentUser);
-        if (!wechatOfficialAccountNotificationService.isConfigured(tenantId)) {
-            insertDeliveryLog(tenantId, noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "微信公众号通知未启用或配置不完整", currentUser.getUserId());
+        if (!wechatOfficialAccountNotificationService.isConfigured()) {
+            insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "微信公众号通知未启用或配置不完整", currentUser.getUserId());
             return;
         }
-        List<Recipient> recipients = resolveRecipients(tenantId, request.getTargetScope(), request.getTargetUserId(), request.getTargetRoleId());
+        List<Recipient> recipients = resolveRecipients(request.getTargetScope(), request.getTargetUserId(), request.getTargetRoleId());
         if (recipients.isEmpty()) {
-            insertDeliveryLog(tenantId, noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "未找到可接收微信公众号通知的用户", currentUser.getUserId());
+            insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), null, null, null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "未找到可接收微信公众号通知的用户", currentUser.getUserId());
             return;
         }
         for (Recipient recipient : recipients) {
             if (!StringUtils.hasText(recipient.wechatOpenid())) {
-                insertDeliveryLog(tenantId, noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "用户未绑定微信 OpenID", currentUser.getUserId());
+                insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), null, request.getTitle(), request.getContent(), DELIVERY_SKIPPED, "用户未绑定微信 OpenID", currentUser.getUserId());
                 continue;
             }
             try {
-                wechatOfficialAccountNotificationService.send(tenantId, recipient.wechatOpenid(), request.getTitle(), request.getContent());
-                insertDeliveryLog(tenantId, noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.wechatOpenid(), request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, currentUser.getUserId());
+                wechatOfficialAccountNotificationService.send(recipient.wechatOpenid(), request.getTitle(), request.getContent());
+                insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.wechatOpenid(), request.getTitle(), request.getContent(), DELIVERY_SUCCESS, null, currentUser.getUserId());
             } catch (Exception exception) {
-                insertDeliveryLog(tenantId, noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.wechatOpenid(), request.getTitle(), request.getContent(), DELIVERY_FAILED, abbreviate(exception.getMessage(), 1000), currentUser.getUserId());
+                insertDeliveryLog(noticeId, CHANNEL_WECHAT_OFFICIAL, request.getTargetScope(), recipient.userId(), recipient.username(), recipient.wechatOpenid(), request.getTitle(), request.getContent(), DELIVERY_FAILED, abbreviate(exception.getMessage(), 1000), currentUser.getUserId());
             }
         }
     }
 
-    private List<Recipient> resolveEmailRecipients(Long tenantId, String targetScope, Long targetUserId, Long targetRoleId) {
-        return resolveRecipients(tenantId, targetScope, targetUserId, targetRoleId);
+    private List<Recipient> resolveEmailRecipients(String targetScope, Long targetUserId, Long targetRoleId) {
+        return resolveRecipients(targetScope, targetUserId, targetRoleId);
     }
 
-    private List<Recipient> resolveRecipients(Long tenantId, String targetScope, Long targetUserId, Long targetRoleId) {
+    private List<Recipient> resolveRecipients(String targetScope, Long targetUserId, Long targetRoleId) {
         List<SystemUserContactSnapshotDTO> contacts;
         String normalizedTargetScope = normalizeTargetScope(targetScope);
         if (TARGET_SCOPE_USER.equals(normalizedTargetScope)) {
-            contacts = targetUserId == null ? List.of() : systemInternalApi.userContactsByIds(tenantId, List.of(targetUserId));
+            contacts = targetUserId == null ? List.of() : systemInternalApi.userContactsByIds(List.of(targetUserId));
             return toRecipients(contacts);
         }
         if (TARGET_SCOPE_ROLE.equals(normalizedTargetScope)) {
-            contacts = targetRoleId == null ? List.of() : systemInternalApi.userContactsByRole(tenantId, targetRoleId);
+            contacts = targetRoleId == null ? List.of() : systemInternalApi.userContactsByRole(targetRoleId);
             return toRecipients(contacts);
         }
-        contacts = systemInternalApi.platformUserContacts(tenantId);
+        contacts = systemInternalApi.platformUserContacts();
         return toRecipients(contacts);
     }
 
@@ -1365,11 +1332,7 @@ public class MessageAppService {
         if (!StringUtils.hasText(targetScope)) {
             return targetScope;
         }
-        String normalized = targetScope.trim().toUpperCase();
-        if (TARGET_SCOPE_LEGACY_TENANT.equals(normalized)) {
-            return TARGET_SCOPE_PLATFORM;
-        }
-        return normalized;
+        return targetScope.trim().toUpperCase();
     }
 
     private List<Recipient> toRecipients(List<SystemUserContactSnapshotDTO> contacts) {
@@ -1387,7 +1350,6 @@ public class MessageAppService {
     }
 
     private void insertDeliveryLog(
-            Long tenantId,
             Long noticeId,
             String channel,
             String targetScope,
@@ -1401,7 +1363,6 @@ public class MessageAppService {
             Long operatorId
     ) {
         MessageDeliveryLogEntity entity = new MessageDeliveryLogEntity();
-        entity.setTenantId(tenantId);
         entity.setNoticeId(noticeId);
         entity.setChannel(channel);
         entity.setTargetScope(targetScope);
@@ -1422,13 +1383,11 @@ public class MessageAppService {
     private NoticeArchiveQuery buildNoticeArchiveQuery(
             CurrentUser currentUser,
             MessageDTO.MessageArchiveQueryRequest request,
-            Long tenantId,
             RoleVisibility roleVisibility,
             long limit,
             long offset
     ) {
         NoticeArchiveQuery query = new NoticeArchiveQuery();
-        query.setTenantId(tenantId);
         query.setUserId(currentUser.getUserId());
         query.setManageArchive(canManageArchive(currentUser));
         query.setKeyword(normalizeText(request.getKeyword()));
@@ -1486,12 +1445,10 @@ public class MessageAppService {
 
     private DeliveryLogQuery buildDeliveryLogQuery(
             MessageDTO.MessageArchiveQueryRequest request,
-            Long tenantId,
             long limit,
             long offset
     ) {
         DeliveryLogQuery query = new DeliveryLogQuery();
-        query.setTenantId(tenantId);
         query.setKeyword(normalizeText(request.getKeyword()));
         query.setChannel(normalizeText(request.getChannel()));
         query.setTargetScope(normalizeText(request.getTargetScope()));
@@ -1531,10 +1488,6 @@ public class MessageAppService {
             return value;
         }
         return value.substring(0, maxLength);
-    }
-
-    private Long tenantId(CurrentUser currentUser) {
-        return PlatformContext.compatibilityTenantId();
     }
 
     private record RoleVisibility(String version, List<Long> roleIds) {

@@ -12,7 +12,6 @@ import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.auth.config.AuthSecurityProperties;
 import com.lumira.auth.model.AuthSession;
 import com.lumira.common.web.repeatsubmit.ClientIpResolver;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
@@ -173,10 +172,10 @@ class AuthAppServiceTest {
         totpOption.setPromptMessage("请输入认证器中的 6 位验证码完成验证");
 
         when(systemInternalApi.findLoginUser("jane")).thenReturn(user);
-        when(systemInternalApi.loginCapabilities(PlatformConstants.PLATFORM_TENANT_ID))
+        when(systemInternalApi.loginCapabilities())
                 .thenReturn(new LoginCapabilitiesDTO(true, false, false, false, false, false, List.of("password")));
-        when(systemInternalApi.permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(snapshot);
-        when(systemInternalApi.listLoginSecondFactorOptions(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(List.of(totpOption));
+        when(systemInternalApi.permissionSnapshot(42L)).thenReturn(snapshot);
+        when(systemInternalApi.listLoginSecondFactorOptions(42L)).thenReturn(List.of(totpOption));
         when(loginEncryptionService.decryptPassword("ciphertext")).thenReturn("password");
         when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
 
@@ -190,7 +189,7 @@ class AuthAppServiceTest {
         assertNull(response.getRefreshToken());
         assertEquals(1, response.getSecondFactorOptions().size());
         assertEquals("challenge-1", response.getSecondFactorOptions().get(0).getChallengeId());
-        verify(systemInternalApi).listLoginSecondFactorOptions(PlatformConstants.PLATFORM_TENANT_ID, 42L);
+        verify(systemInternalApi).listLoginSecondFactorOptions(42L);
         verify(authSessionStore, never()).save(any(), anyBoolean());
         verify(loginProtectionService, never()).clearFailureState("jane", "127.0.0.1");
     }
@@ -203,7 +202,6 @@ class AuthAppServiceTest {
                 new CurrentUser(
                         42L,
                         "jane",
-                        PlatformConstants.PLATFORM_TENANT_ID,
                         "session-1",
                         1,
                         true,
@@ -215,7 +213,7 @@ class AuthAppServiceTest {
                         List.of()
                 )
         );
-        seedPermissionVersionCache(PlatformConstants.PLATFORM_TENANT_ID, 42L, "v1");
+        seedPermissionVersionCache(42L, "v1");
 
         var firstBootstrap = authAppService.bootstrap();
         var secondBootstrap = authAppService.bootstrap();
@@ -228,7 +226,7 @@ class AuthAppServiceTest {
         assertEquals(1, authAppService.authBootstrapCacheRefreshes());
         assertEquals(0, authAppService.authBootstrapCacheAlignmentRejects());
         verify(systemInternalApi, never()).findUserById(42L);
-        verify(systemInternalApi, never()).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L);
+        verify(systemInternalApi, never()).permissionSnapshot(42L);
         verify(securitySettingsService, times(1)).snapshot();
     }
 
@@ -238,7 +236,6 @@ class AuthAppServiceTest {
         CurrentUser currentUser = new CurrentUser(
                 42L,
                 "jane",
-                PlatformConstants.PLATFORM_TENANT_ID,
                 "session-1",
                 1,
                 true,
@@ -252,7 +249,7 @@ class AuthAppServiceTest {
         currentUser.setPermissionsVersion("v1");
         when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        seedPermissionVersionCache(PlatformConstants.PLATFORM_TENANT_ID, 42L, "v1");
+        seedPermissionVersionCache(42L, "v1");
 
         CurrentUserDTO first = authAppService.currentUser();
         CurrentUserDTO second = authAppService.currentUser();
@@ -261,7 +258,7 @@ class AuthAppServiceTest {
         assertEquals("v1", second.permissionsVersion());
         verify(authSessionStore, times(1)).findBySessionId("session-1");
         verify(systemInternalApi, never()).findUserById(42L);
-        verify(systemInternalApi, never()).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L);
+        verify(systemInternalApi, never()).permissionSnapshot(42L);
     }
 
     @Test
@@ -290,8 +287,8 @@ class AuthAppServiceTest {
         LoginCapabilitiesDTO capabilities = new LoginCapabilitiesDTO(true, false, false, false, false, false, List.of("password"));
 
         when(systemInternalApi.findLoginUser("jane")).thenReturn(user);
-        when(systemInternalApi.loginCapabilities(PlatformConstants.PLATFORM_TENANT_ID)).thenReturn(capabilities);
-        when(systemInternalApi.permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(snapshot);
+        when(systemInternalApi.loginCapabilities()).thenReturn(capabilities);
+        when(systemInternalApi.permissionSnapshot(42L)).thenReturn(snapshot);
         when(loginEncryptionService.decryptPassword("ciphertext")).thenReturn("password");
         when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
 
@@ -303,7 +300,7 @@ class AuthAppServiceTest {
         assertTrue(Boolean.FALSE.equals(firstLogin.getRequiresSecondFactor()));
         assertTrue(Boolean.FALSE.equals(secondLogin.getRequiresSecondFactor()));
         verify(systemInternalApi, times(2)).findLoginUser("jane");
-        verify(systemInternalApi, times(1)).loginCapabilities(PlatformConstants.PLATFORM_TENANT_ID);
+        verify(systemInternalApi, times(1)).loginCapabilities();
     }
 
     @Test
@@ -314,7 +311,6 @@ class AuthAppServiceTest {
                 new CurrentUser(
                         42L,
                         "jane",
-                        PlatformConstants.PLATFORM_TENANT_ID,
                         "session-1",
                         1,
                         true,
@@ -326,7 +322,7 @@ class AuthAppServiceTest {
                         List.of()
                 )
         );
-        seedPermissionVersionCache(PlatformConstants.PLATFORM_TENANT_ID, 42L, "v1");
+        seedPermissionVersionCache(42L, "v1");
         PermissionSnapshotDTO refreshedSnapshot = new PermissionSnapshotDTO(
                 "v2",
                 List.of("dashboard:view", "project:view"),
@@ -337,7 +333,7 @@ class AuthAppServiceTest {
                 List.of(),
                 "/dashboard/home"
         );
-        when(systemInternalApi.permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(refreshedSnapshot);
+        when(systemInternalApi.permissionSnapshot(42L)).thenReturn(refreshedSnapshot);
 
         authAppService.bootstrap();
         session.setPermissionsVersion("v0");
@@ -348,7 +344,7 @@ class AuthAppServiceTest {
         assertEquals(2, authAppService.authBootstrapCacheMisses());
         assertEquals(0, authAppService.authBootstrapCacheHits());
         assertEquals(0, authAppService.authBootstrapCacheAlignmentRejects());
-        verify(systemInternalApi).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L);
+        verify(systemInternalApi).permissionSnapshot(42L);
     }
 
     @Test
@@ -359,7 +355,6 @@ class AuthAppServiceTest {
                 new CurrentUser(
                         42L,
                         "jane",
-                        PlatformConstants.PLATFORM_TENANT_ID,
                         "session-1",
                         1,
                         true,
@@ -371,12 +366,12 @@ class AuthAppServiceTest {
                         List.of()
                 )
         );
-        seedPermissionVersionCache(PlatformConstants.PLATFORM_TENANT_ID, 42L, "v1");
+        seedPermissionVersionCache(42L, "v1");
 
         var firstBootstrap = authAppService.bootstrap();
         assertEquals("v1", firstBootstrap.currentUser().permissionsVersion());
 
-        seedPermissionVersionCache(PlatformConstants.PLATFORM_TENANT_ID, 42L, "v2");
+        seedPermissionVersionCache(42L, "v2");
         PermissionSnapshotDTO refreshedSnapshot = new PermissionSnapshotDTO(
                 "v2",
                 List.of("dashboard:view", "project:view"),
@@ -387,14 +382,14 @@ class AuthAppServiceTest {
                 List.of(),
                 "/dashboard/home"
         );
-        when(systemInternalApi.permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(refreshedSnapshot);
+        when(systemInternalApi.permissionSnapshot(42L)).thenReturn(refreshedSnapshot);
 
         var secondBootstrap = authAppService.bootstrap();
 
         assertEquals("v2", secondBootstrap.currentUser().permissionsVersion());
         assertEquals(List.of("dashboard:view", "project:view"), secondBootstrap.currentUser().permissions());
         assertEquals(1, authAppService.authBootstrapCacheAlignmentRejects());
-        verify(systemInternalApi).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L);
+        verify(systemInternalApi).permissionSnapshot(42L);
         verify(systemInternalApi, times(0)).findUserById(42L);
     }
 
@@ -406,7 +401,6 @@ class AuthAppServiceTest {
                 new CurrentUser(
                         42L,
                         "jane",
-                        PlatformConstants.PLATFORM_TENANT_ID,
                         "session-1",
                         1,
                         true,
@@ -418,14 +412,14 @@ class AuthAppServiceTest {
                         List.of()
                 )
         );
-        when(systemInternalApi.readModelVersion(PlatformConstants.PLATFORM_TENANT_ID, "IAM", "permission-snapshot")).thenReturn(1L);
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(1L);
 
         var bootstrap = authAppService.bootstrap();
 
         assertEquals(42L, bootstrap.currentUser().userId());
         assertEquals("v1", bootstrap.currentUser().permissionsVersion());
         assertEquals(List.of("dashboard:view"), bootstrap.currentUser().permissions());
-        verify(systemInternalApi, never()).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L);
+        verify(systemInternalApi, never()).permissionSnapshot(42L);
     }
 
     @Test
@@ -436,7 +430,6 @@ class AuthAppServiceTest {
                 new CurrentUser(
                         42L,
                         "jane",
-                        PlatformConstants.PLATFORM_TENANT_ID,
                         "session-1",
                         1,
                         true,
@@ -448,7 +441,7 @@ class AuthAppServiceTest {
                         List.of()
                 )
         );
-        when(systemInternalApi.readModelVersion(PlatformConstants.PLATFORM_TENANT_ID, "IAM", "permission-snapshot")).thenReturn(3L);
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(3L);
         PermissionSnapshotDTO refreshedSnapshot = new PermissionSnapshotDTO(
                 "v3",
                 List.of("dashboard:view", "project:view"),
@@ -459,20 +452,20 @@ class AuthAppServiceTest {
                 List.of(),
                 "/dashboard/home"
         );
-        when(systemInternalApi.permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(refreshedSnapshot);
+        when(systemInternalApi.permissionSnapshot(42L)).thenReturn(refreshedSnapshot);
 
         var bootstrap = authAppService.bootstrap();
 
         assertEquals("v3", bootstrap.currentUser().permissionsVersion());
         assertEquals(List.of("dashboard:view", "project:view"), bootstrap.currentUser().permissions());
-        verify(systemInternalApi).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L);
+        verify(systemInternalApi).permissionSnapshot(42L);
     }
 
     @Test
     void currentUserBySessionIdUsesCachedSessionSnapshotWithoutSystemRoundTrip() {
         AuthSession session = cachedSession();
         when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
-        seedPermissionVersionCache(PlatformConstants.PLATFORM_TENANT_ID, 42L, "v1");
+        seedPermissionVersionCache(42L, "v1");
 
         var currentUser = authAppService.currentUserBySessionId("session-1");
 
@@ -481,7 +474,7 @@ class AuthAppServiceTest {
         assertEquals(List.of("dashboard:view"), currentUser.permissions());
         assertEquals("/dashboard/home", currentUser.defaultHomePath());
         verify(systemInternalApi, never()).findUserById(42L);
-        verify(systemInternalApi, never()).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L);
+        verify(systemInternalApi, never()).permissionSnapshot(42L);
     }
 
     @Test
@@ -490,7 +483,7 @@ class AuthAppServiceTest {
         when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
         session.setPermissionsVersion("v0");
         session.setPermissions(List.of("dashboard:view"));
-        seedPermissionVersionCache(PlatformConstants.PLATFORM_TENANT_ID, 42L, "v1");
+        seedPermissionVersionCache(42L, "v1");
         PermissionSnapshotDTO refreshedSnapshot = new PermissionSnapshotDTO(
                 "v1",
                 List.of("dashboard:view", "project:view"),
@@ -501,22 +494,21 @@ class AuthAppServiceTest {
                 List.of(),
                 "/dashboard/home"
         );
-        when(systemInternalApi.permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(refreshedSnapshot);
+        when(systemInternalApi.permissionSnapshot(42L)).thenReturn(refreshedSnapshot);
 
         var currentUser = authAppService.currentUserBySessionId("session-1");
 
         assertEquals(42L, currentUser.userId());
         assertEquals(List.of("dashboard:view", "project:view"), currentUser.permissions());
         verify(systemInternalApi, never()).findUserById(42L);
-        verify(systemInternalApi).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L);
+        verify(systemInternalApi).permissionSnapshot(42L);
         verify(authSessionStore).save(session, false);
     }
 
     @Test
-    void currentUserBySessionIdUsesTenantUserScopedCacheWithoutCrossUserVersionContamination() {
+    void currentUserBySessionIdUsesUserScopedCacheWithoutCrossUserVersionContamination() {
         AuthSession user42Session = cachedSession();
         user42Session.setSessionId("session-42");
-        user42Session.setCurrentTenantId(PlatformConstants.PLATFORM_TENANT_ID);
         user42Session.setUserId(42L);
         user42Session.setPermissionsVersion("v10");
         user42Session.setPermissions(List.of("dashboard:view"));
@@ -527,7 +519,6 @@ class AuthAppServiceTest {
 
         AuthSession user51Session = cachedSession();
         user51Session.setSessionId("session-51");
-        user51Session.setCurrentTenantId(PlatformConstants.PLATFORM_TENANT_ID);
         user51Session.setUserId(51L);
         user51Session.setPermissionsVersion("v20");
         user51Session.setPermissions(List.of("report:view"));
@@ -536,8 +527,8 @@ class AuthAppServiceTest {
         user51Session.setDescendantDeptIds(List.of(200L));
         user51Session.setDataScopes(List.of());
 
-        seedPermissionVersionCache(PlatformConstants.PLATFORM_TENANT_ID, 42L, "v10");
-        seedPermissionVersionCache(PlatformConstants.PLATFORM_TENANT_ID, 51L, "v20");
+        seedPermissionVersionCache(42L, "v10");
+        seedPermissionVersionCache(51L, "v20");
 
         when(authSessionStore.findBySessionId("session-42")).thenReturn(Optional.of(user42Session));
         when(authSessionStore.findBySessionId("session-51")).thenReturn(Optional.of(user51Session));
@@ -549,8 +540,8 @@ class AuthAppServiceTest {
         assertEquals(List.of("dashboard:view"), currentUser42.permissions());
         assertEquals(51L, currentUser51.userId());
         assertEquals(List.of("report:view"), currentUser51.permissions());
-        verify(systemInternalApi, never()).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L);
-        verify(systemInternalApi, never()).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 51L);
+        verify(systemInternalApi, never()).permissionSnapshot(42L);
+        verify(systemInternalApi, never()).permissionSnapshot(51L);
     }
 
     @Test
@@ -558,8 +549,8 @@ class AuthAppServiceTest {
         AuthSession session = cachedSession();
         session.setPermissionsVersion("v0");
         when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
-        when(systemInternalApi.readModelVersion(PlatformConstants.PLATFORM_TENANT_ID, "IAM", "permission-snapshot")).thenReturn(1L);
-        when(systemInternalApi.permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(new PermissionSnapshotDTO(
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(1L);
+        when(systemInternalApi.permissionSnapshot(42L)).thenReturn(new PermissionSnapshotDTO(
                 "v1",
                 List.of("dashboard:view", "project:view"),
                 List.of(3L),
@@ -598,8 +589,8 @@ class AuthAppServiceTest {
             assertEquals("v1", currentUser.permissionsVersion());
             assertEquals(List.of("dashboard:view", "project:view"), currentUser.permissions());
         }
-        verify(systemInternalApi, times(1)).permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L);
-        verify(systemInternalApi, times(1)).readModelVersion(PlatformConstants.PLATFORM_TENANT_ID, "IAM", "permission-snapshot");
+        verify(systemInternalApi, times(1)).permissionSnapshot(42L);
+        verify(systemInternalApi, times(1)).readModelVersion("IAM", "permission-snapshot");
         verify(authSessionStore, atLeast(1)).save(session, false);
     }
 
@@ -630,7 +621,7 @@ class AuthAppServiceTest {
         PermissionSnapshotDTO snapshot = new PermissionSnapshotDTO("v1", List.of("dashboard:view"), List.of(3L), null, List.of(), List.of(), List.of(), "/dashboard/home");
         when(authSessionStore.findBySessionId("legacy-session")).thenReturn(Optional.of(session));
         when(systemInternalApi.findUserById(42L)).thenReturn(user);
-        when(systemInternalApi.permissionSnapshot(PlatformConstants.PLATFORM_TENANT_ID, 42L)).thenReturn(snapshot);
+        when(systemInternalApi.permissionSnapshot(42L)).thenReturn(snapshot);
 
         var currentUser = authAppService.currentUserBySessionId("legacy-session");
 
@@ -643,7 +634,6 @@ class AuthAppServiceTest {
         AuthSession session = new AuthSession();
         session.setSessionId("session-1");
         session.setUserId(42L);
-        session.setCurrentTenantId(PlatformConstants.PLATFORM_TENANT_ID);
         session.setUsername("jane");
         session.setNickname("Jane");
         session.setEmail("jane@example.com");
@@ -660,21 +650,17 @@ class AuthAppServiceTest {
         return session;
     }
 
-    private void seedPermissionVersionCache(Long tenantId, Long userId, String version) {
+    private void seedPermissionVersionCache(Long userId, String version) {
         try {
             Field cacheField = AuthAppService.class.getDeclaredField("permissionSnapshotVersionCache");
             cacheField.setAccessible(true);
             @SuppressWarnings("unchecked")
-            com.google.common.cache.Cache<Object, Object> cache = (com.google.common.cache.Cache<Object, Object>) cacheField.get(authAppService);
-            Class<?> cacheKeyType = Class.forName("com.lumira.auth.service.AuthAppService$PermissionSnapshotCacheKey");
+            com.google.common.cache.Cache<Long, Object> cache = (com.google.common.cache.Cache<Long, Object>) cacheField.get(authAppService);
             Class<?> cacheEntryType = Class.forName("com.lumira.auth.service.AuthAppService$PermissionSnapshotVersionCache");
-            Constructor<?> keyConstructor = cacheKeyType.getDeclaredConstructor(Long.class, Long.class);
             Constructor<?> entryConstructor = cacheEntryType.getDeclaredConstructor(String.class);
-            keyConstructor.setAccessible(true);
             entryConstructor.setAccessible(true);
-            Object key = keyConstructor.newInstance(tenantId, userId);
             Object cacheEntry = entryConstructor.newInstance(version);
-            cache.put(key, cacheEntry);
+            cache.put(userId, cacheEntry);
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException(exception);
         }

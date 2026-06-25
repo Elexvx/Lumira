@@ -27,13 +27,12 @@ public class PlatformMenuService {
         this.systemPluginViewService = systemPluginViewService;
     }
 
-    public List<Map<String, Object>> buildTenantMenuTree(Long tenantId, List<String> permissions) {
+    public List<Map<String, Object>> buildMenuTree(List<String> permissions) {
         List<Map<String, Object>> flatMenus = new ArrayList<>(jdbcTemplate.query(
                 """
                         select id, parent_id, menu_code, menu_name, path, component, icon, sort_no, permission_key
                         from sys_menu
-                        where tenant_id = ?
-                          and deleted = 0
+                        where deleted = 0
                           and status = 'ENABLED'
                         order by sort_no asc, id asc
                         """,
@@ -50,14 +49,13 @@ public class PlatformMenuService {
                     item.put("permissionKey", rs.getString("permission_key"));
                     item.put("children", new ArrayList<Map<String, Object>>());
                     return item;
-                },
-                tenantId
+                }
         ));
         List<Map<String, Object>> pluginMenus;
         try {
-            pluginMenus = systemPluginViewService.tenantPluginMenus(tenantId, permissions);
+            pluginMenus = systemPluginViewService.pluginMenus(permissions);
         } catch (Throwable throwable) {
-            log.warn("Failed to load plugin menus tenantId={}", tenantId, throwable);
+            log.warn("Failed to load plugin menus", throwable);
             pluginMenus = List.of();
         }
         long seed = -1L;

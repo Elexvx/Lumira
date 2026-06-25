@@ -30,7 +30,7 @@ class FileOcrProcessorTest {
         mockLocation(jdbcTemplate, source, "image/png", "png");
         FileOcrProcessor processor = processor(jdbcTemplate, new DisabledFileOcrEngine());
 
-        FileOcrProcessor.OcrResult result = processor.extractImageText(1001L, 3001L, 2001L);
+        FileOcrProcessor.OcrResult result = processor.extractImageText(3001L, 2001L);
 
         assertThat(result.engine()).isEqualTo(DisabledFileOcrEngine.ENGINE_NAME);
         assertThat(result.status()).isEqualTo(FileOcrProcessor.STATUS_SKIPPED);
@@ -55,7 +55,7 @@ class FileOcrProcessorTest {
         };
         FileOcrProcessor processor = processor(jdbcTemplate, engine);
 
-        FileOcrProcessor.OcrResult result = processor.extractImageText(1001L, 3001L, 2001L);
+        FileOcrProcessor.OcrResult result = processor.extractImageText(3001L, 2001L);
 
         assertThat(result.engine()).isEqualTo("FAKE_OCR");
         assertThat(result.status()).isEqualTo(FileOcrProcessor.STATUS_EXTRACTED);
@@ -81,7 +81,7 @@ class FileOcrProcessorTest {
 
     private void mockLocation(JdbcTemplate jdbcTemplate, Path source, String contentType, String extension) {
         String objectKey = tempDir.relativize(source).toString().replace('\\', '/');
-        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(1001L), eq(3001L)))
+        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(3001L)))
                 .thenAnswer(invocation -> {
                     RowMapper<?> mapper = invocation.getArgument(1);
                     var resultSet = mock(java.sql.ResultSet.class);
@@ -98,7 +98,6 @@ class FileOcrProcessorTest {
         ArgumentCaptor<Object> contentCaptor = ArgumentCaptor.forClass(Object.class);
         verify(jdbcTemplate).update(
                 anyString(),
-                eq(1001L),
                 eq(3001L),
                 eq(FileProcessingTaskService.TASK_OCR),
                 eq(artifactType),

@@ -11,24 +11,23 @@ import java.util.List;
 public interface FileStorageSpaceMapper extends BaseMapper<FileStorageSpaceEntity> {
 
     List<FileStorageSpaceEntity> listWithUsage(
-            @Param("tenantId") Long tenantId,
             @Param("limit") long limit,
             @Param("offset") long offset
     );
 
-    FileStorageSpaceEntity findDefault(@Param("tenantId") Long tenantId);
+    FileStorageSpaceEntity findDefault();
 
-    FileStorageSpaceEntity findByStorageKey(@Param("tenantId") Long tenantId, @Param("storageKey") String storageKey);
+    FileStorageSpaceEntity findByStorageKey(@Param("storageKey") String storageKey);
 
-    FileStorageSpaceEntity findByIdWithUsage(@Param("tenantId") Long tenantId, @Param("id") Long id);
+    FileStorageSpaceEntity findByIdWithUsage(@Param("id") Long id);
 
-    Boolean shouldRetainStoredFile(@Param("tenantId") Long tenantId, @Param("storageKey") String storageKey);
+    Boolean shouldRetainStoredFile(@Param("storageKey") String storageKey);
 
-    String findAccessKeySecret(@Param("tenantId") Long tenantId, @Param("id") Long id);
+    String findAccessKeySecret(@Param("id") Long id);
 
-    void clearDefaultStorage(@Param("tenantId") Long tenantId);
+    void clearDefaultStorage();
 
-    Long countDefaultStorage(@Param("tenantId") Long tenantId);
+    Long countDefaultStorage();
 
-    void ensureFirstDefaultStorage(@Param("tenantId") Long tenantId);
+    void ensureFirstDefaultStorage();
 }

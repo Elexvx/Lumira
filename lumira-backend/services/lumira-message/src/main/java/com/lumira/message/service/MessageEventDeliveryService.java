@@ -28,17 +28,17 @@ public class MessageEventDeliveryService {
 
         MessageNoticeDTO notice = event.getNotice();
         if (notice == null) {
-            deliverByUserOrTenant(event, event.getTenantId(), event.getUserId());
+            deliverByUserOrBroadcast(event, event.getUserId());
             return;
         }
 
         if (!StringUtils.hasText(notice.getTargetScope()) || isPlatformScope(notice.getTargetScope())) {
-            messageWebSocketRegistry.sendToTenant(notice.getTenantId(), event);
+            messageWebSocketRegistry.sendToAll(event);
             return;
         }
 
         if ("USER".equalsIgnoreCase(notice.getTargetScope()) && notice.getTargetUserId() != null) {
-            messageWebSocketRegistry.sendToUser(notice.getTenantId(), notice.getTargetUserId(), event);
+            messageWebSocketRegistry.sendToUser(notice.getTargetUserId(), event);
             return;
         }
 
@@ -48,23 +48,23 @@ public class MessageEventDeliveryService {
                 return;
             }
             for (Long userId : userIds) {
-                messageWebSocketRegistry.sendToUser(notice.getTenantId(), userId, event);
+                messageWebSocketRegistry.sendToUser(userId, event);
             }
             return;
         }
 
-        messageWebSocketRegistry.sendToTenant(notice.getTenantId(), event);
+        messageWebSocketRegistry.sendToAll(event);
     }
 
-    private void deliverByUserOrTenant(MessageEventDTO event, Long tenantId, Long userId) {
+    private void deliverByUserOrBroadcast(MessageEventDTO event, Long userId) {
         if (userId != null) {
-            messageWebSocketRegistry.sendToUser(tenantId, userId, event);
+            messageWebSocketRegistry.sendToUser(userId, event);
             return;
         }
-        messageWebSocketRegistry.sendToTenant(tenantId, event);
+        messageWebSocketRegistry.sendToAll(event);
     }
 
     private boolean isPlatformScope(String targetScope) {
-        return "PLATFORM".equalsIgnoreCase(targetScope) || "TENANT".equalsIgnoreCase(targetScope);
+        return "PLATFORM".equalsIgnoreCase(targetScope);
     }
 }

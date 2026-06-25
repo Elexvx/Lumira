@@ -5,7 +5,6 @@ import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -53,14 +52,11 @@ public class WorkOrderFeedbackService {
             long pageSize
     ) {
         pluginStateService.ensureEnabled(currentUser);
-        Long tenantId = tenantId();
         StringBuilder baseSql = new StringBuilder("""
                 from sys_work_order_feedback
-                where tenant_id = ?
-                  and deleted = 0
+                where deleted = 0
                 """);
         List<Object> params = new ArrayList<>();
-        params.add(tenantId);
         if (!isAdminScope(scope)) {
             baseSql.append(" and submitter_id = ?");
             params.add(currentUser.getUserId());
@@ -80,7 +76,7 @@ public class WorkOrderFeedbackService {
             params.add(normalizePriority(priority));
         }
         String selectSql = """
-                select id, tenant_id as tenantId, title, detail_html as detailHtml,
+                select id, title, detail_html as detailHtml,
                        priority, status, submitter_id as submitterId, submitter_name as submitterName,
                        admin_reply as adminReply, handled_by as handledBy, handled_at as handledAt,
                        created_at as createdAt, updated_at as updatedAt
@@ -94,18 +90,17 @@ public class WorkOrderFeedbackService {
             throw new BizException(ErrorCode.BAD_REQUEST, "工单不存在");
         }
         String visibilitySql = isAdminScope(scope) ? "" : " and submitter_id = ?";
-        List<Object> params = new ArrayList<>(List.of(id, tenantId()));
+        List<Object> params = new ArrayList<>(List.of(id));
         if (!isAdminScope(scope)) {
             params.add(currentUser.getUserId());
         }
         WorkOrderFeedbackVO.WorkOrderRecord record = jdbcTemplate.queryForObject("""
-                select id, tenant_id as tenantId, title, detail_html as detailHtml,
+                select id, title, detail_html as detailHtml,
                        priority, status, submitter_id as submitterId, submitter_name as submitterName,
                        admin_reply as adminReply, handled_by as handledBy, handled_at as handledAt,
                        created_at as createdAt, updated_at as updatedAt
                 from sys_work_order_feedback
                 where id = ?
-                  and tenant_id = ?
                   and deleted = 0
                 """ + visibilitySql,
                 new BeanPropertyRowMapper<>(WorkOrderFeedbackVO.WorkOrderRecord.class),
@@ -137,11 +132,11 @@ public class WorkOrderFeedbackService {
         String priority = normalizePriority(request.getPriority());
         jdbcTemplate.update("""
                 insert into sys_work_order_feedback (
-                    tenant_id, title, detail_html, priority, status, submitter_id, submitter_name,
+                    title, detail_html, priority, status, submitter_id, submitter_name,
                     created_by, created_at, updated_by, updated_at, deleted
-                ) values (?, ?, ?, ?, 'OPEN', ?, ?, ?, now(), ?, now(), 0)
+                ) values (?, ?, ?, 'OPEN', ?, ?, ?, now(), ?, now(), 0)
                 """,
-                tenantId(), title, detailHtml, priority, currentUser.getUserId(),
+                title, detailHtml, priority, currentUser.getUserId(),
                 displayName(currentUser), currentUser.getUserId(), currentUser.getUserId());
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         return detail(currentUser, id, "mine");
@@ -161,11 +156,10 @@ public class WorkOrderFeedbackService {
                        handled_at = case when ? in ('RESOLVED', 'CLOSED') then now() else handled_at end,
                        updated_by = ?,
                        updated_at = now()
-                 where id = ?
-                   and tenant_id = ?
-                   and deleted = 0
+                  where id = ?
+                    and deleted = 0
                 """,
-                status, adminReply, currentUser.getUserId(), status, currentUser.getUserId(), id, tenantId());
+                status, adminReply, currentUser.getUserId(), status, currentUser.getUserId(), id);
         return detail(currentUser, id, "admin");
     }
 
@@ -237,10 +231,6 @@ public class WorkOrderFeedbackService {
 
     private String displayName(CurrentUser currentUser) {
         return currentUser.getUsername();
-    }
-
-    private Long tenantId() {
-        return PlatformContext.compatibilityTenantId();
     }
 
     private long nullToZero(Long value) {

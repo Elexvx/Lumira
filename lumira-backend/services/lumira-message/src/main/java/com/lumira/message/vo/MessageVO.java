@@ -9,7 +9,6 @@ public final class MessageVO {
 
     public static class NoticeVO {
         private Long id;
-        private Long tenantId;
         private String messageType;
         private String targetScope;
         private Long targetUserId;
@@ -34,14 +33,6 @@ public final class MessageVO {
 
         public void setId(Long id) {
             this.id = id;
-        }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
         }
 
         public String getMessageType() {
@@ -246,7 +237,6 @@ public final class MessageVO {
 
     public static class MessageEventVO {
         private String eventType;
-        private Long tenantId;
         private Long userId;
         private Integer unreadCount;
         private String message;
@@ -259,14 +249,6 @@ public final class MessageVO {
 
         public void setEventType(String eventType) {
             this.eventType = eventType;
-        }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
         }
 
         public Long getUserId() {
@@ -324,7 +306,6 @@ public final class MessageVO {
 
     public static class DeliveryLogVO {
         private Long id;
-        private Long tenantId;
         private Long noticeId;
         private String channel;
         private String targetScope;
@@ -341,8 +322,6 @@ public final class MessageVO {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public Long getNoticeId() { return noticeId; }
         public void setNoticeId(Long noticeId) { this.noticeId = noticeId; }
         public String getChannel() { return channel; }
@@ -394,37 +373,21 @@ public final class MessageVO {
 
     public static class WebSocketRuntimeVO {
         private Integer activeConnections;
-        private Integer tenantCount;
         private Integer userCount;
         private LocalDateTime earliestConnectedAt;
         private LocalDateTime sampledAt;
-        private java.util.List<TenantConnectionVO> tenants;
         private java.util.List<UserConnectionVO> topUsers;
 
         public Integer getActiveConnections() { return activeConnections; }
         public void setActiveConnections(Integer activeConnections) { this.activeConnections = activeConnections; }
-        public Integer getTenantCount() { return tenantCount; }
-        public void setTenantCount(Integer tenantCount) { this.tenantCount = tenantCount; }
         public Integer getUserCount() { return userCount; }
         public void setUserCount(Integer userCount) { this.userCount = userCount; }
         public LocalDateTime getEarliestConnectedAt() { return earliestConnectedAt; }
         public void setEarliestConnectedAt(LocalDateTime earliestConnectedAt) { this.earliestConnectedAt = earliestConnectedAt; }
         public LocalDateTime getSampledAt() { return sampledAt; }
         public void setSampledAt(LocalDateTime sampledAt) { this.sampledAt = sampledAt; }
-        public java.util.List<TenantConnectionVO> getTenants() { return tenants; }
-        public void setTenants(java.util.List<TenantConnectionVO> tenants) { this.tenants = tenants; }
         public java.util.List<UserConnectionVO> getTopUsers() { return topUsers; }
         public void setTopUsers(java.util.List<UserConnectionVO> topUsers) { this.topUsers = topUsers; }
-    }
-
-    public static class TenantConnectionVO {
-        private Long tenantId;
-        private Integer connectionCount;
-
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
-        public Integer getConnectionCount() { return connectionCount; }
-        public void setConnectionCount(Integer connectionCount) { this.connectionCount = connectionCount; }
     }
 
     public static class UserConnectionVO {

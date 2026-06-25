@@ -54,7 +54,7 @@ export default {
   'system.files.delete.title': 'Delete file',
   'system.files.delete.okText': 'Confirm delete',
   'system.files.delete.confirmMine': 'Delete file "{name}"? The file and its records will be removed.',
-  'system.files.delete.confirmTenant': 'Delete file "{name}"? The file and its records will be removed, and any avatar, logo, or brand image currently using it may be affected.',
+  'system.files.delete.confirmShared': 'Delete file "{name}"? The file and its records will be removed, and any avatar, logo, or brand image currently using it may be affected.',
   'system.files.search.keywordLabel': 'Keyword',
   'system.files.search.categoryLabel': 'Category',
   'system.files.search.keyword': 'File name, tags, remarks',

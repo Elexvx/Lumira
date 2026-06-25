@@ -20,7 +20,7 @@ import java.util.Map;
 
 public interface AiToolRegistry {
 
-    List<AiVO.SkillVO> listRegisteredSkills(Long tenantId, Long employeeId);
+    List<AiVO.SkillVO> listRegisteredSkills(Long employeeId);
 }
 
 @Service
@@ -42,8 +42,8 @@ class DefaultAiToolRegistry implements AiToolRegistry {
     }
 
     @Override
-    public List<AiVO.SkillVO> listRegisteredSkills(Long tenantId, Long employeeId) {
-        if (tenantId == null || employeeId == null || employeeId <= 0) {
+    public List<AiVO.SkillVO> listRegisteredSkills(Long employeeId) {
+        if (employeeId == null || employeeId <= 0) {
             return Collections.emptyList();
         }
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
@@ -56,7 +56,6 @@ class DefaultAiToolRegistry implements AiToolRegistry {
                         from ai_skill k
                         join ai_employee_skill r
                           on r.skill_code = k.skill_code
-                         and r.tenant_id = ?
                          and r.employee_id = ?
                          and r.is_deleted = 0
                         where k.is_deleted = 0
@@ -65,14 +64,13 @@ class DefaultAiToolRegistry implements AiToolRegistry {
                         order by k.category asc, k.skill_code asc
                         """,
                 new BeanPropertyRowMapper<>(AiVO.SkillVO.class),
-                tenantId,
                 employeeId
         ).stream()
-                .filter(skill -> isAuthorized(currentUser, tenantId, employeeId, skill))
+                .filter(skill -> isAuthorized(currentUser, employeeId, skill))
                 .toList();
     }
 
-    private boolean isAuthorized(CurrentUser currentUser, Long tenantId, Long employeeId, AiVO.SkillVO skill) {
+    private boolean isAuthorized(CurrentUser currentUser, Long employeeId, AiVO.SkillVO skill) {
         if (currentUser == null || skill == null) {
             return false;
         }
@@ -80,9 +78,8 @@ class DefaultAiToolRegistry implements AiToolRegistry {
                 ? "ai:tool:" + skill.getSkillCode()
                 : "ai:tool:invoke";
         AuthorizationDecision decision = authorizationService.evaluate(new AuthorizationRequest(
-                tenantId,
-                SubjectRef.humanUser(tenantId, currentUser.getUserId()),
-                SubjectRef.digitalEmployee(tenantId, employeeId),
+                SubjectRef.humanUser(currentUser.getUserId()),
+                SubjectRef.digitalEmployee(employeeId),
                 currentUser.getUserId(),
                 employeeId,
                 "ai_tool",

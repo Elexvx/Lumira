@@ -3,7 +3,6 @@ package com.lumira.auth.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.WechatLoginSettingsDTO;
-import com.lumira.common.constant.PlatformConstants;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -26,7 +25,7 @@ class WechatLoginServiceTest {
         StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
         ValueOperations<String, String> valueOperations = mock(ValueOperations.class);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(systemInternalApi.wechatLoginSettings(PlatformConstants.PLATFORM_TENANT_ID)).thenReturn(
+        when(systemInternalApi.wechatLoginSettings()).thenReturn(
                 new WechatLoginSettingsDTO(
                         true,
                         "appid-1",
@@ -45,7 +44,7 @@ class WechatLoginServiceTest {
 
         assertThat(first.authorizeUrl()).contains("appid-1");
         assertThat(second.authorizeUrl()).contains("appid-1");
-        verify(systemInternalApi, times(1)).wechatLoginSettings(PlatformConstants.PLATFORM_TENANT_ID);
+        verify(systemInternalApi, times(1)).wechatLoginSettings();
         verify(valueOperations, times(2)).set(anyString(), eq("1"), any(Duration.class));
     }
 }

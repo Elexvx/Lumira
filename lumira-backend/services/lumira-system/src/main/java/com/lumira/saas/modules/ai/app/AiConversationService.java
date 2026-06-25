@@ -19,11 +19,11 @@ import java.util.UUID;
 
 public interface AiConversationService {
 
-    Long ensureConversation(Long tenantId, Long ownerUserId, Long employeeId, Long conversationId, String title);
+    Long ensureConversation(Long ownerUserId, Long employeeId, Long conversationId, String title);
 
-    Long recordMessage(Long tenantId, Long conversationId, String role, String content);
+    Long recordMessage(Long conversationId, String role, String content);
 
-    void recordMessageAttachments(Long tenantId, Long conversationId, Long messageId, List<AiDTO.ChatAttachmentItem> attachments);
+    void recordMessageAttachments(Long conversationId, Long messageId, List<AiDTO.ChatAttachmentItem> attachments);
 }
 
 @Service
@@ -32,28 +32,31 @@ class JdbcAiConversationService implements AiConversationService {
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final FileInternalApi fileInternalApi;
+    private final AiAssistantEmployeeResolver aiAssistantEmployeeResolver;
 
     JdbcAiConversationService(MyBatisQueryOperations jdbcTemplate, FileInternalApi fileInternalApi) {
         this.jdbcTemplate = jdbcTemplate;
         this.fileInternalApi = fileInternalApi;
+        this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(jdbcTemplate);
     }
 
     @Override
     @Transactional
-    public Long ensureConversation(Long tenantId, Long ownerUserId, Long employeeId, Long conversationId, String title) {
+    public Long ensureConversation(Long ownerUserId, Long employeeId, Long conversationId, String title) {
+        Long resolvedEmployeeId = employeeId != null && employeeId > 0
+                ? employeeId
+                : aiAssistantEmployeeResolver.getOrCreateAssistantEmployee().getId();
         if (conversationId != null) {
             Long foundId = jdbcTemplate.query(
                     """
                             select id
                             from ai_conversation
-                            where tenant_id = ?
-                              and owner_user_id = ?
+                            where owner_user_id = ?
                               and id = ?
                               and is_deleted = 0
                             limit 1
                             """,
                     (rs, rowNum) -> rs.getLong("id"),
-                    tenantId,
                     ownerUserId,
                     conversationId
             ).stream().findFirst().orElse(null);
@@ -62,12 +65,11 @@ class JdbcAiConversationService implements AiConversationService {
                         """
                                 update ai_conversation
                                 set employee_id = ?, update_time = ?
-                                where id = ? and tenant_id = ? and owner_user_id = ? and is_deleted = 0
+                                where id = ? and owner_user_id = ? and is_deleted = 0
                                 """,
-                        employeeId,
+                        resolvedEmployeeId,
                         LocalDateTime.now(),
                         foundId,
-                        tenantId,
                         ownerUserId
                 );
                 return foundId;
@@ -79,12 +81,11 @@ class JdbcAiConversationService implements AiConversationService {
         jdbcTemplate.update(
                 """
                         insert into ai_conversation (
-                            tenant_id, owner_user_id, employee_id, conversation_code, title, status, latest_message_at, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, ?, 'ACTIVE', null, 0, ?, ?)
+                            owner_user_id, employee_id, conversation_code, title, status, latest_message_at, is_deleted, create_time, update_time
+                        ) values (?, ?, ?, ?, 'ACTIVE', null, 0, ?, ?)
                         """,
-                tenantId,
                 ownerUserId,
-                employeeId,
+                resolvedEmployeeId,
                 conversationCode,
                 resolvedTitle,
                 LocalDateTime.now(),
@@ -95,14 +96,13 @@ class JdbcAiConversationService implements AiConversationService {
 
     @Override
     @Transactional
-    public Long recordMessage(Long tenantId, Long conversationId, String role, String content) {
+    public Long recordMessage(Long conversationId, String role, String content) {
         jdbcTemplate.update(
                 """
                         insert into ai_message (
-                            tenant_id, conversation_id, role, content, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, 0, ?, ?)
+                            conversation_id, role, content, is_deleted, create_time, update_time
+                        ) values (?, ?, ?, 0, ?, ?)
                         """,
-                tenantId,
                 conversationId,
                 role,
                 content,
@@ -113,26 +113,23 @@ class JdbcAiConversationService implements AiConversationService {
                 """
                         update ai_conversation
                         set latest_message_at = ?, update_time = ?
-                        where id = ? and tenant_id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 LocalDateTime.now(),
                 LocalDateTime.now(),
-                conversationId,
-                tenantId
+                conversationId
         );
         return jdbcTemplate.queryForObject(
                 """
                         select id
                         from ai_message
-                        where tenant_id = ?
-                          and conversation_id = ?
+                        where conversation_id = ?
                           and role = ?
                           and is_deleted = 0
                         order by id desc
                         limit 1
                         """,
                 Long.class,
-                tenantId,
                 conversationId,
                 role
         );
@@ -140,7 +137,7 @@ class JdbcAiConversationService implements AiConversationService {
 
     @Override
     @Transactional
-    public void recordMessageAttachments(Long tenantId, Long conversationId, Long messageId, List<AiDTO.ChatAttachmentItem> attachments) {
+    public void recordMessageAttachments(Long conversationId, Long messageId, List<AiDTO.ChatAttachmentItem> attachments) {
         if (attachments == null || attachments.isEmpty()) {
             return;
         }
@@ -150,14 +147,14 @@ class JdbcAiConversationService implements AiConversationService {
                 continue;
             }
 
-            FileSnapshot snapshot = queryFileSnapshot(tenantId, attachment.getFileId());
+            FileSnapshot snapshot = queryFileSnapshot(attachment.getFileId());
             jdbcTemplate.update(
                     """
                             insert into ai_message_attachment (
-                                tenant_id, conversation_id, message_id, file_id, original_file_name,
+                                conversation_id, message_id, file_id, original_file_name,
                                 file_extension, mime_type, file_size_bytes, public_url, preview_url,
                                 download_url, preview_mode, is_deleted, create_time, update_time
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                             on duplicate key update
                                 original_file_name = values(original_file_name),
                                 file_extension = values(file_extension),
@@ -170,7 +167,6 @@ class JdbcAiConversationService implements AiConversationService {
                                 is_deleted = 0,
                                 update_time = values(update_time)
                             """,
-                    tenantId,
                     conversationId,
                     messageId,
                     snapshot.fileId(),
@@ -188,8 +184,8 @@ class JdbcAiConversationService implements AiConversationService {
         }
     }
 
-    private FileSnapshot queryFileSnapshot(Long tenantId, Long fileId) {
-        FileObjectDTO file = fileInternalApi.getFileForUser(fileId, tenantId, 0L, "ai-conversation", true, false);
+    private FileSnapshot queryFileSnapshot(Long fileId) {
+        FileObjectDTO file = fileInternalApi.getFileForUser(fileId, 0L, "ai-conversation", true, false);
         if (file == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "附件文件不存在");
         }

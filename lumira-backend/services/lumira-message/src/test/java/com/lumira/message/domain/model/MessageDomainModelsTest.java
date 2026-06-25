@@ -9,7 +9,7 @@ class MessageDomainModelsTest {
 
     @Test
     void noticeAggregateEmitsReadAndSingleArchiveEvent() {
-        NoticeAggregate notice = new NoticeAggregate(30L, 1L, "PUBLISHED");
+        NoticeAggregate notice = new NoticeAggregate(30L, "PUBLISHED");
 
         notice.markRead(20L);
         notice.retract();

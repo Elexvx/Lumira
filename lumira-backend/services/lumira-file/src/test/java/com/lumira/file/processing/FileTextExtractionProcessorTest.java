@@ -31,7 +31,7 @@ class FileTextExtractionProcessorTest {
         Files.writeString(source, "# Notes\nhello Lumira", StandardCharsets.UTF_8);
 
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(1001L), eq(3001L)))
+        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(3001L)))
                 .thenAnswer(invocation -> {
                     RowMapper<?> mapper = invocation.getArgument(1);
                     var resultSet = mock(java.sql.ResultSet.class);
@@ -46,14 +46,13 @@ class FileTextExtractionProcessorTest {
         uploadProperties.setStorageRoot(tempDir.toString());
         var processor = new FileTextExtractionProcessor(jdbcTemplate, uploadProperties);
 
-        FileTextExtractionProcessor.TextExtractionResult result = processor.extractText(1001L, 3001L, 2001L);
+        FileTextExtractionProcessor.TextExtractionResult result = processor.extractText(3001L, 2001L);
 
         assertThat(result.storedCharacters()).isEqualTo("# Notes\nhello Lumira".length());
         assertThat(result.truncated()).isFalse();
         ArgumentCaptor<Object> contentCaptor = ArgumentCaptor.forClass(Object.class);
         verify(jdbcTemplate).update(
                 anyString(),
-                eq(1001L),
                 eq(3001L),
                 eq(FileProcessingTaskService.TASK_TEXT_EXTRACT),
                 eq(FileTextExtractionProcessor.ARTIFACT_TEXT_CONTENT),
@@ -72,7 +71,7 @@ class FileTextExtractionProcessorTest {
         Files.writeString(source, "%PDF-1.4 placeholder", StandardCharsets.ISO_8859_1);
 
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(1001L), eq(3001L)))
+        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(3001L)))
                 .thenAnswer(invocation -> {
                     RowMapper<?> mapper = invocation.getArgument(1);
                     var resultSet = mock(java.sql.ResultSet.class);
@@ -89,13 +88,12 @@ class FileTextExtractionProcessorTest {
         when(tika.parseToString(Mockito.any(java.io.InputStream.class))).thenReturn("PDF\tReport\n\n\nhello Lumira");
         var processor = new FileTextExtractionProcessor(jdbcTemplate, uploadProperties, tika);
 
-        FileTextExtractionProcessor.TextExtractionResult result = processor.extractText(1001L, 3001L, 2001L);
+        FileTextExtractionProcessor.TextExtractionResult result = processor.extractText(3001L, 2001L);
 
         assertThat(result.storedCharacters()).isEqualTo("PDF Report\n\nhello Lumira".length());
         ArgumentCaptor<Object> contentCaptor = ArgumentCaptor.forClass(Object.class);
         verify(jdbcTemplate).update(
                 anyString(),
-                eq(1001L),
                 eq(3001L),
                 eq(FileProcessingTaskService.TASK_TEXT_EXTRACT),
                 eq(FileTextExtractionProcessor.ARTIFACT_TEXT_CONTENT),

@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 class PaymentProviderConfigRow {
     private Long id;
-    private Long tenantId;
     private String providerCode;
     private String providerName;
     private Integer enabled;
@@ -22,8 +21,6 @@ class PaymentProviderConfigRow {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getProviderCode() { return providerCode; }
     public void setProviderCode(String providerCode) { this.providerCode = providerCode; }
     public String getProviderName() { return providerName; }
@@ -56,7 +53,6 @@ class PaymentProviderConfigRow {
 
 class PaymentOrderRow {
     private Long id;
-    private Long tenantId;
     private String orderNo;
     private String providerCode;
     private String providerOrderNo;
@@ -83,8 +79,6 @@ class PaymentOrderRow {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getOrderNo() { return orderNo; }
     public void setOrderNo(String orderNo) { this.orderNo = orderNo; }
     public String getProviderCode() { return providerCode; }
@@ -135,7 +129,6 @@ class PaymentOrderRow {
 
 class PaymentRefundRow {
     private Long id;
-    private Long tenantId;
     private String refundNo;
     private String orderNo;
     private String providerCode;
@@ -158,8 +151,6 @@ class PaymentRefundRow {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getRefundNo() { return refundNo; }
     public void setRefundNo(String refundNo) { this.refundNo = refundNo; }
     public String getOrderNo() { return orderNo; }
@@ -202,7 +193,6 @@ class PaymentRefundRow {
 
 class PaymentWebhookEventRow {
     private Long id;
-    private Long tenantId;
     private String providerCode;
     private String eventId;
     private String eventType;
@@ -225,8 +215,6 @@ class PaymentWebhookEventRow {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getProviderCode() { return providerCode; }
     public void setProviderCode(String providerCode) { this.providerCode = providerCode; }
     public String getEventId() { return eventId; }
@@ -269,7 +257,6 @@ class PaymentWebhookEventRow {
 
 class PaymentOutboxRow {
     private Long id;
-    private Long tenantId;
     private Long userId;
     private String sourceType;
     private String eventType;
@@ -287,8 +274,6 @@ class PaymentOutboxRow {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
     public String getSourceType() { return sourceType; }

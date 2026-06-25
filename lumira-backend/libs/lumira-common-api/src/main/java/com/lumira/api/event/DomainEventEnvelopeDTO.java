@@ -9,7 +9,6 @@ public record DomainEventEnvelopeDTO(
         String eventType,
         String aggregateType,
         String aggregateId,
-        Long tenantId,
         int schemaVersion,
         String eventKey,
         Instant occurredAt,

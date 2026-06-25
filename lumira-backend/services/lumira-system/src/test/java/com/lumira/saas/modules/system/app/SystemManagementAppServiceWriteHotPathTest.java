@@ -50,12 +50,12 @@ class SystemManagementAppServiceWriteHotPathTest {
     void createMenuShouldInvalidateCachedMenuCount() {
         TestEnvironment env = new TestEnvironment();
 
-        assertEquals(12, env.service.countMenus(1001L));
-        assertEquals(12, env.service.countMenus(1001L));
+        assertEquals(12, env.service.countMenus());
+        assertEquals(12, env.service.countMenus());
         assertEquals(1, env.jdbcTemplate.menuCountQueries);
 
         env.service.createMenu(buildCurrentUser(), menuRequest());
-        assertEquals(13, env.service.countMenus(1001L));
+        assertEquals(13, env.service.countMenus());
 
         assertEquals(2, env.jdbcTemplate.menuCountQueries);
     }
@@ -86,7 +86,6 @@ class SystemManagementAppServiceWriteHotPathTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(1001L);
         currentUser.setAuthenticated(true);
         currentUser.setPermissions(Set.of("*"));
         return currentUser;
@@ -152,7 +151,6 @@ class SystemManagementAppServiceWriteHotPathTest {
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {
         private int lastInsertIdQueries;
         private Long menuId;
-        private Long menuTenantId;
         private String menuCode;
         private String menuName;
         private String menuType;
@@ -165,13 +163,11 @@ class SystemManagementAppServiceWriteHotPathTest {
         private int menuCount = 12;
         private int menuCountQueries;
         private Long dictTypeId;
-        private Long dictTypeTenantId;
         private String dictTypeCode;
         private String dictTypeName;
         private String dictTypeStatus;
         private String dictTypeRemark;
         private Long dictItemId;
-        private Long dictItemTenantId;
         private Long dictItemDictTypeId;
         private String dictItemLabel;
         private String dictItemValue;
@@ -182,37 +178,34 @@ class SystemManagementAppServiceWriteHotPathTest {
         @Override
         public int update(String sql, Object... args) {
             if (sql.contains("insert into sys_menu")) {
-                menuTenantId = (Long) args[0];
-                menuCode = (String) args[2];
-                menuName = (String) args[3];
-                menuType = (String) args[4];
-                menuPath = (String) args[5];
-                menuComponent = (String) args[6];
-                menuIcon = (String) args[7];
-                menuSortNo = (Integer) args[8];
-                menuPermissionKey = (String) args[9];
-                menuStatus = (String) args[10];
+                menuCode = (String) args[1];
+                menuName = (String) args[2];
+                menuType = (String) args[3];
+                menuPath = (String) args[4];
+                menuComponent = (String) args[5];
+                menuIcon = (String) args[6];
+                menuSortNo = (Integer) args[7];
+                menuPermissionKey = (String) args[8];
+                menuStatus = (String) args[9];
                 menuId = 901L;
                 if ("ENABLED".equals(menuStatus)) {
                     menuCount += 1;
                 }
             }
             if (sql.contains("insert into sys_dict_type")) {
-                dictTypeTenantId = (Long) args[0];
-                dictTypeCode = (String) args[1];
-                dictTypeName = (String) args[2];
-                dictTypeStatus = (String) args[3];
-                dictTypeRemark = (String) args[4];
+                dictTypeCode = (String) args[0];
+                dictTypeName = (String) args[1];
+                dictTypeStatus = (String) args[2];
+                dictTypeRemark = (String) args[3];
                 dictTypeId = 901L;
             }
             if (sql.contains("insert into sys_dict_item")) {
-                dictItemTenantId = (Long) args[0];
-                dictItemDictTypeId = (Long) args[1];
-                dictItemLabel = (String) args[2];
-                dictItemValue = (String) args[3];
-                dictItemSortNo = (Integer) args[4];
-                dictItemStatus = (String) args[5];
-                dictItemRemark = (String) args[6];
+                dictItemDictTypeId = (Long) args[0];
+                dictItemLabel = (String) args[1];
+                dictItemValue = (String) args[2];
+                dictItemSortNo = (Integer) args[3];
+                dictItemStatus = (String) args[4];
+                dictItemRemark = (String) args[5];
                 dictItemId = 901L;
             }
             return 1;
@@ -236,7 +229,6 @@ class SystemManagementAppServiceWriteHotPathTest {
             if (sql.contains("from sys_menu")) {
                 SystemVO.MenuVO menu = new SystemVO.MenuVO();
                 menu.setId(menuId == null ? 901L : menuId);
-                menu.setTenantId(menuTenantId);
                 menu.setMenuCode(menuCode);
                 menu.setMenuName(menuName);
                 menu.setMenuType(menuType);
@@ -257,7 +249,6 @@ class SystemManagementAppServiceWriteHotPathTest {
                     dictType.setDictName("主题");
                 } else {
                     dictType.setId(dictTypeId == null ? 901L : dictTypeId);
-                    dictType.setTenantId(dictTypeTenantId);
                     dictType.setDictCode(dictTypeCode);
                     dictType.setDictName(dictTypeName);
                     dictType.setStatus(dictTypeStatus);

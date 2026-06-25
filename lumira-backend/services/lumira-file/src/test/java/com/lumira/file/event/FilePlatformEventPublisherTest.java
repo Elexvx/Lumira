@@ -25,28 +25,25 @@ class FilePlatformEventPublisherTest {
         verify(outboxService).recordAfterCommit(
                 eq(FilePlatformEventTypes.SOURCE_FILE),
                 eq(FilePlatformEventTypes.FILE_OBJECT_UPLOADED),
-                eq(1001L),
                 eq(2001L),
-                eq("FILE_OBJECT_UPLOADED:1001:file.object:3001"),
+                eq("FILE_OBJECT_UPLOADED:file.object:3001"),
                 any()
         );
     }
 
     @Test
-    void publishUploadedAfterCommitShouldUsePlatformTenantWhenFileIsMissing() {
+    void publishUploadedAfterCommitShouldUseCurrentUserWhenFileIsMissing() {
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(outboxService);
         CurrentUser currentUser = currentUser();
-        currentUser.setCurrentTenantId(2002L);
 
         publisher.publishUploadedAfterCommit(currentUser, null);
 
         verify(outboxService).recordAfterCommit(
                 eq(FilePlatformEventTypes.SOURCE_FILE),
                 eq(FilePlatformEventTypes.FILE_OBJECT_UPLOADED),
-                eq(1001L),
                 eq(2001L),
-                eq("FILE_OBJECT_UPLOADED:1001:file.object:none"),
+                eq("FILE_OBJECT_UPLOADED:file.object:none"),
                 any()
         );
     }
@@ -55,18 +52,17 @@ class FilePlatformEventPublisherTest {
     void buildEventKeyShouldFallbackForMissingFileId() {
         FilePlatformEventPublisher publisher = new FilePlatformEventPublisher(mock(PlatformEventOutboxService.class));
 
-        assertEquals("FILE_OBJECT_DELETED:unknown:file.object:none",
-                publisher.buildEventKey(FilePlatformEventTypes.FILE_OBJECT_DELETED, null, null));
+        assertEquals("FILE_OBJECT_DELETED:file.object:none",
+                publisher.buildEventKey(FilePlatformEventTypes.FILE_OBJECT_DELETED, null));
     }
 
     private CurrentUser currentUser() {
-        return new CurrentUser(2001L, "tester", 1001L, "session-1", 1, true, Set.of("system:file:upload"));
+        return new CurrentUser(2001L, "tester", null, "session-1", 1, true, Set.of("system:file:upload"));
     }
 
     private FileObjectDTO file() {
         return new FileObjectDTO(
                 3001L,
-                1001L,
                 2001L,
                 "tester",
                 "report.pdf",

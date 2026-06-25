@@ -6,7 +6,7 @@ import type {
   LoginCapabilities,
   MenuNode,
   SecuritySettings,
-  TenantPlugin,
+  PluginAvailability,
   WatermarkSettings,
 } from '@/types/api';
 
@@ -16,7 +16,7 @@ export interface AppInitialState {
   menuVersion: number;
   themeRevision?: number;
   brandingRevision?: number;
-  availablePlugins: TenantPlugin[];
+  availablePlugins: PluginAvailability[];
   securitySettings: SecuritySettings;
   brandingSettings: BrandingSettings;
   watermarkSettings?: WatermarkSettings;

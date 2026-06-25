@@ -25,7 +25,7 @@ import { rejectAntUploadFile, validateDocumentUploadFile } from '@/utils/uploadV
 import { normalizeLocale } from '@/i18n/locale';
 
 type BuildFileListRequestParams = {
-  fileScope: 'mine' | 'tenant' | 'download-center';
+  fileScope: 'mine' | 'shared' | 'download-center';
   activeBucket: string;
   requestOptions: RequestOptions;
 };
@@ -36,7 +36,7 @@ type BuildStorageSpaceRequestParams = {
 
 type BuildFileObjectColumnsParams = {
   isMobile: boolean;
-  isTenantScope: boolean;
+  isSharedScope: boolean;
   readOnlyCenter: boolean;
   deletePermission?: string | string[];
   actionPermissionCanDelete: (permission?: string | string[]) => boolean;
@@ -143,7 +143,7 @@ const defaultStoragePayload = (provider: FileStorageProvider): FileStorageSpaceP
 
 const buildFileObjectColumns = ({
   isMobile,
-  isTenantScope,
+  isSharedScope,
   readOnlyCenter,
   deletePermission,
   actionPermissionCanDelete,
@@ -272,7 +272,7 @@ const buildFileObjectColumns = ({
                   onClick: () => void onCopyLink(record),
                 },
               ]),
-          ...(actionPermissionCanDelete(deletePermission ?? (isTenantScope ? 'system:file:manage:delete' : 'system:file:delete'))
+          ...(actionPermissionCanDelete(deletePermission ?? (isSharedScope ? 'system:file:manage:delete' : 'system:file:delete'))
             ? [
                 {
                   key: 'delete',
@@ -712,16 +712,16 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
   const [defaultStorageSpace, setDefaultStorageSpace] = useState<FileStorageSpaceRecord | null>(null);
 
   const readOnlyCenter = variant === 'download-center';
-  const isTenantScope = useMemo(
+  const isSharedScope = useMemo(
     () => readOnlyCenter || location.pathname === '/settings/files/all' || location.pathname === '/files/all' || location.pathname === '/system/files/all',
     [location.pathname, readOnlyCenter],
   );
   const activeBucket = useMemo(
-    () => (isTenantScope ? new URLSearchParams(location.search).get('bucket') || '' : ''),
-    [isTenantScope, location.search],
+    () => (isSharedScope ? new URLSearchParams(location.search).get('bucket') || '' : ''),
+    [isSharedScope, location.search],
   );
-  const fileScope: 'mine' | 'tenant' | 'download-center' = readOnlyCenter ? 'download-center' : isTenantScope ? 'tenant' : 'mine';
-  const pageTitle = isTenantScope
+  const fileScope: 'mine' | 'shared' | 'download-center' = readOnlyCenter ? 'download-center' : isSharedScope ? 'shared' : 'mine';
+  const pageTitle = isSharedScope
     ? readOnlyCenter
       ? formatMessage({ id: 'system.files.title.downloadCenter', defaultMessage: 'Download Center' })
       : activeBucket
@@ -738,9 +738,9 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
   const canManageStorage = actionPermission.can('system:file:manage');
   const canDeleteStorage = actionPermission.can('system:file:manage:delete');
   const uploadPermission = readOnlyCenter ? 'download:center:create' : 'system:file:upload';
-  const deletePermission = readOnlyCenter ? 'download:center:delete' : isTenantScope ? 'system:file:manage:delete' : 'system:file:delete';
+  const deletePermission = readOnlyCenter ? 'download:center:delete' : isSharedScope ? 'system:file:manage:delete' : 'system:file:delete';
   const canUploadFile = actionPermission.can(uploadPermission);
-  const canUploadInCurrentScope = readOnlyCenter ? canUploadFile : !isTenantScope && canUploadFile;
+  const canUploadInCurrentScope = readOnlyCenter ? canUploadFile : !isSharedScope && canUploadFile;
   const buildToolbarActions = actionPermission.buildToolbarActions;
   const previewBackgroundColor = token.colorFillQuaternary;
   const previewContainerBackgroundColor = token.colorBgContainer;
@@ -1179,10 +1179,10 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
     (record: FileObjectRecord) => {
       confirmAction({
         title: formatMessage({ id: 'system.files.delete.title', defaultMessage: 'Delete file' }),
-        content: isTenantScope
+        content: isSharedScope
           ? formatMessage(
               {
-                id: 'system.files.delete.confirmTenant',
+                id: 'system.files.delete.confirmShared',
                 defaultMessage: 'Delete file "{name}"? This will remove the file and its record, and may affect avatars, logos, and other assets referencing it.',
               },
               { name: record.originalFileName },
@@ -1210,7 +1210,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
         },
       });
     },
-    [actionRef, closePreviewDrawer, isTenantScope, previewRecord, requestOptions, scopeParams],
+    [actionRef, closePreviewDrawer, isSharedScope, previewRecord, requestOptions, scopeParams],
   );
 
   const openUploadDrawer = useCallback(() => {
@@ -1275,7 +1275,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
 
   const fileColumns = buildFileObjectColumns({
     isMobile: responsive.isMobile,
-    isTenantScope,
+    isSharedScope,
     readOnlyCenter,
     deletePermission,
     actionPermissionCanDelete: canDeleteFile,
@@ -1348,7 +1348,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
   };
   const browserSectionProps = {
     title: pageTitle,
-    isTenantScope,
+    isSharedScope,
     activeBucket,
     isMobile: responsive.isMobile,
     actionRef,
@@ -1399,7 +1399,7 @@ function SystemFilesPage({ variant = 'file-center' }: { variant?: 'file-center' 
   return (
     <ManagementPage title={browserSectionProps.title} ghost>
       <ManagementPageBody>
-        {browserSectionProps.isTenantScope && !browserSectionProps.activeBucket && !readOnlyCenter ? (
+        {browserSectionProps.isSharedScope && !browserSectionProps.activeBucket && !readOnlyCenter ? (
           <ManagementTable
             actionRef={browserSectionProps.storageActionRef}
             rowKey="id"

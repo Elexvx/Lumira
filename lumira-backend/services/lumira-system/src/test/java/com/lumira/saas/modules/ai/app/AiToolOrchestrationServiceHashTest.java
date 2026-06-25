@@ -45,9 +45,9 @@ class AiToolOrchestrationServiceHashTest {
                 .contains("\"toolCode\":\"system.user.search\"")
                 .contains("\"authorizationVerdict\":\"ALLOW\"");
         assertThat(jdbc.insertSql).contains("arguments_hash", "authorization_snapshot_json", "approval_required");
-        assertThat(jdbc.insertArgs[16]).isEqualTo(plan.getArgumentsHash());
-        assertThat(jdbc.insertArgs[17]).isEqualTo(plan.getAuthorizationSnapshotJson());
-        assertThat(jdbc.insertArgs[18]).isEqualTo(0);
+        assertThat(jdbc.insertArgs[15]).isEqualTo(plan.getArgumentsHash());
+        assertThat(jdbc.insertArgs[16]).isEqualTo(plan.getAuthorizationSnapshotJson());
+        assertThat(jdbc.insertArgs[17]).isEqualTo(0);
     }
 
     @Test
@@ -131,11 +131,11 @@ class AiToolOrchestrationServiceHashTest {
         when(runtimeService.execute(any(), any())).thenReturn(executeResult);
 
         AiToolPolicyService policyService = mock(AiToolPolicyService.class);
-        when(policyService.evaluate(anyLong(), anyString(), anyString(), anyString(), anyString(), anyMap()))
+        when(policyService.evaluate(anyString(), anyString(), anyString(), anyString(), anyMap()))
                 .thenReturn(new AiToolPolicyService.PolicyDecision("ALLOW", "policy allow", List.of("POLICY_ALLOW")));
 
         AiLlmServiceConfigProvider configProvider = mock(AiLlmServiceConfigProvider.class);
-        when(configProvider.findSupervisor(anyLong())).thenReturn(Optional.empty());
+        when(configProvider.findSupervisor()).thenReturn(Optional.empty());
 
         return new DefaultAiToolOrchestrationService(
                 jdbc,
@@ -216,27 +216,26 @@ class AiToolOrchestrationServiceHashTest {
                 insertArgs = args;
                 plan = new AiVO.ToolPlanVO();
                 plan.setId(501L);
-                plan.setTenantId((Long) args[0]);
-                plan.setConversationId((Long) args[1]);
-                plan.setEmployeeId((Long) args[2]);
-                plan.setToolCode((String) args[4]);
-                plan.setToolName((String) args[5]);
-                plan.setActionType((String) args[6]);
-                plan.setRiskLevel((String) args[7]);
-                plan.setSummary((String) args[8]);
-                plan.setPermissionKey((String) args[9]);
-                plan.setRequiresConfirm(((Integer) args[10]) == 1);
-                plan.setSupervisorVerdict((String) args[11]);
-                plan.setSupervisorMessage((String) args[12]);
-                plan.setPolicyVerdict((String) args[13]);
-                plan.setPolicyMessage((String) args[14]);
-                plan.setArguments(parseArguments((String) args[15]));
-                plan.setArgumentsHash((String) args[16]);
-                plan.setAuthorizationSnapshotJson((String) args[17]);
-                plan.setApprovalRequired(((Integer) args[18]) == 1);
-                plan.setStatus((String) args[19]);
-                plan.setExpiresAt((LocalDateTime) args[20]);
-                plan.setCreateTime((LocalDateTime) args[21]);
+                plan.setConversationId((Long) args[0]);
+                plan.setEmployeeId((Long) args[1]);
+                plan.setToolCode((String) args[3]);
+                plan.setToolName((String) args[4]);
+                plan.setActionType((String) args[5]);
+                plan.setRiskLevel((String) args[6]);
+                plan.setSummary((String) args[7]);
+                plan.setPermissionKey((String) args[8]);
+                plan.setRequiresConfirm(((Integer) args[9]) == 1);
+                plan.setSupervisorVerdict((String) args[10]);
+                plan.setSupervisorMessage((String) args[11]);
+                plan.setPolicyVerdict((String) args[12]);
+                plan.setPolicyMessage((String) args[13]);
+                plan.setArguments(parseArguments((String) args[14]));
+                plan.setArgumentsHash((String) args[15]);
+                plan.setAuthorizationSnapshotJson((String) args[16]);
+                plan.setApprovalRequired(((Integer) args[17]) == 1);
+                plan.setStatus((String) args[18]);
+                plan.setExpiresAt((LocalDateTime) args[19]);
+                plan.setCreateTime((LocalDateTime) args[20]);
                 return 1;
             }
             if (sql.contains("set status = 'EXECUTING'")) {

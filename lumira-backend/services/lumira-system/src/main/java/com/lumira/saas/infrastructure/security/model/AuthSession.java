@@ -12,7 +12,6 @@ public class AuthSession {
     private String sessionId;
     private Long userId;
     private String username;
-    private Long currentTenantId;
     private Long simulatedRoleId;
     private Instant loginTime;
     private Instant lastActivityAt;
@@ -54,14 +53,6 @@ public class AuthSession {
 
     public void setUsername(String username) {
         this.username = username;
-    }
-
-    public Long getCurrentTenantId() {
-        return currentTenantId;
-    }
-
-    public void setCurrentTenantId(Long currentTenantId) {
-        this.currentTenantId = currentTenantId;
     }
 
     public Long getSimulatedRoleId() {

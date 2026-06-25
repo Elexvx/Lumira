@@ -30,7 +30,7 @@ class PaymentOutboxServiceTest {
         PaymentOutboxService service = new PaymentOutboxService(jdbcTemplate, new ObjectMapper());
 
         assertThrows(IllegalArgumentException.class, () ->
-                service.record(1001L, 9L, "plugin", "payment.order.created", "order:1001:ORD-1", List.of())
+                service.record(9L, "plugin", "payment.order.created", "order:ORD-1", List.of())
         );
     }
 
@@ -186,11 +186,10 @@ class PaymentOutboxServiceTest {
     private PaymentOutboxRow outboxRow(Long id, String status, int retryCount) {
         PaymentOutboxRow row = new PaymentOutboxRow();
         row.setId(id);
-        row.setTenantId(1001L);
         row.setUserId(9L);
         row.setSourceType("payment");
         row.setEventType("payment.order.created");
-        row.setEventKey("order:1001:ORD-1");
+        row.setEventKey("order:ORD-1");
         row.setPayloadJson("{}");
         row.setStatus(status);
         row.setRetryCount(retryCount);

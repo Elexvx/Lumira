@@ -27,12 +27,12 @@ public class JdbcTeamRepository implements TeamRepository {
     }
 
     @Override
-    public String nextTeamCode(Long tenantId) {
+    public String nextTeamCode() {
         for (int i = 0; i < 10; i += 1) {
             byte[] bytes = new byte[6];
             SECURE_RANDOM.nextBytes(bytes);
             String code = "T" + HexFormat.of().formatHex(bytes).toUpperCase(Locale.ROOT);
-            if (!jdbcTemplate.exists("select 1 from team where tenant_id = ? and team_code = ? and deleted = 0 limit 1", tenantId, code)) {
+            if (!jdbcTemplate.exists("select 1 from team where team_code = ? and deleted = 0 limit 1", code)) {
                 return code;
             }
         }
@@ -40,16 +40,15 @@ public class JdbcTeamRepository implements TeamRepository {
     }
 
     @Override
-    public Long createTeam(Long tenantId, String teamCode, Long ownerUserId, TeamDTO.TeamCreateRequest request) {
+    public Long createTeam(String teamCode, Long ownerUserId, TeamDTO.TeamCreateRequest request) {
         jdbcTemplate.update(
                 """
                         insert into team (
-                            tenant_id, team_code, team_name, team_type, avatar_url, description,
+                            team_code, team_name, team_type, avatar_url, description,
                             visibility, join_mode, owner_user_id, member_count, status,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'ACTIVE', ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 1, 'ACTIVE', ?, ?, 0)
                         """,
-                tenantId,
                 teamCode,
                 request.getTeamName(),
                 request.getTeamType(),
@@ -65,68 +64,59 @@ public class JdbcTeamRepository implements TeamRepository {
     }
 
     @Override
-    public List<TeamVO.Team> listMyTeams(Long tenantId, Long userId) {
+    public List<TeamVO.Team> listMyTeams(Long userId) {
         return jdbcTemplate.query(
                 teamSelect("""
                         join team_member m on m.team_id = t.id
-                         and m.tenant_id = t.tenant_id
                          and m.user_id = ?
                          and m.status = 'ACTIVE'
                          and m.deleted = 0
-                        where t.tenant_id = ?
-                          and t.deleted = 0
+                        where t.deleted = 0
                           and t.status = 'ACTIVE'
                         order by t.updated_at desc, t.id desc
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.Team.class),
-                userId,
-                tenantId
+                userId
         );
     }
 
     @Override
-    public List<TeamVO.Team> listTeamsForAdmin(Long tenantId, Long userId) {
+    public List<TeamVO.Team> listTeamsForAdmin(Long userId) {
         return jdbcTemplate.query(
                 teamSelect("""
                         left join team_member m on m.team_id = t.id
-                         and m.tenant_id = t.tenant_id
                          and m.user_id = ?
                          and m.status = 'ACTIVE'
                          and m.deleted = 0
-                        where t.tenant_id = ?
-                          and t.deleted = 0
+                        where t.deleted = 0
                         order by t.updated_at desc, t.id desc
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.Team.class),
-                userId,
-                tenantId
+                userId
         );
     }
 
     @Override
-    public TeamVO.Team findTeam(Long tenantId, Long teamId, Long currentUserId) {
+    public TeamVO.Team findTeam(Long teamId, Long currentUserId) {
         List<TeamVO.Team> teams = jdbcTemplate.query(
                 teamSelect("""
                         left join team_member m on m.team_id = t.id
-                         and m.tenant_id = t.tenant_id
                          and m.user_id = ?
                          and m.status = 'ACTIVE'
                          and m.deleted = 0
-                        where t.tenant_id = ?
-                          and t.id = ?
+                        where t.id = ?
                           and t.deleted = 0
                         limit 1
                         """),
                 new BeanPropertyRowMapper<>(TeamVO.Team.class),
                 currentUserId,
-                tenantId,
                 teamId
         );
         return teams.isEmpty() ? null : teams.get(0);
     }
 
     @Override
-    public int updateTeamProfile(Long tenantId, Long teamId, Long updatedBy, TeamDTO.TeamUpdateRequest request) {
+    public int updateTeamProfile(Long teamId, Long updatedBy, TeamDTO.TeamUpdateRequest request) {
         return jdbcTemplate.update(
                 """
                         update team
@@ -138,8 +128,7 @@ public class JdbcTeamRepository implements TeamRepository {
                             join_mode = ?,
                             updated_by = ?,
                             updated_at = ?
-                        where tenant_id = ?
-                          and id = ?
+                        where id = ?
                           and deleted = 0
                           and status = 'ACTIVE'
                         """,
@@ -151,54 +140,48 @@ public class JdbcTeamRepository implements TeamRepository {
                 request.getJoinMode(),
                 updatedBy,
                 LocalDateTime.now(),
-                tenantId,
                 teamId
         );
     }
 
     @Override
-    public int softDeleteTeam(Long tenantId, Long teamId, Long updatedBy) {
+    public int softDeleteTeam(Long teamId, Long updatedBy) {
         return jdbcTemplate.update(
-                "update team set deleted = 1, status = 'DELETED', updated_by = ?, updated_at = ? where tenant_id = ? and id = ? and deleted = 0",
+                "update team set deleted = 1, status = 'DELETED', updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 updatedBy,
                 LocalDateTime.now(),
-                tenantId,
                 teamId
         );
     }
 
     @Override
-    public int transferOwner(Long tenantId, Long teamId, Long newOwnerUserId, Long updatedBy) {
+    public int transferOwner(Long teamId, Long newOwnerUserId, Long updatedBy) {
         return jdbcTemplate.update(
-                "update team set owner_user_id = ?, updated_by = ?, updated_at = ? where tenant_id = ? and id = ? and deleted = 0",
+                "update team set owner_user_id = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 newOwnerUserId,
                 updatedBy,
                 LocalDateTime.now(),
-                tenantId,
                 teamId
         );
     }
 
     @Override
-    public Set<String> loadEnabledDictValues(Long tenantId, String dictCode) {
+    public Set<String> loadEnabledDictValues(String dictCode) {
         try {
             List<String> values = jdbcTemplate.queryForList(
                     """
                             select i.item_value
                             from sys_dict_type t
                             join sys_dict_item i
-                              on i.tenant_id = t.tenant_id
-                             and i.dict_type_id = t.id
+                              on i.dict_type_id = t.id
                              and i.deleted = 0
-                            where t.tenant_id = ?
-                              and t.dict_code = ?
+                            where t.dict_code = ?
                               and t.deleted = 0
                               and t.status = 'ENABLED'
                               and i.status = 'ENABLED'
                             order by i.sort_no asc, i.id asc
-                            """,
+                    """,
                     String.class,
-                    tenantId,
                     dictCode
             );
             Set<String> normalizedValues = new LinkedHashSet<>();
@@ -215,7 +198,7 @@ public class JdbcTeamRepository implements TeamRepository {
 
     private String teamSelect(String tail) {
         return """
-                select t.id, t.tenant_id as tenantId, t.team_code as teamCode, t.team_name as teamName,
+                select t.id, t.team_code as teamCode, t.team_name as teamName,
                        t.team_type as teamType, t.avatar_url as avatarUrl, t.description,
                        t.visibility, t.join_mode as joinMode, t.owner_user_id as ownerUserId,
                        t.member_count as memberCount, t.status, m.role as myRole,

@@ -4,12 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.file.FileObjectDTO;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.authorization.AuthorizationDecision;
 import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.common.security.authorization.AuthorizationService;
@@ -394,7 +392,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (request == null || !StringUtils.hasText(request.getToolCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "工具编码不能为空");
         }
-        Long tenantId = currentTenantId(currentUser);
+        requireLogin(currentUser);
         String toolCode = request.getToolCode().trim();
         NativeTool tool = tools.get(toolCode);
         if (tool == null) {
@@ -406,7 +404,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         Map<String, Object> executionArguments = stripInternalAuthorizationArguments(arguments);
 
         try {
-            requireEmployee(tenantId, request.getEmployeeId());
+            requireEmployee(request.getEmployeeId());
             authorizationService.require(AuthorizationRequest.aiTool(
                     currentUser,
                     request.getEmployeeId(),
@@ -417,9 +415,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                     approvalGranted,
                     executionArguments
             ));
-            aiSkillPermissionChecker.verifyToolAllowed(
-                    tenantId,
-                    request.getEmployeeId(),
+            aiSkillPermissionChecker.verifyToolAllowed(request.getEmployeeId(),
                     toolCode,
                     tool.requiredPermission(),
                     tool.riskLevel(),
@@ -428,17 +424,17 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
             if (StringUtils.hasText(tool.requiredPermission())) {
                 permissionGuard.requirePermission(currentUser, tool.requiredPermission());
             }
-            Map<String, Object> data = tool.executor().execute(new ToolExecutionContext(currentUser, tenantId, executionArguments));
+            Map<String, Object> data = tool.executor().execute(new ToolExecutionContext(currentUser, executionArguments));
             AiVO.ToolExecuteResultVO result = new AiVO.ToolExecuteResultVO();
             result.setToolCode(toolCode);
             result.setResultStatus("SUCCESS");
             result.setMessage("工具调用成功");
             result.setData(data);
             result.setExecutedAt(LocalDateTime.now());
-            recordToolAuditLog(tenantId, request, tool, confirmed, "allow", "SUCCESS", "AI 工具调用成功", data);
+            recordToolAuditLog(request, tool, confirmed, "allow", "SUCCESS", "AI 工具调用成功", data);
             return result;
         } catch (RuntimeException exception) {
-            recordFailedToolAuditLog(tenantId, request, tool, confirmed, exception);
+            recordFailedToolAuditLog(request, tool, confirmed, exception);
             throw exception;
         }
     }
@@ -457,7 +453,6 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("userId", currentUser == null ? null : currentUser.getUserId());
         data.put("username", currentUser == null ? null : currentUser.getUsername());
-        data.put("tenantId", context.tenantId());
         data.put("authenticated", currentUser != null && currentUser.isAuthenticated());
         data.put("permissions", currentUser == null ? List.of() : currentUser.getPermissions().stream().sorted().toList());
         data.put("roleIds", currentUser == null ? List.of() : currentUser.getRoleIds().stream().sorted().toList());
@@ -470,7 +465,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private Map<String, Object> listMenus(ToolExecutionContext context) {
         String status = stringArg(context.arguments(), "status", "ENABLED");
         int limit = limitArg(context.arguments());
-        List<Map<String, Object>> menus = platformQueryFacade.listMenus(context.tenantId(), status, limit);
+        List<Map<String, Object>> menus = platformQueryFacade.listMenus(status, limit);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", menus);
         data.put("limit", limit);
@@ -486,7 +481,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         if (looksSensitive(configKey)) {
             throw new BizException(ErrorCode.FORBIDDEN, "敏感配置不允许通过 AI 工具读取: " + configKey);
         }
-        Map<String, Object> config = platformQueryFacade.readConfig(context.tenantId(), configKey.trim());
+        Map<String, Object> config = platformQueryFacade.readConfig(configKey.trim());
         if (config == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "配置不存在: " + configKey);
         }
@@ -499,7 +494,7 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         String keyword = stringArg(context.arguments(), "keyword", null);
         String status = stringArg(context.arguments(), "status", null);
         int limit = limitArg(context.arguments());
-        AiIamQueryFacade.UserSearchResult searchResult = iamQueryFacade.searchUsers(context.tenantId(), keyword, status, limit);
+        AiIamQueryFacade.UserSearchResult searchResult = iamQueryFacade.searchUsers(keyword, status, limit);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("items", searchResult.items());
         data.put("limit", limit);
@@ -579,7 +574,6 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         CurrentUser currentUser = context.currentUser();
         FileObjectDTO file = fileInternalApi.getFileForUser(
                 fileId,
-                context.tenantId(),
                 currentUser == null ? null : currentUser.getUserId(),
                 currentUser == null ? null : currentUser.getUsername(),
                 hasPermission(context.currentUser(), "system:file:manage"),
@@ -730,9 +724,6 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     private Map<String, Object> createConfig(ToolExecutionContext context) {
         ensureNonSensitiveConfig(context.arguments());
         SystemDTO.ConfigUpsertRequest request = objectMapper.convertValue(context.arguments(), SystemDTO.ConfigUpsertRequest.class);
-        if (!StringUtils.hasText(request.getConfigScope())) {
-            request.setConfigScope("PLATFORM");
-        }
         SystemVO.ConfigVO config = systemManagementAppService.createConfig(context.currentUser(), request);
         return Map.of("config", config);
     }
@@ -812,7 +803,6 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         }
         CurrentUser currentUser = context.currentUser();
         List<Map<String, Object>> files = fileInternalApi.searchFilesForUser(
-                        context.tenantId(),
                         currentUser == null ? null : currentUser.getUserId(),
                         currentUser == null ? null : currentUser.getUsername(),
                         keyword,
@@ -855,16 +845,14 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         String resultStatus = stringArg(context.arguments(), "resultStatus", null);
         int limit = limitArg(context.arguments());
         List<Object> args = new java.util.ArrayList<>();
-        args.add(context.tenantId());
         StringBuilder sql = new StringBuilder("""
-                select id, tenant_id as tenantId, conversation_id as conversationId, employee_id as employeeId,
+                select id, conversation_id as conversationId, employee_id as employeeId,
                        skill_code as skillCode, tool_name as toolName, permission_mode as permissionMode,
                        confirm_required as confirmRequired, confirm_result as confirmResult,
                        result_status as resultStatus, detail_message as detailMessage,
                        create_time as createdAt
                 from ai_tool_audit_log
                 where is_deleted = 0
-                  and tenant_id = ?
                 """);
         if (employeeId != null) {
             sql.append(" and employee_id = ?");
@@ -888,13 +876,12 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         return data;
     }
 
-    private void requireEmployee(Long tenantId, Long employeeId) {
-        if (tenantId == null || employeeId == null || employeeId <= 0) {
+    private void requireEmployee(Long employeeId) {
+        if (employeeId == null || employeeId <= 0) {
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool execution requires a valid digital employee");
         }
         boolean exists = jdbcTemplate.exists(
-                "select 1 from ai_employee where tenant_id = ? and id = ? and is_deleted = 0 and enabled = 1 limit 1",
-                tenantId,
+                "select 1 from ai_employee where id = ? and is_deleted = 0 and enabled = 1 limit 1",
                 employeeId
         );
         if (!exists) {
@@ -903,7 +890,6 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private void recordToolAuditLog(
-            Long tenantId,
             AiDTO.ToolExecuteRequest request,
             NativeTool tool,
             boolean confirmed,
@@ -915,12 +901,11 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         jdbcTemplate.update(
                 """
                         insert into ai_tool_audit_log (
-                            tenant_id, conversation_id, employee_id, skill_code, tool_name, permission_mode,
+                            conversation_id, employee_id, skill_code, tool_name, permission_mode,
                             confirm_required, confirm_result, result_status, detail_message,
                             request_payload_json, response_payload_json, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                         """,
-                tenantId,
                 request.getConversationId(),
                 request.getEmployeeId(),
                 tool.code(),
@@ -938,7 +923,6 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
     }
 
     private void recordFailedToolAuditLog(
-            Long tenantId,
             AiDTO.ToolExecuteRequest request,
             NativeTool tool,
             boolean confirmed,
@@ -950,7 +934,6 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
                     ? "deny"
                     : "allow";
             recordToolAuditLog(
-                    tenantId,
                     request,
                     tool,
                     confirmed,
@@ -1126,14 +1109,13 @@ class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
         return value.substring(0, maxLength);
     }
 
-    private Long currentTenantId(CurrentUser currentUser) {
+    private void requireLogin(CurrentUser currentUser) {
         if (currentUser == null) {
             throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 
-    private record ToolExecutionContext(CurrentUser currentUser, Long tenantId, Map<String, Object> arguments) {
+    private record ToolExecutionContext(CurrentUser currentUser, Map<String, Object> arguments) {
     }
 
     @FunctionalInterface

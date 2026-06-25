@@ -238,7 +238,6 @@ class PlatformEventOutboxRelayServiceTest {
     private PlatformEventOutboxEntity outboxRow(Long id, String status, int retryCount) {
         PlatformEventOutboxEntity row = new PlatformEventOutboxEntity();
         row.setId(id);
-        row.setTenantId(1001L);
         row.setUserId(9L);
         row.setSourceType(FilePlatformEventTypes.SOURCE_FILE);
         row.setEventType(FilePlatformEventTypes.FILE_OBJECT_UPLOADED);

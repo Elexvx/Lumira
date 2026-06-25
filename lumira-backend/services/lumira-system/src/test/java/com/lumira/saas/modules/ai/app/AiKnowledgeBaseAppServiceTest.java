@@ -15,6 +15,10 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -70,6 +74,30 @@ class AiKnowledgeBaseAppServiceTest {
         assertThat(processed).isEqualTo(1);
         assertThat(queryOperations.lastListSql).contains("status = 'FAILED'");
         assertThat(queryOperations.lastListSql).contains("index_next_retry_at");
+        assertThat(queryOperations.updateSql).anySatisfy(sql -> assertThat(sql).contains("set extracted_text"));
+        assertThat(queryOperations.updateSql).anySatisfy(sql -> assertThat(sql).contains("insert into ai_knowledge_chunk"));
+        assertThat(queryOperations.updateSql).anySatisfy(sql -> assertThat(sql).contains("status = 'READY'"));
+    }
+
+    @Test
+    void uploadDocumentProcessesIndexImmediatelyWhenJobExecutorIsUnavailable() {
+        RecordingQueryOperations queryOperations = new RecordingQueryOperations();
+        AiKnowledgeBaseAppService service = new AiKnowledgeBaseAppService(
+                queryOperations,
+                new InMemoryFileInternalApi("uploaded knowledge text".getBytes(StandardCharsets.UTF_8)),
+                new AiKnowledgeTextExtractor(),
+                mock(OperationAuditService.class),
+                mock(PlatformEventPublisher.class),
+                mock(DomainEventPublisher.class),
+                vectorService()
+        );
+        CurrentUser currentUser = new CurrentUser(7L, "admin", 1L, "session", 1, true, Set.of("ai:knowledge:document:upload"));
+        MultipartFile file = new TestMultipartFile("manual.txt", "text/plain", "uploaded knowledge text".getBytes(StandardCharsets.UTF_8));
+
+        var result = service.uploadDocument(currentUser, 20L, file);
+
+        assertThat(result.getStatus()).isEqualTo("READY");
+        assertThat(queryOperations.updateSql).anySatisfy(sql -> assertThat(sql).contains("insert into ai_knowledge_document"));
         assertThat(queryOperations.updateSql).anySatisfy(sql -> assertThat(sql).contains("set extracted_text"));
         assertThat(queryOperations.updateSql).anySatisfy(sql -> assertThat(sql).contains("insert into ai_knowledge_chunk"));
         assertThat(queryOperations.updateSql).anySatisfy(sql -> assertThat(sql).contains("status = 'READY'"));
@@ -226,6 +254,9 @@ class AiKnowledgeBaseAppServiceTest {
                 lastInsertIdQueried = true;
                 return (T) lastInsertId;
             }
+            if (sql.contains("select id from ai_knowledge_document")) {
+                return (T) Long.valueOf(30L);
+            }
             if (sql.contains("count(1)")) {
                 countQueryCount += 1;
             }
@@ -244,17 +275,9 @@ class AiKnowledgeBaseAppServiceTest {
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             this.lastListSql = sql;
-            if (sql.contains("from ai_knowledge_document") && sql.contains("status = 'INDEXING'")) {
+            if (sql.contains("from ai_knowledge_document")) {
                 try {
-                    return List.of(rowMapper.mapRow(new SqlRow(Map.of(
-                            "id", 30L,
-                            "tenant_id", 1L,
-                            "knowledge_base_id", 20L,
-                            "file_id", 40L,
-                            "title", "doc.txt",
-                            "created_by", 7L,
-                            "index_retry_count", retryCount
-                    )), 0));
+                    return List.of(rowMapper.mapRow(new SqlRow(documentRow()), 0));
                 } catch (Exception exception) {
                     throw new AssertionError(exception);
                 }
@@ -296,7 +319,6 @@ class AiKnowledgeBaseAppServiceTest {
                 try {
                     Map<String, Object> row = new java.util.LinkedHashMap<>();
                     row.put("id", 88L);
-                    row.put("tenant_id", 1L);
                     row.put("kb_code", "kb_88");
                     row.put("name", "研发知识库");
                     row.put("description", "研发资料");
@@ -314,6 +336,27 @@ class AiKnowledgeBaseAppServiceTest {
                 }
             }
             return List.of();
+        }
+
+        private Map<String, Object> documentRow() {
+            Map<String, Object> row = new java.util.LinkedHashMap<>();
+            row.put("id", 30L);
+            row.put("knowledge_base_id", 20L);
+            row.put("file_id", 40L);
+            row.put("title", "doc.txt");
+            row.put("original_file_name", "doc.txt");
+            row.put("file_extension", "txt");
+            row.put("mime_type", "text/plain");
+            row.put("file_size_bytes", 21L);
+            row.put("status", "READY");
+            row.put("parse_error", null);
+            row.put("extracted_char_count", 21);
+            row.put("chunk_count", 1);
+            row.put("created_by", 7L);
+            row.put("index_retry_count", retryCount);
+            row.put("create_time", LocalDateTime.now());
+            row.put("update_time", LocalDateTime.now());
+            return row;
         }
 
         private final List<String> updateSql = new ArrayList<>();
@@ -346,23 +389,46 @@ class AiKnowledgeBaseAppServiceTest {
 
         @Override
         public FileObjectDTO uploadDocument(MultipartFile file, String category, String tags, String remark, String bucket) {
-            throw new UnsupportedOperationException();
+            return new FileObjectDTO(
+                    40L,
+                    7L,
+                    "admin",
+                    file.getOriginalFilename(),
+                    "doc.txt",
+                    "LOCAL",
+                    bucket,
+                    "txt",
+                    file.getContentType(),
+                    (long) content.length,
+                    content.length + " B",
+                    "storage/uploads/doc.txt",
+                    "/api/uploads/doc.txt",
+                    null,
+                    "/api/uploads/doc.txt",
+                    "TEXT",
+                    true,
+                    category,
+                    tags,
+                    remark,
+                    "READY",
+                    LocalDateTime.now(),
+                    LocalDateTime.now()
+            );
         }
 
         @Override
-        public FileContentDTO readFileContentForUser(Long fileId, Long tenantId, Long userId, String username) {
+        public FileContentDTO readFileContentForUser(Long fileId, Long userId, String username) {
             contentReadCount++;
-            return new FileContentDTO(fileId, tenantId, "doc.txt", "text/plain", "txt", content);
+            return new FileContentDTO(fileId, "doc.txt", "text/plain", "txt", content);
         }
 
         @Override
-        public FileProcessingArtifactDTO readProcessingArtifactForUser(Long fileId, Long tenantId, Long userId, String username, String artifactType) {
+        public FileProcessingArtifactDTO readProcessingArtifactForUser(Long fileId, Long userId, String username, String artifactType) {
             if (textArtifact == null) {
                 throw new RuntimeException("artifact unavailable");
             }
             return new FileProcessingArtifactDTO(
                     9001L,
-                    tenantId,
                     fileId,
                     "TEXT_EXTRACT",
                     artifactType,
@@ -387,8 +453,50 @@ class AiKnowledgeBaseAppServiceTest {
         }
 
         @Override
-        public FileContentDTO readFileContentForUser(Long fileId, Long tenantId, Long userId, String username) {
+        public FileContentDTO readFileContentForUser(Long fileId, Long userId, String username) {
             throw new RuntimeException("temporary parser failure");
+        }
+    }
+
+    private record TestMultipartFile(String originalFilename, String contentType, byte[] bytes) implements MultipartFile {
+        @Override
+        public String getName() {
+            return "file";
+        }
+
+        @Override
+        public String getOriginalFilename() {
+            return originalFilename;
+        }
+
+        @Override
+        public String getContentType() {
+            return contentType;
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return bytes == null || bytes.length == 0;
+        }
+
+        @Override
+        public long getSize() {
+            return bytes == null ? 0 : bytes.length;
+        }
+
+        @Override
+        public byte[] getBytes() {
+            return bytes == null ? new byte[0] : bytes;
+        }
+
+        @Override
+        public InputStream getInputStream() {
+            return new ByteArrayInputStream(getBytes());
+        }
+
+        @Override
+        public void transferTo(File dest) throws IOException {
+            java.nio.file.Files.write(dest.toPath(), getBytes());
         }
     }
 }

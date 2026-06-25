@@ -18,10 +18,6 @@ public class DataPermissionDecision {
         return new DataPermissionDecision(DataScopeType.ALL, Set.of(), Set.of());
     }
 
-    public static DataPermissionDecision tenant() {
-        return all();
-    }
-
     public static DataPermissionDecision self(Long userId) {
         return new DataPermissionDecision(DataScopeType.SELF, Set.of(), userId == null ? Set.of() : Set.of(userId));
     }

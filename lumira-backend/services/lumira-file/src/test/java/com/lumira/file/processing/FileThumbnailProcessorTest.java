@@ -42,7 +42,7 @@ class FileThumbnailProcessorTest {
         ImageIO.write(image, "jpg", source.toFile());
 
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(1001L), eq(3001L)))
+        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(3001L)))
                 .thenAnswer(invocation -> {
                     RowMapper<?> mapper = invocation.getArgument(1);
                     var resultSet = mock(java.sql.ResultSet.class);
@@ -57,7 +57,7 @@ class FileThumbnailProcessorTest {
         uploadProperties.setStorageRoot(tempDir.toString());
         var processor = new FileThumbnailProcessor(jdbcTemplate, uploadProperties);
 
-        FileThumbnailProcessor.ThumbnailResult result = processor.generateThumbnail(1001L, 3001L, 2001L);
+        FileThumbnailProcessor.ThumbnailResult result = processor.generateThumbnail(3001L, 2001L);
 
         assertThat(result.status()).isEqualTo(FileThumbnailProcessor.STATUS_GENERATED);
         assertThat(result.thumbnailPath()).exists();
@@ -70,7 +70,7 @@ class FileThumbnailProcessorTest {
     @Test
     void generateThumbnail_shouldStoreDeferredArtifactForRemoteImage() throws Exception {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(1001L), eq(3001L)))
+        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(3001L)))
                 .thenAnswer(invocation -> {
                     RowMapper<?> mapper = invocation.getArgument(1);
                     var resultSet = mock(java.sql.ResultSet.class);
@@ -85,7 +85,7 @@ class FileThumbnailProcessorTest {
         uploadProperties.setStorageRoot(tempDir.toString());
         var processor = new FileThumbnailProcessor(jdbcTemplate, uploadProperties);
 
-        FileThumbnailProcessor.ThumbnailResult result = processor.generateThumbnail(1001L, 3001L, 2001L);
+        FileThumbnailProcessor.ThumbnailResult result = processor.generateThumbnail(3001L, 2001L);
 
         assertThat(result.status()).isEqualTo(FileThumbnailProcessor.STATUS_DEFERRED_REMOTE_STORAGE);
         assertThat(result.storageType()).isEqualTo("OSS");
@@ -97,7 +97,6 @@ class FileThumbnailProcessorTest {
         ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
         verify(jdbcTemplate).update(
                 anyString(),
-                eq(1001L),
                 eq(3001L),
                 eq(FileProcessingTaskService.TASK_THUMBNAIL),
                 eq(FileThumbnailProcessor.ARTIFACT_THUMBNAIL_RESULT),

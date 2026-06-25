@@ -29,8 +29,11 @@ class SystemPluginViewServiceTest {
             @Override
             public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
                 String normalized = sql.toLowerCase();
-                if (normalized.contains("from sys_plugin_tenant")) {
-                    List<PluginVO.TenantPluginVO> plugins = new ArrayList<>();
+                if (normalized.contains("from sys_plugin_definition")) {
+                    assertThat(normalized).contains("join sys_plugin_version");
+                    assertThat(normalized).contains("v.is_active = 1");
+                    assertThat(args).isEmpty();
+                    List<PluginVO.PluginAvailabilityVO> plugins = new ArrayList<>();
                     plugins.add(plugin("alpha", "Alpha", "1.0.0", alphaManifest));
                     plugins.add(plugin("beta", "Beta", "2.0.0", betaManifest));
                     return (List<T>) plugins;
@@ -53,9 +56,9 @@ class SystemPluginViewServiceTest {
         };
 
         SystemPluginViewService service = new SystemPluginViewService(jdbcTemplate, new ObjectMapper());
-        List<PluginVO.TenantPluginVO> plugins = service.availablePlugins(1001L);
+        List<PluginVO.PluginAvailabilityVO> plugins = service.availablePlugins();
 
-        assertThat(plugins).extracting(PluginVO.TenantPluginVO::getPluginCode).containsExactly("alpha", "beta");
+        assertThat(plugins).extracting(PluginVO.PluginAvailabilityVO::getPluginCode).containsExactly("alpha", "beta");
         assertThat(plugins.get(0).getMenus()).hasSize(1);
         assertThat(plugins.get(0).getSharedDeps()).containsExactly("shared-a");
         assertThat(plugins.get(1).getSharedDeps()).containsExactly("shared-b");
@@ -72,8 +75,8 @@ class SystemPluginViewServiceTest {
         return path;
     }
 
-    private PluginVO.TenantPluginVO plugin(String code, String name, String version, Path manifestPath) {
-        PluginVO.TenantPluginVO plugin = new PluginVO.TenantPluginVO();
+    private PluginVO.PluginAvailabilityVO plugin(String code, String name, String version, Path manifestPath) {
+        PluginVO.PluginAvailabilityVO plugin = new PluginVO.PluginAvailabilityVO();
         plugin.setPluginCode(code);
         plugin.setPluginName(name);
         plugin.setVersion(version);

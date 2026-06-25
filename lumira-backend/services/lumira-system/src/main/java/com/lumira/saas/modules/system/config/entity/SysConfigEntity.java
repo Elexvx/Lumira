@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 public class SysConfigEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long tenantId;
     private String configKey;
     private String configName;
     private String configValue;
@@ -25,8 +24,6 @@ public class SysConfigEntity {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getConfigKey() { return configKey; }
     public void setConfigKey(String configKey) { this.configKey = configKey; }
     public String getConfigName() { return configName; }

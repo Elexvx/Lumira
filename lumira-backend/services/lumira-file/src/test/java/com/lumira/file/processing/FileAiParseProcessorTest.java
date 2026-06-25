@@ -19,7 +19,7 @@ class FileAiParseProcessorTest {
     @Test
     void prepareForAiParse_shouldCreateAiReadyArtifactFromTextContent() throws Exception {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(1001L), eq(3001L), eq(FileTextExtractionProcessor.ARTIFACT_TEXT_CONTENT)))
+        when(jdbcTemplate.queryForObject(anyString(), Mockito.<RowMapper<?>>any(), eq(3001L), eq(FileTextExtractionProcessor.ARTIFACT_TEXT_CONTENT)))
                 .thenAnswer(invocation -> {
                     RowMapper<?> mapper = invocation.getArgument(1);
                     var resultSet = mock(java.sql.ResultSet.class);
@@ -29,14 +29,13 @@ class FileAiParseProcessorTest {
                 });
         var processor = new FileAiParseProcessor(jdbcTemplate);
 
-        FileAiParseProcessor.AiParseResult result = processor.prepareForAiParse(1001L, 3001L, 2001L);
+        FileAiParseProcessor.AiParseResult result = processor.prepareForAiParse(3001L, 2001L);
 
         assertThat(result.fileId()).isEqualTo(3001L);
         assertThat(result.sourceCharacters()).isEqualTo("hello Lumira DDD".length());
         ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
         verify(jdbcTemplate).update(
                 anyString(),
-                eq(1001L),
                 eq(3001L),
                 eq(FileProcessingTaskService.TASK_AI_PARSE),
                 eq(FileAiParseProcessor.ARTIFACT_AI_PARSE_READY),

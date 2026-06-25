@@ -4,8 +4,7 @@
     <select id="findValue" resultType="java.lang.String">
         select config_value
         from sys_config
-        where tenant_id = #{tenantId}
-          and config_key = #{configKey}
+        where config_key = #{configKey}
           and config_scope = #{configScope}
           and deleted = 0
         order by id desc
@@ -21,15 +20,13 @@
           <foreach collection="keys" item="key" open="(" separator="," close=")">
               #{key}
           </foreach>
-          and (tenant_id = #{tenantId} or tenant_id is null)
-        order by case when tenant_id = #{tenantId} then 0 when tenant_id is null then 1 else 2 end, id desc
+        order by id desc
     </select>
 
-    <select id="findIdByTenantAndKey" resultType="java.lang.Long">
+    <select id="findIdByKey" resultType="java.lang.Long">
         select id
         from sys_config
         where config_key = #{configKey}
-          and tenant_id &lt;=&gt; #{tenantId}
           and deleted = 0
         order by id desc
         limit 1
@@ -37,10 +34,10 @@
 
     <insert id="upsertPlatformConfig">
         insert into sys_config (
-            tenant_id, config_key, config_name, config_value, config_scope, is_system, remark,
+            config_key, config_name, config_value, config_scope, is_system, remark,
             created_by, updated_by, deleted
         ) values (
-            #{entity.tenantId}, #{entity.configKey}, #{entity.configName}, #{entity.configValue},
+            #{entity.configKey}, #{entity.configName}, #{entity.configValue},
             'PLATFORM', #{entity.isSystem}, #{entity.remark}, #{entity.createdBy}, #{entity.updatedBy}, 0
         )
         on duplicate key update

@@ -98,7 +98,7 @@ class DefaultDelegationGrantEvaluatorTest {
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
             if (sql.contains("from iam_subject")) {
-                String subjectType = String.valueOf(args[1]);
+                String subjectType = String.valueOf(args[0]);
                 Long value = "HUMAN_USER".equals(subjectType) ? humanSubjectId : employeeSubjectId;
                 return value == null ? null : requiredType.cast(value);
             }
@@ -110,10 +110,10 @@ class DefaultDelegationGrantEvaluatorTest {
             if (!sql.contains("from iam_delegation_grant")) {
                 return List.of();
             }
-            String toolCode = args[3] == null ? null : String.valueOf(args[3]);
-            String permissionKey = args[4] == null ? null : String.valueOf(args[4]);
-            String resourceCode = args[5] == null ? null : String.valueOf(args[5]);
-            String actionCode = args[6] == null ? null : String.valueOf(args[6]);
+            String toolCode = args[2] == null ? null : String.valueOf(args[2]);
+            String permissionKey = args[3] == null ? null : String.valueOf(args[3]);
+            String resourceCode = args[4] == null ? null : String.valueOf(args[4]);
+            String actionCode = args[5] == null ? null : String.valueOf(args[5]);
             return grants.stream()
                     .filter(row -> matches(row.get("toolCode"), toolCode))
                     .filter(row -> matches(row.get("permissionKey"), permissionKey))

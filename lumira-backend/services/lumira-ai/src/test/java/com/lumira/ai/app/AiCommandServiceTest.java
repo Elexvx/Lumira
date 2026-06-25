@@ -7,7 +7,6 @@ import com.lumira.ai.provider.AiProviderRuntime;
 import com.lumira.ai.vo.AiToolVO;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
-import com.lumira.common.security.PlatformContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -51,7 +50,7 @@ class AiCommandServiceTest {
         ));
 
         assertThat(result.resultStatus()).isEqualTo("SUCCESS");
-        assertThat(result.data()).containsEntry("tenantId", 1001L);
+        assertThat(result.data()).containsEntry("userId", 7L);
         assertThat(result.data()).containsEntry("remoteOwnerCall", false);
         assertThat(result.data()).containsEntry("degraded", false);
     }
@@ -79,7 +78,6 @@ class AiCommandServiceTest {
             public ToolExecution execute(CurrentUser currentUser, AiToolVO tool, Map<String, Object> arguments) {
                 return new ToolExecution(Map.of(
                         "userId", currentUser.getUserId(),
-                        "tenantId", PlatformContext.compatibilityTenantId(),
                         "username", currentUser.getUsername(),
                         "permissions", currentUser.getPermissions()
                 ), false, false);

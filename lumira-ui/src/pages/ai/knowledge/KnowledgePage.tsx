@@ -40,7 +40,7 @@ const SCOPE_TABS = [
 const formatNumber = (value?: number | null) => (typeof value === 'number' ? value.toLocaleString() : '0');
 
 const visibilityTag = (scope?: string | null) => {
-  if (scope === 'PLATFORM' || scope === 'TENANT') {
+  if (scope === 'PLATFORM') {
     return <Tag color="purple">{t('组织', 'Organization')}</Tag>;
   }
   if (scope === 'TEAM') {

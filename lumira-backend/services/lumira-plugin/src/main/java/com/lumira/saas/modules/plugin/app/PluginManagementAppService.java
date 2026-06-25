@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.MenuNodeDTO;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.web.TraceContext;
@@ -12,9 +11,8 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.domain.event.DomainEvent;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.modules.plugin.dto.PluginDTO;
-import com.lumira.saas.modules.plugin.domain.model.PluginDomainModels.TenantPluginAggregate;
+import com.lumira.saas.modules.plugin.domain.model.PluginDomainModels.PluginActivationAggregate;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginMenuRelEntity;
-import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginTenantEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginVersionEntity;
 import com.lumira.saas.modules.plugin.loader.PluginArtifactLoader;
 import com.lumira.saas.modules.plugin.loader.PluginRuntimeLoader;
@@ -83,16 +81,16 @@ public class PluginManagementAppService {
     private static final long AVAILABLE_PLUGINS_CACHE_TTL_MILLIS = Duration.ofSeconds(8).toMillis();
     private static final long CURRENT_BOOTSTRAP_CACHE_TTL_MILLIS = Duration.ofSeconds(3).toMillis();
     private static final long READ_MODEL_VERSION_CACHE_TTL_MILLIS = Duration.ofSeconds(2).toMillis();
-    private final ConcurrentMap<Long, CachedAvailablePlugins> availablePluginsCache = new ConcurrentHashMap<>();
+    private static final String GLOBAL_PLUGIN_SCOPE_KEY = "global";
+    private final ConcurrentMap<String, CachedAvailablePlugins> availablePluginsCache = new ConcurrentHashMap<>();
     private final ConcurrentMap<BootstrapCacheKey, CachedCurrentBootstrap> currentBootstrapCache = new ConcurrentHashMap<>();
-    private final ConcurrentMap<Long, CachedReadModelVersion> readModelVersionCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, CachedReadModelVersion> readModelVersionCache = new ConcurrentHashMap<>();
     private final LongAdder availablePluginsCacheHits = new LongAdder();
     private final LongAdder availablePluginsCacheMisses = new LongAdder();
     private final LongAdder currentBootstrapCacheHits = new LongAdder();
     private final LongAdder currentBootstrapCacheMisses = new LongAdder();
     private final LongAdder readModelVersionCacheHits = new LongAdder();
     private final LongAdder readModelVersionCacheMisses = new LongAdder();
-    private volatile List<Map<String, Object>> builtinMenuTemplate;
 
     public PluginManagementAppService(
             PluginArtifactLoader pluginArtifactLoader,
@@ -147,7 +145,7 @@ public class PluginManagementAppService {
                 artifact.metadata().getMenuDeclarations(),
                 currentUser.getUserId()
         );
-        log(null, artifact.metadata().getPluginCode(), artifact.metadata().getVersion(), "UPLOAD", "VERIFIED", "SUCCESS", "插件包已上传并完成校验", null, currentUser.getUserId());
+        log(artifact.metadata().getPluginCode(), artifact.metadata().getVersion(), "UPLOAD", "VERIFIED", "SUCCESS", "Plugin package uploaded and verified", null, currentUser.getUserId());
         PluginVO.PluginUploadVO vo = new PluginVO.PluginUploadVO();
         vo.setPluginCode(versionEntity.getPluginCode());
         vo.setPluginName(artifact.metadata().getPluginName());
@@ -163,9 +161,9 @@ public class PluginManagementAppService {
         PluginDTO.PluginPackageMetadata metadata = parseMetadata(versionEntity);
         validateDependencies(metadata);
         Path versionHome = pluginArtifactLoader.installToVersionHome(pluginCode, version, Path.of(versionEntity.getStagedPath()));
-        log(null, pluginCode, version, "INSTALL", "INSTALLED", "SUCCESS", "插件文件已落盘", null, currentUser.getUserId());
+        log(pluginCode, version, "INSTALL", "INSTALLED", "SUCCESS", "Plugin files installed", null, currentUser.getUserId());
         pluginMigrationService.executeUpMigrations(pluginCode, version, versionHome, currentUser.getUserId());
-        log(null, pluginCode, version, "INSTALL", "MIGRATED", "SUCCESS", "插件私有迁移已完成", null, currentUser.getUserId());
+        log(pluginCode, version, "INSTALL", "MIGRATED", "SUCCESS", "Plugin private migrations completed", null, currentUser.getUserId());
         PluginRuntimeDescriptor descriptor = pluginRuntimeLoader.load(metadata, versionHome);
         pluginRegistry.register(descriptor);
         pluginPersistenceService.markInstalled(
@@ -184,7 +182,7 @@ public class PluginManagementAppService {
             pluginPersistenceService.activateVersion(pluginCode, version);
             bumpBootstrapVersions(pluginCode, "plugin.version.auto-activated");
         }
-        log(null, pluginCode, version, "INSTALL", "LOADED", "SUCCESS", "插件后端运行时已加载", null, currentUser.getUserId());
+        log(pluginCode, version, "INSTALL", "LOADED", "SUCCESS", "Plugin runtime loaded", null, currentUser.getUserId());
         return pluginPersistenceService.listVersions(pluginCode).stream()
                 .filter(item -> version.equals(item.getVersion()))
                 .findFirst()
@@ -197,7 +195,7 @@ public class PluginManagementAppService {
         pluginRegistry.activate(pluginCode, version);
         pluginPersistenceService.activateVersion(pluginCode, version);
         bumpBootstrapVersions(pluginCode, "plugin.version.upgraded");
-        log(null, pluginCode, version, "UPGRADE", "ENABLED", "SUCCESS", "插件激活版本已切换", null, currentUser.getUserId());
+        log(pluginCode, version, "UPGRADE", "ENABLED", "SUCCESS", "Plugin active version switched", null, currentUser.getUserId());
         return pluginPersistenceService.listVersions(pluginCode).stream()
                 .filter(item -> version.equals(item.getVersion()))
                 .findFirst()
@@ -210,7 +208,7 @@ public class PluginManagementAppService {
         pluginRegistry.activate(pluginCode, targetVersion);
         pluginPersistenceService.activateVersion(pluginCode, targetVersion);
         bumpBootstrapVersions(pluginCode, "plugin.version.rolled-back");
-        log(null, pluginCode, targetVersion, "ROLLBACK", "ROLLED_BACK", "SUCCESS", "插件已回滚到目标版本", null, currentUser.getUserId());
+        log(pluginCode, targetVersion, "ROLLBACK", "ROLLED_BACK", "SUCCESS", "Plugin rolled back to target version", null, currentUser.getUserId());
         return pluginPersistenceService.listVersions(pluginCode).stream()
                 .filter(item -> targetVersion.equals(item.getVersion()))
                 .findFirst()
@@ -225,78 +223,76 @@ public class PluginManagementAppService {
                         .orElseGet(() -> pluginPersistenceService.listInstalledVersions(request.getPluginCode()).stream()
                                 .findFirst()
                                 .map(PluginVersionEntity::getVersion)
-                                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "当前插件不存在激活版本")));
+                                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "No active plugin version found")));
             }
             final String version = resolvedVersion;
             ensureLoaded(request.getPluginCode(), version);
             pluginMigrationService.executeUpMigrations(request.getPluginCode(), version, resolveVersionHome(request.getPluginCode(), version), currentUser.getUserId());
             enforceEmailRequirementIfNeeded(request.getPluginCode(), version, currentUser);
             transactionTemplate.executeWithoutResult(status -> {
-                TenantPluginAggregate tenantPlugin = new TenantPluginAggregate(request.getPluginCode(), request.getTenantId(), false);
-                tenantPlugin.enable(version);
-                pluginPersistenceService.enablePluginForTenant(
-                        request.getTenantId(),
+                PluginActivationAggregate pluginActivation = new PluginActivationAggregate(request.getPluginCode(), false);
+                pluginActivation.enable(version);
+                pluginPersistenceService.enablePlugin(
                         request.getPluginCode(),
                         version,
                         request.getConfigJson(),
                         currentUser.getUserId()
                 );
-                pluginPersistenceService.registerTenantPermissions(request.getTenantId(), request.getPluginCode(), version);
+                pluginPersistenceService.registerPluginPermissions(request.getPluginCode(), version);
                 pluginPersistenceService.updateVersionStatus(request.getPluginCode(), version, "LOADED", "LOADED", "HEALTHY", "ENABLED", "READY");
-                pluginPersistenceService.bumpBootstrapVersion(request.getTenantId(), "plugin.enabled");
-                invalidateTenantBootstrapCaches(request.getTenantId());
-                logTenantPluginDomainEvents(tenantPlugin.pullDomainEvents(), version, currentUser.getUserId());
+                pluginPersistenceService.bumpBootstrapVersion("plugin.enabled");
+                invalidatePluginBootstrapCaches();
+                logPluginActivationDomainEvents(pluginActivation.pullDomainEvents(), version, currentUser.getUserId());
             });
-            safeLog(request.getTenantId(), request.getPluginCode(), version, "ENABLE", "ENABLED", "SUCCESS", "平台插件已启用", null, currentUser.getUserId());
+            safeLog(request.getPluginCode(), version, "ENABLE", "ENABLED", "SUCCESS", "Platform plugin enabled", null, currentUser.getUserId());
         } catch (BizException exception) {
             throw exception;
         } catch (Throwable throwable) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "启用插件失败: " + rootCauseMessage(throwable));
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Enable plugin failed: " + rootCauseMessage(throwable));
         }
     }
 
     @Transactional
     public void disable(PluginDTO.DisableRequest request, CurrentUser currentUser) {
-        PluginTenantEntity tenantEntity = pluginPersistenceService.findTenantPlugin(request.getTenantId(), request.getPluginCode())
-                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前尚未启用该插件"));
-        PluginVO.PluginStatusVO pluginStatus = pluginPersistenceService.pluginStatus(request.getTenantId(), request.getPluginCode()).orElse(null);
+        PluginVersionEntity enabledVersion = pluginPersistenceService.findEnabledVersion(request.getPluginCode())
+                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "Plugin is not enabled"));
+        PluginVO.PluginStatusVO pluginStatus = pluginPersistenceService.pluginStatus(request.getPluginCode()).orElse(null);
         if (Boolean.TRUE.equals(request.getPurgeData())
                 && (pluginStatus == null || !Boolean.TRUE.equals(pluginStatus.getSupportsDataPurge()))) {
             throw new BizException(ErrorCode.BIZ_ERROR, "Plugin does not support data purge on disable");
         }
-        TenantPluginAggregate tenantPlugin = new TenantPluginAggregate(request.getPluginCode(), request.getTenantId(), true);
-        tenantPlugin.disable(Boolean.TRUE.equals(request.getPurgeData()) ? "purge-data" : "disable");
-        pluginPersistenceService.disablePluginForTenant(request.getTenantId(), request.getPluginCode(), currentUser.getUserId());
-        pluginPersistenceService.bumpBootstrapVersion(request.getTenantId(), "plugin.disabled");
-        invalidateTenantBootstrapCaches(request.getTenantId());
+        PluginActivationAggregate pluginActivation = new PluginActivationAggregate(request.getPluginCode(), true);
+        pluginActivation.disable(Boolean.TRUE.equals(request.getPurgeData()) ? "purge-data" : "disable");
+        pluginPersistenceService.disablePlugin(request.getPluginCode(), currentUser.getUserId());
+        pluginPersistenceService.bumpBootstrapVersion("plugin.disabled");
+        invalidatePluginBootstrapCaches();
         boolean purgeData = Boolean.TRUE.equals(request.getPurgeData());
         if (purgeData) {
             pluginMigrationService.executeDownMigrations(
                     request.getPluginCode(),
-                    tenantEntity.getPluginVersion(),
-                    resolveVersionHome(request.getPluginCode(), tenantEntity.getPluginVersion()),
+                    enabledVersion.getVersion(),
+                    resolveVersionHome(request.getPluginCode(), enabledVersion.getVersion()),
                     currentUser.getUserId()
             );
         }
         pluginPersistenceService.updateVersionStatus(
                 request.getPluginCode(),
-                tenantEntity.getPluginVersion(),
+                enabledVersion.getVersion(),
                 "LOADED",
                 purgeData ? "UNLOADED" : "LOADED",
                 "HEALTHY",
                 "DISABLED",
                 purgeData ? "REMOVED" : "READY"
         );
-        logTenantPluginDomainEvents(tenantPlugin.pullDomainEvents(), tenantEntity.getPluginVersion(), currentUser.getUserId());
-        systemInternalApi.invalidatePermissionSnapshot(request.getTenantId());
+        logPluginActivationDomainEvents(pluginActivation.pullDomainEvents(), enabledVersion.getVersion(), currentUser.getUserId());
+        systemInternalApi.invalidatePermissionSnapshot();
         safeLog(
-                request.getTenantId(),
                 request.getPluginCode(),
-                tenantEntity.getPluginVersion(),
+                enabledVersion.getVersion(),
                 "DISABLE",
                 "DISABLED",
                 "SUCCESS",
-                purgeData ? "平台插件已停用并删除独立数据表" : "平台插件已停用",
+                purgeData ? "Platform plugin disabled and data purged" : "Platform plugin disabled",
                 null,
                 currentUser.getUserId()
         );
@@ -322,35 +318,34 @@ public class PluginManagementAppService {
         return pluginPersistenceService.listRuntimeLogs(pluginCode);
     }
 
-    public List<PluginVO.TenantPluginVO> availablePlugins(Long tenantId) {
-        long bootstrapVersion = readModelVersionForTenant(tenantId);
-        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        CachedAvailablePlugins cached = availablePluginsCache.get(effectiveTenantId);
+    public List<PluginVO.PluginAvailabilityVO> availablePlugins() {
+        long bootstrapVersion = readPluginBootstrapVersion();
+        CachedAvailablePlugins cached = availablePluginsCache.get(GLOBAL_PLUGIN_SCOPE_KEY);
         long now = System.currentTimeMillis();
         if (cached != null && cached.version() == bootstrapVersion && cached.expiresAtEpochMillis() > now) {
             availablePluginsCacheHits.increment();
             return new ArrayList<>(cached.availablePlugins());
         }
         availablePluginsCacheMisses.increment();
-        List<PluginVO.TenantPluginVO> fromPersistence = pluginPersistenceService.listTenantPlugins(effectiveTenantId);
+        List<PluginVO.PluginAvailabilityVO> fromPersistence = pluginPersistenceService.listAvailablePlugins();
         if (fromPersistence == null || fromPersistence.isEmpty()) {
             CachedAvailablePlugins emptySnapshot = new CachedAvailablePlugins(
                     bootstrapVersion,
                     now + AVAILABLE_PLUGINS_CACHE_TTL_MILLIS,
                     List.of()
             );
-            availablePluginsCache.put(effectiveTenantId, emptySnapshot);
+            availablePluginsCache.put(GLOBAL_PLUGIN_SCOPE_KEY, emptySnapshot);
             return List.of();
         }
-        List<PluginVO.TenantPluginVO> result = new ArrayList<>(fromPersistence.size());
-        for (PluginVO.TenantPluginVO plugin : fromPersistence) {
+        List<PluginVO.PluginAvailabilityVO> result = new ArrayList<>(fromPersistence.size());
+        for (PluginVO.PluginAvailabilityVO plugin : fromPersistence) {
             try {
                 populateRuntimeMetadata(plugin);
                 result.add(plugin);
             } catch (BizException exception) {
-                log.warn("Skipping plugin {} {} for tenant {} because runtime files are invalid: {}", plugin.getPluginCode(), plugin.getVersion(), tenantId, exception.getMessage());
+                log.warn("Skipping plugin {} {} because runtime files are invalid: {}", plugin.getPluginCode(), plugin.getVersion(), exception.getMessage());
             } catch (Exception exception) {
-                log.warn("Skipping plugin {} {} for tenant {} because runtime metadata failed to load", plugin.getPluginCode(), plugin.getVersion(), tenantId, exception);
+                log.warn("Skipping plugin {} {} because runtime metadata failed to load", plugin.getPluginCode(), plugin.getVersion(), exception);
             }
         }
         CachedAvailablePlugins snapshot = new CachedAvailablePlugins(
@@ -358,13 +353,13 @@ public class PluginManagementAppService {
                 System.currentTimeMillis() + AVAILABLE_PLUGINS_CACHE_TTL_MILLIS,
                 result
         );
-        availablePluginsCache.put(effectiveTenantId, snapshot);
+        availablePluginsCache.put(GLOBAL_PLUGIN_SCOPE_KEY, snapshot);
         return new ArrayList<>(result);
     }
 
-    public PluginVO.PluginStatusVO status(Long tenantId, String pluginCode) {
-        PluginVO.PluginStatusVO status = pluginPersistenceService.pluginStatus(tenantId, pluginCode)
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "插件不存在"));
+    public PluginVO.PluginStatusVO status(String pluginCode) {
+        PluginVO.PluginStatusVO status = pluginPersistenceService.pluginStatus(pluginCode)
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "Plugin not found"));
         if (status.getRuntimeContributions() == null || status.getRuntimeContributions().isEmpty()) {
             status.setRuntimeContributions(resolveRuntimeContributions(pluginCode));
         }
@@ -374,10 +369,9 @@ public class PluginManagementAppService {
     @Transactional
     public void uninstall(String pluginCode, boolean removeData, CurrentUser currentUser) {
         if (isBuiltinCorePlugin(pluginCode)) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "内置插件不支持卸载，请改为停用插件");
+            throw new BizException(ErrorCode.BIZ_ERROR, "Built-in plugins cannot be uninstalled; disable the plugin instead");
         }
         List<PluginVersionEntity> versions = pluginPersistenceService.listInstalledVersions(pluginCode);
-        List<Long> tenantIds = pluginPersistenceService.listTenantIdsForPlugin(pluginCode);
         for (PluginVersionEntity versionEntity : versions) {
             if (removeData) {
                 pluginMigrationService.executeDownMigrations(pluginCode, versionEntity.getVersion(), resolveVersionHome(pluginCode, versionEntity.getVersion()), currentUser.getUserId());
@@ -386,7 +380,7 @@ public class PluginManagementAppService {
             try {
                 pluginRegistry.unload(pluginCode, versionEntity.getVersion());
             } catch (Exception exception) {
-                throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行时卸载失败: " + exception.getMessage());
+                throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin runtime unload failed: " + exception.getMessage());
             }
         }
         if (removeData) {
@@ -394,19 +388,16 @@ public class PluginManagementAppService {
         } else {
             pluginPersistenceService.uninstallPlugin(pluginCode, currentUser.getUserId());
         }
-        for (Long tenantId : tenantIds) {
-            systemInternalApi.invalidatePermissionSnapshot(tenantId);
-            pluginPersistenceService.bumpBootstrapVersion(tenantId, "plugin.uninstalled");
-            invalidateTenantBootstrapCaches(tenantId);
-        }
+        systemInternalApi.invalidatePermissionSnapshot();
+        pluginPersistenceService.bumpBootstrapVersion("plugin.uninstalled");
+        invalidatePluginBootstrapCaches();
         safeLog(
-                null,
                 pluginCode,
                 versions.isEmpty() ? null : versions.get(0).getVersion(),
                 "UNINSTALL",
                 "REMOVED",
                 "SUCCESS",
-                removeData ? "插件已卸载并删除数据库数据" : "插件已卸载",
+                removeData ? "Plugin uninstalled and data purged" : "Plugin uninstalled",
                 null,
                 currentUser.getUserId()
         );
@@ -434,8 +425,8 @@ public class PluginManagementAppService {
         }
     }
 
-    public Optional<PluginRuntimeDescriptor> findTenantRuntimeDescriptor(Long tenantId, String pluginCode) {
-        return availablePlugins(tenantId).stream()
+    public Optional<PluginRuntimeDescriptor> findRuntimeDescriptor(String pluginCode) {
+        return availablePlugins().stream()
                 .filter(item -> pluginCode.equals(item.getPluginCode()))
                 .findFirst()
                 .flatMap(item -> pluginRegistry.find(item.getPluginCode(), item.getVersion()));
@@ -443,10 +434,6 @@ public class PluginManagementAppService {
 
     public Optional<PluginRuntimeDescriptor> findActiveRuntimeDescriptor(String pluginCode) {
         return pluginRegistry.findActiveVersion(pluginCode).flatMap(version -> pluginRegistry.find(pluginCode, version));
-    }
-
-    public Optional<PluginSecondFactorProvider> findSecondFactorProvider(Long tenantId, String pluginCode) {
-        return findTenantRuntimeDescriptor(tenantId, pluginCode).map(PluginRuntimeDescriptor::getSecondFactorProvider);
     }
 
     public Optional<PluginSecondFactorProvider> findSecondFactorProvider(String pluginCode) {
@@ -465,29 +452,27 @@ public class PluginManagementAppService {
         }
         var user = systemInternalApi.findUserById(currentUser.getUserId());
         if (user == null || !org.springframework.util.StringUtils.hasText(user.email())) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "请先补充邮箱后再启用该验证方式");
+            throw new BizException(ErrorCode.BIZ_ERROR, "Please provide an email before enabling this verification method");
         }
     }
 
-    public PluginRuntimeDescriptor requireTenantRuntime(Long tenantId, String pluginCode) {
-        PluginTenantEntity tenantEntity = pluginPersistenceService.findTenantPlugin(tenantId, pluginCode)
-                .filter(item -> item.getEnabled() != null && item.getEnabled() == 1)
-                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "当前未启用该插件"));
-        ensureLoaded(pluginCode, tenantEntity.getPluginVersion());
-        return pluginRegistry.find(pluginCode, tenantEntity.getPluginVersion())
-                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行时不存在"));
+    public PluginRuntimeDescriptor requireRuntime(String pluginCode) {
+        PluginVersionEntity enabledVersion = pluginPersistenceService.findEnabledVersion(pluginCode)
+                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_NOT_ENABLED, "Plugin is not enabled"));
+        ensureLoaded(pluginCode, enabledVersion.getVersion());
+        return pluginRegistry.find(pluginCode, enabledVersion.getVersion())
+                .orElseThrow(() -> new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin runtime does not exist"));
     }
 
-    public List<Map<String, Object>> tenantPluginMenus(Long tenantId, Set<String> permissions) {
-        return tenantPluginMenus(availablePlugins(tenantId), permissions);
+    public List<Map<String, Object>> pluginMenus(Set<String> permissions) {
+        return pluginActivationMenus(availablePlugins(), permissions);
     }
 
-    public Map<String, Object> currentBootstrap(Long tenantId, List<String> permissions) {
+    public Map<String, Object> currentBootstrap(List<String> permissions) {
         Set<String> permissionSet = normalizePermissionSet(permissions);
-        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        long bootstrapVersion = readModelVersionForTenant(tenantId);
+        long bootstrapVersion = readPluginBootstrapVersion();
         String permissionSignature = permissionSignature(permissionSet);
-        BootstrapCacheKey cacheKey = new BootstrapCacheKey(effectiveTenantId, bootstrapVersion, permissionSignature);
+        BootstrapCacheKey cacheKey = new BootstrapCacheKey(GLOBAL_PLUGIN_SCOPE_KEY, bootstrapVersion, permissionSignature);
         long now = System.currentTimeMillis();
         CachedCurrentBootstrap cached = currentBootstrapCache.get(cacheKey);
         if (cached != null && cached.expiresAtEpochMillis() > now) {
@@ -495,13 +480,12 @@ public class PluginManagementAppService {
             return cached.bootstrapPayload();
         }
         currentBootstrapCacheMisses.increment();
-        List<PluginVO.TenantPluginVO> availablePlugins = availablePlugins(tenantId);
+        List<PluginVO.PluginAvailabilityVO> availablePlugins = availablePlugins();
         Map<String, Object> payload = Map.of(
                 "menuTree", currentMenus(availablePlugins, permissionSet),
                 "availablePlugins", availablePlugins
         );
         currentBootstrapCache.put(cacheKey, new CachedCurrentBootstrap(
-                tenantId,
                 bootstrapVersion,
                 permissionSignature,
                 now + CURRENT_BOOTSTRAP_CACHE_TTL_MILLIS,
@@ -511,15 +495,13 @@ public class PluginManagementAppService {
     }
 
     private void bumpBootstrapVersions(String pluginCode, String eventKey) {
-        for (Long tenantId : pluginPersistenceService.listTenantIdsForPlugin(pluginCode)) {
-            pluginPersistenceService.bumpBootstrapVersion(tenantId, eventKey);
-            invalidateTenantBootstrapCaches(tenantId);
-        }
+        pluginPersistenceService.bumpBootstrapVersion(eventKey);
+        invalidatePluginBootstrapCaches();
     }
 
-    private List<Map<String, Object>> tenantPluginMenus(List<PluginVO.TenantPluginVO> availablePlugins, Set<String> permissions) {
+    private List<Map<String, Object>> pluginActivationMenus(List<PluginVO.PluginAvailabilityVO> availablePlugins, Set<String> permissions) {
         List<Map<String, Object>> menus = new ArrayList<>();
-        for (PluginVO.TenantPluginVO plugin : availablePlugins) {
+        for (PluginVO.PluginAvailabilityVO plugin : availablePlugins) {
             for (Map<String, Object> menu : buildPluginMenus(plugin.getPluginCode(), plugin.getVersion())) {
                 String permissionKey = (String) menu.get("permissionKey");
                 if (permissionKey == null || permissions.contains("*") || permissions.contains(permissionKey)) {
@@ -530,30 +512,30 @@ public class PluginManagementAppService {
         return menus;
     }
 
-    public List<Map<String, Object>> currentMenus(Long tenantId, List<String> permissions) {
-        Map<String, Object> bootstrap = currentBootstrap(tenantId, permissions);
+    public List<Map<String, Object>> currentMenus(List<String> permissions) {
+        Map<String, Object> bootstrap = currentBootstrap(permissions);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> menuTree = (List<Map<String, Object>>) bootstrap.get("menuTree");
         return menuTree == null ? List.of() : menuTree;
     }
 
-    private List<Map<String, Object>> currentMenus(List<PluginVO.TenantPluginVO> availablePlugins, Set<String> permissionSet) {
+    private List<Map<String, Object>> currentMenus(List<PluginVO.PluginAvailabilityVO> availablePlugins, Set<String> permissionSet) {
         List<Map<String, Object>> baseMenus = builtinMenus();
-        List<Map<String, Object>> mergedMenus = mergeMenus(baseMenus, tenantPluginMenus(availablePlugins, permissionSet));
+        List<Map<String, Object>> mergedMenus = mergeMenus(baseMenus, pluginActivationMenus(availablePlugins, permissionSet));
         return pruneMenuTree(mergedMenus, permissionSet);
     }
 
     public Path resolveManifestPath(String pluginCode, String version) {
         if (isBuiltinCorePlugin(pluginCode)) {
-            throw new BizException(ErrorCode.NOT_FOUND, "内置插件不提供独立前端清单");
+            throw new BizException(ErrorCode.NOT_FOUND, "Built-in plugin does not provide an independent frontend manifest");
         }
         PluginVersionEntity versionEntity = requireVersion(pluginCode, version);
         if (versionEntity.getFrontendManifestPath() == null || versionEntity.getFrontendManifestPath().isBlank()) {
-            throw new BizException(ErrorCode.NOT_FOUND, "插件清单不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Plugin manifest does not exist");
         }
         Path manifestPath = Path.of(versionEntity.getFrontendManifestPath());
         if (!Files.exists(manifestPath)) {
-            throw new BizException(ErrorCode.NOT_FOUND, "插件清单不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Plugin manifest does not exist");
         }
         return manifestPath;
     }
@@ -561,15 +543,15 @@ public class PluginManagementAppService {
     public Path resolvePluginAssetPath(String pluginCode, String version, String relativePath) {
         PluginVersionEntity versionEntity = requireVersion(pluginCode, version);
         if (versionEntity.getArtifactPath() == null || versionEntity.getArtifactPath().isBlank()) {
-            throw new BizException(ErrorCode.NOT_FOUND, "插件资源不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Plugin asset does not exist");
         }
         Path versionHome = Path.of(versionEntity.getArtifactPath());
         Path resolved = versionHome.resolve("lumira-ui").resolve(relativePath).normalize();
         if (!resolved.startsWith(versionHome.resolve("lumira-ui"))) {
-            throw new BizException(ErrorCode.NOT_FOUND, "插件资源不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Plugin asset does not exist");
         }
         if (!Files.exists(resolved)) {
-            throw new BizException(ErrorCode.NOT_FOUND, "插件资源不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Plugin asset does not exist");
         }
         return resolved;
     }
@@ -583,7 +565,7 @@ public class PluginManagementAppService {
         }
         PluginVersionEntity versionEntity = requireVersion(pluginCode, version);
         if (versionEntity.getArtifactPath() == null || versionEntity.getArtifactPath().isBlank()) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件版本尚未安装，请先安装后再启用");
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin version is not installed; install it before enabling");
         }
         if (!Files.exists(Path.of(versionEntity.getArtifactPath()))) {
             install(pluginCode, version, new CurrentUser(0L, "system", null, null, 0, true, java.util.Set.of()));
@@ -605,7 +587,7 @@ public class PluginManagementAppService {
             if (matched.isEmpty()) {
                 throw new BizException(
                         ErrorCode.PLUGIN_DEPENDENCY_CONFLICT,
-                        "缺少依赖插件 " + dependency.getPluginCode() + "，且版本需不低于 " + dependency.getMinVersion()
+                        "Missing dependency plugin " + dependency.getPluginCode() + " with minimum version " + dependency.getMinVersion()
                 );
             }
         }
@@ -615,15 +597,12 @@ public class PluginManagementAppService {
         try {
             return objectMapper.readValue(versionEntity.getMetadataJson(), PluginDTO.PluginPackageMetadata.class);
         } catch (Exception exception) {
-            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "插件元数据解析失败");
+            throw new BizException(ErrorCode.PLUGIN_PACKAGE_INVALID, "Failed to parse plugin metadata");
         }
     }
 
-    private void populateRuntimeMetadata(PluginVO.TenantPluginVO plugin) throws Exception {
-        PluginVO.PluginStatusVO status = pluginPersistenceService.pluginStatus(
-                        com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID,
-                        plugin.getPluginCode()
-                )
+    private void populateRuntimeMetadata(PluginVO.PluginAvailabilityVO plugin) throws Exception {
+        PluginVO.PluginStatusVO status = pluginPersistenceService.pluginStatus(plugin.getPluginCode())
                 .orElse(null);
         BuiltinPluginRuntime builtinRuntime = builtinPluginRuntime(plugin.getPluginCode());
         if (builtinRuntime != null) {
@@ -639,7 +618,7 @@ public class PluginManagementAppService {
         }
         PluginVersionEntity versionEntity = requireVersion(plugin.getPluginCode(), plugin.getVersion());
         if (versionEntity.getArtifactPath() == null || versionEntity.getArtifactPath().isBlank()) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行目录不存在");
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin runtime directory does not exist");
         }
         Path manifestPath = resolveManifestPath(plugin.getPluginCode(), plugin.getVersion());
         PluginDTO.FrontendPluginManifest manifest = objectMapper.readValue(manifestPath.toFile(), PluginDTO.FrontendPluginManifest.class);
@@ -658,21 +637,21 @@ public class PluginManagementAppService {
 
     private void validateRuntimeAssets(Path versionHome, PluginDTO.FrontendPluginManifest manifest) {
         if (manifest == null) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件前端清单缺失");
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin frontend manifest is missing");
         }
         if (versionHome == null || !Files.exists(versionHome)) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件运行目录不存在");
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin runtime directory does not exist");
         }
         if (manifest.getAssets() == null || manifest.getAssets().isEmpty()) {
-            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件前端清单缺少 assets");
+            throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin frontend manifest is missing assets");
         }
         for (String asset : manifest.getAssets()) {
             if (asset == null || asset.isBlank()) {
-                throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件前端清单包含空资产路径");
+                throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin frontend manifest contains an empty asset path");
             }
             Path assetPath = versionHome.resolve("lumira-ui").resolve(asset).normalize();
             if (!assetPath.startsWith(versionHome.resolve("lumira-ui")) || !Files.exists(assetPath)) {
-                throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "插件资源不存在: " + asset);
+                throw new BizException(ErrorCode.PLUGIN_RUNTIME_ERROR, "Plugin asset does not exist: " + asset);
             }
         }
     }
@@ -715,16 +694,7 @@ public class PluginManagementAppService {
     }
 
     private List<Map<String, Object>> builtinMenus() {
-        List<Map<String, Object>> template = builtinMenuTemplate;
-        if (template == null) {
-            synchronized (this) {
-                template = builtinMenuTemplate;
-                if (template == null) {
-                    template = systemInternalApi.builtinMenus().stream().map(this::toMenuMap).toList();
-                    builtinMenuTemplate = template;
-                }
-            }
-        }
+        List<Map<String, Object>> template = systemInternalApi.builtinMenus().stream().map(this::toMenuMap).toList();
         return copyMenus(template);
     }
 
@@ -849,11 +819,10 @@ public class PluginManagementAppService {
         return BUILTIN_PLUGIN_RUNTIMES.get(pluginCode);
     }
 
-    private void invalidateTenantBootstrapCaches(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        availablePluginsCache.remove(effectiveTenantId);
-        readModelVersionCache.remove(effectiveTenantId);
-        currentBootstrapCache.keySet().removeIf(key -> effectiveTenantId.equals(key.tenantId()));
+    private void invalidatePluginBootstrapCaches() {
+        availablePluginsCache.remove(GLOBAL_PLUGIN_SCOPE_KEY);
+        readModelVersionCache.remove(GLOBAL_PLUGIN_SCOPE_KEY);
+        currentBootstrapCache.keySet().removeIf(key -> GLOBAL_PLUGIN_SCOPE_KEY.equals(key.scopeKey()));
     }
 
     private String permissionSignature(Set<String> permissions) {
@@ -865,9 +834,8 @@ public class PluginManagementAppService {
                 .collect(Collectors.joining("|"));
     }
 
-    private long readModelVersionForTenant(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        CachedReadModelVersion cached = readModelVersionCache.get(effectiveTenantId);
+    private long readPluginBootstrapVersion() {
+        CachedReadModelVersion cached = readModelVersionCache.get(GLOBAL_PLUGIN_SCOPE_KEY);
         long now = System.currentTimeMillis();
         if (cached != null && cached.expiresAtEpochMillis() > now) {
             readModelVersionCacheHits.increment();
@@ -876,18 +844,18 @@ public class PluginManagementAppService {
         readModelVersionCacheMisses.increment();
         long version = 0L;
         try {
-            Long actualVersion = systemInternalApi.readModelVersion(effectiveTenantId, "plugin", "bootstrap");
+            Long actualVersion = systemInternalApi.readModelVersion("plugin", "bootstrap");
             if (actualVersion != null) {
                 version = actualVersion;
             }
         } catch (Exception exception) {
-            log.warn("Failed to read plugin bootstrap read-model version for tenantId={}", effectiveTenantId, exception);
-            CachedAvailablePlugins cachedAvailablePlugins = availablePluginsCache.get(effectiveTenantId);
+            log.warn("Failed to read plugin bootstrap read-model version", exception);
+            CachedAvailablePlugins cachedAvailablePlugins = availablePluginsCache.get(GLOBAL_PLUGIN_SCOPE_KEY);
             if (cachedAvailablePlugins != null) {
                 version = cachedAvailablePlugins.version();
             }
         }
-        readModelVersionCache.put(effectiveTenantId, new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MILLIS));
+        readModelVersionCache.put(GLOBAL_PLUGIN_SCOPE_KEY, new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MILLIS));
         return version;
     }
 
@@ -915,11 +883,10 @@ public class PluginManagementAppService {
 
     private PluginVersionEntity requireVersion(String pluginCode, String version) {
         return pluginPersistenceService.findVersion(pluginCode, version)
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "插件版本不存在"));
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "Plugin version not found"));
     }
 
     private void log(
-            Long tenantId,
             String pluginCode,
             String version,
             String operationType,
@@ -930,7 +897,6 @@ public class PluginManagementAppService {
             Long operatorId
     ) {
         pluginPersistenceService.insertRuntimeLog(
-                tenantId,
                 pluginCode,
                 version,
                 operationType,
@@ -945,7 +911,6 @@ public class PluginManagementAppService {
     }
 
     private void safeLog(
-            Long tenantId,
             String pluginCode,
             String version,
             String operationType,
@@ -957,7 +922,6 @@ public class PluginManagementAppService {
     ) {
         try {
             log(
-                    tenantId,
                     pluginCode,
                     version,
                     operationType,
@@ -972,14 +936,13 @@ public class PluginManagementAppService {
         }
     }
 
-    private void logTenantPluginDomainEvents(List<DomainEvent> events, String version, Long operatorId) {
+    private void logPluginActivationDomainEvents(List<DomainEvent> events, String version, Long operatorId) {
         if (events == null || events.isEmpty()) {
             return;
         }
         domainEventPublisher.publishAll(events);
         for (DomainEvent event : events) {
             safeLog(
-                    event.tenantId(),
                     event.aggregateId(),
                     version,
                     event.eventType(),
@@ -1011,9 +974,9 @@ public class PluginManagementAppService {
     private static final class CachedAvailablePlugins {
         private final long version;
         private final long expiresAtEpochMillis;
-        private final List<PluginVO.TenantPluginVO> availablePlugins;
+        private final List<PluginVO.PluginAvailabilityVO> availablePlugins;
 
-        private CachedAvailablePlugins(long version, long expiresAtEpochMillis, List<PluginVO.TenantPluginVO> availablePlugins) {
+        private CachedAvailablePlugins(long version, long expiresAtEpochMillis, List<PluginVO.PluginAvailabilityVO> availablePlugins) {
             this.version = version;
             this.expiresAtEpochMillis = expiresAtEpochMillis;
             this.availablePlugins = availablePlugins == null ? List.of() : List.copyOf(availablePlugins);
@@ -1027,20 +990,18 @@ public class PluginManagementAppService {
             return expiresAtEpochMillis;
         }
 
-        private List<PluginVO.TenantPluginVO> availablePlugins() {
+        private List<PluginVO.PluginAvailabilityVO> availablePlugins() {
             return availablePlugins;
         }
     }
 
     private static final class CachedCurrentBootstrap {
-        private final Long tenantId;
         private final long version;
         private final String permissionSignature;
         private final long expiresAtEpochMillis;
         private final Map<String, Object> bootstrapPayload;
 
-        private CachedCurrentBootstrap(Long tenantId, long version, String permissionSignature, long expiresAtEpochMillis, Map<String, Object> bootstrapPayload) {
-            this.tenantId = tenantId;
+        private CachedCurrentBootstrap(long version, String permissionSignature, long expiresAtEpochMillis, Map<String, Object> bootstrapPayload) {
             this.version = version;
             this.permissionSignature = permissionSignature;
             this.expiresAtEpochMillis = expiresAtEpochMillis;
@@ -1074,7 +1035,7 @@ public class PluginManagementAppService {
         }
     }
 
-    private static final record BootstrapCacheKey(Long tenantId, long version, String permissionSignature) {
+    private static final record BootstrapCacheKey(String scopeKey, long version, String permissionSignature) {
     }
 
     private record BuiltinPluginRuntime(List<String> routes, List<String> runtimeContributions) {

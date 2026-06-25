@@ -4,7 +4,6 @@ import com.lumira.common.security.CurrentUser;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.lumira.common.security.InitialAdminPassword;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -77,14 +76,12 @@ public class InitialPasswordChangeGuard {
 
     private record InitialPasswordCacheKey(
             Long userId,
-            Long tenantId,
             String sessionId,
             Integer sessionVersion
     ) {
         private static InitialPasswordCacheKey from(CurrentUser currentUser) {
             return new InitialPasswordCacheKey(
                     currentUser.getUserId(),
-                    PlatformContext.compatibilityTenantId(),
                     currentUser.getSessionId(),
                     currentUser.getSessionVersion()
             );

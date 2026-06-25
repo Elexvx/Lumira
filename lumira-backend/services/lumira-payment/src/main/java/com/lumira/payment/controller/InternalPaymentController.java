@@ -25,27 +25,26 @@ public class InternalPaymentController implements PaymentInternalApi {
     }
 
     @GetMapping("/providers")
-    public List<PaymentProviderSettingsDTO> listPaymentProviderSettings(@RequestParam("tenantId") Long tenantId) {
-        return paymentManagementAppService.listProviderSettings(tenantId);
+    public List<PaymentProviderSettingsDTO> listPaymentProviderSettings() {
+        return paymentManagementAppService.listProviderSettings();
     }
 
     @GetMapping("/providers/{providerCode}")
-    public PaymentProviderSettingsDTO paymentProviderSettings(@RequestParam("tenantId") Long tenantId, @PathVariable String providerCode) {
-        return paymentManagementAppService.paymentProviderSettings(tenantId, providerCode);
+    public PaymentProviderSettingsDTO paymentProviderSettings(@PathVariable String providerCode) {
+        return paymentManagementAppService.paymentProviderSettings(providerCode);
     }
 
     @PutMapping("/providers/{providerCode}")
     public PaymentProviderSettingsDTO updatePaymentProviderSettings(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("operatorId") Long operatorId,
             @PathVariable String providerCode,
             @RequestBody PaymentProviderSettingsDTO request
     ) {
-        return paymentManagementAppService.updatePaymentProviderSettings(tenantId, operatorId, providerCode, request);
+        return paymentManagementAppService.updatePaymentProviderSettings(operatorId, providerCode, request);
     }
 
     @GetMapping("/providers/{providerCode}/test")
-    public PaymentProviderTestResultDTO testPaymentProvider(@RequestParam("tenantId") Long tenantId, @RequestParam("operatorId") Long operatorId, @PathVariable String providerCode) {
-        return paymentManagementAppService.testPaymentProvider(tenantId, operatorId, providerCode);
+    public PaymentProviderTestResultDTO testPaymentProvider(@RequestParam("operatorId") Long operatorId, @PathVariable String providerCode) {
+        return paymentManagementAppService.testPaymentProvider(operatorId, providerCode);
     }
 }
