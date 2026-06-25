@@ -62,7 +62,7 @@ public class FileController {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
-        boolean tenantScope = isTenantWideScope(scope);
+        boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         require(resolveReadPermission(scope));
         return ApiResponse.success(
@@ -135,10 +135,10 @@ public class FileController {
             @PathVariable("id") Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = isTenantWideScope(scope);
+        boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         require(resolveReadPermission(scope));
-        return ApiResponse.success(fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope), TraceContext.getRequestId());
+        return ApiResponse.success(fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope), TraceContext.getRequestId());
     }
 
     @GetMapping("/{id}/download")
@@ -146,11 +146,11 @@ public class FileController {
             @PathVariable("id") Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = isTenantWideScope(scope);
+        boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         require(resolveReadPermission(scope));
-        FileObjectDTO file = fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
-        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
+        FileObjectDTO file = fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
+        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
         String contentType = file.mimeType();
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
         if (contentType != null && !contentType.isBlank()) {
@@ -176,11 +176,11 @@ public class FileController {
             @PathVariable("id") Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = isTenantWideScope(scope);
+        boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         require(resolveReadPermission(scope));
-        FileObjectDTO file = fileManagementAppService.getPreviewableFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
-        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
+        FileObjectDTO file = fileManagementAppService.getPreviewableFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
+        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
         String contentType = file.mimeType();
         MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
         if (contentType != null && !contentType.isBlank()) {
@@ -224,10 +224,10 @@ public class FileController {
             @PathVariable("id") @Positive Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = isTenantWideScope(scope);
+        boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
-        require(downloadCenterScope ? "download:center:delete" : FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope) ? "system:file:manage:delete" : "system:file:delete");
-        fileManagementAppService.deleteFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
+        require(downloadCenterScope ? "download:center:delete" : FileManagementAppService.SCOPE_SHARED.equalsIgnoreCase(scope) ? "system:file:manage:delete" : "system:file:delete");
+        fileManagementAppService.deleteFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
@@ -239,14 +239,14 @@ public class FileController {
         if (FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope)) {
             return "download:center:view";
         }
-        if (FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope)) {
+        if (FileManagementAppService.SCOPE_SHARED.equalsIgnoreCase(scope)) {
             return "system:file:manage";
         }
         return "system:file:view";
     }
 
-    private boolean isTenantWideScope(String scope) {
-        return FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope)
+    private boolean isSharedScope(String scope) {
+        return FileManagementAppService.SCOPE_SHARED.equalsIgnoreCase(scope)
                 || FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
     }
 }

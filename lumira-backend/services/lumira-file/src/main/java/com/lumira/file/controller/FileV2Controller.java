@@ -151,11 +151,11 @@ public class FileV2Controller {
             @PathVariable("id") Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = isTenantWideScope(scope);
+        boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         require(resolveReadPermission(scope));
         return ApiResponse.success(
-                fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope),
+                fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope),
                 TraceContext.getRequestId()
         );
     }
@@ -165,11 +165,11 @@ public class FileV2Controller {
             @PathVariable("id") Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = isTenantWideScope(scope);
+        boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         require(resolveReadPermission(scope));
-        FileObjectDTO file = fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
-        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
+        FileObjectDTO file = fileManagementAppService.getFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
+        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
         return fileResponse(file, path, ContentDisposition.attachment()
                 .filename(file.originalFileName(), StandardCharsets.UTF_8)
                 .build());
@@ -180,11 +180,11 @@ public class FileV2Controller {
             @PathVariable("id") Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = isTenantWideScope(scope);
+        boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         require(resolveReadPermission(scope));
-        FileObjectDTO file = fileManagementAppService.getPreviewableFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
-        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
+        FileObjectDTO file = fileManagementAppService.getPreviewableFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
+        var path = fileManagementAppService.resolveFilePath(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
         return fileResponse(file, path, ContentDisposition.inline()
                 .filename(file.originalFileName(), StandardCharsets.UTF_8)
                 .build());
@@ -221,14 +221,14 @@ public class FileV2Controller {
             @PathVariable("id") @Positive Long id,
             @RequestParam(name = "scope", required = false) String scope
     ) {
-        boolean tenantScope = isTenantWideScope(scope);
+        boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         require(downloadCenterScope
                 ? "download:center:delete"
-                : FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope)
+                : FileManagementAppService.SCOPE_SHARED.equalsIgnoreCase(scope)
                 ? "system:file:manage:delete"
                 : "system:file:delete");
-        fileManagementAppService.deleteFile(securityContextFacade.getCurrentUser(), id, tenantScope, downloadCenterScope);
+        fileManagementAppService.deleteFile(securityContextFacade.getCurrentUser(), id, sharedScope, downloadCenterScope);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
@@ -257,14 +257,14 @@ public class FileV2Controller {
         if (FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope)) {
             return "download:center:view";
         }
-        if (FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope)) {
+        if (FileManagementAppService.SCOPE_SHARED.equalsIgnoreCase(scope)) {
             return "system:file:manage";
         }
         return "system:file:view";
     }
 
-    private boolean isTenantWideScope(String scope) {
-        return FileManagementAppService.SCOPE_TENANT.equalsIgnoreCase(scope)
+    private boolean isSharedScope(String scope) {
+        return FileManagementAppService.SCOPE_SHARED.equalsIgnoreCase(scope)
                 || FileManagementAppService.SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
     }
 }

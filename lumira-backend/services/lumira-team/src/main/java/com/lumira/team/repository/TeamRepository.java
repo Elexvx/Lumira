@@ -7,21 +7,21 @@ import java.util.List;
 import java.util.Set;
 
 public interface TeamRepository {
-    String nextTeamCode(Long tenantId);
+    String nextTeamCode();
 
-    Long createTeam(Long tenantId, String teamCode, Long ownerUserId, TeamDTO.TeamCreateRequest request);
+    Long createTeam(String teamCode, Long ownerUserId, TeamDTO.TeamCreateRequest request);
 
-    List<TeamVO.Team> listMyTeams(Long tenantId, Long userId);
+    List<TeamVO.Team> listMyTeams(Long userId);
 
-    List<TeamVO.Team> listTeamsForAdmin(Long tenantId, Long userId);
+    List<TeamVO.Team> listTeamsForAdmin(Long userId);
 
-    TeamVO.Team findTeam(Long tenantId, Long teamId, Long currentUserId);
+    TeamVO.Team findTeam(Long teamId, Long currentUserId);
 
-    int updateTeamProfile(Long tenantId, Long teamId, Long updatedBy, TeamDTO.TeamUpdateRequest request);
+    int updateTeamProfile(Long teamId, Long updatedBy, TeamDTO.TeamUpdateRequest request);
 
-    int softDeleteTeam(Long tenantId, Long teamId, Long updatedBy);
+    int softDeleteTeam(Long teamId, Long updatedBy);
 
-    int transferOwner(Long tenantId, Long teamId, Long newOwnerUserId, Long updatedBy);
+    int transferOwner(Long teamId, Long newOwnerUserId, Long updatedBy);
 
-    Set<String> loadEnabledDictValues(Long tenantId, String dictCode);
+    Set<String> loadEnabledDictValues(String dictCode);
 }

@@ -13,13 +13,13 @@ public interface PluginSecondFactorProvider {
 
     boolean requiresEmail();
 
-    PluginSecondFactorProfile profile(PluginRuntimeContext context, Long tenantId, Long userId);
+    PluginSecondFactorProfile profile(PluginRuntimeContext context, Long userId);
 
-    PluginSecondFactorChallenge prepareChallenge(PluginRuntimeContext context, Long tenantId, Long userId);
+    PluginSecondFactorChallenge prepareChallenge(PluginRuntimeContext context, Long userId);
 
     PluginSecondFactorVerification verify(PluginRuntimeContext context, String challengeId, String verificationCode);
 
-    PluginSecondFactorChallenge bind(PluginRuntimeContext context, Long tenantId, Long userId, String email, String mobile);
+    PluginSecondFactorChallenge bind(PluginRuntimeContext context, Long userId, String email, String mobile);
 
-    void unbind(PluginRuntimeContext context, Long tenantId, Long userId);
+    void unbind(PluginRuntimeContext context, Long userId);
 }

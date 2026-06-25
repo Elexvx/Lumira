@@ -308,7 +308,6 @@ public final class PluginVO {
 
     public static class PluginRuntimeLogVO {
         private Long id;
-        private Long tenantId;
         private String pluginCode;
         private String pluginVersion;
         private String operationType;
@@ -326,14 +325,6 @@ public final class PluginVO {
 
         public void setId(Long id) {
             this.id = id;
-        }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
         }
 
         public String getPluginCode() {
@@ -456,7 +447,7 @@ public final class PluginVO {
         }
     }
 
-    public static class TenantPluginVO {
+    public static class PluginAvailabilityVO {
         private String pluginCode;
         private String pluginName;
         private String version;
@@ -571,7 +562,7 @@ public final class PluginVO {
         private String pluginCode;
         private String pluginName;
         private String version;
-        private Boolean tenantEnabled;
+        private Boolean enabled;
         private String lifecycleStatus;
         private String schemaStatus;
         private Boolean builtin;
@@ -604,12 +595,12 @@ public final class PluginVO {
             this.version = version;
         }
 
-        public Boolean getTenantEnabled() {
-            return tenantEnabled;
+        public Boolean getEnabled() {
+            return enabled;
         }
 
-        public void setTenantEnabled(Boolean tenantEnabled) {
-            this.tenantEnabled = tenantEnabled;
+        public void setEnabled(Boolean enabled) {
+            this.enabled = enabled;
         }
 
         public String getLifecycleStatus() {

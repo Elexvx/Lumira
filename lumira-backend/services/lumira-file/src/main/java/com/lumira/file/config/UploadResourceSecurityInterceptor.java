@@ -78,7 +78,7 @@ public class UploadResourceSecurityInterceptor implements HandlerInterceptor {
         if (file == null || !StringUtils.hasText(file.getBucket())) {
             return false;
         }
-        FileStorageSpaceEntity storageSpace = fileStorageSpaceMapper.findByStorageKey(file.getTenantId(), file.getBucket());
+        FileStorageSpaceEntity storageSpace = fileStorageSpaceMapper.findByStorageKey(file.getBucket());
         return storageSpace != null
                 && storageSpace.getAnonymousAccessAllowed() != null
                 && storageSpace.getAnonymousAccessAllowed() == 1

@@ -16,7 +16,6 @@ public final class AiEntities {
     public static class AiEmployeeEntity {
         @TableId(type = IdType.AUTO)
         private Long id;
-        private Long tenantId;
         private String username;
         private String nickname;
         private String position;
@@ -38,16 +37,7 @@ public final class AiEntities {
         public void setId(Long id) {
             this.id = id;
         }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public String getUsername() {
+public String getUsername() {
             return username;
         }
 
@@ -156,7 +146,6 @@ public final class AiEntities {
     public static class AiLlmServiceEntity {
         @TableId(type = IdType.AUTO)
         private Long id;
-        private Long tenantId;
         private String provider;
         private String code;
         private String title;
@@ -178,16 +167,7 @@ public final class AiEntities {
         public void setId(Long id) {
             this.id = id;
         }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public String getProvider() {
+public String getProvider() {
             return provider;
         }
 
@@ -296,7 +276,6 @@ public final class AiEntities {
     public static class AiLlmModelEntity {
         @TableId(type = IdType.AUTO)
         private Long id;
-        private Long tenantId;
         private Long llmServiceId;
         private String modelCode;
         private String modelName;
@@ -312,16 +291,7 @@ public final class AiEntities {
         public void setId(Long id) {
             this.id = id;
         }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public Long getLlmServiceId() {
+public Long getLlmServiceId() {
             return llmServiceId;
         }
 
@@ -495,7 +465,6 @@ public final class AiEntities {
     public static class AiEmployeeSkillEntity {
         @TableId(type = IdType.AUTO)
         private Long id;
-        private Long tenantId;
         private Long employeeId;
         private String skillCode;
         private String permissionMode;
@@ -510,16 +479,7 @@ public final class AiEntities {
         public void setId(Long id) {
             this.id = id;
         }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public Long getEmployeeId() {
+public Long getEmployeeId() {
             return employeeId;
         }
 
@@ -572,7 +532,6 @@ public final class AiEntities {
     public static class AiConversationEntity {
         @TableId(type = IdType.AUTO)
         private Long id;
-        private Long tenantId;
         private Long employeeId;
         private Long ownerUserId;
         private String conversationCode;
@@ -590,16 +549,7 @@ public final class AiEntities {
         public void setId(Long id) {
             this.id = id;
         }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public Long getEmployeeId() {
+public Long getEmployeeId() {
             return employeeId;
         }
 
@@ -676,7 +626,6 @@ public final class AiEntities {
     public static class AiMessageEntity {
         @TableId(type = IdType.AUTO)
         private Long id;
-        private Long tenantId;
         private Long conversationId;
         private String role;
         private String content;
@@ -691,16 +640,7 @@ public final class AiEntities {
         public void setId(Long id) {
             this.id = id;
         }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public Long getConversationId() {
+public Long getConversationId() {
             return conversationId;
         }
 
@@ -753,7 +693,6 @@ public final class AiEntities {
     public static class AiToolAuditLogEntity {
         @TableId(type = IdType.AUTO)
         private Long id;
-        private Long tenantId;
         private Long conversationId;
         private Long employeeId;
         private String skillCode;
@@ -776,16 +715,7 @@ public final class AiEntities {
         public void setId(Long id) {
             this.id = id;
         }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public Long getConversationId() {
+public Long getConversationId() {
             return conversationId;
         }
 

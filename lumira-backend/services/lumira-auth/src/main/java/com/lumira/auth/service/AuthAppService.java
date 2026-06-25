@@ -10,7 +10,6 @@ import com.lumira.api.system.VerificationChallengeDTO;
 import com.lumira.api.system.VerificationProviderDTO;
 import com.lumira.api.system.WechatLoginUserRequestDTO;
 import com.lumira.auth.config.AuthSecurityProperties;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.auth.model.AuthSession;
 import com.lumira.common.web.repeatsubmit.ClientIpResolver;
 import com.lumira.common.enums.ErrorCode;
@@ -57,6 +56,7 @@ public class AuthAppService {
     private static final String AUTH_BOOTSTRAP_TIMER = "auth.bootstrap";
     private static final String AUTH_REFRESH_TOKEN_TIMER = "auth.refresh_token";
     private static final String PLAINTEXT_LOGIN_PASSWORD_HEADER = "X-Login-Password-Plaintext";
+    private static final String GLOBAL_PERMISSION_READ_MODEL_VERSION_CACHE_KEY = "permission-snapshot";
     private static final long CURRENT_USER_CACHE_TTL_MILLIS = 60_000L;
     private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
@@ -71,7 +71,7 @@ public class AuthAppService {
     private final WechatLoginService wechatLoginService;
     private final AuthSecurityProperties securityProperties;
     private final SecuritySettingsService securitySettingsService;
-    private final Cache<PermissionSnapshotCacheKey, PermissionSnapshotVersionCache> permissionSnapshotVersionCache;
+    private final Cache<Long, PermissionSnapshotVersionCache> permissionSnapshotVersionCache;
     private final LongAdder permissionSnapshotVersionCacheHits = new LongAdder();
     private final LongAdder permissionSnapshotVersionCacheMisses = new LongAdder();
     private final LongAdder permissionSnapshotVersionCacheRefreshes = new LongAdder();
@@ -83,9 +83,9 @@ public class AuthAppService {
     private final Cache<String, CurrentUserDTO> currentUserCache;
     private final Cache<String, AuthBootstrapCache> authBootstrapCache;
     private final Cache<String, String> authBootstrapSessionCacheKeys;
-    private final Cache<Long, Long> permissionReadModelVersionCache;
+    private final Cache<String, Long> permissionReadModelVersionCache;
     private final Cache<PermissionSnapshotLoadInFlightKey, CompletableFuture<PermissionSnapshotDTO>> permissionSnapshotLoadInFlight;
-    private final Cache<Long, CompletableFuture<Long>> permissionReadModelVersionLoadInFlight;
+    private final Cache<String, CompletableFuture<Long>> permissionReadModelVersionLoadInFlight;
     private final long permissionSnapshotVersionCacheTtlMillis;
     private final long authBootstrapCacheTtlMillis;
     private final long loginCapabilitiesCacheTtlMillis;
@@ -240,13 +240,13 @@ public class AuthAppService {
             if (securitySettingsService.isCaptchaEnabled() || hasCaptchaEvidence(request)) {
                 if (!hasCaptchaEvidence(request)) {
                     loginProtectionService.recordFailure(account, loginIp);
-                    recordLoginAudit(null, PlatformConstants.PLATFORM_TENANT_ID, account, "CAPTCHA", "FAIL", "CAPTCHA_REQUIRED", loginIp, userAgent);
+                    recordLoginAudit(null, account, "CAPTCHA", "FAIL", "CAPTCHA_REQUIRED", loginIp, userAgent);
                     throw new BizException(ErrorCode.CAPTCHA_INVALID, "captcha required");
                 }
                 boolean captchaValid = Boolean.TRUE.equals(systemInternalApi.validateCaptcha(new com.lumira.api.system.CaptchaValidationRequestDTO(request.captchaId(), request.captchaCode(), request.captchaProof())));
                 if (!captchaValid) {
                     loginProtectionService.recordFailure(account, loginIp);
-                    recordLoginAudit(null, PlatformConstants.PLATFORM_TENANT_ID, account, "CAPTCHA", "FAIL", "CAPTCHA_INVALID", loginIp, userAgent);
+                    recordLoginAudit(null, account, "CAPTCHA", "FAIL", "CAPTCHA_INVALID", loginIp, userAgent);
                     throw new BizException(ErrorCode.CAPTCHA_INVALID, "captcha invalid");
                 }
             }
@@ -255,45 +255,44 @@ public class AuthAppService {
             LoginCapabilitiesDTO loginCapabilities = loadLoginCapabilities();
             if (loginCapabilities != null && !loginCapabilities.passwordLoginAvailable()) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(null, PlatformConstants.PLATFORM_TENANT_ID, account, "PASSWORD", "FAIL", "账号密码登录未启用", loginIp, userAgent);
+                recordLoginAudit(null, account, "PASSWORD", "FAIL", "账号密码登录未启用", loginIp, userAgent);
                 throw new BizException(ErrorCode.FORBIDDEN, "账号密码登录未启用");
             }
             if (user == null) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(null, null, account, "PASSWORD", "FAIL", "ACCOUNT_NOT_FOUND", loginIp, userAgent);
+                recordLoginAudit(null, account, "PASSWORD", "FAIL", "ACCOUNT_NOT_FOUND", loginIp, userAgent);
                 throw loginFailed();
             }
             if (!"ENABLED".equalsIgnoreCase(user.status())) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "ACCOUNT_DISABLED", loginIp, userAgent);
+                recordLoginAudit(user.userId(), user.username(), "PASSWORD", "FAIL", "ACCOUNT_DISABLED", loginIp, userAgent);
                 throw loginFailed();
             }
 
             String loginPassword = resolveLoginPassword(request, httpServletRequest);
             if (!passwordEncoder.matches(loginPassword, user.passwordHash())) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(user.userId(), null, user.username(), "PASSWORD", "FAIL", "PASSWORD_MISMATCH", loginIp, userAgent);
+                recordLoginAudit(user.userId(), user.username(), "PASSWORD", "FAIL", "PASSWORD_MISMATCH", loginIp, userAgent);
                 throw loginFailed();
             }
             boolean requiresPasswordChange = requiresInitialAdminPasswordChange(account, user, loginPassword);
 
-            Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
-            List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = systemInternalApi.listLoginSecondFactorOptions(currentTenantId, user.userId());
+            List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = systemInternalApi.listLoginSecondFactorOptions(user.userId());
             if (secondFactorOptions != null && !secondFactorOptions.isEmpty()) {
                 LoginResponseDTO response = new LoginResponseDTO();
                 response.setRequiresSecondFactor(Boolean.TRUE);
                 response.setSecondFactorOptions(secondFactorOptions);
-                recordLoginAudit(user.userId(), currentTenantId, user.username(), "PASSWORD", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
+                recordLoginAudit(user.userId(), user.username(), "PASSWORD", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
                 return response;
             }
 
-            PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
-            cachePermissionSnapshotVersion(currentTenantId, user.userId(), snapshot);
+            PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(user.userId());
+            cachePermissionSnapshotVersion(user.userId(), snapshot);
 
-            AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot, requiresPasswordChange);
+            AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresPasswordChange);
             saveSessionWithMultiDevicePolicy(session);
             loginProtectionService.clearFailureState(account, loginIp);
-            recordLoginAudit(user.userId(), currentTenantId, user.username(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
+            recordLoginAudit(user.userId(), user.username(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
             return toLoginResponse(session, user, snapshot, requiresPasswordChange);
         } finally {
             stopAuthTimer(authLoginTimer, start);
@@ -334,15 +333,14 @@ public class AuthAppService {
     }
 
     public LoginCodeChallengeDTO loginCodeChallenge(LoginCodeChallengeRequest request, HttpServletRequest httpServletRequest) {
-        Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
-        return systemInternalApi.loginCodeChallenge(tenantId, request.account(), request.loginType());
+        return systemInternalApi.loginCodeChallenge(request.account(), request.loginType());
     }
     public LoginResponseDTO completeLoginCodeLogin(LoginCodeCompleteRequest request, HttpServletRequest httpServletRequest) {
         var verification = systemInternalApi.completeLoginCodeLogin(request);
         if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
             throw new BizException(ErrorCode.BIZ_ERROR, verification == null ? "验证码校验失败" : verification.message());
         }
-        return loginVerifiedUser(verification.userId(), verification.tenantId(), httpServletRequest, "LOGIN_CODE");
+        return loginVerifiedUser(verification.userId(), httpServletRequest, "LOGIN_CODE");
     }
 
     public WechatAuthorizeUrlDTO wechatAuthorizeUrl() {
@@ -360,20 +358,19 @@ public class AuthAppService {
         if (!"ENABLED".equalsIgnoreCase(user.status())) {
             throw new BizException(ErrorCode.ACCOUNT_DISABLED, "登录失败，账号已禁用: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
         }
-        Long currentTenantId = PlatformConstants.PLATFORM_TENANT_ID;
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(currentTenantId, user.userId());
-        cachePermissionSnapshotVersion(currentTenantId, user.userId(), snapshot);
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(user.userId());
+        cachePermissionSnapshotVersion(user.userId(), snapshot);
         String loginIp = clientIpResolver.resolve(httpServletRequest);
         String userAgent = httpServletRequest.getHeader("User-Agent");
-        List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = collectSecondFactorOptions(currentTenantId, user.userId());
+        List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = collectSecondFactorOptions(user.userId());
         if (!secondFactorOptions.isEmpty()) {
-            recordLoginAudit(user.userId(), currentTenantId, user.username(), "WECHAT", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
+            recordLoginAudit(user.userId(), user.username(), "WECHAT", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
             return toPendingSecondFactorResponse(user, snapshot, secondFactorOptions);
         }
 
-        AuthSession session = buildSession(user, currentTenantId, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user));
+        AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user));
         saveSessionWithMultiDevicePolicy(session);
-        recordLoginAudit(user.userId(), currentTenantId, user.username(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
+        recordLoginAudit(user.userId(), user.username(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
     public LoginResponseDTO completeSecondFactorLogin(SecondFactorCompleteRequest request, HttpServletRequest httpServletRequest) {
@@ -381,7 +378,7 @@ public class AuthAppService {
         if (verification == null || !Boolean.TRUE.equals(verification.verified())) {
             throw new BizException(ErrorCode.BIZ_ERROR, verification == null ? "二次验证失败" : verification.message());
         }
-        return loginVerifiedUser(verification.userId(), verification.tenantId(), httpServletRequest, "SECOND_FACTOR");
+        return loginVerifiedUser(verification.userId(), httpServletRequest, "SECOND_FACTOR");
     }
 
     public void logout(HttpServletRequest httpServletRequest) {
@@ -390,7 +387,6 @@ public class AuthAppService {
             invalidateAuthBootstrapCache(session);
             AuthSessionAggregate sessionAggregate = new AuthSessionAggregate(
                     session.getSessionId(),
-                    platformTenantId(),
                     session.getUserId(),
                     session.getLastActivityAt()
             );
@@ -410,7 +406,6 @@ public class AuthAppService {
             validateRefreshTokenClaims(claims, session);
             AuthSessionAggregate sessionAggregate = new AuthSessionAggregate(
                     session.getSessionId(),
-                    platformTenantId(),
                     session.getUserId(),
                     session.getLastActivityAt()
             );
@@ -501,8 +496,7 @@ public class AuthAppService {
 
     public List<LoginResponseDTO.SecondFactorOptionDTO> verificationProviders() {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        Long currentTenantId = platformTenantId();
-        List<com.lumira.api.system.VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentTenantId, currentUser.getUserId());
+        List<com.lumira.api.system.VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(currentUser.getUserId());
         if (providers == null) {
             return List.of();
         }
@@ -511,22 +505,22 @@ public class AuthAppService {
 
     public com.lumira.api.system.VerificationProviderDTO verificationProvider(String factorCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.verificationProvider(platformTenantId(), currentUser.getUserId(), factorCode);
+        return systemInternalApi.verificationProvider(currentUser.getUserId(), factorCode);
     }
 
     public com.lumira.api.system.VerificationChallengeDTO verificationBind(String factorCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.bindVerificationProvider(platformTenantId(), currentUser.getUserId(), factorCode);
+        return systemInternalApi.bindVerificationProvider(currentUser.getUserId(), factorCode);
     }
 
     public Boolean verificationUnbind(String factorCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.unbindVerificationProvider(platformTenantId(), currentUser.getUserId(), factorCode);
+        return systemInternalApi.unbindVerificationProvider(currentUser.getUserId(), factorCode);
     }
 
     public com.lumira.api.system.VerificationChallengeDTO verificationChallenge(String factorCode) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.verificationChallenge(platformTenantId(), currentUser.getUserId(), factorCode);
+        return systemInternalApi.verificationChallenge(currentUser.getUserId(), factorCode);
     }
 
     public com.lumira.api.system.VerificationVerificationDTO verificationVerify(String factorCode, SecondFactorCompleteRequest request) {
@@ -534,14 +528,14 @@ public class AuthAppService {
         if (!factorCode.equalsIgnoreCase(request.factorCode())) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "验证方式不匹配");
         }
-        return systemInternalApi.verificationVerify(platformTenantId(), currentUser.getUserId(), factorCode, request.challengeId(), request.verificationCode());
+        return systemInternalApi.verificationVerify(currentUser.getUserId(), factorCode, request.challengeId(), request.verificationCode());
     }
 
-    public LoginResponseDTO loginVerifiedUser(Long userId, Long tenantId, HttpServletRequest request) {
-        return loginVerifiedUser(userId, tenantId, request, "PASSKEY");
+    public LoginResponseDTO loginVerifiedUser(Long userId, HttpServletRequest request) {
+        return loginVerifiedUser(userId, request, "PASSKEY");
     }
 
-    private LoginResponseDTO loginVerifiedUser(Long userId, Long tenantId, HttpServletRequest request, String loginType) {
+    private LoginResponseDTO loginVerifiedUser(Long userId, HttpServletRequest request, String loginType) {
         SystemUserSnapshotDTO user = systemInternalApi.findUserById(userId);
         if (user == null) {
             throw new BizException(ErrorCode.ACCOUNT_NOT_FOUND, "登录失败，账号不存在");
@@ -549,20 +543,18 @@ public class AuthAppService {
         if (!"ENABLED".equalsIgnoreCase(user.status())) {
             throw new BizException(ErrorCode.ACCOUNT_DISABLED, "登录失败，账号已禁用: " + user.username(), ErrorCode.ACCOUNT_DISABLED.getDefaultUserMessage());
         }
-        Long platformTenantId = platformTenantId();
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(platformTenantId, userId);
-        cachePermissionSnapshotVersion(platformTenantId, user.userId(), snapshot);
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(userId);
+        cachePermissionSnapshotVersion(user.userId(), snapshot);
         String loginIp = clientIpResolver.resolve(request);
         String userAgent = request.getHeader("User-Agent");
-        AuthSession session = buildSession(user, platformTenantId, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user));
+        AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user));
         saveSessionWithMultiDevicePolicy(session);
-        recordLoginAudit(user.userId(), platformTenantId, user.username(), loginType, "SUCCESS", null, loginIp, userAgent);
+        recordLoginAudit(user.userId(), user.username(), loginType, "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
 
     private void recordLoginAudit(
             Long userId,
-            Long tenantId,
             String username,
             String loginType,
             String loginResult,
@@ -573,7 +565,6 @@ public class AuthAppService {
         try {
             systemInternalApi.recordLoginAudit(new LoginAuditRecordRequestDTO(
                     userId,
-                    tenantId,
                     username,
                     loginType,
                     loginResult,
@@ -599,8 +590,8 @@ public class AuthAppService {
         return pending;
     }
 
-    private List<LoginResponseDTO.SecondFactorOptionDTO> collectSecondFactorOptions(Long tenantId, Long userId) {
-        List<VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(tenantId, userId);
+    private List<LoginResponseDTO.SecondFactorOptionDTO> collectSecondFactorOptions(Long userId) {
+        List<VerificationProviderDTO> providers = systemInternalApi.listVerificationProviders(userId);
         if (providers == null || providers.isEmpty()) {
             return List.of();
         }
@@ -609,7 +600,7 @@ public class AuthAppService {
             if (provider == null || !provider.isEnabled() || !provider.isBound()) {
                 continue;
             }
-            VerificationChallengeDTO challenge = systemInternalApi.verificationChallenge(tenantId, userId, provider.getFactorCode());
+            VerificationChallengeDTO challenge = systemInternalApi.verificationChallenge(userId, provider.getFactorCode());
             options.add(toSecondFactorOption(provider, challenge));
         }
         return options;
@@ -625,12 +616,11 @@ public class AuthAppService {
         return option;
     }
 
-    private AuthSession buildSession(SystemUserSnapshotDTO user, Long currentTenantId, String loginIp, String userAgent, PermissionSnapshotDTO snapshot, boolean requiresPasswordChange) {
+    private AuthSession buildSession(SystemUserSnapshotDTO user, String loginIp, String userAgent, PermissionSnapshotDTO snapshot, boolean requiresPasswordChange) {
         AuthSession session = new AuthSession();
         session.setSessionId(UUID.randomUUID().toString());
         session.setUserId(user.userId());
         session.setUsername(user.username());
-        session.setCurrentTenantId(currentTenantId);
         session.setLoginTime(Instant.now());
         session.setLastActivityAt(Instant.now());
         session.setExpireTime(Instant.now().plusSeconds(jwtTokenService.getRefreshTokenExpireSeconds()));
@@ -712,10 +702,6 @@ public class AuthAppService {
         );
     }
 
-    private Long platformTenantId() {
-        return PlatformConstants.PLATFORM_TENANT_ID;
-    }
-
     private LoginResponseDTO.SecondFactorOptionDTO toOption(com.lumira.api.system.VerificationProviderDTO provider) {
         LoginResponseDTO.SecondFactorOptionDTO option = new LoginResponseDTO.SecondFactorOptionDTO();
         option.setFactorCode(provider.getFactorCode());
@@ -727,7 +713,7 @@ public class AuthAppService {
     }
 
     private CurrentUserDTO currentUserBySession(AuthSession session, SystemUserSnapshotDTO user) {
-        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(platformTenantId(), session.getUserId());
+        PermissionSnapshotDTO snapshot = systemInternalApi.permissionSnapshot(session.getUserId());
         hydrateSessionSnapshot(session, user, snapshot, requiresInitialAdminPasswordChange(user));
         authSessionStore.save(session, false);
         return currentUserFromSession(session);
@@ -904,9 +890,8 @@ public class AuthAppService {
             return false;
         }
 
-        Long tenantId = tenantIdOrDefault(session);
         Long userId = session.getUserId();
-        if (tenantId == null || userId == null) {
+        if (userId == null) {
             return false;
         }
 
@@ -915,23 +900,23 @@ public class AuthAppService {
             return false;
         }
 
-        PermissionSnapshotVersionCache cachedVersion = getPermissionSnapshotVersionCache(tenantId, userId);
+        PermissionSnapshotVersionCache cachedVersion = getPermissionSnapshotVersionCache(userId);
         if (cachedVersion != null) {
             if (sessionPermissionsVersion.equals(cachedVersion.version)) {
                 return true;
             }
-            Long readModelVersion = getPermissionReadModelVersion(tenantId);
+            Long readModelVersion = getPermissionReadModelVersion();
             Long parsedSessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
             return readModelVersion != null && parsedSessionVersion != null && readModelVersion.equals(parsedSessionVersion);
         }
 
-        Long readModelVersion = getPermissionReadModelVersion(tenantId);
+        Long readModelVersion = getPermissionReadModelVersion();
         Long parsedSessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
         if (readModelVersion == null || parsedSessionVersion == null) {
             return true;
         }
         if (readModelVersion.equals(parsedSessionVersion)) {
-            cachePermissionSnapshotVersion(tenantId, userId, sessionPermissionsVersion);
+            cachePermissionSnapshotVersion(userId, sessionPermissionsVersion);
             return true;
         }
         return false;
@@ -1029,49 +1014,43 @@ public class AuthAppService {
             return false;
         }
 
-        Long tenantId = tenantIdOrDefault(session);
-        if (tenantId == null) {
-            permissionSnapshotVersionCacheFallbacks.increment();
-            return false;
-        }
-
-        PermissionSnapshotVersionCache cachedVersion = getPermissionSnapshotVersionCache(tenantId, session.getUserId());
+        PermissionSnapshotVersionCache cachedVersion = getPermissionSnapshotVersionCache(session.getUserId());
         if (cachedVersion != null) {
             permissionSnapshotVersionCacheHits.increment();
             if (sessionPermissionsVersion.equals(cachedVersion.version)) {
                 return true;
             }
-            Long readModelVersion = getPermissionReadModelVersion(tenantId);
+            Long readModelVersion = getPermissionReadModelVersion();
             Long sessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
             if (readModelVersion != null && readModelVersion > 0 && sessionVersion != null && readModelVersion.equals(sessionVersion)) {
-                cachePermissionSnapshotVersion(tenantId, session.getUserId(), sessionPermissionsVersion);
+                cachePermissionSnapshotVersion(session.getUserId(), sessionPermissionsVersion);
                 return true;
             }
             permissionSnapshotVersionCacheRefreshes.increment();
-            return ensurePermissionSnapshotFromSystem(session, tenantId, readModelVersion);
+            return ensurePermissionSnapshotFromSystem(session, readModelVersion);
         }
 
-        Long readModelVersion = getPermissionReadModelVersion(tenantId);
+        Long readModelVersion = getPermissionReadModelVersion();
         if (readModelVersion != null && readModelVersion > 0) {
             Long sessionVersion = parsePermissionSnapshotVersion(sessionPermissionsVersion);
             if (sessionVersion != null && readModelVersion.equals(sessionVersion)) {
                 permissionSnapshotVersionCacheMisses.increment();
-                cachePermissionSnapshotVersion(tenantId, session.getUserId(), sessionPermissionsVersion);
+                cachePermissionSnapshotVersion(session.getUserId(), sessionPermissionsVersion);
                 return true;
             }
             if (sessionVersion == null || !readModelVersion.equals(sessionVersion)) {
                 permissionSnapshotVersionCacheMisses.increment();
-                return ensurePermissionSnapshotFromSystem(session, tenantId, readModelVersion);
+                return ensurePermissionSnapshotFromSystem(session, readModelVersion);
             }
         }
 
         permissionSnapshotVersionCacheMisses.increment();
-        return ensurePermissionSnapshotFromSystem(session, tenantId, null);
+        return ensurePermissionSnapshotFromSystem(session, null);
 
     }
 
-    private boolean ensurePermissionSnapshotFromSystem(AuthSession session, Long tenantId, Long readModelVersion) {
-        PermissionSnapshotDTO snapshot = loadPermissionSnapshotFromSystemWithSingleFlight(tenantId, session.getUserId(), readModelVersion);
+    private boolean ensurePermissionSnapshotFromSystem(AuthSession session, Long readModelVersion) {
+        PermissionSnapshotDTO snapshot = loadPermissionSnapshotFromSystemWithSingleFlight(session.getUserId(), readModelVersion);
         if (snapshot == null || !StringUtils.hasText(snapshot.version())) {
             permissionSnapshotVersionCacheFallbacks.increment();
             return false;
@@ -1082,20 +1061,19 @@ public class AuthAppService {
             hydrateSessionPermissionSnapshotOnly(session, snapshot);
             authSessionStore.save(session, false);
         }
-        cachePermissionSnapshotVersion(tenantId, session.getUserId(), snapshot);
+        cachePermissionSnapshotVersion(session.getUserId(), snapshot);
         return true;
     }
 
     private PermissionSnapshotDTO loadPermissionSnapshotFromSystemWithSingleFlight(
-            Long tenantId,
             Long userId,
             Long readModelVersion
     ) {
-        PermissionSnapshotLoadInFlightKey key = new PermissionSnapshotLoadInFlightKey(tenantId, userId, readModelVersion);
+        PermissionSnapshotLoadInFlightKey key = new PermissionSnapshotLoadInFlightKey(userId, readModelVersion);
         try {
             CompletableFuture<PermissionSnapshotDTO> inFlight = permissionSnapshotLoadInFlight.get(
                     key,
-                    () -> CompletableFuture.completedFuture(loadPermissionSnapshotVersionFromSystemRemote(tenantId, userId))
+                    () -> CompletableFuture.completedFuture(loadPermissionSnapshotVersionFromSystemRemote(userId))
             );
             try {
                 return inFlight.join();
@@ -1105,68 +1083,64 @@ public class AuthAppService {
                 if (cause instanceof RuntimeException runtimeException) {
                     throw runtimeException;
                 }
-                log.warn("Failed to load permission snapshot for tenantId={} userId={} with single-flight path", tenantId, userId, cause);
+                log.warn("Failed to load permission snapshot for userId={} with single-flight path", userId, cause);
                 return null;
             }
         } catch (ExecutionException exception) {
             permissionSnapshotLoadInFlight.invalidate(key);
-            log.warn("Failed to load permission snapshot single-flight for tenantId={} userId={}", tenantId, userId, exception);
+            log.warn("Failed to load permission snapshot single-flight for userId={}", userId, exception);
             return null;
         }
     }
 
-    private PermissionSnapshotDTO loadPermissionSnapshotVersionFromSystemRemote(Long tenantId, Long userId) {
+    private PermissionSnapshotDTO loadPermissionSnapshotVersionFromSystemRemote(Long userId) {
         try {
-            return systemInternalApi.permissionSnapshot(tenantId, userId);
+            return systemInternalApi.permissionSnapshot(userId);
         } catch (Exception exception) {
-            log.warn("Failed to load permission snapshot for tenantId={} userId={} while checking cache", tenantId, userId, exception);
+            log.warn("Failed to load permission snapshot for userId={} while checking cache", userId, exception);
             return null;
         }
     }
 
-    private Long getPermissionReadModelVersion(Long tenantId) {
-        Long cachedVersion = permissionReadModelVersionCache.getIfPresent(tenantId);
+    private Long getPermissionReadModelVersion() {
+        Long cachedVersion = permissionReadModelVersionCache.getIfPresent(GLOBAL_PERMISSION_READ_MODEL_VERSION_CACHE_KEY);
         if (cachedVersion != null) {
             return cachedVersion;
         }
-        Long version = loadPermissionReadModelVersionWithSingleFlight(tenantId);
+        Long version = loadPermissionReadModelVersionWithSingleFlight();
         if (version != null) {
-            permissionReadModelVersionCache.put(tenantId, version);
+            permissionReadModelVersionCache.put(GLOBAL_PERMISSION_READ_MODEL_VERSION_CACHE_KEY, version);
         }
         return version;
     }
 
-    private Long loadPermissionReadModelVersionWithSingleFlight(Long tenantId) {
-        if (tenantId == null) {
-            return null;
-        }
+    private Long loadPermissionReadModelVersionWithSingleFlight() {
         try {
             CompletableFuture<Long> inFlight = permissionReadModelVersionLoadInFlight.get(
-                    tenantId,
-                    () -> CompletableFuture.completedFuture(loadPermissionReadModelVersion(tenantId))
+                    GLOBAL_PERMISSION_READ_MODEL_VERSION_CACHE_KEY,
+                    () -> CompletableFuture.completedFuture(loadPermissionReadModelVersion())
             );
             return inFlight.join();
         } catch (CompletionException exception) {
-            permissionReadModelVersionLoadInFlight.invalidate(tenantId);
+            permissionReadModelVersionLoadInFlight.invalidate(GLOBAL_PERMISSION_READ_MODEL_VERSION_CACHE_KEY);
             Throwable cause = exception.getCause() != null ? exception.getCause() : exception;
-            log.debug("Failed to load IAM permission read-model version for tenantId={}", tenantId, cause);
+            log.debug("Failed to load IAM permission read-model version", cause);
             return null;
         } catch (ExecutionException exception) {
-            permissionReadModelVersionLoadInFlight.invalidate(tenantId);
-            log.debug("Failed to load read-model version single-flight for tenantId={}", tenantId, exception);
+            permissionReadModelVersionLoadInFlight.invalidate(GLOBAL_PERMISSION_READ_MODEL_VERSION_CACHE_KEY);
+            log.debug("Failed to load read-model version single-flight", exception);
             return null;
         }
     }
 
-    private Long loadPermissionReadModelVersion(Long tenantId) {
+    private Long loadPermissionReadModelVersion() {
         try {
             return systemInternalApi.readModelVersion(
-                    tenantId,
                     READ_MODEL_CONTEXT_IAM,
                     READ_MODEL_SCOPE_IAM_PERMISSION_SNAPSHOT
             );
         } catch (Exception exception) {
-            log.debug("Failed to read IAM permission snapshot read-model version for tenantId={}", tenantId, exception);
+            log.debug("Failed to read IAM permission snapshot read-model version", exception);
             return null;
         }
     }
@@ -1185,9 +1159,9 @@ public class AuthAppService {
             }
             LoginCapabilitiesDTO loaded;
             try {
-                loaded = systemInternalApi.loginCapabilities(PlatformConstants.PLATFORM_TENANT_ID);
+                loaded = systemInternalApi.loginCapabilities();
             } catch (Exception exception) {
-                log.warn("Failed to load login capabilities for tenantId={}", PlatformConstants.PLATFORM_TENANT_ID, exception);
+                log.warn("Failed to load login capabilities", exception);
                 loaded = null;
             }
             loginCapabilitiesCache = loaded;
@@ -1228,32 +1202,25 @@ public class AuthAppService {
         session.setDefaultHomePath(snapshot.defaultHomePath());
     }
 
-    private Long tenantIdOrDefault(AuthSession session) {
-        if (session == null) {
-            return null;
-        }
-        return platformTenantId();
-    }
-
-    private void cachePermissionSnapshotVersion(Long tenantId, Long userId, PermissionSnapshotDTO snapshot) {
-        if (tenantId == null || userId == null || snapshot == null || !StringUtils.hasText(snapshot.version())) {
+    private void cachePermissionSnapshotVersion(Long userId, PermissionSnapshotDTO snapshot) {
+        if (userId == null || snapshot == null || !StringUtils.hasText(snapshot.version())) {
             return;
         }
-        permissionSnapshotVersionCache.put(new PermissionSnapshotCacheKey(tenantId, userId), new PermissionSnapshotVersionCache(snapshot.version()));
+        permissionSnapshotVersionCache.put(userId, new PermissionSnapshotVersionCache(snapshot.version()));
     }
 
-    private void cachePermissionSnapshotVersion(Long tenantId, Long userId, String version) {
-        if (tenantId == null || userId == null || !StringUtils.hasText(version)) {
+    private void cachePermissionSnapshotVersion(Long userId, String version) {
+        if (userId == null || !StringUtils.hasText(version)) {
             return;
         }
-        permissionSnapshotVersionCache.put(new PermissionSnapshotCacheKey(tenantId, userId), new PermissionSnapshotVersionCache(version));
+        permissionSnapshotVersionCache.put(userId, new PermissionSnapshotVersionCache(version));
     }
 
-    private PermissionSnapshotVersionCache getPermissionSnapshotVersionCache(Long tenantId, Long userId) {
-        if (tenantId == null || userId == null) {
+    private PermissionSnapshotVersionCache getPermissionSnapshotVersionCache(Long userId) {
+        if (userId == null) {
             return null;
         }
-        return permissionSnapshotVersionCache.getIfPresent(new PermissionSnapshotCacheKey(tenantId, userId));
+        return permissionSnapshotVersionCache.getIfPresent(userId);
     }
 
     private boolean hasCurrentUserSnapshot(AuthSession session) {
@@ -1289,39 +1256,11 @@ public class AuthAppService {
         }
     }
 
-    private static final class PermissionSnapshotCacheKey {
-        private final Long tenantId;
-        private final Long userId;
-
-        private PermissionSnapshotCacheKey(Long tenantId, Long userId) {
-            this.tenantId = tenantId;
-            this.userId = userId;
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            if (this == other) {
-                return true;
-            }
-            if (!(other instanceof PermissionSnapshotCacheKey otherKey)) {
-                return false;
-            }
-            return tenantId.equals(otherKey.tenantId) && userId.equals(otherKey.userId);
-        }
-
-        @Override
-        public int hashCode() {
-            return tenantId.hashCode() * 31 + userId.hashCode();
-        }
-    }
-
     private static final class PermissionSnapshotLoadInFlightKey {
-        private final Long tenantId;
         private final Long userId;
         private final Long readModelVersion;
 
-        private PermissionSnapshotLoadInFlightKey(Long tenantId, Long userId, Long readModelVersion) {
-            this.tenantId = tenantId;
+        private PermissionSnapshotLoadInFlightKey(Long userId, Long readModelVersion) {
             this.userId = userId;
             this.readModelVersion = readModelVersion;
         }
@@ -1334,14 +1273,13 @@ public class AuthAppService {
             if (!(other instanceof PermissionSnapshotLoadInFlightKey otherKey)) {
                 return false;
             }
-            return Objects.equals(tenantId, otherKey.tenantId)
-                    && Objects.equals(userId, otherKey.userId)
+            return Objects.equals(userId, otherKey.userId)
                     && Objects.equals(readModelVersion, otherKey.readModelVersion);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(tenantId, userId, readModelVersion);
+            return Objects.hash(userId, readModelVersion);
         }
     }
 

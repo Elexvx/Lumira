@@ -14,7 +14,7 @@ public record AuthorizationDecision(
         String dataScopeSummary
 ) {
     public static AuthorizationDecision allow(String reasonCode, String message) {
-        return new AuthorizationDecision(AuthorizationVerdict.ALLOW, reasonCode, message, false, false, false, null, List.of(reasonCode), "tenant");
+        return new AuthorizationDecision(AuthorizationVerdict.ALLOW, reasonCode, message, false, false, false, null, List.of(reasonCode), "role");
     }
 
     public static AuthorizationDecision deny(String reasonCode, String message) {
@@ -22,11 +22,11 @@ public record AuthorizationDecision(
     }
 
     public static AuthorizationDecision requireConfirm(String reasonCode, String message, List<String> matchedPolicies) {
-        return new AuthorizationDecision(AuthorizationVerdict.REQUIRE_CONFIRM, reasonCode, message, true, false, true, null, matchedPolicies, "tenant");
+        return new AuthorizationDecision(AuthorizationVerdict.REQUIRE_CONFIRM, reasonCode, message, true, false, true, null, matchedPolicies, "role");
     }
 
     public static AuthorizationDecision requireApproval(String reasonCode, String message, List<String> matchedPolicies) {
-        return new AuthorizationDecision(AuthorizationVerdict.REQUIRE_APPROVAL, reasonCode, message, true, true, false, null, matchedPolicies, "tenant");
+        return new AuthorizationDecision(AuthorizationVerdict.REQUIRE_APPROVAL, reasonCode, message, true, true, false, null, matchedPolicies, "role");
     }
 
     public boolean allowed() {

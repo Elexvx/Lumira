@@ -43,7 +43,7 @@ const formatPermissionGroupLabel = (permissionGroup: string) =>
       plugin: t('插件', 'Plugins'),
       profile: t('个人中心', 'Profile'),
       system: t('系统', 'System'),
-      tenant: t('平台', 'Platform'),
+      platform: t('平台', 'Platform'),
     } as Record<string, string>
   )[permissionGroup] || permissionGroup;
 

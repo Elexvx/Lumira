@@ -80,10 +80,13 @@ const TopActionsPasswordDrawer = ({
   onFinish: (values: PasswordFormValues) => Promise<void> | void;
 }) => {
   const intl = useIntl();
+  const resolvedPasswordMinLength = Math.max(
+    DEFAULT_SECURITY_SETTINGS.passwordMinLength,
+    Number(securitySettings.passwordMinLength || 0),
+  );
   const passwordPolicyHint = (() => {
     const parts: string[] = [];
-    const minLength = Math.max(1, Number(securitySettings.passwordMinLength || 0));
-    parts.push(intl.formatMessage({ id: 'nav.user.password.minLength', defaultMessage: 'At least {length} characters' }, { length: minLength }));
+    parts.push(intl.formatMessage({ id: 'nav.user.password.minLength', defaultMessage: 'At least {length} characters' }, { length: resolvedPasswordMinLength }));
 
     if (securitySettings.passwordRequireUppercase) {
       parts.push(intl.formatMessage({ id: 'nav.user.password.requireUppercase', defaultMessage: 'Must include uppercase letters' }));
@@ -138,8 +141,8 @@ const TopActionsPasswordDrawer = ({
           rules={[
             { required: true, message: intl.formatMessage({ id: 'nav.user.password.enterNew', defaultMessage: 'Please enter a new password' }) },
             {
-              min: Math.max(1, Number(securitySettings.passwordMinLength || 0)),
-              message: intl.formatMessage({ id: 'nav.user.password.minLength', defaultMessage: 'Password must be at least {length} characters long' }, { length: securitySettings.passwordMinLength || 1 }),
+              min: resolvedPasswordMinLength,
+              message: intl.formatMessage({ id: 'nav.user.password.minLength', defaultMessage: 'Password must be at least {length} characters long' }, { length: resolvedPasswordMinLength }),
             },
           ]}
         >

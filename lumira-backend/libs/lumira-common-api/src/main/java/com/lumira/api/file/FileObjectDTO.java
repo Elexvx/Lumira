@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public record FileObjectDTO(
         Long id,
-        Long tenantId,
         Long uploadedBy,
         String uploadedByName,
         String originalFileName,

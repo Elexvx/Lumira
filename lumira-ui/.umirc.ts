@@ -1,9 +1,13 @@
 import { defineConfig } from '@umijs/max';
+import path from 'node:path';
 import { backendRoutes } from './src/routes/meta';
 import { createLocalePreferenceBootstrapScript } from './src/i18n/locale';
 import { createThemePreferenceBootstrapScript } from './src/theme/settings';
 
 export default defineConfig({
+  alias: {
+    '@umijs/max': path.resolve(process.cwd(), 'src/.umi/exports.ts'),
+  },
   access: {},
   initialState: {
     loading: '@/loading',

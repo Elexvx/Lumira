@@ -10,18 +10,16 @@ import java.util.List;
 @Mapper
 public interface SysConfigMapper extends BaseMapper<SysConfigEntity> {
     String findValue(
-            @Param("tenantId") Long tenantId,
             @Param("configKey") String configKey,
             @Param("configScope") String configScope
     );
 
     List<SysConfigEntity> listEffectiveValues(
-            @Param("tenantId") Long tenantId,
             @Param("configScope") String configScope,
             @Param("keys") List<String> keys
     );
 
-    Long findIdByTenantAndKey(@Param("tenantId") Long tenantId, @Param("configKey") String configKey);
+    Long findIdByKey(@Param("configKey") String configKey);
 
     void upsertPlatformConfig(@Param("entity") SysConfigEntity entity);
 }

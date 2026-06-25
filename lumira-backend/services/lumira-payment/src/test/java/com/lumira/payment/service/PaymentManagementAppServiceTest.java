@@ -31,12 +31,11 @@ class PaymentManagementAppServiceTest {
                 outboxService
         );
 
-        service.updatePaymentProviderSettings(1001L, 1001L, "stripe", stripeSettings("first-secret"));
-        service.updatePaymentProviderSettings(1001L, 1001L, "stripe", stripeSettings("second-secret"));
+        service.updatePaymentProviderSettings(1001L, "stripe", stripeSettings("first-secret"));
+        service.updatePaymentProviderSettings(1001L, "stripe", stripeSettings("second-secret"));
 
         ArgumentCaptor<String> eventKeyCaptor = ArgumentCaptor.forClass(String.class);
         verify(outboxService, times(2)).recordAfterCommit(
-                eq(1001L),
                 eq(1001L),
                 eq("payment"),
                 eq("payment.provider.updated"),
@@ -54,7 +53,6 @@ class PaymentManagementAppServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PaymentConfigCryptoService cryptoService = mock(PaymentConfigCryptoService.class);
         PaymentProviderConfigRow row = new PaymentProviderConfigRow();
-        row.setTenantId(1001L);
         row.setProviderCode("stripe");
         row.setProviderName("Stripe");
         row.setEnabled(1);
@@ -65,7 +63,6 @@ class PaymentManagementAppServiceTest {
         doReturn(row).when(jdbcTemplate).queryForObject(
                 anyString(),
                 anyPaymentProviderRowMapper(),
-                eq(1001L),
                 eq("stripe")
         );
         doReturn(stored).when(cryptoService).decryptJson("encrypted", PaymentProviderSettingsDTO.class);
@@ -77,8 +74,8 @@ class PaymentManagementAppServiceTest {
                 mock(PaymentOutboxService.class)
         );
 
-        PaymentProviderSettingsDTO publicSettings = service.paymentProviderSettings(1001L, "stripe");
-        PaymentProviderSettingsDTO requiredSettings = service.getRequiredProviderSettings(1001L, "stripe");
+        PaymentProviderSettingsDTO publicSettings = service.paymentProviderSettings("stripe");
+        PaymentProviderSettingsDTO requiredSettings = service.getRequiredProviderSettings("stripe");
 
         assertThat(publicSettings.getWebhookSecret()).isEmpty();
         assertThat(requiredSettings.getWebhookSecret()).isEqualTo("real-webhook-secret");

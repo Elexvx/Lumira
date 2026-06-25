@@ -14,7 +14,7 @@ public class MessageCreateRequestDTO {
     @Size(max = 2000, message = "content长度不能超过2000个字符")
     private String content;
     @NotBlank
-    @Pattern(regexp = "^(PLATFORM|TENANT|USER|ROLE)$", message = "targetScope只能是PLATFORM、USER或ROLE")
+    @Pattern(regexp = "^(PLATFORM|USER|ROLE)$", message = "targetScope只能是PLATFORM、USER或ROLE")
     private String targetScope;
     @Positive(message = "targetUserId必须大于0")
     private Long targetUserId;

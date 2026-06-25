@@ -121,7 +121,6 @@ class SystemManagementAppServicePasswordTest {
         currentUser.setUserId(2001L);
         currentUser.setUsername("admin");
         currentUser.setSessionId("session-1");
-        currentUser.setCurrentTenantId(1001L);
         return currentUser;
     }
 
@@ -235,7 +234,7 @@ class SystemManagementAppServicePasswordTest {
         }
 
         @Override
-        public void log(Long tenantId, Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
+        public void log(Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
             this.lastMessage = detailMessage;
         }
     }

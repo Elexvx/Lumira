@@ -32,8 +32,8 @@ public class FileOcrProcessor {
         this.engineSelector = engineSelector;
     }
 
-    public OcrResult extractImageText(Long tenantId, Long fileId, Long userId) {
-        FileLocation location = findFileLocation(tenantId, fileId);
+    public OcrResult extractImageText(Long fileId, Long userId) {
+        FileLocation location = findFileLocation(fileId);
         if (location == null) {
             throw new IllegalStateException("File object is unavailable for OCR: " + fileId);
         }
@@ -58,14 +58,14 @@ public class FileOcrProcessor {
         String storedText = normalizedText.length() > MAX_STORED_CHARS
                 ? normalizedText.substring(0, MAX_STORED_CHARS)
                 : normalizedText;
-        upsertOcrArtifact(tenantId, fileId, engineResult, storedText, normalizedText.length(), userId);
+        upsertOcrArtifact(fileId, engineResult, storedText, normalizedText.length(), userId);
         if (StringUtils.hasText(storedText)) {
-            upsertTextArtifact(tenantId, fileId, storedText, userId);
+            upsertTextArtifact(fileId, storedText, userId);
         }
         return new OcrResult(fileId, engineResult.engine(), engineResult.status(), storedText.length(), normalizedText.length() > storedText.length());
     }
 
-    private FileLocation findFileLocation(Long tenantId, Long fileId) {
+    private FileLocation findFileLocation(Long fileId) {
         return jdbcTemplate.queryForObject(
                 """
                         select fo.storage_type as storageType, fo.object_key as objectKey,
@@ -73,10 +73,9 @@ public class FileOcrProcessor {
                                coalesce(fs.root_path, '') as rootPath
                         from file_object fo
                         left join file_storage_space fs
-                          on fs.tenant_id = fo.tenant_id
-                         and fs.storage_key = fo.bucket
+                          on fs.storage_key = fo.bucket
                          and fs.deleted = 0
-                        where fo.tenant_id = ? and fo.id = ? and fo.deleted = 0
+                        where fo.id = ? and fo.deleted = 0
                         limit 1
                         """,
                 (rs, rowNum) -> new FileLocation(
@@ -86,7 +85,6 @@ public class FileOcrProcessor {
                         rs.getString("contentType"),
                         rs.getString("fileExtension")
                 ),
-                tenantId,
                 fileId
         );
     }
@@ -132,22 +130,22 @@ public class FileOcrProcessor {
         return uploadRoot.resolve(normalizedRootPath).normalize();
     }
 
-    private void upsertOcrArtifact(Long tenantId, Long fileId, OcrEngineResult result, String storedText, int sourceCharacters, Long userId) {
+    private void upsertOcrArtifact(Long fileId, OcrEngineResult result, String storedText, int sourceCharacters, Long userId) {
         String payload = buildPayload(result, storedText, sourceCharacters);
-        upsertArtifact(tenantId, fileId, FileProcessingTaskService.TASK_OCR, ARTIFACT_OCR_RESULT, payload, userId);
+        upsertArtifact(fileId, FileProcessingTaskService.TASK_OCR, ARTIFACT_OCR_RESULT, payload, userId);
     }
 
-    private void upsertTextArtifact(Long tenantId, Long fileId, String storedText, Long userId) {
-        upsertArtifact(tenantId, fileId, FileProcessingTaskService.TASK_OCR, FileTextExtractionProcessor.ARTIFACT_TEXT_CONTENT, storedText, userId);
+    private void upsertTextArtifact(Long fileId, String storedText, Long userId) {
+        upsertArtifact(fileId, FileProcessingTaskService.TASK_OCR, FileTextExtractionProcessor.ARTIFACT_TEXT_CONTENT, storedText, userId);
     }
 
-    private void upsertArtifact(Long tenantId, Long fileId, String taskType, String artifactType, String content, Long userId) {
+    private void upsertArtifact(Long fileId, String taskType, String artifactType, String content, Long userId) {
         jdbcTemplate.update(
                 """
                         insert into file_processing_artifact (
-                            tenant_id, file_id, task_type, artifact_type, content_text, content_length,
+                            file_id, task_type, artifact_type, content_text, content_length,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, 0)
                         on duplicate key update
                             task_type = values(task_type),
                             content_text = values(content_text),
@@ -156,7 +154,6 @@ public class FileOcrProcessor {
                             updated_at = current_timestamp,
                             updated_by = values(updated_by)
                         """,
-                tenantId,
                 fileId,
                 taskType,
                 artifactType,

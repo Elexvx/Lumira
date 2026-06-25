@@ -12,14 +12,12 @@ public final class AuthDomainModels {
     }
 
     public static final class AuthSessionAggregate extends AggregateRoot<String> {
-        private final Long tenantId;
         private final Long userId;
         private Instant lastActiveAt;
         private boolean revoked;
 
-        public AuthSessionAggregate(String sessionId, Long tenantId, Long userId, Instant lastActiveAt) {
+        public AuthSessionAggregate(String sessionId, Long userId, Instant lastActiveAt) {
             super(EntityId.of(sessionId));
-            this.tenantId = tenantId;
             this.userId = userId;
             this.lastActiveAt = lastActiveAt == null ? Instant.now() : lastActiveAt;
         }
@@ -33,7 +31,6 @@ public final class AuthDomainModels {
                     "AUTH_SESSION_REFRESHED",
                     "auth.session",
                     id().value(),
-                    tenantId,
                     Map.of("userId", userId, "lastActiveAt", lastActiveAt.toString())
             ));
         }
@@ -47,13 +44,12 @@ public final class AuthDomainModels {
                     "AUTH_SESSION_REVOKED",
                     "auth.session",
                     id().value(),
-                    tenantId,
                     Map.of("userId", userId, "reason", reason == null ? "unspecified" : reason)
             ));
         }
     }
 
-    public record LoginChallenge(String challengeId, Long tenantId, String purpose, Instant expiresAt) {
+    public record LoginChallenge(String challengeId, String purpose, Instant expiresAt) {
 
         public boolean isExpired(Instant now) {
             return expiresAt != null && !expiresAt.isAfter(now == null ? Instant.now() : now);

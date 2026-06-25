@@ -30,7 +30,7 @@ import { normalizeWatermarkSettings } from '@/watermark/settingsNormalize';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import { restoreSession } from '@/auth/sessionBootstrap';
 import { request, type RequestOptions } from '@/services/common/request';
-import type { MenuNode, PasskeyOptions, TenantPlugin } from '@/types/api';
+import type { MenuNode, PasskeyOptions, PluginAvailability } from '@/types/api';
 import type { BrandingSettings, FloatingWindowSettings, WatermarkSettings } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 import { hasConfiguredAgreementSettings } from '@/agreement/settings';
@@ -122,7 +122,7 @@ const POST_LOGIN_OPTIONAL_TIMEOUT_MS = 1200;
 
 type PluginBootstrapResponse = {
   menuTree?: MenuNode[];
-  availablePlugins?: TenantPlugin[];
+  availablePlugins?: PluginAvailability[];
 };
 
 type RuntimeAppearanceSettingsResponse = {
@@ -184,7 +184,7 @@ const loadPluginBootstrap = async (timeoutMs = POST_LOGIN_MENU_TIMEOUT_MS): Prom
       request<MenuNode[]>('/v1/plugins/current/menus', {
         ...pluginRequestOptions,
       }),
-      request<TenantPlugin[]>('/v1/plugins/current/available', {
+      request<PluginAvailability[]>('/v1/plugins/current/available', {
         ...pluginRequestOptions,
       }),
     ]);

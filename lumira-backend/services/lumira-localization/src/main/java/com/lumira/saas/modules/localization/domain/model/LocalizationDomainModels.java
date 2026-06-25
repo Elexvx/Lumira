@@ -12,13 +12,11 @@ public final class LocalizationDomainModels {
     }
 
     public static final class ReleaseAggregate extends AggregateRoot<Long> {
-        private final Long tenantId;
         private final String namespace;
         private boolean published;
 
-        public ReleaseAggregate(Long releaseId, Long tenantId, String namespace, boolean published) {
+        public ReleaseAggregate(Long releaseId, String namespace, boolean published) {
             super(EntityId.of(releaseId));
-            this.tenantId = tenantId;
             this.namespace = namespace;
             this.published = published;
         }
@@ -32,7 +30,6 @@ public final class LocalizationDomainModels {
                     "LOCALIZATION_RELEASE_PUBLISHED",
                     "localization.release",
                     String.valueOf(id().value()),
-                    tenantId,
                     Map.of("namespace", namespace, "entryCount", entryCount)
             ));
         }
@@ -43,14 +40,12 @@ public final class LocalizationDomainModels {
                     "LOCALIZATION_RELEASE_ROLLED_BACK",
                     "localization.release",
                     String.valueOf(id().value()),
-                    tenantId,
                     Map.of("namespace", namespace, "targetVersion", targetVersion)
             ));
         }
     }
 
     public record BundleReadModel(
-            Long tenantId,
             String namespace,
             String locale,
             long version,

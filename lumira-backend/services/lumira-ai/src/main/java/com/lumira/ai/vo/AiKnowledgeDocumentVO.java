@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public record AiKnowledgeDocumentVO(
         Long id,
-        Long tenantId,
         Long knowledgeBaseId,
         Long fileId,
         String title,

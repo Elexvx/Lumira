@@ -1,0 +1,136 @@
+package com.lumira.saas.infrastructure.db;
+
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class SaasSqlBootstrapCompletenessTest {
+
+    private static final Pattern TENANT_SURFACE =
+            Pattern.compile("(?i)(`?tenant_id`?|\\bsys_tenant\\b|\\btenant\\b)");
+
+    @Test
+    void consolidatedSaasSqlSeedsCompleteRoleOnlyIamBootstrap() throws IOException {
+        String sql = readSaasSql();
+        String normalizedSql = normalizeWhitespace(sql);
+
+        assertThat(TENANT_SURFACE.matcher(sql).find())
+                .as("sql/saas.sql must be the role-only fresh-init entrypoint without tenant schema or wording")
+                .isFalse();
+        assertThat(sql)
+                .contains("CREATE TABLE `sys_menu`")
+                .contains("CREATE TABLE `sys_permission`")
+                .contains("CREATE TABLE `sys_role`")
+                .contains("CREATE TABLE `sys_role_permission`")
+                .contains("CREATE TABLE `sys_user_role`")
+                .contains("CREATE TABLE `ddd_read_model_version`");
+
+        Set<String> permissionKeys = permissionKeys(extractValuesBlock(sql, "sys_permission"));
+        assertThat(permissionKeys)
+                .hasSizeGreaterThanOrEqualTo(130)
+                .contains(
+                        "dashboard:view",
+                        "system:view",
+                        "system:menu:view",
+                        "system:user:view",
+                        "plugin:management:view",
+                        "aiadc:competition:view",
+                        "expert:view",
+                        "payment:view"
+                );
+
+        Map<Long, String> menuCodeById = menuCodeById(extractValuesBlock(sql, "sys_menu"));
+        assertThat(menuCodeById)
+                .hasSizeGreaterThanOrEqualTo(89)
+                .containsEntry(-955L, "dashboard.home")
+                .containsEntry(-1001L, "settings.menus")
+                .containsEntry(-951L, "system.users")
+                .containsEntry(-960L, "team.delete");
+        assertThat(new LinkedHashSet<>(menuCodeById.values()))
+                .as("seeded menu codes must be unique so ON DUPLICATE KEY cannot overwrite unrelated pages")
+                .hasSize(menuCodeById.size());
+
+        assertThat(normalizedSql)
+                .contains("VALUES (1001, 'admin'")
+                .contains("VALUES (1001, 1001, 0, 0, 0)")
+                .contains("SELECT 1001, p.`permission_key`, 0, 0, 0 FROM `sys_permission` p WHERE p.`deleted` = 0");
+        assertThat(extractValuesBlock(sql, "sys_role_permission"))
+                .as("admin bootstrap should enumerate concrete permission keys instead of wildcard role permissions")
+                .doesNotContain("'*'");
+
+        assertThat(normalizedSql)
+                .contains("INSERT INTO `ddd_read_model_version`")
+                .contains("('IAM', 'permission-snapshot', 1, 'sql-bootstrap', NOW())")
+                .contains("('platform', 'runtime-appearance', 1, 'sql-bootstrap', NOW())");
+    }
+
+    private static Set<String> permissionKeys(String valuesBlock) {
+        Set<String> keys = new LinkedHashSet<>();
+        Matcher matcher = Pattern.compile("\\(\\s*'([^']+)'\\s*,").matcher(valuesBlock);
+        while (matcher.find()) {
+            keys.add(matcher.group(1));
+        }
+        return keys;
+    }
+
+    private static Map<Long, String> menuCodeById(String valuesBlock) {
+        Map<Long, String> menuCodeById = new LinkedHashMap<>();
+        Matcher matcher = Pattern.compile("\\(\\s*(-?\\d+)\\s*,\\s*(-?\\d+)\\s*,\\s*'([^']+)'").matcher(valuesBlock);
+        while (matcher.find()) {
+            Long id = Long.valueOf(matcher.group(1));
+            menuCodeById.put(id, matcher.group(3));
+        }
+        return menuCodeById;
+    }
+
+    private static String extractValuesBlock(String sql, String tableName) {
+        Pattern pattern = Pattern.compile(
+                "INSERT\\s+INTO\\s+`" + Pattern.quote(tableName) + "`[\\s\\S]*?\\)\\s*VALUES\\s*([\\s\\S]*?)ON\\s+DUPLICATE\\s+KEY\\s+UPDATE",
+                Pattern.CASE_INSENSITIVE
+        );
+        Matcher matcher = pattern.matcher(sql);
+        assertThat(matcher.find())
+                .as("expected INSERT ... VALUES bootstrap block for " + tableName)
+                .isTrue();
+        return matcher.group(1);
+    }
+
+    private static String normalizeWhitespace(String value) {
+        return value.replaceAll("\\s+", " ").trim();
+    }
+
+    private static String readSaasSql() throws IOException {
+        return Files.readString(resolvePath("../../sql/saas.sql", "sql/saas.sql"), StandardCharsets.UTF_8);
+    }
+
+    private static Path resolvePath(String... candidates) {
+        for (String candidate : candidates) {
+            Path direct = Path.of(candidate);
+            if (Files.exists(direct)) {
+                return direct;
+            }
+        }
+        Path current = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        while (current != null) {
+            for (String candidate : candidates) {
+                Path path = current.resolve(candidate);
+                if (Files.exists(path)) {
+                    return path;
+                }
+            }
+            current = current.getParent();
+        }
+        return Path.of(candidates[0]);
+    }
+}

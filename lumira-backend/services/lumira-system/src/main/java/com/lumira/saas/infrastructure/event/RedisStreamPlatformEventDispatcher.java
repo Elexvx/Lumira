@@ -34,7 +34,6 @@ public class RedisStreamPlatformEventDispatcher implements PlatformEventDispatch
     private Map<String, String> toRecord(PlatformEventOutboxEntity event) {
         Map<String, String> record = new LinkedHashMap<>();
         put(record, "id", event.getId());
-        put(record, "tenantId", event.getTenantId());
         put(record, "userId", event.getUserId());
         put(record, "sourceType", event.getSourceType());
         put(record, "eventType", event.getEventType());

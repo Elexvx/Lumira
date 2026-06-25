@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public class AiEmployeeVO {
     private Long id;
-    private Long tenantId;
     private String username;
     private String nickname;
     private String position;
@@ -24,14 +23,6 @@ public class AiEmployeeVO {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public Long getTenantId() {
-        return tenantId;
-    }
-
-    public void setTenantId(Long tenantId) {
-        this.tenantId = tenantId;
     }
 
     public String getUsername() {

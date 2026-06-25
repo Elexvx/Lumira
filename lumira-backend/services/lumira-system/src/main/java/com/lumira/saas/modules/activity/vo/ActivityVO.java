@@ -8,7 +8,6 @@ public final class ActivityVO {
 
     public static class Activity {
         private Long id;
-        private Long tenantId;
         private String code;
         private String locale;
         private String title;
@@ -32,8 +31,6 @@ public final class ActivityVO {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public String getCode() { return code; }
         public void setCode(String code) { this.code = code; }
         public String getLocale() { return locale; }

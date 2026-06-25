@@ -3,7 +3,6 @@ package com.lumira.message.service;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.api.client.SystemInternalApi;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.message.infrastructure.redis.CacheTemplate;
@@ -58,20 +57,20 @@ public class WechatOfficialAccountNotificationService {
                 .build();
     }
 
-    public boolean isConfigured(Long tenantId) {
-        WechatOfficialAccountSettings settings = loadSettings(tenantId);
+    public boolean isConfigured() {
+        WechatOfficialAccountSettings settings = loadSettings();
         return settings.configured();
     }
 
-    public void send(Long tenantId, String openid, String title, String content) {
+    public void send(String openid, String title, String content) {
         if (!StringUtils.hasText(openid)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "微信 OpenID 不能为空");
         }
-        WechatOfficialAccountSettings settings = loadSettings(tenantId);
+        WechatOfficialAccountSettings settings = loadSettings();
         if (!settings.configured()) {
             throw new BizException(ErrorCode.BIZ_ERROR, "微信公众号通知未启用或配置不完整");
         }
-        String accessToken = accessToken(tenantId, settings);
+        String accessToken = accessToken(settings);
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("touser", openid.trim());
         payload.put("template_id", settings.templateId());
@@ -94,8 +93,8 @@ public class WechatOfficialAccountNotificationService {
         }
     }
 
-    private String accessToken(Long tenantId, WechatOfficialAccountSettings settings) {
-        String cacheKey = "notification:wechat-official:access-token:" + effectiveTenantId(tenantId) + ":" + settings.appId();
+    private String accessToken(WechatOfficialAccountSettings settings) {
+        String cacheKey = "notification:wechat-official:access-token:" + settings.appId();
         String cached = cacheTemplate.get(cacheKey);
         if (StringUtils.hasText(cached)) {
             return cached;
@@ -116,8 +115,8 @@ public class WechatOfficialAccountNotificationService {
         return response.access_token();
     }
 
-    private WechatOfficialAccountSettings loadSettings(Long tenantId) {
-        Map<String, String> values = loadValues(tenantId);
+    private WechatOfficialAccountSettings loadSettings() {
+        Map<String, String> values = loadValues();
         boolean enabled = Boolean.parseBoolean(defaultIfBlank(values.get(ENABLED_KEY), "false"));
         String appId = defaultIfBlank(values.get(APP_ID_KEY), "");
         String appSecret = defaultIfBlank(values.get(APP_SECRET_KEY), "");
@@ -130,9 +129,8 @@ public class WechatOfficialAccountNotificationService {
         return new WechatOfficialAccountSettings(enabled, appId, appSecret, templateId, detailUrl, configured);
     }
 
-    private Map<String, String> loadValues(Long tenantId) {
-        Long effectiveTenantId = effectiveTenantId(tenantId);
-        Map<String, String> rawValues = systemInternalApi.platformConfigValues(effectiveTenantId, CONFIG_KEYS);
+    private Map<String, String> loadValues() {
+        Map<String, String> rawValues = systemInternalApi.platformConfigValues(CONFIG_KEYS);
         Map<String, String> values = new LinkedHashMap<>();
         if (rawValues != null) {
             rawValues.forEach((key, value) -> values.put(key, value == null ? null : value.trim()));
@@ -178,10 +176,6 @@ public class WechatOfficialAccountNotificationService {
 
     private Map<String, String> templateValue(String value) {
         return Map.of("value", defaultIfBlank(value, ""));
-    }
-
-    private Long effectiveTenantId(Long tenantId) {
-        return tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
     }
 
     private String defaultIfBlank(String value, String fallback) {

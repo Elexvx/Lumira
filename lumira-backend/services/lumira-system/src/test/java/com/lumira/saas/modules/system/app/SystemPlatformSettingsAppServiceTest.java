@@ -36,7 +36,7 @@ class SystemPlatformSettingsAppServiceTest {
 
     @Test
     void brandingSettingsSingleFlightCachesByRuntimeVersion() {
-        CurrentUser currentUser = currentUser(1L);
+        CurrentUser currentUser = currentUser();
         Map<String, String> configValues = Map.of(
                 "branding.website-name", "Lumira",
                 "branding.company-name", "Acme Corp",
@@ -44,7 +44,7 @@ class SystemPlatformSettingsAppServiceTest {
         );
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(configValues);
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1001L, "platform", "runtime-appearance")).thenReturn(1L);
+        when(readModelVersionService.currentVersion("platform", "runtime-appearance")).thenReturn(1L);
 
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         OwnerRuntimeMetrics ownerRuntimeMetrics = new OwnerRuntimeMetrics(meterRegistry);
@@ -57,7 +57,7 @@ class SystemPlatformSettingsAppServiceTest {
         assertThat(first.getWebsiteName()).isEqualTo("Lumira");
         assertThat(second.getWebsiteName()).isEqualTo("Lumira");
         assertThat(queryOperations.queryForListCount()).isEqualTo(1);
-        verify(readModelVersionService, times(1)).getOrInitialize(1001L, "platform", "runtime-appearance");
+        verify(readModelVersionService, times(1)).currentVersion("platform", "runtime-appearance");
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_MISS)).isEqualTo(1.0);
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_CONFIG_CACHE_HIT)).isEqualTo(1.0);
         assertThat(first.getCopyrightStartYear()).isEqualTo(2020);
@@ -65,7 +65,7 @@ class SystemPlatformSettingsAppServiceTest {
 
     @Test
     void brandingSettingsReloadsWhenRuntimeVersionBumps() throws Exception {
-        CurrentUser currentUser = currentUser(1L);
+        CurrentUser currentUser = currentUser();
         Map<String, String> configValues = Map.of(
                 "branding.website-name", "Lumira",
                 "branding.company-name", "Acme Corp",
@@ -73,7 +73,7 @@ class SystemPlatformSettingsAppServiceTest {
         );
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(configValues);
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1001L, "platform", "runtime-appearance")).thenReturn(5L, 6L);
+        when(readModelVersionService.currentVersion("platform", "runtime-appearance")).thenReturn(5L, 6L);
 
         SystemPlatformSettingsAppService service = newService(queryOperations, readModelVersionService, null, mock(SmtpMailService.class));
 
@@ -87,13 +87,13 @@ class SystemPlatformSettingsAppServiceTest {
 
         assertThat(third.getWebsiteName()).isEqualTo("Lumira");
         assertThat(queryOperations.queryForListCount()).isEqualTo(2);
-        verify(readModelVersionService, times(2)).getOrInitialize(1001L, "platform", "runtime-appearance");
+        verify(readModelVersionService, times(2)).currentVersion("platform", "runtime-appearance");
         assertThat(System.identityHashCode(first)).isNotEqualTo(System.identityHashCode(third));
     }
 
     @Test
     void brandingSettingsSingleFlightBuildsOnceUnderConcurrentMisses() throws Exception {
-        CurrentUser currentUser = currentUser(1L);
+        CurrentUser currentUser = currentUser();
         Map<String, String> configValues = Map.of(
                 "branding.website-name", "Lumira",
                 "branding.company-name", "Acme Corp",
@@ -101,7 +101,7 @@ class SystemPlatformSettingsAppServiceTest {
         );
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(configValues);
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1001L, "platform", "runtime-appearance")).thenReturn(2L);
+        when(readModelVersionService.currentVersion("platform", "runtime-appearance")).thenReturn(2L);
 
         SystemPlatformSettingsAppService service = newService(queryOperations, readModelVersionService, null, mock(SmtpMailService.class));
 
@@ -132,12 +132,12 @@ class SystemPlatformSettingsAppServiceTest {
             assertThat(setting.getWebsiteName()).isEqualTo(expect.getWebsiteName());
         }
         assertThat(queryOperations.queryForListCount()).isEqualTo(1);
-        verify(readModelVersionService, times(1)).getOrInitialize(1001L, "platform", "runtime-appearance");
+        verify(readModelVersionService, times(1)).currentVersion("platform", "runtime-appearance");
     }
 
     @Test
     void smtpSettingsUpdatesInvalidateMailConfigCache() {
-        CurrentUser currentUser = currentUser(1L);
+        CurrentUser currentUser = currentUser();
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.of(
                 "smtp.enabled", "true",
                 "smtp.host", "smtp.example.com",
@@ -171,12 +171,12 @@ class SystemPlatformSettingsAppServiceTest {
         service.updateSmtpSettings(currentUser, request);
         service.resetSmtpSettings(currentUser);
 
-        verify(smtpMailService, times(2)).invalidateTenant(1001L);
+        verify(smtpMailService, times(2)).invalidate();
     }
 
     @Test
     void updateBrandingSettingsPersistsEditableFooterFields() {
-        CurrentUser currentUser = currentUser(1L);
+        CurrentUser currentUser = currentUser();
         RecordingQueryOperations queryOperations = new RecordingQueryOperations(Map.of(
                 "branding.website-name", "Lumira",
                 "branding.company-name", "Acme Corp",
@@ -186,7 +186,7 @@ class SystemPlatformSettingsAppServiceTest {
                 "branding.footer-copyright", ""
         ));
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
-        when(readModelVersionService.getOrInitialize(1001L, "platform", "runtime-appearance")).thenReturn(1L);
+        when(readModelVersionService.currentVersion("platform", "runtime-appearance")).thenReturn(1L);
         SystemPlatformSettingsAppService service = newService(queryOperations, readModelVersionService, null, mock(SmtpMailService.class));
 
         assertThat(service.getBrandingSettings(currentUser).getFooterCopyright()).contains("Acme Corp");
@@ -210,7 +210,7 @@ class SystemPlatformSettingsAppServiceTest {
         assertThat(updated.getFooterCopyright()).isEqualTo("Custom copyright text");
         assertThat(updated.getGithubLinkEnabled()).isFalse();
         assertThat(updated.getGithubLinkUrl()).isEqualTo("https://github.com/example/lumira");
-        verify(readModelVersionService).bump(1001L, "platform", "runtime-appearance", "branding-update");
+        verify(readModelVersionService).bump("platform", "runtime-appearance", "branding-update");
     }
 
     private static SystemPlatformSettingsAppService newService(
@@ -227,7 +227,6 @@ class SystemPlatformSettingsAppServiceTest {
                 new OperationAuditService(null) {
                     @Override
                     public void log(
-                            Long tenantId,
                             Long userId,
                             String username,
                             String moduleName,
@@ -245,9 +244,8 @@ class SystemPlatformSettingsAppServiceTest {
         );
     }
 
-    private static CurrentUser currentUser(Long tenantId) {
+    private static CurrentUser currentUser() {
         CurrentUser currentUser = new CurrentUser();
-        currentUser.setCurrentTenantId(tenantId);
         currentUser.setUserId(1001L);
         currentUser.setUsername("admin");
         currentUser.setAuthenticated(true);
@@ -263,15 +261,15 @@ class SystemPlatformSettingsAppServiceTest {
         Field runtimeVersionCacheField = SystemPlatformSettingsAppService.class.getDeclaredField("runtimeAppearanceVersionCache");
         runtimeVersionCacheField.setAccessible(true);
         @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<Long, Long> runtimeVersionCache =
-                (com.google.common.cache.Cache<Long, Long>) runtimeVersionCacheField.get(service);
+        com.google.common.cache.Cache<String, Long> runtimeVersionCache =
+                (com.google.common.cache.Cache<String, Long>) runtimeVersionCacheField.get(service);
         runtimeVersionCache.invalidateAll();
 
         Field inFlightField = SystemPlatformSettingsAppService.class.getDeclaredField("runtimeAppearanceVersionLoadInFlight");
         inFlightField.setAccessible(true);
         @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<Long, CompletableFuture<Long>> inFlight =
-                (com.google.common.cache.Cache<Long, CompletableFuture<Long>>) inFlightField.get(service);
+        com.google.common.cache.Cache<String, CompletableFuture<Long>> inFlight =
+                (com.google.common.cache.Cache<String, CompletableFuture<Long>>) inFlightField.get(service);
         inFlight.invalidateAll();
 
         Field configLoadInFlightField = SystemPlatformSettingsAppService.class.getDeclaredField("configLoadInFlight");
@@ -320,8 +318,8 @@ class SystemPlatformSettingsAppServiceTest {
 
         @Override
         public int update(String sql, Object... args) {
-            if (sql.contains("insert into sys_config") && args.length >= 4 && args[1] instanceof String configKey) {
-                configValues.put(configKey, Objects.toString(args[3], ""));
+            if (sql.contains("insert into sys_config") && args.length >= 3 && args[0] instanceof String configKey) {
+                configValues.put(configKey, Objects.toString(args[2], ""));
                 configIds.putIfAbsent(configKey, (long) configIds.size() + 1L);
             } else if (sql.contains("update sys_config") && args.length >= 6) {
                 configValues.entrySet().stream()
@@ -337,12 +335,11 @@ class SystemPlatformSettingsAppServiceTest {
         }
 
         private List<Map<String, Object>> rowsByArgs(Object... args) {
-            if (args.length < 2) {
+            if (args.length == 0) {
                 return List.of();
             }
-            int configKeyCount = Math.max(0, args.length - 2);
             List<Map<String, Object>> rows = new ArrayList<>();
-            for (int index = 0; index < configKeyCount; index++) {
+            for (int index = 0; index < args.length; index++) {
                 String configKey = Objects.toString(args[index], "");
                 if (!configValues.containsKey(configKey)) {
                     continue;

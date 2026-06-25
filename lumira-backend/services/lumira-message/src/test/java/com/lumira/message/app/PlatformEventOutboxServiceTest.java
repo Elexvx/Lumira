@@ -50,10 +50,9 @@ class PlatformEventOutboxServiceTest {
         MessageEventDTO event = buildEvent();
         PlatformEventOutboxEntity entity = service.record(event);
 
-        assertThat(entity.getTenantId()).isEqualTo(1001L);
         assertThat(entity.getUserId()).isEqualTo(2001L);
         assertThat(entity.getEventType()).isEqualTo("NOTICE_CREATED");
-        assertThat(entity.getEventKey()).contains("NOTICE_CREATED", "1001", "9001");
+        assertThat(entity.getEventKey()).contains("NOTICE_CREATED", "2001", "9001");
         assertThat(entity.getPayloadJson()).contains("\"eventCategory\":\"BUSINESS\"");
     }
 
@@ -176,7 +175,6 @@ class PlatformEventOutboxServiceTest {
     private MessageEventDTO buildEvent() {
         MessageNoticeDTO notice = new MessageNoticeDTO();
         notice.setId(9001L);
-        notice.setTenantId(1001L);
         notice.setTargetScope("PLATFORM");
         notice.setTitle("系统提醒");
         notice.setContent("内容");
@@ -187,10 +185,9 @@ class PlatformEventOutboxServiceTest {
         event.setEventCategory("BUSINESS");
         event.setSourceType("MESSAGE");
         event.setEventType("NOTICE_CREATED");
-        event.setTenantId(1001L);
         event.setUserId(2001L);
         event.setVersion(9001L);
-        event.setEventKey("NOTICE_CREATED:1001:9001:2001:9001");
+        event.setEventKey("NOTICE_CREATED:9001:2001:9001");
         event.setNotice(notice);
         event.setMessage("消息已发布");
         return event;
@@ -199,11 +196,10 @@ class PlatformEventOutboxServiceTest {
     private PlatformEventOutboxEntity buildStoredEntity(MessageEventDTO event) throws Exception {
         PlatformEventOutboxEntity entity = new PlatformEventOutboxEntity();
         entity.setId(1L);
-        entity.setTenantId(event.getTenantId());
         entity.setUserId(event.getUserId());
         entity.setSourceType(event.getSourceType());
         entity.setEventType(event.getEventType());
-        entity.setEventKey("NOTICE_CREATED:1001:9001:2001:9001");
+        entity.setEventKey(event.getEventKey());
         entity.setPayloadJson(objectMapper.writeValueAsString(event));
         entity.setDispatchStatus(PlatformEventOutboxService.STATUS_RECORDED);
         entity.setRetryCount(0);

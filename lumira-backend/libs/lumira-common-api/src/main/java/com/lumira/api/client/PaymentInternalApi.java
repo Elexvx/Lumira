@@ -7,11 +7,11 @@ import java.util.List;
 
 public interface PaymentInternalApi {
 
-    List<PaymentProviderSettingsDTO> listPaymentProviderSettings(Long tenantId);
+    List<PaymentProviderSettingsDTO> listPaymentProviderSettings();
 
-    PaymentProviderSettingsDTO paymentProviderSettings(Long tenantId, String providerCode);
+    PaymentProviderSettingsDTO paymentProviderSettings(String providerCode);
 
-    PaymentProviderSettingsDTO updatePaymentProviderSettings(Long tenantId, Long operatorId, String providerCode, PaymentProviderSettingsDTO request);
+    PaymentProviderSettingsDTO updatePaymentProviderSettings(Long operatorId, String providerCode, PaymentProviderSettingsDTO request);
 
-    PaymentProviderTestResultDTO testPaymentProvider(Long tenantId, Long operatorId, String providerCode);
+    PaymentProviderTestResultDTO testPaymentProvider(Long operatorId, String providerCode);
 }

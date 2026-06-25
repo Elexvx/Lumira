@@ -3,7 +3,6 @@ package com.lumira.saas.modules.system.sensitive.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.stereotype.Service;
 
@@ -11,9 +10,10 @@ import org.springframework.stereotype.Service;
 public class SensitiveWordPluginStateService {
 
     private static final String PLUGIN_CODE = "sensitive-words";
+    private static final int REQUIRED_SENSITIVE_WORD_COLUMNS = 12;
 
     private final MyBatisQueryOperations jdbcTemplate;
-    private volatile Boolean sensitiveWordTableExists;
+    private volatile Boolean sensitiveWordSchemaReady;
 
     public SensitiveWordPluginStateService(MyBatisQueryOperations jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -23,27 +23,22 @@ public class SensitiveWordPluginStateService {
         if (currentUser == null || !currentUser.isAuthenticated()) {
             return false;
         }
-        return isEnabled(resolveTenantId(currentUser));
-    }
-
-    public boolean isEnabled(Long tenantId) {
-        if (tenantId == null) {
-            return false;
-        }
         boolean enabled = jdbcTemplate.exists(
                 """
                         select 1
-                        from sys_plugin_tenant
-                        where tenant_id = ?
-                          and plugin_code = ?
-                          and enabled = 1
-                          and deleted = 0
+                        from sys_plugin_definition d
+                        join sys_plugin_version v
+                          on v.plugin_code = d.plugin_code
+                         and v.is_active = 1
+                         and v.deleted = 0
+                        where d.plugin_code = ?
+                          and d.status = 'ENABLED'
+                          and d.deleted = 0
                         limit 1
                         """,
-                tenantId,
                 PLUGIN_CODE
         );
-        return enabled && hasSensitiveWordTable();
+        return enabled && hasSensitiveWordSchema();
     }
 
     public void ensureEnabled(CurrentUser currentUser) {
@@ -52,15 +47,15 @@ public class SensitiveWordPluginStateService {
         }
     }
 
-    public boolean hasSensitiveWordTable() {
-        Boolean cached = sensitiveWordTableExists;
+    public boolean hasSensitiveWordSchema() {
+        Boolean cached = sensitiveWordSchemaReady;
         if (cached != null) {
             return cached;
         }
         synchronized (this) {
-            Boolean refreshed = sensitiveWordTableExists;
+            Boolean refreshed = sensitiveWordSchemaReady;
             if (refreshed == null) {
-                refreshed = jdbcTemplate.exists(
+                boolean tableExists = jdbcTemplate.exists(
                         """
                                 select 1
                                 from information_schema.tables
@@ -69,16 +64,27 @@ public class SensitiveWordPluginStateService {
                                 limit 1
                                 """
                 );
-                sensitiveWordTableExists = refreshed;
+                refreshed = tableExists && hasRequiredSensitiveWordColumns();
+                sensitiveWordSchemaReady = refreshed;
             }
             return refreshed;
         }
     }
 
-    private Long resolveTenantId(CurrentUser currentUser) {
-        if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
-        }
-        return PlatformContext.compatibilityTenantId();
+    private boolean hasRequiredSensitiveWordColumns() {
+        Long columnCount = jdbcTemplate.queryForObject(
+                """
+                        select count(1)
+                        from information_schema.columns
+                        where table_schema = database()
+                          and table_name = 'sys_sensitive_word'
+                          and column_name in (
+                              'id', 'word', 'normalized_word', 'category', 'severity', 'action',
+                              'enabled', 'created_by', 'created_at', 'updated_by', 'updated_at', 'deleted'
+                          )
+                        """,
+                Long.class
+        );
+        return columnCount != null && columnCount >= REQUIRED_SENSITIVE_WORD_COLUMNS;
     }
 }

@@ -18,7 +18,7 @@ public class SensitiveWordDictionaryCache {
     private final MyBatisQueryOperations jdbcTemplate;
     private final SensitiveWordDictionaryVersionService versionService;
     private final SensitiveWordMetrics metrics;
-    private final Cache<CacheKey, SensitiveWordMatcher> matcherCache = CacheBuilder.newBuilder()
+    private final Cache<Long, SensitiveWordMatcher> matcherCache = CacheBuilder.newBuilder()
             .maximumSize(256)
             .expireAfterAccess(30, TimeUnit.MINUTES)
             .build();
@@ -33,38 +33,36 @@ public class SensitiveWordDictionaryCache {
         this.metrics = metrics;
     }
 
-    public SensitiveWordMatcher getMatcher(Long tenantId) {
-        CacheKey key = new CacheKey(tenantId, versionService.currentVersion(tenantId));
+    public SensitiveWordMatcher getMatcher() {
+        long key = versionService.currentVersion();
         SensitiveWordMatcher cached = matcherCache.getIfPresent(key);
         metrics.recordCacheHit(cached != null);
         if (cached != null) {
             return cached;
         }
         try {
-            return matcherCache.get(key, () -> buildMatcher(tenantId));
+            return matcherCache.get(key, this::buildMatcher);
         } catch (ExecutionException exception) {
             metrics.recordBuildFailure();
             throw new IllegalStateException("Failed to build sensitive word dictionary", exception);
         }
     }
 
-    public void invalidate(Long tenantId) {
-        versionService.bumpVersion(tenantId);
+    public void invalidate() {
+        versionService.bumpVersion();
     }
 
-    private SensitiveWordMatcher buildMatcher(Long tenantId) {
+    private SensitiveWordMatcher buildMatcher() {
         Instant startedAt = Instant.now();
         try {
             List<DictionaryRow> rows = jdbcTemplate.query(
                     """
                             select id, word, normalized_word as normalizedWord, category, severity, action
                             from sys_sensitive_word
-                            where tenant_id = ?
-                              and enabled = 1
+                            where enabled = 1
                               and deleted = 0
                             """,
-                    new BeanPropertyRowMapper<>(DictionaryRow.class),
-                    tenantId
+                    new BeanPropertyRowMapper<>(DictionaryRow.class)
             );
             List<SensitiveWordMatcher.DictionaryEntry> entries = rows.stream()
                     .filter(row -> row.getNormalizedWord() != null && !row.getNormalizedWord().isBlank())
@@ -107,9 +105,6 @@ public class SensitiveWordDictionaryCache {
         }
         String normalized = action.trim().toUpperCase();
         return "LOG_ONLY".equals(normalized) ? "LOG_ONLY" : "BLOCK";
-    }
-
-    private record CacheKey(Long tenantId, long version) {
     }
 
     public static class DictionaryRow {

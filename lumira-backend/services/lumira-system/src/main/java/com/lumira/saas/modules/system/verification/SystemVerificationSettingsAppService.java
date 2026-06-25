@@ -82,8 +82,8 @@ public class SystemVerificationSettingsAppService {
                 .build();
     }
 
-    public SystemVO.SmsVerificationSettingsVO getSmsSettings(Long tenantId) {
-        SmsVerificationSettingsRecord record = loadSmsSettingsRecord(tenantId);
+    public SystemVO.SmsVerificationSettingsVO getSmsSettings() {
+        SmsVerificationSettingsRecord record = loadSmsSettingsRecord();
         SystemVO.SmsVerificationSettingsVO settings = new SystemVO.SmsVerificationSettingsVO();
         settings.setEnabled(record.enabled());
         settings.setProvider(record.provider());
@@ -98,34 +98,34 @@ public class SystemVerificationSettingsAppService {
         return settings;
     }
 
-    public SystemVO.VerificationSettingsVO getVerificationSettings(Long tenantId) {
+    public SystemVO.VerificationSettingsVO getVerificationSettings() {
         SystemVO.VerificationSettingsVO settings = new SystemVO.VerificationSettingsVO();
-        settings.setEnabled(isTotpEnabled(tenantId));
-        settings.setEmailLoginEnabled(isEmailLoginEnabled(tenantId));
-        settings.setPasswordLoginEnabled(isPasswordLoginEnabled(tenantId));
-        settings.setLoginModeOrder(loginModeOrder(tenantId));
+        settings.setEnabled(isTotpEnabled());
+        settings.setEmailLoginEnabled(isEmailLoginEnabled());
+        settings.setPasswordLoginEnabled(isPasswordLoginEnabled());
+        settings.setLoginModeOrder(loginModeOrder());
         return settings;
     }
 
-    public SystemVO.LoginCapabilitiesVO loadLoginCapabilities(Long tenantId) {
+    public SystemVO.LoginCapabilitiesVO loadLoginCapabilities() {
         SystemVO.LoginCapabilitiesVO capabilities = new SystemVO.LoginCapabilitiesVO();
-        capabilities.setPasswordLoginAvailable(isPasswordLoginEnabled(tenantId));
-        capabilities.setSmsLoginAvailable(isSmsLoginAvailable(tenantId));
-        capabilities.setEmailLoginAvailable(isEmailLoginAvailable(tenantId));
-        capabilities.setWechatLoginAvailable(wechatLoginSettingsService.isAvailable(tenantId));
-        SystemVO.PasskeySettingsVO passkey = getPasskeySettings(tenantId);
+        capabilities.setPasswordLoginAvailable(isPasswordLoginEnabled());
+        capabilities.setSmsLoginAvailable(isSmsLoginAvailable());
+        capabilities.setEmailLoginAvailable(isEmailLoginAvailable());
+        capabilities.setWechatLoginAvailable(wechatLoginSettingsService.isAvailable());
+        SystemVO.PasskeySettingsVO passkey = getPasskeySettings();
         capabilities.setPasskeyLoginAvailable(Boolean.TRUE.equals(passkey.getEnabled()));
         capabilities.setPasskeyPasswordlessAvailable(Boolean.TRUE.equals(passkey.getEnabled()) && Boolean.TRUE.equals(passkey.getPasswordlessEnabled()));
-        capabilities.setLoginModeOrder(loginModeOrder(tenantId));
+        capabilities.setLoginModeOrder(loginModeOrder());
         return capabilities;
     }
 
-    public SystemVO.WechatLoginSettingsVO getWechatSettings(Long tenantId) {
-        return wechatLoginSettingsService.getSettings(tenantId);
+    public SystemVO.WechatLoginSettingsVO getWechatSettings() {
+        return wechatLoginSettingsService.getSettings();
     }
 
-    public SystemVO.PasskeySettingsVO getPasskeySettings(Long tenantId) {
-        Map<String, String> values = loadConfigValuesByKeys(tenantId, passkeyConfigKeys());
+    public SystemVO.PasskeySettingsVO getPasskeySettings() {
+        Map<String, String> values = loadConfigValuesByKeys(passkeyConfigKeys());
         SystemVO.PasskeySettingsVO settings = new SystemVO.PasskeySettingsVO();
         settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_ENABLED_KEY), "false")));
         settings.setPasswordlessEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_PASSWORDLESS_ENABLED_KEY), "false")));
@@ -138,24 +138,22 @@ public class SystemVerificationSettingsAppService {
     }
 
     public SystemVO.VerificationSettingsVO updateVerificationSettings(CurrentUser currentUser, SystemDTO.VerificationSettingsRequest request) {
-        Long tenantId = requireTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
-        boolean enabled = request.getEnabled() == null ? isTotpEnabled(tenantId) : request.getEnabled();
-        boolean emailLoginEnabled = request.getEmailLoginEnabled() == null ? isEmailLoginEnabled(tenantId) : request.getEmailLoginEnabled();
-        boolean passwordLoginEnabled = request.getPasswordLoginEnabled() == null ? isPasswordLoginEnabled(tenantId) : request.getPasswordLoginEnabled();
-        upsertPlatformConfigValue(tenantId, TOTP_CONFIG_ENABLED_KEY, "2FA 启用", String.valueOf(enabled), "是否启用 2FA 登录方式", operatorId);
-        upsertPlatformConfigValue(tenantId, EMAIL_LOGIN_ENABLED_KEY, "邮箱验证码登录", String.valueOf(emailLoginEnabled), "是否启用邮箱验证码登录", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSWORD_LOGIN_ENABLED_KEY, "密码登录", String.valueOf(passwordLoginEnabled), "是否启用账号密码登录", operatorId);
+        boolean enabled = request.getEnabled() == null ? isTotpEnabled() : request.getEnabled();
+        boolean emailLoginEnabled = request.getEmailLoginEnabled() == null ? isEmailLoginEnabled() : request.getEmailLoginEnabled();
+        boolean passwordLoginEnabled = request.getPasswordLoginEnabled() == null ? isPasswordLoginEnabled() : request.getPasswordLoginEnabled();
+        upsertPlatformConfigValue(TOTP_CONFIG_ENABLED_KEY, "2FA 启用", String.valueOf(enabled), "是否启用 2FA 登录方式", operatorId);
+        upsertPlatformConfigValue(EMAIL_LOGIN_ENABLED_KEY, "邮箱验证码登录", String.valueOf(emailLoginEnabled), "是否启用邮箱验证码登录", operatorId);
+        upsertPlatformConfigValue(PASSWORD_LOGIN_ENABLED_KEY, "密码登录", String.valueOf(passwordLoginEnabled), "是否启用账号密码登录", operatorId);
         if (request.getLoginModeOrder() != null) {
-            upsertPlatformConfigValue(tenantId, LOGIN_MODE_ORDER_KEY, "登录方式排序", String.join(",", normalizeLoginModeOrder(request.getLoginModeOrder())), "登录页分段控制器展示顺序", operatorId);
+            upsertPlatformConfigValue(LOGIN_MODE_ORDER_KEY, "登录方式排序", String.join(",", normalizeLoginModeOrder(request.getLoginModeOrder())), "登录页分段控制器展示顺序", operatorId);
         }
-        return getVerificationSettings(tenantId);
+        return getVerificationSettings();
     }
 
     public SystemVO.SmsVerificationSettingsVO updateSmsSettings(CurrentUser currentUser, SystemDTO.SmsVerificationSettingsRequest request) {
-        Long tenantId = requireTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
-        SmsVerificationSettingsRecord current = loadSmsSettingsRecord(tenantId);
+        SmsVerificationSettingsRecord current = loadSmsSettingsRecord();
         Boolean enabled = request.getEnabled() == null ? current.enabled() : request.getEnabled();
         String provider = sanitizeText(request.getProvider(), current.provider());
         String signName = sanitizeText(request.getSignName(), current.signName());
@@ -166,46 +164,42 @@ public class SystemVerificationSettingsAppService {
         String endpoint = sanitizeText(request.getEndpoint(), current.endpoint());
         String region = sanitizeText(request.getRegion(), current.region());
 
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ENABLED_KEY, "短信验证码启用", String.valueOf(Boolean.TRUE.equals(enabled)), "是否启用短信验证码服务", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_PROVIDER_KEY, "短信验证码服务商", provider, "短信验证码服务提供方", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_SIGN_NAME_KEY, "短信签名", signName, "短信验证码签名", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_TEMPLATE_CODE_KEY, "短信模板编码", templateCode, "短信验证码模板编码", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ACCESS_KEY_ID_KEY, "短信 Access Key ID", accessKeyId, "短信验证码访问密钥 ID", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "短信 Access Key Secret", accessKeySecret, "短信验证码访问密钥 Secret", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ENDPOINT_KEY, "短信服务地址", endpoint, "短信验证码服务端点", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_REGION_KEY, "短信服务地域", region, "短信验证码服务地域", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_ENABLED_KEY, "短信验证码启用", String.valueOf(Boolean.TRUE.equals(enabled)), "是否启用短信验证码服务", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_PROVIDER_KEY, "短信验证码服务商", provider, "短信验证码服务提供方", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_SIGN_NAME_KEY, "短信签名", signName, "短信验证码签名", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_TEMPLATE_CODE_KEY, "短信模板编码", templateCode, "短信验证码模板编码", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_ID_KEY, "短信 Access Key ID", accessKeyId, "短信验证码访问密钥 ID", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "短信 Access Key Secret", accessKeySecret, "短信验证码访问密钥 Secret", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_ENDPOINT_KEY, "短信服务地址", endpoint, "短信验证码服务端点", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_REGION_KEY, "短信服务地域", region, "短信验证码服务地域", operatorId);
 
-        return getSmsSettings(tenantId);
+        return getSmsSettings();
     }
 
     public SystemVO.SmsVerificationSettingsVO resetSmsSettings(CurrentUser currentUser) {
-        Long tenantId = requireTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ENABLED_KEY, "短信验证码启用", "false", "是否启用短信验证码服务", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_PROVIDER_KEY, "短信验证码服务商", "aliyun", "短信验证码服务提供方", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_SIGN_NAME_KEY, "短信签名", "", "短信验证码签名", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_TEMPLATE_CODE_KEY, "短信模板编码", "", "短信验证码模板编码", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ACCESS_KEY_ID_KEY, "短信 Access Key ID", "", "短信验证码访问密钥 ID", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "短信 Access Key Secret", "", "短信验证码访问密钥 Secret", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_ENDPOINT_KEY, "短信服务地址", "", "短信验证码服务端点", operatorId);
-        upsertSmsConfigValue(tenantId, SMS_CONFIG_REGION_KEY, "短信服务地域", "", "短信验证码服务地域", operatorId);
-        return getSmsSettings(tenantId);
+        upsertSmsConfigValue(SMS_CONFIG_ENABLED_KEY, "短信验证码启用", "false", "是否启用短信验证码服务", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_PROVIDER_KEY, "短信验证码服务商", "aliyun", "短信验证码服务提供方", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_SIGN_NAME_KEY, "短信签名", "", "短信验证码签名", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_TEMPLATE_CODE_KEY, "短信模板编码", "", "短信验证码模板编码", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_ID_KEY, "短信 Access Key ID", "", "短信验证码访问密钥 ID", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "短信 Access Key Secret", "", "短信验证码访问密钥 Secret", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_ENDPOINT_KEY, "短信服务地址", "", "短信验证码服务端点", operatorId);
+        upsertSmsConfigValue(SMS_CONFIG_REGION_KEY, "短信服务地域", "", "短信验证码服务地域", operatorId);
+        return getSmsSettings();
     }
 
     public SystemVO.WechatLoginSettingsVO updateWechatSettings(CurrentUser currentUser, SystemDTO.WechatLoginSettingsRequest request) {
-        Long tenantId = requireTenantId(currentUser);
-        return wechatLoginSettingsService.updateSettings(tenantId, currentUser.getUserId(), request);
+        return wechatLoginSettingsService.updateSettings(currentUser.getUserId(), request);
     }
 
     public SystemVO.WechatLoginSettingsVO resetWechatSettings(CurrentUser currentUser) {
-        Long tenantId = requireTenantId(currentUser);
-        return wechatLoginSettingsService.resetSettings(tenantId, currentUser.getUserId());
+        return wechatLoginSettingsService.resetSettings(currentUser.getUserId());
     }
 
     public SystemVO.PasskeySettingsVO updatePasskeySettings(CurrentUser currentUser, SystemDTO.PasskeySettingsRequest request) {
-        Long tenantId = requireTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
-        SystemVO.PasskeySettingsVO current = getPasskeySettings(tenantId);
+        SystemVO.PasskeySettingsVO current = getPasskeySettings();
         boolean enabled = request.getEnabled() == null ? Boolean.TRUE.equals(current.getEnabled()) : request.getEnabled();
         boolean passwordless = request.getPasswordlessEnabled() == null ? Boolean.TRUE.equals(current.getPasswordlessEnabled()) : request.getPasswordlessEnabled();
         boolean selfBinding = request.getSelfBindingEnabled() == null ? Boolean.TRUE.equals(current.getSelfBindingEnabled()) : request.getSelfBindingEnabled();
@@ -218,31 +212,30 @@ public class SystemVerificationSettingsAppService {
                 .toList();
         int ttl = request.getChallengeTtlSeconds() == null ? current.getChallengeTtlSeconds() : request.getChallengeTtlSeconds();
 
-        upsertPlatformConfigValue(tenantId, PASSKEY_ENABLED_KEY, "通行密钥启用", String.valueOf(enabled), "是否启用通行密钥登录", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_PASSWORDLESS_ENABLED_KEY, "通行密钥无账号登录", String.valueOf(passwordless), "是否允许发现式凭据无账号登录", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_SELF_BINDING_ENABLED_KEY, "通行密钥自助绑定", String.valueOf(selfBinding), "是否允许用户在个人中心自助绑定通行密钥", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_RP_ID_KEY, "通行密钥 RP ID", rpId, "WebAuthn RP ID", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_RP_NAME_KEY, "通行密钥 RP 名称", rpName, "WebAuthn RP 显示名称", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_ALLOWED_ORIGINS_KEY, "通行密钥允许 Origin", String.join("\n", origins), "WebAuthn 允许的前端 Origin", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_CHALLENGE_TTL_KEY, "通行密钥 Challenge TTL", String.valueOf(ttl), "WebAuthn challenge 有效期秒数", operatorId);
-        return getPasskeySettings(tenantId);
+        upsertPlatformConfigValue(PASSKEY_ENABLED_KEY, "通行密钥启用", String.valueOf(enabled), "是否启用通行密钥登录", operatorId);
+        upsertPlatformConfigValue(PASSKEY_PASSWORDLESS_ENABLED_KEY, "通行密钥无账号登录", String.valueOf(passwordless), "是否允许发现式凭据无账号登录", operatorId);
+        upsertPlatformConfigValue(PASSKEY_SELF_BINDING_ENABLED_KEY, "通行密钥自助绑定", String.valueOf(selfBinding), "是否允许用户在个人中心自助绑定通行密钥", operatorId);
+        upsertPlatformConfigValue(PASSKEY_RP_ID_KEY, "通行密钥 RP ID", rpId, "WebAuthn RP ID", operatorId);
+        upsertPlatformConfigValue(PASSKEY_RP_NAME_KEY, "通行密钥 RP 名称", rpName, "WebAuthn RP 显示名称", operatorId);
+        upsertPlatformConfigValue(PASSKEY_ALLOWED_ORIGINS_KEY, "通行密钥允许 Origin", String.join("\n", origins), "WebAuthn 允许的前端 Origin", operatorId);
+        upsertPlatformConfigValue(PASSKEY_CHALLENGE_TTL_KEY, "通行密钥 Challenge TTL", String.valueOf(ttl), "WebAuthn challenge 有效期秒数", operatorId);
+        return getPasskeySettings();
     }
 
     public SystemVO.PasskeySettingsVO resetPasskeySettings(CurrentUser currentUser) {
-        Long tenantId = requireTenantId(currentUser);
         Long operatorId = currentUser.getUserId();
-        upsertPlatformConfigValue(tenantId, PASSKEY_ENABLED_KEY, "通行密钥启用", "false", "是否启用通行密钥登录", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_PASSWORDLESS_ENABLED_KEY, "通行密钥无账号登录", "false", "是否允许发现式凭据无账号登录", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_SELF_BINDING_ENABLED_KEY, "通行密钥自助绑定", "true", "是否允许用户在个人中心自助绑定通行密钥", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_RP_ID_KEY, "通行密钥 RP ID", "", "WebAuthn RP ID", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_RP_NAME_KEY, "通行密钥 RP 名称", "", "WebAuthn RP 显示名称", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_ALLOWED_ORIGINS_KEY, "通行密钥允许 Origin", "", "WebAuthn 允许的前端 Origin", operatorId);
-        upsertPlatformConfigValue(tenantId, PASSKEY_CHALLENGE_TTL_KEY, "通行密钥 Challenge TTL", "120", "WebAuthn challenge 有效期秒数", operatorId);
-        return getPasskeySettings(tenantId);
+        upsertPlatformConfigValue(PASSKEY_ENABLED_KEY, "通行密钥启用", "false", "是否启用通行密钥登录", operatorId);
+        upsertPlatformConfigValue(PASSKEY_PASSWORDLESS_ENABLED_KEY, "通行密钥无账号登录", "false", "是否允许发现式凭据无账号登录", operatorId);
+        upsertPlatformConfigValue(PASSKEY_SELF_BINDING_ENABLED_KEY, "通行密钥自助绑定", "true", "是否允许用户在个人中心自助绑定通行密钥", operatorId);
+        upsertPlatformConfigValue(PASSKEY_RP_ID_KEY, "通行密钥 RP ID", "", "WebAuthn RP ID", operatorId);
+        upsertPlatformConfigValue(PASSKEY_RP_NAME_KEY, "通行密钥 RP 名称", "", "WebAuthn RP 显示名称", operatorId);
+        upsertPlatformConfigValue(PASSKEY_ALLOWED_ORIGINS_KEY, "通行密钥允许 Origin", "", "WebAuthn 允许的前端 Origin", operatorId);
+        upsertPlatformConfigValue(PASSKEY_CHALLENGE_TTL_KEY, "通行密钥 Challenge TTL", "120", "WebAuthn challenge 有效期秒数", operatorId);
+        return getPasskeySettings();
     }
 
-    private SmsVerificationSettingsRecord loadSmsSettingsRecord(Long tenantId) {
-        Map<String, String> values = loadConfigValuesByKeys(tenantId, smsConfigKeys());
+    private SmsVerificationSettingsRecord loadSmsSettingsRecord() {
+        Map<String, String> values = loadConfigValuesByKeys(smsConfigKeys());
         boolean enabled = Boolean.parseBoolean(defaultIfBlank(values.get(SMS_CONFIG_ENABLED_KEY), "false"));
         String provider = defaultIfBlank(values.get(SMS_CONFIG_PROVIDER_KEY), "aliyun");
         String signName = defaultIfBlank(values.get(SMS_CONFIG_SIGN_NAME_KEY), "");
@@ -259,25 +252,24 @@ public class SystemVerificationSettingsAppService {
         return new SmsVerificationSettingsRecord(enabled, provider, signName, templateCode, accessKeyId, accessKeySecret, endpoint, region, configured);
     }
 
-    private void upsertSmsConfigValue(Long tenantId, String configKey, String configName, String configValue, String remark, Long operatorId) {
-        upsertConfigValue(tenantId, configKey, configName, configValue, remark, operatorId);
+    private void upsertSmsConfigValue(String configKey, String configName, String configValue, String remark, Long operatorId) {
+        upsertConfigValue(configKey, configName, configValue, remark, operatorId);
     }
 
-    private void upsertPlatformConfigValue(Long tenantId, String configKey, String configName, String configValue, String remark, Long operatorId) {
-        upsertConfigValue(tenantId, configKey, configName, configValue, remark, operatorId);
+    private void upsertPlatformConfigValue(String configKey, String configName, String configValue, String remark, Long operatorId) {
+        upsertConfigValue(configKey, configName, configValue, remark, operatorId);
     }
 
-    private void upsertConfigValue(Long tenantId, String configKey, String configName, String configValue, String remark, Long operatorId) {
-        Long existingId = queryConfigId(configKey, tenantId);
+    private void upsertConfigValue(String configKey, String configName, String configValue, String remark, Long operatorId) {
+        Long existingId = queryConfigId(configKey);
         if (existingId == null) {
             jdbcTemplate.update(
                     """
                             insert into sys_config (
-                                tenant_id, config_key, config_name, config_value, config_scope, is_system, remark,
+                                config_key, config_name, config_value, config_scope, is_system, remark,
                                 created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
+                            ) values (?, ?, ?, 'PLATFORM', 0, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     configKey,
                     configName,
                     encryptConfigValue(configKey, configValue),
@@ -305,19 +297,18 @@ public class SystemVerificationSettingsAppService {
         invalidateConfigCaches();
     }
 
-    private Long queryConfigId(String configKey, Long tenantId) {
+    private Long queryConfigId(String configKey) {
         try {
             return jdbcTemplate.queryForObject(
                     """
                             select id
                             from sys_config
-                            where config_key = ? and tenant_id <=> ? and deleted = 0
+                            where config_key = ? and deleted = 0
                             order by id desc
                             limit 1
                             """,
                     Long.class,
-                    configKey,
-                    tenantId
+                    configKey
             );
         } catch (Exception ignored) {
             return null;
@@ -349,9 +340,8 @@ public class SystemVerificationSettingsAppService {
         );
     }
 
-    private Map<String, String> loadConfigValuesByKeys(Long tenantId, List<String> keys) {
-        Long effectiveTenantId = tenantId == null ? com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        String cacheKey = configSnapshotCacheKey(effectiveTenantId, keys);
+    private Map<String, String> loadConfigValuesByKeys(List<String> keys) {
+        String cacheKey = configSnapshotCacheKey(keys);
         Map<String, String> cached = configSnapshotCache.getIfPresent(cacheKey);
         if (cached != null) {
             return new LinkedHashMap<>(cached);
@@ -359,7 +349,7 @@ public class SystemVerificationSettingsAppService {
         try {
             CompletableFuture<Map<String, String>> inFlight = configLoadInFlight.get(
                     cacheKey,
-                    () -> CompletableFuture.completedFuture(loadConfigValuesByKeysFromDatabase(effectiveTenantId, cacheKey, keys))
+                    () -> CompletableFuture.completedFuture(loadConfigValuesByKeysFromDatabase(cacheKey, keys))
             );
             return new LinkedHashMap<>(inFlight.join());
         } catch (CompletionException exception) {
@@ -375,24 +365,21 @@ public class SystemVerificationSettingsAppService {
         }
     }
 
-    private Map<String, String> loadConfigValuesByKeysFromDatabase(Long tenantId, String cacheKey, List<String> keys) {
+    private Map<String, String> loadConfigValuesByKeysFromDatabase(String cacheKey, List<String> keys) {
         Map<String, String> cached = configSnapshotCache.getIfPresent(cacheKey);
         if (cached != null) {
             return new LinkedHashMap<>(cached);
         }
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
-                select tenant_id as tenantId, config_key as configKey, config_value as configValue
+                select config_key as configKey, config_value as configValue
                 from sys_config
                 where deleted = 0
                   and config_scope = 'PLATFORM'
                 and config_key in (%s)
-                and (tenant_id = ? or tenant_id is null)
-                order by case when tenant_id = ? then 0 when tenant_id is null then 1 else 2 end, id desc
+                order by id desc
                 """.formatted(placeholders);
         List<Object> params = new ArrayList<>(keys);
-        params.add(tenantId);
-        params.add(tenantId);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, params.toArray());
         Map<String, String> valueByKey = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
@@ -405,8 +392,8 @@ public class SystemVerificationSettingsAppService {
         return valueByKey;
     }
 
-    private String configSnapshotCacheKey(Long tenantId, List<String> keys) {
-        return tenantId + ":" + keys.stream().sorted().collect(Collectors.joining(","));
+    private String configSnapshotCacheKey(List<String> keys) {
+        return "global:" + keys.stream().sorted().collect(Collectors.joining(","));
     }
 
     private void invalidateConfigCaches() {
@@ -449,27 +436,24 @@ public class SystemVerificationSettingsAppService {
         }
     }
 
-    private Long requireTenantId(CurrentUser currentUser) {
-        return com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
-    }
 
-    private boolean isTotpEnabled(Long tenantId) {
-        Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(TOTP_CONFIG_ENABLED_KEY));
+    private boolean isTotpEnabled() {
+        Map<String, String> values = loadConfigValuesByKeys(List.of(TOTP_CONFIG_ENABLED_KEY));
         return Boolean.parseBoolean(defaultIfBlank(values.get(TOTP_CONFIG_ENABLED_KEY), "true"));
     }
 
-    private boolean isEmailLoginEnabled(Long tenantId) {
-        Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(EMAIL_LOGIN_ENABLED_KEY));
+    private boolean isEmailLoginEnabled() {
+        Map<String, String> values = loadConfigValuesByKeys(List.of(EMAIL_LOGIN_ENABLED_KEY));
         return Boolean.parseBoolean(defaultIfBlank(values.get(EMAIL_LOGIN_ENABLED_KEY), String.valueOf(properties.isEmailLoginEnabled())));
     }
 
-    private boolean isPasswordLoginEnabled(Long tenantId) {
-        Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(PASSWORD_LOGIN_ENABLED_KEY));
+    private boolean isPasswordLoginEnabled() {
+        Map<String, String> values = loadConfigValuesByKeys(List.of(PASSWORD_LOGIN_ENABLED_KEY));
         return Boolean.parseBoolean(defaultIfBlank(values.get(PASSWORD_LOGIN_ENABLED_KEY), "true"));
     }
 
-    private List<String> loginModeOrder(Long tenantId) {
-        Map<String, String> values = loadConfigValuesByKeys(tenantId, List.of(LOGIN_MODE_ORDER_KEY));
+    private List<String> loginModeOrder() {
+        Map<String, String> values = loadConfigValuesByKeys(List.of(LOGIN_MODE_ORDER_KEY));
         String configured = values.get(LOGIN_MODE_ORDER_KEY);
         if (!StringUtils.hasText(configured)) {
             return DEFAULT_LOGIN_MODE_ORDER;
@@ -492,12 +476,12 @@ public class SystemVerificationSettingsAppService {
         return normalized;
     }
 
-    private boolean isEmailLoginAvailable(Long tenantId) {
-        return isEmailLoginEnabled(tenantId) && smtpMailService.isConfigured(tenantId);
+    private boolean isEmailLoginAvailable() {
+        return isEmailLoginEnabled() && smtpMailService.isConfigured();
     }
 
-    private boolean isSmsLoginAvailable(Long tenantId) {
-        SmsVerificationSettingsRecord smsSettings = loadSmsSettingsRecord(tenantId);
+    private boolean isSmsLoginAvailable() {
+        SmsVerificationSettingsRecord smsSettings = loadSmsSettingsRecord();
         return smsSettings.enabled() && smsSettings.configured();
     }
 

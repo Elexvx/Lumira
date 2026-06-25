@@ -26,7 +26,6 @@ public class FileDomainEventPublisher implements DomainEventPublisher {
         platformEventOutboxService.recordAfterCommit(
                 FilePlatformEventTypes.SOURCE_FILE,
                 event.eventType(),
-                event.tenantId(),
                 null,
                 event.eventKey(),
                 payload(event)
@@ -37,7 +36,6 @@ public class FileDomainEventPublisher implements DomainEventPublisher {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("schemaVersion", event.schemaVersion());
         payload.put("occurredAt", event.occurredAt() == null ? Instant.now() : event.occurredAt());
-        payload.put("tenantId", event.tenantId());
         payload.put("userId", null);
         payload.put("aggregateType", event.aggregateType());
         payload.put("aggregateId", event.aggregateId());

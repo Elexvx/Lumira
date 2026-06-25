@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 
 public record StorageSpaceDTO(
         Long id,
-        Long tenantId,
         String title,
         String storageKey,
         String provider,

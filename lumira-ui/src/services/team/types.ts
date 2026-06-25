@@ -5,7 +5,6 @@ export type TeamJoinMode = string;
 
 export interface TeamRecord {
   id: number;
-  tenantId: number;
   teamCode: string;
   teamName: string;
   teamType: TeamType;
@@ -13,7 +12,6 @@ export interface TeamRecord {
   description?: string | null;
   visibility: TeamVisibility;
   joinMode: TeamJoinMode;
-  ownerUserId: number;
   memberCount: number;
   status: string;
   myRole?: TeamRole | null;
@@ -23,7 +21,6 @@ export interface TeamRecord {
 
 export interface TeamMemberRecord {
   id: number;
-  tenantId: number;
   teamId: number;
   userId?: number | null;
   role: TeamRole;
@@ -41,7 +38,6 @@ export interface TeamMemberRecord {
 
 export interface TeamInviteRecord {
   id: number;
-  tenantId: number;
   teamId: number;
   teamName?: string;
   teamType?: string;
@@ -60,7 +56,6 @@ export interface TeamInviteRecord {
 
 export interface TeamJoinRequestRecord {
   id: number;
-  tenantId: number;
   teamId: number;
   userId: number;
   inviteId?: number | null;

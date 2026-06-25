@@ -30,18 +30,17 @@ class FileProcessingTaskServiceTest {
     void requestTasksForUpload_shouldCreateExpectedTasksAndPublishEvents() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        when(jdbcTemplate.update(anyString(), anyLong(), anyLong(), anyString(), eq(FileProcessingTaskService.STATUS_PENDING), anyInt(), anyLong(), anyLong()))
+        when(jdbcTemplate.update(anyString(), anyLong(), anyString(), eq(FileProcessingTaskService.STATUS_PENDING), anyInt(), anyLong(), anyLong()))
                 .thenReturn(1);
         var service = service(jdbcTemplate, outboxService);
 
         int requested = service.requestTasksForUpload(file("pdf", "application/pdf"), 2001L);
 
         assertThat(requested).isEqualTo(3);
-        verify(jdbcTemplate, times(3)).update(anyString(), anyLong(), anyLong(), anyString(), eq(FileProcessingTaskService.STATUS_PENDING), anyInt(), anyLong(), anyLong());
+        verify(jdbcTemplate, times(3)).update(anyString(), anyLong(), anyString(), eq(FileProcessingTaskService.STATUS_PENDING), anyInt(), anyLong(), anyLong());
         verify(outboxService, times(3)).recordAfterCommit(
                 eq(FilePlatformEventTypes.SOURCE_FILE),
                 eq(FilePlatformEventTypes.FILE_PROCESSING_TASK_REQUESTED),
-                eq(1001L),
                 eq(2001L),
                 anyString(),
                 any()
@@ -57,7 +56,6 @@ class FileProcessingTaskServiceTest {
                     RowMapper<FileProcessingTaskService.ProcessingTask> mapper = invocation.getArgument(1);
                     ResultSet resultSet = mock(ResultSet.class);
                     when(resultSet.getLong("id")).thenReturn(99L);
-                    when(resultSet.getLong("tenantId")).thenReturn(1001L);
                     when(resultSet.getLong("fileId")).thenReturn(3001L);
                     when(resultSet.getString("taskType")).thenReturn(FileProcessingTaskService.TASK_SECURITY_SCAN);
                     when(resultSet.getString("status")).thenReturn(FileProcessingTaskService.STATUS_PROCESSING);
@@ -116,7 +114,6 @@ class FileProcessingTaskServiceTest {
         var service = service(jdbcTemplate, outboxService);
         var task = new FileProcessingTaskService.ProcessingTask(
                 99L,
-                1001L,
                 3001L,
                 FileProcessingTaskService.TASK_SECURITY_SCAN,
                 FileProcessingTaskService.STATUS_PROCESSING,
@@ -151,7 +148,6 @@ class FileProcessingTaskServiceTest {
         var service = service(jdbcTemplate, outboxService);
         var task = new FileProcessingTaskService.ProcessingTask(
                 99L,
-                1001L,
                 3001L,
                 FileProcessingTaskService.TASK_SECURITY_SCAN,
                 FileProcessingTaskService.STATUS_PROCESSING,
@@ -210,7 +206,7 @@ class FileProcessingTaskServiceTest {
         int processed = service.processPendingTasks(10);
 
         assertThat(processed).isEqualTo(1);
-        verify(securityScanProcessor).scan(1001L, 3001L, 2001L);
+        verify(securityScanProcessor).scan(3001L, 2001L);
         verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
@@ -225,7 +221,7 @@ class FileProcessingTaskServiceTest {
         int processed = service.processPendingTasks(10);
 
         assertThat(processed).isEqualTo(1);
-        verify(thumbnailProcessor).generateThumbnail(1001L, 3001L, 2001L);
+        verify(thumbnailProcessor).generateThumbnail(3001L, 2001L);
         verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
@@ -240,7 +236,7 @@ class FileProcessingTaskServiceTest {
         int processed = service.processPendingTasks(10);
 
         assertThat(processed).isEqualTo(1);
-        verify(ocrProcessor).extractImageText(1001L, 3001L, 2001L);
+        verify(ocrProcessor).extractImageText(3001L, 2001L);
         verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
@@ -268,7 +264,7 @@ class FileProcessingTaskServiceTest {
         int processed = service.processPendingTasks(10);
 
         assertThat(processed).isEqualTo(1);
-        verify(textExtractionProcessor).extractText(1001L, 3001L, 2001L);
+        verify(textExtractionProcessor).extractText(3001L, 2001L);
         verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
@@ -283,7 +279,7 @@ class FileProcessingTaskServiceTest {
         int processed = service.processPendingTasks(10);
 
         assertThat(processed).isEqualTo(1);
-        verify(aiParseProcessor).prepareForAiParse(1001L, 3001L, 2001L);
+        verify(aiParseProcessor).prepareForAiParse(3001L, 2001L);
         verify(jdbcTemplate).update(anyString(), eq(FileProcessingTaskService.STATUS_SUCCEEDED), any(LocalDateTime.class), any(LocalDateTime.class), eq(2001L), eq(99L), eq("claim-token"));
     }
 
@@ -293,7 +289,6 @@ class FileProcessingTaskServiceTest {
                     RowMapper<FileProcessingTaskService.ProcessingTask> mapper = invocation.getArgument(1);
                     ResultSet resultSet = mock(ResultSet.class);
                     when(resultSet.getLong("id")).thenReturn(99L);
-                    when(resultSet.getLong("tenantId")).thenReturn(1001L);
                     when(resultSet.getLong("fileId")).thenReturn(3001L);
                     when(resultSet.getString("taskType")).thenReturn(taskType);
                     when(resultSet.getString("status")).thenReturn(FileProcessingTaskService.STATUS_PROCESSING);
@@ -319,7 +314,6 @@ class FileProcessingTaskServiceTest {
     private List<FileProcessingTaskService.ProcessingTask> mapSingleTask(RowMapper<FileProcessingTaskService.ProcessingTask> mapper) throws Exception {
         ResultSet resultSet = mock(ResultSet.class);
         when(resultSet.getLong("id")).thenReturn(99L);
-        when(resultSet.getLong("tenantId")).thenReturn(1001L);
         when(resultSet.getLong("fileId")).thenReturn(3001L);
         when(resultSet.getString("taskType")).thenReturn(FileProcessingTaskService.TASK_SECURITY_SCAN);
         when(resultSet.getString("status")).thenReturn(FileProcessingTaskService.STATUS_PROCESSING);
@@ -340,7 +334,6 @@ class FileProcessingTaskServiceTest {
     private FileObjectDTO file(String extension, String mimeType) {
         return new FileObjectDTO(
                 3001L,
-                1001L,
                 2001L,
                 "tester",
                 "report." + extension,

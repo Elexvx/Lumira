@@ -105,7 +105,6 @@ const normalizeMessageCenterNotice = (notice: MessageNoticeRecord): MessageCente
 
 export interface MessageCenterRealtimeEvent {
   eventType?: string;
-  tenantId?: number;
   userId?: number;
   unreadCount?: number;
   message?: string;

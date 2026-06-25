@@ -61,6 +61,11 @@
         </dependency>
         <dependency>
             <groupId>com.lumira</groupId>
+            <artifactId>lumira-team-api</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.lumira</groupId>
             <artifactId>plugin-api</artifactId>
             <version>0.1.0</version>
         </dependency>
@@ -83,6 +88,16 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>33.4.0-jre</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
         </dependency>
         <dependency>
             <groupId>com.lumira</groupId>

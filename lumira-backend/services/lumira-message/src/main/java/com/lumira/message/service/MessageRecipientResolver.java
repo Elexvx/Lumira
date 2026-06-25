@@ -31,7 +31,7 @@ public class MessageRecipientResolver {
             return notice.getTargetUserId() == null ? List.of() : List.of(notice.getTargetUserId());
         }
         if ("ROLE".equalsIgnoreCase(targetScope) && notice.getTargetRoleId() != null) {
-            return deduplicate(systemInternalApi.userIdsByRole(notice.getTenantId(), notice.getTargetRoleId()));
+            return deduplicate(systemInternalApi.userIdsByRole(notice.getTargetRoleId()));
         }
         return List.of();
     }
@@ -45,6 +45,6 @@ public class MessageRecipientResolver {
     }
 
     private boolean isPlatformScope(String targetScope) {
-        return "PLATFORM".equalsIgnoreCase(targetScope) || "TENANT".equalsIgnoreCase(targetScope);
+        return "PLATFORM".equalsIgnoreCase(targetScope);
     }
 }

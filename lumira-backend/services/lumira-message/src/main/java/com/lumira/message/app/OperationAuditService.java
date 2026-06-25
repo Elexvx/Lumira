@@ -14,7 +14,6 @@ public class OperationAuditService {
     }
 
     public void log(
-            Long tenantId,
             Long userId,
             String username,
             String moduleName,
@@ -24,7 +23,6 @@ public class OperationAuditService {
             String detailMessage
     ) {
         systemInternalApi.recordOperationAudit(new OperationAuditRecordRequestDTO(
-                tenantId,
                 userId,
                 username,
                 moduleName,

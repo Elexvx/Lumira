@@ -67,7 +67,7 @@ public class FileProcessingTaskService {
     }
 
     public int requestTasksForUpload(FileObjectDTO file, Long userId) {
-        if (file == null || file.id() == null || file.tenantId() == null) {
+        if (file == null || file.id() == null) {
             return 0;
         }
         int requested = 0;
@@ -140,7 +140,7 @@ public class FileProcessingTaskService {
         );
         return jdbcTemplate.query(
                 """
-                        select id, tenant_id as tenantId, file_id as fileId, task_type as taskType,
+                        select id, file_id as fileId, task_type as taskType,
                                status, priority, retry_count as retryCount, next_retry_at as nextRetryAt,
                                claimed_at as claimedAt, completed_at as completedAt, last_error as lastError,
                                created_by as createdBy, created_at as createdAt, updated_by as updatedBy,
@@ -148,10 +148,9 @@ public class FileProcessingTaskService {
                         from file_processing_task
                         where deleted = 0 and claim_token = ?
                         order by priority desc, created_at asc, id asc
-                        """,
+                """,
                 (rs, rowNum) -> new ProcessingTask(
                         rs.getLong("id"),
-                        rs.getLong("tenantId"),
                         rs.getLong("fileId"),
                         rs.getString("taskType"),
                         rs.getString("status"),
@@ -253,30 +252,30 @@ public class FileProcessingTaskService {
         if (updated > 0) {
             return;
         }
-        log.warn("File processing task claim mismatch operation={} taskId={} tenantId={} taskType={}",
-                operation, task.id(), task.tenantId(), task.taskType());
+        log.warn("File processing task claim mismatch operation={} taskId={} taskType={}",
+                operation, task.id(), task.taskType());
         processingMetrics.recordClaimMismatch(task.taskType(), operation);
     }
 
     private void process(ProcessingTask task) {
         if (TASK_SECURITY_SCAN.equals(task.taskType())) {
-            securityScanProcessor.scan(task.tenantId(), task.fileId(), task.updatedBy());
+            securityScanProcessor.scan(task.fileId(), task.updatedBy());
             return;
         }
         if (TASK_THUMBNAIL.equals(task.taskType())) {
-            thumbnailProcessor.generateThumbnail(task.tenantId(), task.fileId(), task.updatedBy());
+            thumbnailProcessor.generateThumbnail(task.fileId(), task.updatedBy());
             return;
         }
         if (TASK_OCR.equals(task.taskType())) {
-            ocrProcessor.extractImageText(task.tenantId(), task.fileId(), task.updatedBy());
+            ocrProcessor.extractImageText(task.fileId(), task.updatedBy());
             return;
         }
         if (TASK_TEXT_EXTRACT.equals(task.taskType())) {
-            textExtractionProcessor.extractText(task.tenantId(), task.fileId(), task.updatedBy());
+            textExtractionProcessor.extractText(task.fileId(), task.updatedBy());
             return;
         }
         if (TASK_AI_PARSE.equals(task.taskType())) {
-            aiParseProcessor.prepareForAiParse(task.tenantId(), task.fileId(), task.updatedBy());
+            aiParseProcessor.prepareForAiParse(task.fileId(), task.updatedBy());
             return;
         }
         throw new IllegalStateException("File processing task processor is not implemented: " + task.taskType());
@@ -286,15 +285,14 @@ public class FileProcessingTaskService {
         return jdbcTemplate.update(
                 """
                         insert into file_processing_task (
-                            tenant_id, file_id, task_type, status, priority, retry_count,
+                            file_id, task_type, status, priority, retry_count,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, 0, ?, ?, 0)
+                        ) values (?, ?, ?, ?, 0, ?, ?, 0)
                         on duplicate key update
                             deleted = 0,
                             updated_at = current_timestamp,
                             updated_by = values(updated_by)
                         """,
-                file.tenantId(),
                 file.id(),
                 taskType,
                 STATUS_PENDING,
@@ -308,16 +306,14 @@ public class FileProcessingTaskService {
         outboxService.recordAfterCommit(
                 FilePlatformEventTypes.SOURCE_FILE,
                 FilePlatformEventTypes.FILE_PROCESSING_TASK_REQUESTED,
-                file.tenantId(),
                 userId,
-                buildTaskEventKey(file.tenantId(), file.id(), taskType),
+                buildTaskEventKey(file.id(), taskType),
                 buildTaskPayload(file, taskType, userId)
         );
     }
 
-    private String buildTaskEventKey(Long tenantId, Long fileId, String taskType) {
+    private String buildTaskEventKey(Long fileId, String taskType) {
         return FilePlatformEventTypes.FILE_PROCESSING_TASK_REQUESTED
-                + ":" + (tenantId == null ? "unknown" : tenantId)
                 + ":" + FilePlatformEventTypes.AGGREGATE_FILE_PROCESSING_TASK
                 + ":" + (fileId == null ? "none" : fileId)
                 + ":" + taskType;
@@ -327,7 +323,6 @@ public class FileProcessingTaskService {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("schemaVersion", 1);
         payload.put("occurredAt", LocalDateTime.now());
-        payload.put("tenantId", file.tenantId());
         payload.put("userId", userId);
         payload.put("aggregateType", FilePlatformEventTypes.AGGREGATE_FILE_PROCESSING_TASK);
         payload.put("aggregateId", file.id() + ":" + taskType);
@@ -406,7 +401,6 @@ public class FileProcessingTaskService {
 
     public record ProcessingTask(
             Long id,
-            Long tenantId,
             Long fileId,
             String taskType,
             String status,
@@ -424,7 +418,6 @@ public class FileProcessingTaskService {
     ) {
         public ProcessingTask(
                 Long id,
-                Long tenantId,
                 Long fileId,
                 String taskType,
                 String status,
@@ -439,12 +432,12 @@ public class FileProcessingTaskService {
                 Long updatedBy,
                 LocalDateTime updatedAt
         ) {
-            this(id, tenantId, fileId, taskType, status, priority, retryCount, nextRetryAt,
+            this(id, fileId, taskType, status, priority, retryCount, nextRetryAt,
                     claimedAt, completedAt, lastError, createdBy, createdAt, updatedBy, updatedAt, null);
         }
 
         ProcessingTask withStatus(String status) {
-            return new ProcessingTask(id, tenantId, fileId, taskType, status, priority, retryCount,
+            return new ProcessingTask(id, fileId, taskType, status, priority, retryCount,
                     nextRetryAt, claimedAt, completedAt, lastError, createdBy, createdAt, updatedBy, updatedAt, claimToken);
         }
     }

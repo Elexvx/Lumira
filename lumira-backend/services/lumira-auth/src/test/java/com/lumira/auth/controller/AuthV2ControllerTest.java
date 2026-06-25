@@ -89,12 +89,14 @@ class AuthV2ControllerTest {
                 60L
         );
         AuthBootstrapDTO bootstrap = new AuthBootstrapDTO(currentUser, securitySettings);
+        HttpServletResponse httpResponse = mock(HttpServletResponse.class);
         when(authAppService.bootstrap()).thenReturn(bootstrap);
 
-        var response = controller.bootstrap();
+        var response = controller.bootstrap(httpResponse);
 
         assertThat(response.getData()).isSameAs(bootstrap);
         verify(authAppService).bootstrap();
+        verify(authCookieService).writeCsrfToken(httpResponse);
     }
 
     @Test
@@ -143,12 +145,14 @@ class AuthV2ControllerTest {
                 false,
                 "/dashboard/home"
         );
+        HttpServletResponse httpResponse = mock(HttpServletResponse.class);
         when(authAppService.currentUser()).thenReturn(currentUser);
 
-        var response = controller.currentUser();
+        var response = controller.currentUser(httpResponse);
 
         assertThat(response.getData()).isSameAs(currentUser);
         verify(authAppService).currentUser();
+        verify(authCookieService).writeCsrfToken(httpResponse);
     }
 
     @Test
@@ -181,8 +185,11 @@ class AuthV2ControllerTest {
 
     @Test
     void keepalive_shouldReturnTrueWithoutDatabaseRoundTrip() {
-        var response = controller.keepalive();
+        HttpServletResponse httpResponse = mock(HttpServletResponse.class);
+
+        var response = controller.keepalive(httpResponse);
 
         assertThat(response.getData()).isTrue();
+        verify(authCookieService).writeCsrfToken(httpResponse);
     }
 }

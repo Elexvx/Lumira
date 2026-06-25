@@ -3,7 +3,6 @@ package com.lumira.saas.modules.activity.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -16,14 +15,17 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 @Service
 public class ActivityManagementAppService {
     private static final Set<String> LOCALES = Set.of("zh", "en");
+    private static final List<String> LOCALE_ORDER = List.of("zh", "en");
     private static final Set<String> STATUSES = Set.of("draft", "published");
     private static final Set<String> BADGE_TONES = Set.of("blue", "gold", "silver", "bronze", "slate", "dark");
     private static final long MAX_PAGE_SIZE = 100L;
@@ -44,12 +46,11 @@ public class ActivityManagementAppService {
             long pageNo,
             long pageSize
     ) {
-        Long tenantId = requireTenantId(currentUser);
+        requireAuthenticated(currentUser);
         long normalizedPageNo = Math.max(1L, pageNo);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         List<Object> params = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" from aiadc_activity where tenant_id = ? and deleted = 0");
-        params.add(tenantId);
+        StringBuilder where = new StringBuilder(" from aiadc_activity where deleted = 0");
         if (StringUtils.hasText(keyword)) {
             where.append(" and (title like ? or code like ? or subtitle like ?)");
             String pattern = "%" + keyword.trim() + "%";
@@ -62,7 +63,7 @@ public class ActivityManagementAppService {
             params.add(normalizeEnum(status, null, STATUSES, "Invalid activity status"));
         }
         if (StringUtils.hasText(locale)) {
-            where.append(" and locale = ?");
+            where.append(" and find_in_set(?, replace(locale, ' ', '')) > 0");
             params.add(normalizeEnum(locale, null, LOCALES, "Invalid activity locale"));
         }
         if (featured != null) {
@@ -90,7 +91,8 @@ public class ActivityManagementAppService {
     }
 
     public ActivityVO.Activity getActivity(CurrentUser currentUser, Long id) {
-        ActivityVO.Activity activity = findActivity(requireTenantId(currentUser), id);
+        requireAuthenticated(currentUser);
+        ActivityVO.Activity activity = findActivity(id);
         if (activity == null) {
             throw biz(ErrorCode.NOT_FOUND, "Activity not found");
         }
@@ -99,18 +101,16 @@ public class ActivityManagementAppService {
 
     @Transactional
     public ActivityVO.Activity createActivity(CurrentUser currentUser, ActivityDTO.ActivityUpsertRequest request) {
-        Long tenantId = requireTenantId(currentUser);
         Long userId = requireUserId(currentUser);
         ActivityDTO.ActivityUpsertRequest normalized = normalizeRequest(request, generateActivityCode());
         jdbcTemplate.update(
                 """
                         insert into aiadc_activity (
-                            tenant_id, code, locale, title, subtitle, description, image_url, icon_key,
+                            code, locale, title, subtitle, description, image_url, icon_key,
                             sort, status, tags, cta_label, cta_href, badge_text, badge_tone,
                             activity_date, activity_time, location, featured, created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
-                tenantId,
                 normalized.getCode(),
                 normalized.getLocale(),
                 normalized.getTitle(),
@@ -138,8 +138,7 @@ public class ActivityManagementAppService {
 
     @Transactional
     public ActivityVO.Activity updateActivity(CurrentUser currentUser, Long id, ActivityDTO.ActivityUpsertRequest request) {
-        Long tenantId = requireTenantId(currentUser);
-        ActivityVO.Activity existing = findActivity(tenantId, id);
+        ActivityVO.Activity existing = findActivity(id);
         if (existing == null) {
             throw biz(ErrorCode.NOT_FOUND, "Activity not found");
         }
@@ -151,7 +150,7 @@ public class ActivityManagementAppService {
                             sort = ?, status = ?, tags = ?, cta_label = ?, cta_href = ?, badge_text = ?, badge_tone = ?,
                             activity_date = ?, activity_time = ?, location = ?, featured = ?,
                             updated_by = ?, updated_at = ?
-                        where tenant_id = ? and id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 normalized.getCode(),
                 normalized.getLocale(),
@@ -173,7 +172,6 @@ public class ActivityManagementAppService {
                 Boolean.TRUE.equals(normalized.getFeatured()) ? 1 : 0,
                 requireUserId(currentUser),
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
         if (updated == 0) {
@@ -185,10 +183,9 @@ public class ActivityManagementAppService {
     @Transactional
     public boolean deleteActivity(CurrentUser currentUser, Long id) {
         int updated = jdbcTemplate.update(
-                "update aiadc_activity set deleted = 1, updated_by = ?, updated_at = ? where tenant_id = ? and id = ? and deleted = 0",
+                "update aiadc_activity set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 requireUserId(currentUser),
                 LocalDateTime.now(),
-                requireTenantId(currentUser),
                 id
         );
         if (updated == 0) {
@@ -197,11 +194,10 @@ public class ActivityManagementAppService {
         return true;
     }
 
-    private ActivityVO.Activity findActivity(Long tenantId, Long id) {
+    private ActivityVO.Activity findActivity(Long id) {
         List<ActivityVO.Activity> records = jdbcTemplate.query(
-                activitySelect() + " from aiadc_activity where tenant_id = ? and id = ? and deleted = 0 limit 1",
+                activitySelect() + " from aiadc_activity where id = ? and deleted = 0 limit 1",
                 new BeanPropertyRowMapper<>(ActivityVO.Activity.class),
-                tenantId,
                 id
         );
         return records.isEmpty() ? null : records.get(0);
@@ -212,7 +208,7 @@ public class ActivityManagementAppService {
         normalized.setCode(StringUtils.hasText(request.getCode())
                 ? request.getCode().trim()
                 : trimRequired(fallbackCode, "Activity code is required"));
-        normalized.setLocale(normalizeEnum(request.getLocale(), "zh", LOCALES, "Invalid activity locale"));
+        normalized.setLocale(normalizeLocales(request.getLocale(), "zh", LOCALES, "Invalid activity locale"));
         normalized.setTitle(trimRequired(request.getTitle(), "Activity title is required"));
         normalized.setSubtitle(trimToNull(request.getSubtitle()));
         normalized.setDescription(trimToNull(request.getDescription()));
@@ -237,11 +233,10 @@ public class ActivityManagementAppService {
         return "act-" + LocalDateTime.now().format(ACTIVITY_CODE_TIME_FORMATTER) + "-" + random;
     }
 
-    private Long requireTenantId(CurrentUser currentUser) {
+    private void requireAuthenticated(CurrentUser currentUser) {
         if (currentUser == null) {
             throw biz(ErrorCode.UNAUTHORIZED, "Login required");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 
     private Long requireUserId(CurrentUser currentUser) {
@@ -266,6 +261,24 @@ public class ActivityManagementAppService {
         return normalizeEnum(value, null, allowed, message);
     }
 
+    private String normalizeLocales(String value, String defaultValue, Set<String> allowed, String message) {
+        if (!StringUtils.hasText(value)) {
+            return defaultValue;
+        }
+        LinkedHashSet<String> selected = new LinkedHashSet<>();
+        for (String part : value.split(",")) {
+            if (!StringUtils.hasText(part)) {
+                continue;
+            }
+            selected.add(normalizeEnum(part, null, allowed, message));
+        }
+        if (selected.isEmpty()) {
+            return defaultValue;
+        }
+        List<String> ordered = LOCALE_ORDER.stream().filter(selected::contains).collect(Collectors.toList());
+        return String.join(",", ordered);
+    }
+
     private String trimRequired(String value, String message) {
         String trimmed = trimToNull(value);
         if (trimmed == null) {
@@ -280,7 +293,7 @@ public class ActivityManagementAppService {
 
     private String activitySelect() {
         return """
-                select id, tenant_id as tenantId, code, locale, title, subtitle, description,
+                select id, code, locale, title, subtitle, description,
                        image_url as imageUrl, icon_key as iconKey, sort, status, tags,
                        cta_label as ctaLabel, cta_href as ctaHref, badge_text as badgeText,
                        badge_tone as badgeTone, activity_date as activityDate,

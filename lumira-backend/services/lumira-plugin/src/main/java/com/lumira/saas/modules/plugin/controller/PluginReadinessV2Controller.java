@@ -53,8 +53,8 @@ public class PluginReadinessV2Controller {
                 List.of(
                         "PluginUploaded",
                         "PluginVersionPublished",
-                        "TenantPluginEnabled",
-                        "TenantPluginDisabled",
+                        "PluginEnabled",
+                        "PluginDisabled",
                         "PluginSchemaChanged",
                         "plugin/bootstrap read-model version bump"
                 ),
@@ -86,8 +86,8 @@ public class PluginReadinessV2Controller {
                 List.of(
                         "route /api/v2/plugins/* back to plugin-service monolith adapter",
                         "disable plugin outbox relay job and replay by event id after rollback",
-                        "rebuild tenant plugin bootstrap projection from sys_plugin_* owner tables",
-                        "roll tenant plugin state back to previous active version"
+                        "rebuild plugin bootstrap projection from sys_plugin_* owner tables",
+                        "roll plugin state back to previous active version"
                 ),
                 List.of(
                         "Plugin v2 adapter and owner observability contract are available; management writes still share PluginManagementAppService during compatibility window",
@@ -108,7 +108,7 @@ public class PluginReadinessV2Controller {
                         healthCheck("plugin.package-storage", "CONFIGURED", "Plugin package storage must be probed before physical split."),
                         healthCheck("plugin.outbox.dispatchable-backlog", "CONFIGURED", "Plugin outbox dispatchable backlog is exposed as an owner gauge."),
                         healthCheck("plugin.iam-permission-registration", "CONFIGURED", "Plugin permission registration is routed through the IAM owner contract."),
-                        healthCheck("plugin.bootstrap-read-model-version", "CONFIGURED", "Tenant plugin lifecycle changes bump the plugin/bootstrap read-model version.")
+                        healthCheck("plugin.bootstrap-read-model-version", "CONFIGURED", "Plugin lifecycle changes bump the plugin/bootstrap read-model version.")
                 ),
                 pluginMetrics()
         ), TraceContext.getRequestId());
@@ -129,15 +129,15 @@ public class PluginReadinessV2Controller {
     private List<OwnerObservabilityDTO.MetricDTO> pluginMetrics() {
         PluginOutboxService.OutboxMetricsSnapshot snapshot = pluginOutboxService.snapshot();
         return List.of(
-                metric("plugin.bootstrap.p95", "timer", "milliseconds", "Current tenant plugin bootstrap p95 latency."),
-                metric("plugin.enable.total", "counter", "operations", "Tenant plugin enable operations tagged by result."),
-                metric("plugin.disable.total", "counter", "operations", "Tenant plugin disable operations tagged by result."),
+                metric("plugin.bootstrap.p95", "timer", "milliseconds", "Current plugin bootstrap p95 latency."),
+                metric("plugin.enable.total", "counter", "operations", "Plugin enable operations tagged by result."),
+                metric("plugin.disable.total", "counter", "operations", "Plugin disable operations tagged by result."),
                 metric("plugin.rollback.total", "counter", "operations", "Plugin version rollback operations tagged by result."),
                 metric("plugin.outbox.pending_backlog", "gauge", "events", "Plugin owner pending outbox backlog.", snapshot.pendingBacklog()),
                 metric("plugin.outbox.failed_backlog", "gauge", "events", "Plugin owner failed outbox backlog awaiting retry.", snapshot.failedBacklog()),
                 metric("plugin.outbox.dead_letter_count", "gauge", "events", "Plugin owner outbox dead-letter count.", snapshot.deadLetterCount()),
                 metric("plugin.outbox.dispatchable_backlog", "gauge", "events", "Plugin owner outbox events ready for dispatch or retry.", snapshot.dispatchableBacklog()),
-                metric("plugin.bootstrap.version_lag_ms", "timer", "milliseconds", "Lag between tenant plugin lifecycle changes and bootstrap read-model visibility.")
+                metric("plugin.bootstrap.version_lag_ms", "timer", "milliseconds", "Lag between plugin lifecycle changes and bootstrap read-model visibility.")
         );
     }
 

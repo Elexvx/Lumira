@@ -13,7 +13,7 @@ import java.util.List;
 public interface MessagePlatformEventOutboxMapper extends BaseMapper<PlatformEventOutboxEntity> {
 
     @Select("""
-            select id, tenant_id as tenantId, user_id as userId, source_type as sourceType,
+            select id, user_id as userId, source_type as sourceType,
                    event_type as eventType, event_key as eventKey, payload_json as payloadJson,
                    dispatch_status as dispatchStatus, retry_count as retryCount,
                    next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,

@@ -35,9 +35,7 @@ public class AuthController {
     @RepeatSubmit
     public ApiResponse<LoginResponseDTO> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse) {
         LoginResponseDTO response = authAppService.login(request, httpServletRequest);
-        authCookieService.writeRefreshToken(httpServletResponse, response.getRefreshToken());
-        response.setRefreshToken(null);
-        return ApiResponse.success(response, TraceContext.getRequestId());
+        return loginSuccess(response, httpServletResponse);
     }
 
     @PostMapping("/login/code/challenge")
@@ -48,8 +46,12 @@ public class AuthController {
 
     @PostMapping("/login/code/complete")
     @RepeatSubmit
-    public ApiResponse<LoginResponseDTO> loginCodeComplete(@Valid @RequestBody LoginCodeCompleteRequest request, HttpServletRequest httpServletRequest) {
-        return ApiResponse.success(authAppService.completeLoginCodeLogin(request, httpServletRequest), TraceContext.getRequestId());
+    public ApiResponse<LoginResponseDTO> loginCodeComplete(
+            @Valid @RequestBody LoginCodeCompleteRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
+    ) {
+        return loginSuccess(authAppService.completeLoginCodeLogin(request, httpServletRequest), httpServletResponse);
     }
 
     @GetMapping("/wechat/authorize-url")
@@ -59,8 +61,12 @@ public class AuthController {
 
     @PostMapping("/wechat/login")
     @RepeatSubmit
-    public ApiResponse<LoginResponseDTO> wechatLogin(@Valid @RequestBody WechatLoginRequest request, HttpServletRequest httpServletRequest) {
-        return ApiResponse.success(authAppService.wechatLogin(request, httpServletRequest), TraceContext.getRequestId());
+    public ApiResponse<LoginResponseDTO> wechatLogin(
+            @Valid @RequestBody WechatLoginRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
+    ) {
+        return loginSuccess(authAppService.wechatLogin(request, httpServletRequest), httpServletResponse);
     }
 
     @PostMapping("/passkeys/authentication/options")
@@ -71,8 +77,12 @@ public class AuthController {
 
     @PostMapping("/passkeys/authentication/complete")
     @RepeatSubmit
-    public ApiResponse<LoginResponseDTO> passkeyAuthenticationComplete(@Valid @RequestBody PasskeyAuthenticationCompleteRequest request, HttpServletRequest httpServletRequest) {
-        return ApiResponse.success(passkeyAuthService.completeAuthentication(request, httpServletRequest), TraceContext.getRequestId());
+    public ApiResponse<LoginResponseDTO> passkeyAuthenticationComplete(
+            @Valid @RequestBody PasskeyAuthenticationCompleteRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
+    ) {
+        return loginSuccess(passkeyAuthService.completeAuthentication(request, httpServletRequest), httpServletResponse);
     }
 
     @PostMapping("/passkeys/registration/options")
@@ -106,8 +116,12 @@ public class AuthController {
 
     @PostMapping("/second-factor/complete")
     @RepeatSubmit
-    public ApiResponse<LoginResponseDTO> completeSecondFactor(@Valid @RequestBody SecondFactorCompleteRequest request, HttpServletRequest httpServletRequest) {
-        return ApiResponse.success(authAppService.completeSecondFactorLogin(request, httpServletRequest), TraceContext.getRequestId());
+    public ApiResponse<LoginResponseDTO> completeSecondFactor(
+            @Valid @RequestBody SecondFactorCompleteRequest request,
+            HttpServletRequest httpServletRequest,
+            HttpServletResponse httpServletResponse
+    ) {
+        return loginSuccess(authAppService.completeSecondFactorLogin(request, httpServletRequest), httpServletResponse);
     }
 
     @PostMapping("/logout")
@@ -129,12 +143,14 @@ public class AuthController {
     }
 
     @GetMapping("/current-user")
-    public ApiResponse<CurrentUserDTO> currentUser() {
+    public ApiResponse<CurrentUserDTO> currentUser(HttpServletResponse httpServletResponse) {
+        authCookieService.writeCsrfToken(httpServletResponse);
         return ApiResponse.success(authAppService.currentUser(), TraceContext.getRequestId());
     }
 
     @PostMapping("/session/keepalive")
-    public ApiResponse<Boolean> keepalive() {
+    public ApiResponse<Boolean> keepalive(HttpServletResponse httpServletResponse) {
+        authCookieService.writeCsrfToken(httpServletResponse);
         return ApiResponse.success(Boolean.TRUE, TraceContext.getRequestId());
     }
 
@@ -173,5 +189,11 @@ public class AuthController {
             @Valid @RequestBody SecondFactorCompleteRequest request
     ) {
         return ApiResponse.success(authAppService.verificationVerify(factorCode, request), TraceContext.getRequestId());
+    }
+
+    private ApiResponse<LoginResponseDTO> loginSuccess(LoginResponseDTO response, HttpServletResponse httpServletResponse) {
+        authCookieService.writeRefreshToken(httpServletResponse, response.getRefreshToken());
+        response.setRefreshToken(null);
+        return ApiResponse.success(response, TraceContext.getRequestId());
     }
 }

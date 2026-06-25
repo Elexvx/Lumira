@@ -1,6 +1,5 @@
 package com.lumira.saas.modules.system.verification;
 
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
@@ -22,7 +21,7 @@ class WechatLoginSettingsServiceTest {
     @Test
     void loadSettingsShouldReuseCachedSnapshots() {
         SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
-        when(mapper.listEffectiveValues(eq(PlatformConstants.PLATFORM_TENANT_ID), eq("PLATFORM"), any()))
+        when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
                 .thenReturn(List.of(
                         config("verification.wechat-login.enabled", "true"),
                         config("verification.wechat-login.app-id", "appid-1"),
@@ -33,18 +32,18 @@ class WechatLoginSettingsServiceTest {
 
         WechatLoginSettingsService service = new WechatLoginSettingsService(mapper, new WechatLoginProperties(), cryptoService());
 
-        WechatLoginSettingsService.WechatLoginSettingsRecord first = service.loadSettings(PlatformConstants.PLATFORM_TENANT_ID);
-        WechatLoginSettingsService.WechatLoginSettingsRecord second = service.loadSettings(PlatformConstants.PLATFORM_TENANT_ID);
+        WechatLoginSettingsService.WechatLoginSettingsRecord first = service.loadSettings();
+        WechatLoginSettingsService.WechatLoginSettingsRecord second = service.loadSettings();
 
         assertThat(first.enabled()).isTrue();
         assertThat(second.configured()).isTrue();
-        verify(mapper, times(1)).listEffectiveValues(eq(PlatformConstants.PLATFORM_TENANT_ID), eq("PLATFORM"), any());
+        verify(mapper, times(1)).listEffectiveValues(eq("PLATFORM"), any());
     }
 
     @Test
     void updateSettingsShouldInvalidateCachedSnapshot() {
         SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
-        when(mapper.listEffectiveValues(eq(PlatformConstants.PLATFORM_TENANT_ID), eq("PLATFORM"), any()))
+        when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
                 .thenReturn(List.of(
                         config("verification.wechat-login.enabled", "true"),
                         config("verification.wechat-login.app-id", "appid-1"),
@@ -61,7 +60,7 @@ class WechatLoginSettingsServiceTest {
                 ));
 
         WechatLoginSettingsService service = new WechatLoginSettingsService(mapper, new WechatLoginProperties(), cryptoService());
-        WechatLoginSettingsService.WechatLoginSettingsRecord before = service.loadSettings(PlatformConstants.PLATFORM_TENANT_ID);
+        WechatLoginSettingsService.WechatLoginSettingsRecord before = service.loadSettings();
         assertThat(before.appId()).isEqualTo("appid-1");
 
         SystemDTO.WechatLoginSettingsRequest request = new SystemDTO.WechatLoginSettingsRequest();
@@ -71,11 +70,11 @@ class WechatLoginSettingsServiceTest {
         request.setRedirectUri("https://example.com/new-callback");
         request.setStateExpireMinutes(20);
 
-        SystemVO.WechatLoginSettingsVO updated = service.updateSettings(PlatformConstants.PLATFORM_TENANT_ID, 9L, request);
+        SystemVO.WechatLoginSettingsVO updated = service.updateSettings(9L, request);
 
         assertThat(updated.getEnabled()).isFalse();
         assertThat(updated.getAppId()).isEqualTo("appid-2");
-        verify(mapper, times(2)).listEffectiveValues(eq(PlatformConstants.PLATFORM_TENANT_ID), eq("PLATFORM"), any());
+        verify(mapper, times(2)).listEffectiveValues(eq("PLATFORM"), any());
         verify(mapper, times(5)).upsertPlatformConfig(any());
     }
 

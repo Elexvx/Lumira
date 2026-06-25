@@ -1,6 +1,5 @@
 package com.lumira.saas.modules.system.support;
 
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import java.util.List;
@@ -19,7 +18,7 @@ class SmtpMailServiceTest {
     @Test
     void isConfiguredShouldReuseCachedSnapshot() {
         SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
-        when(mapper.listEffectiveValues(eq(PlatformConstants.PLATFORM_TENANT_ID), eq("PLATFORM"), any()))
+        when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
                 .thenReturn(List.of(
                         config("smtp.enabled", "true"),
                         config("smtp.host", "smtp.example.com"),
@@ -30,15 +29,15 @@ class SmtpMailServiceTest {
 
         SmtpMailService service = new SmtpMailService(mapper);
 
-        assertThat(service.isConfigured(PlatformConstants.PLATFORM_TENANT_ID)).isTrue();
-        assertThat(service.isConfigured(PlatformConstants.PLATFORM_TENANT_ID)).isTrue();
-        verify(mapper, times(1)).listEffectiveValues(eq(PlatformConstants.PLATFORM_TENANT_ID), eq("PLATFORM"), any());
+        assertThat(service.isConfigured()).isTrue();
+        assertThat(service.isConfigured()).isTrue();
+        verify(mapper, times(1)).listEffectiveValues(eq("PLATFORM"), any());
     }
 
     @Test
-    void invalidateTenantShouldForceReloadOnNextRead() {
+    void invalidateShouldForceReloadOnNextRead() {
         SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
-        when(mapper.listEffectiveValues(eq(PlatformConstants.PLATFORM_TENANT_ID), eq("PLATFORM"), any()))
+        when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
                 .thenReturn(List.of(
                         config("smtp.enabled", "true"),
                         config("smtp.host", "smtp.example.com"),
@@ -56,10 +55,10 @@ class SmtpMailServiceTest {
 
         SmtpMailService service = new SmtpMailService(mapper);
 
-        assertThat(service.isConfigured(PlatformConstants.PLATFORM_TENANT_ID)).isTrue();
-        service.invalidateTenant(PlatformConstants.PLATFORM_TENANT_ID);
-        assertThat(service.isConfigured(PlatformConstants.PLATFORM_TENANT_ID)).isFalse();
-        verify(mapper, times(2)).listEffectiveValues(eq(PlatformConstants.PLATFORM_TENANT_ID), eq("PLATFORM"), any());
+        assertThat(service.isConfigured()).isTrue();
+        service.invalidate();
+        assertThat(service.isConfigured()).isFalse();
+        verify(mapper, times(2)).listEffectiveValues(eq("PLATFORM"), any());
     }
 
     private static SysConfigEntity config(String key, String value) {

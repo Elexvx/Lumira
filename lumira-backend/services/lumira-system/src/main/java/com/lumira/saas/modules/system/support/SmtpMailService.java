@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class SmtpMailService {
 
-    private static final Long PLATFORM_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
+    private static final Long GLOBAL_CONFIG_CACHE_KEY = 0L;
     private static final long CONFIG_CACHE_TTL_MS = 30_000L;
     private static final String PLATFORM_SCOPE = "PLATFORM";
     private static final String SMTP_ENABLED_KEY = "smtp.enabled";
@@ -51,8 +51,8 @@ public class SmtpMailService {
                 .build();
     }
 
-    public boolean isConfigured(Long tenantId) {
-        Map<String, String> values = loadValues(tenantId);
+    public boolean isConfigured() {
+        Map<String, String> values = loadValues();
         boolean enabled = Boolean.parseBoolean(defaultIfBlank(values.get(SMTP_ENABLED_KEY), "true"));
         String host = defaultIfBlank(values.get(SMTP_HOST_KEY), "");
         String from = defaultIfBlank(values.get(SMTP_FROM_KEY), "");
@@ -68,8 +68,8 @@ public class SmtpMailService {
         return enabled && StringUtils.hasText(host) && port > 0 && StringUtils.hasText(from) && !usernameRequired;
     }
 
-    public void sendVerificationCode(Long tenantId, String toEmail, String verificationCode, String subjectPrefix) {
-        Map<String, String> values = loadValues(tenantId);
+    public void sendVerificationCode(String toEmail, String verificationCode, String subjectPrefix) {
+        Map<String, String> values = loadValues();
         JavaMailSenderImpl sender = buildSmtpSender(values);
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
@@ -84,30 +84,28 @@ public class SmtpMailService {
         }
     }
 
-    public void invalidateTenant(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? PLATFORM_TENANT_ID : tenantId;
-        configSnapshotCache.invalidate(effectiveTenantId);
-        configLoadInFlight.invalidate(effectiveTenantId);
+    public void invalidate() {
+        configSnapshotCache.invalidate(GLOBAL_CONFIG_CACHE_KEY);
+        configLoadInFlight.invalidate(GLOBAL_CONFIG_CACHE_KEY);
     }
 
-    private Map<String, String> loadValues(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? PLATFORM_TENANT_ID : tenantId;
-        Map<String, String> cached = configSnapshotCache.getIfPresent(effectiveTenantId);
+    private Map<String, String> loadValues() {
+        Map<String, String> cached = configSnapshotCache.getIfPresent(GLOBAL_CONFIG_CACHE_KEY);
         if (cached != null) {
             return new HashMap<>(cached);
         }
         try {
             CompletableFuture<Map<String, String>> future = configLoadInFlight.get(
-                    effectiveTenantId,
-                    () -> CompletableFuture.completedFuture(loadValuesFresh(effectiveTenantId))
+                    GLOBAL_CONFIG_CACHE_KEY,
+                    () -> CompletableFuture.completedFuture(loadValuesFresh())
             );
             Map<String, String> values = future.join();
-            configLoadInFlight.invalidate(effectiveTenantId);
+            configLoadInFlight.invalidate(GLOBAL_CONFIG_CACHE_KEY);
             return values;
         } catch (ExecutionException ex) {
-            configLoadInFlight.invalidate(effectiveTenantId);
+            configLoadInFlight.invalidate(GLOBAL_CONFIG_CACHE_KEY);
             Throwable cause = ex.getCause();
-            Map<String, String> cachedAfterFailure = configSnapshotCache.getIfPresent(effectiveTenantId);
+            Map<String, String> cachedAfterFailure = configSnapshotCache.getIfPresent(GLOBAL_CONFIG_CACHE_KEY);
             if (cachedAfterFailure != null) {
                 return new HashMap<>(cachedAfterFailure);
             }
@@ -116,8 +114,8 @@ public class SmtpMailService {
             }
             throw new IllegalStateException("Failed to load SMTP config", cause);
         } catch (RuntimeException ex) {
-            configLoadInFlight.invalidate(effectiveTenantId);
-            Map<String, String> cachedAfterFailure = configSnapshotCache.getIfPresent(effectiveTenantId);
+            configLoadInFlight.invalidate(GLOBAL_CONFIG_CACHE_KEY);
+            Map<String, String> cachedAfterFailure = configSnapshotCache.getIfPresent(GLOBAL_CONFIG_CACHE_KEY);
             if (cachedAfterFailure != null) {
                 return new HashMap<>(cachedAfterFailure);
             }
@@ -125,8 +123,8 @@ public class SmtpMailService {
         }
     }
 
-    private Map<String, String> loadValuesFresh(Long tenantId) {
-        Map<String, String> cached = configSnapshotCache.getIfPresent(tenantId);
+    private Map<String, String> loadValuesFresh() {
+        Map<String, String> cached = configSnapshotCache.getIfPresent(GLOBAL_CONFIG_CACHE_KEY);
         if (cached != null) {
             return new HashMap<>(cached);
         }
@@ -141,7 +139,7 @@ public class SmtpMailService {
                 SMTP_STARTTLS_ENABLED_KEY,
                 SMTP_SSL_ENABLED_KEY
         );
-        List<SysConfigEntity> rows = sysConfigMapper.listEffectiveValues(tenantId, PLATFORM_SCOPE, keys);
+        List<SysConfigEntity> rows = sysConfigMapper.listEffectiveValues(PLATFORM_SCOPE, keys);
         Map<String, String> values = new HashMap<>();
         for (SysConfigEntity row : rows) {
             String key = row.getConfigKey();
@@ -150,7 +148,7 @@ public class SmtpMailService {
                 values.put(key, value);
             }
         }
-        configSnapshotCache.put(tenantId, new HashMap<>(values));
+        configSnapshotCache.put(GLOBAL_CONFIG_CACHE_KEY, new HashMap<>(values));
         return values;
     }
 

@@ -44,16 +44,16 @@ public class MessagePushService {
         });
     }
 
-    public void publishRead(Long tenantId, Long userId, MessageVO.NoticeVO notice, Integer unreadCount) {
-        MessageEventDTO event = messageEventFactory.createReadEvent(tenantId, userId, notice, unreadCount);
+    public void publishRead(Long userId, MessageVO.NoticeVO notice, Integer unreadCount) {
+        MessageEventDTO event = messageEventFactory.createReadEvent(userId, notice, unreadCount);
         dispatchAfterCommit(() -> {
             platformEventOutboxService.recordAfterCommit(event);
             messageEventDeliveryService.deliver(event);
         });
     }
 
-    public void publishUnreadCount(Long tenantId, Long userId, Integer unreadCount) {
-        MessageEventDTO event = messageEventFactory.createUnreadCountEvent(tenantId, userId, unreadCount);
+    public void publishUnreadCount(Long userId, Integer unreadCount) {
+        MessageEventDTO event = messageEventFactory.createUnreadCountEvent(userId, unreadCount);
         dispatchAfterCommit(() -> {
             platformEventOutboxService.recordAfterCommit(event);
             messageEventDeliveryService.deliver(event);

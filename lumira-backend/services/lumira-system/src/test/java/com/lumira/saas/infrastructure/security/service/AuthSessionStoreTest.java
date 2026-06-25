@@ -172,7 +172,6 @@ class AuthSessionStoreTest {
         session.setSessionId("session-1");
         session.setUserId(1001L);
         session.setUsername("admin");
-        session.setCurrentTenantId(1001L);
         session.setLoginTime(Instant.now().minusSeconds(60));
         session.setLastActivityAt(Instant.now().minusSeconds(30));
         session.setExpireTime(expireTime);

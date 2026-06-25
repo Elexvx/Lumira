@@ -221,7 +221,6 @@ class JwtAuthFilterTest {
     private AuthSession buildSession(String sessionId, long tenantId, long userId, Instant lastActivityAt, Instant expireTime) {
         AuthSession session = new AuthSession();
         session.setSessionId(sessionId);
-        session.setCurrentTenantId(tenantId);
         session.setUserId(userId);
         session.setUsername("admin");
         session.setLoginTime(lastActivityAt);
@@ -237,7 +236,6 @@ class JwtAuthFilterTest {
         claims.setSessionId(session.getSessionId());
         claims.setUserId(session.getUserId());
         claims.setUsername(session.getUsername());
-        claims.setCurrentTenantId(session.getCurrentTenantId());
         claims.setSessionVersion(session.getSessionVersion());
         claims.setTokenId(tokenId);
         claims.setTokenType(TokenType.ACCESS);
@@ -298,12 +296,12 @@ class JwtAuthFilterTest {
         }
 
         @Override
-        public PermissionSnapshot loadSnapshot(Long tenantId, Long userId) {
+        public PermissionSnapshot loadSnapshot(Long userId) {
             return new PermissionSnapshot("test", Set.of());
         }
 
         @Override
-        public boolean isSessionPermissionSnapshotCurrent(Long tenantId, String sessionPermissionsVersion) {
+        public boolean isSessionPermissionSnapshotCurrent(String sessionPermissionsVersion) {
             return true;
         }
     }

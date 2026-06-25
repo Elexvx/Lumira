@@ -26,14 +26,13 @@ public class PasskeyCredentialAppService {
         return map(passkeyCredentialMapper.findByCredentialId(credentialId));
     }
 
-    public List<PasskeyCredentialDTO> list(Long tenantId, Long userId) {
-        return passkeyCredentialMapper.listByUser(tenantId, userId).stream().map(this::map).toList();
+    public List<PasskeyCredentialDTO> list(Long userId) {
+        return passkeyCredentialMapper.listByUser(userId).stream().map(this::map).toList();
     }
 
     public PasskeyCredentialDTO create(PasskeyCredentialSaveRequestDTO request) {
         try {
             PasskeyCredentialEntity entity = new PasskeyCredentialEntity();
-            entity.setTenantId(request.tenantId());
             entity.setUserId(request.userId());
             entity.setUserHandle(request.userHandle());
             entity.setCredentialId(request.credentialId());
@@ -53,25 +52,23 @@ public class PasskeyCredentialAppService {
         return findByCredentialId(request.credentialId());
     }
 
-    public PasskeyCredentialDTO rename(Long id, Long tenantId, Long userId, String label) {
+    public PasskeyCredentialDTO rename(Long id, Long userId, String label) {
         passkeyCredentialMapper.update(null, new LambdaUpdateWrapper<PasskeyCredentialEntity>()
                 .set(PasskeyCredentialEntity::getLabel, StringUtils.hasText(label) ? label.trim() : "通行密钥")
                 .set(PasskeyCredentialEntity::getUpdatedBy, userId)
                 .set(PasskeyCredentialEntity::getUpdatedAt, LocalDateTime.now())
                 .eq(PasskeyCredentialEntity::getId, id)
-                .eq(PasskeyCredentialEntity::getTenantId, tenantId)
                 .eq(PasskeyCredentialEntity::getUserId, userId)
                 .eq(PasskeyCredentialEntity::getDeleted, 0));
-        return list(tenantId, userId).stream().filter(item -> id.equals(item.id())).findFirst().orElse(null);
+        return list(userId).stream().filter(item -> id.equals(item.id())).findFirst().orElse(null);
     }
 
-    public boolean delete(Long id, Long tenantId, Long userId) {
+    public boolean delete(Long id, Long userId) {
         return passkeyCredentialMapper.update(null, new LambdaUpdateWrapper<PasskeyCredentialEntity>()
                 .set(PasskeyCredentialEntity::getDeleted, 1)
                 .set(PasskeyCredentialEntity::getUpdatedBy, userId)
                 .set(PasskeyCredentialEntity::getUpdatedAt, LocalDateTime.now())
                 .eq(PasskeyCredentialEntity::getId, id)
-                .eq(PasskeyCredentialEntity::getTenantId, tenantId)
                 .eq(PasskeyCredentialEntity::getUserId, userId)
                 .eq(PasskeyCredentialEntity::getDeleted, 0)) > 0;
     }
@@ -91,7 +88,6 @@ public class PasskeyCredentialAppService {
     private PasskeyCredentialDTO map(PasskeyCredentialEntity entity) {
         return entity == null ? null : new PasskeyCredentialDTO(
                 entity.getId(),
-                entity.getTenantId(),
                 entity.getUserId(),
                 entity.getUsername(),
                 entity.getUserHandle(),

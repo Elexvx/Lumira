@@ -53,7 +53,7 @@ class PlatformEventOutboxServiceTest {
         PlatformEventOutboxService service = new PlatformEventOutboxService(new ObjectMapper(), mapper);
 
         assertThrows(IllegalArgumentException.class, () ->
-                service.record("MESSAGE", "NOTICE_CREATED", 1001L, 2001L, "event-key", "{}"));
+                service.record("MESSAGE", "NOTICE_CREATED", 2001L, "event-key", "{}"));
     }
 
     @Test
@@ -185,11 +185,10 @@ class PlatformEventOutboxServiceTest {
     private PlatformEventOutboxEntity buildEvent() {
         PlatformEventOutboxEntity event = new PlatformEventOutboxEntity();
         event.setId(10001L);
-        event.setTenantId(1001L);
         event.setUserId(2001L);
         event.setSourceType(PlatformEventTypes.SOURCE_SYSTEM);
         event.setEventType("NOTICE_CREATED");
-        event.setEventKey("NOTICE_CREATED:1001:9001:tenant:none");
+        event.setEventKey("NOTICE_CREATED:message.notice:9001");
         event.setPayloadJson("{}");
         event.setDispatchStatus(PlatformEventOutboxService.STATUS_RECORDED);
         event.setRetryCount(0);

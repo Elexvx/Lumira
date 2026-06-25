@@ -313,7 +313,6 @@ class SessionAuthenticationServiceTest {
         session.setSessionId("session-1");
         session.setUserId(2001L);
         session.setUsername("ordinary");
-        session.setCurrentTenantId(1001L);
         session.setLoginTime(Instant.now().minusSeconds(60));
         session.setLastActivityAt(Instant.now().minusSeconds(30));
         session.setExpireTime(Instant.now().plusSeconds(3600));
@@ -327,7 +326,6 @@ class SessionAuthenticationServiceTest {
         claims.setSessionId(session.getSessionId());
         claims.setUserId(session.getUserId());
         claims.setUsername(session.getUsername());
-        claims.setCurrentTenantId(session.getCurrentTenantId());
         claims.setSessionVersion(session.getSessionVersion());
         claims.setTokenType(TokenType.ACCESS);
         claims.setTokenId("token-1");
@@ -390,19 +388,19 @@ class SessionAuthenticationServiceTest {
         }
 
         @Override
-        public PermissionSnapshot loadSnapshot(Long tenantId, Long userId) {
+        public PermissionSnapshot loadSnapshot(Long userId) {
             userSnapshotLoaded = true;
             return new PermissionSnapshot(loadedVersion, Set.of("user:read"));
         }
 
         @Override
-        public PermissionSnapshot loadRoleSnapshot(Long tenantId, Long roleId) {
+        public PermissionSnapshot loadRoleSnapshot(Long roleId) {
             roleSnapshotLoaded = true;
             return new PermissionSnapshot("role-version", Set.of("role:admin", "role:publish"));
         }
 
         @Override
-        public boolean isSessionPermissionSnapshotCurrent(Long tenantId, String sessionPermissionsVersion) {
+        public boolean isSessionPermissionSnapshotCurrent(String sessionPermissionsVersion) {
             Long version = parseVersion(sessionPermissionsVersion);
             return version != null && version.equals(currentVersion);
         }

@@ -374,13 +374,12 @@ public class SystemController {
     public ApiResponse<PageResponse<SystemVO.ConfigVO>> configs(
             @RequestParam(name = "configKey", required = false) String configKey,
             @RequestParam(name = "configName", required = false) String configName,
-            @RequestParam(name = "configScope", required = false) String configScope,
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require("system:config:view");
         return ApiResponse.success(
-                systemManagementAppService.listConfigs(securityContextFacade.getCurrentUser(), configKey, configName, configScope, pageNo, pageSize),
+                systemManagementAppService.listConfigs(securityContextFacade.getCurrentUser(), configKey, configName, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }

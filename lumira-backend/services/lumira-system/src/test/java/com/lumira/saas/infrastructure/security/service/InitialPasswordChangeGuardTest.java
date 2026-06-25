@@ -89,7 +89,6 @@ class InitialPasswordChangeGuardTest {
     private static CurrentUser buildAdminUser(String sessionId, Integer sessionVersion) {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(2001L);
-        currentUser.setCurrentTenantId(2002L);
         currentUser.setUsername("admin");
         currentUser.setSessionId(sessionId);
         currentUser.setSessionVersion(sessionVersion);

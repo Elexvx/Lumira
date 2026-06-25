@@ -2,7 +2,6 @@ package com.lumira.payment.security;
 
 import com.lumira.api.auth.CurrentUserDTO;
 import com.lumira.api.client.AuthInternalApi;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenType;
 import jakarta.servlet.FilterChain;
@@ -74,7 +73,7 @@ public class PaymentJwtAuthFilter extends OncePerRequestFilter {
                         CurrentUser currentUser = new CurrentUser(
                                 snapshot.userId(),
                                 snapshot.username(),
-                                PlatformConstants.PLATFORM_TENANT_ID,
+                                null,
                                 snapshot.sessionId(),
                                 snapshot.sessionVersion(),
                                 true,

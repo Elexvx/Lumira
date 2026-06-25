@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SystemManagementAppServicePermissionCacheTest {
 
     @Test
-    void shouldCachePermissionCatalogPerTenant() {
+    void shouldCachePermissionCatalogGlobally() {
         RecordingQueryOperations queryOperations = new RecordingQueryOperations();
         SystemManagementAppService service = new SystemManagementAppService(
                 queryOperations,
@@ -39,7 +39,6 @@ class SystemManagementAppServicePermissionCacheTest {
                 null
         );
         CurrentUser currentUser = new CurrentUser();
-        currentUser.setCurrentTenantId(1001L);
 
         List<SystemVO.PermissionVO> first = service.listPermissions(currentUser);
         List<SystemVO.PermissionVO> second = service.listPermissions(currentUser);
@@ -47,7 +46,7 @@ class SystemManagementAppServicePermissionCacheTest {
         assertEquals(1, queryOperations.queryCount);
         assertEquals(first, second);
         assertTrue(first.stream().anyMatch(permission -> "system:role:view".equals(permission.getPermissionKey())));
-        assertTrue(first.stream().anyMatch(permission -> "payment:view".equals(permission.getPermissionKey())));
+        assertEquals(1, first.size());
     }
 
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {

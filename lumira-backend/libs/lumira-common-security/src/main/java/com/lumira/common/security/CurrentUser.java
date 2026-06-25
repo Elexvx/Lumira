@@ -8,7 +8,6 @@ import java.util.Set;
 public class CurrentUser {
     private Long userId;
     private String username;
-    private Long currentTenantId;
     private Long simulatedRoleId;
     private String sessionId;
     private Integer sessionVersion;
@@ -26,14 +25,17 @@ public class CurrentUser {
     public CurrentUser() {
     }
 
-    public CurrentUser(Long userId, String username, Long currentTenantId, String sessionId, Integer sessionVersion, boolean authenticated, Set<String> permissions) {
-        this(userId, username, currentTenantId, sessionId, sessionVersion, authenticated, permissions, Set.of(), null, Set.of(), Set.of(), List.of());
+    public CurrentUser(Long userId, String username, String sessionId, Integer sessionVersion, boolean authenticated, Set<String> permissions) {
+        this(userId, username, sessionId, sessionVersion, authenticated, permissions, Set.of(), null, Set.of(), Set.of(), List.of());
+    }
+
+    public CurrentUser(Long userId, String username, Long ignoredScopeId, String sessionId, Integer sessionVersion, boolean authenticated, Set<String> permissions) {
+        this(userId, username, sessionId, sessionVersion, authenticated, permissions, Set.of(), null, Set.of(), Set.of(), List.of());
     }
 
     public CurrentUser(
             Long userId,
             String username,
-            Long currentTenantId,
             String sessionId,
             Integer sessionVersion,
             boolean authenticated,
@@ -46,7 +48,6 @@ public class CurrentUser {
     ) {
         this.userId = userId;
         this.username = username;
-        this.currentTenantId = currentTenantId;
         this.sessionId = sessionId;
         this.sessionVersion = sessionVersion;
         this.authenticated = authenticated;
@@ -56,6 +57,24 @@ public class CurrentUser {
         this.deptIds = deptIds;
         this.descendantDeptIds = descendantDeptIds;
         this.dataScopes = dataScopes;
+    }
+
+    public CurrentUser(
+            Long userId,
+            String username,
+            Long ignoredScopeId,
+            String sessionId,
+            Integer sessionVersion,
+            boolean authenticated,
+            Set<String> permissions,
+            Set<Long> roleIds,
+            Long primaryDeptId,
+            Set<Long> deptIds,
+            Set<Long> descendantDeptIds,
+            List<DataPermissionRule> dataScopes
+    ) {
+        this(userId, username, sessionId, sessionVersion, authenticated, permissions, roleIds,
+                primaryDeptId, deptIds, descendantDeptIds, dataScopes);
     }
 
     public Long getUserId() {
@@ -72,14 +91,6 @@ public class CurrentUser {
 
     public void setUsername(String username) {
         this.username = username;
-    }
-
-    public Long getCurrentTenantId() {
-        return currentTenantId;
-    }
-
-    public void setCurrentTenantId(Long currentTenantId) {
-        this.currentTenantId = currentTenantId;
     }
 
     public Long getSimulatedRoleId() {

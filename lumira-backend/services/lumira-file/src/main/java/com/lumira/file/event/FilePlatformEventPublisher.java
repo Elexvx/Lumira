@@ -4,7 +4,6 @@ import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -30,29 +29,27 @@ public class FilePlatformEventPublisher {
         publishAfterCommit(FilePlatformEventTypes.FILE_OBJECT_DELETED, currentUser, file);
     }
 
-    String buildEventKey(String eventType, Long tenantId, Long fileId) {
-        return eventType + ":" + (tenantId == null ? "unknown" : tenantId) + ":" + FilePlatformEventTypes.AGGREGATE_FILE_OBJECT + ":" + (fileId == null ? "none" : fileId);
+    String buildEventKey(String eventType, Long fileId) {
+        return eventType + ":" + FilePlatformEventTypes.AGGREGATE_FILE_OBJECT + ":" + (fileId == null ? "none" : fileId);
     }
 
     private void publishAfterCommit(String eventType, CurrentUser currentUser, FileObjectDTO file) {
-        Long tenantId = file == null ? currentTenantId(currentUser) : file.tenantId();
+        requireCurrentUser(currentUser);
         Long userId = currentUser == null ? null : currentUser.getUserId();
         Long fileId = file == null ? null : file.id();
         platformEventOutboxService.recordAfterCommit(
                 FilePlatformEventTypes.SOURCE_FILE,
                 eventType,
-                tenantId,
                 userId,
-                buildEventKey(eventType, tenantId, fileId),
-                buildPayload(tenantId, userId, file)
+                buildEventKey(eventType, fileId),
+                buildPayload(userId, file)
         );
     }
 
-    private Map<String, Object> buildPayload(Long tenantId, Long userId, FileObjectDTO file) {
+    private Map<String, Object> buildPayload(Long userId, FileObjectDTO file) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("schemaVersion", SCHEMA_VERSION);
         payload.put("occurredAt", LocalDateTime.now());
-        payload.put("tenantId", tenantId);
         payload.put("userId", userId);
         payload.put("aggregateType", FilePlatformEventTypes.AGGREGATE_FILE_OBJECT);
         payload.put("aggregateId", file == null ? null : file.id());
@@ -78,10 +75,9 @@ public class FilePlatformEventPublisher {
         return attributes;
     }
 
-    private Long currentTenantId(CurrentUser currentUser) {
+    private void requireCurrentUser(CurrentUser currentUser) {
         if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "Login required");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 }

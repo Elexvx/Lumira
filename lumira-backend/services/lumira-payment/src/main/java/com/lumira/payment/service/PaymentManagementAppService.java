@@ -1,15 +1,10 @@
 package com.lumira.payment.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
 import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentProviderTestResultDTO;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
-import com.lumira.common.security.CurrentUser;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -26,7 +21,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class PaymentManagementAppService {
@@ -40,7 +34,7 @@ public class PaymentManagementAppService {
     private final PaymentConfigCryptoService cryptoService;
     private final PaymentProviderCatalog providerCatalog;
     private final PaymentOutboxService outboxService;
-    private final Map<Long, CachedProviderList> providerListCache = new ConcurrentHashMap<>();
+    private volatile CachedProviderList providerListCache;
 
     public PaymentManagementAppService(
             JdbcTemplate jdbcTemplate,
@@ -56,33 +50,32 @@ public class PaymentManagementAppService {
         this.outboxService = outboxService;
     }
 
-    public List<PaymentProviderSettingsDTO> listProviderSettings(Long tenantId) {
-        Long effectiveTenantId = tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId;
-        CachedProviderList cached = providerListCache.get(effectiveTenantId);
+    public List<PaymentProviderSettingsDTO> listProviderSettings() {
+        CachedProviderList cached = providerListCache;
         Instant now = Instant.now();
         if (cached != null && cached.expireAt().isAfter(now)) {
             return cached.settings();
         }
         if (cached != null) {
-            providerListCache.remove(effectiveTenantId);
+            providerListCache = null;
         }
         List<PaymentProviderSettingsDTO> settings = new ArrayList<>();
         for (PaymentProviderCatalog.PaymentProviderDefinition definition : providerCatalog.definitions()) {
-            settings.add(loadProviderSettings(effectiveTenantId, definition.providerCode()));
+            settings.add(loadProviderSettings(definition.providerCode()));
         }
         List<PaymentProviderSettingsDTO> immutableSettings = List.copyOf(settings);
-        providerListCache.put(effectiveTenantId, new CachedProviderList(immutableSettings, now.plus(PROVIDER_LIST_CACHE_TTL)));
+        providerListCache = new CachedProviderList(immutableSettings, now.plus(PROVIDER_LIST_CACHE_TTL));
         return immutableSettings;
     }
 
-    public PaymentProviderSettingsDTO paymentProviderSettings(Long tenantId, String providerCode) {
-        return loadProviderSettings(tenantId, providerCode);
+    public PaymentProviderSettingsDTO paymentProviderSettings(String providerCode) {
+        return loadProviderSettings(providerCode);
     }
 
     @Transactional
-    public PaymentProviderSettingsDTO updatePaymentProviderSettings(Long tenantId, Long operatorId, String providerCode, PaymentProviderSettingsDTO request) {
+    public PaymentProviderSettingsDTO updatePaymentProviderSettings(Long operatorId, String providerCode, PaymentProviderSettingsDTO request) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
-        PaymentProviderSettingsDTO current = loadProviderSettings(tenantId, providerCode);
+        PaymentProviderSettingsDTO current = loadProviderSettings(providerCode);
         PaymentProviderSettingsDTO merged = mergeSettings(definition, current, request);
         merged.setProviderCode(definition.providerCode());
         merged.setProviderName(definition.providerName());
@@ -95,10 +88,9 @@ public class PaymentManagementAppService {
         }
 
         LocalDateTime eventVersion = LocalDateTime.now();
-        upsertProviderConfig(tenantId, operatorId, definition, merged, current);
-        providerListCache.remove(tenantId == null ? PlatformConstants.PLATFORM_TENANT_ID : tenantId);
+        upsertProviderConfig(operatorId, definition, merged, current);
+        providerListCache = null;
         outboxService.recordAfterCommit(
-                tenantId,
                 operatorId,
                 "payment",
                 "payment.provider.updated",
@@ -111,34 +103,33 @@ public class PaymentManagementAppService {
                         "eventVersion", eventVersion
                 )
         );
-        return loadProviderSettings(tenantId, providerCode);
+        return loadProviderSettings(providerCode);
     }
 
     @Transactional
-    public PaymentProviderTestResultDTO testPaymentProvider(Long tenantId, Long operatorId, String providerCode) {
+    public PaymentProviderTestResultDTO testPaymentProvider(Long operatorId, String providerCode) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
-        PaymentProviderSettingsDTO settings = loadProviderSettings(tenantId, providerCode);
+        PaymentProviderSettingsDTO settings = loadProviderSettings(providerCode);
         LocalDateTime checkedAt = LocalDateTime.now();
         boolean success = false;
         String message;
 
         if (!settings.isEnabled()) {
-            message = "支付通道已停用";
+            message = "Payment provider is disabled";
         } else if (!settings.isConfigured()) {
-            message = "支付配置未完成";
+            message = "Payment provider is not configured";
         } else {
             try {
                 validateProviderSettings(definition, settings);
                 message = performConnectivityProbe(settings);
                 success = true;
             } catch (RuntimeException ex) {
-                message = ex.getMessage() == null ? "支付通道测试失败" : ex.getMessage();
+                message = ex.getMessage() == null ? "Payment provider test failed" : ex.getMessage();
             }
         }
 
-        updateProviderTestResult(tenantId, operatorId, providerCode, success, message, checkedAt);
+        updateProviderTestResult(operatorId, providerCode, success, message, checkedAt);
         outboxService.recordAfterCommit(
-                tenantId,
                 operatorId,
                 "payment",
                 "payment.provider.tested",
@@ -152,58 +143,21 @@ public class PaymentManagementAppService {
         return new PaymentProviderTestResultDTO(providerCode, definition.providerName(), success, message, checkedAt);
     }
 
-    public PaymentProviderSettingsDTO getRequiredProviderSettings(Long tenantId, String providerCode) {
-        PaymentProviderSettingsDTO settings = loadProviderSettings(tenantId, providerCode, false);
+    public PaymentProviderSettingsDTO getRequiredProviderSettings(String providerCode) {
+        PaymentProviderSettingsDTO settings = loadProviderSettings(providerCode, false);
         if (!settings.isConfigured()) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "支付配置未完成");
+            throw new BizException(ErrorCode.BIZ_ERROR, "Payment provider is not configured");
         }
         return settings;
     }
 
-    public Long resolveWebhookTenantId(String providerCode, String payload, Map<String, String> headers) {
-        PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
-        List<PaymentProviderConfigRow> rows = jdbcTemplate.query(
-                """
-                        select id, tenant_id as tenantId, provider_code as providerCode, provider_name as providerName,
-                               enabled, environment, encrypted_config_json as encryptedConfigJson, configured,
-                               last_tested_at as lastTestedAt, last_test_success as lastTestSuccess,
-                               last_test_message as lastTestMessage, created_by as createdBy, created_at as createdAt,
-                               updated_by as updatedBy, updated_at as updatedAt, deleted
-                        from payment_provider_config
-                        where provider_code = ? and enabled = 1 and configured = 1 and deleted = 0
-                        order by id desc
-                        """,
-                new BeanPropertyRowMapper<>(PaymentProviderConfigRow.class),
-                definition.providerCode()
-        );
-        Long claimedTenantId = parseTenantHeader(headers);
-        Long matchedTenantId = null;
-        for (PaymentProviderConfigRow row : rows) {
-            PaymentProviderSettingsDTO settings = cryptoService.decryptJson(row.getEncryptedConfigJson(), PaymentProviderSettingsDTO.class);
-            if (!matchesWebhookIdentity(settings, payload, headers)) {
-                continue;
-            }
-            if (matchedTenantId != null && !matchedTenantId.equals(row.getTenantId())) {
-                throw new BizException(ErrorCode.BAD_REQUEST, "Webhook tenant is ambiguous", "Webhook request is invalid");
-            }
-            matchedTenantId = row.getTenantId();
-        }
-        if (matchedTenantId == null) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook tenant cannot be resolved", "Webhook request is invalid");
-        }
-        if (claimedTenantId != null && !claimedTenantId.equals(matchedTenantId)) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook tenant header mismatch", "Webhook request is invalid");
-        }
-        return matchedTenantId;
+    private PaymentProviderSettingsDTO loadProviderSettings(String providerCode) {
+        return loadProviderSettings(providerCode, true);
     }
 
-    private PaymentProviderSettingsDTO loadProviderSettings(Long tenantId, String providerCode) {
-        return loadProviderSettings(tenantId, providerCode, true);
-    }
-
-    private PaymentProviderSettingsDTO loadProviderSettings(Long tenantId, String providerCode, boolean maskSecrets) {
+    private PaymentProviderSettingsDTO loadProviderSettings(String providerCode, boolean maskSecrets) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
-        PaymentProviderConfigRow row = queryProviderRow(tenantId, definition.providerCode());
+        PaymentProviderConfigRow row = queryProviderRow(definition.providerCode());
         if (row == null) {
             return providerCatalog.createBlankSettings(providerCode);
         }
@@ -224,88 +178,7 @@ public class PaymentManagementAppService {
         return response;
     }
 
-    private boolean matchesWebhookIdentity(PaymentProviderSettingsDTO settings, String payload, Map<String, String> headers) {
-        String endpointToken = resolveHeader(headers, "X-Webhook-Token", "X-Endpoint-Token", "Webhook-Id");
-        if (StringUtils.hasText(endpointToken) && matchesAny(endpointToken, settings.getWebhookId(), settings.getWebhookSecret())) {
-            return true;
-        }
-        String merchantId = firstText(resolveHeader(headers, "X-Merchant-Id", "Wechatpay-Mchid", "PayPal-Client-Id"),
-                extractField(payload, "merchantId", "merchant_id", "mchid", "seller_id", "account"));
-        if (StringUtils.hasText(merchantId) && matchesAny(merchantId, settings.getMerchantId(), settings.getClientId())) {
-            return true;
-        }
-        String appId = firstText(resolveHeader(headers, "X-App-Id", "Wechatpay-Appid"),
-                extractField(payload, "appId", "app_id", "appid", "client_id"));
-        return StringUtils.hasText(appId) && matchesAny(appId, settings.getAppId(), settings.getClientId(), settings.getPublishableKey());
-    }
-
-    private String extractField(String payload, String... fieldNames) {
-        if (!StringUtils.hasText(payload)) {
-            return "";
-        }
-        try {
-            JsonNode root = objectMapper.readTree(payload);
-            for (String fieldName : fieldNames) {
-                JsonNode node = root.path(fieldName);
-                if (!node.isMissingNode() && !node.isNull() && StringUtils.hasText(node.asText())) {
-                    return node.asText();
-                }
-            }
-        } catch (Exception ignored) {
-            return "";
-        }
-        return "";
-    }
-
-    private String resolveHeader(Map<String, String> headers, String... keys) {
-        if (headers == null) {
-            return "";
-        }
-        for (String key : keys) {
-            for (Map.Entry<String, String> entry : headers.entrySet()) {
-                if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(key) && StringUtils.hasText(entry.getValue())) {
-                    return entry.getValue().trim();
-                }
-            }
-        }
-        return "";
-    }
-
-    private Long parseTenantHeader(Map<String, String> headers) {
-        String value = resolveHeader(headers, "X-Tenant-Id");
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        try {
-            return Long.parseLong(value.trim());
-        } catch (NumberFormatException exception) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook tenant header invalid", "Webhook request is invalid");
-        }
-    }
-
-    private String firstText(String... values) {
-        for (String value : values) {
-            if (StringUtils.hasText(value)) {
-                return value.trim();
-            }
-        }
-        return "";
-    }
-
-    private boolean matchesAny(String candidate, String... configuredValues) {
-        if (!StringUtils.hasText(candidate)) {
-            return false;
-        }
-        for (String configuredValue : configuredValues) {
-            if (StringUtils.hasText(configuredValue) && candidate.trim().equals(configuredValue.trim())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private void upsertProviderConfig(
-            Long tenantId,
             Long operatorId,
             PaymentProviderCatalog.PaymentProviderDefinition definition,
             PaymentProviderSettingsDTO merged,
@@ -313,7 +186,6 @@ public class PaymentManagementAppService {
     ) {
         String encryptedJson = cryptoService.encryptJson(buildStoredPayload(merged));
         PaymentProviderConfigRow row = new PaymentProviderConfigRow();
-        row.setTenantId(tenantId);
         row.setProviderCode(definition.providerCode());
         row.setProviderName(definition.providerName());
         row.setEnabled(merged.isEnabled() ? 1 : 0);
@@ -327,17 +199,16 @@ public class PaymentManagementAppService {
         row.setCreatedBy(operatorId);
         row.setDeleted(0);
 
-        Long existingId = queryProviderRowId(tenantId, definition.providerCode());
+        Long existingId = queryProviderRowId(definition.providerCode());
         if (existingId == null) {
             jdbcTemplate.update(
                     """
                             insert into payment_provider_config (
-                                tenant_id, provider_code, provider_name, enabled, environment, encrypted_config_json,
+                                provider_code, provider_name, enabled, environment, encrypted_config_json,
                                 configured, last_tested_at, last_test_success, last_test_message,
                                 created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
-                    row.getTenantId(),
                     row.getProviderCode(),
                     row.getProviderName(),
                     row.getEnabled(),
@@ -359,7 +230,7 @@ public class PaymentManagementAppService {
                         set provider_name = ?, enabled = ?, environment = ?, encrypted_config_json = ?, configured = ?,
                             last_tested_at = ?, last_test_success = ?, last_test_message = ?, updated_by = ?,
                             updated_at = ?, deleted = 0
-                        where id = ? and tenant_id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 row.getProviderName(),
                 row.getEnabled(),
@@ -371,8 +242,7 @@ public class PaymentManagementAppService {
                 row.getLastTestMessage(),
                 operatorId,
                 LocalDateTime.now(),
-                existingId,
-                tenantId
+                existingId
         );
     }
 
@@ -483,20 +353,20 @@ public class PaymentManagementAppService {
             }
         }
         if (!missing.isEmpty()) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "支付配置缺少必填字段: " + String.join("、", missing));
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Missing required payment fields: " + String.join(", ", missing));
         }
         if (StringUtils.hasText(settings.getApiBaseUrl())) {
             try {
                 java.net.URI.create(settings.getApiBaseUrl().trim());
             } catch (Exception ex) {
-                throw new BizException(ErrorCode.VALIDATION_ERROR, "支付 API 基地址格式不合法");
+                throw new BizException(ErrorCode.VALIDATION_ERROR, "Invalid payment API base URL");
             }
         }
     }
 
     private String performConnectivityProbe(PaymentProviderSettingsDTO settings) {
         if (!StringUtils.hasText(settings.getApiBaseUrl())) {
-            return "支付配置已就绪";
+            return "Payment provider is ready";
         }
 
         try {
@@ -510,18 +380,18 @@ public class PaymentManagementAppService {
                     .build();
             java.net.http.HttpResponse<Void> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.discarding());
             if (response.statusCode() >= 500) {
-                throw new BizException(ErrorCode.BIZ_ERROR, "支付平台返回错误状态: " + response.statusCode());
+                throw new BizException(ErrorCode.BIZ_ERROR, "Payment provider returned error status: " + response.statusCode());
             }
-            return "支付连通性测试通过";
+            return "Payment connectivity test passed";
         } catch (BizException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "支付连通性测试失败: " + ex.getMessage());
+            throw new BizException(ErrorCode.BIZ_ERROR, "Payment connectivity test failed: " + ex.getMessage());
         }
     }
 
-    private void updateProviderTestResult(Long tenantId, Long operatorId, String providerCode, boolean success, String message, LocalDateTime checkedAt) {
-        Long existingId = queryProviderRowId(tenantId, providerCode);
+    private void updateProviderTestResult(Long operatorId, String providerCode, boolean success, String message, LocalDateTime checkedAt) {
+        Long existingId = queryProviderRowId(providerCode);
         if (existingId == null) {
             return;
         }
@@ -529,34 +399,32 @@ public class PaymentManagementAppService {
                 """
                         update payment_provider_config
                         set last_tested_at = ?, last_test_success = ?, last_test_message = ?, updated_by = ?, updated_at = ?
-                        where id = ? and tenant_id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 checkedAt,
                 success ? 1 : 0,
                 message,
                 operatorId,
                 LocalDateTime.now(),
-                existingId,
-                tenantId
+                existingId
         );
     }
 
-    private PaymentProviderConfigRow queryProviderRow(Long tenantId, String providerCode) {
+    private PaymentProviderConfigRow queryProviderRow(String providerCode) {
         try {
             return jdbcTemplate.queryForObject(
                     """
-                            select id, tenant_id as tenantId, provider_code as providerCode, provider_name as providerName,
+                            select id, provider_code as providerCode, provider_name as providerName,
                                    enabled, environment, encrypted_config_json as encryptedConfigJson, configured,
                                    last_tested_at as lastTestedAt, last_test_success as lastTestSuccess,
                                    last_test_message as lastTestMessage, created_by as createdBy, created_at as createdAt,
                                    updated_by as updatedBy, updated_at as updatedAt, deleted
                             from payment_provider_config
-                            where tenant_id = ? and provider_code = ? and deleted = 0
+                            where provider_code = ? and deleted = 0
                             order by id desc
                             limit 1
                             """,
                     new BeanPropertyRowMapper<>(PaymentProviderConfigRow.class),
-                    tenantId,
                     providerCode
             );
         } catch (EmptyResultDataAccessException ignored) {
@@ -564,18 +432,17 @@ public class PaymentManagementAppService {
         }
     }
 
-    private Long queryProviderRowId(Long tenantId, String providerCode) {
+    private Long queryProviderRowId(String providerCode) {
         try {
             return jdbcTemplate.queryForObject(
                     """
                             select id
                             from payment_provider_config
-                            where tenant_id = ? and provider_code = ? and deleted = 0
+                            where provider_code = ? and deleted = 0
                             order by id desc
                             limit 1
                             """,
                     Long.class,
-                    tenantId,
                     providerCode
             );
         } catch (EmptyResultDataAccessException ignored) {

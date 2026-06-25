@@ -11,7 +11,7 @@ import java.util.Map;
 
 interface AiIamQueryFacade {
 
-    UserSearchResult searchUsers(Long tenantId, String keyword, String status, int limit);
+    UserSearchResult searchUsers(String keyword, String status, int limit);
 
     record UserSearchResult(List<Map<String, Object>> items, long total) {
     }
@@ -29,7 +29,7 @@ class DefaultAiIamQueryFacade implements AiIamQueryFacade {
     }
 
     @Override
-    public UserSearchResult searchUsers(Long tenantId, String keyword, String status, int limit) {
+    public UserSearchResult searchUsers(String keyword, String status, int limit) {
         int safeLimit = Math.max(1, Math.min(limit, MAX_SEARCH_LIMIT));
         List<Object> args = new java.util.ArrayList<>();
         StringBuilder filterSql = new StringBuilder("""

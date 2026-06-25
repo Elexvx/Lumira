@@ -6,7 +6,6 @@ import com.lumira.common.security.JwtSecretKeyFactory;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenParser;
 import com.lumira.common.security.JwtTokenType;
-import com.lumira.common.security.PlatformContext;
 import io.jsonwebtoken.Jwts;
 import org.springframework.stereotype.Service;
 
@@ -41,7 +40,6 @@ public class JwtTokenService {
                 .claim(JwtTokenParser.CLAIM_SESSION_ID, session.getSessionId())
                 .claim(JwtTokenParser.CLAIM_USER_ID, session.getUserId())
                 .claim(JwtTokenParser.CLAIM_USERNAME, session.getUsername())
-                .claim(JwtTokenParser.CLAIM_TENANT_ID, PlatformContext.compatibilityTenantId())
                 .claim(JwtTokenParser.CLAIM_SESSION_VERSION, session.getSessionVersion())
                 .claim(JwtTokenParser.CLAIM_TOKEN_TYPE, JwtTokenType.ACCESS.name())
                 .signWith(secretKey)

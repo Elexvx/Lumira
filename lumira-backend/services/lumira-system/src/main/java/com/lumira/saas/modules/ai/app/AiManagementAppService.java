@@ -4,7 +4,6 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.infrastructure.AiSecretCryptoService;
 import com.lumira.saas.modules.ai.vo.AiVO;
@@ -40,6 +39,7 @@ public class AiManagementAppService {
     private static final long MAX_PAGE_SIZE = 100L;
     private static final long GOVERNANCE_OVERVIEW_CACHE_TTL_MS = 15_000L;
     private static final int GOVERNANCE_OVERVIEW_CACHE_MAX_ENTRIES = 2048;
+    private static final String GOVERNANCE_OVERVIEW_CACHE_KEY = "global";
     private static final Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
 
     private static final String DEFAULT_SYSTEM_PROMPT_TEMPLATE = """
@@ -57,8 +57,9 @@ public class AiManagementAppService {
     private final AiSecretCryptoService aiSecretCryptoService;
     private final AiEmployeeRuntimeService aiEmployeeRuntimeService;
     private final AiChatModelFactory aiChatModelFactory;
-    private final Cache<Long, AiVO.GovernanceOverviewVO> governanceOverviewCache;
-    private final Cache<Long, CompletableFuture<AiVO.GovernanceOverviewVO>> governanceOverviewLoadInFlight;
+    private final AiAssistantEmployeeResolver aiAssistantEmployeeResolver;
+    private final Cache<String, AiVO.GovernanceOverviewVO> governanceOverviewCache;
+    private final Cache<String, CompletableFuture<AiVO.GovernanceOverviewVO>> governanceOverviewLoadInFlight;
 
     public AiManagementAppService(
             MyBatisQueryOperations jdbcTemplate,
@@ -72,6 +73,7 @@ public class AiManagementAppService {
         this.aiSecretCryptoService = aiSecretCryptoService;
         this.aiEmployeeRuntimeService = aiEmployeeRuntimeService;
         this.aiChatModelFactory = aiChatModelFactory;
+        this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(jdbcTemplate);
         this.governanceOverviewCache = CacheBuilder.newBuilder()
                 .maximumSize(GOVERNANCE_OVERVIEW_CACHE_MAX_ENTRIES)
                 .expireAfterWrite(GOVERNANCE_OVERVIEW_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
@@ -83,75 +85,73 @@ public class AiManagementAppService {
     }
 
     public PageResponse<AiVO.EmployeeVO> listEmployees(CurrentUser currentUser, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
+        requireLogin(currentUser);
         return pageQuery(
                 """
-                        select e.id, e.tenant_id as tenantId, e.username, e.nickname, e.position, e.avatar_key as avatarKey,
+                        select e.id, e.username, e.nickname, e.position, e.avatar_key as avatarKey,
                                e.description, e.greeting, e.default_llm_service_id as defaultLlmServiceId,
                                e.enabled, e.sort_order as sortOrder, e.create_time as createTime, e.update_time as updateTime,
                                s.title as defaultLlmServiceTitle
                         from ai_employee e
                         left join ai_llm_service s
                           on s.id = e.default_llm_service_id
-                         and s.tenant_id = e.tenant_id
                          and s.is_deleted = 0
-                        where e.tenant_id = ?
-                          and e.is_deleted = 0
+                        where e.is_deleted = 0
                         order by e.sort_order asc, e.id desc
                         """,
-                "select count(1) from ai_employee e where e.tenant_id = ? and e.is_deleted = 0",
+                "select count(1) from ai_employee e where e.is_deleted = 0",
                 AiVO.EmployeeVO.class,
                 pageNo,
                 pageSize,
-                List.of(tenantId)
+                List.of()
         );
     }
 
     public AiVO.GovernanceOverviewVO governanceOverview(CurrentUser currentUser) {
-        Long tenantId = currentTenantId(currentUser);
-        AiVO.GovernanceOverviewVO cached = governanceOverviewCache.getIfPresent(tenantId);
+        requireLogin(currentUser);
+        AiVO.GovernanceOverviewVO cached = governanceOverviewCache.getIfPresent(GOVERNANCE_OVERVIEW_CACHE_KEY);
         if (cached != null) {
             return copyGovernanceOverview(cached);
         }
-        return loadGovernanceOverview(tenantId);
+        return loadGovernanceOverview();
     }
 
-    private AiVO.GovernanceOverviewVO loadGovernanceOverview(Long tenantId) {
+    private AiVO.GovernanceOverviewVO loadGovernanceOverview() {
         try {
             CompletableFuture<AiVO.GovernanceOverviewVO> future = governanceOverviewLoadInFlight.get(
-                    tenantId,
-                    () -> CompletableFuture.completedFuture(loadGovernanceOverviewFresh(tenantId))
+                    GOVERNANCE_OVERVIEW_CACHE_KEY,
+                    () -> CompletableFuture.completedFuture(loadGovernanceOverviewFresh())
             );
             AiVO.GovernanceOverviewVO overview = future.join();
-            governanceOverviewLoadInFlight.invalidate(tenantId);
+            governanceOverviewLoadInFlight.invalidate(GOVERNANCE_OVERVIEW_CACHE_KEY);
             return copyGovernanceOverview(overview);
         } catch (ExecutionException ex) {
-            governanceOverviewLoadInFlight.invalidate(tenantId);
+            governanceOverviewLoadInFlight.invalidate(GOVERNANCE_OVERVIEW_CACHE_KEY);
             Throwable cause = ex.getCause();
             if (cause instanceof RuntimeException runtimeException) {
                 throw runtimeException;
             }
             throw new IllegalStateException("Failed to load governance overview", cause);
         } catch (RuntimeException ex) {
-            governanceOverviewLoadInFlight.invalidate(tenantId);
+            governanceOverviewLoadInFlight.invalidate(GOVERNANCE_OVERVIEW_CACHE_KEY);
             throw ex;
         }
     }
 
-    private AiVO.GovernanceOverviewVO loadGovernanceOverviewFresh(Long tenantId) {
+    private AiVO.GovernanceOverviewVO loadGovernanceOverviewFresh() {
         CompletableFuture<Map<String, Object>> employeeStatsFuture = CompletableFuture.supplyAsync(() -> querySingleRow("""
                 select count(1) as employeeCount,
                        coalesce(sum(case when enabled = 1 then 1 else 0 end), 0) as enabledEmployeeCount
                 from ai_employee
-                where tenant_id = ? and is_deleted = 0
-                """, tenantId), BLOCKING_IO_EXECUTOR);
+                where is_deleted = 0
+                """), BLOCKING_IO_EXECUTOR);
         CompletableFuture<Map<String, Object>> llmServiceStatsFuture = CompletableFuture.supplyAsync(() -> querySingleRow("""
                 select count(1) as llmServiceCount,
                        coalesce(sum(case when enabled = 1 then 1 else 0 end), 0) as enabledLlmServiceCount,
                        coalesce(sum(case when api_key_encrypted is null or api_key_encrypted = '' then 1 else 0 end), 0) as missingApiKeyServiceCount
                 from ai_llm_service
-                where tenant_id = ? and is_deleted = 0
-                """, tenantId), BLOCKING_IO_EXECUTOR);
+                where is_deleted = 0
+                """), BLOCKING_IO_EXECUTOR);
         CompletableFuture<Map<String, Object>> skillStatsFuture = CompletableFuture.supplyAsync(() -> querySingleRow("""
                 select count(1) as skillCount,
                        coalesce(sum(case when risk_level = 'HIGH' then 1 else 0 end), 0) as highRiskSkillCount,
@@ -163,11 +163,10 @@ public class AiManagementAppService {
                 select count(1)
                 from ai_employee_skill es
                 join ai_skill s on s.skill_code = es.skill_code and s.is_deleted = 0
-                where es.tenant_id = ?
-                  and es.is_deleted = 0
+                where es.is_deleted = 0
                   and es.permission_mode = 'allow'
                   and s.risk_level = 'HIGH'
-                """, tenantId), BLOCKING_IO_EXECUTOR);
+                """), BLOCKING_IO_EXECUTOR);
 
         AiVO.GovernanceOverviewVO overview = new AiVO.GovernanceOverviewVO();
         Map<String, Object> employeeStats = employeeStatsFuture.join();
@@ -186,32 +185,31 @@ public class AiManagementAppService {
 
         overview.setHighRiskAllowedBindingCount(highRiskAllowedBindingCountFuture.join());
         overview.setSampledAt(LocalDateTime.now());
-        governanceOverviewCache.put(tenantId, copyGovernanceOverview(overview));
+        governanceOverviewCache.put(GOVERNANCE_OVERVIEW_CACHE_KEY, copyGovernanceOverview(overview));
         return overview;
     }
 
     public AiVO.EmployeeDetailVO getEmployee(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
-        AiVO.EmployeeDetailVO employee = queryEmployeeDetail(tenantId, id);
+        requireLogin(currentUser);
+        AiVO.EmployeeDetailVO employee = queryEmployeeDetail(id);
         employee.setDefaultSystemPromptTemplate(DEFAULT_SYSTEM_PROMPT_TEMPLATE);
         return employee;
     }
 
     @Transactional
     public AiVO.EmployeeDetailVO createEmployee(CurrentUser currentUser, AiDTO.EmployeeUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        validateEmployeeUsernameAvailable(tenantId, request.getUsername().trim(), null);
-        validateDefaultLlmService(tenantId, request.getDefaultLlmServiceId());
+        requireLogin(currentUser);
+        validateEmployeeUsernameAvailable(request.getUsername().trim(), null);
+        validateDefaultLlmService(request.getDefaultLlmServiceId());
         LocalDateTime now = LocalDateTime.now();
         String systemPrompt = cleanNullable(request.getSystemPrompt());
         jdbcTemplate.update(
                 """
                         insert into ai_employee (
-                            tenant_id, username, nickname, position, avatar_key, description, greeting,
+                            username, nickname, position, avatar_key, description, greeting,
                             system_prompt, default_llm_service_id, enabled, sort_order, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?, ?)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, 0, ?, ?)
                         """,
-                tenantId,
                 request.getUsername().trim(),
                 request.getNickname().trim(),
                 cleanNullable(request.getPosition()),
@@ -225,23 +223,23 @@ public class AiManagementAppService {
                 now
         );
         Long employeeId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        invalidateGovernanceOverviewCache(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-create", "CREATE", "SUCCESS", "创建数字员工: " + request.getUsername());
+        invalidateGovernanceOverviewCache();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-create", "CREATE", "SUCCESS", "创建数字员工: " + request.getUsername());
         return getEmployee(currentUser, employeeId);
     }
 
     @Transactional
     public AiVO.EmployeeDetailVO updateEmployee(CurrentUser currentUser, Long id, AiDTO.EmployeeUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        requireEmployee(tenantId, id);
-        validateEmployeeUsernameAvailable(tenantId, request.getUsername().trim(), id);
-        validateDefaultLlmService(tenantId, request.getDefaultLlmServiceId());
+        requireLogin(currentUser);
+        requireEmployee(id);
+        validateEmployeeUsernameAvailable(request.getUsername().trim(), id);
+        validateDefaultLlmService(request.getDefaultLlmServiceId());
         jdbcTemplate.update(
                 """
                         update ai_employee
                         set username = ?, nickname = ?, position = ?, avatar_key = ?, description = ?, greeting = ?,
                             system_prompt = ?, default_llm_service_id = ?, sort_order = ?, update_time = ?
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 request.getUsername().trim(),
                 request.getNickname().trim(),
@@ -253,61 +251,57 @@ public class AiManagementAppService {
                 request.getDefaultLlmServiceId(),
                 request.getSortOrder() == null ? 0 : request.getSortOrder(),
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
-        invalidateGovernanceOverviewCache(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-update", "UPDATE", "SUCCESS", "更新数字员工: " + request.getUsername());
+        invalidateGovernanceOverviewCache();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-update", "UPDATE", "SUCCESS", "更新数字员工: " + request.getUsername());
         return getEmployee(currentUser, id);
     }
 
     @Transactional
     public boolean deleteEmployee(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
-        requireEmployee(tenantId, id);
+        requireLogin(currentUser);
+        requireEmployee(id);
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
                         update ai_employee
                         set is_deleted = 1, update_time = ?
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 now,
-                tenantId,
                 id
         );
         jdbcTemplate.update(
                 """
                         update ai_employee_skill
                         set is_deleted = 1, update_time = ?
-                        where tenant_id = ? and employee_id = ? and is_deleted = 0
+                        where employee_id = ? and is_deleted = 0
                         """,
                 now,
-                tenantId,
                 id
         );
-        invalidateGovernanceOverviewCache(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-delete", "DELETE", "SUCCESS", "删除数字员工: " + id);
+        invalidateGovernanceOverviewCache();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-delete", "DELETE", "SUCCESS", "删除数字员工: " + id);
         return true;
     }
 
     @Transactional
     public boolean updateEmployeeEnabled(CurrentUser currentUser, Long id, boolean enabled) {
-        Long tenantId = currentTenantId(currentUser);
-        requireEmployee(tenantId, id);
+        requireLogin(currentUser);
+        requireEmployee(id);
         jdbcTemplate.update(
                 """
                         update ai_employee
                         set enabled = ?, update_time = ?
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 enabled ? 1 : 0,
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
-        invalidateGovernanceOverviewCache(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-enabled", "UPDATE", "SUCCESS", "更新数字员工状态: " + id + " -> " + enabled);
+        invalidateGovernanceOverviewCache();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-enabled", "UPDATE", "SUCCESS", "更新数字员工状态: " + id + " -> " + enabled);
         return true;
     }
 
@@ -318,63 +312,61 @@ public class AiManagementAppService {
     }
 
     public List<AiVO.EmployeeCapabilityVO> getEmployeeCapabilities(CurrentUser currentUser, Long employeeId) {
-        Long tenantId = currentTenantId(currentUser);
-        requireEmployee(tenantId, employeeId);
-        return listEmployeeCapabilities(tenantId, employeeId);
+        requireLogin(currentUser);
+        requireEmployee(employeeId);
+        return listEmployeeCapabilities(employeeId);
     }
 
     @Transactional
     public boolean updateEmployeeCapabilities(CurrentUser currentUser, Long employeeId, AiDTO.EmployeeCapabilitiesUpdateRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        requireEmployee(tenantId, employeeId);
-        replaceEmployeeCapabilities(tenantId, employeeId, request == null ? List.of() : request.getCapabilities());
-        invalidateGovernanceOverviewCache(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-capabilities", "UPDATE", "SUCCESS", "更新数字员工能力边界: " + employeeId);
+        requireLogin(currentUser);
+        requireEmployee(employeeId);
+        replaceEmployeeCapabilities(employeeId, request == null ? List.of() : request.getCapabilities());
+        invalidateGovernanceOverviewCache();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "employee-capabilities", "UPDATE", "SUCCESS", "更新数字员工能力边界: " + employeeId);
         return true;
     }
 
     public PageResponse<AiVO.LlmServiceVO> listLlmServices(CurrentUser currentUser, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
+        requireLogin(currentUser);
         return pageQuery(
                 """
-                        select id, tenant_id as tenantId, provider, code, title, base_url as baseUrl,
+                        select id, provider, code, title, base_url as baseUrl,
                                default_model as defaultModel, enabled, timeout_ms as timeoutMs, temperature,
                                max_tokens as maxTokens,
                                case when api_key_encrypted is null or api_key_encrypted = '' then 0 else 1 end as apiKeyConfigured,
                                case when api_key_encrypted is null or api_key_encrypted = '' then null else '******' end as apiKeyMasked,
                                create_time as createTime, update_time as updateTime
                         from ai_llm_service
-                        where tenant_id = ?
-                          and is_deleted = 0
+                        where is_deleted = 0
                         order by id desc
                         """,
-                "select count(1) from ai_llm_service where tenant_id = ? and is_deleted = 0",
+                "select count(1) from ai_llm_service where is_deleted = 0",
                 AiVO.LlmServiceVO.class,
                 pageNo,
                 pageSize,
-                List.of(tenantId)
+                List.of()
         );
     }
 
     public AiVO.LlmServiceVO getLlmService(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
-        AiEntitiesHelper.LlmServiceRecord record = requireLlmService(tenantId, id);
+        requireLogin(currentUser);
+        AiEntitiesHelper.LlmServiceRecord record = requireLlmService(id);
         return toLlmServiceVO(record);
     }
 
     @Transactional
     public AiVO.LlmServiceVO createLlmService(CurrentUser currentUser, AiDTO.LlmServiceUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        validateLlmServiceCodeAvailable(tenantId, request.getCode().trim(), null);
+        requireLogin(currentUser);
+        validateLlmServiceCodeAvailable(request.getCode().trim(), null);
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
                         insert into ai_llm_service (
-                            tenant_id, provider, code, title, base_url, api_key_encrypted, default_model, enabled,
+                            provider, code, title, base_url, api_key_encrypted, default_model, enabled,
                             timeout_ms, temperature, max_tokens, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                         """,
-                tenantId,
                 request.getProvider().trim(),
                 request.getCode().trim(),
                 request.getTitle().trim(),
@@ -389,16 +381,16 @@ public class AiManagementAppService {
                 now
         );
         Long serviceId = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        invalidateGovernanceOverviewCache(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-create", "CREATE", "SUCCESS", "创建 LLM 服务: " + request.getCode());
+        invalidateGovernanceOverviewCache();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-create", "CREATE", "SUCCESS", "创建 LLM 服务: " + request.getCode());
         return getLlmService(currentUser, serviceId);
     }
 
     @Transactional
     public AiVO.LlmServiceVO updateLlmService(CurrentUser currentUser, Long id, AiDTO.LlmServiceUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        AiEntitiesHelper.LlmServiceRecord existing = requireLlmService(tenantId, id);
-        validateLlmServiceCodeAvailable(tenantId, request.getCode().trim(), id);
+        requireLogin(currentUser);
+        AiEntitiesHelper.LlmServiceRecord existing = requireLlmService(id);
+        validateLlmServiceCodeAvailable(request.getCode().trim(), id);
         String encryptedApiKey = StringUtils.hasText(request.getApiKey())
                 ? aiSecretCryptoService.encrypt(request.getApiKey().trim())
                 : existing.getApiKeyEncrypted();
@@ -407,7 +399,7 @@ public class AiManagementAppService {
                         update ai_llm_service
                         set provider = ?, code = ?, title = ?, base_url = ?, api_key_encrypted = ?, default_model = ?,
                             enabled = ?, timeout_ms = ?, temperature = ?, max_tokens = ?, update_time = ?
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 request.getProvider().trim(),
                 request.getCode().trim(),
@@ -420,28 +412,25 @@ public class AiManagementAppService {
                 request.getTemperature(),
                 request.getMaxTokens(),
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
-        invalidateGovernanceOverviewCache(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-update", "UPDATE", "SUCCESS", "更新 LLM 服务: " + request.getCode());
+        invalidateGovernanceOverviewCache();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-update", "UPDATE", "SUCCESS", "更新 LLM 服务: " + request.getCode());
         return getLlmService(currentUser, id);
     }
 
     @Transactional
     public boolean deleteLlmService(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
-        AiEntitiesHelper.LlmServiceRecord service = requireLlmService(tenantId, id);
+        requireLogin(currentUser);
+        AiEntitiesHelper.LlmServiceRecord service = requireLlmService(id);
         Integer refCount = jdbcTemplate.queryForObject(
                 """
                         select count(1)
                         from ai_employee
-                        where tenant_id = ?
-                          and default_llm_service_id = ?
+                        where default_llm_service_id = ?
                           and is_deleted = 0
                         """,
                 Integer.class,
-                tenantId,
                 id
         );
         if (refCount != null && refCount > 0) {
@@ -451,40 +440,38 @@ public class AiManagementAppService {
                 """
                         update ai_llm_service
                         set is_deleted = 1, update_time = ?
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
-        invalidateGovernanceOverviewCache(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-delete", "DELETE", "SUCCESS", "删除 LLM 服务: " + service.getCode());
+        invalidateGovernanceOverviewCache();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-delete", "DELETE", "SUCCESS", "删除 LLM 服务: " + service.getCode());
         return true;
     }
 
     @Transactional
     public boolean updateLlmServiceEnabled(CurrentUser currentUser, Long id, boolean enabled) {
-        Long tenantId = currentTenantId(currentUser);
-        AiEntitiesHelper.LlmServiceRecord service = requireLlmService(tenantId, id);
+        requireLogin(currentUser);
+        AiEntitiesHelper.LlmServiceRecord service = requireLlmService(id);
         jdbcTemplate.update(
                 """
                         update ai_llm_service
                         set enabled = ?, update_time = ?
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 enabled ? 1 : 0,
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
-        invalidateGovernanceOverviewCache(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-enabled", "UPDATE", "SUCCESS", "更新 LLM 服务状态: " + service.getCode() + " -> " + enabled);
+        invalidateGovernanceOverviewCache();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-enabled", "UPDATE", "SUCCESS", "更新 LLM 服务状态: " + service.getCode() + " -> " + enabled);
         return true;
     }
 
     public AiVO.LlmServiceTestResultVO testLlmService(CurrentUser currentUser, AiDTO.LlmServiceTestRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        AiLlmServiceConfig config = buildTestConfig(tenantId, request);
+        requireLogin(currentUser);
+        AiLlmServiceConfig config = buildTestConfig(request);
         AiDTO.ChatRequest chatRequest = new AiDTO.ChatRequest();
         chatRequest.setMessage("请只回复 OK，用于验证当前 LLM 服务配置是否可用。");
         AiVO.EmployeeDetailVO testEmployee = new AiVO.EmployeeDetailVO();
@@ -496,7 +483,7 @@ public class AiManagementAppService {
         try {
             AiVO.ChatResponseVO response = aiChatModelFactory.create(config).chat(chatRequest, testEmployee, List.of());
             long latencyMs = elapsedMillis(startedAt);
-            operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-test", "TEST", "SUCCESS", "测试 LLM 服务: " + safeAuditLabel(config));
+            operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-test", "TEST", "SUCCESS", "测试 LLM 服务: " + safeAuditLabel(config));
             AiVO.LlmServiceTestResultVO result = new AiVO.LlmServiceTestResultVO();
             result.setSuccess(true);
             result.setMessage("测试通过");
@@ -508,7 +495,7 @@ public class AiManagementAppService {
         } catch (RuntimeException exception) {
             long latencyMs = elapsedMillis(startedAt);
             String errorMessage = resolveFailureMessage(exception);
-            operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-test", "TEST", "FAIL", "测试 LLM 服务失败: " + safeAuditLabel(config));
+            operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "ai", "llm-test", "TEST", "FAIL", "测试 LLM 服务失败: " + safeAuditLabel(config));
             AiVO.LlmServiceTestResultVO result = new AiVO.LlmServiceTestResultVO();
             result.setSuccess(false);
             result.setMessage(errorMessage);
@@ -535,38 +522,18 @@ public class AiManagementAppService {
     }
 
     public AiVO.EmployeeVO getAssistantEmployee(CurrentUser currentUser) {
-        Long tenantId = currentTenantId(currentUser);
-        AiVO.EmployeeVO employee = jdbcTemplate.query(
-                """
-                        select e.id, e.tenant_id as tenantId, e.username, e.nickname, e.position, e.avatar_key as avatarKey,
-                               e.description, e.greeting, e.default_llm_service_id as defaultLlmServiceId,
-                               e.enabled, e.sort_order as sortOrder, e.create_time as createTime, e.update_time as updateTime,
-                               s.title as defaultLlmServiceTitle
-                        from ai_employee e
-                        left join ai_llm_service s
-                          on s.id = e.default_llm_service_id
-                         and s.tenant_id = e.tenant_id
-                         and s.is_deleted = 0
-                        where e.tenant_id = ?
-                          and e.is_deleted = 0
-                          and e.enabled = 1
-                        order by e.sort_order asc, e.id desc
-                        limit 1
-                        """,
-                new BeanPropertyRowMapper<>(AiVO.EmployeeVO.class),
-                tenantId
-        ).stream().findFirst().orElse(null);
-        return employee;
+        requireLogin(currentUser);
+        return aiAssistantEmployeeResolver.getOrCreateAssistantEmployee();
     }
 
     public PageResponse<AiVO.ConversationVO> listConversations(CurrentUser currentUser, Long employeeId, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
+        requireLogin(currentUser);
         if (employeeId != null) {
-            requireEmployee(tenantId, employeeId);
+            requireEmployee(employeeId);
         }
         return pageQuery(
                 """
-                        select c.id, c.tenant_id as tenantId, c.employee_id as employeeId,
+                        select c.id, c.employee_id as employeeId,
                                c.owner_user_id as ownerUserId,
                                coalesce(e.nickname, e.username, 'AI 助手') as employeeName,
                                c.conversation_code as conversationCode, c.title, c.status,
@@ -574,8 +541,7 @@ public class AiManagementAppService {
                                (
                                    select m.content
                                    from ai_message m
-                                   where m.tenant_id = c.tenant_id
-                                     and m.conversation_id = c.id
+                                   where m.conversation_id = c.id
                                      and m.is_deleted = 0
                                    order by m.id desc
                                    limit 1
@@ -586,10 +552,8 @@ public class AiManagementAppService {
                         from ai_conversation c
                         left join ai_employee e
                           on e.id = c.employee_id
-                         and e.tenant_id = c.tenant_id
                          and e.is_deleted = 0
-                        where c.tenant_id = ?
-                          and c.owner_user_id = ?
+                        where c.owner_user_id = ?
                           and (? is null or c.employee_id = ?)
                           and c.is_deleted = 0
                         order by c.is_pinned desc, coalesce(c.latest_message_at, c.create_time) desc, c.id desc
@@ -597,36 +561,33 @@ public class AiManagementAppService {
                 """
                         select count(1)
                         from ai_conversation c
-                        where c.tenant_id = ?
-                          and c.owner_user_id = ?
+                        where c.owner_user_id = ?
                           and (? is null or c.employee_id = ?)
                           and c.is_deleted = 0
                         """,
                 AiVO.ConversationVO.class,
                 pageNo,
                 pageSize,
-                Arrays.asList(tenantId, currentUser.getUserId(), employeeId, employeeId)
+                Arrays.asList(currentUser.getUserId(), employeeId, employeeId)
         );
     }
 
     public List<AiVO.MessageVO> listConversationMessages(CurrentUser currentUser, Long conversationId) {
-        Long tenantId = currentTenantId(currentUser);
-        requireConversation(tenantId, currentUser.getUserId(), conversationId);
+        requireLogin(currentUser);
+        requireConversation(currentUser.getUserId(), conversationId);
         CompletableFuture<List<AiVO.MessageVO>> messagesFuture = CompletableFuture.supplyAsync(() -> jdbcTemplate.query(
                 """
                         select id, conversation_id as conversationId, role, content, create_time as createTime
                         from ai_message
-                        where tenant_id = ?
-                          and conversation_id = ?
+                        where conversation_id = ?
                           and is_deleted = 0
                         order by id asc
                         """,
                 new BeanPropertyRowMapper<>(AiVO.MessageVO.class),
-                tenantId,
                 conversationId
         ), BLOCKING_IO_EXECUTOR);
         CompletableFuture<Map<Long, List<AiVO.MessageAttachmentVO>>> attachmentFuture = CompletableFuture.supplyAsync(
-                () -> loadMessageAttachments(tenantId, conversationId),
+                () -> loadMessageAttachments(conversationId),
                 BLOCKING_IO_EXECUTOR
         );
         List<AiVO.MessageVO> messages = messagesFuture.join();
@@ -639,8 +600,8 @@ public class AiManagementAppService {
 
     @Transactional
     public boolean updateConversation(CurrentUser currentUser, Long conversationId, AiDTO.ConversationUpdateRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(tenantId, currentUser.getUserId(), conversationId);
+        requireLogin(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), conversationId);
         String title = request == null ? null : request.getTitle();
         Boolean pinned = request == null ? null : request.getPinned();
         jdbcTemplate.update(
@@ -649,17 +610,14 @@ public class AiManagementAppService {
                         set title = coalesce(?, title),
                             is_pinned = coalesce(?, is_pinned),
                             update_time = ?
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 StringUtils.hasText(title) ? title.trim() : null,
                 pinned == null ? null : (pinned ? 1 : 0),
                 LocalDateTime.now(),
-                tenantId,
                 conversationId
         );
-        operationAuditService.log(
-                tenantId,
-                currentUser.getUserId(),
+        operationAuditService.log(currentUser.getUserId(),
                 currentUser.getUsername(),
                 "ai",
                 "conversation-update",
@@ -672,52 +630,48 @@ public class AiManagementAppService {
 
     @Transactional
     public boolean deleteConversation(CurrentUser currentUser, Long conversationId) {
-        Long tenantId = currentTenantId(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(tenantId, currentUser.getUserId(), conversationId);
+        requireLogin(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), conversationId);
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
                         update ai_conversation
                         set is_deleted = 1, update_time = ?
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 now,
-                tenantId,
                 conversationId
         );
         jdbcTemplate.update(
                 """
                         update ai_message
                         set is_deleted = 1, update_time = ?
-                        where tenant_id = ? and conversation_id = ? and is_deleted = 0
+                        where conversation_id = ? and is_deleted = 0
                         """,
                 now,
-                tenantId,
                 conversationId
         );
         jdbcTemplate.update(
                 """
                         update ai_message_attachment
                         set is_deleted = 1, update_time = ?
-                        where tenant_id = ? and conversation_id = ? and is_deleted = 0
+                        where conversation_id = ? and is_deleted = 0
                         """,
                 now,
-                tenantId,
                 conversationId
         );
-        jdbcTemplate.update(
-                """
-                        update ai_conversation_share
-                        set is_deleted = 1, update_time = ?
-                        where tenant_id = ? and conversation_id = ? and is_deleted = 0
-                        """,
-                now,
-                tenantId,
-                conversationId
-        );
-        operationAuditService.log(
-                tenantId,
-                currentUser.getUserId(),
+        if (conversationShareTableExists()) {
+            jdbcTemplate.update(
+                    """
+                            update ai_conversation_share
+                            set is_deleted = 1, update_time = ?
+                            where conversation_id = ? and is_deleted = 0
+                            """,
+                    now,
+                    conversationId
+            );
+        }
+        operationAuditService.log(currentUser.getUserId(),
                 currentUser.getUsername(),
                 "ai",
                 "conversation-delete",
@@ -728,20 +682,31 @@ public class AiManagementAppService {
         return true;
     }
 
+    private boolean conversationShareTableExists() {
+        return jdbcTemplate.exists(
+                """
+                        select 1
+                        from information_schema.tables
+                        where table_schema = database()
+                          and table_name = 'ai_conversation_share'
+                        limit 1
+                        """
+        );
+    }
+
     @Transactional
     public AiVO.ConversationShareVO createConversationShare(CurrentUser currentUser, Long conversationId) {
-        Long tenantId = currentTenantId(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(tenantId, currentUser.getUserId(), conversationId);
+        requireLogin(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), conversationId);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusDays(30);
         String shareToken = "share_" + UUID.randomUUID().toString().replace("-", "");
         jdbcTemplate.update(
                 """
                         insert into ai_conversation_share (
-                            tenant_id, conversation_id, share_token, title, status, expires_at, created_by, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, 'ACTIVE', ?, ?, 0, ?, ?)
+                            conversation_id, share_token, title, status, expires_at, created_by, is_deleted, create_time, update_time
+                        ) values (?, ?, ?, 'ACTIVE', ?, ?, 0, ?, ?)
                         """,
-                tenantId,
                 conversationId,
                 shareToken,
                 StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : conversation.getPreview(),
@@ -756,9 +721,7 @@ public class AiManagementAppService {
         share.setShareTitle(StringUtils.hasText(conversation.getTitle()) ? conversation.getTitle().trim() : conversation.getPreview());
         share.setExpiresAt(expiresAt);
         share.setCreateTime(now);
-        operationAuditService.log(
-                tenantId,
-                currentUser.getUserId(),
+        operationAuditService.log(currentUser.getUserId(),
                 currentUser.getUsername(),
                 "ai",
                 "conversation-share",
@@ -770,9 +733,9 @@ public class AiManagementAppService {
     }
 
     public AiVO.ConversationShareDetailVO getConversationShare(CurrentUser currentUser, String shareToken) {
-        Long tenantId = currentTenantId(currentUser);
-        AiVO.ConversationShareVO share = requireConversationShare(tenantId, shareToken);
-        AiVO.ConversationVO conversation = requireConversation(tenantId, currentUser.getUserId(), share.getConversationId());
+        requireLogin(currentUser);
+        AiVO.ConversationShareVO share = requireConversationShare(shareToken);
+        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), share.getConversationId());
         AiVO.ConversationShareDetailVO detail = new AiVO.ConversationShareDetailVO();
         detail.setShare(share);
         detail.setConversation(conversation);
@@ -781,8 +744,8 @@ public class AiManagementAppService {
     }
 
     public AiVO.ConversationExportVO exportConversation(CurrentUser currentUser, Long conversationId, String format) {
-        Long tenantId = currentTenantId(currentUser);
-        AiVO.ConversationVO conversation = requireConversation(tenantId, currentUser.getUserId(), conversationId);
+        requireLogin(currentUser);
+        AiVO.ConversationVO conversation = requireConversation(currentUser.getUserId(), conversationId);
         List<AiVO.MessageVO> messages = listConversationMessages(currentUser, conversationId);
         String normalizedFormat = normalizeExportFormat(format);
         String content = buildConversationExportContent(conversation, messages, normalizedFormat);
@@ -808,7 +771,7 @@ public class AiManagementAppService {
         return employeeTemplate(null);
     }
 
-    private List<AiVO.EmployeeCapabilityVO> listEmployeeCapabilities(Long tenantId, Long employeeId) {
+    private List<AiVO.EmployeeCapabilityVO> listEmployeeCapabilities(Long employeeId) {
         return jdbcTemplate.query(
                 """
                         select k.skill_code as capabilityCode, k.skill_name as capabilityName, k.category, k.description,
@@ -817,7 +780,6 @@ public class AiManagementAppService {
                         from ai_skill k
                         left join ai_employee_skill r
                           on r.skill_code = k.skill_code
-                         and r.tenant_id = ?
                          and r.employee_id = ?
                          and r.is_deleted = 0
                         where k.is_deleted = 0
@@ -825,21 +787,19 @@ public class AiManagementAppService {
                         order by k.category asc, k.skill_code asc
                         """,
                 new BeanPropertyRowMapper<>(AiVO.EmployeeCapabilityVO.class),
-                tenantId,
                 employeeId
         );
     }
 
-    private void replaceEmployeeCapabilities(Long tenantId, Long employeeId, List<AiDTO.EmployeeCapabilityItem> items) {
+    private void replaceEmployeeCapabilities(Long employeeId, List<AiDTO.EmployeeCapabilityItem> items) {
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
                         update ai_employee_skill
                         set is_deleted = 1, update_time = ?
-                        where tenant_id = ? and employee_id = ? and is_deleted = 0
+                        where employee_id = ? and is_deleted = 0
                         """,
                 now,
-                tenantId,
                 employeeId
         );
         if (items == null || items.isEmpty()) {
@@ -858,14 +818,13 @@ public class AiManagementAppService {
             jdbcTemplate.update(
                     """
                             insert into ai_employee_skill (
-                                tenant_id, employee_id, skill_code, permission_mode, is_deleted, create_time, update_time
-                            ) values (?, ?, ?, ?, 0, ?, ?)
+                                employee_id, skill_code, permission_mode, is_deleted, create_time, update_time
+                            ) values (?, ?, ?, 0, ?, ?)
                             on duplicate key update
                                 permission_mode = values(permission_mode),
                                 is_deleted = 0,
                                 update_time = values(update_time)
                             """,
-                    tenantId,
                     employeeId,
                     capabilityCode,
                     normalizeCapabilityMode(item.getPermissionMode(), readOnly),
@@ -927,10 +886,10 @@ public class AiManagementAppService {
         return value != null && "true".equalsIgnoreCase(String.valueOf(value));
     }
 
-    private AiVO.EmployeeDetailVO queryEmployeeDetail(Long tenantId, Long id) {
+    private AiVO.EmployeeDetailVO queryEmployeeDetail(Long id) {
         AiVO.EmployeeDetailVO employee = jdbcTemplate.query(
                 """
-                        select e.id, e.tenant_id as tenantId, e.username, e.nickname, e.position, e.avatar_key as avatarKey,
+                        select e.id, e.username, e.nickname, e.position, e.avatar_key as avatarKey,
                                e.description, e.greeting, e.system_prompt as systemPrompt,
                                e.default_llm_service_id as defaultLlmServiceId,
                                e.enabled, e.sort_order as sortOrder, e.create_time as createTime, e.update_time as updateTime,
@@ -938,15 +897,12 @@ public class AiManagementAppService {
                         from ai_employee e
                         left join ai_llm_service s
                           on s.id = e.default_llm_service_id
-                         and s.tenant_id = e.tenant_id
                          and s.is_deleted = 0
-                        where e.tenant_id = ?
-                          and e.id = ?
+                        where e.id = ?
                           and e.is_deleted = 0
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(AiVO.EmployeeDetailVO.class),
-                tenantId,
                 id
         ).stream().findFirst().orElse(null);
         if (employee == null) {
@@ -956,21 +912,19 @@ public class AiManagementAppService {
         return employee;
     }
 
-    private AiEntitiesHelper.LlmServiceRecord requireLlmService(Long tenantId, Long id) {
+    private AiEntitiesHelper.LlmServiceRecord requireLlmService(Long id) {
         AiEntitiesHelper.LlmServiceRecord service = jdbcTemplate.query(
                 """
-                        select id, tenant_id as tenantId, provider, code, title, base_url as baseUrl,
+                        select id, provider, code, title, base_url as baseUrl,
                                api_key_encrypted as apiKeyEncrypted, default_model as defaultModel,
                                enabled, timeout_ms as timeoutMs, temperature, max_tokens as maxTokens,
                                create_time as createTime, update_time as updateTime
                         from ai_llm_service
-                        where tenant_id = ?
-                          and id = ?
+                        where id = ?
                           and is_deleted = 0
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(AiEntitiesHelper.LlmServiceRecord.class),
-                tenantId,
                 id
         ).stream().findFirst().orElse(null);
         if (service == null) {
@@ -982,7 +936,6 @@ public class AiManagementAppService {
     private AiVO.LlmServiceVO toLlmServiceVO(AiEntitiesHelper.LlmServiceRecord record) {
         AiVO.LlmServiceVO vo = new AiVO.LlmServiceVO();
         vo.setId(record.getId());
-        vo.setTenantId(record.getTenantId());
         vo.setProvider(record.getProvider());
         vo.setCode(record.getCode());
         vo.setTitle(record.getTitle());
@@ -999,25 +952,23 @@ public class AiManagementAppService {
         return vo;
     }
 
-    private void validateDefaultLlmService(Long tenantId, Long defaultLlmServiceId) {
+    private void validateDefaultLlmService(Long defaultLlmServiceId) {
         if (defaultLlmServiceId == null) {
             return;
         }
-        requireLlmService(tenantId, defaultLlmServiceId);
+        requireLlmService(defaultLlmServiceId);
     }
 
-    private void requireEmployee(Long tenantId, Long employeeId) {
+    private void requireEmployee(Long employeeId) {
         AiVO.EmployeeVO employee = jdbcTemplate.query(
                 """
                         select id
                         from ai_employee
-                        where tenant_id = ?
-                          and id = ?
+                        where id = ?
                           and is_deleted = 0
                         limit 1
                         """,
                 (rs, rowNum) -> rs.getLong("id"),
-                tenantId,
                 employeeId
         ).stream().findFirst().map(id -> {
             AiVO.EmployeeVO employeeVO = new AiVO.EmployeeVO();
@@ -1029,11 +980,10 @@ public class AiManagementAppService {
         }
     }
 
-    private AiVO.ConversationVO requireConversation(Long tenantId, Long ownerUserId, Long conversationId) {
+    private AiVO.ConversationVO requireConversation(Long ownerUserId, Long conversationId) {
         AiVO.ConversationVO conversation = jdbcTemplate.query(
                 """
                         select c.id,
-                               c.tenant_id as tenantId,
                                c.employee_id as employeeId,
                                c.owner_user_id as ownerUserId,
                                coalesce(e.nickname, e.username) as employeeName,
@@ -1042,8 +992,7 @@ public class AiManagementAppService {
                                (
                                    select m.content
                                    from ai_message m
-                                   where m.tenant_id = c.tenant_id
-                                     and m.conversation_id = c.id
+                                   where m.conversation_id = c.id
                                      and m.is_deleted = 0
                                    order by m.id desc
                                    limit 1
@@ -1056,16 +1005,13 @@ public class AiManagementAppService {
                         from ai_conversation c
                         left join ai_employee e
                           on e.id = c.employee_id
-                         and e.tenant_id = c.tenant_id
                          and e.is_deleted = 0
-                        where c.tenant_id = ?
-                          and c.owner_user_id = ?
+                        where c.owner_user_id = ?
                           and c.id = ?
                           and c.is_deleted = 0
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(AiVO.ConversationVO.class),
-                tenantId,
                 ownerUserId,
                 conversationId
         ).stream().findFirst().orElse(null);
@@ -1075,21 +1021,19 @@ public class AiManagementAppService {
         return conversation;
     }
 
-    private AiVO.ConversationShareVO requireConversationShare(Long tenantId, String shareToken) {
+    private AiVO.ConversationShareVO requireConversationShare(String shareToken) {
         AiVO.ConversationShareVO share = jdbcTemplate.query(
                 """
                         select share_token as shareToken, conversation_id as conversationId, title as shareTitle,
                                expires_at as expiresAt, create_time as createTime
                         from ai_conversation_share
-                        where tenant_id = ?
-                          and share_token = ?
+                        where share_token = ?
                           and is_deleted = 0
                           and status = 'ACTIVE'
                           and (expires_at is null or expires_at >= now())
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(AiVO.ConversationShareVO.class),
-                tenantId,
                 shareToken
         ).stream().findFirst().orElse(null);
         if (share == null) {
@@ -1098,7 +1042,7 @@ public class AiManagementAppService {
         return share;
     }
 
-    private Map<Long, List<AiVO.MessageAttachmentVO>> loadMessageAttachments(Long tenantId, Long conversationId) {
+    private Map<Long, List<AiVO.MessageAttachmentVO>> loadMessageAttachments(Long conversationId) {
         Map<Long, List<AiVO.MessageAttachmentVO>> attachmentMap = new LinkedHashMap<>();
         jdbcTemplate.query(
                 """
@@ -1115,8 +1059,7 @@ public class AiManagementAppService {
                                download_url as downloadUrl,
                                preview_mode as previewMode
                         from ai_message_attachment
-                        where tenant_id = ?
-                          and conversation_id = ?
+                        where conversation_id = ?
                           and is_deleted = 0
                         order by id asc
                         """,
@@ -1137,7 +1080,6 @@ public class AiManagementAppService {
                     attachmentMap.computeIfAbsent(messageId, ignored -> new ArrayList<>()).add(attachment);
                     return attachment;
                 },
-                tenantId,
                 conversationId
         );
         return attachmentMap;
@@ -1235,18 +1177,16 @@ public class AiManagementAppService {
         return value == null ? 0L : value;
     }
 
-    private void validateEmployeeUsernameAvailable(Long tenantId, String username, Long excludeId) {
+    private void validateEmployeeUsernameAvailable(String username, Long excludeId) {
         boolean exists = jdbcTemplate.exists(
                 """
                         select 1
                         from ai_employee
-                        where tenant_id = ?
-                          and username = ?
+                        where username = ?
                           and is_deleted = 0
                           and (? is null or id <> ?)
                         limit 1
                         """,
-                tenantId,
                 username,
                 excludeId,
                 excludeId
@@ -1256,18 +1196,16 @@ public class AiManagementAppService {
         }
     }
 
-    private void validateLlmServiceCodeAvailable(Long tenantId, String code, Long excludeId) {
+    private void validateLlmServiceCodeAvailable(String code, Long excludeId) {
         boolean exists = jdbcTemplate.exists(
                 """
                         select 1
                         from ai_llm_service
-                        where tenant_id = ?
-                          and code = ?
+                        where code = ?
                           and is_deleted = 0
                           and (? is null or id <> ?)
                         limit 1
                         """,
-                tenantId,
                 code,
                 excludeId,
                 excludeId
@@ -1276,12 +1214,10 @@ public class AiManagementAppService {
             throw new BizException(ErrorCode.BIZ_ERROR, "LLM 服务标识已存在");
         }
     }
-
-    private Long currentTenantId(CurrentUser currentUser) {
+    private void requireLogin(CurrentUser currentUser) {
         if (currentUser == null) {
             throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 
     private Long count(String sql, Object... args) {
@@ -1308,9 +1244,9 @@ public class AiManagementAppService {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
-    private void invalidateGovernanceOverviewCache(Long tenantId) {
-        governanceOverviewCache.invalidate(tenantId);
-        governanceOverviewLoadInFlight.invalidate(tenantId);
+    private void invalidateGovernanceOverviewCache() {
+        governanceOverviewCache.invalidate(GOVERNANCE_OVERVIEW_CACHE_KEY);
+        governanceOverviewLoadInFlight.invalidate(GOVERNANCE_OVERVIEW_CACHE_KEY);
     }
 
     private AiVO.GovernanceOverviewVO copyGovernanceOverview(AiVO.GovernanceOverviewVO source) {
@@ -1331,11 +1267,11 @@ public class AiManagementAppService {
         return copy;
     }
 
-    private AiLlmServiceConfig buildTestConfig(Long tenantId, AiDTO.LlmServiceTestRequest request) {
+    private AiLlmServiceConfig buildTestConfig(AiDTO.LlmServiceTestRequest request) {
         if (request == null) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请填写 LLM 服务配置后再测试");
         }
-        AiEntitiesHelper.LlmServiceRecord existing = request.getServiceId() == null ? null : requireLlmService(tenantId, request.getServiceId());
+        AiEntitiesHelper.LlmServiceRecord existing = request.getServiceId() == null ? null : requireLlmService(request.getServiceId());
         String provider = firstText(request.getProvider(), existing == null ? null : existing.getProvider());
         if (!StringUtils.hasText(provider)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "请选择 LLM 类型");
@@ -1426,7 +1362,6 @@ public class AiManagementAppService {
 
         public static class LlmServiceRecord {
             private Long id;
-            private Long tenantId;
             private String provider;
             private String code;
             private String title;
@@ -1447,16 +1382,7 @@ public class AiManagementAppService {
             public void setId(Long id) {
                 this.id = id;
             }
-
-            public Long getTenantId() {
-                return tenantId;
-            }
-
-            public void setTenantId(Long tenantId) {
-                this.tenantId = tenantId;
-            }
-
-            public String getProvider() {
+public String getProvider() {
                 return provider;
             }
 

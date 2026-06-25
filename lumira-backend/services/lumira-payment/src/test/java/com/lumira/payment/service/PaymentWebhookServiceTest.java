@@ -19,14 +19,83 @@ import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
 import com.lumira.domain.event.DomainEventPublisher;
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 class PaymentWebhookServiceTest {
+
+    @Test
+    void paidCompetitionRegistrationWebhookUpdatesRegistrationWithIdempotentParticipantGuard() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        PaymentManagementAppService managementAppService = mock(PaymentManagementAppService.class);
+        PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
+        DomainEventPublisher domainEventPublisher = mock(DomainEventPublisher.class);
+        PaymentProviderCatalog providerCatalog = new PaymentProviderCatalog();
+        when(managementAppService.getRequiredProviderSettings("stripe")).thenReturn(stripeSettings());
+        doThrow(new EmptyResultDataAccessException(1)).when(jdbcTemplate).queryForObject(
+                contains("from payment_webhook_event"),
+                any(BeanPropertyRowMapper.class),
+                any(),
+                any()
+        );
+        PaymentOrderRow order = new PaymentOrderRow();
+        order.setOrderNo("REG-1-ABCD");
+        order.setAmountMinor(8800L);
+        order.setStatus("PENDING");
+        order.setRequestJson("""
+                {"metadata":{"bizType":"competition_registration","registrationId":1,"competitionId":11,"teamId":21,"projectId":31}}
+                """);
+        doReturn(order).when(jdbcTemplate).queryForObject(
+                contains("from payment_order"),
+                any(BeanPropertyRowMapper.class),
+                any()
+        );
+        doReturn("AIADC2026-0001").when(jdbcTemplate).queryForObject(
+                contains("from competition_registration cr"),
+                eq(String.class),
+                any()
+        );
+        PaymentWebhookService service = new PaymentWebhookService(
+                jdbcTemplate,
+                new ObjectMapper(),
+                managementAppService,
+                providerCatalog,
+                outboxService,
+                domainEventPublisher
+        );
+        String timestamp = String.valueOf(Instant.now().getEpochSecond());
+        String payload = "{\"eventId\":\"evt-paid\",\"eventType\":\"payment.succeeded\",\"orderNo\":\"REG-1-ABCD\"}";
+
+        PaymentWebhookEventDTO result = service.handleWebhook(
+                "stripe",
+                payload,
+                Map.of(
+                        "X-Event-Id", "evt-paid",
+                        "X-Event-Type", "payment.succeeded",
+                        "X-Timestamp", timestamp,
+                        "Stripe-Signature", stripeSignature(timestamp, payload)
+                )
+        );
+
+        assertThat(result.processed()).isTrue();
+        verify(jdbcTemplate).update(
+                contains("update competition_registration"),
+                eq("AIADC2026-0001"),
+                eq("REG-1-ABCD"),
+                any(),
+                eq(1L)
+        );
+        verify(jdbcTemplate).update(contains("participant_no is null"), any(Object[].class));
+    }
 
     @Test
     void duplicateWebhookReturnsExistingEventWithoutReprocessing() {
@@ -38,7 +107,7 @@ class PaymentWebhookServiceTest {
         PaymentProviderSettingsDTO settings = new PaymentProviderSettingsDTO();
         settings.setEnabled(true);
         settings.setWebhookSecret("secret");
-        when(managementAppService.getRequiredProviderSettings(1L, "stripe")).thenReturn(settings);
+        when(managementAppService.getRequiredProviderSettings("stripe")).thenReturn(settings);
 
         PaymentWebhookEventRow existing = new PaymentWebhookEventRow();
         existing.setProviderCode("stripe");
@@ -53,7 +122,6 @@ class PaymentWebhookServiceTest {
                 anyString(),
                 any(BeanPropertyRowMapper.class),
                 any(),
-                any(),
                 any()
         );
         PaymentWebhookService service = new PaymentWebhookService(
@@ -66,7 +134,6 @@ class PaymentWebhookServiceTest {
         );
 
         PaymentWebhookEventDTO result = service.handleWebhook(
-                1L,
                 "stripe",
                 "{\"eventId\":\"evt-1\",\"eventType\":\"payment.succeeded\"}",
                 Map.of("X-Event-Id", "evt-1")
@@ -87,11 +154,10 @@ class PaymentWebhookServiceTest {
         DomainEventPublisher domainEventPublisher = mock(DomainEventPublisher.class);
         PaymentProviderCatalog providerCatalog = new PaymentProviderCatalog();
         PaymentProviderSettingsDTO settings = stripeSettings();
-        when(managementAppService.getRequiredProviderSettings(1L, "stripe")).thenReturn(settings);
+        when(managementAppService.getRequiredProviderSettings("stripe")).thenReturn(settings);
         doReturn(null).when(jdbcTemplate).queryForObject(
                 anyString(),
                 any(BeanPropertyRowMapper.class),
-                any(),
                 any(),
                 any()
         );
@@ -105,7 +171,6 @@ class PaymentWebhookServiceTest {
         );
 
         assertThatThrownBy(() -> service.handleWebhook(
-                1L,
                 "stripe",
                 "{\"eventId\":\"evt-bad\",\"eventType\":\"payment.succeeded\",\"orderNo\":\"ord-1\"}",
                 Map.of(
@@ -128,18 +193,16 @@ class PaymentWebhookServiceTest {
         PaymentOutboxService outboxService = mock(PaymentOutboxService.class);
         DomainEventPublisher domainEventPublisher = mock(DomainEventPublisher.class);
         PaymentProviderCatalog providerCatalog = new PaymentProviderCatalog();
-        when(managementAppService.getRequiredProviderSettings(1L, "stripe")).thenReturn(stripeSettings());
+        when(managementAppService.getRequiredProviderSettings("stripe")).thenReturn(stripeSettings());
         doThrow(new EmptyResultDataAccessException(1)).when(jdbcTemplate).queryForObject(
                 anyString(),
                 any(BeanPropertyRowMapper.class),
-                any(),
                 any(),
                 any()
         );
         doReturn(List.of(1L)).when(jdbcTemplate).queryForList(
                 contains("nonce = ?"),
                 eq(Long.class),
-                any(),
                 any(),
                 any(),
                 any()
@@ -154,7 +217,6 @@ class PaymentWebhookServiceTest {
         );
 
         assertThatThrownBy(() -> service.handleWebhook(
-                1L,
                 "stripe",
                 "{\"eventId\":\"evt-replay\",\"eventType\":\"payment.succeeded\"}",
                 Map.of(
@@ -177,4 +239,16 @@ class PaymentWebhookServiceTest {
         settings.setWebhookSecret("secret");
         return settings;
     }
+
+    private String stripeSignature(String timestamp, String payload) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec("secret".getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            return Base64.getEncoder().encodeToString(mac.doFinal((timestamp + "." + payload).getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
 }
+
+

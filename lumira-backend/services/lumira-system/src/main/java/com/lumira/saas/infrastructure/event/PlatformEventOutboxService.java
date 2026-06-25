@@ -33,7 +33,7 @@ public class PlatformEventOutboxService {
     private static final String SYSTEM_SOURCE_TYPE = PlatformEventTypes.SOURCE_SYSTEM;
 
     private static final String SQL_LIST_DISPATCHABLE = """
-            select id, tenant_id as tenantId, user_id as userId, source_type as sourceType,
+            select id, user_id as userId, source_type as sourceType,
                    event_type as eventType, event_key as eventKey, payload_json as payloadJson,
                    dispatch_status as dispatchStatus, retry_count as retryCount,
                    next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
@@ -51,7 +51,7 @@ public class PlatformEventOutboxService {
             """;
 
     private static final String SQL_FIND_BY_ID = """
-            select id, tenant_id as tenantId, user_id as userId, source_type as sourceType,
+            select id, user_id as userId, source_type as sourceType,
                    event_type as eventType, event_key as eventKey, payload_json as payloadJson,
                    dispatch_status as dispatchStatus, retry_count as retryCount,
                    next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
@@ -110,12 +110,11 @@ public class PlatformEventOutboxService {
     public void recordAfterCommit(
             String sourceType,
             String eventType,
-            Long tenantId,
             Long userId,
             String eventKey,
             Object payload
     ) {
-        Runnable recordAction = () -> record(sourceType, eventType, tenantId, userId, eventKey, payload);
+        Runnable recordAction = () -> record(sourceType, eventType, userId, eventKey, payload);
         if (!TransactionSynchronizationManager.isSynchronizationActive() || !TransactionSynchronizationManager.isActualTransactionActive()) {
             recordAction.run();
             return;
@@ -136,14 +135,12 @@ public class PlatformEventOutboxService {
     public PlatformEventOutboxEntity record(
             String sourceType,
             String eventType,
-            Long tenantId,
             Long userId,
             String eventKey,
             Object payload
     ) {
         ensureSystemSource(sourceType);
         PlatformEventOutboxEntity entity = new PlatformEventOutboxEntity();
-        entity.setTenantId(tenantId);
         entity.setUserId(userId);
         entity.setSourceType(SYSTEM_SOURCE_TYPE);
         entity.setEventType(eventType);
@@ -382,7 +379,7 @@ public class PlatformEventOutboxService {
         );
         return queryOperations.query(
                 """
-                        select id, tenant_id as tenantId, user_id as userId, source_type as sourceType,
+                        select id, user_id as userId, source_type as sourceType,
                                event_type as eventType, event_key as eventKey, payload_json as payloadJson,
                                dispatch_status as dispatchStatus, retry_count as retryCount,
                                next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,

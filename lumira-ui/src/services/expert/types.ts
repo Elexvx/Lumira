@@ -2,7 +2,6 @@ export type ExpertStatus = 'active' | 'inactive';
 
 export interface ExpertRecord {
   id: number;
-  tenantId?: number;
   code: string;
   name: string;
   title?: string | null;
@@ -10,6 +9,12 @@ export interface ExpertRecord {
   position?: string | null;
   expertise: string;
   phone?: string | null;
+  mobile?: string | null;
+  idCardNumber?: string | null;
+  userId?: number | null;
+  accountStatus?: string | null;
+  initialPasswordResetRequired?: boolean | null;
+  initialPassword?: string | null;
   email?: string | null;
   avatarUrl?: string | null;
   bio?: string | null;
@@ -28,6 +33,8 @@ export interface ExpertUpsertPayload {
   position?: string;
   expertise: string;
   phone?: string;
+  mobile?: string;
+  idCardNumber?: string;
   email?: string;
   avatarUrl?: string;
   bio?: string;

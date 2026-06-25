@@ -10,7 +10,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import type {
   MessageWebSocketRuntime,
-  MessageWebSocketTenantRuntime,
+  MessageWebSocketUserRuntime,
   PlatformUpdateStatus,
   PlatformUpdateTask,
   RedisMonitorClient,
@@ -141,7 +141,7 @@ const resolveStatusKey = (status?: PlatformUpdateStatus | null) => {
 
 const buildServiceColumns = () => {
   const websocketColumns = [
-    { title: t('平台', 'Platform'), dataIndex: 'tenantId', width: 'var(--saas-spacing-180)' },
+    { title: t('用户', 'User'), dataIndex: 'userId', width: 'var(--saas-spacing-180)' },
     { title: t('连接数', 'Connections'), dataIndex: 'connectionCount', width: 'var(--saas-spacing-120)' },
   ];
 
@@ -1190,20 +1190,20 @@ const ServiceMonitorContent = () => {
             <Statistic title={t('当前连接数', 'Active connections')} value={webSocketQuery.data?.activeConnections ?? 0} valueStyle={valueStyle} />
           </Col>
           <Col xs={24} sm={8}>
-            <Statistic title={t('在线平台数', 'Online platforms')} value={webSocketQuery.data?.tenantCount ?? 0} valueStyle={valueStyle} />
-          </Col>
-          <Col xs={24} sm={8}>
             <Statistic title={t('在线用户数', 'Online users')} value={webSocketQuery.data?.userCount ?? 0} valueStyle={valueStyle} />
           </Col>
+          <Col xs={24} sm={8}>
+            <Statistic title={t('采样时间', 'Sampled at')} value={formatDateTime(webSocketQuery.data?.sampledAt)} valueStyle={valueStyle} />
+          </Col>
         </Row>
-        <ManagementTable<MessageWebSocketTenantRuntime>
-          rowKey="tenantId"
+        <ManagementTable<MessageWebSocketUserRuntime>
+          rowKey="userId"
           size="small"
           pagination={false}
           isMobile={isMobile}
           search={false}
           onRefresh={() => webSocketQuery.refetch()}
-          dataSource={webSocketQuery.data?.tenants || []}
+          dataSource={webSocketQuery.data?.topUsers || []}
           style={{ marginTop: sectionGap }}
           columns={websocketColumns}
         />

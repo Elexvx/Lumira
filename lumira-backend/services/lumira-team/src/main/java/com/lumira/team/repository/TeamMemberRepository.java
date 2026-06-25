@@ -6,23 +6,23 @@ import com.lumira.team.vo.TeamVO;
 import java.util.List;
 
 public interface TeamMemberRepository {
-    void addOwner(Long tenantId, Long teamId, Long userId);
+    void addOwner(Long teamId, Long userId);
 
-    List<TeamVO.Member> listMembers(Long tenantId, Long teamId);
+    List<TeamVO.Member> listMembers(Long teamId);
 
-    TeamVO.Member findMemberById(Long tenantId, Long teamId, Long memberId);
+    TeamVO.Member findMemberById(Long teamId, Long memberId);
 
-    void updateMemberRole(Long tenantId, Long teamId, Long memberId, String role);
+    void updateMemberRole(Long teamId, Long memberId, String role);
 
-    void removeMember(Long tenantId, Long teamId, Long memberId);
+    void removeMember(Long teamId, Long memberId);
 
-    void transferOwner(Long tenantId, Long teamId, Long previousOwnerUserId, String previousOwnerRole, Long newOwnerMemberId);
+    void transferOwner(Long teamId, Long previousOwnerUserId, String previousOwnerRole, Long newOwnerMemberId);
 
-    void ensureDirectMember(Long tenantId, Long teamId, Long userId, Long invitedBy, String role);
+    void ensureDirectMember(Long teamId, Long userId, Long invitedBy, String role);
 
-    Long addDraftMember(Long tenantId, Long teamId, TeamDTO.DraftMemberRequest request);
+    Long addDraftMember(Long teamId, TeamDTO.DraftMemberRequest request);
 
-    void refreshMemberCount(Long tenantId, Long teamId);
+    void refreshMemberCount(Long teamId);
 
-    void removeMembersByTeam(Long tenantId, Long teamId);
+    void removeMembersByTeam(Long teamId);
 }

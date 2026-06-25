@@ -1,4 +1,4 @@
-import type { MenuNode, TenantPlugin } from '@/types/api';
+import type { MenuNode, PluginAvailability } from '@/types/api';
 import { storage } from '@/cache/storage';
 import type { SettingsNavigationSourceItem } from './settingsNavigationConfig';
 import {
@@ -109,7 +109,7 @@ const toSourceItem = (node: MenuNode): SettingsNavigationSourceItem | null => {
   };
 };
 
-export const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined, _availablePlugins: TenantPlugin[] | undefined = []) => {
+export const buildSettingsSourceItems = (menuTree: MenuNode[] | undefined, _availablePlugins: PluginAvailability[] | undefined = []) => {
   const rootNode = findMenuNodeByPath(menuTree, SETTINGS_ROUTE_PREFIX);
   const candidateNodes: MenuNode[] = [];
   const seenPaths = new Set<string>();

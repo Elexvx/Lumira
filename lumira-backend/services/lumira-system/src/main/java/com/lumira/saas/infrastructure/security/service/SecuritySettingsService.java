@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 @Component
 public class SecuritySettingsService {
 
-    private static final long PLATFORM_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     private static final String PLATFORM_SCOPE = "PLATFORM";
     private static final String IDLE_TIMEOUT_KEY = "security.idle-timeout-seconds";
     private static final String ACCESS_TOKEN_EXPIRE_KEY = "security.access-token-expire-seconds";
@@ -283,7 +282,7 @@ public class SecuritySettingsService {
     }
 
     private Map<String, String> loadConfigValues(List<String> keys) {
-        return sysConfigMapper.listEffectiveValues(PLATFORM_TENANT_ID, PLATFORM_SCOPE, keys).stream()
+        return sysConfigMapper.listEffectiveValues(PLATFORM_SCOPE, keys).stream()
                 .filter(item -> StringUtils.hasText(item.getConfigKey()))
                 .collect(Collectors.toMap(
                         SysConfigEntity::getConfigKey,
@@ -366,7 +365,6 @@ public class SecuritySettingsService {
 
     private void upsertConfig(String configKey, String configName, String configValue, String remark) {
         SysConfigEntity entity = new SysConfigEntity();
-        entity.setTenantId(PLATFORM_TENANT_ID);
         entity.setConfigKey(configKey);
         entity.setConfigName(configName);
         entity.setConfigValue(configValue);

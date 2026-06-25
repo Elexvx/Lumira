@@ -30,7 +30,7 @@ class DddArchitectureBoundaryTest {
     private static final Pattern MYBATIS_WRITE_STATEMENT_PATTERN = Pattern.compile(
             "(?is)<(?:insert|update|delete)\\b[^>]*>(.*?)</(?:insert|update|delete)>");
     private static final Pattern MESSAGE_FORBIDDEN_OWNER_READ_PATTERN = Pattern.compile(
-            "(?is)\\b(?:from|join)\\s+`?(sys_user|sys_user_tenant|sys_user_role|sys_role|sys_config|audit_operation_log)`?");
+            "(?is)\\b(?:from|join)\\s+`?(sys_user|sys_user_role|sys_role|sys_config|audit_operation_log)`?");
     private static final Pattern JDBC_TEMPLATE_UPDATE_PATTERN = Pattern.compile(
             "(?s)jdbcTemplate\\.update\\s*\\(\\s*\"([^\"]+)\"");
     private static final Pattern JDBC_TEMPLATE_TEXT_BLOCK_UPDATE_PATTERN = Pattern.compile(

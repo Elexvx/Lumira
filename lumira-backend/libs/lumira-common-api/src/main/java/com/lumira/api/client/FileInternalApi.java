@@ -49,7 +49,6 @@ public interface FileInternalApi {
              String tags,
              String remark,
              String bucket,
-             Long tenantId,
              Long userId,
              String username
     ) {
@@ -58,7 +57,6 @@ public interface FileInternalApi {
 
     default FileContentDTO readFileContentForUser(
             Long fileId,
-            Long tenantId,
             Long userId,
             String username
     ) {
@@ -67,23 +65,21 @@ public interface FileInternalApi {
 
     default FileObjectDTO getFileForUser(
             Long fileId,
-            Long tenantId,
             Long userId,
             String username,
-            boolean tenantScope,
+            boolean sharedScope,
             boolean downloadCenterScope
     ) {
         throw new UnsupportedOperationException("getFileForUser is not implemented");
     }
 
     default List<FileObjectDTO> searchFilesForUser(
-            Long tenantId,
             Long userId,
             String username,
             String keyword,
             String contentType,
             String status,
-            boolean tenantScope,
+            boolean sharedScope,
             int limit
     ) {
         throw new UnsupportedOperationException("searchFilesForUser is not implemented");
@@ -91,7 +87,6 @@ public interface FileInternalApi {
 
     default FileProcessingArtifactDTO readProcessingArtifactForUser(
             Long fileId,
-            Long tenantId,
             Long userId,
             String username,
             String artifactType

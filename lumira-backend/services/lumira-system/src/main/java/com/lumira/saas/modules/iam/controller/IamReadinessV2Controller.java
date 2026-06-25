@@ -88,7 +88,7 @@ public class IamReadinessV2Controller {
                         "keep v1 user/role/permission APIs during compatibility window"
                 ),
                 List.of(
-                        "IAM v2 adapter is available for users, user export, roles, permissions, menus, and departments; tenant lifecycle APIs are no longer exposed in the single-platform model",
+                        "IAM v2 adapter is available for users, user export, roles, permissions, menus, and departments in the single-platform model",
                         "cross-instance permission snapshot invalidation runbook still needs runtime drill"
                 )
         ), TraceContext.getRequestId());

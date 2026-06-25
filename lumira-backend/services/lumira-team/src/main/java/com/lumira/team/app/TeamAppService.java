@@ -3,7 +3,6 @@ package com.lumira.team.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.team.dto.TeamDTO;
 import com.lumira.team.repository.TeamInviteRepository;
 import com.lumira.team.repository.TeamJoinRequestRepository;
@@ -53,30 +52,28 @@ public class TeamAppService {
 
     @Transactional
     public TeamVO.Team createTeam(CurrentUser currentUser, TeamDTO.TeamCreateRequest request) {
-        Long tenantId = requireTenantId(currentUser);
         Long userId = requireUserId(currentUser);
-        TeamDTO.TeamCreateRequest normalizedRequest = normalizeCreateRequest(tenantId, request);
-        Long teamId = teamRepository.createTeam(tenantId, teamRepository.nextTeamCode(tenantId), userId, normalizedRequest);
-        teamMemberRepository.addOwner(tenantId, teamId, userId);
-        addDraftMembers(tenantId, teamId, normalizedRequest.getInitialMembers());
+        TeamDTO.TeamCreateRequest normalizedRequest = normalizeCreateRequest(request);
+        Long teamId = teamRepository.createTeam(teamRepository.nextTeamCode(), userId, normalizedRequest);
+        teamMemberRepository.addOwner(teamId, userId);
+        addDraftMembers(teamId, normalizedRequest.getInitialMembers());
         audit(currentUser, "team", "create", "CREATE", "Created team " + normalizedRequest.getTeamName());
         return getTeam(currentUser, teamId);
     }
 
     public List<TeamVO.Team> myTeams(CurrentUser currentUser) {
-        Long tenantId = requireTenantId(currentUser);
-        return teamRepository.listMyTeams(tenantId, currentUser.getUserId());
+        requireUserId(currentUser);
+        return teamRepository.listMyTeams(currentUser.getUserId());
     }
 
     public List<TeamVO.Team> listTeamsForAdmin(CurrentUser currentUser) {
-        Long tenantId = requireTenantId(currentUser);
         Long userId = requireUserId(currentUser);
-        return teamRepository.listTeamsForAdmin(tenantId, userId);
+        return teamRepository.listTeamsForAdmin(userId);
     }
 
     public TeamVO.Team getTeam(CurrentUser currentUser, Long teamId) {
-        Long tenantId = requireTenantId(currentUser);
-        TeamVO.Team team = queryTeam(tenantId, teamId, currentUser.getUserId());
+        requireUserId(currentUser);
+        TeamVO.Team team = queryTeam(teamId, currentUser.getUserId());
         if (team == null) {
             throw biz(ErrorCode.NOT_FOUND, "Team not found");
         }
@@ -88,22 +85,22 @@ public class TeamAppService {
 
     @Transactional
     public TeamVO.Team updateTeam(CurrentUser currentUser, Long teamId, TeamDTO.TeamUpdateRequest request) {
-        Long tenantId = requireTenantId(currentUser);
-        String role = permissionService.activeRole(tenantId, teamId, currentUser.getUserId());
+        requireUserId(currentUser);
+        String role = permissionService.activeRole(teamId, currentUser.getUserId());
         if (!permissionService.canUpdateTeam(role)) {
             throw biz(ErrorCode.FORBIDDEN, "Team update requires owner, admin, or manager");
         }
-        updateTeamProfile(currentUser, tenantId, teamId, request);
+        updateTeamProfile(currentUser, teamId, request);
         audit(currentUser, "team", "update", "UPDATE", "Updated team " + teamId);
         return getTeam(currentUser, teamId);
     }
 
     @Transactional
     public TeamVO.Team updateTeamForAdmin(CurrentUser currentUser, Long teamId, TeamDTO.TeamUpdateRequest request) {
-        Long tenantId = requireTenantId(currentUser);
-        updateTeamProfile(currentUser, tenantId, teamId, request);
+        requireUserId(currentUser);
+        updateTeamProfile(currentUser, teamId, request);
         audit(currentUser, "team", "adminUpdate", "UPDATE", "Admin updated team " + teamId);
-        TeamVO.Team team = queryTeam(tenantId, teamId, currentUser.getUserId());
+        TeamVO.Team team = queryTeam(teamId, currentUser.getUserId());
         if (team == null) {
             throw biz(ErrorCode.NOT_FOUND, "Team not found");
         }
@@ -112,46 +109,46 @@ public class TeamAppService {
 
     @Transactional
     public boolean deleteTeam(CurrentUser currentUser, Long teamId) {
-        Long tenantId = requireTenantId(currentUser);
-        permissionService.requireTeamOwner(tenantId, teamId, currentUser.getUserId());
-        deleteTeamAggregate(currentUser, tenantId, teamId, "delete", "Deleted team ");
+        requireUserId(currentUser);
+        permissionService.requireTeamOwner(teamId, currentUser.getUserId());
+        deleteTeamAggregate(currentUser, teamId, "delete", "Deleted team ");
         return true;
     }
 
     @Transactional
     public boolean deleteTeamForAdmin(CurrentUser currentUser, Long teamId) {
-        Long tenantId = requireTenantId(currentUser);
-        deleteTeamAggregate(currentUser, tenantId, teamId, "adminDelete", "Admin deleted team ");
+        requireUserId(currentUser);
+        deleteTeamAggregate(currentUser, teamId, "adminDelete", "Admin deleted team ");
         return true;
     }
 
     public List<TeamVO.Member> listMembers(CurrentUser currentUser, Long teamId) {
-        Long tenantId = requireTenantId(currentUser);
-        permissionService.requireTeamMember(tenantId, teamId, currentUser.getUserId());
-        return teamMemberRepository.listMembers(tenantId, teamId);
+        requireUserId(currentUser);
+        permissionService.requireTeamMember(teamId, currentUser.getUserId());
+        return teamMemberRepository.listMembers(teamId);
     }
 
     @Transactional
     public TeamVO.Member addMember(CurrentUser currentUser, Long teamId, TeamDTO.MemberCreateRequest request) {
-        Long tenantId = requireTenantId(currentUser);
-        String actorRole = permissionService.activeRole(tenantId, teamId, currentUser.getUserId());
+        requireUserId(currentUser);
+        String actorRole = permissionService.activeRole(teamId, currentUser.getUserId());
         if (!permissionService.canUpdateTeam(actorRole)) {
             throw biz(ErrorCode.FORBIDDEN, "Team member creation requires owner, admin, or manager");
         }
-        Long memberId = teamMemberRepository.addDraftMember(tenantId, teamId, normalizeDraftMember(request));
-        teamMemberRepository.refreshMemberCount(tenantId, teamId);
+        Long memberId = teamMemberRepository.addDraftMember(teamId, normalizeDraftMember(request));
+        teamMemberRepository.refreshMemberCount(teamId);
         audit(currentUser, "team", "addMember", "CREATE", "Added draft team member " + memberId);
-        return requireMember(tenantId, teamId, memberId);
+        return requireMember(teamId, memberId);
     }
 
     @Transactional
     public TeamVO.Member updateMemberRole(CurrentUser currentUser, Long teamId, Long memberId, TeamDTO.MemberRoleRequest request) {
-        Long tenantId = requireTenantId(currentUser);
-        String actorRole = permissionService.activeRole(tenantId, teamId, currentUser.getUserId());
+        requireUserId(currentUser);
+        String actorRole = permissionService.activeRole(teamId, currentUser.getUserId());
         if (!TeamPermissionService.OWNER.equals(actorRole) && !TeamPermissionService.ADMIN.equals(actorRole)) {
             throw biz(ErrorCode.FORBIDDEN, "Member role updates require owner or admin");
         }
-        TeamVO.Member target = requireMember(tenantId, teamId, memberId);
+        TeamVO.Member target = requireMember(teamId, memberId);
         String newRole = normalizeEnum(request.getRole(), null, MEMBER_ROLES, "Invalid team member role");
         if (TeamPermissionService.OWNER.equals(newRole)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Use owner transfer to assign OWNER");
@@ -159,28 +156,28 @@ public class TeamAppService {
         if (TeamPermissionService.OWNER.equals(target.getRole())) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Cannot downgrade the team owner directly");
         }
-        teamMemberRepository.updateMemberRole(tenantId, teamId, memberId, newRole);
-        return requireMember(tenantId, teamId, memberId);
+        teamMemberRepository.updateMemberRole(teamId, memberId, newRole);
+        return requireMember(teamId, memberId);
     }
 
     @Transactional
     public boolean removeMember(CurrentUser currentUser, Long teamId, Long memberId) {
-        Long tenantId = requireTenantId(currentUser);
-        TeamVO.Member actor = permissionService.activeMember(tenantId, teamId, currentUser.getUserId());
-        TeamVO.Member target = requireMember(tenantId, teamId, memberId);
+        requireUserId(currentUser);
+        TeamVO.Member actor = permissionService.activeMember(teamId, currentUser.getUserId());
+        TeamVO.Member target = requireMember(teamId, memberId);
         boolean self = target.getUserId().equals(currentUser.getUserId());
         if (!permissionService.canRemoveMember(actor == null ? null : actor.getRole(), target.getRole(), self)) {
             throw biz(ErrorCode.FORBIDDEN, "Cannot remove this team member");
         }
-        teamMemberRepository.removeMember(tenantId, teamId, memberId);
-        teamMemberRepository.refreshMemberCount(tenantId, teamId);
+        teamMemberRepository.removeMember(teamId, memberId);
+        teamMemberRepository.refreshMemberCount(teamId);
         return true;
     }
 
     @Transactional
     public boolean leaveTeam(CurrentUser currentUser, Long teamId) {
-        Long tenantId = requireTenantId(currentUser);
-        TeamVO.Member member = permissionService.activeMember(tenantId, teamId, currentUser.getUserId());
+        requireUserId(currentUser);
+        TeamVO.Member member = permissionService.activeMember(teamId, currentUser.getUserId());
         if (member == null) {
             return true;
         }
@@ -192,45 +189,38 @@ public class TeamAppService {
 
     @Transactional
     public TeamVO.Team transferOwner(CurrentUser currentUser, Long teamId, TeamDTO.TransferOwnerRequest request) {
-        Long tenantId = requireTenantId(currentUser);
-        permissionService.requireTeamOwner(tenantId, teamId, currentUser.getUserId());
-        TeamVO.Member target = requireMember(tenantId, teamId, request.getMemberId());
+        requireUserId(currentUser);
+        permissionService.requireTeamOwner(teamId, currentUser.getUserId());
+        TeamVO.Member target = requireMember(teamId, request.getMemberId());
         if (!"ACTIVE".equals(target.getStatus())) {
             throw biz(ErrorCode.VALIDATION_ERROR, "New owner must be an active member");
         }
         String previousRole = normalizeEnum(request.getPreviousOwnerRole(), "ADMIN", Set.of("ADMIN", "MANAGER", "MEMBER"), "Invalid previous owner role");
-        teamMemberRepository.transferOwner(tenantId, teamId, currentUser.getUserId(), previousRole, target.getId());
-        teamRepository.transferOwner(tenantId, teamId, target.getUserId(), currentUser.getUserId());
+        teamMemberRepository.transferOwner(teamId, currentUser.getUserId(), previousRole, target.getId());
+        teamRepository.transferOwner(teamId, target.getUserId(), currentUser.getUserId());
         audit(currentUser, "team", "transferOwner", "UPDATE", "Transferred team owner " + teamId);
         return getTeam(currentUser, teamId);
     }
 
-    TeamVO.Team queryTeam(Long tenantId, Long teamId, Long currentUserId) {
-        return teamRepository.findTeam(tenantId, teamId, currentUserId);
+    TeamVO.Team queryTeam(Long teamId, Long currentUserId) {
+        return teamRepository.findTeam(teamId, currentUserId);
     }
 
-    TeamVO.Member requireMember(Long tenantId, Long teamId, Long memberId) {
-        TeamVO.Member member = teamMemberRepository.findMemberById(tenantId, teamId, memberId);
+    TeamVO.Member requireMember(Long teamId, Long memberId) {
+        TeamVO.Member member = teamMemberRepository.findMemberById(teamId, memberId);
         if (member == null) {
             throw biz(ErrorCode.NOT_FOUND, "Team member not found");
         }
         return member;
     }
 
-    void ensureDirectMember(Long tenantId, Long teamId, Long userId, Long invitedBy, String role) {
-        teamMemberRepository.ensureDirectMember(tenantId, teamId, userId, invitedBy, role);
-        teamMemberRepository.refreshMemberCount(tenantId, teamId);
+    void ensureDirectMember(Long teamId, Long userId, Long invitedBy, String role) {
+        teamMemberRepository.ensureDirectMember(teamId, userId, invitedBy, role);
+        teamMemberRepository.refreshMemberCount(teamId);
     }
 
-    void refreshMemberCount(Long tenantId, Long teamId) {
-        teamMemberRepository.refreshMemberCount(tenantId, teamId);
-    }
-
-    Long requireTenantId(CurrentUser currentUser) {
-        if (currentUser == null) {
-            throw biz(ErrorCode.UNAUTHORIZED, "Login required");
-        }
-        return PlatformContext.compatibilityTenantId();
+    void refreshMemberCount(Long teamId) {
+        teamMemberRepository.refreshMemberCount(teamId);
     }
 
     Long requireUserId(CurrentUser currentUser) {
@@ -248,9 +238,9 @@ public class TeamAppService {
         return normalized;
     }
 
-    private String normalizeDictValue(Long tenantId, String value, String defaultValue, String dictCode, Set<String> fallbackAllowed, String message) {
+    private String normalizeDictValue(String value, String defaultValue, String dictCode, Set<String> fallbackAllowed, String message) {
         String normalized = StringUtils.hasText(value) ? value.trim().toUpperCase(Locale.ROOT) : defaultValue;
-        Set<String> allowed = teamRepository.loadEnabledDictValues(tenantId, dictCode);
+        Set<String> allowed = teamRepository.loadEnabledDictValues(dictCode);
         if (allowed.isEmpty()) {
             allowed = fallbackAllowed;
         }
@@ -267,14 +257,14 @@ public class TeamAppService {
         return value.trim();
     }
 
-    private TeamDTO.TeamCreateRequest normalizeCreateRequest(Long tenantId, TeamDTO.TeamCreateRequest request) {
+    private TeamDTO.TeamCreateRequest normalizeCreateRequest(TeamDTO.TeamCreateRequest request) {
         TeamDTO.TeamCreateRequest normalized = new TeamDTO.TeamCreateRequest();
         normalized.setTeamName(trimRequired(request.getTeamName(), "Team name is required"));
-        normalized.setTeamType(normalizeDictValue(tenantId, request.getTeamType(), "GENERAL", TEAM_TYPE_DICT_CODE, TEAM_TYPES, "Invalid team type"));
+        normalized.setTeamType(normalizeDictValue(request.getTeamType(), "GENERAL", TEAM_TYPE_DICT_CODE, TEAM_TYPES, "Invalid team type"));
         normalized.setAvatarUrl(trimToNull(request.getAvatarUrl()));
         normalized.setDescription(trimToNull(request.getDescription()));
-        normalized.setVisibility(normalizeDictValue(tenantId, request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"));
-        normalized.setJoinMode(normalizeDictValue(tenantId, request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"));
+        normalized.setVisibility(normalizeDictValue(request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"));
+        normalized.setJoinMode(normalizeDictValue(request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"));
         if (request.getInitialMembers() != null) {
             normalized.setInitialMembers(request.getInitialMembers().stream()
                     .map(this::normalizeDraftMember)
@@ -283,14 +273,14 @@ public class TeamAppService {
         return normalized;
     }
 
-    private TeamDTO.TeamUpdateRequest normalizeUpdateRequest(Long tenantId, TeamDTO.TeamUpdateRequest request) {
+    private TeamDTO.TeamUpdateRequest normalizeUpdateRequest(TeamDTO.TeamUpdateRequest request) {
         TeamDTO.TeamUpdateRequest normalized = new TeamDTO.TeamUpdateRequest();
         normalized.setTeamName(trimRequired(request.getTeamName(), "Team name is required"));
-        normalized.setTeamType(normalizeDictValue(tenantId, request.getTeamType(), "GENERAL", TEAM_TYPE_DICT_CODE, TEAM_TYPES, "Invalid team type"));
+        normalized.setTeamType(normalizeDictValue(request.getTeamType(), "GENERAL", TEAM_TYPE_DICT_CODE, TEAM_TYPES, "Invalid team type"));
         normalized.setAvatarUrl(trimToNull(request.getAvatarUrl()));
         normalized.setDescription(trimToNull(request.getDescription()));
-        normalized.setVisibility(normalizeDictValue(tenantId, request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"));
-        normalized.setJoinMode(normalizeDictValue(tenantId, request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"));
+        normalized.setVisibility(normalizeDictValue(request.getVisibility(), "PRIVATE", TEAM_VISIBILITY_DICT_CODE, VISIBILITIES, "Invalid team visibility"));
+        normalized.setJoinMode(normalizeDictValue(request.getJoinMode(), "INVITE_ONLY", TEAM_JOIN_MODE_DICT_CODE, JOIN_MODES, "Invalid join mode"));
         return normalized;
     }
 
@@ -307,31 +297,31 @@ public class TeamAppService {
         return normalized;
     }
 
-    private void addDraftMembers(Long tenantId, Long teamId, List<TeamDTO.DraftMemberRequest> members) {
+    private void addDraftMembers(Long teamId, List<TeamDTO.DraftMemberRequest> members) {
         if (members == null || members.isEmpty()) {
             return;
         }
         for (TeamDTO.DraftMemberRequest member : members) {
-            teamMemberRepository.addDraftMember(tenantId, teamId, member);
+            teamMemberRepository.addDraftMember(teamId, member);
         }
-        teamMemberRepository.refreshMemberCount(tenantId, teamId);
+        teamMemberRepository.refreshMemberCount(teamId);
     }
 
-    private void updateTeamProfile(CurrentUser currentUser, Long tenantId, Long teamId, TeamDTO.TeamUpdateRequest request) {
-        int updated = teamRepository.updateTeamProfile(tenantId, teamId, currentUser.getUserId(), normalizeUpdateRequest(tenantId, request));
+    private void updateTeamProfile(CurrentUser currentUser, Long teamId, TeamDTO.TeamUpdateRequest request) {
+        int updated = teamRepository.updateTeamProfile(teamId, currentUser.getUserId(), normalizeUpdateRequest(request));
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Team not found");
         }
     }
 
-    private void deleteTeamAggregate(CurrentUser currentUser, Long tenantId, Long teamId, String action, String messagePrefix) {
-        int updated = teamRepository.softDeleteTeam(tenantId, teamId, currentUser.getUserId());
+    private void deleteTeamAggregate(CurrentUser currentUser, Long teamId, String action, String messagePrefix) {
+        int updated = teamRepository.softDeleteTeam(teamId, currentUser.getUserId());
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Team not found");
         }
-        teamMemberRepository.removeMembersByTeam(tenantId, teamId);
-        teamInviteRepository.disableInvitesByTeam(tenantId, teamId);
-        teamJoinRequestRepository.closeRequestsByTeam(tenantId, teamId);
+        teamMemberRepository.removeMembersByTeam(teamId);
+        teamInviteRepository.disableInvitesByTeam(teamId);
+        teamJoinRequestRepository.closeRequestsByTeam(teamId);
         audit(currentUser, "team", action, "DELETE", messagePrefix + teamId);
     }
 
@@ -345,7 +335,7 @@ public class TeamAppService {
 
     private void audit(CurrentUser currentUser, String module, String action, String type, String message) {
         if (auditPort != null) {
-            auditPort.log(PlatformContext.compatibilityTenantId(), currentUser.getUserId(), currentUser.getUsername(), module, action, type, "SUCCESS", message);
+            auditPort.log(currentUser.getUserId(), currentUser.getUsername(), module, action, type, "SUCCESS", message);
         }
     }
 

@@ -11,7 +11,6 @@ public class MessageNoticeEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
-    private Long tenantId;
     private String noticeType;
     private String targetScope;
     private Long targetUserId;
@@ -29,8 +28,6 @@ public class MessageNoticeEntity {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
-    public Long getTenantId() { return tenantId; }
-    public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
     public String getNoticeType() { return noticeType; }
     public void setNoticeType(String noticeType) { this.noticeType = noticeType; }
     public String getTargetScope() { return targetScope; }

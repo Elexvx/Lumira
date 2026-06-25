@@ -24,27 +24,27 @@ public class MessageEventFactory {
     public static final String EVENT_HEARTBEAT = "HEARTBEAT";
 
     public MessageEventDTO createCreatedEvent(MessageVO.NoticeVO notice) {
-        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_CREATED, notice, null, "消息已发布", notice == null ? null : notice.getId(), null, null);
+        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_CREATED, notice, null, "消息已发布", notice == null ? null : notice.getId(), null);
     }
 
     public MessageEventDTO createRetractedEvent(MessageVO.NoticeVO notice) {
-        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_RETRACTED, notice, null, "消息状态已更新", notice == null ? null : notice.getId(), null, null);
+        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_RETRACTED, notice, null, "消息状态已更新", notice == null ? null : notice.getId(), null);
     }
 
-    public MessageEventDTO createReadEvent(Long tenantId, Long userId, MessageVO.NoticeVO notice, Integer unreadCount) {
-        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_READ, notice, unreadCount, "消息状态已更新", notice == null ? null : notice.getId(), tenantId, userId);
+    public MessageEventDTO createReadEvent(Long userId, MessageVO.NoticeVO notice, Integer unreadCount) {
+        return buildNoticeEvent(CATEGORY_BUSINESS, EVENT_READ, notice, unreadCount, "消息状态已更新", notice == null ? null : notice.getId(), userId);
     }
 
-    public MessageEventDTO createUnreadCountEvent(Long tenantId, Long userId, Integer unreadCount) {
-        MessageEventDTO event = buildBaseEvent(CATEGORY_BUSINESS, EVENT_UNREAD_COUNT, SOURCE_MESSAGE, tenantId, userId, null, unreadCount == null ? 0L : unreadCount.longValue());
+    public MessageEventDTO createUnreadCountEvent(Long userId, Integer unreadCount) {
+        MessageEventDTO event = buildBaseEvent(CATEGORY_BUSINESS, EVENT_UNREAD_COUNT, SOURCE_MESSAGE, userId, null, unreadCount == null ? 0L : unreadCount.longValue());
         event.setUnreadCount(unreadCount);
         event.setMessage("未读消息数量已更新");
         event.getPayload().put("unreadCount", unreadCount);
         return event;
     }
 
-    public MessageEventDTO createSyncStateEvent(Long tenantId, Long userId, Integer unreadCount, Long latestVersion, Integer sessionVersion) {
-        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_SYNC_STATE, SOURCE_MESSAGE, tenantId, userId, null, latestVersion);
+    public MessageEventDTO createSyncStateEvent(Long userId, Integer unreadCount, Long latestVersion, Integer sessionVersion) {
+        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_SYNC_STATE, SOURCE_MESSAGE, userId, null, latestVersion);
         event.setUnreadCount(unreadCount);
         event.setMessage("消息状态已同步");
         event.getPayload().put("unreadCount", unreadCount);
@@ -54,8 +54,8 @@ public class MessageEventFactory {
         return event;
     }
 
-    public MessageEventDTO createHeartbeatEvent(Long tenantId, Long userId) {
-        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_HEARTBEAT, SOURCE_MESSAGE, tenantId, userId, null, null);
+    public MessageEventDTO createHeartbeatEvent(Long userId) {
+        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_HEARTBEAT, SOURCE_MESSAGE, userId, null, null);
         event.setMessage("heartbeat");
         return event;
     }
@@ -66,7 +66,6 @@ public class MessageEventFactory {
         }
         MessageNoticeDTO dto = new MessageNoticeDTO();
         dto.setId(notice.getId());
-        dto.setTenantId(notice.getTenantId());
         dto.setMessageType(notice.getMessageType());
         dto.setTargetScope(notice.getTargetScope());
         dto.setTargetUserId(notice.getTargetUserId());
@@ -87,14 +86,14 @@ public class MessageEventFactory {
         return dto;
     }
 
-    public MessageEventDTO toConnectedEvent(Long tenantId, Long userId) {
-        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_CONNECTED, SOURCE_MESSAGE, tenantId, userId, null, null);
+    public MessageEventDTO toConnectedEvent(Long userId) {
+        MessageEventDTO event = buildBaseEvent(CATEGORY_COMPENSATION, EVENT_CONNECTED, SOURCE_MESSAGE, userId, null, null);
         event.setMessage("消息通道已连接");
         return event;
     }
 
-    public MessageEventDTO toHeartbeatEvent(Long tenantId, Long userId) {
-        return createHeartbeatEvent(tenantId, userId);
+    public MessageEventDTO toHeartbeatEvent(Long userId) {
+        return createHeartbeatEvent(userId);
     }
 
     private MessageEventDTO buildNoticeEvent(
@@ -104,14 +103,12 @@ public class MessageEventFactory {
             Integer unreadCount,
             String message,
             Long version,
-            Long tenantId,
             Long userId
     ) {
         MessageEventDTO event = buildBaseEvent(
                 eventCategory,
                 eventType,
                 SOURCE_MESSAGE,
-                tenantId == null ? (notice == null ? null : notice.getTenantId()) : tenantId,
                 userId == null ? (notice == null ? null : notice.getTargetUserId()) : userId,
                 copyNotice(notice),
                 version
@@ -135,7 +132,6 @@ public class MessageEventFactory {
             String eventCategory,
             String eventType,
             String sourceType,
-            Long tenantId,
             Long userId,
             MessageNoticeDTO notice,
             Long version
@@ -144,7 +140,6 @@ public class MessageEventFactory {
         event.setEventCategory(eventCategory);
         event.setSourceType(sourceType);
         event.setEventType(eventType);
-        event.setTenantId(tenantId);
         event.setUserId(userId);
         event.setNotice(notice);
         event.setVersion(version);
@@ -157,14 +152,13 @@ public class MessageEventFactory {
     }
 
     public String buildEventKey(MessageEventDTO event) {
-        Long tenantId = event == null ? null : event.getTenantId();
         Long userId = event == null ? null : event.getUserId();
         Long version = event == null ? null : event.getVersion();
         String eventType = event == null ? "UNKNOWN" : event.getEventType();
         MessageNoticeDTO notice = event == null ? null : event.getNotice();
         String noticePart = notice == null || notice.getId() == null ? "none" : String.valueOf(notice.getId());
-        String userPart = userId == null ? "tenant" : String.valueOf(userId);
+        String userPart = userId == null ? "all" : String.valueOf(userId);
         String versionPart = version == null ? "none" : String.valueOf(version);
-        return eventType + ":" + (tenantId == null ? "unknown" : tenantId) + ":" + noticePart + ":" + userPart + ":" + versionPart;
+        return eventType + ":" + noticePart + ":" + userPart + ":" + versionPart;
     }
 }

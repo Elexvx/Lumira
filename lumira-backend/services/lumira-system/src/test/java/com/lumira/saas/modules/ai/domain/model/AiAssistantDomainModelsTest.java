@@ -10,7 +10,7 @@ class AiAssistantDomainModelsTest {
 
     @Test
     void knowledgeBaseAggregateEmitsIndexRequestedEvent() {
-        KnowledgeBaseAggregate knowledgeBase = new KnowledgeBaseAggregate(20L, 1L);
+        KnowledgeBaseAggregate knowledgeBase = new KnowledgeBaseAggregate(20L);
 
         knowledgeBase.requestIndex(30L, 40L);
 

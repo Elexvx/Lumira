@@ -212,10 +212,6 @@ public class DefaultAuthorizationService implements AuthorizationService {
     }
 
     private AuthorizationDecision evaluateDataScope(AuthorizationRequest request, CurrentUser currentUser) {
-        Long resourceTenantId = argumentLong(request.arguments(), "resourceTenantId", "tenantId");
-        if (resourceTenantId != null && request.tenantId() != null && !request.tenantId().equals(resourceTenantId)) {
-            return deny("DATA_SCOPE_TENANT_MISMATCH", "Resource tenant is outside current scope", List.of());
-        }
         String dataScope = normalizeArgument(request.arguments(), "dataScope");
         Long ownerUserId = argumentLong(request.arguments(), "ownerUserId", "createdBy");
         if ("self".equals(dataScope) && ownerUserId != null && !ownerUserId.equals(currentUser.getUserId())) {

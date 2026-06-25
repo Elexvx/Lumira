@@ -6,7 +6,6 @@ import com.lumira.api.file.FileObjectDTO;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -87,13 +86,11 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
                     .get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/internal/system/permissions/snapshot")
-                            .queryParam("tenantId", platformTenantId())
                             .queryParam("userId", currentUser.getUserId())
                             .build())
                     .retrieve()
                     .body(PermissionSnapshotDTO.class);
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("tenantId", platformTenantId());
             data.put("userId", currentUser.getUserId());
             data.put("version", snapshot == null ? null : snapshot.version());
             data.put("permissions", snapshot == null ? List.of() : snapshot.permissions());
@@ -108,7 +105,6 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
     private ToolExecution localPermissionSnapshot(CurrentUser currentUser, String reason) {
         return new ToolExecution(Map.of(
                 "userId", currentUser.getUserId(),
-                "tenantId", platformTenantId(),
                 "username", currentUser.getUsername(),
                 "permissions", currentUser.getPermissions(),
                 "degradedReason", reason
@@ -128,7 +124,6 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
                     .get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/internal/system/config/platform-values")
-                            .queryParam("tenantId", platformTenantId())
                             .queryParam("keys", keys.toArray())
                             .build())
                     .retrieve()
@@ -164,13 +159,12 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
                     .get()
                     .uri(uriBuilder -> uriBuilder
                             .path("/internal/files/search")
-                            .queryParam("tenantId", platformTenantId())
                             .queryParam("userId", currentUser.getUserId())
                             .queryParam("username", currentUser.getUsername())
                             .queryParam("keyword", stringArg(arguments, "keyword"))
                             .queryParam("contentType", stringArg(arguments, "contentType"))
                             .queryParam("status", stringArg(arguments, "status"))
-                            .queryParam("tenantScope", booleanArg(arguments, "tenantScope", true))
+                            .queryParam("sharedScope", booleanArg(arguments, "sharedScope", true))
                             .queryParam("limit", intArg(arguments, "limit", 20, 1, 50))
                             .build())
                     .retrieve()
@@ -189,10 +183,6 @@ public class RemoteAiOwnerToolGateway implements AiOwnerToolGateway {
         }
         builder.defaultHeader(HttpHeaders.ACCEPT, "application/json");
         return builder.build();
-    }
-
-    private Long platformTenantId() {
-        return PlatformContext.compatibilityTenantId();
     }
 
     private ToolExecution degraded(AiToolVO tool, String reason, Map<String, Object> arguments) {

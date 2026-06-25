@@ -12,7 +12,7 @@ class PaymentDomainModelsTest {
 
     @Test
     void paymentOrderAggregateEmitsPaidEventOnce() {
-        PaymentOrderAggregate order = new PaymentOrderAggregate("pay-100", 1L, BigDecimal.TEN, "PENDING");
+        PaymentOrderAggregate order = new PaymentOrderAggregate("pay-100", BigDecimal.TEN, "PENDING");
 
         order.markPaid("txn-1");
         order.markPaid("txn-1");
@@ -24,15 +24,15 @@ class PaymentDomainModelsTest {
 
     @Test
     void paymentOrderRejectsNonPositiveAmount() {
-        assertThatThrownBy(() -> new PaymentOrderAggregate("pay-100", 1L, BigDecimal.ZERO, "PENDING"))
+        assertThatThrownBy(() -> new PaymentOrderAggregate("pay-100", BigDecimal.ZERO, "PENDING"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("amount");
     }
 
     @Test
-    void webhookEventBuildsTenantScopedIdempotencyKey() {
+    void webhookEventBuildsProviderScopedIdempotencyKey() {
         WebhookEvent event = new WebhookEvent("mockpay", "evt-1", "sig", "{}");
 
-        assertThat(event.idempotencyKey(1L)).isEqualTo("1:mockpay:evt-1");
+        assertThat(event.idempotencyKey()).isEqualTo("mockpay:evt-1");
     }
 }

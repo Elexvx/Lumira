@@ -10,7 +10,6 @@ public class MessageEventDTO {
     private String sourceType;
     private String eventType;
     private String eventKey;
-    private Long tenantId;
     private Long userId;
     private Long version;
     private String traceId;
@@ -51,14 +50,6 @@ public class MessageEventDTO {
 
     public void setEventKey(String eventKey) {
         this.eventKey = eventKey;
-    }
-
-    public Long getTenantId() {
-        return tenantId;
-    }
-
-    public void setTenantId(Long tenantId) {
-        this.tenantId = tenantId;
     }
 
     public Long getUserId() {

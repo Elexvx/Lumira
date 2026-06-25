@@ -28,18 +28,18 @@ public class FileThumbnailProcessor {
         this.uploadProperties = uploadProperties;
     }
 
-    public ThumbnailResult generateThumbnail(Long tenantId, Long fileId) {
-        return generateThumbnail(tenantId, fileId, null);
+    public ThumbnailResult generateThumbnail(Long fileId) {
+        return generateThumbnail(fileId, null);
     }
 
-    public ThumbnailResult generateThumbnail(Long tenantId, Long fileId, Long userId) {
-        FileLocation location = findFileLocation(tenantId, fileId);
+    public ThumbnailResult generateThumbnail(Long fileId, Long userId) {
+        FileLocation location = findFileLocation(fileId);
         if (location == null) {
             throw new IllegalStateException("File object is unavailable for thumbnail generation: " + fileId);
         }
         if (!"LOCAL".equalsIgnoreCase(location.storageType())) {
             ThumbnailResult result = ThumbnailResult.deferred(fileId, location.storageType(), location.objectKey());
-            upsertArtifact(tenantId, fileId, result, userId);
+            upsertArtifact(fileId, result, userId);
             return result;
         }
         Path source = resolveLocalPath(location.rootPath(), location.objectKey());
@@ -56,14 +56,14 @@ public class FileThumbnailProcessor {
             BufferedImage scaled = scale(original);
             ImageIO.write(scaled, "jpg", thumbnail.toFile());
             ThumbnailResult result = ThumbnailResult.generated(source, thumbnail, original.getWidth(), original.getHeight(), scaled.getWidth(), scaled.getHeight());
-            upsertArtifact(tenantId, fileId, result, userId);
+            upsertArtifact(fileId, result, userId);
             return result;
         } catch (IOException exception) {
             throw new IllegalStateException("Thumbnail generation failed: " + source, exception);
         }
     }
 
-    private FileLocation findFileLocation(Long tenantId, Long fileId) {
+    private FileLocation findFileLocation(Long fileId) {
         return jdbcTemplate.queryForObject(
                 """
                         select fo.storage_type as storageType, fo.object_key as objectKey,
@@ -71,10 +71,9 @@ public class FileThumbnailProcessor {
                                coalesce(fs.root_path, '') as rootPath
                         from file_object fo
                         left join file_storage_space fs
-                          on fs.tenant_id = fo.tenant_id
-                         and fs.storage_key = fo.bucket
+                          on fs.storage_key = fo.bucket
                          and fs.deleted = 0
-                        where fo.tenant_id = ? and fo.id = ? and fo.deleted = 0
+                        where fo.id = ? and fo.deleted = 0
                         limit 1
                         """,
                 (rs, rowNum) -> new FileLocation(
@@ -84,7 +83,6 @@ public class FileThumbnailProcessor {
                         rs.getString("contentType"),
                         rs.getString("fileExtension")
                 ),
-                tenantId,
                 fileId
         );
     }
@@ -150,14 +148,14 @@ public class FileThumbnailProcessor {
         return scaled;
     }
 
-    private void upsertArtifact(Long tenantId, Long fileId, ThumbnailResult result, Long userId) {
+    private void upsertArtifact(Long fileId, ThumbnailResult result, Long userId) {
         String payload = buildPayload(result);
         jdbcTemplate.update(
                 """
                         insert into file_processing_artifact (
-                            tenant_id, file_id, task_type, artifact_type, content_text, content_length,
+                            file_id, task_type, artifact_type, content_text, content_length,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, 0)
                         on duplicate key update
                             task_type = values(task_type),
                             content_text = values(content_text),
@@ -166,7 +164,6 @@ public class FileThumbnailProcessor {
                             updated_at = current_timestamp,
                             updated_by = values(updated_by)
                         """,
-                tenantId,
                 fileId,
                 FileProcessingTaskService.TASK_THUMBNAIL,
                 ARTIFACT_THUMBNAIL_RESULT,

@@ -114,6 +114,34 @@ class AiManagementAppServiceTest {
     }
 
     @Test
+    void deleteConversationShouldSkipShareCleanupWhenShareTableIsMissing() {
+        ConversationQueryOperations queryOperations = new ConversationQueryOperations();
+        OperationAuditService operationAuditService = mock(OperationAuditService.class);
+        AiManagementAppService service = new AiManagementAppService(
+                queryOperations,
+                operationAuditService,
+                mock(AiSecretCryptoService.class),
+                mock(AiEmployeeRuntimeService.class),
+                mock(AiChatModelFactory.class)
+        );
+
+        assertThat(service.deleteConversation(currentUser(), 10L)).isTrue();
+
+        assertThat(queryOperations.updatedTables).contains("ai_conversation", "ai_message", "ai_message_attachment");
+        assertThat(queryOperations.updatedTables).doesNotContain("ai_conversation_share");
+        assertThat(queryOperations.shareTableExistsChecked).isTrue();
+        verify(operationAuditService).log(
+                eq(100L),
+                eq("admin"),
+                eq("ai"),
+                eq("conversation-delete"),
+                eq("DELETE"),
+                eq("SUCCESS"),
+                contains("conv_10")
+        );
+    }
+
+    @Test
     void testLlmServiceRejectsEndpointOverrideWhenReusingStoredApiKey() throws Exception {
         MyBatisQueryOperations jdbcTemplate = mock(MyBatisQueryOperations.class);
         AiSecretCryptoService secretCryptoService = mock(AiSecretCryptoService.class);
@@ -313,12 +341,37 @@ class AiManagementAppServiceTest {
     }
 
     private static final class ConversationQueryOperations extends MyBatisQueryOperations {
+        private final List<String> updatedTables = new java.util.ArrayList<>();
+        private boolean shareTableExistsChecked;
+
+        @Override
+        public int update(String sql, Object... args) {
+            if (sql.contains("update ai_conversation_share")) {
+                updatedTables.add("ai_conversation_share");
+            } else if (sql.contains("update ai_message_attachment")) {
+                updatedTables.add("ai_message_attachment");
+            } else if (sql.contains("update ai_message")) {
+                updatedTables.add("ai_message");
+            } else if (sql.contains("update ai_conversation")) {
+                updatedTables.add("ai_conversation");
+            }
+            return 1;
+        }
+
+        @Override
+        public boolean exists(String sql, Object... args) {
+            if (sql.contains("ai_conversation_share")) {
+                shareTableExistsChecked = true;
+                return false;
+            }
+            return false;
+        }
+
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             if (sql.contains("from ai_conversation")) {
                 Map<String, Object> conversation = new java.util.LinkedHashMap<>();
                 conversation.put("id", 10L);
-                conversation.put("tenant_id", 1001L);
                 conversation.put("owner_user_id", 100L);
                 conversation.put("conversation_code", "conv_10");
                 conversation.put("title", "测试会话");
@@ -428,9 +481,7 @@ class AiManagementAppServiceTest {
             if (sql.contains("from ai_employee")) {
                 try {
                     return List.of(rowMapper.mapRow(new SqlRow(Map.of(
-                            "id", 1L,
-                            "tenantId", 1001L,
-                            "username", "assistant",
+                            "id", 1L,                            "username", "assistant",
                             "nickname", "助手",
                             "position", "客服",
                             "enabled", 1,

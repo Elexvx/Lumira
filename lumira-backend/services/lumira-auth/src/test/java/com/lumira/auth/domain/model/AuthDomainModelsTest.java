@@ -12,7 +12,7 @@ class AuthDomainModelsTest {
 
     @Test
     void sessionTouchEmitsRefreshEvent() {
-        AuthSessionAggregate session = new AuthSessionAggregate("sid-1", 1L, 10L, Instant.parse("2026-01-01T00:00:00Z"));
+        AuthSessionAggregate session = new AuthSessionAggregate("sid-1", 10L, Instant.parse("2026-01-01T00:00:00Z"));
 
         session.touch(Instant.parse("2026-01-01T00:01:00Z"));
 
@@ -23,7 +23,7 @@ class AuthDomainModelsTest {
 
     @Test
     void revokedSessionCannotBeTouched() {
-        AuthSessionAggregate session = new AuthSessionAggregate("sid-1", 1L, 10L, Instant.now());
+        AuthSessionAggregate session = new AuthSessionAggregate("sid-1", 10L, Instant.now());
 
         session.revoke("logout");
 
@@ -34,7 +34,7 @@ class AuthDomainModelsTest {
 
     @Test
     void loginChallengeDetectsExpiration() {
-        LoginChallenge challenge = new LoginChallenge("c-1", 1L, "LOGIN", Instant.parse("2026-01-01T00:00:00Z"));
+        LoginChallenge challenge = new LoginChallenge("c-1", "LOGIN", Instant.parse("2026-01-01T00:00:00Z"));
 
         assertThat(challenge.isExpired(Instant.parse("2026-01-01T00:00:01Z"))).isTrue();
     }

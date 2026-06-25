@@ -2,7 +2,6 @@ package com.lumira.localization.security;
 
 import com.lumira.api.auth.CurrentUserDTO;
 import com.lumira.api.client.AuthInternalApi;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
@@ -74,7 +73,6 @@ public class LocalizationJwtAuthFilter extends OncePerRequestFilter {
                         CurrentUser currentUser = new CurrentUser(
                                 snapshot.userId(),
                                 snapshot.username(),
-                                PlatformConstants.PLATFORM_TENANT_ID,
                                 snapshot.sessionId(),
                                 snapshot.sessionVersion(),
                                 true,

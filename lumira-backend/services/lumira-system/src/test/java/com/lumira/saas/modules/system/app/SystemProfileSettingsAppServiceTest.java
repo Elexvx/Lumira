@@ -235,7 +235,6 @@ class SystemProfileSettingsAppServiceTest {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
         currentUser.setUsername("admin");
-        currentUser.setCurrentTenantId(1001L);
         return currentUser;
     }
 
@@ -266,7 +265,7 @@ class SystemProfileSettingsAppServiceTest {
         }
 
         @Override
-        public void log(Long tenantId, Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
+        public void log(Long userId, String username, String moduleName, String actionName, String operationType, String resultStatus, String detailMessage) {
         }
     }
 
@@ -284,8 +283,8 @@ class SystemProfileSettingsAppServiceTest {
         public int update(String sql, Object... args) {
             insertSqls.add(sql);
             insertedRows.add(args);
-            if (args.length >= 4 && args[1] instanceof String configKey) {
-                configValues.put(configKey, String.valueOf(args[3]));
+            if (args.length >= 3 && args[0] instanceof String configKey) {
+                configValues.put(configKey, String.valueOf(args[2]));
             }
             return 1;
         }
@@ -299,7 +298,7 @@ class SystemProfileSettingsAppServiceTest {
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             queryForListCount++;
             List<Map<String, Object>> rows = new ArrayList<>();
-            int keyCount = Math.max(0, args.length - 2);
+            int keyCount = args.length;
             for (int index = 0; index < keyCount; index++) {
                 String key = String.valueOf(args[index]);
                 if (!configValues.containsKey(key)) {
@@ -319,14 +318,14 @@ class SystemProfileSettingsAppServiceTest {
 
         private List<String> insertedConfigKeys() {
             return insertedRows.stream()
-                    .map(args -> args.length > 1 ? String.valueOf(args[1]) : null)
+                    .map(args -> args.length > 0 ? String.valueOf(args[0]) : null)
                     .filter(value -> value != null)
                     .toList();
         }
 
         private boolean hasInsertValue(String configKey, String expectedValue) {
             for (Object[] args : insertedRows) {
-                if (args.length > 3 && configKey.equals(String.valueOf(args[1])) && expectedValue.equals(String.valueOf(args[3]))) {
+                if (args.length > 2 && configKey.equals(String.valueOf(args[0])) && expectedValue.equals(String.valueOf(args[2]))) {
                     return true;
                 }
             }
@@ -335,7 +334,7 @@ class SystemProfileSettingsAppServiceTest {
 
         private boolean hasInsertValueContaining(String configKey, String expectedValuePart) {
             for (Object[] args : insertedRows) {
-                if (args.length > 3 && configKey.equals(String.valueOf(args[1])) && String.valueOf(args[3]).contains(expectedValuePart)) {
+                if (args.length > 2 && configKey.equals(String.valueOf(args[0])) && String.valueOf(args[2]).contains(expectedValuePart)) {
                     return true;
                 }
             }

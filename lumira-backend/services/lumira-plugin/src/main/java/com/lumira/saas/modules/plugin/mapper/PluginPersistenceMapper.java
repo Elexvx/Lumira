@@ -6,7 +6,6 @@ import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginDefinitionEnti
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginMenuRelEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginPermissionRelEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginRuntimeLogEntity;
-import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginTenantEntity;
 import com.lumira.saas.modules.plugin.entity.PluginEntities.PluginVersionEntity;
 import com.lumira.saas.modules.plugin.vo.PluginVO;
 import org.apache.ibatis.annotations.Mapper;
@@ -31,7 +30,7 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     List<PluginVO.PluginRuntimeLogVO> listRuntimeLogs(@Param("pluginCode") String pluginCode);
 
-    PluginVO.PluginStatusVO pluginStatus(@Param("tenantId") Long tenantId, @Param("pluginCode") String pluginCode);
+    PluginVO.PluginStatusVO pluginStatus(@Param("pluginCode") String pluginCode);
 
     void markInstalled(
             @Param("pluginCode") String pluginCode,
@@ -59,8 +58,6 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     void activateVersion(@Param("pluginCode") String pluginCode, @Param("version") String version);
 
-    void updateEnabledTenantsVersion(@Param("pluginCode") String pluginCode, @Param("version") String version);
-
     void deleteDependencies(@Param("pluginCode") String pluginCode);
 
     void insertDependency(@Param("entity") PluginDependencyEntity entity);
@@ -77,11 +74,7 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     List<PluginPermissionRelEntity> listPermissionRelations(@Param("pluginCode") String pluginCode, @Param("version") String version);
 
-    void enablePluginForTenant(@Param("entity") PluginTenantEntity entity);
-
-    void disablePluginForTenant(@Param("tenantId") Long tenantId, @Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId);
-
-    void markTenantsDeletedByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId);
+    void setPluginDefinitionStatus(@Param("pluginCode") String pluginCode, @Param("status") String status, @Param("operatorId") Long operatorId);
 
     void uninstallVersionsByPlugin(@Param("pluginCode") String pluginCode, @Param("operatorId") Long operatorId);
 
@@ -95,8 +88,6 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     void deleteRuntimeLogsByPlugin(@Param("pluginCode") String pluginCode);
 
-    void deleteTenantsByPlugin(@Param("pluginCode") String pluginCode);
-
     void deleteVersionsByPlugin(@Param("pluginCode") String pluginCode);
 
     void deleteMenuRelationsByPlugin(@Param("pluginCode") String pluginCode);
@@ -109,11 +100,9 @@ public interface PluginPersistenceMapper extends BaseMapper<PluginVersionEntity>
 
     void deleteSchemaHistoryByPlugin(@Param("pluginCode") String pluginCode);
 
-    PluginTenantEntity findTenantPlugin(@Param("tenantId") Long tenantId, @Param("pluginCode") String pluginCode);
+    PluginVersionEntity findEnabledVersion(@Param("pluginCode") String pluginCode);
 
-    List<PluginVO.TenantPluginVO> listTenantPlugins(@Param("tenantId") Long tenantId);
-
-    List<Long> listTenantIdsForPlugin(@Param("pluginCode") String pluginCode);
+    List<PluginVO.PluginAvailabilityVO> listAvailablePlugins();
 
     List<PluginVersionEntity> listInstalledVersions(@Param("pluginCode") String pluginCode);
 

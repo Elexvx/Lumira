@@ -2,6 +2,7 @@ package com.lumira.payment.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.payment.PaymentProviderSettingsDTO;
 import com.lumira.api.payment.PaymentWebhookEventDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
@@ -13,28 +14,25 @@ import com.lumira.payment.domain.model.PaymentDomainModels.PaymentOrderAggregate
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.nio.charset.StandardCharsets;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.Signature;
 import java.security.spec.X509EncodedKeySpec;
-import java.time.LocalDateTime;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalDateTime;
 import java.util.Base64;
-import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 public class PaymentWebhookService {
@@ -50,7 +48,6 @@ public class PaymentWebhookService {
     private final PaymentOutboxService outboxService;
     private final DomainEventPublisher domainEventPublisher;
     private final SecurityAuditEventService securityAuditEventService;
-    private final PaymentWebhookTenantResolver tenantResolver;
 
     @Autowired
     public PaymentWebhookService(
@@ -60,8 +57,7 @@ public class PaymentWebhookService {
             PaymentProviderCatalog providerCatalog,
             PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            SecurityAuditEventService securityAuditEventService,
-            PaymentWebhookTenantResolver tenantResolver
+            SecurityAuditEventService securityAuditEventService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
@@ -70,7 +66,6 @@ public class PaymentWebhookService {
         this.outboxService = outboxService;
         this.domainEventPublisher = domainEventPublisher;
         this.securityAuditEventService = securityAuditEventService;
-        this.tenantResolver = tenantResolver;
     }
 
     public PaymentWebhookService(
@@ -81,55 +76,44 @@ public class PaymentWebhookService {
             PaymentOutboxService outboxService,
             @Qualifier("paymentDomainEventPublisher") DomainEventPublisher domainEventPublisher
     ) {
-        this(jdbcTemplate, objectMapper, paymentManagementAppService, providerCatalog, outboxService, domainEventPublisher, null, null);
+        this(jdbcTemplate, objectMapper, paymentManagementAppService, providerCatalog, outboxService, domainEventPublisher, null);
     }
 
     @Transactional
     public PaymentWebhookEventDTO handleWebhook(String providerCode, String payload, Map<String, String> headers) {
-        if (tenantResolver == null) {
-            throw new BizException(ErrorCode.BAD_REQUEST, "Webhook tenant cannot be resolved", "Webhook request is invalid");
-        }
-        Long tenantId = tenantResolver.resolveTenantId(providerCode, payload, headers);
-        return handleWebhook(tenantId, providerCode, payload, headers);
-    }
-
-    @Deprecated
-    @Transactional
-    public PaymentWebhookEventDTO handleWebhook(Long tenantId, String providerCode, String payload, Map<String, String> headers) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
         String normalizedPayload = StringUtils.hasText(payload) ? payload.trim() : "{}";
         if (normalizedPayload.getBytes(StandardCharsets.UTF_8).length > MAX_WEBHOOK_PAYLOAD_BYTES) {
-            recordRejectedWebhook(tenantId, providerCode, "PAYLOAD_TOO_LARGE", normalizedPayload, headers);
+            recordRejectedWebhook(providerCode, "PAYLOAD_TOO_LARGE", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook payload too large", "Webhook request is invalid");
         }
-        var settings = paymentManagementAppService.getRequiredProviderSettings(tenantId, providerCode);
+        PaymentProviderSettingsDTO settings = paymentManagementAppService.getRequiredProviderSettings(providerCode);
         String eventId = resolveEventId(headers, normalizedPayload);
         String eventType = resolveEventType(headers, normalizedPayload);
         String signature = resolveSignature(headers, normalizedPayload);
         String timestamp = resolveHeader(headers, "timestamp", "X-Timestamp");
         String nonce = resolveHeader(headers, "nonce", "X-Nonce");
 
-        PaymentWebhookEventRow existing = findWebhookEvent(tenantId, providerCode, eventId);
+        PaymentWebhookEventRow existing = findWebhookEvent(providerCode, eventId);
         if (existing != null) {
             return toDto(existing);
         }
 
-        if (StringUtils.hasText(nonce) && isNonceReplayed(tenantId, providerCode, nonce)) {
-            recordRejectedWebhook(tenantId, providerCode, "NONCE_REPLAY", normalizedPayload, headers);
+        if (StringUtils.hasText(nonce) && isNonceReplayed(providerCode, nonce)) {
+            recordRejectedWebhook(providerCode, "NONCE_REPLAY", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook replay rejected", "Webhook request is invalid");
         }
 
         if (!verifySignature(definition, settings, normalizedPayload, signature, timestamp, nonce)) {
-            recordRejectedWebhook(tenantId, providerCode, "SIGNATURE_INVALID", normalizedPayload, headers);
+            recordRejectedWebhook(providerCode, "SIGNATURE_INVALID", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook signature invalid", "Webhook request is invalid");
         }
         if (!isFreshTimestamp(timestamp)) {
-            recordRejectedWebhook(tenantId, providerCode, "TIMESTAMP_EXPIRED", normalizedPayload, headers);
+            recordRejectedWebhook(providerCode, "TIMESTAMP_EXPIRED", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook timestamp expired", "Webhook request is invalid");
         }
 
         PaymentWebhookEventRow row = new PaymentWebhookEventRow();
-        row.setTenantId(tenantId);
         row.setProviderCode(providerCatalog.normalize(providerCode));
         row.setEventId(eventId);
         row.setEventType(eventType);
@@ -148,12 +132,11 @@ public class PaymentWebhookService {
         jdbcTemplate.update(
                 """
                         insert into payment_webhook_event (
-                            tenant_id, provider_code, event_id, event_type, nonce, request_timestamp, payload_json,
+                            provider_code, event_id, event_type, nonce, request_timestamp, payload_json,
                             signature, signature_valid, processed, process_message, received_at, created_by,
                             updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0)
                         """,
-                row.getTenantId(),
                 row.getProviderCode(),
                 row.getEventId(),
                 row.getEventType(),
@@ -168,14 +151,13 @@ public class PaymentWebhookService {
                 0L
         );
 
-        String processMessage = applyEvent(tenantId, providerCode, normalizedPayload, eventType);
-        markProcessed(tenantId, providerCode, eventId, processMessage);
+        String processMessage = applyEvent(providerCode, normalizedPayload, eventType);
+        markProcessed(providerCode, eventId, processMessage);
         row.setProcessed(1);
         row.setProcessMessage(processMessage);
         row.setProcessedAt(LocalDateTime.now());
 
         outboxService.recordAfterCommit(
-                tenantId,
                 0L,
                 "payment",
                 "payment.webhook.received",
@@ -200,10 +182,9 @@ public class PaymentWebhookService {
         );
     }
 
-    private void recordRejectedWebhook(Long tenantId, String providerCode, String reason, String payload, Map<String, String> headers) {
+    private void recordRejectedWebhook(String providerCode, String reason, String payload, Map<String, String> headers) {
         log.warn(
-                "Rejected payment webhook tenantId={} providerCode={} reason={} payloadHash={} headerKeys={}",
-                tenantId,
+                "Rejected payment webhook providerCode={} reason={} payloadHash={} headerKeys={}",
                 providerCatalog.normalize(providerCode),
                 reason,
                 sha256(payload),
@@ -211,7 +192,6 @@ public class PaymentWebhookService {
         );
         if (securityAuditEventService != null) {
             securityAuditEventService.record(SecurityAuditEvent.builder("WEBHOOK_" + reason, "HIGH", "DENIED")
-                    .tenantId(tenantId)
                     .requestId(TraceContext.getRequestId())
                     .traceId(TraceContext.getTraceId())
                     .resourceCode("payment_webhook")
@@ -235,7 +215,8 @@ public class PaymentWebhookService {
             return "";
         }
     }
-    private String applyEvent(Long tenantId, String providerCode, String payload, String eventType) {
+
+    private String applyEvent(String providerCode, String payload, String eventType) {
         String normalizedEvent = normalizeText(eventType).toLowerCase(Locale.ROOT);
         if (normalizedEvent.contains("refund")) {
             String refundNo = extractField(payload, "refundNo", "refund_no", "id");
@@ -244,25 +225,23 @@ public class PaymentWebhookService {
                         """
                                 update payment_refund
                                 set status = 'REFUNDED', refunded_at = ?, updated_at = ?, updated_by = ?, deleted = 0
-                                where tenant_id = ? and refund_no = ? and deleted = 0
+                                where refund_no = ? and deleted = 0
                                   and status not in ('REFUNDED', 'FAILED')
                                 """,
                         LocalDateTime.now(),
                         LocalDateTime.now(),
                         0L,
-                        tenantId,
                         refundNo.trim()
                 );
             }
-            return "退款 webhook 已处理";
+            return "Refund webhook processed";
         }
 
         String orderNo = extractField(payload, "orderNo", "order_no", "merchantOrderNo", "out_trade_no", "id");
         if (StringUtils.hasText(orderNo)) {
-            PaymentOrderRow order = findOrderForWebhook(tenantId, orderNo.trim());
+            PaymentOrderRow order = findOrderForWebhook(orderNo.trim());
             PaymentOrderAggregate orderAggregate = new PaymentOrderAggregate(
                     orderNo.trim(),
-                    tenantId,
                     BigDecimal.valueOf(order == null || order.getAmountMinor() == null ? 1L : order.getAmountMinor(), 2),
                     order == null ? "PENDING" : order.getStatus()
             );
@@ -271,27 +250,93 @@ public class PaymentWebhookService {
                     """
                             update payment_order
                             set status = 'PAID', paid_at = ?, updated_at = ?, updated_by = ?, deleted = 0
-                            where tenant_id = ? and order_no = ? and deleted = 0
+                            where order_no = ? and deleted = 0
                               and status not in ('PAID', 'SUCCESS', 'SETTLED')
                             """,
                     LocalDateTime.now(),
                     LocalDateTime.now(),
                     0L,
-                    tenantId,
                     orderNo.trim()
             );
             if (updated > 0) {
                 domainEventPublisher.publishAll(orderAggregate.pullDomainEvents());
             }
+            markCompetitionRegistrationPaid(orderNo.trim(), order);
         }
-        return "支付 webhook 已处理";
+        return "Payment webhook processed";
     }
 
-    private PaymentOrderRow findOrderForWebhook(Long tenantId, String orderNo) {
+    private void markCompetitionRegistrationPaid(String orderNo, PaymentOrderRow order) {
+        Long registrationId = extractRegistrationId(order == null ? null : order.getRequestJson());
+        if (registrationId == null) {
+            return;
+        }
+        String participantNo = buildParticipantNo(registrationId);
+        if (!StringUtils.hasText(participantNo)) {
+            return;
+        }
+        jdbcTemplate.update(
+                """
+                        update competition_registration
+                        set status = 'CONFIRMED', participant_no = ?, payment_order_no = ?,
+                            updated_by = 0, updated_at = ?
+                        where id = ? and deleted = 0
+                          and participant_no is null
+                        """,
+                participantNo,
+                orderNo,
+                LocalDateTime.now(),
+                registrationId
+        );
+    }
+
+    private Long extractRegistrationId(String requestJson) {
+        if (!StringUtils.hasText(requestJson)) {
+            return null;
+        }
+        try {
+            JsonNode metadata = objectMapper.readTree(requestJson).path("metadata");
+            if (!"competition_registration".equals(metadata.path("bizType").asText())) {
+                return null;
+            }
+            JsonNode registrationId = metadata.path("registrationId");
+            return registrationId.canConvertToLong() ? registrationId.asLong() : null;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String buildParticipantNo(Long registrationId) {
         try {
             return jdbcTemplate.queryForObject(
                     """
-                            select id, tenant_id as tenantId, order_no as orderNo, provider_code as providerCode,
+                            select concat(upper(c.code), '-', lpad((
+                                select count(1) + 1
+                                from competition_registration cr2
+                                where cr2.competition_id = cr.competition_id
+                                  and cr2.participant_no is not null
+                                  and cr2.deleted = 0
+                            ), 4, '0'))
+                            from competition_registration cr
+                            join aiadc_competition c
+                              on c.id = cr.competition_id
+                             and c.deleted = 0
+                            where cr.id = ? and cr.deleted = 0
+                            limit 1
+                            """,
+                    String.class,
+                    registrationId
+            );
+        } catch (EmptyResultDataAccessException ignored) {
+            return null;
+        }
+    }
+
+    private PaymentOrderRow findOrderForWebhook(String orderNo) {
+        try {
+            return jdbcTemplate.queryForObject(
+                    """
+                            select id, order_no as orderNo, provider_code as providerCode,
                                    provider_order_no as providerOrderNo, subject, amount_minor as amountMinor, currency,
                                    status, payment_url as paymentUrl, client_ip as clientIp, notify_url as notifyUrl,
                                    return_url as returnUrl, request_json as requestJson, response_json as responseJson,
@@ -299,11 +344,10 @@ public class PaymentWebhookService {
                                    expires_at as expiresAt, paid_at as paidAt, created_by as createdBy, created_at as createdAt,
                                    updated_by as updatedBy, updated_at as updatedAt, deleted
                             from payment_order
-                            where tenant_id = ? and order_no = ? and deleted = 0
+                            where order_no = ? and deleted = 0
                             limit 1
                             """,
                     new BeanPropertyRowMapper<>(PaymentOrderRow.class),
-                    tenantId,
                     orderNo
             );
         } catch (EmptyResultDataAccessException ignored) {
@@ -311,18 +355,17 @@ public class PaymentWebhookService {
         }
     }
 
-    private void markProcessed(Long tenantId, String providerCode, String eventId, String processMessage) {
+    private void markProcessed(String providerCode, String eventId, String processMessage) {
         jdbcTemplate.update(
                 """
                         update payment_webhook_event
                         set processed = 1, process_message = ?, processed_at = ?, updated_at = ?, updated_by = ?, deleted = 0
-                        where tenant_id = ? and provider_code = ? and event_id = ? and deleted = 0
+                        where provider_code = ? and event_id = ? and deleted = 0
                         """,
                 processMessage,
                 LocalDateTime.now(),
                 LocalDateTime.now(),
                 0L,
-                tenantId,
                 providerCatalog.normalize(providerCode),
                 eventId
         );
@@ -330,7 +373,7 @@ public class PaymentWebhookService {
 
     private boolean verifySignature(
             PaymentProviderCatalog.PaymentProviderDefinition definition,
-            com.lumira.api.payment.PaymentProviderSettingsDTO settings,
+            PaymentProviderSettingsDTO settings,
             String payload,
             String signature,
             String timestamp,
@@ -407,7 +450,7 @@ public class PaymentWebhookService {
         }
     }
 
-    private boolean isNonceReplayed(Long tenantId, String providerCode, String nonce) {
+    private boolean isNonceReplayed(String providerCode, String nonce) {
         if (!StringUtils.hasText(nonce)) {
             return false;
         }
@@ -416,12 +459,11 @@ public class PaymentWebhookService {
                     """
                             select 1
                             from payment_webhook_event
-                            where tenant_id = ? and provider_code = ? and nonce = ? and deleted = 0
+                            where provider_code = ? and nonce = ? and deleted = 0
                               and received_at >= ?
                             limit 1
                             """,
                     Long.class,
-                    tenantId,
                     providerCatalog.normalize(providerCode),
                     nonce.trim(),
                     LocalDateTime.now().minusSeconds(WEBHOOK_REPLAY_WINDOW_SECONDS)
@@ -429,59 +471,6 @@ public class PaymentWebhookService {
         } catch (Exception ignored) {
             return false;
         }
-    }
-
-    private PaymentWebhookEventDTO insertRejectedWebhookEvent(
-            Long tenantId,
-            String providerCode,
-            String eventId,
-            String eventType,
-            String payload,
-            String signature,
-            String timestamp,
-            String nonce,
-            String message
-    ) {
-        PaymentWebhookEventRow row = new PaymentWebhookEventRow();
-        row.setTenantId(tenantId);
-        row.setProviderCode(providerCatalog.normalize(providerCode));
-        row.setEventId(eventId);
-        row.setEventType(eventType);
-        row.setNonce(nonce);
-        row.setRequestTimestamp(timestamp);
-        row.setPayloadJson(payload);
-        row.setSignature(signature);
-        row.setSignatureValid(0);
-        row.setProcessed(0);
-        row.setProcessMessage(message);
-        row.setReceivedAt(LocalDateTime.now());
-        row.setCreatedBy(0L);
-        row.setUpdatedBy(0L);
-        row.setDeleted(0);
-
-        jdbcTemplate.update(
-                """
-                        insert into payment_webhook_event (
-                            tenant_id, provider_code, event_id, event_type, nonce, request_timestamp, payload_json,
-                            signature, signature_valid, processed, process_message, received_at, created_by,
-                            updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0)
-                        """,
-                row.getTenantId(),
-                row.getProviderCode(),
-                row.getEventId(),
-                row.getEventType(),
-                row.getNonce(),
-                row.getRequestTimestamp(),
-                row.getPayloadJson(),
-                row.getSignature(),
-                row.getSignatureValid(),
-                row.getProcessMessage(),
-                row.getReceivedAt(),
-                0L,
-                0L
-        );
-        return toDto(row);
     }
 
     private boolean constantTimeEquals(String expected, String actual) {
@@ -580,23 +569,22 @@ public class PaymentWebhookService {
         );
     }
 
-    private PaymentWebhookEventRow findWebhookEvent(Long tenantId, String providerCode, String eventId) {
+    private PaymentWebhookEventRow findWebhookEvent(String providerCode, String eventId) {
         try {
             return jdbcTemplate.queryForObject(
                     """
-                            select id, tenant_id as tenantId, provider_code as providerCode, event_id as eventId,
+                            select id, provider_code as providerCode, event_id as eventId,
                                    event_type as eventType, nonce, request_timestamp as requestTimestamp, payload_json as payloadJson,
                                    signature, signature_valid as signatureValid, processed, process_message as processMessage,
                                    received_at as receivedAt, processed_at as processedAt,
                                    retry_count as retryCount, next_retry_at as nextRetryAt, created_by as createdBy,
                                    created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
                             from payment_webhook_event
-                            where tenant_id = ? and provider_code = ? and event_id = ? and deleted = 0
+                            where provider_code = ? and event_id = ? and deleted = 0
                             order by id desc
                             limit 1
                             """,
                     new BeanPropertyRowMapper<>(PaymentWebhookEventRow.class),
-                    tenantId,
                     providerCatalog.normalize(providerCode),
                     eventId
             );
@@ -609,4 +597,3 @@ public class PaymentWebhookService {
         return value == null ? "" : value.trim();
     }
 }
-

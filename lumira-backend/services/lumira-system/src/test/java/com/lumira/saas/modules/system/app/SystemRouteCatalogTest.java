@@ -9,13 +9,23 @@ class SystemRouteCatalogTest {
     @Test
     void routeCatalogShouldAllowSeededSystemMenuRoutes() {
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/dashboard/home")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/data-management")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/data-management/query-center")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/activities")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/activities/management")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/activities/search")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/management")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/competitions/create")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/projects")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/projects/management")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/projects/search")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/payments")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/payments/management")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/payments/status")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/experts")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/experts/management")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/experts/query")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/aiadc")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/aiadc/activity-management")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/aiadc/activities")).isFalse();
@@ -38,11 +48,13 @@ class SystemRouteCatalogTest {
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/activity")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/competition")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/expert")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/project")).isFalse();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/project")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/payment")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/team")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/dashboard/Home")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/settings")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/site/carousels")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/iam/Overview")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("redirect:/team/search")).isTrue();
     }
 }

@@ -1,5 +1,6 @@
 package com.lumira.team.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
 import com.lumira.common.security.SecurityContextFacade;
@@ -91,6 +92,25 @@ class TeamControllerTest {
         assertThat(controller.adminTeams().getData()).isEmpty();
         verify(permissionGuard).requirePermission(user, "team:view");
         verify(appService).listTeamsForAdmin(user);
+    }
+
+    @Test
+    void adminTeamListDoesNotExposeOwnerUserId() throws Exception {
+        TeamAppService appService = mock(TeamAppService.class);
+        SecurityContextFacade security = mock(SecurityContextFacade.class);
+        PermissionGuard permissionGuard = mock(PermissionGuard.class);
+        TeamV2Controller controller = new TeamV2Controller(appService, mock(TeamInviteService.class), security, permissionGuard);
+        CurrentUser user = currentUser();
+        TeamVO.Team team = new TeamVO.Team();
+        team.setId(2001L);
+        team.setOwnerUserId(1001L);
+        when(security.getCurrentUser()).thenReturn(user);
+        when(appService.listTeamsForAdmin(user)).thenReturn(List.of(team));
+
+        String json = new ObjectMapper().findAndRegisterModules().writeValueAsString(controller.adminTeams());
+
+        assertThat(json).doesNotContain("ownerUserId");
+        assertThat(team.getOwnerUserId()).isEqualTo(1001L);
     }
 
     @Test
@@ -204,7 +224,6 @@ class TeamControllerTest {
         CurrentUser user = new CurrentUser();
         user.setUserId(3001L);
         user.setUsername("admin");
-        user.setCurrentTenantId(1001L);
         user.setAuthenticated(true);
         return user;
     }

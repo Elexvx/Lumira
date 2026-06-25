@@ -13,9 +13,6 @@ public enum DataScopeType {
         if (value == null || value.isBlank()) {
             return SELF;
         }
-        if ("TENANT".equalsIgnoreCase(value.trim())) {
-            return ALL;
-        }
         try {
             return DataScopeType.valueOf(value.trim().toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException exception) {

@@ -63,62 +63,57 @@ public class InternalFileController implements com.lumira.api.client.FileInterna
             @RequestParam(name = "tags", required = false) String tags,
             @RequestParam(name = "remark", required = false) String remark,
             @RequestParam(name = "bucket", required = false) String bucket,
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @RequestParam("username") String username
     ) {
-        CurrentUser currentUser = new CurrentUser(userId, username, tenantId, null, 0, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(userId, username, null, null, 0, true, Set.of("*"));
         return fileManagementAppService.uploadDocument(currentUser, file, category, tags, remark, bucket);
     }
 
     @GetMapping("/content")
     public FileContentDTO readFileContentForUser(
             @RequestParam("fileId") Long fileId,
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @RequestParam("username") String username
     ) {
-        CurrentUser currentUser = new CurrentUser(userId, username, tenantId, null, 0, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(userId, username, null, null, 0, true, Set.of("*"));
         return fileManagementAppService.readFileContent(currentUser, fileId, true, false);
     }
 
     @GetMapping("/artifacts")
     public FileProcessingArtifactDTO readProcessingArtifactForUser(
             @RequestParam("fileId") Long fileId,
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @RequestParam("username") String username,
             @RequestParam("artifactType") String artifactType
     ) {
-        CurrentUser currentUser = new CurrentUser(userId, username, tenantId, null, 0, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(userId, username, null, null, 0, true, Set.of("*"));
         return fileManagementAppService.readProcessingArtifact(currentUser, fileId, artifactType, true, false);
     }
 
     @GetMapping("/metadata")
     public FileObjectDTO getFileForUser(
             @RequestParam("fileId") Long fileId,
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @RequestParam("username") String username,
-            @RequestParam(name = "tenantScope", defaultValue = "true") boolean tenantScope,
+            @RequestParam(name = "sharedScope", defaultValue = "true") boolean sharedScope,
             @RequestParam(name = "downloadCenterScope", defaultValue = "false") boolean downloadCenterScope
     ) {
-        CurrentUser currentUser = new CurrentUser(userId, username, tenantId, null, 0, true, Set.of("*"));
-        return fileManagementAppService.getFile(currentUser, fileId, tenantScope, downloadCenterScope);
+        CurrentUser currentUser = new CurrentUser(userId, username, null, null, 0, true, Set.of("*"));
+        return fileManagementAppService.getFile(currentUser, fileId, sharedScope, downloadCenterScope);
     }
 
     @GetMapping("/search")
     public List<FileObjectDTO> searchFilesForUser(
-            @RequestParam("tenantId") Long tenantId,
             @RequestParam("userId") Long userId,
             @RequestParam("username") String username,
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "contentType", required = false) String contentType,
             @RequestParam(name = "status", required = false) String status,
-            @RequestParam(name = "tenantScope", defaultValue = "false") boolean tenantScope,
+            @RequestParam(name = "sharedScope", defaultValue = "false") boolean sharedScope,
             @RequestParam(name = "limit", defaultValue = "50") int limit
     ) {
-        CurrentUser currentUser = new CurrentUser(userId, username, tenantId, null, 0, true, Set.of("*"));
-        return fileManagementAppService.searchFilesForInternalTool(currentUser, keyword, contentType, status, tenantScope, limit);
+        CurrentUser currentUser = new CurrentUser(userId, username, null, null, 0, true, Set.of("*"));
+        return fileManagementAppService.searchFilesForInternalTool(currentUser, keyword, contentType, status, sharedScope, limit);
     }
 }

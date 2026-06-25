@@ -38,8 +38,8 @@ public class FileTextExtractionProcessor {
         this.tika = tika;
     }
 
-    public TextExtractionResult extractText(Long tenantId, Long fileId, Long userId) {
-        FileLocation location = findFileLocation(tenantId, fileId);
+    public TextExtractionResult extractText(Long fileId, Long userId) {
+        FileLocation location = findFileLocation(fileId);
         if (location == null) {
             throw new IllegalStateException("File object is unavailable for text extraction: " + fileId);
         }
@@ -63,7 +63,7 @@ public class FileTextExtractionProcessor {
             String storedContent = normalizedContent.length() > MAX_STORED_CHARS
                     ? normalizedContent.substring(0, MAX_STORED_CHARS)
                     : normalizedContent;
-            upsertArtifact(tenantId, fileId, storedContent, userId);
+            upsertArtifact(fileId, storedContent, userId);
             return new TextExtractionResult(source, storedContent.length(), normalizedContent.length() > storedContent.length());
         } catch (IOException | TikaException exception) {
             throw new IllegalStateException("Text extraction failed: " + source, exception);
@@ -85,7 +85,7 @@ public class FileTextExtractionProcessor {
         }
     }
 
-    private FileLocation findFileLocation(Long tenantId, Long fileId) {
+    private FileLocation findFileLocation(Long fileId) {
         return jdbcTemplate.queryForObject(
                 """
                         select fo.storage_type as storageType, fo.object_key as objectKey,
@@ -93,10 +93,9 @@ public class FileTextExtractionProcessor {
                                coalesce(fs.root_path, '') as rootPath
                         from file_object fo
                         left join file_storage_space fs
-                          on fs.tenant_id = fo.tenant_id
-                         and fs.storage_key = fo.bucket
+                          on fs.storage_key = fo.bucket
                          and fs.deleted = 0
-                        where fo.tenant_id = ? and fo.id = ? and fo.deleted = 0
+                        where fo.id = ? and fo.deleted = 0
                         limit 1
                         """,
                 (rs, rowNum) -> new FileLocation(
@@ -106,7 +105,6 @@ public class FileTextExtractionProcessor {
                         rs.getString("contentType"),
                         rs.getString("fileExtension")
                 ),
-                tenantId,
                 fileId
         );
     }
@@ -168,13 +166,13 @@ public class FileTextExtractionProcessor {
         return uploadRoot.resolve(normalizedRootPath).normalize();
     }
 
-    private void upsertArtifact(Long tenantId, Long fileId, String content, Long userId) {
+    private void upsertArtifact(Long fileId, String content, Long userId) {
         jdbcTemplate.update(
                 """
                         insert into file_processing_artifact (
-                            tenant_id, file_id, task_type, artifact_type, content_text, content_length,
+                            file_id, task_type, artifact_type, content_text, content_length,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, 0)
                         on duplicate key update
                             task_type = values(task_type),
                             content_text = values(content_text),
@@ -183,7 +181,6 @@ public class FileTextExtractionProcessor {
                             updated_at = current_timestamp,
                             updated_by = values(updated_by)
                         """,
-                tenantId,
                 fileId,
                 FileProcessingTaskService.TASK_TEXT_EXTRACT,
                 ARTIFACT_TEXT_CONTENT,

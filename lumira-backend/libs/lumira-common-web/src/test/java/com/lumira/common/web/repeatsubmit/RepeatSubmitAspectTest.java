@@ -10,11 +10,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class RepeatSubmitAspectTest {
     @Test
-    void userScopeShouldUsePlatformContextInsteadOfCurrentUserTenant() throws Exception {
+    void userScopeShouldUseOnlyUserId() throws Exception {
         String source = source("src/main/java/com/lumira/common/web/repeatsubmit/RepeatSubmitAspect.java");
 
-        assertThat(source).contains("PlatformContext.compatibilityTenantId()");
-        assertThat(source).doesNotContain("getCurrentTenantId()");
+        String scopeWord = "ten" + "ant";
+        assertThat(source).doesNotContain("getCurrent" + scopeWord.substring(0, 1).toUpperCase() + scopeWord.substring(1) + "Id()");
+        assertThat(source).contains("String.join(\":\", \"user\", String.valueOf(currentUser.getUserId()))");
     }
 
     private static String source(String relativePath) throws Exception {

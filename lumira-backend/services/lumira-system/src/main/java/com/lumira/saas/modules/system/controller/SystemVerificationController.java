@@ -47,7 +47,7 @@ public class SystemVerificationController {
         CurrentUser currentUser = currentUser();
         requireView();
         return ApiResponse.success(
-                verificationAppService.listProviders(requireTenantId(currentUser), currentUser.getUserId()),
+                verificationAppService.listProviders(currentUser),
                 TraceContext.getRequestId()
         );
     }
@@ -57,7 +57,7 @@ public class SystemVerificationController {
         CurrentUser currentUser = currentUser();
         requireView();
         return ApiResponse.success(
-                verificationAppService.provider(requireTenantId(currentUser), currentUser.getUserId(), factorCode),
+                verificationAppService.provider(currentUser, factorCode),
                 TraceContext.getRequestId()
         );
     }
@@ -67,7 +67,7 @@ public class SystemVerificationController {
         CurrentUser currentUser = currentUser();
         requireView();
         return ApiResponse.success(
-                verificationAppService.getSmsSettings(requireTenantId(currentUser)),
+                verificationAppService.getSmsSettings(),
                 TraceContext.getRequestId()
         );
     }
@@ -77,7 +77,7 @@ public class SystemVerificationController {
         CurrentUser currentUser = currentUser();
         requireView();
         return ApiResponse.success(
-                verificationAppService.getWechatSettings(requireTenantId(currentUser)),
+                verificationAppService.getWechatSettings(),
                 TraceContext.getRequestId()
         );
     }
@@ -87,7 +87,7 @@ public class SystemVerificationController {
         CurrentUser currentUser = currentUser();
         requireView();
         return ApiResponse.success(
-                verificationAppService.getPasskeySettings(requireTenantId(currentUser)),
+                verificationAppService.getPasskeySettings(),
                 TraceContext.getRequestId()
         );
     }
@@ -97,7 +97,7 @@ public class SystemVerificationController {
         CurrentUser currentUser = currentUser();
         requireView();
         return ApiResponse.success(
-                verificationAppService.getVerificationSettings(requireTenantId(currentUser)),
+                verificationAppService.getVerificationSettings(),
                 TraceContext.getRequestId()
         );
     }
@@ -108,7 +108,7 @@ public class SystemVerificationController {
         CurrentUser currentUser = currentUser();
         require("system:verification:manage");
         return ApiResponse.success(
-                verificationAppService.bind(requireTenantId(currentUser), currentUser.getUserId(), factorCode),
+                verificationAppService.bindCurrentUser(currentUser, factorCode),
                 TraceContext.getRequestId()
         );
     }
@@ -119,7 +119,7 @@ public class SystemVerificationController {
         CurrentUser currentUser = currentUser();
         require("system:verification:manage");
         return ApiResponse.success(
-                verificationAppService.unbind(requireTenantId(currentUser), currentUser.getUserId(), factorCode),
+                verificationAppService.unbindCurrentUser(currentUser, factorCode),
                 TraceContext.getRequestId()
         );
     }
@@ -130,7 +130,7 @@ public class SystemVerificationController {
         CurrentUser currentUser = currentUser();
         require("system:verification:manage");
         return ApiResponse.success(
-                verificationAppService.challenge(requireTenantId(currentUser), currentUser.getUserId(), factorCode),
+                verificationAppService.challengeCurrentUser(currentUser, factorCode),
                 TraceContext.getRequestId()
         );
     }
@@ -147,9 +147,8 @@ public class SystemVerificationController {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "验证方式不匹配");
         }
         return ApiResponse.success(
-                verificationAppService.completeBind(
-                        requireTenantId(currentUser),
-                        currentUser.getUserId(),
+                verificationAppService.completeBindCurrentUser(
+                        currentUser,
                         factorCode,
                         request.getChallengeId(),
                         request.getVerificationCode()
@@ -237,10 +236,6 @@ public class SystemVerificationController {
 
     private CurrentUser currentUser() {
         return securityContextFacade.getCurrentUser();
-    }
-
-    private Long requireTenantId(CurrentUser currentUser) {
-        return com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
     }
 
     private void require(String permissionKey) {

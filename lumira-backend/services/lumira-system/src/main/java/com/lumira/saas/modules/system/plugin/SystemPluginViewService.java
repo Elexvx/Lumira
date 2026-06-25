@@ -28,48 +28,40 @@ public class SystemPluginViewService {
         this.objectMapper = objectMapper;
     }
 
-    public List<PluginVO.TenantPluginVO> availablePlugins(Long tenantId) {
-        if (tenantId == null) {
-            return List.of();
-        }
-        List<PluginVO.TenantPluginVO> plugins = jdbcTemplate.query(
+    public List<PluginVO.PluginAvailabilityVO> availablePlugins() {
+        List<PluginVO.PluginAvailabilityVO> plugins = jdbcTemplate.query(
                 """
                         select d.plugin_code,
                                d.plugin_name,
-                               t.plugin_version,
+                               v.version as plugin_version,
                                v.frontend_manifest_path
-                        from sys_plugin_tenant t
-                        join sys_plugin_definition d
-                          on d.plugin_code = t.plugin_code
-                         and d.deleted = 0
+                        from sys_plugin_definition d
                         join sys_plugin_version v
-                          on v.plugin_code = t.plugin_code
-                         and v.version = t.plugin_version
+                          on v.plugin_code = d.plugin_code
+                         and v.is_active = 1
                          and v.deleted = 0
-                        where t.tenant_id = ?
-                          and t.enabled = 1
-                          and t.deleted = 0
+                        where d.status = 'ENABLED'
+                          and d.deleted = 0
                         order by d.sort_no asc, d.plugin_code asc
                         """,
                 (rs, rowNum) -> {
-                    PluginVO.TenantPluginVO vo = new PluginVO.TenantPluginVO();
+                    PluginVO.PluginAvailabilityVO vo = new PluginVO.PluginAvailabilityVO();
                     vo.setPluginCode(rs.getString("plugin_code"));
                     vo.setPluginName(rs.getString("plugin_name"));
                     vo.setVersion(rs.getString("plugin_version"));
                     vo.setManifestPath(rs.getString("frontend_manifest_path"));
                     return vo;
-                },
-                tenantId
+                }
         );
         return plugins.parallelStream()
                 .map(this::enrichPlugin)
                 .toList();
     }
 
-    public List<Map<String, Object>> tenantPluginMenus(Long tenantId, List<String> permissions) {
+    public List<Map<String, Object>> pluginMenus(List<String> permissions) {
         List<Map<String, Object>> menus = new ArrayList<>();
         List<String> permissionList = permissions == null ? List.of() : permissions;
-        for (PluginVO.TenantPluginVO plugin : availablePlugins(tenantId)) {
+        for (PluginVO.PluginAvailabilityVO plugin : availablePlugins()) {
             for (Map<String, Object> menu : plugin.getMenus()) {
                 String permissionKey = (String) menu.get("permissionKey");
                 if (!StringUtils.hasText(permissionKey) || permissionList.contains(permissionKey)) {
@@ -80,7 +72,7 @@ public class SystemPluginViewService {
         return menus;
     }
 
-    private void loadFrontendManifest(PluginVO.TenantPluginVO plugin) {
+    private void loadFrontendManifest(PluginVO.PluginAvailabilityVO plugin) {
         if (!StringUtils.hasText(plugin.getManifestPath())) {
             plugin.setSharedDeps(List.of());
             plugin.setRoutes(List.of());
@@ -96,7 +88,7 @@ public class SystemPluginViewService {
         }
     }
 
-    private PluginVO.TenantPluginVO enrichPlugin(PluginVO.TenantPluginVO plugin) {
+    private PluginVO.PluginAvailabilityVO enrichPlugin(PluginVO.PluginAvailabilityVO plugin) {
         plugin.setMenus(buildPluginMenus(plugin.getPluginCode(), plugin.getVersion()));
         loadFrontendManifest(plugin);
         return plugin;

@@ -13,7 +13,6 @@ import com.lumira.api.system.PasskeyCredentialDTO;
 import com.lumira.api.system.PasskeyCredentialSaveRequestDTO;
 import com.lumira.api.system.PasskeyCredentialUsageRequestDTO;
 import com.lumira.api.system.PasskeySettingsDTO;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -78,16 +77,15 @@ public class PasskeyAuthService {
 
     public PasskeyOptionsDTO registrationOptions() {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
-        PasskeySettingsDTO settings = enabledSettings(tenantId);
+        PasskeySettingsDTO settings = enabledSettings();
         if (!Boolean.TRUE.equals(settings.selfBindingEnabled())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "当前不允许自助绑定通行密钥", "当前不允许自助绑定通行密钥");
         }
         String challenge = randomBase64Url(32);
         String userHandle = randomBase64Url(32);
-        saveChallenge(new ChallengeRecord(TYPE_REGISTRATION, challenge, tenantId, currentUser.getUserId(), userHandle), settings.challengeTtlSeconds());
+        saveChallenge(new ChallengeRecord(TYPE_REGISTRATION, challenge, currentUser.getUserId(), userHandle), settings.challengeTtlSeconds());
 
-        List<Map<String, Object>> excludeCredentials = systemInternalApi.passkeyCredentials(tenantId, currentUser.getUserId()).stream()
+        List<Map<String, Object>> excludeCredentials = systemInternalApi.passkeyCredentials(currentUser.getUserId()).stream()
                 .map(item -> credentialDescriptor(item.credentialId(), item.transports()))
                 .toList();
         Map<String, Object> publicKey = new LinkedHashMap<>();
@@ -112,7 +110,7 @@ public class PasskeyAuthService {
 
     public PasskeyCredentialDTO completeRegistration(PasskeyRegistrationCompleteRequest request, HttpServletRequest httpServletRequest) {
         ChallengeRecord challenge = consumeChallenge(request.challengeId(), TYPE_REGISTRATION);
-        PasskeySettingsDTO settings = enabledSettings(challenge.tenantId());
+        PasskeySettingsDTO settings = enabledSettings();
         ClientData clientData = parseClientData(request.response().clientDataJSON(), "webauthn.create", challenge.challenge(), settings);
         AttestationData attestation = parseAttestationObject(request.response().attestationObject(), settings);
         if (!request.rawId().equals(attestation.credentialId())) {
@@ -127,7 +125,6 @@ public class PasskeyAuthService {
         }
         String label = StringUtils.hasText(request.label()) ? request.label() : browserLabel(httpServletRequest);
         return systemInternalApi.savePasskeyCredential(new PasskeyCredentialSaveRequestDTO(
-                challenge.tenantId(),
                 challenge.userId(),
                 challenge.userHandle(),
                 attestation.credentialId(),
@@ -141,13 +138,12 @@ public class PasskeyAuthService {
     }
 
     public PasskeyOptionsDTO authenticationOptions() {
-        Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
-        PasskeySettingsDTO settings = enabledSettings(tenantId);
+        PasskeySettingsDTO settings = enabledSettings();
         if (!Boolean.TRUE.equals(settings.passwordlessEnabled())) {
             throw new BizException(ErrorCode.FORBIDDEN, "当前未开启通行密钥无账号登录");
         }
         String challenge = randomBase64Url(32);
-        saveChallenge(new ChallengeRecord(TYPE_AUTHENTICATION, challenge, tenantId, null, null), settings.challengeTtlSeconds());
+        saveChallenge(new ChallengeRecord(TYPE_AUTHENTICATION, challenge, null, null), settings.challengeTtlSeconds());
         Map<String, Object> publicKey = new LinkedHashMap<>();
         publicKey.put("challenge", challenge);
         publicKey.put("rpId", settings.rpId());
@@ -158,7 +154,7 @@ public class PasskeyAuthService {
 
     public LoginResponseDTO completeAuthentication(PasskeyAuthenticationCompleteRequest request, HttpServletRequest httpServletRequest) {
         ChallengeRecord challenge = consumeChallenge(request.challengeId(), TYPE_AUTHENTICATION);
-        PasskeySettingsDTO settings = enabledSettings(challenge.tenantId());
+        PasskeySettingsDTO settings = enabledSettings();
         parseClientData(request.response().clientDataJSON(), "webauthn.get", challenge.challenge(), settings);
         byte[] authenticatorData = base64UrlDecode(request.response().authenticatorData());
         if (authenticatorData.length < 37) {
@@ -184,26 +180,26 @@ public class PasskeyAuthService {
                 (flags & FLAG_BE) != 0,
                 (flags & FLAG_BS) != 0
         ));
-        return authAppService.loginVerifiedUser(credential.userId(), credential.tenantId(), httpServletRequest);
+        return authAppService.loginVerifiedUser(credential.userId(), httpServletRequest);
     }
 
     public List<PasskeyCredentialDTO> listCredentials() {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.passkeyCredentials(PlatformConstants.PLATFORM_TENANT_ID, currentUser.getUserId());
+        return systemInternalApi.passkeyCredentials(currentUser.getUserId());
     }
 
     public PasskeyCredentialDTO renameCredential(Long id, PasskeyCredentialLabelRequest request) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.renamePasskeyCredential(id, PlatformConstants.PLATFORM_TENANT_ID, currentUser.getUserId(), request.label());
+        return systemInternalApi.renamePasskeyCredential(id, currentUser.getUserId(), request.label());
     }
 
     public Boolean deleteCredential(Long id) {
         CurrentUser currentUser = securityContextFacade.getCurrentUser();
-        return systemInternalApi.deletePasskeyCredential(id, PlatformConstants.PLATFORM_TENANT_ID, currentUser.getUserId());
+        return systemInternalApi.deletePasskeyCredential(id, currentUser.getUserId());
     }
 
-    private PasskeySettingsDTO enabledSettings(Long tenantId) {
-        PasskeySettingsDTO settings = systemInternalApi.passkeySettings(tenantId);
+    private PasskeySettingsDTO enabledSettings() {
+        PasskeySettingsDTO settings = systemInternalApi.passkeySettings();
         if (settings == null || !Boolean.TRUE.equals(settings.enabled())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "当前未开启通行密钥登录", "当前未开启通行密钥登录");
         }
@@ -386,7 +382,7 @@ public class PasskeyAuthService {
         return Base64.getUrlDecoder().decode(value);
     }
 
-    private record ChallengeRecord(String type, String challenge, Long tenantId, Long userId, String userHandle) {
+    private record ChallengeRecord(String type, String challenge, Long userId, String userHandle) {
     }
 
     private record ClientData(String type, String challenge, String origin) {

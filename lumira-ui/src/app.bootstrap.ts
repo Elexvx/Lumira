@@ -17,7 +17,7 @@ import { normalizeWatermarkSettings } from '@/watermark/settingsNormalize';
 import { persistWatermarkSettings } from '@/watermark/settingsStorage';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import type { AppInitialState } from '@/app.types';
-import type { AgreementSettings, BrandingSettings, CurrentUser, FloatingWindowSettings, LoginCapabilities, MenuNode, SecuritySettings, TenantPlugin, WatermarkSettings } from '@/types/api';
+import type { AgreementSettings, BrandingSettings, CurrentUser, FloatingWindowSettings, LoginCapabilities, MenuNode, SecuritySettings, PluginAvailability, WatermarkSettings } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 
 const MAX_AUTHENTICATED_BOOTSTRAP_RETRIES = 3;
@@ -58,7 +58,7 @@ interface BootstrapSnapshot {
 
 interface PluginBootstrapResponse {
   menuTree?: MenuNode[];
-  availablePlugins?: TenantPlugin[];
+  availablePlugins?: PluginAvailability[];
 }
 
 interface PublicBootstrapResponse {
@@ -148,7 +148,7 @@ const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSet
   return settings;
 };
 
-const loadPluginBootstrap = async (): Promise<[MenuNode[], TenantPlugin[]]> => {
+const loadPluginBootstrap = async (): Promise<[MenuNode[], PluginAvailability[]]> => {
   try {
     const bootstrap = await request<PluginBootstrapResponse>('/v2/plugins/current/bootstrap', {
       method: 'GET',
@@ -182,7 +182,7 @@ const loadPluginBootstrap = async (): Promise<[MenuNode[], TenantPlugin[]]> => {
         allowUnauthorizedWithoutRedirect: true,
         silent: true,
       }),
-      request<TenantPlugin[]>('/v1/plugins/current/available', {
+      request<PluginAvailability[]>('/v1/plugins/current/available', {
         method: 'GET',
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,

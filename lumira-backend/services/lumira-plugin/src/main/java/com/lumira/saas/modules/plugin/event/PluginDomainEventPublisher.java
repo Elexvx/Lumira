@@ -22,7 +22,6 @@ public class PluginDomainEventPublisher implements DomainEventPublisher {
             return;
         }
         outboxService.recordAfterCommit(
-                event.tenantId(),
                 resolveUserId(event.attributes()),
                 event.eventType(),
                 event.eventKey(),
@@ -44,7 +43,6 @@ public class PluginDomainEventPublisher implements DomainEventPublisher {
         payload.put("eventType", event.eventType());
         payload.put("aggregateType", event.aggregateType());
         payload.put("aggregateId", event.aggregateId());
-        payload.put("tenantId", event.tenantId());
         payload.put("schemaVersion", event.schemaVersion());
         payload.put("eventKey", event.eventKey());
         payload.put("occurredAt", event.occurredAt().toString());

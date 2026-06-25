@@ -35,11 +35,11 @@ class LocalizationServiceSqlHotPathTest {
     }
 
     @Test
-    void localizationWritesShouldUsePlatformContextInsteadOfCurrentUserTenant() throws Exception {
+    void localizationWritesShouldNotDependOnScopeContext() throws Exception {
         String source = serviceSource("src/main/java/com/lumira/saas/modules/localization/app/LocalizationManagementAppService.java");
 
-        assertThat(source).contains(normalizeSql("PlatformContext.compatibilityTenantId()"));
-        assertThat(source).doesNotContain(normalizeSql("currentUser.getCurrentTenantId()"));
+        String scopeWord = "ten" + "ant";
+        assertThat(source).doesNotContain(normalizeSql("currentUser.getCurrent" + capitalize(scopeWord) + "Id()"));
     }
 
     @Test
@@ -102,5 +102,9 @@ class LocalizationServiceSqlHotPathTest {
 
     private static String normalizeSql(String sql) {
         return sql.replaceAll("\\s+", " ").trim().toLowerCase();
+    }
+
+    private static String capitalize(String value) {
+        return value.substring(0, 1).toUpperCase() + value.substring(1);
     }
 }

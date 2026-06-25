@@ -38,8 +38,8 @@ public class PluginOutboxService {
         this.objectMapper = objectMapper;
     }
 
-    public void recordAfterCommit(Long tenantId, Long userId, String eventType, String eventKey, Object payload) {
-        Runnable action = () -> record(tenantId, userId, eventType, eventKey, payload);
+    public void recordAfterCommit(Long userId, String eventType, String eventKey, Object payload) {
+        Runnable action = () -> record(userId, eventType, eventKey, payload);
         if (!TransactionSynchronizationManager.isSynchronizationActive() || !TransactionSynchronizationManager.isActualTransactionActive()) {
             action.run();
             return;
@@ -53,17 +53,16 @@ public class PluginOutboxService {
         });
     }
 
-    public void record(Long tenantId, Long userId, String eventType, String eventKey, Object payload) {
+    public void record(Long userId, String eventType, String eventKey, Object payload) {
         jdbcTemplate.update(
                 """
                         insert into plugin_event_outbox (
-                            tenant_id, user_id, event_type, event_key, payload_json,
+                            user_id, event_type, event_key, payload_json,
                             status, retry_count, next_retry_at, created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, 0)
                         on duplicate key update payload_json = values(payload_json), status = 'PENDING',
                             next_retry_at = values(next_retry_at), updated_by = values(updated_by), updated_at = current_timestamp
                         """,
-                tenantId,
                 userId,
                 eventType,
                 eventKey,
@@ -182,7 +181,7 @@ public class PluginOutboxService {
         LocalDateTime now = LocalDateTime.now();
         return jdbcTemplate.query(
                 """
-                        select id, tenant_id as tenantId, user_id as userId, event_type as eventType,
+                        select id, user_id as userId, event_type as eventType,
                                event_key as eventKey, payload_json as payloadJson, status, retry_count as retryCount,
                                next_retry_at as nextRetryAt, last_error_message as lastErrorMessage, created_by as createdBy,
                                created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
@@ -207,7 +206,7 @@ public class PluginOutboxService {
         try {
             return jdbcTemplate.queryForObject(
                     """
-                            select id, tenant_id as tenantId, user_id as userId, event_type as eventType,
+                            select id, user_id as userId, event_type as eventType,
                                    event_key as eventKey, payload_json as payloadJson, status, retry_count as retryCount,
                                    next_retry_at as nextRetryAt, last_error_message as lastErrorMessage, created_by as createdBy,
                                    created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted

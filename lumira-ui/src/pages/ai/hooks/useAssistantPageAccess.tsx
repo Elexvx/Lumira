@@ -370,6 +370,7 @@ const useAiChatData = (shareToken: string) => {
   return {
     isShareMode,
     shareQuery,
+    assistantEmployee,
     ...employeeSelection,
     sessions,
     activeSessionId,
@@ -1005,6 +1006,13 @@ const buildAiChatRequestEmployee = (
   };
 };
 
+const normalizeAiChatRequestEmployeeIds = (employeeIds: number[], assistantEmployeeId?: number | null) => {
+  if (employeeIds.length === 1 && assistantEmployeeId != null && employeeIds[0] === assistantEmployeeId) {
+    return [];
+  }
+  return employeeIds;
+};
+
 const commitAiChatSendSuccess = (
   updateSession: (sessionId: string, updater: (session: ChatSession) => ChatSession) => void,
   params: {
@@ -1083,6 +1091,7 @@ export const useAssistantPageAccess = () => {
   const {
     isShareMode,
     shareQuery,
+    assistantEmployee,
     sessions,
     activeSessionId,
     activeSession,
@@ -1106,7 +1115,8 @@ export const useAssistantPageAccess = () => {
       const trimmed = messageText.trim();
       if (!trimmed || !activeSession || isShareMode) return;
 
-      const requestEmployeeIds = opts.employeeIds ?? selectedEmployees.map((employee) => employee.id);
+      const rawRequestEmployeeIds = opts.employeeIds ?? selectedEmployees.map((employee) => employee.id);
+      const requestEmployeeIds = normalizeAiChatRequestEmployeeIds(rawRequestEmployeeIds, assistantEmployee?.id ?? null);
       const { draftAttachments, userBubble, assistantPlaceholder } = buildAiChatSendBubbles(activeSession, trimmed);
       const { requestEmployeeId, requestEmployeeName, requestEmployee } = buildAiChatRequestEmployee(requestEmployeeIds, employeeById, activeSession);
       const sessionUpdate = {

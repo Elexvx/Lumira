@@ -79,7 +79,6 @@ public class PlatformEventOutboxService {
         }
         ensureMessageSource(event.getSourceType());
         PlatformEventOutboxEntity entity = new PlatformEventOutboxEntity();
-        entity.setTenantId(event.getTenantId());
         entity.setUserId(event.getUserId());
         entity.setSourceType(MessageEventFactory.SOURCE_MESSAGE);
         entity.setEventType(resolveEventType(event));
@@ -156,13 +155,9 @@ public class PlatformEventOutboxService {
         return count == null ? 0L : count;
     }
 
-    public Long latestVersionForTenant(Long tenantId) {
-        if (tenantId == null) {
-            return 0L;
-        }
+    public Long latestVersion() {
         PlatformEventOutboxEntity entity = outboxMapper.selectOne(new QueryWrapper<PlatformEventOutboxEntity>()
                 .select("id")
-                .eq("tenant_id", tenantId)
                 .eq("source_type", MessageEventFactory.SOURCE_MESSAGE)
                 .eq("deleted", 0)
                 .orderByDesc("id")
@@ -333,7 +328,9 @@ public class PlatformEventOutboxService {
         if (StringUtils.hasText(event.getEventKey())) {
             return event.getEventKey();
         }
-        return MessageEventFactory.SOURCE_MESSAGE + ":" + resolveEventType(event) + ":" + (event.getTenantId() == null ? "unknown" : event.getTenantId());
+        String userPart = event.getUserId() == null ? "all" : String.valueOf(event.getUserId());
+        String versionPart = event.getVersion() == null ? "none" : String.valueOf(event.getVersion());
+        return MessageEventFactory.SOURCE_MESSAGE + ":" + resolveEventType(event) + ":" + userPart + ":" + versionPart;
     }
 
     private String resolveTraceId(MessageEventDTO event) {

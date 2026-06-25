@@ -17,7 +17,7 @@ public class MessageArchiveQueryRequestDTO {
     private String keyword;
     @Pattern(regexp = "^(MESSAGE)$", message = "messageType只能是MESSAGE")
     private String messageType;
-    @Pattern(regexp = "^(PLATFORM|TENANT|USER|ROLE)$", message = "targetScope只能是PLATFORM、USER或ROLE")
+    @Pattern(regexp = "^(PLATFORM|USER|ROLE)$", message = "targetScope只能是PLATFORM、USER或ROLE")
     private String targetScope;
     @Pattern(regexp = "^(MANUAL)$", message = "sourceType只能是MANUAL")
     private String sourceType;

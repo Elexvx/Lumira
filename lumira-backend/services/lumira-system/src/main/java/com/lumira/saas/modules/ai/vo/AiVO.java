@@ -12,7 +12,6 @@ public final class AiVO {
 
     public static class EmployeeVO {
         private Long id;
-        private Long tenantId;
         private String username;
         private String nickname;
         private String position;
@@ -34,16 +33,7 @@ public final class AiVO {
         public void setId(Long id) {
             this.id = id;
         }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public String getUsername() {
+public String getUsername() {
             return username;
         }
 
@@ -364,7 +354,6 @@ public final class AiVO {
 
     public static class LlmServiceVO {
         private Long id;
-        private Long tenantId;
         private String provider;
         private String code;
         private String title;
@@ -386,16 +375,7 @@ public final class AiVO {
         public void setId(Long id) {
             this.id = id;
         }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public String getProvider() {
+public String getProvider() {
             return provider;
         }
 
@@ -802,7 +782,6 @@ public final class AiVO {
 
     public static class ToolPolicyVO {
         private Long id;
-        private Long tenantId;
         private String policyName;
         private String toolCode;
         private String actionType;
@@ -817,9 +796,7 @@ public final class AiVO {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
-        public String getPolicyName() { return policyName; }
+public String getPolicyName() { return policyName; }
         public void setPolicyName(String policyName) { this.policyName = policyName; }
         public String getToolCode() { return toolCode; }
         public void setToolCode(String toolCode) { this.toolCode = toolCode; }
@@ -845,7 +822,6 @@ public final class AiVO {
 
     public static class ToolPlanVO {
         private Long id;
-        private Long tenantId;
         private Long conversationId;
         private Long employeeId;
         private String toolCode;
@@ -870,9 +846,7 @@ public final class AiVO {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
-        public Long getConversationId() { return conversationId; }
+public Long getConversationId() { return conversationId; }
         public void setConversationId(Long conversationId) { this.conversationId = conversationId; }
         public Long getEmployeeId() { return employeeId; }
         public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
@@ -918,7 +892,6 @@ public final class AiVO {
 
     public static class ConversationVO {
         private Long id;
-        private Long tenantId;
         private Long employeeId;
         private Long ownerUserId;
         private String employeeName;
@@ -938,16 +911,7 @@ public final class AiVO {
         public void setId(Long id) {
             this.id = id;
         }
-
-        public Long getTenantId() {
-            return tenantId;
-        }
-
-        public void setTenantId(Long tenantId) {
-            this.tenantId = tenantId;
-        }
-
-        public Long getEmployeeId() {
+public Long getEmployeeId() {
             return employeeId;
         }
 
@@ -1099,7 +1063,6 @@ public final class AiVO {
 
     public static class KnowledgeBaseVO {
         private Long id;
-        private Long tenantId;
         private String kbCode;
         private String name;
         private String description;
@@ -1114,9 +1077,7 @@ public final class AiVO {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
-        public String getKbCode() { return kbCode; }
+public String getKbCode() { return kbCode; }
         public void setKbCode(String kbCode) { this.kbCode = kbCode; }
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
@@ -1142,7 +1103,6 @@ public final class AiVO {
 
     public static class KnowledgeDocumentVO {
         private Long id;
-        private Long tenantId;
         private Long knowledgeBaseId;
         private Long fileId;
         private String title;
@@ -1160,9 +1120,7 @@ public final class AiVO {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
-        public Long getKnowledgeBaseId() { return knowledgeBaseId; }
+public Long getKnowledgeBaseId() { return knowledgeBaseId; }
         public void setKnowledgeBaseId(Long knowledgeBaseId) { this.knowledgeBaseId = knowledgeBaseId; }
         public Long getFileId() { return fileId; }
         public void setFileId(Long fileId) { this.fileId = fileId; }

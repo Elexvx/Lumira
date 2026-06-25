@@ -201,6 +201,7 @@
 .team-search-page {
   width: 100%;
   max-width: none;
+  gap: 16px;
   margin: 0;
   padding: 0 0 32px;
 }
@@ -219,7 +220,7 @@
 
 .team-search-filter-card,
 .team-search-results {
-  margin-top: 24px;
+  margin-top: 0;
   border-radius: 8px;
 }
 
@@ -273,13 +274,8 @@
   line-height: 1.7;
 }
 
-.team-search-result__meta,
-.team-search-result__stats {
+.team-search-result__meta {
   color: rgba(0, 0, 0, 0.45);
-}
-
-.team-search-result__stats {
-  margin-top: 12px;
 }
 
 @media (max-width: 992px) {

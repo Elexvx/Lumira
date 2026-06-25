@@ -7,7 +7,6 @@ import com.lumira.common.constant.CacheKeyConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.SecurityContextFacade;
 import com.lumira.common.web.RequestContextUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -113,7 +112,7 @@ public class RepeatSubmitAspect {
         SecurityContextFacade securityContextFacade = securityContextFacadeProvider.getIfAvailable();
         CurrentUser currentUser = securityContextFacade == null ? null : securityContextFacade.getCurrentUserOrNull();
         if (currentUser != null && currentUser.isAuthenticated() && currentUser.getUserId() != null) {
-            return String.join(":", "user", String.valueOf(currentUser.getUserId()), String.valueOf(PlatformContext.compatibilityTenantId()));
+            return String.join(":", "user", String.valueOf(currentUser.getUserId()));
         }
         return String.join(":", "ip", clientIpResolver.resolve(request));
     }

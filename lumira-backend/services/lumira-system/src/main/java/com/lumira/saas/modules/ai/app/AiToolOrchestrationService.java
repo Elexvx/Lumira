@@ -3,13 +3,11 @@ package com.lumira.saas.modules.ai.app;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.authorization.AuthorizationDecision;
 import com.lumira.common.security.authorization.AuthorizationRequest;
 import com.lumira.common.security.authorization.AuthorizationService;
@@ -107,21 +105,21 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
     @Override
     @Transactional
     public AiVO.ToolExecuteResultVO confirm(CurrentUser currentUser, AiDTO.ToolConfirmRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        AiVO.ToolPlanVO plan = requirePlan(tenantId, currentUser.getUserId(), request.getPendingToolCallId());
+        requireLogin(currentUser);
+        AiVO.ToolPlanVO plan = requirePlan(currentUser.getUserId(), request.getPendingToolCallId());
         if (!"PENDING".equalsIgnoreCase(plan.getStatus())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "该 AI 工具计划已处理，不能重复确认");
         }
         if (plan.getExpiresAt() != null && plan.getExpiresAt().isBefore(LocalDateTime.now())) {
-            updatePlanStatus(tenantId, plan.getId(), "EXPIRED", currentUser.getUserId());
+            updatePlanStatus(plan.getId(), "EXPIRED", currentUser.getUserId());
             throw new BizException(ErrorCode.BIZ_ERROR, "该 AI 工具计划已过期，请重新发起");
         }
         if ("DENY".equalsIgnoreCase(plan.getPolicyVerdict()) || "DENY".equalsIgnoreCase(plan.getSupervisorVerdict())) {
-            updatePlanStatus(tenantId, plan.getId(), "BLOCKED", currentUser.getUserId());
+            updatePlanStatus(plan.getId(), "BLOCKED", currentUser.getUserId());
             throw new BizException(ErrorCode.FORBIDDEN, firstText(plan.getPolicyMessage(), plan.getSupervisorMessage(), "该操作未通过 AI 防护审查"));
         }
 
-        verifyArgumentsHash(tenantId, plan, currentUser.getUserId());
+        verifyArgumentsHash(plan, currentUser.getUserId());
         AuthorizationDecision authorizationDecision = authorizationService.evaluate(AuthorizationRequest.aiTool(
                 currentUser,
                 plan.getEmployeeId(),
@@ -133,16 +131,16 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
                 plan.getArguments()
         ));
         if (!authorizationDecision.allowed()) {
-            updatePlanStatus(tenantId, plan.getId(), "BLOCKED", currentUser.getUserId());
+            updatePlanStatus(plan.getId(), "BLOCKED", currentUser.getUserId());
             throw new BizException(ErrorCode.FORBIDDEN, authorizationDecision.message());
         }
 
         AiDTO.ToolExecuteRequest executeRequest = new AiDTO.ToolExecuteRequest();
         if (plan.getEmployeeId() == null || plan.getEmployeeId() <= 0) {
-            updatePlanStatus(tenantId, plan.getId(), "BLOCKED", currentUser.getUserId());
+            updatePlanStatus(plan.getId(), "BLOCKED", currentUser.getUserId());
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool confirmation requires the original digital employee");
         }
-        if (!claimPendingPlan(tenantId, plan.getId(), currentUser.getUserId())) {
+        if (!claimPendingPlan(plan.getId(), currentUser.getUserId())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "该 AI 工具计划已处理，不能重复确认");
         }
         executeRequest.setEmployeeId(plan.getEmployeeId());
@@ -151,13 +149,13 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         executeRequest.setArguments(executionArguments(plan));
         executeRequest.setConfirmed(true);
         AiVO.ToolExecuteResultVO result = aiNativeToolRuntimeService.execute(currentUser, executeRequest);
-        updatePlanStatus(tenantId, plan.getId(), "EXECUTED", currentUser.getUserId());
-        enrichLatestAudit(tenantId, plan, currentUser.getUserId());
+        updatePlanStatus(plan.getId(), "EXECUTED", currentUser.getUserId());
+        enrichLatestAudit(plan, currentUser.getUserId());
         return result;
     }
 
     private AiVO.ToolPlanVO createPlan(CurrentUser currentUser, AiDTO.ToolProposeRequest request, ToolIntent intent) {
-        Long tenantId = currentTenantId(currentUser);
+        requireLogin(currentUser);
         AiVO.ToolVO tool = requireTool(currentUser, request.getEmployeeId(), intent.toolCode());
         permissionGuard.requirePermission(currentUser, tool.getRequiredPermission());
         String actionType = actionType(intent.toolCode());
@@ -174,9 +172,7 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
                 false,
                 intent.arguments()
         ));
-        AiToolPolicyService.PolicyDecision policyDecision = aiToolPolicyService.evaluate(
-                tenantId,
-                intent.toolCode(),
+        AiToolPolicyService.PolicyDecision policyDecision = aiToolPolicyService.evaluate(intent.toolCode(),
                 actionType,
                 riskLevel,
                 request.getMessage(),
@@ -186,7 +182,6 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         String status = policyDecision.denied() || "DENY".equals(supervisorDecision.verdict())
                 || authorizationDecision.verdict() == AuthorizationVerdict.DENY ? "BLOCKED" : "PENDING";
         AiVO.ToolPlanVO plan = new AiVO.ToolPlanVO();
-        plan.setTenantId(tenantId);
         plan.setConversationId(request.getConversationId());
         plan.setEmployeeId(request.getEmployeeId());
         plan.setToolCode(intent.toolCode());
@@ -204,11 +199,11 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         plan.setArguments(intent.arguments());
         plan.setArgumentsHash(sha256(stableJson(intent.arguments())));
         plan.setApprovalRequired(authorizationDecision.verdict() == AuthorizationVerdict.REQUIRE_APPROVAL);
-        plan.setAuthorizationSnapshotJson(authorizationSnapshot(tenantId, currentUser, request, tool, riskLevel, policyDecision, supervisorDecision, authorizationDecision));
+        plan.setAuthorizationSnapshotJson(authorizationSnapshot(currentUser, request, tool, riskLevel, policyDecision, supervisorDecision, authorizationDecision));
         plan.setExpiresAt(LocalDateTime.now().plusMinutes(15));
         plan.setCreateTime(LocalDateTime.now());
         Long planId = insertPlan(currentUser, plan, policyDecision.matches());
-        return requirePlan(tenantId, currentUser.getUserId(), planId);
+        return requirePlan(currentUser.getUserId(), planId);
     }
 
     private ToolIntent resolveIntent(AiDTO.ToolProposeRequest request) {
@@ -327,7 +322,6 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
             putIfText(arguments, "configKey", captureAfter(message, "配置键", "configKey", "键"));
             putIfText(arguments, "configName", captureAfter(message, "配置名称", "配置名", "名称"));
             putIfText(arguments, "configValue", captureAfter(message, "配置值", "值", "value"));
-            arguments.put("configScope", "PLATFORM");
             return new ToolIntent("system.config.create", arguments);
         }
         Long configId = firstLongAfter(message, "配置ID", "配置id", "configId");
@@ -336,7 +330,6 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
             putIfText(arguments, "configKey", captureAfter(message, "配置键", "configKey", "键"));
             putIfText(arguments, "configName", captureAfter(message, "配置名称", "配置名", "名称"));
             putIfText(arguments, "configValue", captureAfter(message, "配置值", "值", "value"));
-            arguments.put("configScope", "PLATFORM");
             return new ToolIntent("system.config.update", arguments);
         }
         return null;
@@ -352,7 +345,7 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         if (policyDecision.denied()) {
             return new SupervisorDecision("DENY", policyDecision.message());
         }
-        Optional<AiLlmServiceConfig> supervisorConfig = aiLlmServiceConfigProvider.findSupervisor(currentTenantId(currentUser));
+        Optional<AiLlmServiceConfig> supervisorConfig = aiLlmServiceConfigProvider.findSupervisor();
         if (supervisorConfig.isEmpty()) {
             return new SupervisorDecision(requiresConfirm ? "REQUIRE_CONFIRM" : "ALLOW", "平台规则审查通过；未配置独立监督模型，按本地防护规则处理。");
         }
@@ -364,7 +357,7 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
                     工具名称：%s
                     风险等级：%s
                     权限键：%s
-                    当前用户：userId=%s, tenantId=%s, permissions=%s
+                    当前用户：userId=%s, permissions=%s
                     参数：%s
                     平台规则结论：%s / %s
                     """.formatted(
@@ -373,7 +366,6 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
                     tool.getRiskLevel(),
                     tool.getRequiredPermission(),
                     currentUser.getUserId(),
-                    currentTenantId(currentUser),
                     currentUser.getPermissions(),
                     toJson(intent.arguments()),
                     policyDecision.verdict(),
@@ -408,14 +400,13 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         jdbcTemplate.update(
                 """
                         insert into ai_tool_call_plan (
-                            tenant_id, conversation_id, employee_id, owner_user_id, tool_code, tool_name, action_type,
+                            conversation_id, employee_id, owner_user_id, tool_code, tool_name, action_type,
                             risk_level, summary, permission_key, requires_confirm, supervisor_verdict,
                             supervisor_message, policy_verdict, policy_message, arguments_json,
                             arguments_hash, authorization_snapshot_json, approval_required, status,
                             expires_at, is_deleted, create_time, update_time
                         ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                         """,
-                plan.getTenantId(),
                 plan.getConversationId(),
                 plan.getEmployeeId(),
                 currentUser.getUserId(),
@@ -442,22 +433,21 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         return jdbcTemplate.queryForObject(
                 """
                         select id from ai_tool_call_plan
-                        where tenant_id = ? and owner_user_id = ?
+                        where owner_user_id = ?
                         order by id desc limit 1
                         """,
                 Long.class,
-                plan.getTenantId(),
                 currentUser.getUserId()
         );
     }
 
-    private AiVO.ToolPlanVO requirePlan(Long tenantId, Long ownerUserId, Long planId) {
+    private AiVO.ToolPlanVO requirePlan(Long ownerUserId, Long planId) {
         if (planId == null) {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "待确认工具计划不能为空");
         }
         AiVO.ToolPlanVO plan = jdbcTemplate.query(
                 """
-                        select id, tenant_id as tenantId, conversation_id as conversationId, employee_id as employeeId,
+                        select id, conversation_id as conversationId, employee_id as employeeId,
                                tool_code as toolCode, tool_name as toolName, action_type as actionType,
                                risk_level as riskLevel, summary, permission_key as permissionKey,
                                requires_confirm as requiresConfirm, supervisor_verdict as supervisorVerdict,
@@ -468,8 +458,7 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
                                approval_required as approvalRequired, approved_at as approvedAt,
                                status, expires_at as expiresAt, create_time as createTime
                         from ai_tool_call_plan
-                        where tenant_id = ?
-                          and owner_user_id = ?
+                        where owner_user_id = ?
                           and id = ?
                           and is_deleted = 0
                         limit 1
@@ -477,7 +466,6 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
                 (rs, rowNum) -> {
                     AiVO.ToolPlanVO vo = new AiVO.ToolPlanVO();
                     vo.setId(rs.getLong("id"));
-                    vo.setTenantId(rs.getLong("tenantId"));
                     vo.setConversationId(rs.getObject("conversationId") == null ? null : rs.getLong("conversationId"));
                     vo.setEmployeeId(rs.getObject("employeeId") == null ? null : rs.getLong("employeeId"));
                     vo.setToolCode(rs.getString("toolCode"));
@@ -501,7 +489,6 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
                     vo.setCreateTime(rs.getTimestamp("createTime").toLocalDateTime());
                     return vo;
                 },
-                tenantId,
                 ownerUserId,
                 planId
         ).stream().findFirst().orElse(null);
@@ -511,41 +498,39 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         return plan;
     }
 
-    private void updatePlanStatus(Long tenantId, Long planId, String status, Long confirmedBy) {
+    private void updatePlanStatus(Long planId, String status, Long confirmedBy) {
         jdbcTemplate.update(
                 """
                         update ai_tool_call_plan
                         set status = ?, confirmed_by = ?, confirmed_at = ?, update_time = ?
-                        where tenant_id = ? and id = ? and is_deleted = 0
+                        where id = ? and is_deleted = 0
                         """,
                 status,
                 confirmedBy,
                 LocalDateTime.now(),
                 LocalDateTime.now(),
-                tenantId,
                 planId
         );
     }
 
-    private boolean claimPendingPlan(Long tenantId, Long planId, Long confirmedBy) {
+    private boolean claimPendingPlan(Long planId, Long confirmedBy) {
         return jdbcTemplate.update(
                 """
                         update ai_tool_call_plan
                         set status = 'EXECUTING', confirmed_by = ?, confirmed_at = ?, update_time = ?
-                        where tenant_id = ? and id = ? and status = 'PENDING' and is_deleted = 0
+                        where id = ? and status = 'PENDING' and is_deleted = 0
                         """,
                 confirmedBy,
                 LocalDateTime.now(),
                 LocalDateTime.now(),
-                tenantId,
                 planId
         ) == 1;
     }
 
-    private void verifyArgumentsHash(Long tenantId, AiVO.ToolPlanVO plan, Long userId) {
+    private void verifyArgumentsHash(AiVO.ToolPlanVO plan, Long userId) {
         String actualHash = sha256(stableJson(plan.getArguments()));
         if (!StringUtils.hasText(plan.getArgumentsHash()) || !plan.getArgumentsHash().equals(actualHash)) {
-            updatePlanStatus(tenantId, plan.getId(), "BLOCKED", userId);
+            updatePlanStatus(plan.getId(), "BLOCKED", userId);
             log.warn("AI tool plan arguments hash mismatch planId={} toolCode={}", plan.getId(), plan.getToolCode());
             throw new BizException(ErrorCode.FORBIDDEN, "AI tool plan arguments were modified");
         }
@@ -557,14 +542,13 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         return arguments;
     }
 
-    private void enrichLatestAudit(Long tenantId, AiVO.ToolPlanVO plan, Long confirmedBy) {
+    private void enrichLatestAudit(AiVO.ToolPlanVO plan, Long confirmedBy) {
         jdbcTemplate.update(
                 """
                         update ai_tool_audit_log
                         set supervisor_verdict = ?, supervisor_message = ?, policy_match = ?,
                             confirmed_by = ?, confirmed_at = ?
-                        where tenant_id = ?
-                          and skill_code = ?
+                        where skill_code = ?
                           and is_deleted = 0
                         order by id desc
                         limit 1
@@ -574,7 +558,6 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
                 plan.getPolicyMessage(),
                 confirmedBy,
                 LocalDateTime.now(),
-                tenantId,
                 plan.getToolCode()
         );
     }
@@ -614,7 +597,6 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
     }
 
     private String authorizationSnapshot(
-            Long tenantId,
             CurrentUser currentUser,
             AiDTO.ToolProposeRequest request,
             AiVO.ToolVO tool,
@@ -624,7 +606,6 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
             AuthorizationDecision authorizationDecision
     ) {
         Map<String, Object> snapshot = new LinkedHashMap<>();
-        snapshot.put("tenantId", tenantId);
         snapshot.put("ownerUserId", currentUser.getUserId());
         snapshot.put("employeeId", request.getEmployeeId());
         snapshot.put("toolCode", tool.getToolCode());
@@ -750,11 +731,10 @@ class DefaultAiToolOrchestrationService implements AiToolOrchestrationService {
         return "";
     }
 
-    private Long currentTenantId(CurrentUser currentUser) {
+    private void requireLogin(CurrentUser currentUser) {
         if (currentUser == null) {
             throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 
     private record ToolIntent(String toolCode, Map<String, Object> arguments) {

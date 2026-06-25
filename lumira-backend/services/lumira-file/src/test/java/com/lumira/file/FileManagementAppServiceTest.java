@@ -113,7 +113,7 @@ class FileManagementAppServiceTest {
                 }
         );
 
-        CurrentUser currentUser = new CurrentUser(11L, "alice", 1001L, "sid", 1, true, Set.of("*"));
+        CurrentUser currentUser = new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("*"));
         PageResponse<?> response = service.listFiles(currentUser, null, null, null, null, null, null, 1, 100, null, null);
 
         assertThat(response).isInstanceOf(FileVO.FileObjectPageResponse.class);
@@ -133,7 +133,7 @@ class FileManagementAppServiceTest {
                     if (listInvocation.getAndIncrement() == 0) {
                         return fileObjectEntities(10);
                     }
-                    return fileObjectEntities(2, 200L);
+                    return fileObjectEntities(2);
                 }
         );
 
@@ -151,7 +151,7 @@ class FileManagementAppServiceTest {
     @Test
     void listFiles_downloadCenterScopeShouldIncludeRecordsSavedInLegacyLocalBucket() {
         when(fileObjectMapper.selectList(ArgumentMatchers.<QueryWrapper<FileObjectEntity>>any()))
-                .thenReturn(List.of(), fileObjectEntities(1, 1001L));
+                .thenReturn(List.of(), fileObjectEntities(1));
 
         PageResponse<?> response = service.listFiles(currentUser(), null, null, null, null, null, "download-center", 1, 10, null, null);
 
@@ -170,10 +170,9 @@ class FileManagementAppServiceTest {
         AtomicInteger countInvocation = new AtomicInteger();
         when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
                 .thenAnswer(invocation -> countInvocation.getAndIncrement() == 0 ? storageSpaceEntities(1000) : List.<FileStorageSpaceEntity>of());
-        when(fileStorageSpaceMapper.listWithUsage(1001L, 2L, 0L)).thenReturn(storageSpaceEntities(2, 1001L));
+        when(fileStorageSpaceMapper.listWithUsage(2L, 0L)).thenReturn(storageSpaceEntities(2));
 
         CurrentUser currentUser = currentUser();
-        currentUser.setCurrentTenantId(null);
         PageResponse<?> response = service.listStorageSpaces(currentUser, 1, 2);
 
         assertThat(response).isInstanceOf(FileVO.StorageSpacePageResponse.class);
@@ -187,8 +186,8 @@ class FileManagementAppServiceTest {
     @Test
     void listStorageSpaces_shouldNotSetHasMoreWhenCountBelowLimit() {
         when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
-                .thenReturn(storageSpaceEntities(2, 1001L));
-        when(fileStorageSpaceMapper.listWithUsage(1001L, 2L, 0L)).thenReturn(storageSpaceEntities(2, 1001L));
+                .thenReturn(storageSpaceEntities(2));
+        when(fileStorageSpaceMapper.listWithUsage(2L, 0L)).thenReturn(storageSpaceEntities(2));
 
         CurrentUser currentUser = currentUser();
         PageResponse<?> response = service.listStorageSpaces(currentUser, 1, 2);
@@ -203,18 +202,18 @@ class FileManagementAppServiceTest {
 
     @Test
     void listStorageSpaces_shouldSeedPlatformDefaultStorageSpacesWhenMissing() {
-        when(fileStorageSpaceMapper.countDefaultStorage(1001L)).thenReturn(0L);
+        when(fileStorageSpaceMapper.countDefaultStorage()).thenReturn(0L);
         when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
-                .thenReturn(storageSpaceEntities(3, 1001L));
-        when(fileStorageSpaceMapper.listWithUsage(1001L, 10L, 0L)).thenReturn(storageSpaceEntities(3, 1001L));
+                .thenReturn(storageSpaceEntities(3));
+        when(fileStorageSpaceMapper.listWithUsage(10L, 0L)).thenReturn(storageSpaceEntities(3));
 
         PageResponse<?> response = service.listStorageSpaces(currentUser(), 1, 10);
 
         ArgumentCaptor<FileStorageSpaceEntity> captor = ArgumentCaptor.forClass(FileStorageSpaceEntity.class);
-        verify(fileStorageSpaceMapper, times(4)).insert(captor.capture());
+        verify(fileStorageSpaceMapper, times(5)).insert(captor.capture());
         assertThat(captor.getAllValues())
                 .extracting(FileStorageSpaceEntity::getStorageKey)
-                .containsExactly("local", "download_center", "ai_chat", "avatar");
+                .containsExactly("local", "download_center", "ai_chat", "avatar", "support_feedback");
         assertThat(captor.getAllValues().getFirst().getDefaultFlag()).isEqualTo(1);
         assertThat(captor.getAllValues())
                 .filteredOn(entity -> "local".equals(entity.getStorageKey()) || "download_center".equals(entity.getStorageKey()) || "avatar".equals(entity.getStorageKey()))
@@ -225,13 +224,13 @@ class FileManagementAppServiceTest {
 
     @Test
     void listStorageSpaces_shouldMergeLegacySystemPublicStorageIntoLocal() {
-        FileStorageSpaceEntity legacyStorage = storageSpaceEntities(1, 1001L).getFirst();
+        FileStorageSpaceEntity legacyStorage = storageSpaceEntities(1).getFirst();
         legacyStorage.setStorageKey("system_public");
-        when(fileStorageSpaceMapper.findByStorageKey(1001L, "system_public")).thenReturn(legacyStorage);
-        when(fileStorageSpaceMapper.countDefaultStorage(1001L)).thenReturn(1L);
+        when(fileStorageSpaceMapper.findByStorageKey("system_public")).thenReturn(legacyStorage);
+        when(fileStorageSpaceMapper.countDefaultStorage()).thenReturn(1L);
         when(fileStorageSpaceMapper.selectList(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileStorageSpaceEntity>>any()))
                 .thenReturn(List.of());
-        when(fileStorageSpaceMapper.listWithUsage(1001L, 10L, 0L)).thenReturn(List.of());
+        when(fileStorageSpaceMapper.listWithUsage(10L, 0L)).thenReturn(List.of());
 
         service.listStorageSpaces(currentUser(), 1, 10);
 
@@ -247,7 +246,7 @@ class FileManagementAppServiceTest {
 
     @Test
     void uploadDocument_shouldFallbackToDefaultStorageWhenRequestedBucketIsMissing() {
-        FileStorageSpaceEntity localStorage = storageSpaceEntities(1, 1001L).getFirst();
+        FileStorageSpaceEntity localStorage = storageSpaceEntities(1).getFirst();
         localStorage.setStorageKey("local");
         localStorage.setTitle("Local storage");
         localStorage.setRootPath("storage/uploads/");
@@ -257,10 +256,10 @@ class FileManagementAppServiceTest {
         localStorage.setAllowedMimeTypes("*");
         localStorage.setMaxFileSizeMb(20);
         localStorage.setStatus("ENABLED");
-        when(fileStorageSpaceMapper.findByStorageKey(ArgumentMatchers.eq(1001L), ArgumentMatchers.anyString()))
-                .thenAnswer(invocation -> "local".equals(invocation.getArgument(1)) ? localStorage : null);
-        when(fileStorageSpaceMapper.countDefaultStorage(1001L)).thenReturn(1L);
-        when(fileStorageSpaceMapper.findDefault(1001L)).thenReturn(localStorage);
+        when(fileStorageSpaceMapper.findByStorageKey(ArgumentMatchers.anyString()))
+                .thenAnswer(invocation -> "local".equals(invocation.getArgument(0)) ? localStorage : null);
+        when(fileStorageSpaceMapper.countDefaultStorage()).thenReturn(1L);
+        when(fileStorageSpaceMapper.findDefault()).thenReturn(localStorage);
         when(uploadProperties.getStorageRoot()).thenReturn(tempDir.resolve("uploads").toString());
         when(uploadProperties.getPublicPath()).thenReturn("/api/uploads");
         when(documentUploadService.upload(
@@ -286,7 +285,7 @@ class FileManagementAppServiceTest {
             entity.setId(99L);
             return 1;
         });
-        FileObjectEntity inserted = fileObjectEntities(1, 1001L).getFirst();
+        FileObjectEntity inserted = fileObjectEntities(1).getFirst();
         inserted.setId(99L);
         inserted.setBucket("local");
         inserted.setStorageType("LOCAL");
@@ -310,7 +309,7 @@ class FileManagementAppServiceTest {
     @Test
     void deleteStorageSpace_shouldRejectWhenFilesExist() {
         CurrentUser currentUser = currentUser();
-        when(fileStorageSpaceMapper.findByIdWithUsage(1001L, 5L)).thenReturn(storageSpaceEntities(1, 1001L).getFirst());
+        when(fileStorageSpaceMapper.findByIdWithUsage(5L)).thenReturn(storageSpaceEntities(1).getFirst());
         when(fileObjectMapper.selectOne(ArgumentMatchers.<com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<FileObjectEntity>>any()))
                 .thenReturn(new FileObjectEntity());
 
@@ -323,10 +322,10 @@ class FileManagementAppServiceTest {
     @Test
     void testStorageSpace_shouldRejectLocalRootOutsideUploadRoot() {
         CurrentUser currentUser = currentUser();
-        FileStorageSpaceEntity entity = storageSpaceEntities(1, 1001L).getFirst();
+        FileStorageSpaceEntity entity = storageSpaceEntities(1).getFirst();
         entity.setRootPath(tempDir.resolve("outside").toString());
         when(uploadProperties.getStorageRoot()).thenReturn(tempDir.resolve("uploads").toString());
-        when(fileStorageSpaceMapper.findByIdWithUsage(1001L, 5L)).thenReturn(entity);
+        when(fileStorageSpaceMapper.findByIdWithUsage(5L)).thenReturn(entity);
 
         var result = service.testStorageSpace(currentUser, 5L);
 
@@ -337,12 +336,12 @@ class FileManagementAppServiceTest {
     @Test
     void testStorageSpace_shouldNotReturnLocalRootPathWhenWritable() {
         CurrentUser currentUser = currentUser();
-        FileStorageSpaceEntity entity = storageSpaceEntities(1, 1001L).getFirst();
+        FileStorageSpaceEntity entity = storageSpaceEntities(1).getFirst();
         Path uploadRoot = tempDir.resolve("uploads");
         Path localRoot = uploadRoot.resolve("tenant-local");
         entity.setRootPath(localRoot.toString());
         when(uploadProperties.getStorageRoot()).thenReturn(uploadRoot.toString());
-        when(fileStorageSpaceMapper.findByIdWithUsage(1001L, 5L)).thenReturn(entity);
+        when(fileStorageSpaceMapper.findByIdWithUsage(5L)).thenReturn(entity);
 
         var result = service.testStorageSpace(currentUser, 5L);
 
@@ -359,19 +358,14 @@ class FileManagementAppServiceTest {
     }
 
     private CurrentUser currentUser() {
-        return new CurrentUser(11L, "alice", 2002L, "sid", 1, true, Set.of("*"));
+        return new CurrentUser(11L, "alice", null, "sid", 1, true, Set.of("*"));
     }
 
     private List<FileObjectEntity> fileObjectEntities(int size) {
-        return fileObjectEntities(size, 1001L);
-    }
-
-    private List<FileObjectEntity> fileObjectEntities(int size, Long tenantId) {
         return IntStream.range(0, size)
                 .mapToObj(index -> {
                     FileObjectEntity entity = new FileObjectEntity();
                     entity.setId((long) index + 1L);
-                    entity.setTenantId(tenantId);
                     entity.setUploadedBy(11L);
                     entity.setOriginalFilename("file-" + index);
                     entity.setObjectKey("obj-" + index);
@@ -393,15 +387,10 @@ class FileManagementAppServiceTest {
     }
 
     private List<FileStorageSpaceEntity> storageSpaceEntities(int size) {
-        return storageSpaceEntities(size, 1001L);
-    }
-
-    private List<FileStorageSpaceEntity> storageSpaceEntities(int size, Long tenantId) {
         return IntStream.range(0, size)
                 .mapToObj(index -> {
                     FileStorageSpaceEntity entity = new FileStorageSpaceEntity();
                     entity.setId((long) index + 1L);
-                    entity.setTenantId(tenantId);
                     entity.setTitle("space-" + index);
                     entity.setStorageKey("bucket-" + index);
                     entity.setProvider("LOCAL");

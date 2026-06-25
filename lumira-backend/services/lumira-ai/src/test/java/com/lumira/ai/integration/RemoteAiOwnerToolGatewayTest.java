@@ -28,7 +28,7 @@ class RemoteAiOwnerToolGatewayTest {
 
         assertThat(execution.remote()).isFalse();
         assertThat(execution.degraded()).isTrue();
-        assertThat(execution.data()).containsEntry("tenantId", 1001L);
+        assertThat(execution.data()).containsEntry("userId", 7L);
         assertThat(execution.data()).containsEntry("degradedReason", "iam-owner-not-configured");
         assertThat(gateway.degradedOwners()).containsExactly("iam", "platform", "file");
     }

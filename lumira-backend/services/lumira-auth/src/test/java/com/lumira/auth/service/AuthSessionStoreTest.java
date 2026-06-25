@@ -80,7 +80,7 @@ class AuthSessionStoreTest {
 
         authSessionStore.save(session, false);
         assertThat(authSessionStore.findBySessionId("s-1")).isEmpty();
-        when(valueOperations.get("saas:session:s-1")).thenReturn("{\"sessionId\":\"s-1\",\"userId\":1,\"currentTenantId\":1001,\"sessionVersion\":1}");
+        when(valueOperations.get("saas:session:s-1")).thenReturn("{\"sessionId\":\"s-1\",\"userId\":1,\"sessionVersion\":1}");
         assertThat(authSessionStore.findBySessionId("s-1")).isPresent();
         authSessionStore.remove(session, false);
 
@@ -157,7 +157,7 @@ class AuthSessionStoreTest {
         verify(redisTemplate).delete(CacheKeyConstants.sessionOwnerKey("s-1"));
         verify(redisTemplate).delete(CacheKeyConstants.userSessionKey(1L, "s-1"));
         verify(zSetOperations).remove(CacheKeyConstants.onlineSessionUserKey(1L), "s-1");
-        verify(zSetOperations).remove(CacheKeyConstants.onlineSessionTenantKey(1001L), "s-1");
+        verify(zSetOperations).remove(CacheKeyConstants.onlineSessionKey(), "s-1");
     }
 
     private AuthSession buildSession(Instant expireTime) {
@@ -165,7 +165,6 @@ class AuthSessionStoreTest {
         session.setSessionId("s-1");
         session.setUserId(1L);
         session.setUsername("admin");
-        session.setCurrentTenantId(1001L);
         session.setLoginTime(Instant.parse("2026-05-06T00:00:00Z"));
         session.setLastActivityAt(Instant.parse("2026-05-06T00:01:00Z"));
         session.setExpireTime(expireTime);

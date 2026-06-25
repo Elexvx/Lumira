@@ -47,13 +47,13 @@ class SystemManagementAppServiceSummaryTest {
         assertThat(dashboard.getCurrentUser().getUsername()).isEqualTo("jane");
         assertThat(dashboard.getMenuCount()).isEqualTo(12);
         assertThat(dashboard.getPermissionCount()).isEqualTo(2);
-        assertThat(dashboard.getTenantPlugins()).hasSize(1);
+        assertThat(dashboard.getAvailablePlugins()).hasSize(1);
         assertThat(dashboard.getRecentLoginLogs()).hasSize(1);
         assertThat(dashboard.getRecentOperationLogs()).hasSize(1);
 
         verify(env.userDomainService, times(1)).findById(42L);
-        verify(env.systemPluginViewService, times(1)).availablePlugins(1001L);
-        verify(env.systemVerificationAppService, times(0)).loadLoginCapabilities(1001L);
+        verify(env.systemPluginViewService, times(1)).availablePlugins();
+        verify(env.systemVerificationAppService, times(0)).loadLoginCapabilities();
     }
 
     @Test
@@ -72,15 +72,14 @@ class SystemManagementAppServiceSummaryTest {
 
         verify(env.userDomainService, times(1)).findById(42L);
         verify(env.systemProfileSettingsAppService, times(1)).getProfileFieldSettings(org.mockito.ArgumentMatchers.any());
-        verify(env.systemVerificationAppService, times(1)).isContactBindAvailable(1001L, "mobile");
-        verify(env.systemVerificationAppService, times(1)).isContactBindAvailable(1001L, "email");
+        verify(env.systemVerificationAppService, times(1)).isContactBindAvailable("mobile");
+        verify(env.systemVerificationAppService, times(1)).isContactBindAvailable("email");
     }
 
     private static CurrentUser buildCurrentUser() {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(42L);
         currentUser.setUsername("jane");
-        currentUser.setCurrentTenantId(1001L);
         currentUser.setSessionId("session-42");
         currentUser.setSessionVersion(1);
         currentUser.setPermissionsVersion("v1");
@@ -101,11 +100,11 @@ class SystemManagementAppServiceSummaryTest {
                 if (normalized.contains("from sys_menu")) {
                     return requiredType.cast(Long.valueOf(12L));
                 }
+                if (normalized.contains("select locale") && normalized.contains("from iam_user_profile")) {
+                    return requiredType.cast("zh-CN");
+                }
                 if (normalized.contains("from iam_user_profile")) {
                     return requiredType.cast("{\"customProfileValues\":{\"nickname\":\"Agent\",\"title\":\"Lead\"}}");
-                }
-                if (normalized.contains("from sys_user_tenant_profile")) {
-                    return requiredType.cast("zh-CN");
                 }
                 throw new EmptyResultDataAccessException(1);
             }
@@ -193,10 +192,10 @@ class SystemManagementAppServiceSummaryTest {
             user.setIdCardNumber("1234567890");
             when(userDomainService.findById(42L)).thenReturn(Optional.of(user));
 
-            PluginVO.TenantPluginVO plugin = new PluginVO.TenantPluginVO();
+            PluginVO.PluginAvailabilityVO plugin = new PluginVO.PluginAvailabilityVO();
             plugin.setPluginCode("core");
             plugin.setPluginName("核心插件");
-            when(systemPluginViewService.availablePlugins(1001L)).thenReturn(List.of(plugin));
+            when(systemPluginViewService.availablePlugins()).thenReturn(List.of(plugin));
 
             ProfileFieldSettingVO field = new ProfileFieldSettingVO();
             field.setFieldKey("nickname");
@@ -210,8 +209,8 @@ class SystemManagementAppServiceSummaryTest {
                     org.mockito.ArgumentMatchers.anyBoolean()
             )).thenReturn(new SystemVO.ProfileCompletionSummaryVO());
 
-            when(systemVerificationAppService.isContactBindAvailable(1001L, "mobile")).thenReturn(true);
-            when(systemVerificationAppService.isContactBindAvailable(1001L, "email")).thenReturn(false);
+            when(systemVerificationAppService.isContactBindAvailable("mobile")).thenReturn(true);
+            when(systemVerificationAppService.isContactBindAvailable("email")).thenReturn(false);
         }
     }
 }

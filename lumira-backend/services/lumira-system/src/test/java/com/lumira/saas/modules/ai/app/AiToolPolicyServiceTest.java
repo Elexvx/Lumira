@@ -27,8 +27,7 @@ class AiToolPolicyServiceTest {
         assertThat(response.getRecords()).hasSize(1);
         assertThat(response.getTotal()).isEqualTo(1L);
         assertThat(queryOperations.countQueryCalled).isFalse();
-        assertThat(queryOperations.usedTenantIds).contains(1001L);
-        assertThat(queryOperations.usedTenantIds).doesNotContain(2002L);
+        assertThat(queryOperations.observedArgs).containsExactly(10L, 0L);
     }
 
     private static CurrentUser currentUser() {
@@ -37,11 +36,11 @@ class AiToolPolicyServiceTest {
 
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {
         private boolean countQueryCalled;
-        private final List<Long> usedTenantIds = new ArrayList<>();
+        private final List<Object> observedArgs = new ArrayList<>();
 
         @Override
         public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            recordTenantArgs(args);
+            recordArgs(args);
             if (sql.contains("count(1)")) {
                 countQueryCalled = true;
             }
@@ -50,13 +49,11 @@ class AiToolPolicyServiceTest {
 
         @Override
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
-            recordTenantArgs(args);
+            recordArgs(args);
             if (sql.contains("from ai_tool_policy")) {
                 try {
                     return List.of(rowMapper.mapRow(new SqlRow(Map.ofEntries(
-                            entry("id", 1L),
-                            entry("tenantId", 1001L),
-                            entry("policyName", "默认拦截"),
+                            entry("id", 1L),                            entry("policyName", "默认拦截"),
                             entry("toolCode", "*"),
                             entry("actionType", "*"),
                             entry("riskLevel", "HIGH"),
@@ -75,15 +72,12 @@ class AiToolPolicyServiceTest {
             return List.of();
         }
 
-        private void recordTenantArgs(Object... args) {
+        private void recordArgs(Object... args) {
             if (args == null) {
                 return;
             }
-            for (Object arg : args) {
-                if (arg instanceof Long tenantId && (tenantId == 1001L || tenantId == 2002L)) {
-                    usedTenantIds.add(tenantId);
-                }
-            }
+            observedArgs.addAll(List.of(args));
         }
     }
 }
+

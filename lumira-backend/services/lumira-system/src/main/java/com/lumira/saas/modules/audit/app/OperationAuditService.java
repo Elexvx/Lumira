@@ -26,7 +26,6 @@ public class OperationAuditService {
     }
 
     public void log(
-            Long tenantId,
             Long userId,
             String username,
             String moduleName,
@@ -36,7 +35,6 @@ public class OperationAuditService {
             String detailMessage
     ) {
         AuditOperationLogEntity entity = new AuditOperationLogEntity();
-        entity.setTenantId(tenantId);
         entity.setUserId(userId);
         entity.setUsername(username);
         entity.setModuleName(moduleName);

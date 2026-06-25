@@ -6,7 +6,6 @@ public class SensitiveWordVO {
 
     public static class WordRecord {
         private Long id;
-        private Long tenantId;
         private String word;
         private String normalizedWord;
         private String category;
@@ -20,8 +19,6 @@ public class SensitiveWordVO {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
-        public Long getTenantId() { return tenantId; }
-        public void setTenantId(Long tenantId) { this.tenantId = tenantId; }
         public String getWord() { return word; }
         public void setWord(String word) { this.word = word; }
         public String getNormalizedWord() { return normalizedWord; }

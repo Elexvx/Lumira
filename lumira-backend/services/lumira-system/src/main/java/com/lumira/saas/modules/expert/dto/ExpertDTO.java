@@ -2,6 +2,7 @@ package com.lumira.saas.modules.expert.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public final class ExpertDTO {
@@ -13,6 +14,7 @@ public final class ExpertDTO {
         private String code;
         @NotBlank
         @Size(max = 64)
+        @Pattern(regexp = "^[\\p{IsHan}A-Za-z·\\s]{2,64}$", message = "专家姓名只能包含中文、英文字母、空格和间隔号")
         private String name;
         @Size(max = 128)
         private String title;
@@ -24,7 +26,14 @@ public final class ExpertDTO {
         @Size(max = 255)
         private String expertise;
         @Size(max = 64)
+        @Pattern(regexp = "^(?:$|1[3-9]\\d{9}|0\\d{2,3}-?\\d{7,8}(?:-\\d{1,6})?)$", message = "请输入有效联系电话")
         private String phone;
+        @Size(max = 32)
+        @Pattern(regexp = "^(?:$|1[3-9]\\d{9})$", message = "请输入有效手机号")
+        private String mobile;
+        @Size(max = 32)
+        @Pattern(regexp = "^(?:$|\\d{15}|\\d{17}[\\dXx])$", message = "请输入有效身份证号码")
+        private String idCardNumber;
         @Email
         @Size(max = 128)
         private String email;
@@ -52,6 +61,10 @@ public final class ExpertDTO {
         public void setExpertise(String expertise) { this.expertise = expertise; }
         public String getPhone() { return phone; }
         public void setPhone(String phone) { this.phone = phone; }
+        public String getMobile() { return mobile; }
+        public void setMobile(String mobile) { this.mobile = mobile; }
+        public String getIdCardNumber() { return idCardNumber; }
+        public void setIdCardNumber(String idCardNumber) { this.idCardNumber = idCardNumber; }
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
         public String getAvatarUrl() { return avatarUrl; }

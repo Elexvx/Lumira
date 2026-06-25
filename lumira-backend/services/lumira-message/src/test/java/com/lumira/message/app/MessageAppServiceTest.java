@@ -93,13 +93,13 @@ class MessageAppServiceTest {
 
     @Test
     void listMessages_shouldReturnPagedNotices() {
-        MessageVO.NoticeVO notice = notice(1001L, "欢迎公告");
+        MessageVO.NoticeVO notice = notice(1001L, "notice-1");
         notice.setTargetScope("USER");
         notice.setTargetUserId(2001L);
-        MessageVO.NoticeVO extra = notice(1002L, "更多公告");
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
-        when(messageNoticeMapper.listVisiblePublished(1001L, 1001L, List.of(3001L), 2L, 0L)).thenReturn(List.of(notice, extra));
-        when(systemInternalApi.usersByIds(1001L, List.of(2001L))).thenReturn(List.of(
+        MessageVO.NoticeVO extra = notice(1002L, "notice-2");
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
+        when(messageNoticeMapper.listVisiblePublished(1001L, List.of(3001L), 2L, 0L)).thenReturn(List.of(notice, extra));
+        when(systemInternalApi.usersByIds(List.of(2001L))).thenReturn(List.of(
                 new SystemUserSnapshotDTO(2001L, "bob", null, "ENABLED", null, null, null, null, null, null, null, null, null, null, null)
         ));
 
@@ -112,16 +112,16 @@ class MessageAppServiceTest {
         assertThat(response.getHasMore()).isTrue();
         assertThat(response.getTotalCapped()).isTrue();
         assertThat(response.getRecords()).hasSize(1);
-        assertThat(response.getRecords().get(0).getTitle()).isEqualTo("欢迎公告");
+        assertThat(response.getRecords().get(0).getTitle()).isEqualTo("notice-1");
         assertThat(response.getRecords().get(0).getTargetUserName()).isEqualTo("bob");
     }
 
     @Test
     void listMessages_shouldUseCurrentUserPermissionSnapshotWhenAligned() {
-        MessageVO.NoticeVO notice = notice(1001L, "会话快照公告");
+        MessageVO.NoticeVO notice = notice(1001L, "session-snapshot-notice");
         notice.setTargetScope("PLATFORM");
-        when(systemInternalApi.readModelVersion(1001L, "IAM", "permission-snapshot")).thenReturn(9L);
-        when(messageNoticeMapper.listVisiblePublished(eq(1001L), eq(1001L), argThat(list ->
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(9L);
+        when(messageNoticeMapper.listVisiblePublished(eq(1001L), argThat(list ->
                         list != null && list.containsAll(List.of(3001L, 3002L)) && list.size() == 2
                 ), eq(2L), eq(0L)))
                 .thenReturn(List.of(notice));
@@ -129,34 +129,33 @@ class MessageAppServiceTest {
         MessageVO.NoticePageResponse response = messageAppService.listMessages(currentUserWithSnapshot(), 1, 1);
 
         assertThat(response.getRecords()).hasSize(1);
-        verify(systemInternalApi, never()).permissionSnapshot(anyLong(), anyLong());
+        verify(systemInternalApi, never()).permissionSnapshot(anyLong());
     }
 
     @Test
     void listMessages_shouldFallbackToSystemPermissionSnapshotWhenVersionMisaligned() {
-        MessageVO.NoticeVO notice = notice(1001L, "回源快照公告");
+        MessageVO.NoticeVO notice = notice(1001L, "remote-snapshot-notice");
         notice.setTargetScope("PLATFORM");
         CurrentUser currentUser = currentUserWithSnapshot();
         currentUser.setPermissionsVersion("v10");
-        when(systemInternalApi.readModelVersion(1001L, "IAM", "permission-snapshot")).thenReturn(11L);
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(List.of(7001L, 8001L), "v11"));
-        when(messageNoticeMapper.listVisiblePublished(eq(1001L), eq(1001L), eq(List.of(7001L, 8001L)), eq(2L), eq(0L)))
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(11L);
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(List.of(7001L, 8001L), "v11"));
+        when(messageNoticeMapper.listVisiblePublished(eq(1001L), eq(List.of(7001L, 8001L)), eq(2L), eq(0L)))
                 .thenReturn(List.of(notice));
 
         messageAppService.listMessages(currentUser, 1, 1);
 
-        verify(systemInternalApi).permissionSnapshot(1001L, 1001L);
+        verify(systemInternalApi).permissionSnapshot(1001L);
     }
 
     @Test
     void listMessages_shouldUseSessionPermissionSnapshotWhenIamReadModelUnavailable() {
-        MessageVO.NoticeVO notice = notice(1001L, "会话快照公告");
+        MessageVO.NoticeVO notice = notice(1001L, "session-snapshot-notice");
         notice.setTargetScope("PLATFORM");
 
         CurrentUser currentUser = currentUserWithSnapshot();
-        when(systemInternalApi.readModelVersion(1001L, "IAM", "permission-snapshot")).thenReturn(null);
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(null);
         when(messageNoticeMapper.listVisiblePublished(
-                eq(1001L),
                 eq(1001L),
                 argThat(list ->
                         list != null && list.containsAll(List.of(3001L, 3002L)) && list.size() == 2
@@ -168,40 +167,40 @@ class MessageAppServiceTest {
         MessageVO.NoticePageResponse response = messageAppService.listMessages(currentUser, 1, 1);
 
         assertThat(response.getRecords()).hasSize(1);
-        verify(systemInternalApi, never()).permissionSnapshot(1001L, 1001L);
+        verify(systemInternalApi, never()).permissionSnapshot(1001L);
     }
 
     @Test
     void countUnread_shouldUseCurrentUserPermissionSnapshotWhenAligned() {
         CurrentUser currentUser = currentUserWithSnapshot();
-        when(systemInternalApi.readModelVersion(1001L, "IAM", "permission-snapshot")).thenReturn(9L);
-        when(systemInternalApi.readModelVersion(1001L, "message", "unread")).thenReturn(READ_MODEL_VERSION);
-        when(messageNoticeMapper.countUnread(eq(1001L), eq(1001L), argThat(list ->
+        when(systemInternalApi.readModelVersion("IAM", "permission-snapshot")).thenReturn(9L);
+        when(systemInternalApi.readModelVersion("message", "unread")).thenReturn(READ_MODEL_VERSION);
+        when(messageNoticeMapper.countUnread(eq(1001L), argThat(list ->
                 list != null && list.containsAll(List.of(3001L, 3002L)) && list.size() == 2
         ), eq(100L))).thenReturn(7L);
-        when(cacheTemplate.get("message:unread-count:1001:1001:v9:v10")).thenReturn(null);
+        when(cacheTemplate.get("message:unread-count:1001:v9:v10")).thenReturn(null);
 
         Long unreadCount = messageAppService.countUnread(currentUser);
 
         assertThat(unreadCount).isEqualTo(7L);
-        verify(systemInternalApi, never()).permissionSnapshot(anyLong(), anyLong());
-        verify(messageNoticeMapper).countUnread(eq(1001L), eq(1001L), argThat(list ->
+        verify(systemInternalApi, never()).permissionSnapshot(anyLong());
+        verify(messageNoticeMapper).countUnread(eq(1001L), argThat(list ->
                 list != null && list.containsAll(List.of(3001L, 3002L)) && list.size() == 2
         ), eq(100L));
     }
 
     @Test
     void listMessages_shouldReuseRoleVisibilityCacheOnRepeatedCalls() {
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L))
+        when(systemInternalApi.permissionSnapshot(1001L))
                 .thenReturn(permissionSnapshot(List.of(3001L)));
-        when(messageNoticeMapper.listVisiblePublished(eq(1001L), eq(1001L), eq(List.of(3001L)), anyLong(), anyLong()))
+        when(messageNoticeMapper.listVisiblePublished(eq(1001L), eq(List.of(3001L)), anyLong(), anyLong()))
                 .thenReturn(List.of());
 
         CurrentUser currentUser = currentUser();
         messageAppService.listMessages(currentUser, 1, 1);
         messageAppService.listMessages(currentUser, 1, 1);
 
-        verify(systemInternalApi, times(1)).permissionSnapshot(1001L, 1001L);
+        verify(systemInternalApi, times(1)).permissionSnapshot(1001L);
         assertThat(messageAppService.roleVisibilityCacheHits()).isEqualTo(1L);
         assertThat(messageAppService.roleVisibilityCacheMisses()).isEqualTo(1L);
     }
@@ -215,22 +214,22 @@ class MessageAppServiceTest {
             return null;
         }).when(cacheTemplate).put(anyString(), anyString(), any());
 
-        MessageVO.NoticeVO notice = notice(1001L, "用户公告");
+        MessageVO.NoticeVO notice = notice(1001L, "user-notice");
         notice.setTargetScope("USER");
         notice.setTargetUserId(2001L);
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(List.of()));
-        when(messageNoticeMapper.listVisiblePublished(1001L, 1001L, List.of(), 2L, 0L))
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(List.of()));
+        when(messageNoticeMapper.listVisiblePublished(1001L, List.of(), 2L, 0L))
                 .thenReturn(List.of(notice))
                 .thenReturn(List.of(notice));
-        when(systemInternalApi.usersByIds(1001L, List.of(2001L)))
+        when(systemInternalApi.usersByIds(List.of(2001L)))
                 .thenReturn(List.of(new SystemUserSnapshotDTO(2001L, "bob", null, "ENABLED", null, null, null, null, null, null, null, null, null, null, null)));
 
         CurrentUser currentUser = currentUser();
         messageAppService.listMessages(currentUser, 1, 1);
         messageAppService.listMessages(currentUser, 1, 1);
 
-        verify(systemInternalApi).usersByIds(eq(1001L), eq(List.of(2001L)));
-        verify(systemInternalApi, times(1)).permissionSnapshot(1001L, 1001L);
+        verify(systemInternalApi).usersByIds(eq(List.of(2001L)));
+        verify(systemInternalApi, times(1)).permissionSnapshot(1001L);
     }
 
     @Test
@@ -242,72 +241,72 @@ class MessageAppServiceTest {
             return null;
         }).when(cacheTemplate).put(anyString(), anyString(), any());
 
-        MessageVO.NoticeVO notice = notice(1001L, "角色公告");
+        MessageVO.NoticeVO notice = notice(1001L, "role-notice");
         notice.setTargetScope("ROLE");
         notice.setTargetRoleId(3001L);
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
-        when(messageNoticeMapper.listVisiblePublished(1001L, 1001L, List.of(3001L), 2L, 0L))
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
+        when(messageNoticeMapper.listVisiblePublished(1001L, List.of(3001L), 2L, 0L))
                 .thenReturn(List.of(notice));
-        when(systemInternalApi.rolesByIds(1001L, List.of(3001L)))
-                .thenReturn(List.of(new SystemRoleSnapshotDTO(3001L, "管理员", "管理员")));
+        when(systemInternalApi.rolesByIds(List.of(3001L)))
+                .thenReturn(List.of(new SystemRoleSnapshotDTO(3001L, "ADMIN", "Admin")));
 
         CurrentUser currentUser = currentUser();
         messageAppService.listMessages(currentUser, 1, 1);
         messageAppService.listMessages(currentUser, 1, 1);
 
-        verify(systemInternalApi).rolesByIds(eq(1001L), eq(List.of(3001L)));
+        verify(systemInternalApi).rolesByIds(eq(List.of(3001L)));
         verify(messageNoticeMapper, times(1))
-                .listVisiblePublished(1001L, 1001L, List.of(3001L), 2L, 0L);
+                .listVisiblePublished(1001L, List.of(3001L), 2L, 0L);
     }
 
     @Test
     void countUnread_shouldNormalizeNullCountToZero() {
-        when(systemInternalApi.readModelVersion(1001L, "message", "unread")).thenReturn(READ_MODEL_VERSION);
-        when(cacheTemplate.get("message:unread-count:1001:1001:v1:v10")).thenReturn(null);
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(Arrays.asList(3001L, 3001L, null)));
-        when(messageNoticeMapper.countUnread(1001L, 1001L, List.of(3001L), 100L)).thenReturn(null);
+        when(systemInternalApi.readModelVersion("message", "unread")).thenReturn(READ_MODEL_VERSION);
+        when(cacheTemplate.get("message:unread-count:1001:v1:v10")).thenReturn(null);
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(Arrays.asList(3001L, 3001L, null)));
+        when(messageNoticeMapper.countUnread(1001L, List.of(3001L), 100L)).thenReturn(null);
 
         Long unreadCount = messageAppService.countUnread(currentUser());
 
         assertThat(unreadCount).isZero();
-        verify(cacheTemplate).put(eq("message:unread-count:1001:1001:v1:v10"), eq("0"), any(Duration.class));
+        verify(cacheTemplate).put(eq("message:unread-count:1001:v1:v10"), eq("0"), any(Duration.class));
     }
 
     @Test
     void countUnread_shouldUseCachedValueWhenAvailable() {
-        when(systemInternalApi.readModelVersion(1001L, "message", "unread")).thenReturn(READ_MODEL_VERSION);
-        when(cacheTemplate.get("message:unread-count:1001:1001:v1:v10")).thenReturn("42");
+        when(systemInternalApi.readModelVersion("message", "unread")).thenReturn(READ_MODEL_VERSION);
+        when(cacheTemplate.get("message:unread-count:1001:v1:v10")).thenReturn("42");
 
         Long unreadCount = messageAppService.countUnread(currentUser());
 
         assertThat(unreadCount).isEqualTo(42L);
-        verify(messageNoticeMapper, times(0)).countUnread(anyLong(), anyLong(), any(), anyLong());
+        verify(messageNoticeMapper, times(0)).countUnread(anyLong(), any(), anyLong());
     }
 
     @Test
     void countUnread_shouldIgnoreInvalidCacheAndFallbackToDatabase() {
-        when(systemInternalApi.readModelVersion(1001L, "message", "unread")).thenReturn(READ_MODEL_VERSION);
-        when(cacheTemplate.get("message:unread-count:1001:1001:v1:v10")).thenReturn("invalid");
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(Arrays.asList(3001L)));
-        when(messageNoticeMapper.countUnread(1001L, 1001L, List.of(3001L), 100L)).thenReturn(1L);
+        when(systemInternalApi.readModelVersion("message", "unread")).thenReturn(READ_MODEL_VERSION);
+        when(cacheTemplate.get("message:unread-count:1001:v1:v10")).thenReturn("invalid");
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(Arrays.asList(3001L)));
+        when(messageNoticeMapper.countUnread(1001L, List.of(3001L), 100L)).thenReturn(1L);
 
         Long unreadCount = messageAppService.countUnread(currentUser());
 
         assertThat(unreadCount).isEqualTo(1L);
-        verify(messageNoticeMapper).countUnread(anyLong(), anyLong(), eq(List.of(3001L)), anyLong());
-        verify(cacheTemplate).put(eq("message:unread-count:1001:1001:v1:v10"), eq("1"), any(Duration.class));
+        verify(messageNoticeMapper).countUnread(anyLong(), eq(List.of(3001L)), anyLong());
+        verify(cacheTemplate).put(eq("message:unread-count:1001:v1:v10"), eq("1"), any(Duration.class));
     }
 
     @Test
     void listArchive_shouldScopeRegularUsersToOwnedOrVisibleMessages() {
-        MessageVO.NoticeVO roleNotice = notice(1003L, "角色公告");
+        MessageVO.NoticeVO roleNotice = notice(1003L, "role-notice");
         roleNotice.setTargetScope("ROLE");
         roleNotice.setTargetRoleId(3001L);
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
         when(messageNoticeMapper.countArchive(any(NoticeArchiveQuery.class))).thenReturn(0L);
         when(messageNoticeMapper.listArchive(any(NoticeArchiveQuery.class))).thenReturn(List.of(roleNotice));
-        when(systemInternalApi.rolesByIds(1001L, List.of(3001L))).thenReturn(List.of(
-                new SystemRoleSnapshotDTO(3001L, "ADMIN", "管理员")
+        when(systemInternalApi.rolesByIds(List.of(3001L))).thenReturn(List.of(
+                new SystemRoleSnapshotDTO(3001L, "ADMIN", "Admin")
         ));
 
         MessageVO.NoticeArchivePageResponse response = messageAppService.listArchive(currentUser(), new MessageDTO.MessageArchiveQueryRequest());
@@ -319,7 +318,7 @@ class MessageAppServiceTest {
         assertThat(queryCaptor.getValue().getRoleIds()).containsExactly(3001L);
         assertThat(queryCaptor.getValue().getPermissionSnapshotVersion()).isEqualTo("v1");
         assertThat(queryCaptor.getValue().getCountLimit()).isEqualTo(21L);
-        assertThat(response.getRecords().get(0).getTargetRoleName()).isEqualTo("管理员");
+        assertThat(response.getRecords().get(0).getTargetRoleName()).isEqualTo("Admin");
     }
 
     @Test
@@ -327,8 +326,8 @@ class MessageAppServiceTest {
         MessageDTO.MessageArchiveQueryRequest request = new MessageDTO.MessageArchiveQueryRequest();
         request.setPageNo(2L);
         request.setPageSize(10L);
-        MessageVO.NoticeVO notice = notice(1001L, "归档页结果");
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
+        MessageVO.NoticeVO notice = notice(1001L, "archive-result");
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
         when(messageNoticeMapper.countArchive(any(NoticeArchiveQuery.class))).thenReturn(21L);
         when(messageNoticeMapper.listArchive(any(NoticeArchiveQuery.class))).thenReturn(List.of(notice));
 
@@ -346,8 +345,8 @@ class MessageAppServiceTest {
 
     @Test
     void listArchive_shouldNotMarkHasMoreWhenTotalUnderCountLimit() {
-        MessageVO.NoticeVO notice = notice(1001L, "归档页结果");
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
+        MessageVO.NoticeVO notice = notice(1001L, "archive-result");
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
         when(messageNoticeMapper.countArchive(any(NoticeArchiveQuery.class))).thenReturn(8L);
         when(messageNoticeMapper.listArchive(any(NoticeArchiveQuery.class))).thenReturn(List.of(notice));
 
@@ -369,8 +368,8 @@ class MessageAppServiceTest {
             return null;
         }).when(cacheTemplate).put(anyString(), anyString(), any());
 
-        MessageVO.NoticeVO notice = notice(1001L, "归档页结果");
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
+        MessageVO.NoticeVO notice = notice(1001L, "archive-result");
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
         when(messageNoticeMapper.countArchive(any(NoticeArchiveQuery.class))).thenReturn(8L);
         when(messageNoticeMapper.listArchive(any(NoticeArchiveQuery.class))).thenReturn(List.of(notice));
 
@@ -433,15 +432,15 @@ class MessageAppServiceTest {
 
     @Test
     void markAllRead_shouldUseRoleSnapshotForVisibility() {
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
-        when(messageNoticeMapper.countUnread(eq(1001L), eq(1001L), eq(List.of(3001L)), eq(100L))).thenReturn(0L);
-        when(systemInternalApi.readModelVersion(1001L, "message", "unread")).thenReturn(READ_MODEL_VERSION);
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
+        when(messageNoticeMapper.countUnread(eq(1001L), eq(List.of(3001L)), eq(100L))).thenReturn(0L);
+        when(systemInternalApi.readModelVersion("message", "unread")).thenReturn(READ_MODEL_VERSION);
 
         messageAppService.markAllRead(currentUser());
 
-        verify(messageNoticeMapper).markAllRead(eq(1001L), eq(1001L), eq(List.of(3001L)), any(LocalDateTime.class));
-        verify(systemInternalApi, times(1)).permissionSnapshot(1001L, 1001L);
-        verify(systemInternalApi).bumpReadModelVersion(1001L, "message", "unread", "message.unread");
+        verify(messageNoticeMapper).markAllRead(eq(1001L), eq(List.of(3001L)), any(LocalDateTime.class));
+        verify(systemInternalApi, times(1)).permissionSnapshot(1001L);
+        verify(systemInternalApi).bumpReadModelVersion("message", "unread", "message.unread");
     }
 
     @Test
@@ -458,14 +457,14 @@ class MessageAppServiceTest {
                 messageProperties,
                 new SimpleMeterRegistry()
         );
-        when(systemInternalApi.permissionSnapshot(1001L, 1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
-        when(messageNoticeMapper.listVisiblePublished(eq(1001L), eq(1001L), eq(List.of(3001L)), anyLong(), anyLong()))
+        when(systemInternalApi.permissionSnapshot(1001L)).thenReturn(permissionSnapshot(List.of(3001L)));
+        when(messageNoticeMapper.listVisiblePublished(eq(1001L), eq(List.of(3001L)), anyLong(), anyLong()))
                 .thenReturn(List.of());
 
         service.listMessages(currentUser(), 1, 1);
         service.countUnread(currentUser());
-        when(messageNoticeMapper.countUnread(eq(1001L), eq(1001L), eq(List.of(3001L)), eq(100L))).thenReturn(0L);
-        when(messageNoticeMapper.markAllRead(eq(1001L), eq(1001L), eq(List.of(3001L)), any(LocalDateTime.class))).thenReturn(1);
+        when(messageNoticeMapper.countUnread(eq(1001L), eq(List.of(3001L)), eq(100L))).thenReturn(0L);
+        when(messageNoticeMapper.markAllRead(eq(1001L), eq(List.of(3001L)), any(LocalDateTime.class))).thenReturn(1);
 
         service.markAllRead(currentUser());
 
@@ -532,11 +531,10 @@ class MessageAppServiceTest {
     private MessageVO.NoticeVO notice(Long id, String title) {
         MessageVO.NoticeVO notice = new MessageVO.NoticeVO();
         notice.setId(id);
-        notice.setTenantId(1001L);
         notice.setMessageType("MESSAGE");
         notice.setTargetScope("PLATFORM");
         notice.setTitle(title);
-        notice.setContent("内容");
+        notice.setContent("content");
         notice.setSourceType("MANUAL");
         notice.setPublishStatus("PUBLISHED");
         notice.setPublishedAt(LocalDateTime.now());

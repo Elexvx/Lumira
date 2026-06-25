@@ -3,7 +3,6 @@ package com.lumira.saas.modules.ai.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.ai.dto.AiDTO;
 import com.lumira.saas.modules.ai.vo.AiVO;
 import org.slf4j.Logger;
@@ -33,6 +32,7 @@ public interface AiEmployeeRuntimeService {
 class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultAiEmployeeRuntimeService.class);
+    private static final String GENERAL_CHAT_SKILL_CODE = "chat.general";
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final AiLlmServiceConfigProvider aiLlmServiceConfigProvider;
@@ -42,6 +42,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     private final AiSkillPermissionChecker aiSkillPermissionChecker;
     private final AiKnowledgeBaseAppService aiKnowledgeBaseAppService;
     private final AiToolOrchestrationService aiToolOrchestrationService;
+    private final AiAssistantEmployeeResolver aiAssistantEmployeeResolver;
 
     @Autowired
     DefaultAiEmployeeRuntimeService(
@@ -83,6 +84,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         this.aiSkillPermissionChecker = aiSkillPermissionChecker;
         this.aiKnowledgeBaseAppService = aiKnowledgeBaseAppService;
         this.aiToolOrchestrationService = aiToolOrchestrationService;
+        this.aiAssistantEmployeeResolver = new AiAssistantEmployeeResolver(jdbcTemplate);
     }
 
     @Override
@@ -96,49 +98,52 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     }
 
     private AiVO.ChatResponseVO executeChat(CurrentUser currentUser, AiDTO.ChatRequest request, Consumer<AiVO.ChatStreamEventVO> onEvent) {
-        Long tenantId = currentTenantId(currentUser);
+        requireLogin(currentUser);
         List<Long> employeeIds = normalizeEmployeeIds(request);
         Long employeeId = employeeIds.size() == 1 ? employeeIds.get(0) : request == null ? null : request.getEmployeeId();
         Long conversationId = request == null ? null : request.getConversationId();
         boolean confirmed = request != null && Boolean.TRUE.equals(request.getConfirmed());
+        boolean generalConversation = employeeId == null || employeeId <= 0;
         if (request != null && request.getPendingToolCallId() != null) {
-            return executeConfirmedToolChat(currentUser, tenantId, employeeId, request, onEvent);
+            return executeConfirmedToolChat(currentUser, employeeId, request, onEvent);
         }
         if (employeeIds.size() > 1) {
-            return executeMultiEmployeeChat(currentUser, tenantId, employeeIds, request, onEvent, confirmed);
+            return executeMultiEmployeeChat(currentUser, employeeIds, request, onEvent, confirmed);
         }
         try {
-            emit(onEvent, AiVO.ChatStreamEventVO.status(employeeId == null ? "正在加载对话配置" : "正在加载数字员工配置"));
+            emit(onEvent, AiVO.ChatStreamEventVO.status(generalConversation ? "正在加载对话配置" : "正在加载数字员工配置"));
             AiVO.EmployeeDetailVO employee;
             List<AiVO.SkillVO> skills;
             AiLlmServiceConfig config;
-            if (employeeId == null) {
-                employee = buildDefaultConversationEmployee();
+            if (generalConversation) {
+                employee = aiAssistantEmployeeResolver.getOrCreateAssistantEmployeeDetail();
+                employeeId = employee.getId();
                 skills = List.of();
-                config = aiLlmServiceConfigProvider.findDefault(tenantId).orElse(null);
+                config = aiLlmServiceConfigProvider.findDefault().orElse(null);
             } else {
-                employee = queryEmployeeDetail(tenantId, employeeId);
+                employee = queryEmployeeDetail(employeeId);
                 employeeId = employee.getId();
                 if (!Boolean.TRUE.equals(employee.getEnabled())) {
                     throw new BizException(ErrorCode.BIZ_ERROR, "数字员工已禁用");
                 }
                 emit(onEvent, AiVO.ChatStreamEventVO.status("正在校验技能授权"));
-                aiSkillPermissionChecker.verifyAllowed(tenantId, employee.getId(), request.getSkillCodes(), confirmed);
-                config = aiLlmServiceConfigProvider.findById(tenantId, employee.getDefaultLlmServiceId())
-                        .or(() -> aiLlmServiceConfigProvider.findDefaultForEmployee(tenantId, employee.getId()))
+                if (hasRequestedSkills(request)) {
+                    aiSkillPermissionChecker.verifyAllowed(employee.getId(), request.getSkillCodes(), confirmed);
+                }
+                config = aiLlmServiceConfigProvider.findById(employee.getDefaultLlmServiceId())
+                        .or(() -> aiLlmServiceConfigProvider.findDefaultForEmployee(employee.getId()))
                         .orElse(null);
-                skills = aiToolRegistry.listRegisteredSkills(tenantId, employee.getId());
+                skills = aiToolRegistry.listRegisteredSkills(employee.getId());
             }
             emit(onEvent, AiVO.ChatStreamEventVO.status("正在创建会话并保存用户消息"));
             conversationId = aiConversationService.ensureConversation(
-                    tenantId,
                     currentUser.getUserId(),
                     employeeId,
                     request.getConversationId(),
                     buildConversationTitle(request.getMessage())
             );
-            Long userMessageId = aiConversationService.recordMessage(tenantId, conversationId, "USER", request.getMessage());
-            aiConversationService.recordMessageAttachments(tenantId, conversationId, userMessageId, request.getAttachments());
+            Long userMessageId = aiConversationService.recordMessage(conversationId, "USER", request.getMessage());
+            aiConversationService.recordMessageAttachments(conversationId, userMessageId, request.getAttachments());
 
             AiDTO.ToolProposeRequest proposeRequest = new AiDTO.ToolProposeRequest();
             proposeRequest.setEmployeeId(employeeId);
@@ -153,39 +158,39 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 if ("BLOCKED".equalsIgnoreCase(plan.getStatus())) {
                     emit(onEvent, AiVO.ChatStreamEventVO.toolBlocked(plan, firstText(plan.getPolicyMessage(), plan.getSupervisorMessage(), "该操作已被平台防护规则拦截")));
                 } else if (!Boolean.TRUE.equals(plan.getRequiresConfirm())) {
-                    aiSkillPermissionChecker.verifyAllowed(tenantId, employeeId, List.of(plan.getToolCode()), false);
+                    aiSkillPermissionChecker.verifyAllowed(employeeId, List.of(plan.getToolCode()), false);
                     AiDTO.ToolConfirmRequest confirmRequest = new AiDTO.ToolConfirmRequest();
                     confirmRequest.setPendingToolCallId(plan.getId());
                     AiVO.ToolExecuteResultVO result = aiToolOrchestrationService.confirm(currentUser, confirmRequest);
                     emit(onEvent, AiVO.ChatStreamEventVO.toolResult(result));
                     AiVO.ChatResponseVO response = new AiVO.ChatResponseVO();
                     response.setConversationId(conversationId);
-                    response.setConversationCode(queryConversationCode(tenantId, conversationId));
+                    response.setConversationCode(queryConversationCode(conversationId));
                     response.setEmployeeId(employeeId);
                     response.setReplyRole("ASSISTANT");
                     response.setReplyText(buildToolResultReply(result));
                     response.setToolPlan(plan);
                     response.setToolResult(result);
                     response.setReplyAt(LocalDateTime.now());
-                    aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", response.getReplyText());
+                    aiConversationService.recordMessage(conversationId, "ASSISTANT", response.getReplyText());
                     return response;
                 } else {
                     emit(onEvent, AiVO.ChatStreamEventVO.toolProposal(plan));
                 }
                 AiVO.ChatResponseVO response = new AiVO.ChatResponseVO();
                 response.setConversationId(conversationId);
-                response.setConversationCode(queryConversationCode(tenantId, conversationId));
+                response.setConversationCode(queryConversationCode(conversationId));
                 response.setEmployeeId(employeeId);
                 response.setReplyRole("ASSISTANT");
                 response.setReplyText("我已生成系统操作计划，请确认后执行。");
                 response.setToolPlan(plan);
                 response.setReplyAt(LocalDateTime.now());
-                aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", response.getReplyText());
+                aiConversationService.recordMessage(conversationId, "ASSISTANT", response.getReplyText());
                 return response;
             }
 
-            emit(onEvent, AiVO.ChatStreamEventVO.status(employeeId == null ? "正在准备上下文" : "正在检索知识库"));
-            List<AiVO.KnowledgeReferenceVO> references = resolveKnowledgeReferences(currentUser, employeeId, request);
+            emit(onEvent, AiVO.ChatStreamEventVO.status(generalConversation ? "正在准备上下文" : "正在检索知识库"));
+            List<AiVO.KnowledgeReferenceVO> references = resolveKnowledgeReferences(currentUser, generalConversation ? null : employeeId, request);
             request.setKnowledgeReferences(references);
             emit(onEvent, AiVO.ChatStreamEventVO.status("正在调用模型"));
             AiVO.ChatResponseVO response = onEvent == null
@@ -201,20 +206,19 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             response.setReferences(references);
             response.setConversationId(conversationId);
             if (response.getConversationCode() == null) {
-                response.setConversationCode(queryConversationCode(tenantId, conversationId));
+                response.setConversationCode(queryConversationCode(conversationId));
             }
-            aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", response.getReplyText());
-            recordToolAuditLog(tenantId, employeeId, conversationId, request, response, confirmed);
+            aiConversationService.recordMessage(conversationId, "ASSISTANT", response.getReplyText());
+            recordToolAuditLog(employeeId, conversationId, request, response, confirmed);
             return response;
         } catch (RuntimeException exception) {
-            recordFailedToolAuditLog(tenantId, employeeId, conversationId, request, confirmed, exception);
+            recordFailedToolAuditLog(employeeId, conversationId, request, confirmed, exception);
             throw exception;
         }
     }
 
     private AiVO.ChatResponseVO executeConfirmedToolChat(
             CurrentUser currentUser,
-            Long tenantId,
             Long employeeId,
             AiDTO.ChatRequest request,
             Consumer<AiVO.ChatStreamEventVO> onEvent
@@ -222,39 +226,40 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         Long conversationId = request.getConversationId();
         try {
             emit(onEvent, AiVO.ChatStreamEventVO.status("正在执行已确认的系统操作"));
+            if (employeeId == null || employeeId <= 0) {
+                employeeId = aiAssistantEmployeeResolver.getOrCreateAssistantEmployee().getId();
+            }
             if (conversationId == null) {
                 conversationId = aiConversationService.ensureConversation(
-                        tenantId,
                         currentUser.getUserId(),
                         employeeId,
                         null,
                         buildConversationTitle(request.getMessage())
                 );
             }
-            aiConversationService.recordMessage(tenantId, conversationId, "USER", request.getMessage());
+            aiConversationService.recordMessage(conversationId, "USER", request.getMessage());
             AiDTO.ToolConfirmRequest confirmRequest = new AiDTO.ToolConfirmRequest();
             confirmRequest.setPendingToolCallId(request.getPendingToolCallId());
             AiVO.ToolExecuteResultVO result = aiToolOrchestrationService.confirm(currentUser, confirmRequest);
             emit(onEvent, AiVO.ChatStreamEventVO.toolResult(result));
             AiVO.ChatResponseVO response = new AiVO.ChatResponseVO();
             response.setConversationId(conversationId);
-            response.setConversationCode(queryConversationCode(tenantId, conversationId));
+            response.setConversationCode(queryConversationCode(conversationId));
             response.setEmployeeId(employeeId);
             response.setReplyRole("ASSISTANT");
             response.setReplyText(result.getMessage() == null ? "系统操作已执行完成。" : result.getMessage());
             response.setToolResult(result);
             response.setReplyAt(LocalDateTime.now());
-            aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", response.getReplyText());
+            aiConversationService.recordMessage(conversationId, "ASSISTANT", response.getReplyText());
             return response;
         } catch (RuntimeException exception) {
-            recordFailedToolAuditLog(tenantId, employeeId, conversationId, request, true, exception);
+            recordFailedToolAuditLog(employeeId, conversationId, request, true, exception);
             throw exception;
         }
     }
 
     private AiVO.ChatResponseVO executeMultiEmployeeChat(
             CurrentUser currentUser,
-            Long tenantId,
             List<Long> employeeIds,
             AiDTO.ChatRequest request,
             Consumer<AiVO.ChatStreamEventVO> onEvent,
@@ -264,14 +269,13 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         try {
             emit(onEvent, AiVO.ChatStreamEventVO.status("正在准备多智能体协同"));
             conversationId = aiConversationService.ensureConversation(
-                    tenantId,
                     currentUser.getUserId(),
-                    null,
+                    employeeIds.get(0),
                     conversationId,
                     buildConversationTitle(request.getMessage())
             );
-            Long userMessageId = aiConversationService.recordMessage(tenantId, conversationId, "USER", request.getMessage());
-            aiConversationService.recordMessageAttachments(tenantId, conversationId, userMessageId, request.getAttachments());
+            Long userMessageId = aiConversationService.recordMessage(conversationId, "USER", request.getMessage());
+            aiConversationService.recordMessageAttachments(conversationId, userMessageId, request.getAttachments());
 
             StringBuilder replyText = new StringBuilder();
             StringBuilder thinkingContent = new StringBuilder();
@@ -279,17 +283,19 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
 
             for (Long targetEmployeeId : employeeIds) {
                 AiDTO.ChatRequest employeeRequest = copyChatRequest(request, targetEmployeeId);
-                AiVO.EmployeeDetailVO employee = queryEmployeeDetail(tenantId, targetEmployeeId);
+                AiVO.EmployeeDetailVO employee = queryEmployeeDetail(targetEmployeeId);
                 if (!Boolean.TRUE.equals(employee.getEnabled())) {
                     throw new BizException(ErrorCode.BIZ_ERROR, "数字员工已禁用：" + displayEmployeeName(employee));
                 }
 
                 emit(onEvent, AiVO.ChatStreamEventVO.status("正在校验 " + displayEmployeeName(employee) + " 的技能授权"));
-                aiSkillPermissionChecker.verifyAllowed(tenantId, employee.getId(), employeeRequest.getSkillCodes(), confirmed);
-                AiLlmServiceConfig config = aiLlmServiceConfigProvider.findById(tenantId, employee.getDefaultLlmServiceId())
-                        .or(() -> aiLlmServiceConfigProvider.findDefaultForEmployee(tenantId, employee.getId()))
+                if (hasRequestedSkills(employeeRequest)) {
+                    aiSkillPermissionChecker.verifyAllowed(employee.getId(), employeeRequest.getSkillCodes(), confirmed);
+                }
+                AiLlmServiceConfig config = aiLlmServiceConfigProvider.findById(employee.getDefaultLlmServiceId())
+                        .or(() -> aiLlmServiceConfigProvider.findDefaultForEmployee(employee.getId()))
                         .orElse(null);
-                List<AiVO.SkillVO> skills = aiToolRegistry.listRegisteredSkills(tenantId, employee.getId());
+                List<AiVO.SkillVO> skills = aiToolRegistry.listRegisteredSkills(employee.getId());
 
                 emit(onEvent, AiVO.ChatStreamEventVO.status("正在检索 " + displayEmployeeName(employee) + " 的知识库"));
                 List<AiVO.KnowledgeReferenceVO> employeeReferences = resolveKnowledgeReferences(currentUser, employee.getId(), employeeRequest);
@@ -313,23 +319,23 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                 if (StringUtils.hasText(response.getThinkingContent())) {
                     thinkingContent.append(heading).append(response.getThinkingContent()).append("\n\n");
                 }
-                recordToolAuditLog(tenantId, employee.getId(), conversationId, employeeRequest, response, confirmed);
+                recordToolAuditLog(employee.getId(), conversationId, employeeRequest, response, confirmed);
             }
 
             emit(onEvent, AiVO.ChatStreamEventVO.status("正在保存多智能体回复"));
             AiVO.ChatResponseVO combinedResponse = new AiVO.ChatResponseVO();
             combinedResponse.setConversationId(conversationId);
-            combinedResponse.setConversationCode(queryConversationCode(tenantId, conversationId));
+            combinedResponse.setConversationCode(queryConversationCode(conversationId));
             combinedResponse.setReplyText(replyText.toString().trim());
             String combinedThinkingContent = thinkingContent.toString().trim();
             combinedResponse.setThinkingContent(StringUtils.hasText(combinedThinkingContent) ? combinedThinkingContent : null);
             combinedResponse.setReplyRole("ASSISTANT");
             combinedResponse.setReferences(references);
             combinedResponse.setReplyAt(LocalDateTime.now());
-            aiConversationService.recordMessage(tenantId, conversationId, "ASSISTANT", combinedResponse.getReplyText());
+            aiConversationService.recordMessage(conversationId, "ASSISTANT", combinedResponse.getReplyText());
             return combinedResponse;
         } catch (RuntimeException exception) {
-            recordFailedToolAuditLog(tenantId, null, conversationId, request, confirmed, exception);
+            recordFailedToolAuditLog(null, conversationId, request, confirmed, exception);
             throw exception;
         }
     }
@@ -378,7 +384,7 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             Object total = result.getData().get("total");
             Object count = result.getData().get("count");
             Object limit = result.getData().get("limit");
-            return "查询完成：当前权限和租户范围内共有 " + firstText(textValue(total), textValue(count), "0")
+            return "查询完成：当前权限范围内共有 " + firstText(textValue(total), textValue(count), "0")
                     + " 个系统用户。本次返回 " + firstText(textValue(count), "0")
                     + " 条脱敏用户记录，最多展示 " + firstText(textValue(limit), "0") + " 条。";
         }
@@ -412,16 +418,6 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         return request.getSkillCodes().contains("knowledge.search");
     }
 
-    private AiVO.EmployeeDetailVO buildDefaultConversationEmployee() {
-        AiVO.EmployeeDetailVO employee = new AiVO.EmployeeDetailVO();
-        employee.setUsername("ai-assistant");
-        employee.setNickname("AI 助手");
-        employee.setPosition("通用对话");
-        employee.setEnabled(true);
-        employee.setSystemPrompt("你是企业后台系统中的通用 AI 助手。用户未选择任何数字员工时，你应作为普通对话助手提供清晰、准确、简洁的帮助；不要声称自己拥有特定数字员工的身份、技能、知识库或业务工具权限。");
-        return employee;
-    }
-
     private void emit(Consumer<AiVO.ChatStreamEventVO> onEvent, AiVO.ChatStreamEventVO event) {
         if (onEvent != null) {
             onEvent.accept(event);
@@ -436,9 +432,8 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         return trimmed.length() > 32 ? trimmed.substring(0, 32) + "..." : trimmed;
     }
 
-    private void recordToolAuditLog(Long tenantId, Long employeeId, Long conversationId, AiDTO.ChatRequest request, AiVO.ChatResponseVO response, boolean confirmed) {
+    private void recordToolAuditLog(Long employeeId, Long conversationId, AiDTO.ChatRequest request, AiVO.ChatResponseVO response, boolean confirmed) {
         insertToolAuditLog(
-                tenantId,
                 employeeId,
                 conversationId,
                 request,
@@ -450,11 +445,10 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         );
     }
 
-    private void recordFailedToolAuditLog(Long tenantId, Long employeeId, Long conversationId, AiDTO.ChatRequest request, boolean confirmed, RuntimeException exception) {
+    private void recordFailedToolAuditLog(Long employeeId, Long conversationId, AiDTO.ChatRequest request, boolean confirmed, RuntimeException exception) {
         try {
             String resultStatus = exception instanceof BizException ? "FAIL" : "ERROR";
             insertToolAuditLog(
-                    tenantId,
                     employeeId,
                     conversationId,
                     request,
@@ -465,12 +459,11 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                     buildErrorResponsePayload(exception)
             );
         } catch (RuntimeException auditException) {
-            log.warn("Failed to record AI tool audit failure tenantId={} employeeId={} conversationId={}", tenantId, employeeId, conversationId, auditException);
+            log.warn("Failed to record AI tool audit failure employeeId={} conversationId={}", employeeId, conversationId, auditException);
         }
     }
 
     private void insertToolAuditLog(
-            Long tenantId,
             Long employeeId,
             Long conversationId,
             AiDTO.ChatRequest request,
@@ -480,21 +473,22 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
             String detailMessage,
             String responsePayloadJson
     ) {
+        String auditSkillCode = firstSkillCode(request);
+        boolean hasRequestedSkill = auditSkillCode != null;
         jdbcTemplate.update(
                 """
                         insert into ai_tool_audit_log (
-                            tenant_id, conversation_id, employee_id, skill_code, tool_name, permission_mode,
+                            conversation_id, employee_id, skill_code, tool_name, permission_mode,
                             confirm_required, confirm_result, result_status, detail_message,
                             request_payload_json, response_payload_json, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
                         """,
-                tenantId,
                 conversationId,
                 employeeId,
-                firstSkillCode(request),
+                hasRequestedSkill ? auditSkillCode : GENERAL_CHAT_SKILL_CODE,
                 "chat",
                 permissionMode,
-                firstSkillCode(request) == null ? 0 : 1,
+                hasRequestedSkill ? 1 : 0,
                 confirmed ? 1 : 0,
                 resultStatus,
                 detailMessage,
@@ -522,7 +516,18 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
     }
 
     private String firstSkillCode(AiDTO.ChatRequest request) {
-        return request == null || request.getSkillCodes() == null || request.getSkillCodes().isEmpty() ? null : request.getSkillCodes().get(0);
+        if (request == null || request.getSkillCodes() == null || request.getSkillCodes().isEmpty()) {
+            return null;
+        }
+        return request.getSkillCodes().stream()
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean hasRequestedSkills(AiDTO.ChatRequest request) {
+        return firstSkillCode(request) != null;
     }
 
     private String resolvePermissionMode(RuntimeException exception) {
@@ -569,10 +574,10 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         return "";
     }
 
-    private AiVO.EmployeeDetailVO queryEmployeeDetail(Long tenantId, Long employeeId) {
+    private AiVO.EmployeeDetailVO queryEmployeeDetail(Long employeeId) {
         AiVO.EmployeeDetailVO employee = jdbcTemplate.query(
                 """
-                        select e.id, e.tenant_id as tenantId, e.username, e.nickname, e.position, e.avatar_key as avatarKey,
+                        select e.id, e.username, e.nickname, e.position, e.avatar_key as avatarKey,
                                e.description, e.greeting, e.system_prompt as systemPrompt,
                                e.default_llm_service_id as defaultLlmServiceId,
                                e.enabled, e.sort_order as sortOrder, e.create_time as createTime, e.update_time as updateTime,
@@ -580,15 +585,12 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
                         from ai_employee e
                         left join ai_llm_service s
                           on s.id = e.default_llm_service_id
-                         and s.tenant_id = e.tenant_id
                          and s.is_deleted = 0
-                        where e.tenant_id = ?
-                          and e.id = ?
+                        where e.id = ?
                           and e.is_deleted = 0
                         limit 1
                         """,
                 new BeanPropertyRowMapper<>(AiVO.EmployeeDetailVO.class),
-                tenantId,
                 employeeId
         ).stream().findFirst().orElse(null);
         if (employee == null) {
@@ -597,26 +599,23 @@ class DefaultAiEmployeeRuntimeService implements AiEmployeeRuntimeService {
         return employee;
     }
 
-    private String queryConversationCode(Long tenantId, Long conversationId) {
+    private String queryConversationCode(Long conversationId) {
         return jdbcTemplate.query(
                 """
                         select conversation_code
                         from ai_conversation
-                        where tenant_id = ?
-                          and id = ?
+                        where id = ?
                           and is_deleted = 0
                         limit 1
                         """,
                 (rs, rowNum) -> rs.getString("conversation_code"),
-                tenantId,
                 conversationId
         ).stream().findFirst().orElse(null);
     }
 
-    private Long currentTenantId(CurrentUser currentUser) {
+    private void requireLogin(CurrentUser currentUser) {
         if (currentUser == null) {
             throw new BizException(ErrorCode.FORBIDDEN, "Login required");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 }

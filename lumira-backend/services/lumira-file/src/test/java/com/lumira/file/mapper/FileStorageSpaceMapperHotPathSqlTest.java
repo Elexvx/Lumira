@@ -16,8 +16,8 @@ class FileStorageSpaceMapperHotPathSqlTest {
 
         assertStatementContains(xml, "listWithUsage", "<include refid=\"storageSpaceWithUsage\"/>");
         assertStatementContains(xml, "listWithUsage", "limit #{limit} offset #{offset}");
-        assertStatementContains(xml, "storageSpaceWithUsage", "from file_storage_space s force index (idx_file_storage_space_tenant_deleted_default_id)");
-        assertStatementContains(xml, "storageSpaceWithUsage", "from file_object force index (idx_file_object_tenant_deleted_bucket)");
+        assertStatementContains(xml, "storageSpaceWithUsage", "from file_storage_space s force index (idx_file_storage_space_deleted_default_id)");
+        assertStatementContains(xml, "storageSpaceWithUsage", "from file_object force index (idx_file_object_deleted_bucket)");
         assertStatementContains(xml, "storageSpaceWithUsage", "group by bucket");
     }
 

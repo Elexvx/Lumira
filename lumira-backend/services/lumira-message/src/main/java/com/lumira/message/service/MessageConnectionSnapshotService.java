@@ -1,7 +1,6 @@
 package com.lumira.message.service;
 
 import com.lumira.api.message.MessageEventDTO;
-import com.lumira.common.constant.PlatformConstants;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.message.app.MessageAppService;
 import com.lumira.message.app.PlatformEventOutboxService;
@@ -33,10 +32,8 @@ public class MessageConnectionSnapshotService {
         }
 
         Integer unreadCount = messageAppService.countUnread(currentUser).intValue();
-        Long tenantId = PlatformConstants.PLATFORM_TENANT_ID;
-        Long latestVersion = latestVersion(tenantId);
+        Long latestVersion = latestVersion();
         MessageEventDTO event = messageEventFactory.createSyncStateEvent(
-                tenantId,
                 currentUser.getUserId(),
                 unreadCount,
                 latestVersion,
@@ -45,7 +42,7 @@ public class MessageConnectionSnapshotService {
         messageEventDeliveryService.deliver(event);
     }
 
-    private Long latestVersion(Long tenantId) {
-        return outboxService.latestVersionForTenant(tenantId);
+    private Long latestVersion() {
+        return outboxService.latestVersion();
     }
 }

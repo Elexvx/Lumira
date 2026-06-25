@@ -17,26 +17,25 @@ import static org.mockito.Mockito.when;
 class PluginPersistenceServiceTest {
 
     @Test
-    void registerTenantPermissionsDelegatesIamWritesToSystemOwnerApi() {
+    void registerPluginPermissionsDelegatesIamWritesToSystemOwnerApi() {
         PluginPersistenceMapper mapper = mock(PluginPersistenceMapper.class);
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         PluginPersistenceService service = new PluginPersistenceService(mapper, systemInternalApi);
         PluginPermissionRelEntity permission = new PluginPermissionRelEntity();
         permission.setPermissionKey("plugin:sms:view");
-        permission.setPermissionName("短信插件查看");
+        permission.setPermissionName("SMS View");
         permission.setPermissionGroup("sms");
         when(mapper.listPermissionRelations("sms", "1.0.0")).thenReturn(List.of(permission));
 
-        service.registerTenantPermissions(1001L, "sms", "1.0.0");
+        service.registerPluginPermissions("sms", "1.0.0");
 
         var captor = forClass(PluginPermissionRegistrationRequestDTO.class);
         verify(systemInternalApi).registerPluginPermissions(captor.capture());
         PluginPermissionRegistrationRequestDTO request = captor.getValue();
-        assertThat(request.tenantId()).isEqualTo(1001L);
         assertThat(request.pluginCode()).isEqualTo("sms");
         assertThat(request.permissions()).singleElement().satisfies(item -> {
             assertThat(item.permissionKey()).isEqualTo("plugin:sms:view");
-            assertThat(item.permissionName()).isEqualTo("短信插件查看");
+            assertThat(item.permissionName()).isEqualTo("SMS View");
             assertThat(item.permissionGroup()).isEqualTo("sms");
         });
     }
@@ -47,8 +46,8 @@ class PluginPersistenceServiceTest {
         SystemInternalApi systemInternalApi = mock(SystemInternalApi.class);
         PluginPersistenceService service = new PluginPersistenceService(mapper, systemInternalApi);
 
-        service.bumpBootstrapVersion(1001L, "plugin.enabled");
+        service.bumpBootstrapVersion("plugin.enabled");
 
-        verify(systemInternalApi).bumpReadModelVersion(1001L, "plugin", "bootstrap", "plugin.enabled");
+        verify(systemInternalApi).bumpReadModelVersion("plugin", "bootstrap", "plugin.enabled");
     }
 }

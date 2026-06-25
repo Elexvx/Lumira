@@ -1125,7 +1125,7 @@ body,
     gap: var(--saas-spacing-32);
   }
 
-  .saas-profile-page__tenant-mark {
+  .saas-profile-page__role-mark {
     margin: 0;
     color: color-mix(in srgb, var(--ant-color-primary) 88%, var(--ant-color-text));
     font-style: italic;
@@ -1153,7 +1153,7 @@ body,
     min-width: 0;
   }
 
-  .saas-profile-page__tenant-mark {
+  .saas-profile-page__role-mark {
     margin: 0 !important;
     color: var(--ant-color-primary);
     text-align: right;
@@ -1170,7 +1170,7 @@ body,
       grid-template-columns: 1fr;
     }
 
-    .saas-profile-page__tenant-mark {
+    .saas-profile-page__role-mark {
       text-align: left;
     }
   }
@@ -1298,7 +1298,7 @@ body,
       flex-direction: column;
     }
 
-    .saas-profile-page__tenant-mark {
+    .saas-profile-page__role-mark {
       white-space: normal;
     }
   }

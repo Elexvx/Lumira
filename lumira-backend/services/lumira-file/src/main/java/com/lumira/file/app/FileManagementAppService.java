@@ -12,7 +12,6 @@ import com.lumira.common.exception.BizException;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.common.security.data.DataPermissionDecision;
 import com.lumira.common.security.data.DataPermissionResolver;
 import com.lumira.common.security.data.DataScopeType;
@@ -72,7 +71,7 @@ public class FileManagementAppService {
     private static final String RESOURCE_FILE_OBJECT = "file:object";
     private static final String DEFAULT_SORT_COLUMN = "created_at";
     public static final String SCOPE_MINE = "mine";
-    public static final String SCOPE_TENANT = "tenant";
+    public static final String SCOPE_SHARED = "shared";
     public static final String SCOPE_DOWNLOAD_CENTER = "download-center";
     private static final String STORAGE_KEY_LOCAL = "local";
     private static final String STORAGE_KEY_DOWNLOAD_CENTER = "download_center";
@@ -173,13 +172,12 @@ public class FileManagementAppService {
             String sortField,
             String sortOrder
     ) {
-        Long tenantId = currentTenantId(currentUser);
-        boolean tenantScope = isTenantWideScope(scope);
+        requireCurrentUser(currentUser);
+        boolean sharedScope = isSharedScope(scope);
         boolean downloadCenterScope = SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
         QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
-                .eq("tenant_id", tenantId)
                 .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, currentUser, tenantScope, downloadCenterScope);
+        applyFileDataPermission(queryWrapper, currentUser, sharedScope, downloadCenterScope);
         if (StringUtils.hasText(keyword)) {
             String normalizedKeyword = keyword.trim();
             queryWrapper.and(wrapper -> wrapper
@@ -211,7 +209,7 @@ public class FileManagementAppService {
         long safePageNo = Math.max(pageNo, 1L);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         boolean localCacheable = isDefaultListCacheable(keyword, category, fileExtension, previewMode, bucket, scope, sortField, sortOrder);
-        String localCacheKey = localCacheable ? buildFileListCacheKey(tenantId, currentUser, safePageNo, safePageSize, sortColumn, ascending) : null;
+        String localCacheKey = localCacheable ? buildFileListCacheKey(currentUser, safePageNo, safePageSize, sortColumn, ascending) : null;
         if (localCacheable) {
             CachedFilePage cached = localFileListCache.get(localCacheKey);
             Instant now = Instant.now();
@@ -268,7 +266,6 @@ public class FileManagementAppService {
     }
 
     private String buildFileListCacheKey(
-            Long tenantId,
             CurrentUser currentUser,
             long pageNo,
             long pageSize,
@@ -279,7 +276,6 @@ public class FileManagementAppService {
         String permissionVersion = currentUser == null ? null : currentUser.getPermissionsVersion();
         return String.join(":",
                 "file:list",
-                String.valueOf(tenantId),
                 String.valueOf(userId),
                 StringUtils.hasText(permissionVersion) ? permissionVersion : "v0",
                 String.valueOf(pageNo),
@@ -288,21 +284,21 @@ public class FileManagementAppService {
                 ascending ? "asc" : "desc");
     }
 
-    public FileObjectDTO getFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
-        return getFile(currentUser, fileId, tenantScope, false);
+    public FileObjectDTO getFile(CurrentUser currentUser, Long fileId, boolean sharedScope) {
+        return getFile(currentUser, fileId, sharedScope, false);
     }
 
-    public FileObjectDTO getFile(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
-        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope, downloadCenterScope);
+    public FileObjectDTO getFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
+        FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
         return enrich(file);
     }
 
-    public FileObjectDTO getPreviewableFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
-        return getPreviewableFile(currentUser, fileId, tenantScope, false);
+    public FileObjectDTO getPreviewableFile(CurrentUser currentUser, Long fileId, boolean sharedScope) {
+        return getPreviewableFile(currentUser, fileId, sharedScope, false);
     }
 
-    public FileObjectDTO getPreviewableFile(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
-        FileObjectDTO file = getFile(currentUser, fileId, tenantScope, downloadCenterScope);
+    public FileObjectDTO getPreviewableFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
+        FileObjectDTO file = getFile(currentUser, fileId, sharedScope, downloadCenterScope);
         if (!Boolean.TRUE.equals(file.previewable()) || "UNSUPPORTED".equalsIgnoreCase(file.previewMode())) {
             throw new BizException(ErrorCode.BAD_REQUEST, "当前文件不支持在线预览");
         }
@@ -314,15 +310,14 @@ public class FileManagementAppService {
             String keyword,
             String contentType,
             String status,
-            boolean tenantScope,
+            boolean sharedScope,
             int limit
     ) {
-        Long tenantId = currentTenantId(currentUser);
+        requireCurrentUser(currentUser);
         long safeLimit = Math.max(1L, Math.min(limit, MAX_PAGE_SIZE));
         QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
-                .eq("tenant_id", tenantId)
                 .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, currentUser, tenantScope, false);
+        applyFileDataPermission(queryWrapper, currentUser, sharedScope, false);
         if (StringUtils.hasText(keyword)) {
             String normalizedKeyword = keyword.trim();
             queryWrapper.and(wrapper -> wrapper
@@ -419,8 +414,7 @@ public class FileManagementAppService {
             String bucket,
             String visibilityScope
     ) {
-        Long tenantId = currentTenantId(currentUser);
-        StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
+        StorageSpaceUploadContext storageContext = resolveUploadContext(bucket);
         DocumentUploadService.StoredDocument storedDocument = documentUploadService.upload(
                 file,
                 storageContext.storageRoot(),
@@ -431,7 +425,6 @@ public class FileManagementAppService {
         );
         Long insertedId = insertFileObject(
                 currentUser,
-                tenantId,
                 storageContext.storageSpace().provider(),
                 storageContext.storageBucket(),
                 storedDocument.relativePath(),
@@ -447,7 +440,7 @@ public class FileManagementAppService {
                 tags,
                 remark
         );
-        FileObjectDTO uploaded = getInsertedFile(tenantId, insertedId);
+        FileObjectDTO uploaded = getInsertedFile(insertedId);
         localFileListCache.clear();
         publishFileUploaded(uploaded);
         fileProcessingTaskService.requestTasksForUpload(uploaded, currentUser.getUserId());
@@ -475,8 +468,7 @@ public class FileManagementAppService {
     }
 
     private FileObjectDTO uploadImage(CurrentUser currentUser, MultipartFile file, String category, String remark, String bucket, String visibilityScope) {
-        Long tenantId = currentTenantId(currentUser);
-        StorageSpaceUploadContext storageContext = resolveUploadContext(tenantId, bucket);
+        StorageSpaceUploadContext storageContext = resolveUploadContext(bucket);
         ImageUploadService.StoredImage storedImage = imageUploadService.upload(
                 file,
                 storageContext.storageRoot(),
@@ -487,7 +479,6 @@ public class FileManagementAppService {
         );
         Long insertedId = insertFileObject(
                 currentUser,
-                tenantId,
                 storageContext.storageSpace().provider(),
                 storageContext.storageBucket(),
                 storedImage.relativePath(),
@@ -503,7 +494,7 @@ public class FileManagementAppService {
                 null,
                 remark
         );
-        FileObjectDTO uploaded = getInsertedFile(tenantId, insertedId);
+        FileObjectDTO uploaded = getInsertedFile(insertedId);
         localFileListCache.clear();
         publishFileUploaded(uploaded);
         fileProcessingTaskService.requestTasksForUpload(uploaded, currentUser.getUserId());
@@ -511,14 +502,14 @@ public class FileManagementAppService {
     }
 
     @Transactional
-    public void deleteFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
-        deleteFile(currentUser, fileId, tenantScope, false);
+    public void deleteFile(CurrentUser currentUser, Long fileId, boolean sharedScope) {
+        deleteFile(currentUser, fileId, sharedScope, false);
     }
 
     @Transactional
-    public void deleteFile(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
-        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope, downloadCenterScope);
-        if (!shouldRetainStoredFile(currentTenantId(currentUser), file.bucket())) {
+    public void deleteFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
+        FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
+        if (!shouldRetainStoredFile(file.bucket())) {
             deleteStoredFile(file);
         }
         fileObjectMapper.update(
@@ -528,7 +519,6 @@ public class FileManagementAppService {
                         .set(FileObjectEntity::getUpdatedBy, currentUser.getUserId())
                         .set(FileObjectEntity::getUpdatedAt, LocalDateTime.now())
                         .eq(FileObjectEntity::getId, fileId)
-                        .eq(FileObjectEntity::getTenantId, currentTenantId(currentUser))
                         .eq(FileObjectEntity::getDeleted, 0)
         );
         localFileListCache.clear();
@@ -539,7 +529,7 @@ public class FileManagementAppService {
         if (file == null) {
             return;
         }
-        FileObjectAggregate aggregate = new FileObjectAggregate(file.id(), file.tenantId(), safeFileSize(file.fileSizeBytes()));
+        FileObjectAggregate aggregate = new FileObjectAggregate(file.id(), safeFileSize(file.fileSizeBytes()));
         aggregate.recordUploaded(file.mimeType());
         domainEventPublisher.publishAll(aggregate.pullDomainEvents());
     }
@@ -548,7 +538,7 @@ public class FileManagementAppService {
         if (file == null) {
             return;
         }
-        FileObjectAggregate aggregate = new FileObjectAggregate(file.id(), file.tenantId(), safeFileSize(file.fileSizeBytes()));
+        FileObjectAggregate aggregate = new FileObjectAggregate(file.id(), safeFileSize(file.fileSizeBytes()));
         aggregate.delete();
         domainEventPublisher.publishAll(aggregate.pullDomainEvents());
     }
@@ -558,20 +548,19 @@ public class FileManagementAppService {
     }
 
     public PageResponse<StorageSpaceDTO> listStorageSpaces(CurrentUser currentUser, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
-        ensureDefaultStorageSpaces(tenantId);
+        requireCurrentUser(currentUser);
+        ensureDefaultStorageSpaces();
         long safePageNo = Math.max(pageNo, 1L);
         long safePageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long safeOffset = (safePageNo - 1L) * safePageSize;
         long totalLimit = calculateStorageSpaceListTotalCountLimit(safePageSize, safeOffset);
         QueryWrapper<FileStorageSpaceEntity> countQueryWrapper = new QueryWrapper<FileStorageSpaceEntity>()
-                .eq("tenant_id", tenantId)
                 .eq("deleted", 0);
         Long total = countStorageSpaceCandidates(countQueryWrapper.clone(), totalLimit);
         long normalizedTotal = normalizeTotal(total, totalLimit);
         boolean totalCapped = isTotalCapped(total, totalLimit);
         List<StorageSpaceDTO> records = fileStorageSpaceMapper
-                .listWithUsage(tenantId, safePageSize, safeOffset)
+                .listWithUsage(safePageSize, safeOffset)
                 .stream()
                 .map(this::mapStorageSpace)
                 .toList();
@@ -639,12 +628,13 @@ public class FileManagementAppService {
     }
 
     public StorageSpaceDTO getStorageSpace(CurrentUser currentUser, String storageKey) {
-        return queryStorageSpace(currentTenantId(currentUser), normalizeStorageKey(storageKey));
+        requireCurrentUser(currentUser);
+        return queryStorageSpace(normalizeStorageKey(storageKey));
     }
 
     public FileStorageSpaceRequest.TestResult testStorageSpace(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
-        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByIdWithUsage(tenantId, id);
+        requireCurrentUser(currentUser);
+        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByIdWithUsage(id);
         if (entity == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "存储空间不存在");
         }
@@ -667,9 +657,9 @@ public class FileManagementAppService {
             result.setMessage("对象存储配置完整，Endpoint 可访问");
             return result;
         } catch (Exception ex) {
-            log.warn("Storage space test failed tenantId={} storageSpaceId={} provider={} reason={}",
-                    tenantId, id, entity.getProvider(), ex.getMessage(), ex);
-            recordStorageSpaceTestAudit(currentUser, tenantId, id, entity.getProvider(), ex);
+            log.warn("Storage space test failed storageSpaceId={} provider={} reason={}",
+                    id, entity.getProvider(), ex.getMessage(), ex);
+            recordStorageSpaceTestAudit(currentUser, id, entity.getProvider(), ex);
             result.setStatus("DOWN");
             result.setMessage(STORAGE_TEST_PUBLIC_ERROR);
             return result;
@@ -680,29 +670,29 @@ public class FileManagementAppService {
 
     @Transactional
     public StorageSpaceDTO createStorageSpace(CurrentUser currentUser, FileStorageSpaceRequest request) {
-        Long tenantId = currentTenantId(currentUser);
+        requireCurrentUser(currentUser);
         String provider = normalizeProvider(request.getProvider());
         String storageKey = normalizeStorageKey(StringUtils.hasText(request.getStorageKey()) ? request.getStorageKey() : provider.toLowerCase(Locale.ROOT) + "_" + shortId());
         StoragePayload payload = normalizeStoragePayload(request, provider, storageKey, null);
         if (payload.defaultStorage()) {
-            clearDefaultStorage(tenantId);
+            clearDefaultStorage();
         }
         try {
-            fileStorageSpaceMapper.insert(buildStorageSpaceEntity(tenantId, payload, currentUser.getUserId()));
+            fileStorageSpaceMapper.insert(buildStorageSpaceEntity(payload, currentUser.getUserId()));
         } catch (DuplicateKeyException exception) {
             throw new BizException(ErrorCode.BIZ_ERROR, "存储空间标识已存在");
         }
-        ensureOneDefaultStorage(tenantId);
-        return queryStorageSpace(tenantId, storageKey);
+        ensureOneDefaultStorage();
+        return queryStorageSpace(storageKey);
     }
 
     @Transactional
     public StorageSpaceDTO updateStorageSpace(CurrentUser currentUser, Long id, FileStorageSpaceRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        StorageSpaceDTO existing = queryStorageSpaceById(tenantId, id);
+        requireCurrentUser(currentUser);
+        StorageSpaceDTO existing = queryStorageSpaceById(id);
         StoragePayload payload = normalizeStoragePayload(request, existing.provider(), existing.storageKey(), existing);
         if (payload.defaultStorage()) {
-            clearDefaultStorage(tenantId);
+            clearDefaultStorage();
         }
         fileStorageSpaceMapper.update(
                 null,
@@ -724,18 +714,17 @@ public class FileManagementAppService {
                         .set(FileStorageSpaceEntity::getUpdatedBy, currentUser.getUserId())
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
                         .eq(FileStorageSpaceEntity::getId, id)
-                        .eq(FileStorageSpaceEntity::getTenantId, tenantId)
                         .eq(FileStorageSpaceEntity::getDeleted, 0)
         );
-        ensureOneDefaultStorage(tenantId);
-        return queryStorageSpaceById(tenantId, id);
+        ensureOneDefaultStorage();
+        return queryStorageSpaceById(id);
     }
 
     @Transactional
     public void deleteStorageSpace(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
-        StorageSpaceDTO existing = queryStorageSpaceById(tenantId, id);
-        if (hasFileRecordsInBucket(tenantId, existing.storageKey())) {
+        requireCurrentUser(currentUser);
+        StorageSpaceDTO existing = queryStorageSpaceById(id);
+        if (hasFileRecordsInBucket(existing.storageKey())) {
             throw new BizException(ErrorCode.BIZ_ERROR, "存储空间下仍有文件，不能删除");
         }
         if (Boolean.TRUE.equals(existing.defaultStorage())) {
@@ -748,30 +737,28 @@ public class FileManagementAppService {
                         .set(FileStorageSpaceEntity::getUpdatedBy, currentUser.getUserId())
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
                         .eq(FileStorageSpaceEntity::getId, id)
-                        .eq(FileStorageSpaceEntity::getTenantId, tenantId)
                         .eq(FileStorageSpaceEntity::getDeleted, 0)
         );
     }
 
-    private boolean hasFileRecordsInBucket(Long tenantId, String storageKey) {
-        if (tenantId == null || !StringUtils.hasText(storageKey)) {
+    private boolean hasFileRecordsInBucket(String storageKey) {
+        if (!StringUtils.hasText(storageKey)) {
             return false;
         }
         QueryWrapper<FileObjectEntity> query = new QueryWrapper<FileObjectEntity>()
                 .select("1")
-                .eq("tenant_id", tenantId)
                 .eq("bucket", storageKey)
                 .eq("deleted", 0)
                 .last("limit 1");
         return fileObjectMapper.selectOne(query) != null;
     }
 
-    public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean tenantScope) {
-        return resolveFilePath(currentUser, fileId, tenantScope, false);
+    public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean sharedScope) {
+        return resolveFilePath(currentUser, fileId, sharedScope, false);
     }
 
-    public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
-        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope, downloadCenterScope);
+    public Path resolveFilePath(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
+        FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
         Path target = resolveFilePath(file);
         if (target == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件路径无效");
@@ -779,8 +766,8 @@ public class FileManagementAppService {
         return target;
     }
 
-    public FileContentDTO readFileContent(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
-        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope, downloadCenterScope);
+    public FileContentDTO readFileContent(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
+        FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
         Path target = resolveFilePath(file);
         if (target == null || !Files.exists(target) || !Files.isRegularFile(target)) {
             storageMetrics.recordMissing("read", file.storageType(), Duration.ZERO);
@@ -790,7 +777,6 @@ public class FileManagementAppService {
         try {
             FileContentDTO content = new FileContentDTO(
                     file.id(),
-                    file.tenantId(),
                     file.originalFileName(),
                     file.mimeType(),
                     file.fileExtension(),
@@ -808,25 +794,24 @@ public class FileManagementAppService {
             CurrentUser currentUser,
             Long fileId,
             String artifactType,
-            boolean tenantScope,
+            boolean sharedScope,
             boolean downloadCenterScope
     ) {
         if (!StringUtils.hasText(artifactType)) {
             throw new BizException(ErrorCode.BAD_REQUEST, "文件处理产物类型不能为空");
         }
-        FileObjectDTO file = queryFile(currentUser, fileId, tenantScope, downloadCenterScope);
+        FileObjectDTO file = queryFile(currentUser, fileId, sharedScope, downloadCenterScope);
         List<FileProcessingArtifactDTO> artifacts = jdbcTemplate.query(
                 """
-                        select id, tenant_id, file_id, task_type, artifact_type, artifact_path,
+                        select id, file_id, task_type, artifact_type, artifact_path,
                                content_text, content_length, updated_at
                         from file_processing_artifact
-                        where tenant_id = ? and file_id = ? and artifact_type = ? and deleted = 0
+                        where file_id = ? and artifact_type = ? and deleted = 0
                         order by updated_at desc, id desc
                         limit 1
                         """,
                 (rs, rowNum) -> new FileProcessingArtifactDTO(
                         rs.getLong("id"),
-                        rs.getLong("tenant_id"),
                         rs.getLong("file_id"),
                         rs.getString("task_type"),
                         rs.getString("artifact_type"),
@@ -835,7 +820,6 @@ public class FileManagementAppService {
                         rs.getInt("content_length"),
                         rs.getObject("updated_at", LocalDateTime.class)
                 ),
-                file.tenantId(),
                 file.id(),
                 artifactType.trim().toUpperCase(Locale.ROOT)
         );
@@ -845,17 +829,16 @@ public class FileManagementAppService {
         return artifacts.getFirst();
     }
 
-    private FileObjectDTO queryFile(CurrentUser currentUser, Long fileId, boolean tenantScope) {
-        return queryFile(currentUser, fileId, tenantScope, false);
+    private FileObjectDTO queryFile(CurrentUser currentUser, Long fileId, boolean sharedScope) {
+        return queryFile(currentUser, fileId, sharedScope, false);
     }
 
-    private FileObjectDTO queryFile(CurrentUser currentUser, Long fileId, boolean tenantScope, boolean downloadCenterScope) {
-        Long tenantId = currentTenantId(currentUser);
+    private FileObjectDTO queryFile(CurrentUser currentUser, Long fileId, boolean sharedScope, boolean downloadCenterScope) {
+        requireCurrentUser(currentUser);
         QueryWrapper<FileObjectEntity> queryWrapper = new QueryWrapper<FileObjectEntity>()
                 .eq("id", fileId)
-                .eq("tenant_id", tenantId)
                 .eq("deleted", 0);
-        applyFileDataPermission(queryWrapper, currentUser, tenantScope, downloadCenterScope);
+        applyFileDataPermission(queryWrapper, currentUser, sharedScope, downloadCenterScope);
         FileObjectEntity entity = fileObjectMapper.selectOne(queryWrapper);
         if (entity == null) {
             throw new BizException(ErrorCode.NOT_FOUND, "文件不存在");
@@ -866,7 +849,6 @@ public class FileManagementAppService {
     private FileObjectDTO enrich(FileObjectDTO file) {
         return new FileObjectDTO(
                 file.id(),
-                file.tenantId(),
                 file.uploadedBy(),
                 file.uploadedByName(),
                 file.originalFileName(),
@@ -933,12 +915,11 @@ public class FileManagementAppService {
         return target;
     }
 
-    private void recordStorageSpaceTestAudit(CurrentUser currentUser, Long tenantId, Long storageSpaceId, String provider, Exception ex) {
+    private void recordStorageSpaceTestAudit(CurrentUser currentUser, Long storageSpaceId, String provider, Exception ex) {
         if (securityAuditEventService == null) {
             return;
         }
         securityAuditEventService.record(SecurityAuditEvent.builder("STORAGE_SPACE_TEST_FAILED", "WARN", "DENIED")
-                .tenantId(tenantId)
                 .userId(currentUser == null ? null : currentUser.getUserId())
                 .requestId(TraceContext.getRequestId())
                 .traceId(TraceContext.getTraceId())
@@ -959,7 +940,7 @@ public class FileManagementAppService {
             return null;
         }
         if (StringUtils.hasText(file.bucket())) {
-            FileStorageSpaceEntity storageSpace = fileStorageSpaceMapper.findByStorageKey(file.tenantId(), file.bucket());
+            FileStorageSpaceEntity storageSpace = fileStorageSpaceMapper.findByStorageKey(file.bucket());
             if (storageSpace != null) {
                 Path storageRoot = resolveStorageRoot(storageSpace);
                 Path target = storageRoot.resolve(validateObjectKey(file.storagePath())).normalize();
@@ -1011,7 +992,6 @@ public class FileManagementAppService {
     }
     private Long insertFileObject(
             CurrentUser currentUser,
-            Long tenantId,
             String storageType,
             String bucket,
             String objectKey,
@@ -1029,7 +1009,6 @@ public class FileManagementAppService {
     ) {
         LocalDateTime now = LocalDateTime.now();
         FileObjectEntity entity = new FileObjectEntity();
-        entity.setTenantId(tenantId);
         entity.setStorageType(storageType);
         entity.setBucket(bucket);
         entity.setObjectKey(objectKey);
@@ -1060,17 +1039,17 @@ public class FileManagementAppService {
         return entity.getId();
     }
 
-    private FileObjectDTO getInsertedFile(Long tenantId, Long insertedId) {
+    private FileObjectDTO getInsertedFile(Long insertedId) {
         FileObjectEntity inserted = fileObjectMapper.selectById(insertedId);
-        if (inserted == null || !tenantId.equals(inserted.getTenantId())) {
+        if (inserted == null) {
             throw new BizException(ErrorCode.SYSTEM_ERROR, "文件上传记录读取失败");
         }
         return enrich(mapFileObject(inserted));
     }
 
-    private void applyFileDataPermission(QueryWrapper<FileObjectEntity> queryWrapper, CurrentUser currentUser, boolean tenantScopeRequested, boolean downloadCenterScope) {
+    private void applyFileDataPermission(QueryWrapper<FileObjectEntity> queryWrapper, CurrentUser currentUser, boolean sharedScopeRequested, boolean downloadCenterScope) {
         applyFileVisibilityScope(queryWrapper, downloadCenterScope);
-        if (!tenantScopeRequested) {
+        if (!sharedScopeRequested) {
             queryWrapper.eq("uploaded_by", currentUser.getUserId());
             return;
         }
@@ -1148,69 +1127,68 @@ public class FileManagementAppService {
         return SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope) || VISIBILITY_SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
     }
 
-    private boolean isTenantWideScope(String scope) {
-        return SCOPE_TENANT.equalsIgnoreCase(scope) || SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
+    private boolean isSharedScope(String scope) {
+        return SCOPE_SHARED.equalsIgnoreCase(scope) || SCOPE_DOWNLOAD_CENTER.equalsIgnoreCase(scope);
     }
 
-    private StorageSpaceDTO getDefaultStorageSpace(Long tenantId) {
-        ensureDefaultStorageSpaces(tenantId);
-        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findDefault(tenantId);
+    private StorageSpaceDTO getDefaultStorageSpace() {
+        ensureDefaultStorageSpaces();
+        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findDefault();
         if (entity != null) {
             return mapStorageSpace(entity);
         }
-        return new StorageSpaceDTO(null, tenantId, "Local storage", "local", "LOCAL", "storage/uploads/", null, null, null, null, false, "APPEND_RANDOM_ID", 20, "*", true, false, true, "ENABLED", 0L, 0L, "0B", null, null);
+        return new StorageSpaceDTO(null, "Local storage", "local", "LOCAL", "storage/uploads/", null, null, null, null, false, "APPEND_RANDOM_ID", 20, "*", true, false, true, "ENABLED", 0L, 0L, "0B", null, null);
     }
 
-    private StorageSpaceDTO queryStorageSpace(Long tenantId, String storageKey) {
-        ensureDefaultStorageSpaces(tenantId);
-        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByStorageKey(tenantId, storageKey);
+    private StorageSpaceDTO queryStorageSpace(String storageKey) {
+        ensureDefaultStorageSpaces();
+        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByStorageKey(storageKey);
         if (entity == null) {
-            throw visibleBizException(ErrorCode.NOT_FOUND, "存储空间不存在");
+            throw visibleBizException(ErrorCode.NOT_FOUND, "Storage space does not exist");
         }
         return mapStorageSpace(entity);
     }
 
-    private StorageSpaceDTO queryStorageSpaceById(Long tenantId, Long id) {
-        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByIdWithUsage(tenantId, id);
+    private StorageSpaceDTO queryStorageSpaceById(Long id) {
+        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByIdWithUsage(id);
         if (entity == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "存储空间不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "Storage space does not exist");
         }
         return mapStorageSpace(entity);
     }
 
-    private boolean shouldRetainStoredFile(Long tenantId, String bucket) {
+    private boolean shouldRetainStoredFile(String bucket) {
         if (!StringUtils.hasText(bucket)) {
             return false;
         }
-        return Boolean.TRUE.equals(fileStorageSpaceMapper.shouldRetainStoredFile(tenantId, bucket));
+        return Boolean.TRUE.equals(fileStorageSpaceMapper.shouldRetainStoredFile(bucket));
     }
 
-    private StorageSpaceUploadContext resolveUploadContext(Long tenantId, String bucket) {
+    private StorageSpaceUploadContext resolveUploadContext(String bucket) {
         String normalizedBucket = StringUtils.hasText(bucket) ? normalizeStorageKey(bucket) : null;
         StorageSpaceDTO storageSpace = normalizedBucket != null
-                ? findUploadStorageSpaceOrDefault(tenantId, normalizedBucket)
-                : getDefaultStorageSpace(tenantId);
+                ? findUploadStorageSpaceOrDefault(normalizedBucket)
+                : getDefaultStorageSpace();
         if (!"LOCAL".equalsIgnoreCase(storageSpace.provider())) {
-            throw visibleBizException(ErrorCode.BAD_REQUEST, "当前仅支持本地存储空间上传");
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "Only local storage spaces are supported for uploads");
         }
         if (!"ENABLED".equalsIgnoreCase(storageSpace.status())) {
-            throw visibleBizException(ErrorCode.BAD_REQUEST, "存储空间已禁用，无法上传文件");
+            throw visibleBizException(ErrorCode.BAD_REQUEST, "Storage space is disabled");
         }
         Path storageRoot = resolveStorageRoot(storageSpace);
         String publicPath = resolvePublicPath(storageRoot);
         return new StorageSpaceUploadContext(storageSpace, storageSpace.storageKey(), storageRoot, publicPath, maxFileSizeBytes(storageSpace.maxFileSizeMb()));
     }
 
-    private StorageSpaceDTO findUploadStorageSpaceOrDefault(Long tenantId, String storageKey) {
-        ensureDefaultStorageSpaces(tenantId);
-        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByStorageKey(tenantId, storageKey);
+    private StorageSpaceDTO findUploadStorageSpaceOrDefault(String storageKey) {
+        ensureDefaultStorageSpaces();
+        FileStorageSpaceEntity entity = fileStorageSpaceMapper.findByStorageKey(storageKey);
         if (entity != null) {
             return mapStorageSpace(entity);
         }
-        log.warn("Upload storage space '{}' is missing for tenant {}, falling back to default storage space", storageKey, tenantId);
-        return getDefaultStorageSpace(tenantId);
+        log.warn("Upload storage space '{}' is missing, falling back to default storage space", storageKey);
+        return getDefaultStorageSpace();
     }
-
     private long maxFileSizeBytes(Integer maxFileSizeMb) {
         int safeMaxFileSizeMb = maxFileSizeMb == null || maxFileSizeMb <= 0 ? 20 : maxFileSizeMb;
         return safeMaxFileSizeMb * 1024L * 1024L;
@@ -1278,23 +1256,20 @@ public class FileManagementAppService {
         return normalized;
     }
 
-    private void clearDefaultStorage(Long tenantId) {
-        fileStorageSpaceMapper.clearDefaultStorage(tenantId);
+    private void clearDefaultStorage() {
+        fileStorageSpaceMapper.clearDefaultStorage();
     }
 
-    private void ensureOneDefaultStorage(Long tenantId) {
-        Long count = fileStorageSpaceMapper.countDefaultStorage(tenantId);
+    private void ensureOneDefaultStorage() {
+        Long count = fileStorageSpaceMapper.countDefaultStorage();
         if (count != null && count > 0) {
             return;
         }
-        fileStorageSpaceMapper.ensureFirstDefaultStorage(tenantId);
+        fileStorageSpaceMapper.ensureFirstDefaultStorage();
     }
 
-    private void ensureDefaultStorageSpaces(Long tenantId) {
-        if (tenantId == null) {
-            return;
-        }
-        mergeLegacySystemPublicStorageSpace(tenantId);
+    private void ensureDefaultStorageSpaces() {
+        mergeLegacySystemPublicStorageSpace();
         for (DefaultStorageSpace storageSpace : DEFAULT_STORAGE_SPACES) {
             StoragePayload payload = new StoragePayload(
                     storageSpace.title(),
@@ -1314,33 +1289,33 @@ public class FileManagementAppService {
                     storageSpace.anonymousAccessAllowed(),
                     "ENABLED"
             );
-            FileStorageSpaceEntity existing = fileStorageSpaceMapper.findByStorageKey(tenantId, storageSpace.storageKey());
+            FileStorageSpaceEntity existing = fileStorageSpaceMapper.findByStorageKey(storageSpace.storageKey());
             if (existing != null) {
                 if (storageSpace.defaultStorage()
                         && (existing.getDefaultFlag() == null || existing.getDefaultFlag() == 0)) {
-                    clearDefaultStorage(tenantId);
-                    enableDefaultStorageSpace(tenantId, storageSpace.storageKey(), storageSpace.anonymousAccessAllowed());
+                    clearDefaultStorage();
+                    enableDefaultStorageSpace(storageSpace.storageKey(), storageSpace.anonymousAccessAllowed());
                 } else if (storageSpace.anonymousAccessAllowed()
                         && (existing.getAnonymousAccessAllowed() == null || existing.getAnonymousAccessAllowed() == 0)) {
-                    enableDefaultStorageSpaceAccess(tenantId, storageSpace.storageKey());
+                    enableDefaultStorageSpaceAccess(storageSpace.storageKey());
                 }
                 continue;
             }
             if (payload.defaultStorage()) {
-                clearDefaultStorage(tenantId);
+                clearDefaultStorage();
             }
-            FileStorageSpaceEntity entity = buildStorageSpaceEntity(tenantId, payload, SYSTEM_OPERATOR_ID);
+            FileStorageSpaceEntity entity = buildStorageSpaceEntity(payload, SYSTEM_OPERATOR_ID);
             try {
                 fileStorageSpaceMapper.insert(entity);
             } catch (DuplicateKeyException exception) {
-                restoreDefaultStorageSpace(tenantId, payload);
+                restoreDefaultStorageSpace(payload);
             }
         }
-        ensureOneDefaultStorage(tenantId);
+        ensureOneDefaultStorage();
     }
 
-    private void mergeLegacySystemPublicStorageSpace(Long tenantId) {
-        FileStorageSpaceEntity legacyStorageSpace = fileStorageSpaceMapper.findByStorageKey(tenantId, LEGACY_STORAGE_KEY_SYSTEM_PUBLIC);
+    private void mergeLegacySystemPublicStorageSpace() {
+        FileStorageSpaceEntity legacyStorageSpace = fileStorageSpaceMapper.findByStorageKey(LEGACY_STORAGE_KEY_SYSTEM_PUBLIC);
         if (legacyStorageSpace == null) {
             return;
         }
@@ -1351,7 +1326,6 @@ public class FileManagementAppService {
                         .set("bucket", STORAGE_KEY_LOCAL)
                         .set("updated_by", SYSTEM_OPERATOR_ID)
                         .set("updated_at", now)
-                        .eq("tenant_id", tenantId)
                         .eq("bucket", LEGACY_STORAGE_KEY_SYSTEM_PUBLIC)
                         .eq("deleted", 0)
         );
@@ -1361,12 +1335,11 @@ public class FileManagementAppService {
                         .set("deleted", 1)
                         .set("updated_by", SYSTEM_OPERATOR_ID)
                         .set("updated_at", now)
-                        .eq("tenant_id", tenantId)
                         .eq("storage_key", LEGACY_STORAGE_KEY_SYSTEM_PUBLIC)
         );
     }
 
-    private void enableDefaultStorageSpace(Long tenantId, String storageKey, boolean anonymousAccessAllowed) {
+    private void enableDefaultStorageSpace(String storageKey, boolean anonymousAccessAllowed) {
         fileStorageSpaceMapper.update(
                 null,
                 new LambdaUpdateWrapper<FileStorageSpaceEntity>()
@@ -1374,26 +1347,24 @@ public class FileManagementAppService {
                         .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, anonymousAccessAllowed ? 1 : 0)
                         .set(FileStorageSpaceEntity::getUpdatedBy, SYSTEM_OPERATOR_ID)
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
-                        .eq(FileStorageSpaceEntity::getTenantId, tenantId)
                         .eq(FileStorageSpaceEntity::getStorageKey, storageKey)
                         .eq(FileStorageSpaceEntity::getDeleted, 0)
         );
     }
 
-    private void enableDefaultStorageSpaceAccess(Long tenantId, String storageKey) {
+    private void enableDefaultStorageSpaceAccess(String storageKey) {
         fileStorageSpaceMapper.update(
                 null,
                 new LambdaUpdateWrapper<FileStorageSpaceEntity>()
                         .set(FileStorageSpaceEntity::getAnonymousAccessAllowed, 1)
                         .set(FileStorageSpaceEntity::getUpdatedBy, SYSTEM_OPERATOR_ID)
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
-                        .eq(FileStorageSpaceEntity::getTenantId, tenantId)
                         .eq(FileStorageSpaceEntity::getStorageKey, storageKey)
                         .eq(FileStorageSpaceEntity::getDeleted, 0)
         );
     }
 
-    private void restoreDefaultStorageSpace(Long tenantId, StoragePayload payload) {
+    private void restoreDefaultStorageSpace(StoragePayload payload) {
         fileStorageSpaceMapper.update(
                 null,
                 new LambdaUpdateWrapper<FileStorageSpaceEntity>()
@@ -1411,11 +1382,9 @@ public class FileManagementAppService {
                         .set(FileStorageSpaceEntity::getDeleted, 0)
                         .set(FileStorageSpaceEntity::getUpdatedBy, SYSTEM_OPERATOR_ID)
                         .set(FileStorageSpaceEntity::getUpdatedAt, LocalDateTime.now())
-                        .eq(FileStorageSpaceEntity::getTenantId, tenantId)
                         .eq(FileStorageSpaceEntity::getStorageKey, payload.storageKey())
         );
     }
-
     private String relativePathFromPublicUrl(String publicUrl) {
         return publicUrl;
     }
@@ -1451,11 +1420,10 @@ public class FileManagementAppService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private Long currentTenantId(CurrentUser currentUser) {
+    private void requireCurrentUser(CurrentUser currentUser) {
         if (currentUser == null) {
             throw visibleBizException(ErrorCode.FORBIDDEN, "Login required");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 
     private BizException visibleBizException(ErrorCode errorCode, String message) {
@@ -1473,7 +1441,7 @@ public class FileManagementAppService {
         String accessKeyId = defaultIfBlank(request.getAccessKeyId(), existing == null ? "" : existing.accessKeyId());
         String accessKeySecret = StringUtils.hasText(request.getAccessKeySecret()) ? request.getAccessKeySecret().trim() : null;
         if (existing != null && !StringUtils.hasText(accessKeySecret)) {
-            accessKeySecret = decryptSecret(fileStorageSpaceMapper.findAccessKeySecret(existing.tenantId(), existing.id()));
+            accessKeySecret = decryptSecret(fileStorageSpaceMapper.findAccessKeySecret(existing.id()));
         }
         String renameStrategy = normalizeRenameStrategy(defaultIfBlank(request.getRenameStrategy(), existing == null ? "APPEND_RANDOM_ID" : existing.renameStrategy()));
         Integer maxFileSizeMb = request.getMaxFileSizeMb() == null ? (existing == null ? 20 : existing.maxFileSizeMb()) : request.getMaxFileSizeMb();
@@ -1550,7 +1518,6 @@ public class FileManagementAppService {
     private FileObjectDTO mapFileObject(FileObjectEntity entity) {
         return new FileObjectDTO(
                 entity.getId(),
-                entity.getTenantId(),
                 entity.getUploadedBy(),
                 entity.getUploadedByName(),
                 entity.getOriginalFilename(),
@@ -1576,10 +1543,9 @@ public class FileManagementAppService {
         );
     }
 
-    private FileStorageSpaceEntity buildStorageSpaceEntity(Long tenantId, StoragePayload payload, Long operatorId) {
+    private FileStorageSpaceEntity buildStorageSpaceEntity(StoragePayload payload, Long operatorId) {
         LocalDateTime now = LocalDateTime.now();
         FileStorageSpaceEntity entity = new FileStorageSpaceEntity();
-        entity.setTenantId(tenantId);
         entity.setTitle(payload.title());
         entity.setStorageKey(payload.storageKey());
         entity.setProvider(payload.provider());
@@ -1609,7 +1575,6 @@ public class FileManagementAppService {
         Long fileCount = entity.getFileCount() == null ? 0L : entity.getFileCount();
         return new StorageSpaceDTO(
                 entity.getId(),
-                entity.getTenantId(),
                 entity.getTitle(),
                 entity.getStorageKey(),
                 entity.getProvider(),

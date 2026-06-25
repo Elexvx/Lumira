@@ -6,7 +6,7 @@ export interface FileListQuery extends Record<string, unknown> {
   fileExtension?: string;
   previewMode?: string;
   bucket?: string;
-  scope?: 'mine' | 'tenant';
+  scope?: 'mine' | 'shared';
   sortField?: string;
   sortOrder?: string;
   pageNo?: number;

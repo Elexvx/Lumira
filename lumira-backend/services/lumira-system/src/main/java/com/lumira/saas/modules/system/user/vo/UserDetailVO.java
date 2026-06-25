@@ -8,7 +8,6 @@ public class UserDetailVO extends UserVO {
     private List<Long> roleIds;
     private List<Long> deptIds;
     private Long primaryDeptId;
-    private List<Long> tenantIds;
     private List<UserIdentityVO> identities;
     private List<UserDeviceVO> recentDevices;
     private UserSecuritySettingVO securitySetting;
@@ -19,8 +18,6 @@ public class UserDetailVO extends UserVO {
     public void setDeptIds(List<Long> deptIds) { this.deptIds = deptIds; }
     public Long getPrimaryDeptId() { return primaryDeptId; }
     public void setPrimaryDeptId(Long primaryDeptId) { this.primaryDeptId = primaryDeptId; }
-    public List<Long> getTenantIds() { return tenantIds; }
-    public void setTenantIds(List<Long> tenantIds) { this.tenantIds = tenantIds; }
     public List<UserIdentityVO> getIdentities() { return identities; }
     public void setIdentities(List<UserIdentityVO> identities) { this.identities = identities; }
     public List<UserDeviceVO> getRecentDevices() { return recentDevices; }

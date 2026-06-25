@@ -1,4 +1,4 @@
-import type { CurrentUser, TenantPlugin } from '@/types/api';
+import type { CurrentUser, PluginAvailability } from '@/types/api';
 import { tokenManager } from '@/auth/token';
 import { isSuperAdminUser } from '@/auth/adminAccess';
 
@@ -9,7 +9,7 @@ const AI_ASSISTANT_PERMISSIONS = ['ai:assistant:view', 'ai:chat:send'];
 const AI_PERMISSIONS = [...AI_ASSISTANT_PERMISSIONS, 'ai:knowledge:view'];
 const SYSTEM_CONFIG_PERMISSIONS = ['system:config:view', 'system:config:update'];
 
-export default function access(initialState: { currentUser?: CurrentUser; availablePlugins?: TenantPlugin[] }) {
+export default function access(initialState: { currentUser?: CurrentUser; availablePlugins?: PluginAvailability[] }) {
   const permissions = new Set(initialState?.currentUser?.permissions ?? []);
   const isLogin = Boolean(initialState?.currentUser?.sessionId) || tokenManager.hasToken();
   const isSettingsAdmin = isSuperAdminUser(initialState?.currentUser);
@@ -46,9 +46,22 @@ export default function access(initialState: { currentUser?: CurrentUser; availa
     canVisitSystemMyFiles: isLogin && hasPermission(permissions, 'system:file:view'),
     canVisitDownloadCenter: isLogin && hasPermission(permissions, 'download:center:view'),
     canVisitTeam: isLogin && hasPermission(permissions, 'team:view'),
+    canVisitProjects: isLogin && hasPermission(permissions, 'aiadc:project:view'),
     canVisitActivitiesRoot: isLogin && hasPermission(permissions, 'aiadc:activity:view'),
     canVisitActivities: isLogin && hasPermission(permissions, 'aiadc:activity:view'),
     canVisitCompetitions: isLogin && hasPermission(permissions, 'aiadc:competition:view'),
+    canVisitPaymentOrders: isLogin && hasPermission(permissions, 'payment:order:view'),
+    canVisitCertificates:
+      isLogin &&
+      hasAnyPermission(permissions, [
+        'aiadc:certificate-template:view',
+        'aiadc:certificate-batch:view',
+        'aiadc:certificate-batch:create',
+        'aiadc:certificate:view',
+      ]),
+    canVisitCertificateTemplates: isLogin && hasPermission(permissions, 'aiadc:certificate-template:view'),
+    canVisitCertificateGenerate: isLogin && hasPermission(permissions, 'aiadc:certificate-batch:create'),
+    canVisitCertificateRecords: isLogin && hasPermission(permissions, 'aiadc:certificate:view'),
     canVisitExperts: isLogin && hasPermission(permissions, 'expert:view'),
     canVisitSystemAllFiles: isLogin && isSettingsAdmin,
     canVisitLocalization: isLogin && isSettingsAdmin,

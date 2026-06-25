@@ -14,7 +14,7 @@ class PluginServiceSqlHotPathTest {
     void hotPathSqlInOutboxServiceShouldUseDeleteAwareDispatchFiltersAndBoundedLimit() throws Exception {
         String source = serviceSource("src/main/java/com/lumira/saas/modules/plugin/event/PluginOutboxService.java");
 
-        assertThat(source).contains(normalizeSql("select id, tenant_id as tenantId"));
+        assertThat(source).contains(normalizeSql("select id, user_id as userId"));
         assertThat(source).contains(normalizeSql("from plugin_event_outbox"));
         assertThat(source).contains(normalizeSql("where deleted = 0"));
         assertThat(source).contains(normalizeSql("status = ? or (status = ? and (next_retry_at is null or next_retry_at <= ?)"));

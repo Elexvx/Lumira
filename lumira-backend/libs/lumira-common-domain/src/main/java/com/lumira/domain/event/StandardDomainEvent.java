@@ -10,7 +10,6 @@ public record StandardDomainEvent(
         String eventType,
         String aggregateType,
         String aggregateId,
-        Long tenantId,
         int schemaVersion,
         String eventKey,
         Instant occurredAt,
@@ -32,7 +31,6 @@ public record StandardDomainEvent(
             String eventType,
             String aggregateType,
             String aggregateId,
-            Long tenantId,
             Map<String, Object> attributes
     ) {
         return new StandardDomainEvent(
@@ -40,9 +38,8 @@ public record StandardDomainEvent(
                 eventType,
                 aggregateType,
                 aggregateId,
-                tenantId,
                 1,
-                eventType + ":" + tenantId + ":" + aggregateType + ":" + aggregateId,
+                eventType + ":" + aggregateType + ":" + aggregateId,
                 Instant.now(),
                 attributes
         );

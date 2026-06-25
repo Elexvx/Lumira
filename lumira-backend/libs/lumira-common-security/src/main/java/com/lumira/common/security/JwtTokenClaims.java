@@ -4,7 +4,6 @@ public class JwtTokenClaims {
     private String sessionId;
     private Long userId;
     private String username;
-    private Long currentTenantId;
     private Integer sessionVersion;
     private String tokenId;
     private JwtTokenType tokenType;
@@ -31,14 +30,6 @@ public class JwtTokenClaims {
 
     public void setUsername(String username) {
         this.username = username;
-    }
-
-    public Long getCurrentTenantId() {
-        return currentTenantId;
-    }
-
-    public void setCurrentTenantId(Long currentTenantId) {
-        this.currentTenantId = currentTenantId;
     }
 
     public Integer getSessionVersion() {

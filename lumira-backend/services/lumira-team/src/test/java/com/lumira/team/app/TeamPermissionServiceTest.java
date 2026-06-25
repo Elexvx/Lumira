@@ -17,7 +17,7 @@ class TeamPermissionServiceTest {
     void roleBoundariesShouldMatchTeamRules() {
         TeamPermissionService service = new TeamPermissionService(new PermissionQueries("OWNER"));
 
-        service.requireTeamOwner(1001L, 2001L, 3001L);
+        service.requireTeamOwner(2001L, 3001L);
         assertThat(service.canInvite("OWNER")).isTrue();
         assertThat(service.canInvite("ADMIN")).isTrue();
         assertThat(service.canInvite("MEMBER")).isFalse();
@@ -33,7 +33,7 @@ class TeamPermissionServiceTest {
     void memberCannotInviteOrRequireAdmin() {
         TeamPermissionService service = new TeamPermissionService(new PermissionQueries("MEMBER"));
 
-        assertThatThrownBy(() -> service.requireTeamAdmin(1001L, 2001L, 3001L))
+        assertThatThrownBy(() -> service.requireTeamAdmin(2001L, 3001L))
                 .isInstanceOf(BizException.class);
         assertThat(service.canInvite("MEMBER")).isFalse();
     }
@@ -49,7 +49,6 @@ class TeamPermissionServiceTest {
         public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
             TeamVO.Member member = new TeamVO.Member();
             member.setId(1L);
-            member.setTenantId(1001L);
             member.setTeamId(2001L);
             member.setUserId(3001L);
             member.setRole(role);

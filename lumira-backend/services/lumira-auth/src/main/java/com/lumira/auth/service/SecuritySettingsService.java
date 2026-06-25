@@ -3,7 +3,6 @@ package com.lumira.auth.service;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.SecuritySettingsDTO;
 import com.lumira.auth.config.AuthSecurityProperties;
-import com.lumira.common.constant.PlatformConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -94,7 +93,7 @@ public class SecuritySettingsService {
 
     private SecuritySettingsDTO loadSettingsFresh() {
         try {
-            SecuritySettingsDTO settings = systemInternalApi.securitySettings(PlatformConstants.PLATFORM_TENANT_ID);
+            SecuritySettingsDTO settings = systemInternalApi.securitySettings();
             if (settings != null) {
                 return settings;
             }

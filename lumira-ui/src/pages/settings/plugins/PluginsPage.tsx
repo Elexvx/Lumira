@@ -15,11 +15,11 @@ import { TableActionBar } from '@/features/table/TableActionBar';
 import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 import { request, type RequestOptions } from '@/services/common/request';
-import type { MenuNode, PluginDefinition, PluginRuntimeLog, PluginVersion, TenantPlugin } from '@/types/api';
+import type { MenuNode, PluginDefinition, PluginRuntimeLog, PluginVersion, PluginAvailability } from '@/types/api';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { confirmAction } from '@/utils/confirm';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
-import { getLocale } from '@umijs/max';
+import { getLocale, history } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
 import SensitiveWordsPage from '@/pages/plugins/SensitiveWordsPage';
 
@@ -56,7 +56,7 @@ const PluginCardsGrid = ({
   isMobile: boolean;
   loading: boolean;
   definitions: PluginDefinition[];
-  currentAvailableMap: Map<string, TenantPlugin>;
+  currentAvailableMap: Map<string, PluginAvailability>;
   getPreferredEnableVersion: (pluginCode: string) => { version: string } | undefined;
   mutationLoading: boolean;
   canEnable: boolean;
@@ -140,7 +140,7 @@ const PluginCardsGrid = ({
 const usePluginsPageData = () => {
   const { setInitialState } = useInitialStateModel();
   const [definitions, setDefinitions] = useState<PluginDefinition[]>([]);
-  const [availablePlugins, setAvailablePlugins] = useState<TenantPlugin[]>([]);
+  const [availablePlugins, setAvailablePlugins] = useState<PluginAvailability[]>([]);
   const [versionMap, setVersionMap] = useState<Record<string, PluginVersion[]>>({});
   const [loading, setLoading] = useState(true);
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -155,12 +155,12 @@ const usePluginsPageData = () => {
   const loadOverview = useCallback(async () => {
     setLoading(true);
     try {
-      const [definitionList, tenantPlugins, versionResult] = await Promise.all([
+      const [definitionList, fetchedAvailablePlugins, versionResult] = await Promise.all([
         request<PluginDefinition[]>('/v1/plugins/definitions', {
           method: 'GET',
           ...API_OPTS.NO_REDIRECT,
         }),
-        request<TenantPlugin[]>('/v1/plugins/current/available', {
+        request<PluginAvailability[]>('/v1/plugins/current/available', {
           method: 'GET',
           ...API_OPTS.NO_REDIRECT,
         }),
@@ -175,14 +175,14 @@ const usePluginsPageData = () => {
       });
 
       setDefinitions(definitionList);
-      setAvailablePlugins(tenantPlugins);
+      setAvailablePlugins(fetchedAvailablePlugins);
       setVersionMap(nextVersionMap);
 
       setInitialState((prev) =>
         prev
           ? {
               ...prev,
-              availablePlugins: tenantPlugins,
+              availablePlugins: fetchedAvailablePlugins,
             }
           : prev,
       );
@@ -224,7 +224,7 @@ const getPreferredEnableVersion = (pluginCode: string, versionMap: Record<string
   );
 };
 
-const buildAvailablePluginMap = (availablePlugins: TenantPlugin[]) =>
+const buildAvailablePluginMap = (availablePlugins: PluginAvailability[]) =>
   new Map(availablePlugins.map((item) => [item.pluginCode, item]));
 
 const filterPluginDefinitions = (definitions: PluginDefinition[], keyword: string) => {
@@ -348,7 +348,7 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
         method: 'GET',
         ...API_OPTS.NO_REDIRECT,
       }),
-      request<TenantPlugin[]>('/v1/plugins/current/available', {
+      request<PluginAvailability[]>('/v1/plugins/current/available', {
         method: 'GET',
         ...API_OPTS.NO_REDIRECT,
       }),
@@ -663,7 +663,7 @@ const usePluginMutationActions = ({ definitions, versionMap, loadOverview, panel
 type UsePluginManagementActionsParams = {
   loading: boolean;
   definitions: PluginDefinition[];
-  availablePlugins: TenantPlugin[];
+  availablePlugins: PluginAvailability[];
   versionMap: Record<string, PluginVersion[]>;
   searchKeyword: string;
   loadOverview: () => Promise<void>;
@@ -735,7 +735,7 @@ const usePluginManagementActions = ({
   const currentAvailableMap = useMemo(() => buildAvailablePluginMap(availablePlugins), [availablePlugins]);
   const filteredDefinitions = useMemo(() => filterPluginDefinitions(definitions, searchKeyword), [definitions, searchKeyword]);
   const selectedPluginVersions = selectedPlugin ? versionMap[selectedPlugin.pluginCode] || [] : [];
-  const selectedTenantPlugin = selectedPlugin ? currentAvailableMap.get(selectedPlugin.pluginCode) : undefined;
+  const selectedPluginAvailability = selectedPlugin ? currentAvailableMap.get(selectedPlugin.pluginCode) : undefined;
   const selectedActiveVersion = selectedPluginVersions.find((item) => item.isActive === 1) || selectedPluginVersions[0];
   const getPreferredEnableVersionForPlugin = useCallback((pluginCode: string) => getPreferredEnableVersion(pluginCode, versionMap), [versionMap]);
   const canUploadPlugin = actionPermission.can('plugin:management:upload');
@@ -789,7 +789,7 @@ const usePluginManagementActions = ({
     currentAvailableMap,
     filteredDefinitions,
     selectedPluginVersions,
-    selectedTenantPlugin,
+    selectedPluginAvailability,
     selectedActiveVersion,
     canUploadPlugin,
     canEnablePlugin,
@@ -814,7 +814,7 @@ const PluginVersionDrawer = ({
   responsive,
   selectedPlugin,
   selectedPluginVersions,
-  selectedTenantPlugin,
+  selectedPluginAvailability,
   selectedActiveVersion,
   mutationLoading,
   versionDrawerOpen,
@@ -824,7 +824,7 @@ const PluginVersionDrawer = ({
   responsive: { isMobile: boolean };
   selectedPlugin: PluginDefinition | null;
   selectedPluginVersions: PluginVersion[];
-  selectedTenantPlugin?: TenantPlugin;
+  selectedPluginAvailability?: PluginAvailability;
   selectedActiveVersion?: PluginVersion;
   mutationLoading: boolean;
   versionDrawerOpen: boolean;
@@ -843,7 +843,7 @@ const PluginVersionDrawer = ({
     <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
       <Descriptions bordered column={responsive.isMobile ? 1 : 2} size="small">
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.pluginCode', defaultMessage: 'Plugin code' })}>{selectedPlugin?.pluginCode || '-'}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.currentEnabledVersion', defaultMessage: 'Current enabled version' })}>{selectedTenantPlugin?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.currentEnabledVersion', defaultMessage: 'Current enabled version' })}>{selectedPluginAvailability?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.versionCount', defaultMessage: 'Version count' })}>{selectedPluginVersions.length}</Descriptions.Item>
       </Descriptions>
       <ManagementTable
@@ -863,14 +863,14 @@ const PluginVersionDrawer = ({
 const PluginDetailDrawer = ({
   detailDescriptionsProps,
   selectedPlugin,
-  selectedTenantPlugin,
+  selectedPluginAvailability,
   selectedActiveVersion,
   detailDrawerOpen,
   setDetailDrawerOpen,
 }: {
   detailDescriptionsProps: DescriptionsProps;
   selectedPlugin: PluginDefinition | null;
-  selectedTenantPlugin?: TenantPlugin;
+  selectedPluginAvailability?: PluginAvailability;
   selectedActiveVersion?: PluginVersion;
   detailDrawerOpen: boolean;
   setDetailDrawerOpen: (open: boolean) => void;
@@ -888,17 +888,17 @@ const PluginDetailDrawer = ({
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.author', defaultMessage: 'Author' })}>{selectedPlugin.author || '-'}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.apiVersion', defaultMessage: 'API version' })}>{selectedPlugin.pluginApiVersion}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.status', defaultMessage: 'Status' })}>{selectedPlugin.status}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.currentVersion', defaultMessage: 'Current version' })}>{selectedTenantPlugin?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.enabled', defaultMessage: 'Enabled' })}>{selectedTenantPlugin ? formatMessage({ id: 'page.plugins.enabled.true', defaultMessage: 'Enabled' }) : formatMessage({ id: 'page.plugins.enabled.false', defaultMessage: 'Disabled' })}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.currentVersion', defaultMessage: 'Current version' })}>{selectedPluginAvailability?.version || selectedActiveVersion?.version || '-'}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.enabled', defaultMessage: 'Enabled' })}>{selectedPluginAvailability ? formatMessage({ id: 'page.plugins.enabled.true', defaultMessage: 'Enabled' }) : formatMessage({ id: 'page.plugins.enabled.false', defaultMessage: 'Disabled' })}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.schemaMode', defaultMessage: 'Schema mode' })}>{selectedPlugin.schemaMode || '-'}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.lifecycleStatus', defaultMessage: 'Lifecycle status' })}>{selectedTenantPlugin?.lifecycleStatus || selectedActiveVersion?.lifecycleStatus || '-'}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.schemaStatus', defaultMessage: 'Schema status' })}>{selectedTenantPlugin?.schemaStatus || selectedActiveVersion?.schemaStatus || '-'}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.lifecycleStatus', defaultMessage: 'Lifecycle status' })}>{selectedPluginAvailability?.lifecycleStatus || selectedActiveVersion?.lifecycleStatus || '-'}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.schemaStatus', defaultMessage: 'Schema status' })}>{selectedPluginAvailability?.schemaStatus || selectedActiveVersion?.schemaStatus || '-'}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.hotDisable', defaultMessage: 'Hot disable' })}>{selectedPlugin.supportsHotDisable ? t('支持', 'Supported') : t('不支持', 'Not supported')}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.dataPurge', defaultMessage: 'Data purge' })}>{selectedPlugin.supportsDataPurge ? t('支持', 'Supported') : t('不支持', 'Not supported')}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.menuCount', defaultMessage: 'Menu count' })}>{selectedTenantPlugin?.menus?.length || 0}</Descriptions.Item>
-        <Descriptions.Item label={formatMessage({ id: 'page.plugins.routeCount', defaultMessage: 'Route count' })}>{selectedTenantPlugin?.routes?.length || 0}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.menuCount', defaultMessage: 'Menu count' })}>{selectedPluginAvailability?.menus?.length || 0}</Descriptions.Item>
+        <Descriptions.Item label={formatMessage({ id: 'page.plugins.routeCount', defaultMessage: 'Route count' })}>{selectedPluginAvailability?.routes?.length || 0}</Descriptions.Item>
         <Descriptions.Item label={formatMessage({ id: 'page.plugins.runtimeContributions', defaultMessage: 'Runtime contributions' })}>
-          {(selectedTenantPlugin?.runtimeContributions || selectedPlugin.runtimeContributions || []).join(', ') || '-'}
+          {(selectedPluginAvailability?.runtimeContributions || selectedPlugin.runtimeContributions || []).join(', ') || '-'}
         </Descriptions.Item>
       </Descriptions>
     ) : null}
@@ -1224,7 +1224,7 @@ const PluginsPage = () => {
     currentAvailableMap,
     selectedPlugin,
     selectedPluginVersions,
-    selectedTenantPlugin,
+    selectedPluginAvailability,
     selectedActiveVersion,
     runtimeLogs,
     logsLoading,
@@ -1336,7 +1336,14 @@ const PluginsPage = () => {
                 onOpenDetails={handleOpenDetails}
                 onOpenVersions={handleOpenVersions}
                 onOpenLogs={(plugin) => void handleOpenLogs(plugin)}
-                onOpenManagement={(plugin) => setManagedPluginCode(plugin.pluginCode)}
+                onOpenManagement={(plugin) => {
+                  const managementPath = resolvePluginManagementPath(plugin.pluginCode);
+                  if (managementPath && plugin.pluginCode !== 'sensitive-words') {
+                    history.push(managementPath);
+                    return;
+                  }
+                  setManagedPluginCode(plugin.pluginCode);
+                }}
                 onUninstall={handleUninstall}
               />
             </>
@@ -1347,7 +1354,7 @@ const PluginsPage = () => {
         responsive={responsive}
         selectedPlugin={selectedPlugin}
         selectedPluginVersions={selectedPluginVersions}
-        selectedTenantPlugin={selectedTenantPlugin}
+        selectedPluginAvailability={selectedPluginAvailability}
         selectedActiveVersion={selectedActiveVersion}
         mutationLoading={mutationLoading}
         versionDrawerOpen={versionDrawerOpen}
@@ -1357,7 +1364,7 @@ const PluginsPage = () => {
       <PluginDetailDrawer
         detailDescriptionsProps={detailDescriptionsProps}
         selectedPlugin={selectedPlugin}
-        selectedTenantPlugin={selectedTenantPlugin}
+        selectedPluginAvailability={selectedPluginAvailability}
         selectedActiveVersion={selectedActiveVersion}
         detailDrawerOpen={detailDrawerOpen}
         setDetailDrawerOpen={setDetailDrawerOpen}

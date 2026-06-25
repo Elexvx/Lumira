@@ -5,17 +5,17 @@ import com.lumira.team.vo.TeamVO;
 import java.util.List;
 
 public interface TeamJoinRequestRepository {
-    Long createPending(Long tenantId, Long teamId, Long userId, Long inviteId, String applyMessage);
+    Long createPending(Long teamId, Long userId, Long inviteId, String applyMessage);
 
-    TeamVO.JoinRequest findPending(Long tenantId, Long teamId, Long userId);
+    TeamVO.JoinRequest findPending(Long teamId, Long userId);
 
-    TeamVO.JoinRequest findById(Long tenantId, Long teamId, Long requestId);
+    TeamVO.JoinRequest findById(Long teamId, Long requestId);
 
-    List<TeamVO.JoinRequest> listByTeam(Long tenantId, Long teamId);
+    List<TeamVO.JoinRequest> listByTeam(Long teamId);
 
-    boolean approve(Long tenantId, Long teamId, Long requestId, Long reviewedBy, String reviewMessage);
+    boolean approve(Long teamId, Long requestId, Long reviewedBy, String reviewMessage);
 
-    boolean reject(Long tenantId, Long teamId, Long requestId, Long reviewedBy, String reviewMessage);
+    boolean reject(Long teamId, Long requestId, Long reviewedBy, String reviewMessage);
 
-    void closeRequestsByTeam(Long tenantId, Long teamId);
+    void closeRequestsByTeam(Long teamId);
 }

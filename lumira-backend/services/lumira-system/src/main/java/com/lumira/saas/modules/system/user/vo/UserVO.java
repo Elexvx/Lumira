@@ -22,7 +22,6 @@ public class UserVO {
     private String source;
     private LocalDateTime registeredAt;
     private LocalDateTime lastLoginAt;
-    private List<String> tenantNames;
     private List<String> roleNames;
     private List<String> deptNames;
     private LocalDateTime createdAt;
@@ -62,8 +61,6 @@ public class UserVO {
     public void setRegisteredAt(LocalDateTime registeredAt) { this.registeredAt = registeredAt; }
     public LocalDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(LocalDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }
-    public List<String> getTenantNames() { return tenantNames; }
-    public void setTenantNames(List<String> tenantNames) { this.tenantNames = tenantNames; }
     public List<String> getRoleNames() { return roleNames; }
     public void setRoleNames(List<String> roleNames) { this.roleNames = roleNames; }
     public List<String> getDeptNames() { return deptNames; }

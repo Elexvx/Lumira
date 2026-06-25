@@ -21,7 +21,7 @@ public record DelegationGrantDecision(
 
     public static DelegationGrantDecision notInScope() {
         return new DelegationGrantDecision(AuthorizationVerdict.ALLOW, "DELEGATION_NOT_IN_SCOPE",
-                "No delegation required", "tenant", "LOW", false, false, List.of("DELEGATION_NOT_IN_SCOPE"));
+                "No delegation required", "role", "LOW", false, false, List.of("DELEGATION_NOT_IN_SCOPE"));
     }
 
     public static DelegationGrantDecision deny(String reasonCode, String message) {
@@ -31,12 +31,12 @@ public record DelegationGrantDecision(
 
     public static DelegationGrantDecision requireConfirm(String reasonCode, String message, List<String> matchedPolicies) {
         return new DelegationGrantDecision(AuthorizationVerdict.REQUIRE_CONFIRM, reasonCode, message,
-                "tenant", "LOW", true, false, matchedPolicies == null || matchedPolicies.isEmpty() ? List.of(reasonCode) : List.copyOf(matchedPolicies));
+                "role", "LOW", true, false, matchedPolicies == null || matchedPolicies.isEmpty() ? List.of(reasonCode) : List.copyOf(matchedPolicies));
     }
 
     public static DelegationGrantDecision requireApproval(String reasonCode, String message, List<String> matchedPolicies) {
         return new DelegationGrantDecision(AuthorizationVerdict.REQUIRE_APPROVAL, reasonCode, message,
-                "tenant", "LOW", false, true, matchedPolicies == null || matchedPolicies.isEmpty() ? List.of(reasonCode) : List.copyOf(matchedPolicies));
+                "role", "LOW", false, true, matchedPolicies == null || matchedPolicies.isEmpty() ? List.of(reasonCode) : List.copyOf(matchedPolicies));
     }
 
     public boolean allowed() {

@@ -18,8 +18,8 @@ public class FileAiParseProcessor {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public AiParseResult prepareForAiParse(Long tenantId, Long fileId, Long userId) {
-        TextArtifact textArtifact = findTextArtifact(tenantId, fileId);
+    public AiParseResult prepareForAiParse(Long fileId, Long userId) {
+        TextArtifact textArtifact = findTextArtifact(fileId);
         if (textArtifact == null || !StringUtils.hasText(textArtifact.contentText())) {
             throw new IllegalStateException("TEXT_CONTENT artifact is unavailable for AI parse: " + fileId);
         }
@@ -28,23 +28,22 @@ public class FileAiParseProcessor {
                 ? normalizedText.substring(0, MAX_SUMMARY_CHARS)
                 : normalizedText;
         String payload = buildPayload(textArtifact, summary, normalizedText.length());
-        upsertArtifact(tenantId, fileId, payload, userId);
+        upsertArtifact(fileId, payload, userId);
         return new AiParseResult(fileId, normalizedText.length(), summary.length());
     }
 
-    private TextArtifact findTextArtifact(Long tenantId, Long fileId) {
+    private TextArtifact findTextArtifact(Long fileId) {
         return jdbcTemplate.queryForObject(
                 """
                         select content_text as contentText, content_length as contentLength
                         from file_processing_artifact
-                        where tenant_id = ? and file_id = ? and artifact_type = ? and deleted = 0
+                        where file_id = ? and artifact_type = ? and deleted = 0
                         limit 1
                         """,
                 (rs, rowNum) -> new TextArtifact(
                         rs.getString("contentText"),
                         rs.getInt("contentLength")
                 ),
-                tenantId,
                 fileId,
                 FileTextExtractionProcessor.ARTIFACT_TEXT_CONTENT
         );
@@ -63,13 +62,13 @@ public class FileAiParseProcessor {
                 + "}";
     }
 
-    private void upsertArtifact(Long tenantId, Long fileId, String payload, Long userId) {
+    private void upsertArtifact(Long fileId, String payload, Long userId) {
         jdbcTemplate.update(
                 """
                         insert into file_processing_artifact (
-                            tenant_id, file_id, task_type, artifact_type, content_text, content_length,
+                            file_id, task_type, artifact_type, content_text, content_length,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, 0)
                         on duplicate key update
                             task_type = values(task_type),
                             content_text = values(content_text),
@@ -78,7 +77,6 @@ public class FileAiParseProcessor {
                             updated_at = current_timestamp,
                             updated_by = values(updated_by)
                         """,
-                tenantId,
                 fileId,
                 FileProcessingTaskService.TASK_AI_PARSE,
                 ARTIFACT_AI_PARSE_READY,

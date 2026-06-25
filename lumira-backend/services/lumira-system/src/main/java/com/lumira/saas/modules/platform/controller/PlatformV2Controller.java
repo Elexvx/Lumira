@@ -35,8 +35,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequestMapping("/api/v2/platform")
 public class PlatformV2Controller {
 
-    private static final Long PLATFORM_TENANT_ID = com.lumira.common.constant.PlatformConstants.PLATFORM_TENANT_ID;
-
     private final SystemManagementAppService systemManagementAppService;
     private final SystemVerificationAppService systemVerificationAppService;
     private final OnlineSessionManagementAppService onlineSessionManagementAppService;
@@ -66,7 +64,7 @@ public class PlatformV2Controller {
     @GetMapping("/public/bootstrap")
     public ApiResponse<SystemVO.PublicBootstrapVO> publicBootstrap() {
         return recordPlatformBootstrap(() -> {
-            return ApiResponse.success(platformBootstrapService.getPublicBootstrap(PLATFORM_TENANT_ID), TraceContext.getRequestId());
+            return ApiResponse.success(platformBootstrapService.getPublicBootstrap(), TraceContext.getRequestId());
         });
     }
 
@@ -74,14 +72,13 @@ public class PlatformV2Controller {
     public ApiResponse<PageResponse<SystemVO.ConfigVO>> configs(
             @RequestParam(name = "configKey", required = false) String configKey,
             @RequestParam(name = "configName", required = false) String configName,
-            @RequestParam(name = "configScope", required = false) String configScope,
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require("system:config:view");
         return recordPlatformConfigRead(() ->
                 ApiResponse.success(
-                        systemManagementAppService.listConfigs(securityContextFacade.getCurrentUser(), configKey, configName, configScope, pageNo, pageSize),
+                        systemManagementAppService.listConfigs(securityContextFacade.getCurrentUser(), configKey, configName, pageNo, pageSize),
                         TraceContext.getRequestId()
                 )
         );
@@ -313,9 +310,9 @@ public class PlatformV2Controller {
     @GetMapping("/audit/summary")
     public ApiResponse<Map<String, Integer>> auditSummary() {
         require("audit:view");
-        PageResponse<SystemVO.AuditLogVO> login = systemManagementAppService.listLoginLogs(securityContextFacade.getCurrentUser(), null, null, 1, 1);
-        PageResponse<SystemVO.AuditLogVO> operation = systemManagementAppService.listOperationLogs(securityContextFacade.getCurrentUser(), null, null, 1, 1);
-        PageResponse<SystemVO.AuditLogVO> aiCall = systemManagementAppService.listAiCallLogs(securityContextFacade.getCurrentUser(), null, null, null, null, null, null, 1, 1);
+        PageResponse<SystemVO.AuditLogVO> login = systemManagementAppService.listLoginLogs(securityContextFacade.getCurrentUser(), null, 1, 1);
+        PageResponse<SystemVO.AuditLogVO> operation = systemManagementAppService.listOperationLogs(securityContextFacade.getCurrentUser(), null, 1, 1);
+        PageResponse<SystemVO.AuditLogVO> aiCall = systemManagementAppService.listAiCallLogs(securityContextFacade.getCurrentUser(), null, null, null, null, null, 1, 1);
         return ApiResponse.success(
                 Map.of(
                         "loginCount", (int) login.getTotal(),
@@ -329,7 +326,6 @@ public class PlatformV2Controller {
     @GetMapping("/audit/login-logs")
     public ApiResponse<PageResponse<SystemVO.AuditLogVO>> loginLogs(
             @RequestParam(name = "username", required = false) String username,
-            @RequestParam(name = "tenantId", required = false) Long tenantId,
             @RequestParam(name = "loginType", required = false) String loginType,
             @RequestParam(name = "startTime", required = false) String startTime,
             @RequestParam(name = "endTime", required = false) String endTime,
@@ -338,7 +334,7 @@ public class PlatformV2Controller {
     ) {
         require("audit:login:view");
         return ApiResponse.success(
-                systemManagementAppService.listLoginLogs(securityContextFacade.getCurrentUser(), username, tenantId, loginType, startTime, endTime, pageNo, pageSize),
+                systemManagementAppService.listLoginLogs(securityContextFacade.getCurrentUser(), username, loginType, startTime, endTime, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
@@ -346,7 +342,6 @@ public class PlatformV2Controller {
     @GetMapping("/audit/operation-logs")
     public ApiResponse<PageResponse<SystemVO.AuditLogVO>> operationLogs(
             @RequestParam(name = "username", required = false) String username,
-            @RequestParam(name = "tenantId", required = false) Long tenantId,
             @RequestParam(name = "startTime", required = false) String startTime,
             @RequestParam(name = "endTime", required = false) String endTime,
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
@@ -354,14 +349,13 @@ public class PlatformV2Controller {
     ) {
         require("audit:operation:view");
         return ApiResponse.success(
-                systemManagementAppService.listOperationLogs(securityContextFacade.getCurrentUser(), username, tenantId, startTime, endTime, pageNo, pageSize),
+                systemManagementAppService.listOperationLogs(securityContextFacade.getCurrentUser(), username, startTime, endTime, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/audit/ai-call-logs")
     public ApiResponse<PageResponse<SystemVO.AuditLogVO>> aiCallLogs(
-            @RequestParam(name = "tenantId", required = false) Long tenantId,
             @RequestParam(name = "employeeId", required = false) Long employeeId,
             @RequestParam(name = "skillCode", required = false) String skillCode,
             @RequestParam(name = "resultStatus", required = false) String resultStatus,
@@ -372,14 +366,13 @@ public class PlatformV2Controller {
     ) {
         require("audit:operation:view");
         return ApiResponse.success(
-                systemManagementAppService.listAiCallLogs(securityContextFacade.getCurrentUser(), tenantId, employeeId, skillCode, resultStatus, startTime, endTime, pageNo, pageSize),
+                systemManagementAppService.listAiCallLogs(securityContextFacade.getCurrentUser(), employeeId, skillCode, resultStatus, startTime, endTime, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }
 
     @GetMapping("/audit/verification-logs")
     public ApiResponse<PageResponse<SystemVO.AuditLogVO>> verificationLogs(
-            @RequestParam(name = "tenantId", required = false) Long tenantId,
             @RequestParam(name = "channel", required = false) String channel,
             @RequestParam(name = "scene", required = false) String scene,
             @RequestParam(name = "resultStatus", required = false) String resultStatus,
@@ -390,7 +383,7 @@ public class PlatformV2Controller {
     ) {
         require("audit:operation:view");
         return ApiResponse.success(
-                systemManagementAppService.listVerificationLogs(securityContextFacade.getCurrentUser(), tenantId, channel, scene, resultStatus, startTime, endTime, pageNo, pageSize),
+                systemManagementAppService.listVerificationLogs(securityContextFacade.getCurrentUser(), channel, scene, resultStatus, startTime, endTime, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }

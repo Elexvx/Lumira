@@ -21,7 +21,6 @@ public class PlatformEventPublisher {
     public void publishAfterCommit(
             String sourceType,
             String eventType,
-            Long tenantId,
             Long userId,
             String aggregateType,
             Long aggregateId,
@@ -30,22 +29,19 @@ public class PlatformEventPublisher {
         platformEventOutboxService.recordAfterCommit(
                 normalize(sourceType, PlatformEventTypes.SOURCE_SYSTEM),
                 normalize(eventType, "UNKNOWN"),
-                tenantId,
                 userId,
-                buildEventKey(eventType, tenantId, aggregateType, aggregateId),
-                buildPayload(tenantId, userId, aggregateType, aggregateId, attributes)
+                buildEventKey(eventType, aggregateType, aggregateId),
+                buildPayload(userId, aggregateType, aggregateId, attributes)
         );
     }
 
-    String buildEventKey(String eventType, Long tenantId, String aggregateType, Long aggregateId) {
+    String buildEventKey(String eventType, String aggregateType, Long aggregateId) {
         return normalize(eventType, "UNKNOWN")
-                + ":" + (tenantId == null ? "unknown" : tenantId)
                 + ":" + normalize(aggregateType, "aggregate")
                 + ":" + (aggregateId == null ? "none" : aggregateId);
     }
 
     private Map<String, Object> buildPayload(
-            Long tenantId,
             Long userId,
             String aggregateType,
             Long aggregateId,
@@ -54,7 +50,6 @@ public class PlatformEventPublisher {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("schemaVersion", SCHEMA_VERSION);
         payload.put("occurredAt", LocalDateTime.now());
-        payload.put("tenantId", tenantId);
         payload.put("userId", userId);
         payload.put("aggregateType", normalize(aggregateType, "aggregate"));
         payload.put("aggregateId", aggregateId);

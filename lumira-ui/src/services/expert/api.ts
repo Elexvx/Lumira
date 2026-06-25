@@ -21,6 +21,15 @@ export const updateExpert = (id: number, data: ExpertUpsertPayload) =>
     data,
   });
 
+export const uploadExpertAvatar = (file: File) => {
+  const data = new FormData();
+  data.append('file', file);
+  return request<string>('/v1/profile/uploads/avatar', {
+    method: 'POST',
+    data,
+  });
+};
+
 export const deleteExpert = (id: number) =>
   request<boolean>(`${EXPERT_API}/${id}`, {
     method: 'DELETE',

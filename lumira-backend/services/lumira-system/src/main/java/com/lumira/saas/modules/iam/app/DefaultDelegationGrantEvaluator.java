@@ -27,19 +27,18 @@ public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator
         if (request == null || (!"AI_AGENT".equals(normalize(request.channel())) && request.employeeId() == null)) {
             return DelegationGrantDecision.notInScope();
         }
-        Long tenantId = request.tenantId();
         Long humanUserId = request.humanUserId() == null && request.currentUser() != null
                 ? request.currentUser().getUserId()
                 : request.humanUserId();
         Long employeeId = request.employeeId();
-        if (tenantId == null || humanUserId == null || humanUserId <= 0 || employeeId == null || employeeId <= 0) {
+        if (humanUserId == null || humanUserId <= 0 || employeeId == null || employeeId <= 0) {
             return DelegationGrantDecision.deny("DELEGATION_CONTEXT_INCOMPLETE", "Delegation subject context is incomplete");
         }
-        Long humanSubjectId = subjectId(tenantId, "HUMAN_USER", humanUserId);
+        Long humanSubjectId = subjectId("HUMAN_USER", humanUserId);
         if (humanSubjectId == null) {
             return DelegationGrantDecision.deny("DELEGATION_HUMAN_SUBJECT_NOT_FOUND", "Delegating human subject was not found");
         }
-        Long employeeSubjectId = subjectId(tenantId, "DIGITAL_EMPLOYEE", employeeId);
+        Long employeeSubjectId = subjectId("DIGITAL_EMPLOYEE", employeeId);
         if (employeeSubjectId == null) {
             return DelegationGrantDecision.deny("DELEGATION_AGENT_SUBJECT_NOT_FOUND", "Delegated digital employee subject was not found");
         }
@@ -51,8 +50,7 @@ public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator
                                scope_type as scopeType, max_risk_level as maxRiskLevel,
                                require_confirm as requireConfirm, require_approval as requireApproval
                         from iam_delegation_grant
-                        where tenant_id = ?
-                          and delegator_subject_id = ?
+                        where delegator_subject_id = ?
                           and delegate_subject_id = ?
                           and status = 'ENABLED'
                           and deleted = 0
@@ -63,7 +61,6 @@ public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator
                           and (resource_code is null or resource_code = ?)
                           and (action_code is null or action_code = ?)
                         """,
-                tenantId,
                 humanSubjectId,
                 employeeSubjectId,
                 trim(request.toolCode()),
@@ -91,20 +88,18 @@ public class DefaultDelegationGrantEvaluator implements DelegationGrantEvaluator
         return DelegationGrantDecision.allow(scopeType, maxRiskLevel, requireConfirm, requireApproval, matched);
     }
 
-    private Long subjectId(Long tenantId, String subjectType, Long refId) {
+    private Long subjectId(String subjectType, Long refId) {
         return jdbcTemplate.queryForObject(
                 """
                         select id
                         from iam_subject
-                        where tenant_id = ?
-                          and subject_type = ?
+                        where subject_type = ?
                           and ref_id = ?
                           and status = 'ENABLED'
                           and deleted = 0
                         limit 1
-                        """,
+                """,
                 Long.class,
-                tenantId,
                 subjectType,
                 refId
         );

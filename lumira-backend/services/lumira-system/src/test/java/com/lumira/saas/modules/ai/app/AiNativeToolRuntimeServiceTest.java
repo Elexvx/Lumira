@@ -45,7 +45,7 @@ class AiNativeToolRuntimeServiceTest {
         assertThat(jdbcTemplate.lastUpdateArgs[3]).isEqualTo("system.permission.snapshot");
         assertThat(jdbcTemplate.lastUpdateArgs[5]).isEqualTo("allow");
         assertThat(jdbcTemplate.lastUpdateArgs[8]).isEqualTo("SUCCESS");
-        verify(permissionChecker).verifyToolAllowed(anyLong(), anyLong(), anyString(), any(), anyString(), anyBoolean());
+        verify(permissionChecker).verifyToolAllowed(anyLong(), anyString(), any(), anyString(), anyBoolean());
     }
 
     @Test
@@ -296,7 +296,7 @@ class AiNativeToolRuntimeServiceTest {
         public List<Map<String, Object>> queryForList(String sql, Object... args) {
             if (sql.contains("from sys_config")) {
                 Map<String, Object> row = new LinkedHashMap<>();
-                row.put("configKey", args[1]);
+                row.put("configKey", args[0]);
                 row.put("configName", "站点名称");
                 row.put("configValue", "SaaS Foundation");
                 return List.of(row);
@@ -317,12 +317,12 @@ class AiNativeToolRuntimeServiceTest {
     private static class StubPlatformQueryFacade implements AiPlatformQueryFacade {
 
         @Override
-        public List<Map<String, Object>> listMenus(Long tenantId, String status, int limit) {
+        public List<Map<String, Object>> listMenus(String status, int limit) {
             return List.of();
         }
 
         @Override
-        public Map<String, Object> readConfig(Long tenantId, String configKey) {
+        public Map<String, Object> readConfig(String configKey) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("configKey", configKey);
             row.put("configName", "站点名称");
@@ -333,7 +333,7 @@ class AiNativeToolRuntimeServiceTest {
 
     private static class StubIamQueryFacade implements AiIamQueryFacade {
         @Override
-        public UserSearchResult searchUsers(Long tenantId, String keyword, String status, int limit) {
+        public UserSearchResult searchUsers(String keyword, String status, int limit) {
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("id", 100L);
             row.put("username", "admin");
@@ -366,15 +366,13 @@ class AiNativeToolRuntimeServiceTest {
         @Override
         public FileObjectDTO getFileForUser(
                 Long fileId,
-                Long tenantId,
                 Long userId,
                 String username,
-                boolean tenantScope,
+                boolean sharedScope,
                 boolean downloadCenterScope
         ) {
             return new FileObjectDTO(
                     fileId,
-                    tenantId,
                     userId,
                     username,
                     "avatar.png",
@@ -402,17 +400,16 @@ class AiNativeToolRuntimeServiceTest {
 
         @Override
         public List<FileObjectDTO> searchFilesForUser(
-                Long tenantId,
                 Long userId,
                 String username,
                 String keyword,
                 String contentType,
                 String status,
-                boolean tenantScope,
+                boolean sharedScope,
                 int limit
         ) {
             searchCalled = true;
-            return List.of(getFileForUser(200L, tenantId, userId, username, tenantScope, false));
+            return List.of(getFileForUser(200L, userId, username, sharedScope, false));
         }
     }
 }

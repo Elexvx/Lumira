@@ -23,20 +23,20 @@ public class TeamPermissionService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public void requireTeamOwner(Long tenantId, Long teamId, Long userId) {
-        requireAnyRole(tenantId, teamId, userId, Set.of(OWNER), "Team owner permission required");
+    public void requireTeamOwner(Long teamId, Long userId) {
+        requireAnyRole(teamId, userId, Set.of(OWNER), "Team owner permission required");
     }
 
-    public void requireTeamAdmin(Long tenantId, Long teamId, Long userId) {
-        requireAnyRole(tenantId, teamId, userId, Set.of(OWNER, ADMIN), "Team admin permission required");
+    public void requireTeamAdmin(Long teamId, Long userId) {
+        requireAnyRole(teamId, userId, Set.of(OWNER, ADMIN), "Team admin permission required");
     }
 
-    public void requireTeamManager(Long tenantId, Long teamId, Long userId) {
-        requireAnyRole(tenantId, teamId, userId, Set.of(OWNER, ADMIN, MANAGER), "Team manager permission required");
+    public void requireTeamManager(Long teamId, Long userId) {
+        requireAnyRole(teamId, userId, Set.of(OWNER, ADMIN, MANAGER), "Team manager permission required");
     }
 
-    public void requireTeamMember(Long tenantId, Long teamId, Long userId) {
-        requireAnyRole(tenantId, teamId, userId, Set.of(OWNER, ADMIN, MANAGER, MEMBER), "Team membership required");
+    public void requireTeamMember(Long teamId, Long userId) {
+        requireAnyRole(teamId, userId, Set.of(OWNER, ADMIN, MANAGER, MEMBER), "Team membership required");
     }
 
     public boolean canInvite(String role) {
@@ -67,56 +67,52 @@ public class TeamPermissionService {
         return removingSelf && MEMBER.equals(actorRole);
     }
 
-    public TeamVO.Member activeMember(Long tenantId, Long teamId, Long userId) {
+    public TeamVO.Member activeMember(Long teamId, Long userId) {
         List<TeamVO.Member> members = jdbcTemplate.query(
                 """
-                        select id, tenant_id as tenantId, team_id as teamId, user_id as userId, role,
+                        select id, team_id as teamId, user_id as userId, role,
                                member_alias as memberAlias, status, invited_by as invitedBy,
                                joined_at as joinedAt, created_at as createdAt
                         from team_member
-                        where tenant_id = ?
-                          and team_id = ?
+                        where team_id = ?
                           and user_id = ?
                           and status = 'ACTIVE'
                           and deleted = 0
                         limit 1
-                        """,
+                """,
                 new BeanPropertyRowMapper<>(TeamVO.Member.class),
-                tenantId,
                 teamId,
                 userId
         );
         return members.isEmpty() ? null : members.get(0);
     }
 
-    public TeamVO.Member memberById(Long tenantId, Long teamId, Long memberId) {
+    public TeamVO.Member memberById(Long teamId, Long memberId) {
         List<TeamVO.Member> members = jdbcTemplate.query(
                 """
-                        select id, tenant_id as tenantId, team_id as teamId, user_id as userId, role,
+                        select id, team_id as teamId, user_id as userId, role,
                                member_alias as memberAlias, status, invited_by as invitedBy,
                                joined_at as joinedAt, created_at as createdAt
                         from team_member
-                        where tenant_id = ?
-                          and team_id = ?
+                        where team_id = ?
                           and id = ?
                           and deleted = 0
                         limit 1
-                        """,
+                """,
                 new BeanPropertyRowMapper<>(TeamVO.Member.class),
-                tenantId,
                 teamId,
                 memberId
         );
         return members.isEmpty() ? null : members.get(0);
     }
 
-    public String activeRole(Long tenantId, Long teamId, Long userId) {
-        TeamVO.Member member = activeMember(tenantId, teamId, userId);
+    public String activeRole(Long teamId, Long userId) {
+        TeamVO.Member member = activeMember(teamId, userId);
         return member == null ? null : member.getRole();
     }
 
-    private void requireAnyRole(Long tenantId, Long teamId, Long userId, Set<String> allowedRoles, String message) {
-        String role = activeRole(tenantId, teamId, userId);
+    private void requireAnyRole(Long teamId, Long userId, Set<String> allowedRoles, String message) {
+        String role = activeRole(teamId, userId);
         if (!allowedRoles.contains(role)) {
             throw new BizException(ErrorCode.FORBIDDEN, message, message);
         }

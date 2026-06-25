@@ -1,6 +1,6 @@
 import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Avatar, Button, Card, DatePicker, Divider, Empty, Form, Image, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Switch, Tag, Typography, Upload } from 'antd';
+import { Button, Card, DatePicker, Divider, Empty, Form, Image, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
@@ -12,6 +12,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { TableActionBar } from '@/features/table/TableActionBar';
+import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
 import { createActivity, deleteActivity, listActivities, updateActivity } from '@/services/activity/api';
 import type { ActivityBadgeTone, ActivityLocale, ActivityRecord, ActivityStatus, ActivityUpsertPayload } from '@/services/activity/types';
@@ -52,12 +53,29 @@ const statusColor: Record<ActivityStatus, string> = {
 
 const ALL_ACTIVITY_CATEGORY = '\u5168\u90e8';
 const ACTIVITY_CATEGORY_SOURCE_PAGE_SIZE = 200;
+const ACTIVITY_CATEGORY_DICT = 'aiadc_activity_category';
+
+const fallbackActivityCategoryOptions: Array<{ label: string; value: string }> = [
+  { label: '路演活动', value: '路演活动' },
+  { label: '创业沙龙', value: '创业沙龙' },
+  { label: '政策宣讲', value: '政策宣讲' },
+  { label: '培训活动', value: '培训活动' },
+  { label: '其他', value: '其他' },
+];
 
 const splitActivityTags = (tags?: string | null) =>
   (tags || '')
     .split(',')
     .map((tag) => tag.trim())
     .filter(Boolean);
+
+const splitActivityLocales = (value?: string | null) =>
+  (value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+const joinActivityLocales = (values?: ActivityLocale[]) => Array.from(new Set(values || [])).join(',');
 
 const getActivityCategory = (record: ActivityRecord) => record.subtitle?.trim() || undefined;
 
@@ -78,26 +96,17 @@ const buildActivityCategoryOptions = (records: ActivityRecord[]) => {
 
 const activityCoverThemes = ['blue', 'cyan', 'green', 'gold', 'purple', 'slate'] as const;
 
-const activityAvatarColors = ['#1677ff', '#13c2c2', '#52c41a', '#faad14', '#722ed1', '#eb2f96'];
-
 const getActivitySeed = (record: ActivityRecord) =>
   Array.from(`${record.code || record.id}-${record.title}`).reduce((total, char) => total + char.charCodeAt(0), 0);
 
 const getActivityCoverTheme = (record: ActivityRecord) => activityCoverThemes[getActivitySeed(record) % activityCoverThemes.length];
 
-const getActivityParticipants = (record: ActivityRecord) => {
-  const tags = splitActivityTags(record.tags);
-  const source = [record.subtitle, ...tags, record.location, record.locale === 'zh' ? 'CN' : 'EN'].filter(Boolean) as string[];
-  return source.length ? source.slice(0, 3) : [record.title, record.activityDate, record.location].filter(Boolean).slice(0, 3);
-};
-
-const getActivityInitial = (value?: string | null) => (value || 'A').trim().slice(0, 1).toUpperCase();
-
 const isActivitySearchRoute = (pathname: string) => pathname === '/activities/search';
 const isActivityManagementRoute = (pathname: string) => pathname === '/activities/management';
 
-type ActivityFormValues = Omit<ActivityUpsertPayload, 'code' | 'activityDate' | 'activityTime'> & {
+type ActivityFormValues = Omit<ActivityUpsertPayload, 'code' | 'activityDate' | 'activityTime' | 'locale'> & {
   code?: string;
+  locale: ActivityLocale[];
   activityDateTimeRange?: [Dayjs, Dayjs] | [string, string];
 };
 
@@ -140,6 +149,7 @@ const normalizePayload = (values: ActivityFormValues): ActivityUpsertPayload => 
   return {
     ...payloadValues,
     code: trimOptional(values.code),
+    locale: joinActivityLocales(values.locale),
     title: values.title.trim(),
     activityDate,
     activityTime,
@@ -196,6 +206,7 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageUrl = Form.useWatch('imageUrl', form);
   const previewUrl = normalizeUploadUrl(imageUrl);
+  const { options: activityCategoryOptions } = useDictOptions(ACTIVITY_CATEGORY_DICT, fallbackActivityCategoryOptions);
 
   const handleImageUpload = async (file: File) => {
     setUploadingImage(true);
@@ -217,7 +228,7 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
       form={form}
       layout="vertical"
       initialValues={{
-        locale: 'zh',
+        locale: ['zh'],
         status: 'draft',
         sort: 100,
         featured: false,
@@ -226,13 +237,19 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
       }}
     >
       <Form.Item name="locale" label="语言" rules={[{ required: true }]}>
-        <Select options={localeOptions} />
+        <Select mode="multiple" maxTagCount="responsive" options={localeOptions} placeholder="璇█锛堝彲澶氶€夛級" />
       </Form.Item>
       <Form.Item name="title" label="活动标题" rules={[{ required: true, message: '请输入活动标题' }]}>
         <Input maxLength={128} />
       </Form.Item>
       <Form.Item name="subtitle" label="活动分类">
-        <Input maxLength={64} placeholder="例如 路演活动 / 创业沙龙 / 政策宣讲" />
+        <Select
+          allowClear
+          showSearch
+          optionFilterProp="label"
+          options={activityCategoryOptions}
+          placeholder="请选择活动分类"
+        />
       </Form.Item>
       <Form.Item name="description" label="活动描述">
         <Input.TextArea rows={4} maxLength={1000} />
@@ -250,6 +267,7 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
       >
         <DatePicker.RangePicker
           showTime={{ format: 'HH:mm' }}
+          needConfirm={false}
           format="YYYY.MM.DD HH:mm"
           minuteStep={15}
           placeholder={['开始日期', '结束日期']}
@@ -510,7 +528,6 @@ const ActivitySearchView = () => {
                 const tags = splitActivityTags(record.tags);
                 const coverUrl = normalizeUploadUrl(record.imageUrl || '');
                 const coverTheme = getActivityCoverTheme(record);
-                const participants = getActivityParticipants(record);
                 return (
                   <div key={record.id}>
                     <article className="activity-search-result">
@@ -541,23 +558,16 @@ const ActivitySearchView = () => {
                       </Space>
                     ) : null}
                         <div className="activity-search-result__footer">
-                        <Space wrap className="activity-search-result__meta">
-                          <Typography.Text type="secondary">{record.activityDate || '-'}</Typography.Text>
-                          <Typography.Text type="secondary">{record.activityTime || '-'}</Typography.Text>
-                          <Typography.Text type="secondary">{record.location || '-'}</Typography.Text>
-                          <Typography.Text type="secondary">{record.locale === 'zh' ? '中文' : 'English'}</Typography.Text>
+                        <Space direction="vertical" size={4} className="activity-search-result__meta">
+                          <Typography.Text type="secondary">时间：{[record.activityDate, record.activityTime].filter(Boolean).join(' ') || '-'}</Typography.Text>
+                          <Typography.Text type="secondary">地点：{record.location || '-'}</Typography.Text>
+                          <Typography.Text type="secondary">
+                            使用语言：
+                            {splitActivityLocales(record.locale)
+                              .map((locale) => (locale === 'zh' ? '中文' : locale === 'en' ? 'English' : locale))
+                              .join(' / ') || '-'}
+                          </Typography.Text>
                         </Space>
-                        <Avatar.Group max={{ count: 3 }}>
-                          {participants.map((participant, participantIndex) => (
-                            <Avatar
-                              key={`${record.id}-${participant}`}
-                              size={24}
-                              style={{ backgroundColor: activityAvatarColors[(getActivitySeed(record) + participantIndex) % activityAvatarColors.length] }}
-                            >
-                              {getActivityInitial(participant)}
-                            </Avatar>
-                          ))}
-                        </Avatar.Group>
                         </div>
                       </div>
                   </article>
@@ -606,7 +616,7 @@ const ActivityManagementView = () => {
     setEditingRecord(undefined);
     form.resetFields();
     form.setFieldsValue({
-      locale: 'zh',
+      locale: ['zh'],
       status: 'draft',
       sort: 100,
       featured: false,
@@ -621,6 +631,7 @@ const ActivityManagementView = () => {
     form.resetFields();
     form.setFieldsValue({
       ...record,
+      locale: splitActivityLocales(record.locale) as ActivityLocale[],
       subtitle: record.subtitle || undefined,
       description: record.description || undefined,
       imageUrl: record.imageUrl || undefined,
@@ -661,12 +672,7 @@ const ActivityManagementView = () => {
       {
         title: '活动',
         dataIndex: 'keyword',
-        render: (_, record) => (
-          <Space direction="vertical" size={0}>
-            <Typography.Text strong>{record.title}</Typography.Text>
-            {record.subtitle ? <Typography.Text type="secondary">{record.subtitle}</Typography.Text> : null}
-          </Space>
-        ),
+        render: (_, record) => <Typography.Text strong>{record.title}</Typography.Text>,
       },
       {
         title: '分类',
@@ -683,6 +689,11 @@ const ActivityManagementView = () => {
           en: { text: 'English' },
         },
         width: 96,
+        render: (value) => {
+          const locales = splitActivityLocales(typeof value === 'string' ? value : undefined);
+          if (!locales.length) return '-';
+          return <Space size={4} wrap>{locales.map((item) => <Tag key={item}>{item === 'zh' ? '涓枃' : item === 'en' ? 'English' : item}</Tag>)}</Space>;
+        },
       },
       {
         title: '日期',

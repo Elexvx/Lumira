@@ -10,3 +10,282 @@
 .competition-tags {
   max-width: 260px;
 }
+
+.competition-create-page {
+  padding: 0 0 32px;
+}
+
+.competition-create-shell {
+  border-radius: var(--saas-card-radius);
+}
+
+.competition-create-shell .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.competition-create-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0;
+}
+
+.competition-create-step > * {
+  width: 100%;
+  max-width: 760px;
+}
+
+.competition-create-step > .ant-form {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.competition-create-step .ant-form {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.competition-create-terms {
+  display: flex;
+  flex-direction: column;
+  gap: var(--saas-spacing-md);
+}
+
+.competition-create-terms__content {
+  max-height: 420px;
+  overflow: auto;
+  padding: var(--saas-spacing-24);
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: var(--saas-card-radius);
+  background: var(--ant-color-bg-container);
+  color: var(--ant-color-text);
+  line-height: 1.75;
+}
+
+.competition-create-terms__content > :first-child,
+.competition-create-terms__content h1:first-child,
+.competition-create-terms__content h2:first-child,
+.competition-create-terms__content h3:first-child {
+  margin-top: 0;
+}
+
+.competition-create-terms__content > :last-child {
+  margin-bottom: 0;
+}
+
+.competition-create-terms__content ul,
+.competition-create-terms__content ol {
+  padding-left: var(--saas-spacing-22);
+}
+
+.competition-create-actions {
+  display: flex;
+  position: relative;
+  width: 100%;
+  max-width: 760px;
+  justify-content: center;
+  gap: var(--saas-spacing-sm);
+  margin: 0 auto;
+  padding-top: 24px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.competition-create-draft-status {
+  position: absolute;
+  left: 0;
+  align-self: center;
+}
+
+.competition-dynamic-list,
+.competition-qr-upload {
+  width: 100%;
+}
+
+.competition-dynamic-list__row,
+.competition-schedule-row {
+  display: flex;
+  width: 100%;
+  gap: var(--saas-form-item-gap);
+  align-items: flex-start;
+}
+
+.competition-dynamic-list__row {
+  align-items: flex-start;
+}
+
+.competition-dynamic-list__actions,
+.competition-schedule-row__actions {
+  display: inline-flex;
+  flex: none;
+  gap: var(--saas-spacing-xs);
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 76px;
+  margin-top: 4px;
+}
+
+.competition-dynamic-list__actions .ant-btn,
+.competition-schedule-row__actions .ant-btn {
+  flex: none;
+}
+
+.competition-dynamic-list__role {
+  flex: 0 0 180px;
+  margin-bottom: 0;
+}
+
+.competition-dynamic-list__main,
+.competition-schedule-row__title {
+  flex: 1 1 220px;
+  margin-bottom: 0;
+}
+
+.competition-schedule-row__title {
+  max-width: 360px;
+}
+
+.competition-schedule-row {
+  flex-wrap: wrap;
+}
+
+.competition-schedule-list {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: var(--saas-form-item-gap);
+}
+
+.competition-schedule-status {
+  margin-bottom: 0;
+}
+
+.competition-schedule-status .ant-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--saas-spacing-lg);
+}
+
+.competition-schedule-status .ant-radio-wrapper {
+  margin-inline-end: 0;
+}
+
+.competition-schedule-row__mode {
+  flex: 0 0 140px;
+  margin-bottom: 0;
+}
+
+.competition-schedule-row__time {
+  flex: 1 1 320px;
+  margin-bottom: 0;
+}
+
+.competition-inline-fields {
+  display: grid !important;
+  grid-template-columns: 1fr;
+  gap: 0;
+  width: 100%;
+  max-width: 760px;
+  align-self: flex-start;
+  margin-left: max(0px, calc((100% - 760px) / 2));
+}
+
+.competition-inline-fields > .ant-space-item,
+.competition-inline-fields__item {
+  width: 100%;
+  min-width: 0;
+}
+
+.competition-inline-fields .ant-input-number,
+.competition-inline-fields .ant-select {
+  width: 100%;
+}
+
+.competition-qr-upload__preview {
+  display: grid;
+  width: 160px;
+  height: 160px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px dashed var(--ant-color-border);
+  border-radius: var(--saas-card-radius);
+  background: var(--ant-color-fill-quaternary);
+}
+
+.competition-homepage-step {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.competition-create-step > .competition-homepage-step {
+  max-width: 760px;
+}
+
+.competition-homepage-step .ant-form-item,
+.competition-homepage-step .ant-form-item-control,
+.competition-homepage-step .ant-form-item-control-input,
+.competition-homepage-step .ant-form-item-control-input-content,
+.competition-homepage-step .agreement-markdown-editor {
+  max-width: 100%;
+  width: 100%;
+}
+
+.saas-management-page .competition-homepage-step .ant-form-item-control {
+  flex: 1 1 100%;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .competition-create-step {
+    padding-top: 0;
+  }
+
+  .competition-create-actions {
+    flex-wrap: wrap;
+  }
+
+  .competition-create-draft-status {
+    position: static;
+    width: 100%;
+    text-align: center;
+  }
+
+  .competition-create-actions .ant-btn {
+    flex: 1 1 calc(50% - var(--saas-spacing-sm));
+  }
+
+  .competition-dynamic-list__row,
+  .competition-schedule-row,
+  .competition-inline-fields {
+    flex-direction: column;
+  }
+
+  .competition-inline-fields {
+    grid-template-columns: 1fr;
+    width: 100%;
+    align-self: stretch;
+    margin-left: 0;
+  }
+
+  .competition-dynamic-list__role,
+  .competition-dynamic-list__main,
+  .competition-dynamic-list__actions,
+  .competition-schedule-row__actions,
+  .competition-schedule-row__mode,
+  .competition-schedule-row__title,
+  .competition-schedule-row__time,
+  .competition-inline-fields__item {
+    width: 100%;
+    flex: none;
+  }
+
+  .competition-dynamic-list__actions,
+  .competition-schedule-row__actions {
+    min-width: 0;
+    justify-content: flex-start;
+  }
+}

@@ -3,7 +3,6 @@ package com.lumira.saas.modules.system.department.app;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.department.dto.DepartmentUpsertRequest;
@@ -39,11 +38,10 @@ public class SystemDepartmentAppService {
     }
 
     public List<DepartmentVO> listDepartments(CurrentUser currentUser) {
-        Long tenantId = currentTenantId(currentUser);
+        assertAuthenticated(currentUser);
         List<DepartmentVO> rows = jdbcTemplate.query(
                 """
                         select d.id,
-                               d.tenant_id as tenantId,
                                d.parent_id as parentId,
                                d.dept_code as deptCode,
                                d.dept_name as deptName,
@@ -56,23 +54,20 @@ public class SystemDepartmentAppService {
                         left join (
                             select dept_id, count(distinct user_id) as user_count
                             from sys_user_department
-                            where tenant_id = ?
-                              and deleted = 0
+                            where deleted = 0
                             group by dept_id
                         ) uc on uc.dept_id = d.id
-                        where d.tenant_id = ?
-                          and d.deleted = 0
+                        where d.deleted = 0
                         order by d.sort_no asc, d.id asc
                         """,
-                new BeanPropertyRowMapper<>(DepartmentVO.class),
-                tenantId,
-                tenantId
+                new BeanPropertyRowMapper<>(DepartmentVO.class)
         );
         return buildTree(rows);
     }
 
     public DepartmentVO getDepartment(CurrentUser currentUser, Long id) {
-        DepartmentVO department = queryDepartment(currentTenantId(currentUser), id);
+        assertAuthenticated(currentUser);
+        DepartmentVO department = queryDepartment(id);
         if (department == null) {
             throw visibleBizException(ErrorCode.NOT_FOUND, "部门不存在");
         }
@@ -81,18 +76,17 @@ public class SystemDepartmentAppService {
 
     @Transactional
     public DepartmentVO createDepartment(CurrentUser currentUser, DepartmentUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
-        validateParent(tenantId, null, request.getParentId());
-        validateDeptCodeUnique(tenantId, null, request.getDeptCode());
+        assertAuthenticated(currentUser);
+        validateParent(null, request.getParentId());
+        validateDeptCodeUnique(null, request.getDeptCode());
         try {
             jdbcTemplate.update(
                     """
                             insert into sys_department (
-                                tenant_id, parent_id, dept_code, dept_name, sort_no, status,
+                                parent_id, dept_code, dept_name, sort_no, status,
                                 created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            ) values (?, ?, ?, ?, ?, ?, ?, 0)
                             """,
-                    tenantId,
                     normalizeParentId(request.getParentId()),
                     request.getDeptCode(),
                     request.getDeptName(),
@@ -105,18 +99,18 @@ public class SystemDepartmentAppService {
             throw visibleBizException(ErrorCode.VALIDATION_ERROR, "部门编码已存在，请更换后重试");
         }
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        rebuildClosureForSubtree(tenantId, id);
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "department", "create", "CREATE", "SUCCESS", "创建部门: " + request.getDeptName());
+        rebuildClosureForSubtree(id);
+        permissionSnapshotService.invalidatePermissions();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "department", "create", "CREATE", "SUCCESS", "创建部门: " + request.getDeptName());
         return getDepartment(currentUser, id);
     }
 
     @Transactional
     public DepartmentVO updateDepartment(CurrentUser currentUser, Long id, DepartmentUpsertRequest request) {
-        Long tenantId = currentTenantId(currentUser);
+        assertAuthenticated(currentUser);
         DepartmentVO existing = getDepartment(currentUser, id);
-        validateParent(tenantId, id, request.getParentId());
-        validateDeptCodeUnique(tenantId, id, request.getDeptCode());
+        validateParent(id, request.getParentId());
+        validateDeptCodeUnique(id, request.getDeptCode());
         int updated;
         try {
             updated = jdbcTemplate.update(
@@ -129,8 +123,7 @@ public class SystemDepartmentAppService {
                                 status = ?,
                                 updated_by = ?,
                                 updated_at = ?
-                            where tenant_id = ?
-                              and id = ?
+                            where id = ?
                               and deleted = 0
                             """,
                     normalizeParentId(request.getParentId()),
@@ -140,7 +133,6 @@ public class SystemDepartmentAppService {
                     normalizeStatus(request.getStatus()),
                     currentUser.getUserId(),
                     LocalDateTime.now(),
-                    tenantId,
                     id
             );
         } catch (DuplicateKeyException exception) {
@@ -149,26 +141,24 @@ public class SystemDepartmentAppService {
         if (updated == 0) {
             throw visibleBizException(ErrorCode.NOT_FOUND, "部门不存在");
         }
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "department", "update", "UPDATE", "SUCCESS", "更新部门: " + existing.getDeptName());
+        permissionSnapshotService.invalidatePermissions();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "department", "update", "UPDATE", "SUCCESS", "更新部门: " + existing.getDeptName());
         return getDepartment(currentUser, id);
     }
 
     @Transactional
     public boolean deleteDepartment(CurrentUser currentUser, Long id) {
-        Long tenantId = currentTenantId(currentUser);
+        assertAuthenticated(currentUser);
         DepartmentVO existing = getDepartment(currentUser, id);
         boolean hasChildDepartment = jdbcTemplate.exists(
-                "select 1 from sys_department where tenant_id = ? and parent_id = ? and deleted = 0 limit 1",
-                tenantId,
+                "select 1 from sys_department where parent_id = ? and deleted = 0 limit 1",
                 id
         );
         if (hasChildDepartment) {
             throw visibleBizException(ErrorCode.BIZ_ERROR, "存在下级部门，不能删除");
         }
         boolean hasAssignedUsers = jdbcTemplate.exists(
-                "select 1 from sys_user_department where tenant_id = ? and dept_id = ? and deleted = 0 limit 1",
-                tenantId,
+                "select 1 from sys_user_department where dept_id = ? and deleted = 0 limit 1",
                 id
         );
         if (hasAssignedUsers) {
@@ -178,23 +168,21 @@ public class SystemDepartmentAppService {
                 """
                         update sys_department
                         set deleted = 1, updated_by = ?, updated_at = ?
-                        where tenant_id = ? and id = ? and deleted = 0
+                        where id = ? and deleted = 0
                         """,
                 currentUser.getUserId(),
                 LocalDateTime.now(),
-                tenantId,
                 id
         );
-        permissionSnapshotService.invalidateTenant(tenantId);
-        operationAuditService.log(tenantId, currentUser.getUserId(), currentUser.getUsername(), "department", "delete", "DELETE", "SUCCESS", "删除部门: " + existing.getDeptName());
+        permissionSnapshotService.invalidatePermissions();
+        operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "department", "delete", "DELETE", "SUCCESS", "删除部门: " + existing.getDeptName());
         return true;
     }
 
-    private DepartmentVO queryDepartment(Long tenantId, Long id) {
+    private DepartmentVO queryDepartment(Long id) {
         List<DepartmentVO> list = jdbcTemplate.query(
                 """
                         select d.id,
-                               d.tenant_id as tenantId,
                                d.parent_id as parentId,
                                d.dept_code as deptCode,
                                d.dept_name as deptName,
@@ -207,23 +195,19 @@ public class SystemDepartmentAppService {
                         left join (
                             select dept_id, count(distinct user_id) as user_count
                             from sys_user_department
-                            where tenant_id = ?
-                              and deleted = 0
+                            where deleted = 0
                             group by dept_id
                         ) uc on uc.dept_id = d.id
-                        where d.tenant_id = ?
-                          and d.id = ?
+                        where d.id = ?
                           and d.deleted = 0
                         """,
                 new BeanPropertyRowMapper<>(DepartmentVO.class),
-                tenantId,
-                tenantId,
                 id
         );
         return list.isEmpty() ? null : list.get(0);
     }
 
-    private void validateParent(Long tenantId, Long currentId, Long parentId) {
+    private void validateParent(Long currentId, Long parentId) {
         Long normalizedParentId = normalizeParentId(parentId);
         if (normalizedParentId == null) {
             return;
@@ -231,7 +215,7 @@ public class SystemDepartmentAppService {
         if (normalizedParentId.equals(currentId)) {
             throw visibleBizException(ErrorCode.VALIDATION_ERROR, "上级部门不能选择自身");
         }
-        DepartmentVO parent = queryDepartment(tenantId, normalizedParentId);
+        DepartmentVO parent = queryDepartment(normalizedParentId);
         if (parent == null) {
             throw visibleBizException(ErrorCode.NOT_FOUND, "上级部门不存在");
         }
@@ -241,12 +225,12 @@ public class SystemDepartmentAppService {
             if (cursor.equals(currentId)) {
                 throw visibleBizException(ErrorCode.VALIDATION_ERROR, "不能把部门移动到自己的下级");
             }
-            DepartmentVO ancestor = queryDepartment(tenantId, cursor);
+            DepartmentVO ancestor = queryDepartment(cursor);
             cursor = ancestor == null ? null : ancestor.getParentId();
         }
     }
 
-    private void rebuildClosureForSubtree(Long tenantId, Long rootDepartmentId) {
+    private void rebuildClosureForSubtree(Long rootDepartmentId) {
         if (rootDepartmentId == null) {
             return;
         }
@@ -255,49 +239,45 @@ public class SystemDepartmentAppService {
                         with recursive dept_tree as (
                             select id
                             from sys_department
-                            where tenant_id = ? and id = ? and deleted = 0
+                            where id = ? and deleted = 0
                             union all
                             select child.id
                             from sys_department child
                             join dept_tree parent on parent.id = child.parent_id
-                            where child.tenant_id = ? and child.deleted = 0
+                            where child.deleted = 0
                         )
                         select id from dept_tree
                         """,
                 Long.class,
-                tenantId,
-                rootDepartmentId,
-                tenantId
+                rootDepartmentId
         );
         if (subtreeIds == null || subtreeIds.isEmpty()) {
             return;
         }
         String placeholders = "?,".repeat(subtreeIds.size()).replaceFirst(",$", "");
         List<Object> deleteArgs = new ArrayList<>();
-        deleteArgs.add(tenantId);
         deleteArgs.addAll(subtreeIds);
         jdbcTemplate.update(
-                "delete from sys_department_closure where tenant_id = ? and descendant_id in (" + placeholders + ")",
+                "delete from sys_department_closure where descendant_id in (" + placeholders + ")",
                 deleteArgs.toArray()
         );
         for (Long descendantId : subtreeIds) {
-            insertClosureForDepartment(tenantId, descendantId);
+            insertClosureForDepartment(descendantId);
         }
     }
 
-    private void insertClosureForDepartment(Long tenantId, Long departmentId) {
-        DepartmentVO department = queryDepartment(tenantId, departmentId);
+    private void insertClosureForDepartment(Long departmentId) {
+        DepartmentVO department = queryDepartment(departmentId);
         if (department == null) {
             return;
         }
         LocalDateTime now = LocalDateTime.now();
         jdbcTemplate.update(
                 """
-                        insert into sys_department_closure (tenant_id, ancestor_id, descendant_id, depth, deleted, created_at)
-                        values (?, ?, ?, 0, 0, ?)
+                        insert into sys_department_closure (ancestor_id, descendant_id, depth, deleted, created_at)
+                        values (?, ?, 0, 0, ?)
                         on duplicate key update deleted = 0, depth = values(depth)
                         """,
-                tenantId,
                 departmentId,
                 departmentId,
                 now
@@ -308,22 +288,20 @@ public class SystemDepartmentAppService {
         }
         jdbcTemplate.update(
                 """
-                        insert into sys_department_closure (tenant_id, ancestor_id, descendant_id, depth, deleted, created_at)
-                        select tenant_id, ancestor_id, ?, depth + 1, 0, ?
+                        insert into sys_department_closure (ancestor_id, descendant_id, depth, deleted, created_at)
+                        select ancestor_id, ?, depth + 1, 0, ?
                         from sys_department_closure
-                        where tenant_id = ?
-                          and descendant_id = ?
+                        where descendant_id = ?
                           and deleted = 0
                         on duplicate key update deleted = 0, depth = values(depth)
                         """,
                 departmentId,
                 now,
-                tenantId,
                 parentId
         );
     }
 
-    private void validateDeptCodeUnique(Long tenantId, Long currentId, String deptCode) {
+    private void validateDeptCodeUnique(Long currentId, String deptCode) {
         if (!StringUtils.hasText(deptCode)) {
             return;
         }
@@ -331,12 +309,10 @@ public class SystemDepartmentAppService {
                 """
                         select 1
                         from sys_department
-                        where tenant_id = ?
-                          and dept_code = ?
+                        where dept_code = ?
                           and (? is null or id <> ?)
                         limit 1
                         """,
-                tenantId,
                 deptCode.trim(),
                 currentId,
                 currentId
@@ -392,11 +368,10 @@ public class SystemDepartmentAppService {
         return normalized;
     }
 
-    private Long currentTenantId(CurrentUser currentUser) {
+    private void assertAuthenticated(CurrentUser currentUser) {
         if (currentUser == null) {
             throw new BizException(ErrorCode.UNAUTHORIZED, "未登录");
         }
-        return PlatformContext.compatibilityTenantId();
     }
 
     private BizException visibleBizException(ErrorCode errorCode, String message) {

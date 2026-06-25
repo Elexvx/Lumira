@@ -13,12 +13,10 @@ public final class MessageDomainModels {
     }
 
     public static final class NoticeAggregate extends AggregateRoot<Long> {
-        private final Long tenantId;
         private String status;
 
-        public NoticeAggregate(Long noticeId, Long tenantId, String status) {
+        public NoticeAggregate(Long noticeId, String status) {
             super(EntityId.of(noticeId));
-            this.tenantId = tenantId;
             this.status = status == null ? "PUBLISHED" : status;
         }
 
@@ -27,7 +25,6 @@ public final class MessageDomainModels {
                     "MESSAGE_NOTICE_READ",
                     "message.notice",
                     String.valueOf(id().value()),
-                    tenantId,
                     Map.of("userId", userId)
             ));
         }
@@ -41,7 +38,6 @@ public final class MessageDomainModels {
                     "MESSAGE_NOTICE_ARCHIVED",
                     "message.notice",
                     String.valueOf(id().value()),
-                    tenantId,
                     Map.of("archivedAt", Instant.now().toString())
             ));
         }
@@ -55,7 +51,6 @@ public final class MessageDomainModels {
                     "MESSAGE_NOTICE_RETRACTED",
                     "message.notice",
                     String.valueOf(id().value()),
-                    tenantId,
                     Map.of("retractedAt", Instant.now().toString())
             ));
         }
@@ -63,7 +58,6 @@ public final class MessageDomainModels {
 
     public record NoticeListItemReadModel(
             Long noticeId,
-            Long tenantId,
             String title,
             String status,
             boolean read,

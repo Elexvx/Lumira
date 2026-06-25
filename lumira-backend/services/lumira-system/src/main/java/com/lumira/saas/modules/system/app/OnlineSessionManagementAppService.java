@@ -4,7 +4,6 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import com.lumira.saas.infrastructure.security.model.AuthSession;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
@@ -57,12 +56,12 @@ public class OnlineSessionManagementAppService {
     }
 
     public PageResponse<SystemVO.OnlineSessionVO> listOnlineSessions(CurrentUser currentUser, long pageNo, long pageSize) {
-        Long tenantId = currentTenantId(currentUser);
+        ensureUserContext(currentUser);
         long normalizedPageNo = Math.max(pageNo, 1L);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
         long idleTimeoutSeconds = securitySettingsService.getIdleTimeoutSeconds();
 
-        List<AuthSession> sessions = fetchOnlineTenantSessions(tenantId, idleTimeoutSeconds);
+        List<AuthSession> sessions = fetchOnlineSessions(idleTimeoutSeconds);
         long total = sessions.size();
         long start = (normalizedPageNo - 1) * normalizedPageSize;
         if (start >= total) {
@@ -71,7 +70,7 @@ public class OnlineSessionManagementAppService {
             long end = Math.min(total, start + normalizedPageSize);
             sessions = new ArrayList<>(sessions.subList((int) start, (int) end));
         }
-        Map<Long, TenantUserRow> userMap = loadUsers(sessions.stream().map(AuthSession::getUserId).filter(Objects::nonNull).toList());
+        Map<Long, UserRow> userMap = loadUsers(sessions.stream().map(AuthSession::getUserId).filter(Objects::nonNull).toList());
 
         PageResponse<SystemVO.OnlineSessionVO> response = new PageResponse<>();
         response.setPageNo(normalizedPageNo);
@@ -82,19 +81,16 @@ public class OnlineSessionManagementAppService {
     }
 
     public boolean kickSession(CurrentUser currentUser, String sessionId) {
-        Long tenantId = currentTenantId(currentUser);
+        ensureUserContext(currentUser);
         AuthSession session = authSessionStore.findBySessionId(sessionId)
                 .orElseThrow(() -> new BizException(ErrorCode.SESSION_EXPIRED, "在线会话不存在或已失效"));
 
-        ensureTenantMatch(tenantId, session);
         if (sessionId.equals(currentUser.getSessionId())) {
             throw new BizException(ErrorCode.FORBIDDEN, "不能踢出当前登录会话");
         }
 
         authSessionStore.remove(session, true);
-        operationAuditService.log(
-                tenantId,
-                currentUser.getUserId(),
+        operationAuditService.log(currentUser.getUserId(),
                 currentUser.getUsername(),
                 "online-user",
                 "kick",
@@ -107,7 +103,7 @@ public class OnlineSessionManagementAppService {
 
     @Transactional
     public boolean banUser(CurrentUser currentUser, Long userId) {
-        Long tenantId = currentTenantId(currentUser);
+        ensureUserContext(currentUser);
         if (userId == null) {
             throw new BizException(ErrorCode.BAD_REQUEST, "用户ID不能为空");
         }
@@ -115,7 +111,7 @@ public class OnlineSessionManagementAppService {
             throw new BizException(ErrorCode.FORBIDDEN, "不能封禁当前登录账号");
         }
 
-        TenantUserRow targetUser = loadTenantUser(tenantId, userId)
+        UserRow targetUser = loadUser(userId)
                 .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "用户不存在或无权访问"));
 
         jdbcTemplate.update(
@@ -125,9 +121,7 @@ public class OnlineSessionManagementAppService {
                 userId
         );
         authSessionStore.revokeUserSessions(userId, true);
-        operationAuditService.log(
-                tenantId,
-                currentUser.getUserId(),
+        operationAuditService.log(currentUser.getUserId(),
                 currentUser.getUsername(),
                 "online-user",
                 "ban",
@@ -150,8 +144,8 @@ public class OnlineSessionManagementAppService {
         return onlineSessionStreamService.openStream(currentUser);
     }
 
-    private List<AuthSession> fetchOnlineTenantSessions(Long tenantId, long idleTimeoutSeconds) {
-        List<String> sessionIds = authSessionStore.listActiveTenantSessionIds(tenantId, 0, -1);
+    private List<AuthSession> fetchOnlineSessions(long idleTimeoutSeconds) {
+        List<String> sessionIds = authSessionStore.listActiveSessionIds(0, -1);
         if (CollectionUtils.isEmpty(sessionIds)) {
             return List.of();
         }
@@ -168,7 +162,6 @@ public class OnlineSessionManagementAppService {
                 }
             } else {
                 authSessionStore.removeSessionReferences(sessionId);
-                authSessionStore.removeTenantSessionReference(tenantId, sessionId);
             }
         }
         if (securitySettingsService.isAllowMultiDeviceLogin()) {
@@ -222,7 +215,7 @@ public class OnlineSessionManagementAppService {
         return idleDuration.compareTo(Duration.ofSeconds(idleTimeoutSeconds)) < 0;
     }
 
-    private Map<Long, TenantUserRow> loadUsers(Collection<Long> userIds) {
+    private Map<Long, UserRow> loadUsers(Collection<Long> userIds) {
         if (CollectionUtils.isEmpty(userIds)) {
             return Map.of();
         }
@@ -233,37 +226,37 @@ public class OnlineSessionManagementAppService {
         }
 
         String placeholders = distinctIds.stream().map(id -> "?").collect(Collectors.joining(","));
-        List<TenantUserRow> rows = jdbcTemplate.query(
+        List<UserRow> rows = jdbcTemplate.query(
                 """
                         select id, username, nickname, real_name as realName
                         from sys_user
                         where deleted = 0 and id in (%s)
                         """.formatted(placeholders),
-                new BeanPropertyRowMapper<>(TenantUserRow.class),
+                new BeanPropertyRowMapper<>(UserRow.class),
                 distinctIds.toArray()
         );
-        Map<Long, TenantUserRow> result = new LinkedHashMap<>();
-        for (TenantUserRow row : rows) {
+        Map<Long, UserRow> result = new LinkedHashMap<>();
+        for (UserRow row : rows) {
             result.put(row.getId(), row);
         }
         return result;
     }
 
-    private java.util.Optional<TenantUserRow> loadTenantUser(Long tenantId, Long userId) {
-        List<TenantUserRow> rows = jdbcTemplate.query(
+    private java.util.Optional<UserRow> loadUser(Long userId) {
+        List<UserRow> rows = jdbcTemplate.query(
                 """
                         select u.id, u.username, u.nickname, u.real_name as realName
                         from sys_user u
                         where u.id = ? and u.deleted = 0
                         limit 1
                         """,
-                new BeanPropertyRowMapper<>(TenantUserRow.class),
+                new BeanPropertyRowMapper<>(UserRow.class),
                 userId
         );
         return rows.stream().findFirst();
     }
 
-    private SystemVO.OnlineSessionVO toOnlineSessionVO(AuthSession session, TenantUserRow userRow) {
+    private SystemVO.OnlineSessionVO toOnlineSessionVO(AuthSession session, UserRow userRow) {
         SystemVO.OnlineSessionVO vo = new SystemVO.OnlineSessionVO();
         vo.setSessionId(session.getSessionId());
         vo.setUserId(session.getUserId());
@@ -283,20 +276,13 @@ public class OnlineSessionManagementAppService {
         return instant == null ? null : LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
     }
 
-    private Long currentTenantId(CurrentUser currentUser) {
+    private void ensureUserContext(CurrentUser currentUser) {
         if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
-        }
-        return PlatformContext.compatibilityTenantId();
-    }
-
-    private void ensureTenantMatch(Long currentTenantId, AuthSession session) {
-        if (session == null || !currentTenantId.equals(session.getCurrentTenantId())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "只能操作当前平台会话");
+            throw new BizException(ErrorCode.UNAUTHORIZED, "用户上下文缺失");
         }
     }
 
-    public static class TenantUserRow {
+    public static class UserRow {
         private Long id;
         private String username;
         private String nickname;

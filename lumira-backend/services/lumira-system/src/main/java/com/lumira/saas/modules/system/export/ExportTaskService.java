@@ -9,7 +9,6 @@ import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
-import com.lumira.common.security.PlatformContext;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -39,7 +38,6 @@ public class ExportTaskService {
     public ExportTaskEntity createTask(CurrentUser currentUser, String moduleKey, Object request, List<String> selectedFields, long totalCount) {
         LocalDateTime now = LocalDateTime.now();
         ExportTaskEntity entity = new ExportTaskEntity();
-        entity.setTenantId(currentTenantId(currentUser));
         entity.setModuleKey(moduleKey);
         entity.setStatus(STATUS_PENDING);
         entity.setRequestPayload(writeJson(request));
@@ -90,7 +88,6 @@ public class ExportTaskService {
                 tags,
                 remark,
                 DOWNLOAD_CENTER_BUCKET,
-                currentTenantId(currentUser),
                 currentUser.getUserId(),
                 currentUser.getUsername()
         );
@@ -99,7 +96,6 @@ public class ExportTaskService {
     public ExportVO.ExportTaskVO getTask(CurrentUser currentUser, Long taskId) {
         ExportTaskEntity entity = exportTaskMapper.selectOne(new LambdaQueryWrapper<ExportTaskEntity>()
                 .eq(ExportTaskEntity::getId, taskId)
-                .eq(ExportTaskEntity::getTenantId, currentTenantId(currentUser))
                 .eq(ExportTaskEntity::getCreatedBy, currentUser.getUserId())
                 .eq(ExportTaskEntity::getDeleted, 0));
         if (entity == null) {
@@ -137,10 +133,4 @@ public class ExportTaskService {
         return exception == null || !StringUtils.hasText(exception.getMessage()) ? "导出任务执行失败" : exception.getMessage();
     }
 
-    private Long currentTenantId(CurrentUser currentUser) {
-        if (currentUser == null) {
-            throw new BizException(ErrorCode.UNAUTHORIZED, "租户上下文缺失");
-        }
-        return PlatformContext.compatibilityTenantId();
-    }
 }

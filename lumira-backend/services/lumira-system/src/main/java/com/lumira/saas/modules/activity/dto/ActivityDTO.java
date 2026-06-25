@@ -10,7 +10,7 @@ public final class ActivityDTO {
     public static class ActivityUpsertRequest {
         @Size(max = 64)
         private String code;
-        @Size(max = 16)
+        @Size(max = 64)
         private String locale;
         @NotBlank
         @Size(max = 128)

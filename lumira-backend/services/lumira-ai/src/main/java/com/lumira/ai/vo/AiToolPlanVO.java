@@ -5,7 +5,6 @@ import java.util.Map;
 
 public record AiToolPlanVO(
         Long id,
-        Long tenantId,
         Long conversationId,
         Long employeeId,
         String toolCode,

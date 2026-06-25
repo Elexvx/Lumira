@@ -1,5 +1,5 @@
 import { history, useLocation } from '@umijs/max';
-import { Avatar, Card, Form, Space, Tabs, Tag, Typography, theme } from 'antd';
+import { Avatar, Card, Form, Space, Tabs, Tag, theme } from 'antd';
 import { message } from '@/theme/antdFeedbackBridge';
 import { createElement, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { ProColumns } from '@ant-design/pro-components';
@@ -274,7 +274,7 @@ const buildLlmServiceOptions = (services: Array<{ id: number; title: string; cod
 
 const buildKnowledgeBaseOptions = (knowledgeBases: AiKnowledgeBaseRecord[]): SimpleOption[] =>
   knowledgeBases.map((knowledgeBase) => ({
-    label: `${knowledgeBase.name}${knowledgeBase.visibilityScope === 'TENANT' ? t('（组织）', ' (Organization)') : t('（个人）', ' (Personal)')}`,
+    label: `${knowledgeBase.name}${knowledgeBase.visibilityScope === 'PLATFORM' ? t('（组织）', ' (Organization)') : t('（个人）', ' (Personal)')}`,
     value: knowledgeBase.id,
   }));
 
@@ -304,7 +304,6 @@ const buildEmployeeColumns = ({
       return (
         <Space>
           <Avatar style={{ backgroundColor: avatar.color }} icon={avatar.icon} />
-          <Typography.Text type="secondary">{avatar.label}</Typography.Text>
         </Space>
       );
     },
