@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 const protectedPages = [
   { path: '/dashboard/home', label: 'dashboard', tag: '@smoke' },
-  { path: '/download-center', label: 'download center', tag: '@smoke' },
+  { path: '/data-management/download-center', label: 'download center', tag: '@smoke' },
   { path: '/ai/assistant', label: 'AI assistant', tag: '@smoke' },
   { path: '/ai/knowledge', label: 'AI knowledge' },
   { path: '/user-center/users', label: 'users', tag: '@smoke' },

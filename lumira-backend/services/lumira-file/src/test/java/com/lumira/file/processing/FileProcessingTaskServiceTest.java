@@ -2,8 +2,6 @@ package com.lumira.file.processing;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -13,8 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.lumira.api.file.FileObjectDTO;
-import com.lumira.file.event.FilePlatformEventTypes;
-import com.lumira.file.event.PlatformEventOutboxService;
 import java.sql.ResultSet;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,30 +23,8 @@ import org.springframework.jdbc.core.RowMapper;
 class FileProcessingTaskServiceTest {
 
     @Test
-    void requestTasksForUpload_shouldCreateExpectedTasksAndPublishEvents() {
-        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        when(jdbcTemplate.update(anyString(), anyLong(), anyString(), eq(FileProcessingTaskService.STATUS_PENDING), anyInt(), anyLong(), anyLong()))
-                .thenReturn(1);
-        var service = service(jdbcTemplate, outboxService);
-
-        int requested = service.requestTasksForUpload(file("pdf", "application/pdf"), 2001L);
-
-        assertThat(requested).isEqualTo(3);
-        verify(jdbcTemplate, times(3)).update(anyString(), anyLong(), anyString(), eq(FileProcessingTaskService.STATUS_PENDING), anyInt(), anyLong(), anyLong());
-        verify(outboxService, times(3)).recordAfterCommit(
-                eq(FilePlatformEventTypes.SOURCE_FILE),
-                eq(FilePlatformEventTypes.FILE_PROCESSING_TASK_REQUESTED),
-                eq(2001L),
-                anyString(),
-                any()
-        );
-    }
-
-    @Test
     void claimPendingTasks_shouldClaimRowsWithConditionalStatusUpdate() throws Exception {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         when(jdbcTemplate.query(anyString(), Mockito.<RowMapper<FileProcessingTaskService.ProcessingTask>>any(), anyString()))
                 .thenAnswer(invocation -> {
                     RowMapper<FileProcessingTaskService.ProcessingTask> mapper = invocation.getArgument(1);
@@ -72,7 +46,7 @@ class FileProcessingTaskServiceTest {
                     when(resultSet.getString("claimToken")).thenReturn("claim-token");
                     return List.of(mapper.mapRow(resultSet, 0));
                 });
-        var service = service(jdbcTemplate, outboxService);
+        var service = service(jdbcTemplate);
 
         List<FileProcessingTaskService.ProcessingTask> tasks = service.claimPendingTasks(10);
 
@@ -83,7 +57,6 @@ class FileProcessingTaskServiceTest {
     @Test
     void claimPendingTasks_shouldUseCappedLimitAndQueueOrder() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         ArgumentCaptor<String> querySql = ArgumentCaptor.forClass(String.class);
         when(jdbcTemplate.query(
                 querySql.capture(),
@@ -94,7 +67,7 @@ class FileProcessingTaskServiceTest {
                     return mapSingleTask(mapper);
                 }
         );
-        FileProcessingTaskService service = new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        FileProcessingTaskService service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
 
         List<FileProcessingTaskService.ProcessingTask> tasks = service.claimPendingTasks(250);
 
@@ -110,8 +83,7 @@ class FileProcessingTaskServiceTest {
     @Test
     void markFailed_shouldMoveToDeadLetterAfterMaxRetries() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        var service = service(jdbcTemplate, outboxService);
+        var service = service(jdbcTemplate);
         var task = new FileProcessingTaskService.ProcessingTask(
                 99L,
                 3001L,
@@ -144,8 +116,7 @@ class FileProcessingTaskServiceTest {
     @Test
     void markFailed_shouldIgnoreTaskWithoutClaimToken() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        var service = service(jdbcTemplate, outboxService);
+        var service = service(jdbcTemplate);
         var task = new FileProcessingTaskService.ProcessingTask(
                 99L,
                 3001L,
@@ -172,8 +143,7 @@ class FileProcessingTaskServiceTest {
     @Test
     void markSucceededById_shouldRequireClaimToken() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        var service = service(jdbcTemplate, outboxService);
+        var service = service(jdbcTemplate);
 
         service.markSucceeded(99L, 2001L);
 
@@ -183,8 +153,7 @@ class FileProcessingTaskServiceTest {
     @Test
     void markSucceededById_shouldUpdateOnlyMatchingClaimToken() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
-        var service = service(jdbcTemplate, outboxService);
+        var service = service(jdbcTemplate);
         ArgumentCaptor<String> updateSql = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<Object[]> updateArgs = ArgumentCaptor.forClass(Object[].class);
 
@@ -198,10 +167,9 @@ class FileProcessingTaskServiceTest {
     @Test
     void processPendingTasks_shouldMarkSecurityScanSucceededWhenFileExists() throws Exception {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FileSecurityScanProcessor securityScanProcessor = mock(FileSecurityScanProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_SECURITY_SCAN, FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = new FileProcessingTaskService(jdbcTemplate, outboxService, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, securityScanProcessor, mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -213,10 +181,9 @@ class FileProcessingTaskServiceTest {
     @Test
     void processPendingTasks_shouldGenerateThumbnailAndMarkTaskSucceeded() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FileThumbnailProcessor thumbnailProcessor = mock(FileThumbnailProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_THUMBNAIL, FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), thumbnailProcessor, mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), thumbnailProcessor, mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -228,10 +195,9 @@ class FileProcessingTaskServiceTest {
     @Test
     void processPendingTasks_shouldExtractImageTextAndMarkTaskSucceeded() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FileOcrProcessor ocrProcessor = mock(FileOcrProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_OCR, FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), ocrProcessor, mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), ocrProcessor, mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -243,9 +209,8 @@ class FileProcessingTaskServiceTest {
     @Test
     void processPendingTasks_shouldFailTaskWhenProcessorIsMissing() throws Exception {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         mockClaimableTask(jdbcTemplate, "UNKNOWN_TASK", FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = service(jdbcTemplate, outboxService);
+        var service = service(jdbcTemplate);
 
         int processed = service.processPendingTasks(10);
 
@@ -256,10 +221,9 @@ class FileProcessingTaskServiceTest {
     @Test
     void processPendingTasks_shouldExtractTextAndMarkTaskSucceeded() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FileTextExtractionProcessor textExtractionProcessor = mock(FileTextExtractionProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_TEXT_EXTRACT, FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), textExtractionProcessor, mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), textExtractionProcessor, mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -271,10 +235,9 @@ class FileProcessingTaskServiceTest {
     @Test
     void processPendingTasks_shouldPrepareAiParseArtifactAndMarkTaskSucceeded() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        PlatformEventOutboxService outboxService = mock(PlatformEventOutboxService.class);
         FileAiParseProcessor aiParseProcessor = mock(FileAiParseProcessor.class);
         mockClaimableTask(jdbcTemplate, FileProcessingTaskService.TASK_AI_PARSE, FileProcessingTaskService.STATUS_PENDING, 0);
-        var service = new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), aiParseProcessor, mock(FileProcessingMetrics.class));
+        var service = new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), aiParseProcessor, mock(FileProcessingMetrics.class));
 
         int processed = service.processPendingTasks(10);
 
@@ -307,8 +270,8 @@ class FileProcessingTaskServiceTest {
                 });
     }
 
-    private FileProcessingTaskService service(JdbcTemplate jdbcTemplate, PlatformEventOutboxService outboxService) {
-        return new FileProcessingTaskService(jdbcTemplate, outboxService, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
+    private FileProcessingTaskService service(JdbcTemplate jdbcTemplate) {
+        return new FileProcessingTaskService(jdbcTemplate, mock(FileSecurityScanProcessor.class), mock(FileThumbnailProcessor.class), mock(FileOcrProcessor.class), mock(FileTextExtractionProcessor.class), mock(FileAiParseProcessor.class), mock(FileProcessingMetrics.class));
     }
 
     private List<FileProcessingTaskService.ProcessingTask> mapSingleTask(RowMapper<FileProcessingTaskService.ProcessingTask> mapper) throws Exception {

@@ -650,7 +650,7 @@ export const useUserManagement = () => {
   }, [exportTask?.downloadUrl]);
 
   const openDownloadCenter = useCallback(() => {
-    window.location.assign('/download-center');
+    window.location.assign('/data-management/download-center');
   }, []);
 
   const columns = useMemo(

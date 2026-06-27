@@ -1,5 +1,5 @@
 import { applyLocalePreference } from '@/i18n/locale';
-import type { CurrentUser, LoginResponse, SecuritySettings, SessionBootstrapPayload } from '@/types/api';
+import type { CurrentUser, LoginResponse, MenuNode, PluginAvailability, RuntimeAppearanceSettings, SecuritySettings, SessionBootstrapPayload } from '@/types/api';
 import { tokenManager } from '@/auth/token';
 import { persistSessionActivity } from '@/auth/activity';
 import { persistCurrentUser, buildFallbackCurrentUser, persistSessionMeta } from '@/auth/sessionState';
@@ -10,6 +10,9 @@ import { request } from '@/services/common/request';
 export interface SessionBootstrapResult {
   currentUser: CurrentUser;
   securitySettings: SecuritySettings;
+  menuTree?: MenuNode[];
+  availablePlugins?: PluginAvailability[];
+  runtimeAppearanceSettings?: RuntimeAppearanceSettings;
 }
 
 export interface InitializeAfterLoginOptions {
@@ -22,6 +25,16 @@ const POST_LOGIN_SECURITY_TIMEOUT_MS = 2500;
 const RESTORE_SECURITY_TIMEOUT_MS = 5000;
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 2500;
 
+const createSecuritySettingsLoader = (options: Parameters<typeof loadSecuritySettings>[0]) => {
+  let promise: Promise<SecuritySettings> | null = null;
+  return () => {
+    if (!promise) {
+      promise = loadSecuritySettings(options);
+    }
+    return promise;
+  };
+};
+
 const loadAuthBootstrap = async (): Promise<SessionBootstrapResult | null> => {
   try {
     const bootstrap = await request<SessionBootstrapPayload>('/v2/auth/bootstrap', {
@@ -33,6 +46,9 @@ const loadAuthBootstrap = async (): Promise<SessionBootstrapResult | null> => {
     return {
       currentUser: bootstrap.currentUser,
       securitySettings: bootstrap.securitySettings,
+      menuTree: bootstrap.menuTree,
+      availablePlugins: bootstrap.availablePlugins,
+      runtimeAppearanceSettings: bootstrap.runtimeAppearanceSettings,
     };
   } catch {
     return null;
@@ -80,17 +96,22 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
       }
     }
 
+    const getSecuritySettings = createSecuritySettingsLoader({
+      allowUnauthorizedWithoutRedirect: true,
+      timeoutMs: RESTORE_SECURITY_TIMEOUT_MS,
+    });
     const authBootstrap = await loadAuthBootstrap();
     if (authBootstrap) {
       applyLocalePreference(authBootstrap.currentUser.locale || undefined, false);
       const persistedCurrentUser = persistCurrentUser(authBootstrap.currentUser);
-      return { currentUser: persistedCurrentUser, securitySettings: authBootstrap.securitySettings };
+      return {
+        currentUser: persistedCurrentUser,
+        securitySettings: authBootstrap.securitySettings,
+        menuTree: authBootstrap.menuTree,
+        availablePlugins: authBootstrap.availablePlugins,
+        runtimeAppearanceSettings: authBootstrap.runtimeAppearanceSettings,
+      };
     }
-
-    const securitySettingsPromise = loadSecuritySettings({
-      allowUnauthorizedWithoutRedirect: true,
-      timeoutMs: RESTORE_SECURITY_TIMEOUT_MS,
-    });
 
     const currentUser = await loadCurrentUserOrFallback();
     if (!currentUser) {
@@ -100,7 +121,10 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
         return null;
       }
 
-      const [refreshedCurrentUser, securitySettings] = await Promise.all([loadCurrentUserOrFallback(), securitySettingsPromise]);
+      const [refreshedCurrentUser, securitySettings] = await Promise.all([
+        loadCurrentUserOrFallback(),
+        getSecuritySettings(),
+      ]);
       if (!refreshedCurrentUser) {
         clearAuthSession();
         return null;
@@ -117,7 +141,7 @@ export const restoreSession = async (): Promise<SessionBootstrapResult | null> =
 
     applyLocalePreference(currentUser.locale, false);
     const persistedCurrentUser = persistCurrentUser(currentUser);
-    const securitySettings = await securitySettingsPromise;
+    const securitySettings = await getSecuritySettings();
     return { currentUser: persistedCurrentUser, securitySettings };
   });
 
@@ -135,16 +159,23 @@ const initializeLoginSession = async (
 
   persistSessionActivity(Date.now());
 
+  const getSecuritySettings = createSecuritySettingsLoader({ timeoutMs: POST_LOGIN_SECURITY_TIMEOUT_MS });
   const authBootstrap = await loadAuthBootstrap();
   if (authBootstrap) {
     applyLocalePreference(authBootstrap.currentUser.locale || loginResponse.user.locale, false);
     const persistedCurrentUser = persistCurrentUser(authBootstrap.currentUser);
-    return { currentUser: persistedCurrentUser, securitySettings: authBootstrap.securitySettings };
+    return {
+      currentUser: persistedCurrentUser,
+      securitySettings: authBootstrap.securitySettings,
+      menuTree: authBootstrap.menuTree,
+      availablePlugins: authBootstrap.availablePlugins,
+      runtimeAppearanceSettings: authBootstrap.runtimeAppearanceSettings,
+    };
   }
 
   const [currentUser, securitySettings] = await Promise.all([
     Promise.resolve(buildFallbackCurrentUser(loginResponse)),
-    loadSecuritySettings({ timeoutMs: POST_LOGIN_SECURITY_TIMEOUT_MS }),
+    getSecuritySettings(),
   ]);
   applyLocalePreference(currentUser?.locale || loginResponse.user.locale, false);
   const persistedCurrentUser = persistCurrentUser(currentUser);

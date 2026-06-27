@@ -10,6 +10,7 @@ class SystemRouteCatalogTest {
     void routeCatalogShouldAllowSeededSystemMenuRoutes() {
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/dashboard/home")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/data-management")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/data-management/download-center")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/data-management/query-center")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/activities")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/activities/management")).isTrue();
@@ -37,6 +38,7 @@ class SystemRouteCatalogTest {
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/team/management")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/team/search")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/team/:teamId/members")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/download-center")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/settings")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/carousels")).isFalse();

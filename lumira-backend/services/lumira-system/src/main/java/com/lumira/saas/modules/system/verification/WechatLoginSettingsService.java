@@ -1,44 +1,57 @@
 package com.lumira.saas.modules.system.verification;
 
 import com.lumira.api.system.WechatLoginSettingsDTO;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.FieldCryptoService;
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class WechatLoginSettingsService {
 
     private static final long SETTINGS_CACHE_TTL_MS = 30_000L;
+    private static final long READ_MODEL_VERSION_CACHE_TTL_MS = 2_000L;
     private static final String ENABLED_KEY = "verification.wechat-login.enabled";
     private static final String APP_ID_KEY = "verification.wechat-login.app-id";
     private static final String APP_SECRET_KEY = "verification.wechat-login.app-secret";
     private static final String REDIRECT_URI_KEY = "verification.wechat-login.redirect-uri";
     private static final String STATE_EXPIRE_MINUTES_KEY = "verification.wechat-login.state-expire-minutes";
     private static final String GLOBAL_SETTINGS_CACHE_KEY = "global";
+    private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
+    private static final String READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP = "public-bootstrap";
 
     private final SysConfigMapper sysConfigMapper;
     private final WechatLoginProperties properties;
     private final FieldCryptoService fieldCryptoService;
+    private final ReadModelVersionService readModelVersionService;
     private final Cache<String, WechatLoginSettingsRecord> settingsCache;
     private final Cache<String, CompletableFuture<WechatLoginSettingsRecord>> settingsLoadInFlight;
+    private volatile CachedReadModelVersion cachedPublicBootstrapVersion;
 
-    public WechatLoginSettingsService(SysConfigMapper sysConfigMapper, WechatLoginProperties properties, FieldCryptoService fieldCryptoService) {
+    public WechatLoginSettingsService(
+            SysConfigMapper sysConfigMapper,
+            WechatLoginProperties properties,
+            FieldCryptoService fieldCryptoService,
+            ReadModelVersionService readModelVersionService
+    ) {
         this.sysConfigMapper = sysConfigMapper;
         this.properties = properties;
         this.fieldCryptoService = fieldCryptoService;
+        this.readModelVersionService = readModelVersionService;
         this.settingsCache = CacheBuilder.newBuilder()
                 .maximumSize(2048)
                 .expireAfterWrite(SETTINGS_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
@@ -50,7 +63,7 @@ public class WechatLoginSettingsService {
     }
 
     public WechatLoginSettingsRecord loadSettings() {
-        String cacheKey = cacheKey();
+        String cacheKey = cacheKey(currentPublicBootstrapVersion(false));
         WechatLoginSettingsRecord cached = settingsCache.getIfPresent(cacheKey);
         if (cached != null) {
             return cached;
@@ -58,11 +71,15 @@ public class WechatLoginSettingsService {
         return loadSettingsWithSingleFlight(cacheKey);
     }
 
+    public WechatLoginSettingsRecord loadSettingsFresh() {
+        return loadSettingsFresh(cacheKey(currentPublicBootstrapVersion(true)), false);
+    }
+
     private WechatLoginSettingsRecord loadSettingsWithSingleFlight(String cacheKey) {
         try {
             CompletableFuture<WechatLoginSettingsRecord> future = settingsLoadInFlight.get(
                     cacheKey,
-                    () -> CompletableFuture.completedFuture(loadSettingsFresh(cacheKey))
+                    () -> CompletableFuture.completedFuture(loadSettingsFresh(cacheKey, true))
             );
             WechatLoginSettingsRecord loaded = future.join();
             settingsLoadInFlight.invalidate(cacheKey);
@@ -80,10 +97,12 @@ public class WechatLoginSettingsService {
         }
     }
 
-    private WechatLoginSettingsRecord loadSettingsFresh(String cacheKey) {
-        WechatLoginSettingsRecord cached = settingsCache.getIfPresent(cacheKey);
-        if (cached != null) {
-            return cached;
+    private WechatLoginSettingsRecord loadSettingsFresh(String cacheKey, boolean useCache) {
+        if (useCache) {
+            WechatLoginSettingsRecord cached = settingsCache.getIfPresent(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
         }
         Map<String, String> values = loadConfigValuesByKeys(keys());
         boolean enabled = Boolean.parseBoolean(defaultIfBlank(values.get(ENABLED_KEY), String.valueOf(properties.isEnabled())));
@@ -96,7 +115,9 @@ public class WechatLoginSettingsService {
                 && StringUtils.hasText(appSecret)
                 && StringUtils.hasText(redirectUri);
         WechatLoginSettingsRecord record = new WechatLoginSettingsRecord(enabled, appId, appSecret, redirectUri, stateExpireMinutes, configured);
-        settingsCache.put(cacheKey, record);
+        if (useCache) {
+            settingsCache.put(cacheKey, record);
+        }
         return record;
     }
 
@@ -147,6 +168,7 @@ public class WechatLoginSettingsService {
         upsertConfigValue(REDIRECT_URI_KEY, "微信登录回调地址", redirectUri, "微信开放平台授权回调地址", operatorId);
         upsertConfigValue(STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(stateExpireMinutes), "微信登录 state 缓存有效期，单位分钟", operatorId);
         invalidateSettingsCache();
+        markPublicBootstrapChanged("wechat-settings-update");
         return getSettings();
     }
 
@@ -157,6 +179,7 @@ public class WechatLoginSettingsService {
         upsertConfigValue(REDIRECT_URI_KEY, "微信登录回调地址", "", "微信开放平台授权回调地址", operatorId);
         upsertConfigValue(STATE_EXPIRE_MINUTES_KEY, "微信登录状态有效期", String.valueOf(Math.max(1, properties.getStateExpireMinutes())), "微信登录 state 缓存有效期，单位分钟", operatorId);
         invalidateSettingsCache();
+        markPublicBootstrapChanged("wechat-settings-reset");
         return getSettings();
     }
 
@@ -185,13 +208,49 @@ public class WechatLoginSettingsService {
     }
 
     private void invalidateSettingsCache() {
-        String cacheKey = cacheKey();
-        settingsCache.invalidate(cacheKey);
-        settingsLoadInFlight.invalidate(cacheKey);
+        settingsCache.invalidateAll();
+        settingsLoadInFlight.invalidateAll();
+        cachedPublicBootstrapVersion = null;
     }
 
-    private String cacheKey() {
-        return GLOBAL_SETTINGS_CACHE_KEY + ":" + String.join(",", keys());
+    private void markPublicBootstrapChanged(String eventKey) {
+        if (readModelVersionService != null) {
+            readModelVersionService.bump(
+                    READ_MODEL_CONTEXT_PLATFORM,
+                    READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP,
+                    eventKey
+            );
+        }
+    }
+
+    private String cacheKey(Long publicBootstrapVersion) {
+        String keysSignature = String.join(",", keys());
+        if (publicBootstrapVersion == null) {
+            return GLOBAL_SETTINGS_CACHE_KEY + ":" + keysSignature;
+        }
+        return GLOBAL_SETTINGS_CACHE_KEY + ":v" + publicBootstrapVersion + ":" + keysSignature;
+    }
+
+    private Long currentPublicBootstrapVersion(boolean forceRefresh) {
+        if (readModelVersionService == null) {
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        CachedReadModelVersion cached = cachedPublicBootstrapVersion;
+        if (!forceRefresh && cached != null && cached.expiresAtMillis() > now) {
+            return cached.version();
+        }
+        Long version = null;
+        try {
+            version = readModelVersionService.currentVersion(
+                    READ_MODEL_CONTEXT_PLATFORM,
+                    READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP
+            );
+        } catch (Throwable ignored) {
+            version = null;
+        }
+        cachedPublicBootstrapVersion = new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MS);
+        return version;
     }
 
     private String encryptConfigValue(String configKey, String configValue) {
@@ -238,5 +297,8 @@ public class WechatLoginSettingsService {
             int stateExpireMinutes,
             boolean configured
     ) {
+    }
+
+    private record CachedReadModelVersion(Long version, long expiresAtMillis) {
     }
 }

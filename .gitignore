@@ -22,6 +22,7 @@ deploy/.env.*
 !deploy/.env.example
 deploy/build-identity.env
 deploy/.generated/
+deploy/.backup/
 lumira-ui/.env
 lumira-ui/.env.*
 !lumira-ui/.env.example

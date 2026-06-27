@@ -1,6 +1,7 @@
 package com.lumira.job;
 
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.common.runtime.ServiceVersionInfo;
 import com.lumira.common.runtime.ServiceVersionInfoFactory;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 
 @RestController("jobVersionController")
+@ConditionalOnLumiraAsyncEnabled
 public class VersionController {
 
     private final Environment environment;
@@ -51,7 +53,10 @@ public class VersionController {
                         environment.getProperty("GIT_BRANCH"),
                         environment.getProperty("VERCEL_GIT_COMMIT_REF")
                 ),
-                String.join(",", environment.getActiveProfiles())
+                String.join(",", environment.getActiveProfiles()),
+                environment.getProperty("FRONTEND_VERSION"),
+                ServiceVersionInfoFactory.firstText(environment.getProperty("BACKEND_VERSION"), environment.getProperty("BUILD_VERSION")),
+                environment.getProperty("DATABASE_VERSION")
         );
     }
 

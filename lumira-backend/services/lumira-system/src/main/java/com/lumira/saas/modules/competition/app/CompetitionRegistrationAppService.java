@@ -32,7 +32,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class CompetitionRegistrationAppService {
 
     private static final String PAYMENT_ORDER_JOIN_ON =
-            "po.order_no collate utf8mb4_unicode_ci = cr.payment_order_no collate utf8mb4_unicode_ci";
+            "po.order_no collate utf8mb4_unicode_ci = cr.payment_order_no collate utf8mb4_unicode_ci ";
     private static final Set<String> REGISTRATION_STATUSES = Set.of("DRAFT", "PENDING_PAYMENT", "PAID", "CONFIRMED", "CANCELLED");
     private static final Set<String> STAGE_CODES = Set.of("PRELIMINARY", "FINAL");
     private static final Set<String> STAGE_STATUSES = Set.of("DRAFT", "ENABLED", "DISABLED", "CLOSED");
@@ -96,8 +96,9 @@ public class CompetitionRegistrationAppService {
         List<Object> params = new ArrayList<>();
         StringBuilder where = new StringBuilder("""
                 from competition_registration cr
-                left join payment_order po on """ + PAYMENT_ORDER_JOIN_ON + """
-                 and po.deleted = 0
+                left join payment_order po on
+                """ + PAYMENT_ORDER_JOIN_ON + """
+                and po.deleted = 0
                 left join aiadc_competition c on c.id = cr.competition_id and c.deleted = 0
                 left join aiadc_project p on p.id = cr.project_id and p.deleted = 0
                 left join team t on t.id = cr.team_id and t.deleted = 0

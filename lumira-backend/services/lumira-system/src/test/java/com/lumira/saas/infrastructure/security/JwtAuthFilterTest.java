@@ -122,11 +122,19 @@ class JwtAuthFilterTest {
         assertEquals(0.0, fixture.authSessionActivityRefreshes());
     }
 
-    @Test
-    void shouldAllowV2CurrentUserWhenInitialPasswordChangeRequired() throws Exception {
+    @ParameterizedTest
+    @CsvSource({
+            "/api/v2/auth/current-user",
+            "/api/v1/auth/current-user",
+            "/api/auth/current-user",
+            "/api/v2/auth/bootstrap",
+            "/api/v1/auth/bootstrap",
+            "/api/auth/bootstrap"
+    })
+    void shouldAllowAuthBootstrapAndCurrentUserWhenInitialPasswordChangeRequired(String path) throws Exception {
         Fixture fixture = buildFixture(true);
         fixture.request.setMethod("GET");
-        fixture.request.setRequestURI("/api/v2/auth/current-user");
+        fixture.request.setRequestURI(path);
         AuthSession session = buildSession("session-6", 1001L, 2001L, Instant.now().minusSeconds(1), Instant.now().plusSeconds(3600));
         session.setPermissionsVersion("v0:data-scope-cache-v4");
         session.setPermissions(java.util.List.of("session:read"));

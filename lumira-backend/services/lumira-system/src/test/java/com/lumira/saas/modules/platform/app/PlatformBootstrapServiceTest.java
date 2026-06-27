@@ -5,29 +5,28 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.modules.system.app.SystemManagementAppService;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-
-import java.lang.reflect.Field;
 import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
 
 class PlatformBootstrapServiceTest {
 
     @Test
-    void publicBootstrapCachesForRuntimeVersionUntilEvictionWindow() throws Exception {
+    void publicBootstrapReusesPayloadWhileVersionSignatureStable() {
         SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
         SystemVerificationAppService systemVerificationAppService = mock(SystemVerificationAppService.class);
         ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
@@ -40,10 +39,8 @@ class PlatformBootstrapServiceTest {
         when(systemManagementAppService.getPublicBrandingSettings()).thenReturn(brandingSettings);
         when(systemManagementAppService.getPublicSecuritySettings()).thenReturn(securitySettings);
         when(systemManagementAppService.getPublicAgreementSettings()).thenReturn(agreementSettings);
-        when(systemVerificationAppService.loadLoginCapabilities()).thenReturn(loginCapabilities);
-
-        when(readModelVersionService.currentVersion("platform", "runtime-appearance"))
-                .thenReturn(10L, 11L);
+        when(systemVerificationAppService.loadLoginCapabilitiesFresh()).thenReturn(loginCapabilities);
+        when(readModelVersionService.currentVersions(any())).thenReturn(versions(10L, 20L), versions(10L, 20L));
 
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
         OwnerRuntimeMetrics ownerRuntimeMetrics = new OwnerRuntimeMetrics(meterRegistry);
@@ -59,46 +56,87 @@ class PlatformBootstrapServiceTest {
         SystemVO.PublicBootstrapVO second = service.getPublicBootstrap();
 
         assertThat(first.getBrandingSettings()).isSameAs(brandingSettings);
-        assertThat(first).isSameAs(second);
-        verify(readModelVersionService, times(1)).currentVersion("platform", "runtime-appearance");
+        assertThat(second).isSameAs(first);
         verify(systemManagementAppService, times(1)).getPublicBrandingSettings();
         verify(systemManagementAppService, times(1)).getPublicSecuritySettings();
         verify(systemManagementAppService, times(1)).getPublicAgreementSettings();
-        verify(systemVerificationAppService, times(1)).loadLoginCapabilities();
-
-        Field cacheField = PlatformBootstrapService.class.getDeclaredField("publicBootstrapCache");
-        cacheField.setAccessible(true);
-        cacheField.set(service, null);
-        Field inFlightField = PlatformBootstrapService.class.getDeclaredField("publicBootstrapLoadInFlight");
-        inFlightField.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<String, CompletableFuture<SystemVO.PublicBootstrapVO>> inFlightCache =
-                (com.google.common.cache.Cache<String, CompletableFuture<SystemVO.PublicBootstrapVO>>) inFlightField.get(service);
-        inFlightCache.invalidateAll();
-        Field versionField = PlatformBootstrapService.class.getDeclaredField("runtimeAppearanceVersionCache");
-        versionField.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<String, Long> runtimeAppearanceVersionCache = (com.google.common.cache.Cache<String, Long>) versionField.get(service);
-        runtimeAppearanceVersionCache.invalidateAll();
-        Field versionInFlightField = PlatformBootstrapService.class.getDeclaredField("runtimeAppearanceVersionLoadInFlight");
-        versionInFlightField.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        com.google.common.cache.Cache<String, CompletableFuture<Long>> runtimeAppearanceVersionLoadInFlight =
-                (com.google.common.cache.Cache<String, CompletableFuture<Long>>) versionInFlightField.get(service);
-        runtimeAppearanceVersionLoadInFlight.invalidateAll();
-
-        SystemVO.PublicBootstrapVO third = service.getPublicBootstrap();
-
-        assertThat(third).isNotSameAs(first);
-        verify(readModelVersionService, times(2)).currentVersion("platform", "runtime-appearance");
-        verify(systemManagementAppService, times(2)).getPublicBrandingSettings();
-        verify(systemManagementAppService, times(2)).getPublicSecuritySettings();
-        verify(systemManagementAppService, times(2)).getPublicAgreementSettings();
-        verify(systemVerificationAppService, times(2)).loadLoginCapabilities();
-
+        verify(systemVerificationAppService, times(1)).loadLoginCapabilitiesFresh();
+        verify(readModelVersionService, times(2)).currentVersions(any());
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_BOOTSTRAP_CACHE_HIT)).isEqualTo(1.0);
-        assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_BOOTSTRAP_CACHE_MISS)).isEqualTo(2.0);
+        assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_BOOTSTRAP_CACHE_MISS)).isEqualTo(1.0);
         assertThat(counterCount(meterRegistry, OwnerRuntimeMetrics.PLATFORM_BOOTSTRAP_CACHE_REFRESH)).isZero();
+    }
+
+    @Test
+    void publicBootstrapReloadsWhenPublicBootstrapVersionChanges() {
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SystemVerificationAppService systemVerificationAppService = mock(SystemVerificationAppService.class);
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+
+        when(systemManagementAppService.getPublicBrandingSettings())
+                .thenReturn(new SystemVO.BrandingSettingsVO())
+                .thenReturn(new SystemVO.BrandingSettingsVO());
+        when(systemManagementAppService.getPublicSecuritySettings())
+                .thenReturn(new SystemVO.SecuritySettingsVO())
+                .thenReturn(new SystemVO.SecuritySettingsVO());
+        when(systemManagementAppService.getPublicAgreementSettings())
+                .thenReturn(new SystemVO.AgreementSettingsVO())
+                .thenReturn(new SystemVO.AgreementSettingsVO());
+        when(systemVerificationAppService.loadLoginCapabilitiesFresh())
+                .thenReturn(new SystemVO.LoginCapabilitiesVO())
+                .thenReturn(new SystemVO.LoginCapabilitiesVO());
+        when(readModelVersionService.currentVersions(any())).thenReturn(versions(10L, 20L), versions(10L, 21L));
+
+        PlatformBootstrapService service = new PlatformBootstrapService(
+                systemManagementAppService,
+                systemVerificationAppService,
+                readModelVersionService,
+                null
+        );
+
+        SystemVO.PublicBootstrapVO first = service.getPublicBootstrap();
+        SystemVO.PublicBootstrapVO second = service.getPublicBootstrap();
+
+        assertThat(second).isNotSameAs(first);
+        verify(systemManagementAppService, times(1)).getPublicBrandingSettings();
+        verify(systemManagementAppService, times(2)).getPublicSecuritySettings();
+        verify(systemManagementAppService, times(1)).getPublicAgreementSettings();
+        verify(systemVerificationAppService, times(2)).loadLoginCapabilitiesFresh();
+    }
+
+    @Test
+    void publicBootstrapReloadsOnlyRuntimeAppearanceSliceWhenRuntimeVersionChanges() {
+        SystemManagementAppService systemManagementAppService = mock(SystemManagementAppService.class);
+        SystemVerificationAppService systemVerificationAppService = mock(SystemVerificationAppService.class);
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+
+        when(systemManagementAppService.getPublicBrandingSettings())
+                .thenReturn(new SystemVO.BrandingSettingsVO())
+                .thenReturn(new SystemVO.BrandingSettingsVO());
+        when(systemManagementAppService.getPublicSecuritySettings())
+                .thenReturn(new SystemVO.SecuritySettingsVO());
+        when(systemManagementAppService.getPublicAgreementSettings())
+                .thenReturn(new SystemVO.AgreementSettingsVO())
+                .thenReturn(new SystemVO.AgreementSettingsVO());
+        when(systemVerificationAppService.loadLoginCapabilitiesFresh())
+                .thenReturn(new SystemVO.LoginCapabilitiesVO());
+        when(readModelVersionService.currentVersions(any())).thenReturn(versions(10L, 20L), versions(11L, 20L));
+
+        PlatformBootstrapService service = new PlatformBootstrapService(
+                systemManagementAppService,
+                systemVerificationAppService,
+                readModelVersionService,
+                null
+        );
+
+        SystemVO.PublicBootstrapVO first = service.getPublicBootstrap();
+        SystemVO.PublicBootstrapVO second = service.getPublicBootstrap();
+
+        assertThat(second).isNotSameAs(first);
+        verify(systemManagementAppService, times(2)).getPublicBrandingSettings();
+        verify(systemManagementAppService, times(1)).getPublicSecuritySettings();
+        verify(systemManagementAppService, times(2)).getPublicAgreementSettings();
+        verify(systemVerificationAppService, times(1)).loadLoginCapabilitiesFresh();
     }
 
     @Test
@@ -115,8 +153,8 @@ class PlatformBootstrapServiceTest {
         when(systemManagementAppService.getPublicBrandingSettings()).thenReturn(brandingSettings);
         when(systemManagementAppService.getPublicSecuritySettings()).thenReturn(securitySettings);
         when(systemManagementAppService.getPublicAgreementSettings()).thenReturn(agreementSettings);
-        when(systemVerificationAppService.loadLoginCapabilities()).thenReturn(loginCapabilities);
-        when(readModelVersionService.currentVersion("platform", "runtime-appearance")).thenReturn(10L);
+        when(systemVerificationAppService.loadLoginCapabilitiesFresh()).thenReturn(loginCapabilities);
+        when(readModelVersionService.currentVersions(any())).thenReturn(versions(10L, 20L));
 
         PlatformBootstrapService service = new PlatformBootstrapService(
                 systemManagementAppService,
@@ -131,7 +169,6 @@ class PlatformBootstrapServiceTest {
         CompletableFuture<SystemVO.PublicBootstrapVO>[] futures = new CompletableFuture[threadCount];
         AtomicInteger errors = new AtomicInteger();
         for (int i = 0; i < threadCount; i++) {
-            int index = i;
             futures[i] = CompletableFuture.supplyAsync(() -> {
                 try {
                     ready.await();
@@ -148,20 +185,31 @@ class PlatformBootstrapServiceTest {
         executor.shutdown();
         assertThat(executor.awaitTermination(5L, TimeUnit.SECONDS)).isTrue();
 
-        SystemVO.PublicBootstrapVO expect = futures[0].join();
+        SystemVO.PublicBootstrapVO expected = futures[0].join();
         for (CompletableFuture<SystemVO.PublicBootstrapVO> future : futures) {
-            assertThat(future.join()).isSameAs(expect);
+            assertThat(future.join()).isSameAs(expected);
         }
         assertThat(errors.get()).isZero();
-        verify(readModelVersionService, times(1)).currentVersion("platform", "runtime-appearance");
         verify(systemManagementAppService, times(1)).getPublicBrandingSettings();
         verify(systemManagementAppService, times(1)).getPublicSecuritySettings();
         verify(systemManagementAppService, times(1)).getPublicAgreementSettings();
-        verify(systemVerificationAppService, times(1)).loadLoginCapabilities();
+        verify(systemVerificationAppService, times(1)).loadLoginCapabilitiesFresh();
     }
 
     private double counterCount(SimpleMeterRegistry meterRegistry, String counterName) {
         Counter counter = meterRegistry.find(counterName).counter();
         return counter == null ? 0.0 : counter.count();
+    }
+
+    private Map<ReadModelVersionService.ReadModelScopeKey, Long> versions(
+            Long runtimeAppearanceVersion,
+            Long publicBootstrapVersion
+    ) {
+        return Map.of(
+                new ReadModelVersionService.ReadModelScopeKey("platform", "runtime-appearance"),
+                runtimeAppearanceVersion,
+                new ReadModelVersionService.ReadModelScopeKey("platform", "public-bootstrap"),
+                publicBootstrapVersion
+        );
     }
 }

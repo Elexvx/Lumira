@@ -1,5 +1,6 @@
 package com.lumira.job;
 
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.xxl.job.core.executor.impl.XxlJobSpringExecutor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -7,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@ConditionalOnLumiraAsyncEnabled
 public class XxlJobExecutorConfig {
 
     @Bean

@@ -211,6 +211,7 @@ class SystemPlatformSettingsAppServiceTest {
         assertThat(updated.getGithubLinkEnabled()).isFalse();
         assertThat(updated.getGithubLinkUrl()).isEqualTo("https://github.com/example/lumira");
         verify(readModelVersionService).bump("platform", "runtime-appearance", "branding-update");
+        verify(readModelVersionService).bump("platform", "public-bootstrap", "branding-update");
     }
 
     private static SystemPlatformSettingsAppService newService(

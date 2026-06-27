@@ -86,6 +86,19 @@ class SystemRoleManagementAppServiceTest {
     }
 
     @Test
+    void createRoleShouldInsertDefaultDataScope() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
+        PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
+        SystemRoleManagementAppService service = buildService(jdbcTemplate, permissionSnapshotService);
+
+        SystemDTO.RoleUpsertRequest request = roleRequest("auditor", "瀹¤鍛?", List.of("system:user:view"));
+        service.createRole(currentUser(), request);
+
+        assertEquals(List.of("*:SELF"), jdbcTemplate.insertedDataScopes);
+        verify(permissionSnapshotService).invalidatePermissions();
+    }
+
+    @Test
     void updateRolePermissionsShouldReplacePermissionsAndInvalidateSnapshot() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate();
         PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
@@ -179,6 +192,7 @@ class SystemRoleManagementAppServiceTest {
         private int roleListCountQueries;
         private String upsertedDefaultRoleCode;
         private final List<String> insertedPermissionKeys = new ArrayList<>();
+        private final List<String> insertedDataScopes = new ArrayList<>();
 
         @Override
         public int update(String sql, Object... args) {
@@ -189,7 +203,14 @@ class SystemRoleManagementAppServiceTest {
                 deletedRolePermissions = true;
             }
             if (sql.contains("insert into sys_role_permission")) {
-                insertedPermissionKeys.add(String.valueOf(args[1]));
+                for (int index = 0; index < args.length; index += 4) {
+                    insertedPermissionKeys.add(String.valueOf(args[index + 1]));
+                }
+            }
+            if (sql.contains("insert into sys_role_data_scope")) {
+                for (int index = 0; index < args.length; index += 7) {
+                    insertedDataScopes.add(args[index + 1] + ":" + args[index + 2]);
+                }
             }
             if (sql.contains("insert into sys_config")) {
                 upsertedDefaultRoleCode = String.valueOf(args[2]);

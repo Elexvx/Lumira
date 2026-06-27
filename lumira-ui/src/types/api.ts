@@ -107,6 +107,9 @@ export interface LoginEncryptionKey {
 export interface SessionBootstrapPayload {
   currentUser: CurrentUser;
   securitySettings: SecuritySettings;
+  menuTree?: MenuNode[];
+  availablePlugins?: PluginAvailability[];
+  runtimeAppearanceSettings?: RuntimeAppearanceSettings;
 }
 
 export interface WechatAuthorizeUrl {
@@ -317,6 +320,12 @@ export interface FloatingWindowSettings {
   apiDocsQrEnabled: boolean;
   apiDocsQrTitle: string;
   apiDocsQrImageUrl?: string;
+}
+
+export interface RuntimeAppearanceSettings {
+  brandingSettings?: BrandingSettings;
+  watermarkSettings?: WatermarkSettings;
+  floatingWindowSettings?: FloatingWindowSettings;
 }
 
 export interface RefreshTokenResponse {

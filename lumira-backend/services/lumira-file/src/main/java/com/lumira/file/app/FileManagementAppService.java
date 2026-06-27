@@ -26,7 +26,7 @@ import com.lumira.file.entity.FileObjectEntity;
 import com.lumira.file.entity.FileStorageSpaceEntity;
 import com.lumira.file.mapper.FileObjectMapper;
 import com.lumira.file.mapper.FileStorageSpaceMapper;
-import com.lumira.file.processing.FileProcessingTaskService;
+import com.lumira.file.processing.FileProcessingTaskRequestService;
 import com.lumira.file.security.SafeUrlValidator;
 import com.lumira.file.vo.FileVO;
 import com.lumira.file.upload.DocumentUploadService;
@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +59,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+@Lazy
 @Service
 public class FileManagementAppService {
 
@@ -105,7 +107,7 @@ public class FileManagementAppService {
     private final DocumentUploadService documentUploadService;
     private final ImageUploadService imageUploadService;
     private final DomainEventPublisher domainEventPublisher;
-    private final FileProcessingTaskService fileProcessingTaskService;
+    private final FileProcessingTaskRequestService fileProcessingTaskRequestService;
     private final FieldCryptoService fieldCryptoService;
     private final FileStorageMetrics storageMetrics;
     private final SafeUrlValidator safeUrlValidator;
@@ -120,13 +122,13 @@ public class FileManagementAppService {
             DocumentUploadService documentUploadService,
             ImageUploadService imageUploadService,
             @Qualifier("fileDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            FileProcessingTaskService fileProcessingTaskService,
+            FileProcessingTaskRequestService fileProcessingTaskRequestService,
             FieldCryptoService fieldCryptoService,
             FileStorageMetrics storageMetrics,
             SafeUrlValidator safeUrlValidator
     ) {
         this(fileObjectMapper, fileStorageSpaceMapper, jdbcTemplate, uploadProperties, documentUploadService,
-                imageUploadService, domainEventPublisher, fileProcessingTaskService, fieldCryptoService,
+                imageUploadService, domainEventPublisher, fileProcessingTaskRequestService, fieldCryptoService,
                 storageMetrics, safeUrlValidator, null);
     }
 
@@ -139,7 +141,7 @@ public class FileManagementAppService {
             DocumentUploadService documentUploadService,
             ImageUploadService imageUploadService,
             @Qualifier("fileDomainEventPublisher") DomainEventPublisher domainEventPublisher,
-            FileProcessingTaskService fileProcessingTaskService,
+            FileProcessingTaskRequestService fileProcessingTaskRequestService,
             FieldCryptoService fieldCryptoService,
             FileStorageMetrics storageMetrics,
             SafeUrlValidator safeUrlValidator,
@@ -152,7 +154,7 @@ public class FileManagementAppService {
         this.documentUploadService = documentUploadService;
         this.imageUploadService = imageUploadService;
         this.domainEventPublisher = domainEventPublisher;
-        this.fileProcessingTaskService = fileProcessingTaskService;
+        this.fileProcessingTaskRequestService = fileProcessingTaskRequestService;
         this.fieldCryptoService = fieldCryptoService;
         this.storageMetrics = storageMetrics;
         this.safeUrlValidator = safeUrlValidator;
@@ -443,7 +445,7 @@ public class FileManagementAppService {
         FileObjectDTO uploaded = getInsertedFile(insertedId);
         localFileListCache.clear();
         publishFileUploaded(uploaded);
-        fileProcessingTaskService.requestTasksForUpload(uploaded, currentUser.getUserId());
+        fileProcessingTaskRequestService.requestTasksForUpload(uploaded, currentUser.getUserId());
         return uploaded;
     }
 
@@ -497,7 +499,7 @@ public class FileManagementAppService {
         FileObjectDTO uploaded = getInsertedFile(insertedId);
         localFileListCache.clear();
         publishFileUploaded(uploaded);
-        fileProcessingTaskService.requestTasksForUpload(uploaded, currentUser.getUserId());
+        fileProcessingTaskRequestService.requestTasksForUpload(uploaded, currentUser.getUserId());
         return uploaded;
     }
 

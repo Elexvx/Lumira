@@ -8,6 +8,7 @@ import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class ExportTaskService {
     public static final String STATUS_PENDING = "PENDING";
     public static final String STATUS_RUNNING = "RUNNING";

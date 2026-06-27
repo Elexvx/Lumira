@@ -52,7 +52,10 @@ public class VersionController {
                         environment.getProperty("GIT_BRANCH"),
                         environment.getProperty("VERCEL_GIT_COMMIT_REF")
                 ),
-                String.join(",", environment.getActiveProfiles())
+                String.join(",", environment.getActiveProfiles()),
+                environment.getProperty("FRONTEND_VERSION"),
+                ServiceVersionInfoFactory.firstText(environment.getProperty("BACKEND_VERSION"), environment.getProperty("BUILD_VERSION")),
+                environment.getProperty("DATABASE_VERSION")
         );
     }
 

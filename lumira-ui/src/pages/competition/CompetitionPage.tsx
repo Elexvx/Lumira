@@ -2,9 +2,10 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, SettingOutlined, UploadOutl
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Modal, Radio, Select, Space, Steps, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
+import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { history, useLocation } from '@umijs/max';
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import { XMarkdown } from '@ant-design/x-markdown';
@@ -97,12 +98,6 @@ const COMPETITION_CREATE_DRAFT_STORAGE_KEY = 'lumira.competition.create.draft.v1
 const localeOptions: Array<{ label: string; value: CompetitionLocale }> = [
   { label: '中文', value: 'zh' },
   { label: 'English', value: 'en' },
-];
-
-const statusOptions: Array<{ label: string; value: CompetitionStatus }> = [
-  { label: '草稿', value: 'draft' },
-  { label: '已发布', value: 'published' },
-  { label: '已归档', value: 'archived' },
 ];
 
 const fallbackCategoryOptions = [
@@ -469,6 +464,51 @@ const restoreDraftRangeValue = (
   return typeof start === 'string' && typeof end === 'string' ? parseRange(start, end) : undefined;
 };
 
+const toValidDayjs = (value?: Dayjs | string) => {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = dayjs.isDayjs(value) ? value : dayjs(value);
+  return parsed.isValid() ? parsed : undefined;
+};
+
+const getCompleteTimeRange = (
+  range?: CompetitionFormValues['registrationRange'] | CompetitionScheduleFormItem['timeRange'],
+): [Dayjs, Dayjs] | undefined => {
+  if (!Array.isArray(range) || range.length !== 2) {
+    return undefined;
+  }
+  const start = toValidDayjs(range[0]);
+  const end = toValidDayjs(range[1]);
+  return start && end ? [start, end] : undefined;
+};
+
+const isScheduleWithinRegistrationRange = (
+  scheduleRange: CompetitionScheduleFormItem['timeRange'],
+  registrationRange: CompetitionFormValues['registrationRange'],
+) => {
+  const scheduleBounds = getCompleteTimeRange(scheduleRange);
+  const registrationBounds = getCompleteTimeRange(registrationRange);
+  if (!scheduleBounds || !registrationBounds) {
+    return false;
+  }
+  const [scheduleStart, scheduleEnd] = scheduleBounds;
+  const [registrationStart, registrationEnd] = registrationBounds;
+  return !scheduleStart.isBefore(registrationStart) && !scheduleEnd.isAfter(registrationEnd);
+};
+
+const isOutsideRegistrationDate = (
+  current: Dayjs,
+  registrationRange: CompetitionFormValues['registrationRange'],
+) => {
+  const registrationBounds = getCompleteTimeRange(registrationRange);
+  if (!current || !registrationBounds) {
+    return false;
+  }
+  const [registrationStart, registrationEnd] = registrationBounds;
+  return current.isBefore(registrationStart, 'day') || current.isAfter(registrationEnd, 'day');
+};
+
 const restoreCompetitionCreateDraftValues = (values?: Partial<CompetitionFormValues>): Partial<CompetitionFormValues> => {
   if (!values) {
     return {};
@@ -540,6 +580,9 @@ const getCompetitionCreateMissingFields = (values: Partial<CompetitionFormValues
   if (!trimOptional(values.currency)) {
     missingFields.push('货币');
   }
+  if (!getCompleteTimeRange(values.registrationRange)) {
+    missingFields.push('报名时间');
+  }
   if (!firstSchedule?.timeMode) {
     missingFields.push('竞赛安排');
   }
@@ -548,14 +591,16 @@ const getCompetitionCreateMissingFields = (values: Partial<CompetitionFormValues
     if (!hasValidSchedule) {
       missingFields.push('竞赛安排');
     }
+    const hasOutOfRangeSchedule = values.schedules?.some(
+      (schedule) => getCompleteTimeRange(schedule.timeRange) && !isScheduleWithinRegistrationRange(schedule.timeRange, values.registrationRange),
+    );
+    if (hasOutOfRangeSchedule) {
+      missingFields.push('竞赛安排需在报名时间内');
+    }
   }
   if (!values.locale?.length) {
     missingFields.push('语言');
   }
-  if (!values.status) {
-    missingFields.push('状态');
-  }
-
   return missingFields;
 };
 
@@ -576,10 +621,6 @@ const getAllowedCompetitionCreateStep = (requestedStep: number, values: Partial<
 const uploadCompetitionImage = async (file: File) => {
   if (!file.type.startsWith('image/')) {
     message.error('请上传图片文件');
-    return undefined;
-  }
-  if (file.size > 20 * 1024 * 1024) {
-    message.error('图片过大，请上传不超过 20MB 的文件');
     return undefined;
   }
   const formData = new FormData();
@@ -619,6 +660,7 @@ const CompetitionBasicFields = ({
 }) => {
   const contactQrCodeUrl = Form.useWatch('contactQrCodeUrl', form);
   const schedules = Form.useWatch('schedules', form) || [];
+  const registrationRange = Form.useWatch('registrationRange', form);
   const [uploadingQrCode, setUploadingQrCode] = useState(false);
   const qrPreviewUrl = normalizeUploadUrl(contactQrCodeUrl);
 
@@ -693,6 +735,19 @@ const CompetitionBasicFields = ({
           <Select options={[{ label: 'CNY', value: 'CNY' }]} />
         </Form.Item>
       </Space>
+      <Form.Item
+        name="registrationRange"
+        label="报名时间"
+        rules={[
+          { required: true, message: '请选择报名时间' },
+          {
+            validator: (_, value: CompetitionFormValues['registrationRange']) =>
+              getCompleteTimeRange(value) ? Promise.resolve() : Promise.reject(new Error('请选择报名开始和结束时间')),
+          },
+        ]}
+      >
+        <DatePicker.RangePicker showTime format="YYYY.MM.DD HH:mm" minuteStep={15} style={{ width: '100%' }} />
+      </Form.Item>
       <Form.List name="schedules">
         {(fields, { add, remove }) => (
           <Form.Item label="竞赛安排" required>
@@ -726,13 +781,28 @@ const CompetitionBasicFields = ({
                           rules={[
                             { required: true, message: '请选择比赛时间' },
                             {
-                              validator: (_, value: CompetitionScheduleFormItem['timeRange']) =>
-                                Array.isArray(value) && value.length === 2 ? Promise.resolve() : Promise.reject(new Error('请选择开始和结束时间')),
+                              validator: (_, value: CompetitionScheduleFormItem['timeRange']) => {
+                                if (!getCompleteTimeRange(value)) {
+                                  return Promise.reject(new Error('请选择开始和结束时间'));
+                                }
+                                if (!getCompleteTimeRange(registrationRange)) {
+                                  return Promise.reject(new Error('请先选择报名时间'));
+                                }
+                                return isScheduleWithinRegistrationRange(value, registrationRange)
+                                  ? Promise.resolve()
+                                  : Promise.reject(new Error('竞赛安排需在报名时间内'));
+                              },
                             },
                           ]}
                           className="competition-schedule-row__time"
                         >
-                          <DatePicker.RangePicker showTime format="YYYY.MM.DD HH:mm" minuteStep={15} style={{ width: '100%' }} />
+                          <DatePicker.RangePicker
+                            showTime
+                            format="YYYY.MM.DD HH:mm"
+                            minuteStep={15}
+                            disabledDate={(current) => isOutsideRegistrationDate(current, registrationRange)}
+                            style={{ width: '100%' }}
+                          />
                         </Form.Item>
                         <div className="competition-schedule-row__actions">
                           {index === fields.length - 1 ? (
@@ -759,10 +829,18 @@ const CompetitionBasicFields = ({
       </Form.Item>
       <Form.Item label="上传联系方式二维码">
         <Space direction="vertical" size={8} className="competition-qr-upload">
-          <div className="competition-qr-upload__preview">
-            {qrPreviewUrl ? <Image width={144} height={144} src={qrPreviewUrl} preview={false} /> : <Typography.Text type="secondary">未上传二维码</Typography.Text>}
-          </div>
-          <Space wrap>
+          <ImgCrop
+            modalTitle="裁剪二维码"
+            rotationSlider
+            aspect={1}
+            beforeCrop={(file) => {
+              if (!file.type.startsWith('image/')) {
+                message.error('请上传图片文件');
+                return false;
+              }
+              return true;
+            }}
+          >
             <Upload
               accept="image/*"
               showUploadList={false}
@@ -772,10 +850,31 @@ const CompetitionBasicFields = ({
                 return Upload.LIST_IGNORE;
               }}
             >
-              <Button icon={<UploadOutlined />} loading={uploadingQrCode}>
-                上传二维码
-              </Button>
+              <div
+                className={`competition-qr-upload__preview${uploadingQrCode ? ' is-uploading' : ''}${qrPreviewUrl ? ' has-image' : ''}`}
+                role="button"
+                aria-label="上传联系方式二维码"
+                tabIndex={uploadingQrCode ? -1 : 0}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
+              >
+                {qrPreviewUrl ? (
+                  <Image width={144} height={144} src={qrPreviewUrl} preview={false} />
+                ) : (
+                  <Space direction="vertical" size={6} align="center">
+                    <UploadOutlined />
+                    <Typography.Text type="secondary">点击上传二维码</Typography.Text>
+                  </Space>
+                )}
+                {qrPreviewUrl ? <span className="competition-qr-upload__hint">{uploadingQrCode ? '上传中...' : '点击更换二维码'}</span> : null}
+              </div>
             </Upload>
+          </ImgCrop>
+          <Space wrap>
             <Button
               disabled={!contactQrCodeUrl || uploadingQrCode}
               onClick={() => {
@@ -791,15 +890,9 @@ const CompetitionBasicFields = ({
           </Form.Item>
         </Space>
       </Form.Item>
-      <Form.Item name="registrationRange" label="报名时间">
-        <DatePicker.RangePicker showTime format="YYYY.MM.DD HH:mm" minuteStep={15} style={{ width: '100%' }} />
-      </Form.Item>
       <Space size={0} className="competition-inline-fields" align="start">
         <Form.Item name="locale" label="语言" rules={[{ required: true }]} className="competition-inline-fields__item">
           <Select mode="multiple" maxTagCount="responsive" options={localeOptions} />
-        </Form.Item>
-        <Form.Item name="status" label="状态" rules={[{ required: true }]} className="competition-inline-fields__item">
-          <Select options={statusOptions} />
         </Form.Item>
         <Form.Item name="sort" label="排序" className="competition-inline-fields__item">
           <InputNumber min={0} max={9999} style={{ width: '100%' }} />
@@ -1348,6 +1441,20 @@ const CompetitionPage = () => {
     }
   };
 
+  const toggleCompetitionStatus = useCallback(async (record: CompetitionRecord) => {
+    if (record.status === 'archived') {
+      return;
+    }
+    const nextStatus: CompetitionStatus = record.status === 'published' ? 'draft' : 'published';
+    try {
+      await updateCompetition(record.id, normalizePayload({ ...recordToFormValues(record), status: nextStatus }));
+      message.success(nextStatus === 'published' ? '赛事已发布' : '赛事已切换为草稿');
+      actionRef.current?.reload();
+    } catch (error) {
+      showErrorMessage(error, '状态切换失败');
+    }
+  }, []);
+
   const saveMaterialForm = async () => {
     if (!materialRecord) {
       return;
@@ -1406,12 +1513,35 @@ const CompetitionPage = () => {
         title: '赛事',
         dataIndex: 'title',
         search: false,
+        minWidth: 260,
         render: (_, record) => (
           <Space className="competition-name-cell" direction="vertical" size={0}>
             <Typography.Text strong>{record.title}</Typography.Text>
             <span className="competition-name-cell__meta">{record.shortName || record.code}</span>
           </Space>
         ),
+      },
+      {
+        title: '状态',
+        dataIndex: 'status',
+        valueType: 'select',
+        valueEnum: {
+          draft: { text: '草稿' },
+          published: { text: '已发布' },
+          archived: { text: '已归档' },
+        },
+        width: 110,
+        render: (_, record) =>
+          record.status === 'archived' ? (
+            <Tag color={statusColor[record.status]}>{statusText[record.status]}</Tag>
+          ) : (
+            <Switch
+              checked={record.status === 'published'}
+              checkedChildren="已发布"
+              unCheckedChildren="草稿"
+              onChange={() => void toggleCompetitionStatus(record)}
+            />
+          ),
       },
       {
         title: '类别',
@@ -1516,18 +1646,6 @@ const CompetitionPage = () => {
         render: (_, record) => (record.featured ? <Tag color="gold">推荐</Tag> : <Tag>普通</Tag>),
       },
       {
-        title: '状态',
-        dataIndex: 'status',
-        valueType: 'select',
-        valueEnum: {
-          draft: { text: '草稿' },
-          published: { text: '已发布' },
-          archived: { text: '已归档' },
-        },
-        width: 110,
-        render: (_, record) => <Tag color={statusColor[record.status]}>{statusText[record.status]}</Tag>,
-      },
-      {
         title: '排序',
         dataIndex: 'sort',
         search: false,
@@ -1582,7 +1700,7 @@ const CompetitionPage = () => {
         ),
       },
     ],
-    [actionPermission, categoryLabelMap, categoryOptions, levelLabelMap, responsive.isDesktop, responsive.isMobile],
+    [actionPermission, categoryLabelMap, categoryOptions, levelLabelMap, responsive.isDesktop, responsive.isMobile, toggleCompetitionStatus],
   );
 
   if (location.pathname === '/competitions/create') {
@@ -1601,7 +1719,9 @@ const CompetitionPage = () => {
           rowKey="id"
           columns={columns}
           isMobile={responsive.isMobile}
-          scroll={{ x: 1420 }}
+          autoContentWidth
+          scroll={{ x: 'max-content' }}
+          tableLayout="auto"
           request={async (params) => {
             const response = await listCompetitions({
               keyword: typeof params.keyword === 'string' ? params.keyword : undefined,

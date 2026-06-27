@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.domain.event.DomainEventPublisher;
@@ -13,6 +14,7 @@ import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.infrastructure.security.service.AuthSessionStore;
 import com.lumira.saas.infrastructure.security.service.SecuritySettingsService;
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.audit.app.LoginAuditService;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.auth.vo.CurrentUserVO;
@@ -66,9 +68,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class SystemManagementAppService {
 
-    private static final String PERMISSION_CATALOG_CACHE_KEY = "global-permission-catalog";
     private static final long MAX_PAGE_SIZE = 100L;
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;
     private static final String DEFAULT_ADMIN_USERNAME = "admin";
@@ -89,10 +91,18 @@ public class SystemManagementAppService {
     private static final long MENU_COUNT_CACHE_TTL_MS = 30_000L;
     private static final String MENU_COUNT_CACHE_KEY = "global-menu-count";
     private static final int PERMISSION_CATALOG_CACHE_MAX_ENTRIES = 1024;
-    private static final long PERMISSION_CATALOG_CACHE_TTL_MS = 30_000L;
+    private static final long PERMISSION_CATALOG_CACHE_TTL_MS = 300_000L;
+    private static final int VERSIONED_MENU_TREE_CACHE_MAX_ENTRIES = 32;
+    private static final int VERSIONED_PERMISSION_TREE_CACHE_MAX_ENTRIES = 32;
+    private static final long VERSIONED_TREE_CACHE_TTL_MS = 300_000L;
+    private static final long READ_MODEL_VERSION_CACHE_TTL_MS = 2_000L;
+    private static final String MENU_TREE_READ_MODEL_VERSION_CACHE_KEY = "platform:menu-tree";
+    private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
+    private static final String READ_MODEL_SCOPE_MENU_TREE = "menu-tree";
+    private static final String PERMISSION_TREE_CACHE_KEY_PREFIX = "permission-tree:";
+    private static final String PERMISSION_CATALOG_CACHE_KEY_PREFIX = "permission-catalog:";
     private static final Set<String> BUILTIN_ROOT_MENU_CODES = Set.of(
             "dashboard.home",
-            "files.download-center",
             "ai.root",
             "aiadc.root",
             "team.root",
@@ -207,8 +217,12 @@ public class SystemManagementAppService {
     private final SystemUserManagementAppService systemUserManagementAppService;
     private final SystemRoleManagementAppService systemRoleManagementAppService;
     private final FieldCryptoService fieldCryptoService;
+    private final ReadModelVersionService readModelVersionService;
     private final Cache<String, Integer> menuCountCache;
     private final Cache<String, List<SystemVO.PermissionVO>> permissionCatalogCache;
+    private final Cache<Long, List<SystemVO.MenuVO>> menuTreeCache;
+    private final Cache<String, List<SystemVO.PermissionTreeVO>> permissionTreeCache;
+    private final Cache<String, CachedReadModelVersion> readModelVersionCache;
     private final SystemPermissionTreeAssembler permissionTreeAssembler = new SystemPermissionTreeAssembler();
 
     @Autowired
@@ -250,6 +264,7 @@ public class SystemManagementAppService {
         this.systemUserManagementAppService = systemUserManagementAppService;
         this.systemRoleManagementAppService = systemRoleManagementAppService;
         this.fieldCryptoService = fieldCryptoService;
+        this.readModelVersionService = new ReadModelVersionService(jdbcTemplate);
         this.menuCountCache = CacheBuilder.newBuilder()
                 .maximumSize(MENU_COUNT_CACHE_MAX_ENTRIES)
                 .expireAfterWrite(MENU_COUNT_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
@@ -257,6 +272,18 @@ public class SystemManagementAppService {
         this.permissionCatalogCache = CacheBuilder.newBuilder()
                 .maximumSize(PERMISSION_CATALOG_CACHE_MAX_ENTRIES)
                 .expireAfterWrite(PERMISSION_CATALOG_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
+        this.menuTreeCache = CacheBuilder.newBuilder()
+                .maximumSize(VERSIONED_MENU_TREE_CACHE_MAX_ENTRIES)
+                .expireAfterWrite(VERSIONED_TREE_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
+        this.permissionTreeCache = CacheBuilder.newBuilder()
+                .maximumSize(VERSIONED_PERMISSION_TREE_CACHE_MAX_ENTRIES)
+                .expireAfterWrite(VERSIONED_TREE_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
+                .build();
+        this.readModelVersionCache = CacheBuilder.newBuilder()
+                .maximumSize(VERSIONED_MENU_TREE_CACHE_MAX_ENTRIES)
+                .expireAfterWrite(READ_MODEL_VERSION_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
                 .build();
     }
 
@@ -820,8 +847,16 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.PermissionVO> listPermissions(CurrentUser currentUser) {
+        return listPermissionsByVersion(currentPermissionCatalogVersion());
+    }
+
+    private List<SystemVO.PermissionVO> listPermissionsByVersion(String permissionCatalogVersion) {
+        pruneStalePermissionCatalogCache(permissionCatalogVersion);
         try {
-            return permissionCatalogCache.get(PERMISSION_CATALOG_CACHE_KEY, this::loadPermissionCatalog);
+            return copyPermissions(permissionCatalogCache.get(
+                    permissionCatalogCacheKey(permissionCatalogVersion),
+                    this::loadPermissionCatalog
+            ));
         } catch (ExecutionException ex) {
             Throwable cause = ex.getCause();
             if (cause instanceof RuntimeException runtimeException) {
@@ -848,15 +883,26 @@ public class SystemManagementAppService {
     }
 
     public List<SystemVO.PermissionTreeVO> listPermissionTree(CurrentUser currentUser) {
-        List<SystemVO.MenuVO> menus = listMenus(currentUser);
-        List<SystemVO.PermissionVO> permissions = listPermissions(currentUser);
-        return permissionTreeAssembler.build(menus, permissions);
+        long menuTreeVersion = currentMenuTreeVersion();
+        String permissionCatalogVersion = currentPermissionCatalogVersion();
+        String cacheKey = permissionTreeCacheKey(menuTreeVersion, permissionCatalogVersion);
+        pruneStalePermissionTreeCache(cacheKey);
+        List<SystemVO.PermissionTreeVO> cached = permissionTreeCache.getIfPresent(cacheKey);
+        if (cached != null) {
+            return copyPermissionTrees(cached);
+        }
+
+        List<SystemVO.PermissionTreeVO> permissionTree = permissionTreeAssembler.build(
+                loadMenusByVersion(currentUser, menuTreeVersion),
+                listPermissionsByVersion(permissionCatalogVersion)
+        );
+        List<SystemVO.PermissionTreeVO> snapshot = copyPermissionTrees(permissionTree);
+        permissionTreeCache.put(cacheKey, snapshot);
+        return copyPermissionTrees(snapshot);
     }
 
     public List<SystemVO.MenuVO> listMenus(CurrentUser currentUser) {
-        List<SystemVO.MenuVO> menus = listPersistedMenus(currentUser);
-        sortMenuTree(menus);
-        return menus;
+        return loadMenusByVersion(currentUser, currentMenuTreeVersion());
     }
 
     private List<SystemVO.MenuVO> listPersistedMenus(CurrentUser currentUser) {
@@ -885,6 +931,78 @@ public class SystemManagementAppService {
                 menu.setParentId(0L);
             }
         }
+    }
+
+    private List<SystemVO.MenuVO> loadMenusByVersion(CurrentUser currentUser, long menuTreeVersion) {
+        pruneStaleMenuTreeCache(menuTreeVersion);
+        List<SystemVO.MenuVO> cached = menuTreeCache.getIfPresent(menuTreeVersion);
+        if (cached != null) {
+            return copyMenus(cached);
+        }
+
+        List<SystemVO.MenuVO> menus = listPersistedMenus(currentUser);
+        List<SystemVO.MenuVO> snapshot = copyMenus(menus);
+        menuTreeCache.put(menuTreeVersion, snapshot);
+        return copyMenus(snapshot);
+    }
+
+    private long currentMenuTreeVersion() {
+        CachedReadModelVersion cached = readModelVersionCache.getIfPresent(MENU_TREE_READ_MODEL_VERSION_CACHE_KEY);
+        long now = System.currentTimeMillis();
+        if (cached != null && cached.expiresAtEpochMillis() > now) {
+            return cached.version();
+        }
+
+        long version = 0L;
+        Long storedVersion = readModelVersionService.currentVersion(READ_MODEL_CONTEXT_PLATFORM, READ_MODEL_SCOPE_MENU_TREE);
+        if (storedVersion != null && storedVersion > 0) {
+            version = storedVersion;
+        }
+        readModelVersionCache.put(
+                MENU_TREE_READ_MODEL_VERSION_CACHE_KEY,
+                new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MS)
+        );
+        return version;
+    }
+
+    private String currentPermissionCatalogVersion() {
+        String version = permissionSnapshotService.currentPermissionSnapshotVersion();
+        return StringUtils.hasText(version) ? version.trim() : "v0";
+    }
+
+    private String permissionCatalogCacheKey(String permissionCatalogVersion) {
+        return PERMISSION_CATALOG_CACHE_KEY_PREFIX + permissionCatalogVersion;
+    }
+
+    private String permissionTreeCacheKey(long menuTreeVersion, String permissionCatalogVersion) {
+        return PERMISSION_TREE_CACHE_KEY_PREFIX + menuTreeVersion + ":" + permissionCatalogVersion;
+    }
+
+    private void bumpMenuTreeReadModelVersion(String eventKey) {
+        long version = readModelVersionService.bump(READ_MODEL_CONTEXT_PLATFORM, READ_MODEL_SCOPE_MENU_TREE, eventKey);
+        readModelVersionCache.put(
+                MENU_TREE_READ_MODEL_VERSION_CACHE_KEY,
+                new CachedReadModelVersion(version, System.currentTimeMillis() + READ_MODEL_VERSION_CACHE_TTL_MS)
+        );
+        invalidateVersionedMenuCaches();
+    }
+
+    private void invalidateVersionedMenuCaches() {
+        menuTreeCache.invalidateAll();
+        permissionTreeCache.invalidateAll();
+    }
+
+    private void pruneStaleMenuTreeCache(long menuTreeVersion) {
+        menuTreeCache.asMap().keySet().removeIf(version -> version != menuTreeVersion);
+    }
+
+    private void pruneStalePermissionCatalogCache(String permissionCatalogVersion) {
+        String activeCacheKey = permissionCatalogCacheKey(permissionCatalogVersion);
+        permissionCatalogCache.asMap().keySet().removeIf(cacheKey -> !activeCacheKey.equals(cacheKey));
+    }
+
+    private void pruneStalePermissionTreeCache(String activeCacheKey) {
+        permissionTreeCache.asMap().keySet().removeIf(cacheKey -> !activeCacheKey.equals(cacheKey));
     }
 
     @Transactional
@@ -926,6 +1044,7 @@ public class SystemManagementAppService {
                 "SUCCESS",
                 "调整菜单顺序"
         );
+        bumpMenuTreeReadModelVersion("system.menu.reorder");
         invalidateMenuCountCache();
         return true;
     }
@@ -955,6 +1074,7 @@ public class SystemManagementAppService {
         ensureEditableParentMenu(request.getParentId());
         Long menuId = insertMenu(null, request, currentUser.getUserId());
         operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "create", "CREATE", "SUCCESS", "创建菜单: " + request.getMenuName());
+        bumpMenuTreeReadModelVersion("system.menu.create");
         invalidateMenuCountCache();
         return getMenu(currentUser, menuId);
     }
@@ -965,6 +1085,7 @@ public class SystemManagementAppService {
         ensureEditableParentMenu(request.getParentId());
         insertMenu(menuId, request, currentUser.getUserId());
         operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "update", "UPDATE", "SUCCESS", "更新菜单: " + request.getMenuName());
+        bumpMenuTreeReadModelVersion("system.menu.update");
         invalidateMenuCountCache();
         return getMenu(currentUser, menuId);
     }
@@ -980,6 +1101,7 @@ public class SystemManagementAppService {
                 menuId
         );
         operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "status", "UPDATE", "SUCCESS", "更新菜单状态: " + menuId + " -> " + status);
+        bumpMenuTreeReadModelVersion("system.menu.status");
         invalidateMenuCountCache();
         return true;
     }
@@ -1011,6 +1133,7 @@ public class SystemManagementAppService {
                 menuId
         );
         operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "menu", "delete", "DELETE", "SUCCESS", "删除菜单: " + menu.getMenuName());
+        bumpMenuTreeReadModelVersion("system.menu.delete");
         permissionSnapshotService.invalidatePermissions();
         invalidateMenuCountCache();
         return true;
@@ -1410,7 +1533,7 @@ public class SystemManagementAppService {
     }
 
     public SystemVO.SecuritySettingsVO getPublicSecuritySettings() {
-        return toSecuritySettingsVO(securitySettingsService.loadSettings());
+        return toSecuritySettingsVO(securitySettingsService.loadSettingsFresh());
     }
 
     public SystemVO.AgreementSettingsVO getAgreementSettings() {
@@ -2670,6 +2793,95 @@ public class SystemManagementAppService {
         }
     }
 
+    private List<SystemVO.MenuVO> copyMenus(List<SystemVO.MenuVO> menus) {
+        if (menus == null || menus.isEmpty()) {
+            return List.of();
+        }
+        List<SystemVO.MenuVO> copied = new ArrayList<>(menus.size());
+        for (SystemVO.MenuVO menu : menus) {
+            copied.add(copyMenu(menu));
+        }
+        return copied;
+    }
+
+    private SystemVO.MenuVO copyMenu(SystemVO.MenuVO source) {
+        SystemVO.MenuVO target = new SystemVO.MenuVO();
+        target.setId(source.getId());
+        target.setParentId(source.getParentId());
+        target.setMenuCode(source.getMenuCode());
+        target.setMenuName(source.getMenuName());
+        target.setMenuType(source.getMenuType());
+        target.setPath(source.getPath());
+        target.setComponent(source.getComponent());
+        target.setIcon(source.getIcon());
+        target.setSortNo(source.getSortNo());
+        target.setPermissionKey(source.getPermissionKey());
+        target.setStatus(source.getStatus());
+        target.setBuiltin(source.isBuiltin());
+        target.setChildren(copyMenus(source.getChildren()));
+        return target;
+    }
+
+    private List<SystemVO.PermissionVO> copyPermissions(List<SystemVO.PermissionVO> permissions) {
+        if (permissions == null || permissions.isEmpty()) {
+            return List.of();
+        }
+        List<SystemVO.PermissionVO> copied = new ArrayList<>(permissions.size());
+        for (SystemVO.PermissionVO permission : permissions) {
+            SystemVO.PermissionVO item = new SystemVO.PermissionVO();
+            item.setPermissionKey(permission.getPermissionKey());
+            item.setPermissionName(permission.getPermissionName());
+            item.setPermissionGroup(permission.getPermissionGroup());
+            item.setSourceType(permission.getSourceType());
+            item.setPluginCode(permission.getPluginCode());
+            copied.add(item);
+        }
+        return copied;
+    }
+
+    private List<SystemVO.PermissionTreeVO> copyPermissionTrees(List<SystemVO.PermissionTreeVO> permissionTrees) {
+        if (permissionTrees == null || permissionTrees.isEmpty()) {
+            return List.of();
+        }
+        List<SystemVO.PermissionTreeVO> copied = new ArrayList<>(permissionTrees.size());
+        for (SystemVO.PermissionTreeVO permissionTree : permissionTrees) {
+            copied.add(copyPermissionTree(permissionTree));
+        }
+        return copied;
+    }
+
+    private SystemVO.PermissionTreeVO copyPermissionTree(SystemVO.PermissionTreeVO source) {
+        SystemVO.PermissionTreeVO target = new SystemVO.PermissionTreeVO();
+        target.setNodeType(source.getNodeType());
+        target.setPageKey(source.getPageKey());
+        target.setPageName(source.getPageName());
+        target.setRoutePath(source.getRoutePath());
+        target.setIcon(source.getIcon());
+        target.setPermissionKey(source.getPermissionKey());
+        target.setPermissionGroup(source.getPermissionGroup());
+        target.setSourceType(source.getSourceType());
+        target.setSelectable(source.isSelectable());
+        target.setChildren(copyPermissionTrees(source.getChildren()));
+        target.setActionPermissions(copyPermissionActions(source.getActionPermissions()));
+        return target;
+    }
+
+    private List<SystemVO.PermissionActionVO> copyPermissionActions(List<SystemVO.PermissionActionVO> actionPermissions) {
+        if (actionPermissions == null || actionPermissions.isEmpty()) {
+            return List.of();
+        }
+        List<SystemVO.PermissionActionVO> copied = new ArrayList<>(actionPermissions.size());
+        for (SystemVO.PermissionActionVO action : actionPermissions) {
+            SystemVO.PermissionActionVO item = new SystemVO.PermissionActionVO();
+            item.setPermissionKey(action.getPermissionKey());
+            item.setPermissionName(action.getPermissionName());
+            item.setPermissionGroup(action.getPermissionGroup());
+            item.setSourceType(action.getSourceType());
+            copied.add(item);
+        }
+        return copied;
+    }
+
     private List<String> splitCsv(String csv) {
         if (!StringUtils.hasText(csv)) {
             return List.of();
@@ -2748,5 +2960,7 @@ public class SystemManagementAppService {
             throw new BizException(ErrorCode.VALIDATION_ERROR, "请输入有效邮箱地址");
         }
         return normalized;
+    }
+    private record CachedReadModelVersion(long version, long expiresAtEpochMillis) {
     }
 }

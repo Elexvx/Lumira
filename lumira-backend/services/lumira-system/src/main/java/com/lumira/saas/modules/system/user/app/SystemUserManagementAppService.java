@@ -2,6 +2,7 @@ package com.lumira.saas.modules.system.user.app;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.data.DataPermissionDecision;
 import com.lumira.common.security.data.DataPermissionRule;
@@ -41,6 +42,7 @@ import java.util.regex.Pattern;
 import java.util.concurrent.CompletableFuture;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class SystemUserManagementAppService {
 
     private static final Long DEFAULT_ADMIN_USER_ID = 1001L;

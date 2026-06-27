@@ -22,8 +22,8 @@ public class AuthSecurityProperties {
     private boolean allowPlaintextLoginPassword = false;
     private long permissionSnapshotVersionCacheTtlSeconds = 30;
     private long permissionSnapshotVersionCacheMaxEntries = 100_000;
-    private long authBootstrapCacheTtlSeconds = 5;
-    private long loginCapabilitiesCacheTtlSeconds = 5;
+    private long authBootstrapCacheTtlSeconds = 300;
+    private long loginCapabilitiesCacheTtlSeconds = 300;
     private List<String> permitPaths = new ArrayList<>();
 
     public String getJwtSecret() {

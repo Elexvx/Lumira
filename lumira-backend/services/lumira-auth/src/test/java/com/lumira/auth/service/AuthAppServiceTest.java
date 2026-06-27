@@ -11,12 +11,14 @@ import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
 import com.lumira.auth.config.AuthSecurityProperties;
 import com.lumira.auth.model.AuthSession;
+import com.lumira.common.runtime.ReadModelVersionCache;
 import com.lumira.common.web.repeatsubmit.ClientIpResolver;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.JwtTokenClaims;
 import com.lumira.common.security.JwtTokenType;
 import com.lumira.common.security.SecurityContextFacade;
 import jakarta.servlet.http.HttpServletRequest;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,6 +26,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.lang.reflect.Field;
 import java.lang.reflect.Constructor;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.Optional;
 import java.util.ArrayList;
@@ -32,6 +35,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -40,6 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.atLeast;
@@ -58,6 +63,7 @@ class AuthAppServiceTest {
     private AuthAppService authAppService;
     private SecurityContextFacade securityContextFacade;
     private SecuritySettingsService securitySettingsService;
+    private AuthSecurityProperties authSecurityProperties;
 
     @BeforeEach
     void setUp() {
@@ -70,7 +76,7 @@ class AuthAppServiceTest {
         securityContextFacade = mock(SecurityContextFacade.class);
         ClientIpResolver clientIpResolver = mock(ClientIpResolver.class);
         WechatLoginService wechatLoginService = mock(WechatLoginService.class);
-        AuthSecurityProperties securityProperties = new AuthSecurityProperties();
+        authSecurityProperties = new AuthSecurityProperties();
         securitySettingsService = mock(SecuritySettingsService.class);
 
         when(clientIpResolver.resolve(any(HttpServletRequest.class))).thenReturn("127.0.0.1");
@@ -100,7 +106,7 @@ class AuthAppServiceTest {
                 securityContextFacade,
                 clientIpResolver,
                 wechatLoginService,
-                securityProperties,
+                authSecurityProperties,
                 securitySettingsService
         );
     }
@@ -231,6 +237,119 @@ class AuthAppServiceTest {
     }
 
     @Test
+    void bootstrapIncludesPostLoginResourcesWhenProviderIsAvailable() {
+        AuthSession session = cachedSession();
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(
+                new CurrentUser(
+                        42L,
+                        "jane",
+                        "session-1",
+                        1,
+                        true,
+                        Set.of(),
+                        Set.of(),
+                        null,
+                        Set.of(),
+                        Set.of(),
+                        List.of()
+                )
+        );
+        AuthPostLoginBootstrapProvider provider = currentUser -> new AuthPostLoginBootstrapProvider.AuthPostLoginBootstrapPayload(
+                List.of(Map.of("menuCode", "dashboard.home", "name", "工作台", "path", "/dashboard/home")),
+                List.of(Map.of("pluginCode", "work-order-feedback", "pluginName", "工单反馈", "version", "1.0.0"))
+        );
+        AuthAppService serviceWithProvider = createAuthAppService(provider);
+        seedPermissionVersionCache(serviceWithProvider, 42L, "v1");
+
+        var bootstrap = serviceWithProvider.bootstrap();
+
+        assertEquals(1, bootstrap.menuTree().size());
+        assertEquals("dashboard.home", bootstrap.menuTree().getFirst().get("menuCode"));
+        assertEquals(1, bootstrap.availablePlugins().size());
+        verify(securitySettingsService).snapshot();
+    }
+
+    @Test
+    void bootstrapSkipsPostLoginResourcesWhenPasswordChangeIsRequired() {
+        AuthSession session = cachedSession();
+        session.setRequiresPasswordChange(Boolean.TRUE);
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(
+                new CurrentUser(
+                        42L,
+                        "jane",
+                        "session-1",
+                        1,
+                        true,
+                        Set.of(),
+                        Set.of(),
+                        null,
+                        Set.of(),
+                        Set.of(),
+                        List.of()
+                )
+        );
+        seedPermissionVersionCache(42L, "v1");
+        AtomicInteger providerCalls = new AtomicInteger();
+        AuthPostLoginBootstrapProvider provider = currentUser -> {
+            providerCalls.incrementAndGet();
+            return new AuthPostLoginBootstrapProvider.AuthPostLoginBootstrapPayload(
+                    List.of(Map.of("menuCode", "dashboard.home")),
+                    List.of(Map.of("pluginCode", "work-order-feedback"))
+            );
+        };
+        AuthAppService serviceWithProvider = createAuthAppService(provider);
+        seedPermissionVersionCache(serviceWithProvider, 42L, "v1");
+
+        var bootstrap = serviceWithProvider.bootstrap();
+
+        assertTrue(Boolean.TRUE.equals(bootstrap.currentUser().requiresPasswordChange()));
+        assertTrue(bootstrap.menuTree().isEmpty());
+        assertTrue(bootstrap.availablePlugins().isEmpty());
+        assertEquals(0, providerCalls.get());
+        assertEquals(0, serviceWithProvider.authBootstrapCacheRefreshes());
+        verify(securitySettingsService).snapshot();
+    }
+
+    @Test
+    void bootstrapIncludesRuntimeAppearanceSettingsWhenProviderSuppliesThem() {
+        AuthSession session = cachedSession();
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(
+                new CurrentUser(
+                        42L,
+                        "jane",
+                        "session-1",
+                        1,
+                        true,
+                        Set.of(),
+                        Set.of(),
+                        null,
+                        Set.of(),
+                        Set.of(),
+                        List.of()
+                )
+        );
+        AuthPostLoginBootstrapProvider provider = currentUser -> new AuthPostLoginBootstrapProvider.AuthPostLoginBootstrapPayload(
+                List.of(),
+                List.of(),
+                Map.of(
+                        "brandingSettings", Map.of("websiteName", "Lumira Fast"),
+                        "watermarkSettings", Map.of("enabled", Boolean.FALSE),
+                        "floatingWindowSettings", Map.of("apiDocsQrEnabled", Boolean.FALSE)
+                )
+        );
+        AuthAppService serviceWithProvider = createAuthAppService(provider);
+        seedPermissionVersionCache(serviceWithProvider, 42L, "v1");
+
+        var bootstrap = serviceWithProvider.bootstrap();
+
+        assertEquals("Lumira Fast", ((Map<?, ?>) bootstrap.runtimeAppearanceSettings().get("brandingSettings")).get("websiteName"));
+        assertEquals(Boolean.FALSE, ((Map<?, ?>) bootstrap.runtimeAppearanceSettings().get("watermarkSettings")).get("enabled"));
+    }
+
+    @Test
     void currentUserCachesBySessionAndPermissionVersionWithinShortTtl() {
         AuthSession session = cachedSession();
         CurrentUser currentUser = new CurrentUser(
@@ -262,7 +381,7 @@ class AuthAppServiceTest {
     }
 
     @Test
-    void loginCapabilitiesAreCachedToReducePerRequestLoad() {
+    void loginCapabilitiesAreReusedWhenPublicBootstrapVersionStable() {
         HttpServletRequest httpRequest = mock(HttpServletRequest.class);
         when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");
 
@@ -287,6 +406,7 @@ class AuthAppServiceTest {
         LoginCapabilitiesDTO capabilities = new LoginCapabilitiesDTO(true, false, false, false, false, false, List.of("password"));
 
         when(systemInternalApi.findLoginUser("jane")).thenReturn(user);
+        when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L, 11L, 11L);
         when(systemInternalApi.loginCapabilities()).thenReturn(capabilities);
         when(systemInternalApi.permissionSnapshot(42L)).thenReturn(snapshot);
         when(loginEncryptionService.decryptPassword("ciphertext")).thenReturn("password");
@@ -301,10 +421,171 @@ class AuthAppServiceTest {
         assertTrue(Boolean.FALSE.equals(secondLogin.getRequiresSecondFactor()));
         verify(systemInternalApi, times(2)).findLoginUser("jane");
         verify(systemInternalApi, times(1)).loginCapabilities();
+        verify(systemInternalApi, times(1)).readModelVersion("platform", "public-bootstrap");
     }
 
     @Test
-    void bootstrapRefreshesWhenPermissionVersionChanges() {
+    void loginCapabilitiesReloadWhenPublicBootstrapVersionChanges() throws Exception {
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");
+
+        SystemUserSnapshotDTO user = new SystemUserSnapshotDTO(
+                42L,
+                "jane",
+                "encoded-password",
+                "ENABLED",
+                null,
+                "jane@example.com",
+                "Jane",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "zh-CN"
+        );
+        PermissionSnapshotDTO snapshot = new PermissionSnapshotDTO("v1", List.of("dashboard:view"), List.of(), null, List.of(), List.of(), List.of(), "/dashboard/home");
+        LoginCapabilitiesDTO capabilities = new LoginCapabilitiesDTO(true, false, false, false, false, false, List.of("password"));
+
+        when(systemInternalApi.findLoginUser("jane")).thenReturn(user);
+        when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L, 12L);
+        when(systemInternalApi.loginCapabilities()).thenReturn(capabilities, capabilities);
+        when(systemInternalApi.permissionSnapshot(42L)).thenReturn(snapshot);
+        when(loginEncryptionService.decryptPassword("ciphertext")).thenReturn("password");
+        when(passwordEncoder.matches("password", "encoded-password")).thenReturn(true);
+
+        LoginRequest request = new LoginRequest("jane", null, "ciphertext", null, null, null);
+
+        LoginResponseDTO firstLogin = authAppService.login(request, httpRequest);
+        Thread.sleep(2100L);
+        LoginResponseDTO secondLogin = authAppService.login(request, httpRequest);
+
+        assertTrue(Boolean.FALSE.equals(firstLogin.getRequiresSecondFactor()));
+        assertTrue(Boolean.FALSE.equals(secondLogin.getRequiresSecondFactor()));
+        verify(systemInternalApi, times(2)).loginCapabilities();
+        verify(systemInternalApi, times(2)).readModelVersion("platform", "public-bootstrap");
+    }
+
+    @Test
+    void bootstrapRefreshesWhenPublicBootstrapVersionChanges() throws Exception {
+        AuthSession session = cachedSession();
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(
+                new CurrentUser(
+                        42L,
+                        "jane",
+                        "session-1",
+                        1,
+                        true,
+                        Set.of(),
+                        Set.of(),
+                        null,
+                        Set.of(),
+                        Set.of(),
+                        List.of()
+                )
+        );
+        when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L, 12L);
+        seedPermissionVersionCache(42L, "v1");
+
+        authAppService.bootstrap();
+        Thread.sleep(2100L);
+        var secondBootstrap = authAppService.bootstrap();
+
+        assertEquals(42L, secondBootstrap.currentUser().userId());
+        assertEquals(2, authAppService.authBootstrapCacheMisses());
+        assertEquals(0, authAppService.authBootstrapCacheHits());
+        verify(securitySettingsService, times(2)).snapshot();
+    }
+
+    @Test
+    void bootstrapWithProviderRefreshesWhenPluginBootstrapVersionChanges() throws Exception {
+        AuthSession session = cachedSession();
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(
+                new CurrentUser(
+                        42L,
+                        "jane",
+                        "session-1",
+                        1,
+                        true,
+                        Set.of(),
+                        Set.of(),
+                        null,
+                        Set.of(),
+                        Set.of(),
+                        List.of()
+                )
+        );
+        AtomicInteger providerLoads = new AtomicInteger();
+        AuthPostLoginBootstrapProvider provider = currentUser -> {
+            int loadNumber = providerLoads.incrementAndGet();
+            return new AuthPostLoginBootstrapProvider.AuthPostLoginBootstrapPayload(
+                    List.of(Map.of("menuCode", "dashboard.home", "name", "menu-" + loadNumber, "path", "/dashboard/home")),
+                    List.of(Map.of("pluginCode", "work-order-feedback", "pluginName", "plugin-" + loadNumber, "version", "1.0." + loadNumber)),
+                    Map.of("brandingSettings", Map.of("websiteName", "Lumira " + loadNumber))
+            );
+        };
+        AuthAppService serviceWithProvider = createAuthAppService(provider);
+        when(systemInternalApi.readModelVersion("platform", "public-bootstrap")).thenReturn(11L, 11L);
+        when(systemInternalApi.readModelVersion("platform", "runtime-appearance")).thenReturn(21L, 21L);
+        when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(31L, 32L);
+        when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(41L, 41L);
+        seedPermissionVersionCache(serviceWithProvider, 42L, "v1");
+
+        var firstBootstrap = serviceWithProvider.bootstrap();
+        Thread.sleep(2100L);
+        var secondBootstrap = serviceWithProvider.bootstrap();
+
+        assertEquals("menu-1", firstBootstrap.menuTree().getFirst().get("name"));
+        assertEquals("menu-2", secondBootstrap.menuTree().getFirst().get("name"));
+        assertEquals("Lumira 2", ((Map<?, ?>) secondBootstrap.runtimeAppearanceSettings().get("brandingSettings")).get("websiteName"));
+        assertEquals(2, serviceWithProvider.authBootstrapCacheMisses());
+        assertEquals(0, serviceWithProvider.authBootstrapCacheHits());
+        assertEquals(2, providerLoads.get());
+    }
+
+    @Test
+    void bootstrapUsesBatchReadModelVersionProviderWhenAvailable() {
+        AuthSession session = cachedSession();
+        when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
+        when(securityContextFacade.getCurrentUser()).thenReturn(
+                new CurrentUser(
+                        42L,
+                        "jane",
+                        "session-1",
+                        1,
+                        true,
+                        Set.of(),
+                        Set.of(),
+                        null,
+                        Set.of(),
+                        Set.of(),
+                        List.of()
+                )
+        );
+        AuthPostLoginBootstrapProvider provider = currentUser -> new AuthPostLoginBootstrapProvider.AuthPostLoginBootstrapPayload(
+                List.of(Map.of("menuCode", "dashboard.home", "name", "workspace", "path", "/dashboard/home")),
+                List.of(Map.of("pluginCode", "work-order-feedback", "pluginName", "feedback", "version", "1.0.0"))
+        );
+        AtomicInteger versionLoads = new AtomicInteger();
+        AuthReadModelVersionProvider readModelVersionProvider = () -> {
+            versionLoads.incrementAndGet();
+            return new AuthReadModelVersionProvider.AuthBootstrapReadModelVersions(11L, 21L, 31L, 41L);
+        };
+        AuthAppService serviceWithProvider = createAuthAppService(provider, readModelVersionProvider);
+        seedPermissionVersionCache(serviceWithProvider, 42L, "v1");
+
+        serviceWithProvider.bootstrap();
+        serviceWithProvider.bootstrap();
+
+        assertEquals(1, versionLoads.get());
+        verify(systemInternalApi, never()).readModelVersion(anyString(), anyString());
+    }
+
+    @Test    void bootstrapRefreshesWhenPermissionVersionChanges() {
         AuthSession session = cachedSession();
         when(authSessionStore.findBySessionId("session-1")).thenReturn(Optional.of(session));
         when(securityContextFacade.getCurrentUser()).thenReturn(
@@ -651,16 +932,103 @@ class AuthAppServiceTest {
     }
 
     private void seedPermissionVersionCache(Long userId, String version) {
+        seedPermissionVersionCache(authAppService, userId, version);
+    }
+
+    private void seedPermissionVersionCache(AuthAppService targetService, Long userId, String version) {
         try {
             Field cacheField = AuthAppService.class.getDeclaredField("permissionSnapshotVersionCache");
             cacheField.setAccessible(true);
             @SuppressWarnings("unchecked")
-            com.google.common.cache.Cache<Long, Object> cache = (com.google.common.cache.Cache<Long, Object>) cacheField.get(authAppService);
+            com.google.common.cache.Cache<Long, Object> cache = (com.google.common.cache.Cache<Long, Object>) cacheField.get(targetService);
             Class<?> cacheEntryType = Class.forName("com.lumira.auth.service.AuthAppService$PermissionSnapshotVersionCache");
             Constructor<?> entryConstructor = cacheEntryType.getDeclaredConstructor(String.class);
             entryConstructor.setAccessible(true);
             Object cacheEntry = entryConstructor.newInstance(version);
             cache.put(userId, cacheEntry);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private AuthAppService createAuthAppService(AuthPostLoginBootstrapProvider authPostLoginBootstrapProvider) {
+        try {
+            Constructor<AuthAppService> constructor = AuthAppService.class.getDeclaredConstructor(
+                    SystemInternalApi.class,
+                    LoginEncryptionService.class,
+                    LoginProtectionService.class,
+                    AuthSessionStore.class,
+                    JwtTokenService.class,
+                    PasswordEncoder.class,
+                    SecurityContextFacade.class,
+                    ClientIpResolver.class,
+                    WechatLoginService.class,
+                    AuthSecurityProperties.class,
+                    SecuritySettingsService.class,
+                    AuthPostLoginBootstrapProvider.class,
+                    MeterRegistry.class
+            );
+            constructor.setAccessible(true);
+            return constructor.newInstance(
+                    systemInternalApi,
+                    loginEncryptionService,
+                    loginProtectionService,
+                    authSessionStore,
+                    jwtTokenService,
+                    passwordEncoder,
+                    securityContextFacade,
+                    mock(ClientIpResolver.class),
+                    mock(WechatLoginService.class),
+                    authSecurityProperties,
+                    securitySettingsService,
+                    authPostLoginBootstrapProvider,
+                    null
+            );
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(exception);
+        }
+    }
+
+    private AuthAppService createAuthAppService(
+            AuthPostLoginBootstrapProvider authPostLoginBootstrapProvider,
+            AuthReadModelVersionProvider authReadModelVersionProvider
+    ) {
+        try {
+            Constructor<AuthAppService> constructor = AuthAppService.class.getDeclaredConstructor(
+                    SystemInternalApi.class,
+                    LoginEncryptionService.class,
+                    LoginProtectionService.class,
+                    AuthSessionStore.class,
+                    JwtTokenService.class,
+                    PasswordEncoder.class,
+                    SecurityContextFacade.class,
+                    ClientIpResolver.class,
+                    WechatLoginService.class,
+                    AuthSecurityProperties.class,
+                    SecuritySettingsService.class,
+                    AuthPostLoginBootstrapProvider.class,
+                    AuthReadModelVersionProvider.class,
+                    MeterRegistry.class,
+                    ReadModelVersionCache.class
+            );
+            constructor.setAccessible(true);
+            return constructor.newInstance(
+                    systemInternalApi,
+                    loginEncryptionService,
+                    loginProtectionService,
+                    authSessionStore,
+                    jwtTokenService,
+                    passwordEncoder,
+                    securityContextFacade,
+                    mock(ClientIpResolver.class),
+                    mock(WechatLoginService.class),
+                    authSecurityProperties,
+                    securitySettingsService,
+                    authPostLoginBootstrapProvider,
+                    authReadModelVersionProvider,
+                    null,
+                    new ReadModelVersionCache(2000L)
+            );
         } catch (ReflectiveOperationException exception) {
             throw new IllegalStateException(exception);
         }

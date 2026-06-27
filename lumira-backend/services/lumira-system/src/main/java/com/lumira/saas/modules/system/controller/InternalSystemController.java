@@ -481,7 +481,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
 
     @GetMapping("/verification/login-capabilities")
     public LoginCapabilitiesDTO loginCapabilities() {
-        var capabilities = verificationAppService.loadLoginCapabilities();
+        var capabilities = verificationAppService.loadLoginCapabilitiesFresh();
         return new LoginCapabilitiesDTO(
                 Boolean.TRUE.equals(capabilities.getPasswordLoginAvailable()),
                 Boolean.TRUE.equals(capabilities.getSmsLoginAvailable()),

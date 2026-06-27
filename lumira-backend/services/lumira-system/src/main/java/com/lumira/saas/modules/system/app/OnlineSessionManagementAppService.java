@@ -2,6 +2,7 @@ package com.lumira.saas.modules.system.app;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.infrastructure.security.model.AuthSession;
@@ -31,6 +32,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class OnlineSessionManagementAppService {
 
     private static final int MAX_PAGE_SIZE = 100;

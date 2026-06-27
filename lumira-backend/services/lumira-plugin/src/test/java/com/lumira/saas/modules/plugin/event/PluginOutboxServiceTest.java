@@ -25,13 +25,12 @@ class PluginOutboxServiceTest {
     void dispatchPendingClaimsAndMarksDelivered() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PluginOutboxRow row = outboxRow(10L, "PENDING", 0);
+        row.setClaimToken("claim-10");
+        row.setStatus("DISPATCHING");
         doReturn(List.of(row)).when(jdbcTemplate).query(
                 anyString(),
                 any(BeanPropertyRowMapper.class),
-                any(),
-                any(),
-                any(),
-                any()
+                anyString()
         );
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
@@ -41,21 +40,20 @@ class PluginOutboxServiceTest {
 
         assertThat(delivered).isEqualTo(1);
         verify(dispatcher).dispatch(row);
-        verify(jdbcTemplate).update(contains("and status = ?"), eq("DISPATCHING"), any(), eq(9L), eq(10L), eq("PENDING"));
-        verify(jdbcTemplate).update(contains("last_error_message = null"), eq("DELIVERED"), any(), eq(9L), eq(10L));
+        verify(jdbcTemplate).update(contains("set t.status = ?,"), eq("PENDING"), eq("FAILED"), any(), eq("DISPATCHING"), any(), eq(50), eq("DISPATCHING"), anyString(), anyString(), any(), any());
+        verify(jdbcTemplate).update(contains("claim_token = ?"), eq("DELIVERED"), any(), eq(9L), eq(10L), eq("DISPATCHING"), anyString());
     }
 
     @Test
     void failedDispatchAfterMaxRetriesMovesToDeadLetter() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PluginOutboxRow row = outboxRow(11L, "FAILED", 7);
+        row.setClaimToken("claim-11");
+        row.setStatus("DISPATCHING");
         doReturn(List.of(row)).when(jdbcTemplate).query(
                 anyString(),
                 any(BeanPropertyRowMapper.class),
-                any(),
-                any(),
-                any(),
-                any()
+                anyString()
         );
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PluginOutboxDispatcher dispatcher = failedDispatcher();
@@ -64,16 +62,17 @@ class PluginOutboxServiceTest {
         int delivered = service.dispatchPending(dispatcher, 50);
 
         assertThat(delivered).isZero();
-        verify(jdbcTemplate).update(contains("and status = ?"), eq("DISPATCHING"), any(), eq(9L), eq(11L), eq("FAILED"));
         verify(jdbcTemplate).update(
-                contains("retry_count = ?"),
+                contains("claim_token = ?"),
                 eq("DEAD_LETTER"),
                 eq(8),
                 eq(null),
                 eq("boom"),
                 any(),
                 eq(9L),
-                eq(11L)
+                eq(11L),
+                eq("DISPATCHING"),
+                anyString()
         );
     }
 
@@ -86,14 +85,6 @@ class PluginOutboxServiceTest {
                 any(BeanPropertyRowMapper.class),
                 eq(12L)
         );
-        doReturn(List.of(outboxRow(99L, "PENDING", 0), outboxRow(12L, "PENDING", 0))).when(jdbcTemplate).query(
-                anyString(),
-                any(BeanPropertyRowMapper.class),
-                any(),
-                any(),
-                any(),
-                any()
-        );
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         PluginOutboxDispatcher dispatcher = mock(PluginOutboxDispatcher.class);
         PluginOutboxService service = new PluginOutboxService(jdbcTemplate, new ObjectMapper());
@@ -103,6 +94,8 @@ class PluginOutboxServiceTest {
         assertThat(replayed).isTrue();
         verify(jdbcTemplate).update(contains("retry_count = 0"), eq("PENDING"), any(), eq(9L), eq(12L));
         verify(dispatcher).dispatch(row);
+        assertThat(row.getStatus()).isEqualTo("DISPATCHING");
+        assertThat(row.getClaimToken()).isNotBlank();
     }
 
     @Test

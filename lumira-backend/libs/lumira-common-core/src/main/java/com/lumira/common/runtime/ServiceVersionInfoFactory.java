@@ -14,6 +14,21 @@ public final class ServiceVersionInfoFactory {
             String branch,
             String profiles
     ) {
+        return create(serviceName, artifact, version, buildTime, commitId, branch, profiles, null, null, null);
+    }
+
+    public static ServiceVersionInfo create(
+            String serviceName,
+            String artifact,
+            String version,
+            String buildTime,
+            String commitId,
+            String branch,
+            String profiles,
+            String frontendVersion,
+            String backendVersion,
+            String databaseVersion
+    ) {
         return new ServiceVersionInfo(
                 firstText(serviceName, artifact, "unknown-service"),
                 firstText(artifact, serviceName, "unknown-artifact"),
@@ -22,7 +37,10 @@ public final class ServiceVersionInfoFactory {
                 firstText(commitId, "unknown"),
                 firstText(branch, "unknown"),
                 firstText(profiles, "default"),
-                System.getProperty("java.version", "unknown")
+                System.getProperty("java.version", "unknown"),
+                firstText(frontendVersion, "unknown"),
+                firstText(backendVersion, version, "unknown"),
+                firstText(databaseVersion, "unknown")
         );
     }
 

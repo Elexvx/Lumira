@@ -1,13 +1,16 @@
 package com.lumira.saas.modules.system.support;
 
+import com.lumira.common.runtime.ReadModelVersionCache;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -22,9 +25,13 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class SmtpMailService {
 
-    private static final Long GLOBAL_CONFIG_CACHE_KEY = 0L;
-    private static final long CONFIG_CACHE_TTL_MS = 30_000L;
+    private static final String GLOBAL_CONFIG_CACHE_KEY = "global";
+    private static final long CONFIG_CACHE_TTL_MS = 10 * 60_000L;
+    private static final long READ_MODEL_VERSION_CACHE_TTL_MS = 2_000L;
     private static final String PLATFORM_SCOPE = "PLATFORM";
+    private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
+    private static final String READ_MODEL_SCOPE_RUNTIME_APPEARANCE = "runtime-appearance";
+    private static final String READ_MODEL_CACHE_KEY = "smtp:platform/runtime-appearance";
     private static final String SMTP_ENABLED_KEY = "smtp.enabled";
     private static final String SMTP_HOST_KEY = "smtp.host";
     private static final String SMTP_PORT_KEY = "smtp.port";
@@ -36,11 +43,24 @@ public class SmtpMailService {
     private static final String SMTP_SSL_ENABLED_KEY = "smtp.ssl-enabled";
 
     private final SysConfigMapper sysConfigMapper;
-    private final Cache<Long, Map<String, String>> configSnapshotCache;
-    private final Cache<Long, CompletableFuture<Map<String, String>>> configLoadInFlight;
+    private final ReadModelVersionService readModelVersionService;
+    private final ReadModelVersionCache readModelVersionCache;
+    private final Cache<String, Map<String, String>> configSnapshotCache;
+    private final Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight;
 
     public SmtpMailService(SysConfigMapper sysConfigMapper) {
+        this(sysConfigMapper, null, new ReadModelVersionCache(READ_MODEL_VERSION_CACHE_TTL_MS));
+    }
+
+    @Autowired
+    public SmtpMailService(
+            SysConfigMapper sysConfigMapper,
+            ReadModelVersionService readModelVersionService,
+            ReadModelVersionCache readModelVersionCache
+    ) {
         this.sysConfigMapper = sysConfigMapper;
+        this.readModelVersionService = readModelVersionService;
+        this.readModelVersionCache = readModelVersionCache;
         this.configSnapshotCache = CacheBuilder.newBuilder()
                 .maximumSize(1024)
                 .expireAfterWrite(CONFIG_CACHE_TTL_MS, TimeUnit.MILLISECONDS)
@@ -85,27 +105,29 @@ public class SmtpMailService {
     }
 
     public void invalidate() {
-        configSnapshotCache.invalidate(GLOBAL_CONFIG_CACHE_KEY);
-        configLoadInFlight.invalidate(GLOBAL_CONFIG_CACHE_KEY);
+        configSnapshotCache.invalidateAll();
+        configLoadInFlight.invalidateAll();
+        readModelVersionCache.invalidate(READ_MODEL_CACHE_KEY);
     }
 
     private Map<String, String> loadValues() {
-        Map<String, String> cached = configSnapshotCache.getIfPresent(GLOBAL_CONFIG_CACHE_KEY);
+        String cacheKey = cacheKey(currentRuntimeAppearanceVersion());
+        Map<String, String> cached = configSnapshotCache.getIfPresent(cacheKey);
         if (cached != null) {
             return new HashMap<>(cached);
         }
         try {
             CompletableFuture<Map<String, String>> future = configLoadInFlight.get(
-                    GLOBAL_CONFIG_CACHE_KEY,
-                    () -> CompletableFuture.completedFuture(loadValuesFresh())
+                    cacheKey,
+                    () -> CompletableFuture.completedFuture(loadValuesFresh(cacheKey))
             );
             Map<String, String> values = future.join();
-            configLoadInFlight.invalidate(GLOBAL_CONFIG_CACHE_KEY);
+            configLoadInFlight.invalidate(cacheKey);
             return values;
         } catch (ExecutionException ex) {
-            configLoadInFlight.invalidate(GLOBAL_CONFIG_CACHE_KEY);
+            configLoadInFlight.invalidate(cacheKey);
             Throwable cause = ex.getCause();
-            Map<String, String> cachedAfterFailure = configSnapshotCache.getIfPresent(GLOBAL_CONFIG_CACHE_KEY);
+            Map<String, String> cachedAfterFailure = configSnapshotCache.getIfPresent(cacheKey);
             if (cachedAfterFailure != null) {
                 return new HashMap<>(cachedAfterFailure);
             }
@@ -114,8 +136,8 @@ public class SmtpMailService {
             }
             throw new IllegalStateException("Failed to load SMTP config", cause);
         } catch (RuntimeException ex) {
-            configLoadInFlight.invalidate(GLOBAL_CONFIG_CACHE_KEY);
-            Map<String, String> cachedAfterFailure = configSnapshotCache.getIfPresent(GLOBAL_CONFIG_CACHE_KEY);
+            configLoadInFlight.invalidate(cacheKey);
+            Map<String, String> cachedAfterFailure = configSnapshotCache.getIfPresent(cacheKey);
             if (cachedAfterFailure != null) {
                 return new HashMap<>(cachedAfterFailure);
             }
@@ -123,8 +145,8 @@ public class SmtpMailService {
         }
     }
 
-    private Map<String, String> loadValuesFresh() {
-        Map<String, String> cached = configSnapshotCache.getIfPresent(GLOBAL_CONFIG_CACHE_KEY);
+    private Map<String, String> loadValuesFresh(String cacheKey) {
+        Map<String, String> cached = configSnapshotCache.getIfPresent(cacheKey);
         if (cached != null) {
             return new HashMap<>(cached);
         }
@@ -148,8 +170,33 @@ public class SmtpMailService {
                 values.put(key, value);
             }
         }
-        configSnapshotCache.put(GLOBAL_CONFIG_CACHE_KEY, new HashMap<>(values));
+        configSnapshotCache.put(cacheKey, new HashMap<>(values));
         return values;
+    }
+
+    private String cacheKey(Long runtimeAppearanceVersion) {
+        if (runtimeAppearanceVersion == null) {
+            return GLOBAL_CONFIG_CACHE_KEY;
+        }
+        return "runtime-appearance:v" + runtimeAppearanceVersion;
+    }
+
+    private Long currentRuntimeAppearanceVersion() {
+        if (readModelVersionService == null) {
+            return null;
+        }
+        try {
+            return readModelVersionCache.readValue(
+                    READ_MODEL_CACHE_KEY,
+                    READ_MODEL_VERSION_CACHE_TTL_MS,
+                    () -> readModelVersionService.currentVersion(
+                            READ_MODEL_CONTEXT_PLATFORM,
+                            READ_MODEL_SCOPE_RUNTIME_APPEARANCE
+                    )
+            );
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 
     private JavaMailSenderImpl buildSmtpSender(Map<String, String> values) {

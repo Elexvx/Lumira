@@ -15,6 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service("filePlatformEventOutboxService")
@@ -30,10 +31,14 @@ public class PlatformEventOutboxService {
     private static final int MAX_RETRY_COUNT = 8;
     private static final int MAX_RETRY_DELAY_SECONDS = 300;
     private static final int MAX_ERROR_LENGTH = 512;
+    private static final long SNAPSHOT_CACHE_TTL_MS = 15_000L;
+    private static final long CLAIM_LEASE_MINUTES = 15L;
 
     private final ObjectMapper objectMapper;
     private final FilePlatformEventOutboxMapper platformEventOutboxMapper;
     private final JdbcTemplate jdbcTemplate;
+    private volatile OutboxMetricsSnapshot cachedSnapshot;
+    private volatile long cachedSnapshotUntilMillis;
 
     @Autowired
     public PlatformEventOutboxService(ObjectMapper objectMapper, FilePlatformEventOutboxMapper platformEventOutboxMapper, JdbcTemplate jdbcTemplate) {
@@ -93,10 +98,7 @@ public class PlatformEventOutboxService {
             return 0;
         }
         int delivered = 0;
-        for (PlatformEventOutboxEntity row : listDispatchable(limit)) {
-            if (!claimForDispatch(row)) {
-                continue;
-            }
+        for (PlatformEventOutboxEntity row : claimForDispatchBatch(limit)) {
             try {
                 dispatcher.dispatch(row);
                 markDelivered(row);
@@ -122,9 +124,117 @@ public class PlatformEventOutboxService {
         return dispatchSingle(row, dispatcher);
     }
 
-    private List<PlatformEventOutboxEntity> listDispatchable(int limit) {
+    public long dispatchableBacklog() {
+        return snapshot().dispatchableBacklog();
+    }
+
+    public OutboxMetricsSnapshot snapshot() {
+        if (jdbcTemplate == null) {
+            return new OutboxMetricsSnapshot(0L, 0L, 0L, 0L);
+        }
+        long now = System.currentTimeMillis();
+        OutboxMetricsSnapshot cached = cachedSnapshot;
+        if (cached != null && now < cachedSnapshotUntilMillis) {
+            return cached;
+        }
+        synchronized (this) {
+            now = System.currentTimeMillis();
+            cached = cachedSnapshot;
+            if (cached != null && now < cachedSnapshotUntilMillis) {
+                return cached;
+            }
+            OutboxMetricsSnapshot snapshot = loadSnapshot();
+            cachedSnapshot = snapshot;
+            cachedSnapshotUntilMillis = now + SNAPSHOT_CACHE_TTL_MS;
+            return snapshot;
+        }
+    }
+
+    private OutboxMetricsSnapshot loadSnapshot() {
+        Map<String, Object> row = firstRow(
+                """
+                        select coalesce(sum(case when dispatch_status = 'RECORDED' then 1 else 0 end), 0) as pending_backlog,
+                               coalesce(sum(case when dispatch_status = 'FAILED' then 1 else 0 end), 0) as failed_backlog,
+                               coalesce(sum(case when dispatch_status = 'DEAD_LETTER' then 1 else 0 end), 0) as dead_letter_count,
+                               coalesce(sum(case when dispatch_status = 'RECORDED'
+                                                 or (dispatch_status = 'FAILED' and (next_retry_at is null or next_retry_at <= ?))
+                                                 then 1 else 0 end), 0) as dispatchable_backlog
+                        from platform_event_outbox
+                        where deleted = 0
+                          and source_type = ?
+                        """,
+                LocalDateTime.now(),
+                FilePlatformEventTypes.SOURCE_FILE
+        );
+        return new OutboxMetricsSnapshot(
+                longValue(row.get("pending_backlog")),
+                longValue(row.get("failed_backlog")),
+                longValue(row.get("dead_letter_count")),
+                longValue(row.get("dispatchable_backlog"))
+        );
+    }
+
+    private Map<String, Object> firstRow(String sql, Object... args) {
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, args);
+        return rows.isEmpty() ? Map.of() : rows.get(0);
+    }
+
+    private long longValue(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
+    }
+
+    private List<PlatformEventOutboxEntity> claimForDispatchBatch(int limit) {
         int normalizedLimit = Math.max(1, Math.min(limit, MAX_DISPATCH_LIMIT));
         LocalDateTime now = LocalDateTime.now();
+        String claimToken = UUID.randomUUID().toString();
+        LocalDateTime claimExpiresAt = now.plusMinutes(CLAIM_LEASE_MINUTES);
+        int updated = jdbcTemplate.update(
+                """
+                        update platform_event_outbox t
+                        join (
+                            select id
+                            from platform_event_outbox force index (idx_platform_event_outbox_owner_queue)
+                            where deleted = 0
+                              and source_type = ?
+                              and (
+                                    dispatch_status = ?
+                                    or (dispatch_status = ? and (next_retry_at is null or next_retry_at <= ?))
+                                    or (dispatch_status = ? and claim_expires_at is not null and claim_expires_at <= ?)
+                              )
+                            order by created_at asc, id asc
+                            limit ?
+                        ) picked on picked.id = t.id
+                        set t.dispatch_status = ?,
+                            t.claim_token = ?,
+                            t.claim_expires_at = ?,
+                            t.updated_at = ?,
+                            t.updated_by = ?
+                        where t.deleted = 0
+                          and t.source_type = ?
+                        """,
+                FilePlatformEventTypes.SOURCE_FILE,
+                STATUS_RECORDED,
+                STATUS_FAILED,
+                now,
+                STATUS_DISPATCHING,
+                now,
+                normalizedLimit,
+                STATUS_DISPATCHING,
+                claimToken,
+                claimExpiresAt,
+                now,
+                0L,
+                FilePlatformEventTypes.SOURCE_FILE
+        );
+        if (updated <= 0) {
+            return List.of();
+        }
         return jdbcTemplate.query(
                 """
                         select id, user_id as userId, source_type as sourceType,
@@ -134,25 +244,15 @@ public class PlatformEventOutboxService {
                                trace_id as traceId, request_id as requestId, created_by as createdBy,
                                claim_token as claimToken, claim_expires_at as claimExpiresAt,
                                created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
-                        from platform_event_outbox force index (idx_platform_event_outbox_owner_queue)
+                        from platform_event_outbox
                         where deleted = 0
                           and source_type = ?
-                          and (
-                                dispatch_status = ?
-                                or (dispatch_status = ? and (next_retry_at is null or next_retry_at <= ?))
-                                or (dispatch_status = ? and claim_expires_at is not null and claim_expires_at <= ?)
-                          )
+                          and claim_token = ?
                         order by created_at asc, id asc
-                        limit ?
                         """,
                 new BeanPropertyRowMapper<>(PlatformEventOutboxEntity.class),
                 FilePlatformEventTypes.SOURCE_FILE,
-                STATUS_RECORDED,
-                STATUS_FAILED,
-                now,
-                STATUS_DISPATCHING,
-                now,
-                normalizedLimit
+                claimToken
         );
     }
 
@@ -183,6 +283,7 @@ public class PlatformEventOutboxService {
     private boolean claimForDispatch(PlatformEventOutboxEntity row) {
         String claimToken = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
+        LocalDateTime claimExpiresAt = now.plusMinutes(CLAIM_LEASE_MINUTES);
         int updated = jdbcTemplate.update(
                 """
                         update platform_event_outbox
@@ -192,10 +293,10 @@ public class PlatformEventOutboxService {
                                 dispatch_status = ?
                                 or (dispatch_status = ? and claim_expires_at is not null and claim_expires_at <= ?)
                           )
-                        """,
+                """,
                 STATUS_DISPATCHING,
                 claimToken,
-                now.plusMinutes(15),
+                claimExpiresAt,
                 now,
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
                 row.getId(),
@@ -206,7 +307,7 @@ public class PlatformEventOutboxService {
         );
         if (updated > 0) {
             row.setClaimToken(claimToken);
-            row.setClaimExpiresAt(now.plusMinutes(15));
+            row.setClaimExpiresAt(claimExpiresAt);
             row.setDispatchStatus(STATUS_DISPATCHING);
         }
         return updated > 0;
@@ -319,5 +420,13 @@ public class PlatformEventOutboxService {
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("文件事件 outbox payload 序列化失败", exception);
         }
+    }
+
+    public record OutboxMetricsSnapshot(
+            long pendingBacklog,
+            long failedBacklog,
+            long deadLetterCount,
+            long dispatchableBacklog
+    ) {
     }
 }

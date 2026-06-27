@@ -39,6 +39,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -244,13 +249,14 @@ class PluginManagementAppServiceTest {
     }
 
     @Test
-    void currentBootstrap_shouldCacheByPermissionSignatureAndReuseAvailablePlugins() throws Exception {
+    void currentBootstrap_shouldCacheByPermissionSnapshotVersionAndReuseAvailablePlugins() throws Exception {
         String availablePluginCode = "sms";
         PluginVO.PluginAvailabilityVO availablePlugin = createValidPluginAvailability(availablePluginCode, tempDir);
         PluginVersionEntity versionEntity = createValidVersionEntity(availablePluginCode, tempDir);
         PluginMenuRelEntity menuRelation = createMenuRelation(availablePluginCode, "1.0.0", "plugin.sms");
 
-        when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L);
+        when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L, 10L);
+        when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(20L, 20L);
         when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of(availablePlugin));
         when(pluginPersistenceService.pluginStatus(availablePluginCode)).thenReturn(java.util.Optional.empty());
         when(pluginPersistenceService.findVersion(availablePluginCode, "1.0.0")).thenReturn(Optional.of(versionEntity));
@@ -264,25 +270,117 @@ class PluginManagementAppServiceTest {
         builtinMenu.setChildren(List.of());
         when(systemInternalApi.builtinMenus()).thenReturn(List.of(builtinMenu));
 
-        Map<String, Object> bootstrap = pluginManagementAppService.currentBootstrap(List.of("plugin:sms:view"));
-        Map<String, Object> bootstrapSecond = pluginManagementAppService.currentBootstrap(List.of("plugin:sms:view"));
+        Map<String, Object> bootstrap = pluginManagementAppService.currentBootstrap(
+                List.of("plugin:sms:view"),
+                "v10:data-scope-cache-v4"
+        );
+        expireReadModelVersionCache();
+        Map<String, Object> bootstrapSecond = pluginManagementAppService.currentBootstrap(
+                List.of("plugin:sms:view"),
+                "v10:data-scope-cache-v4"
+        );
 
         assertThat(bootstrap).containsKeys("menuTree", "availablePlugins");
         assertThat(bootstrapSecond).isEqualTo(bootstrap);
 
-        verify(systemInternalApi, times(1)).readModelVersion("plugin", "bootstrap");
+        verify(systemInternalApi, times(2)).readModelVersion("plugin", "bootstrap");
+        verify(systemInternalApi, times(2)).readModelVersion("platform", "menu-tree");
+        verify(systemInternalApi, times(1)).builtinMenus();
         verify(pluginPersistenceService, times(1)).listAvailablePlugins();
-        verify(pluginPersistenceService, times(2)).listMenuRelations(availablePluginCode, "1.0.0");
+        verify(pluginPersistenceService, times(1)).listMenuRelations(availablePluginCode, "1.0.0");
     }
 
     @Test
-    void currentBootstrap_shouldRebuildMenusForDifferentPermissionSignature() throws Exception {
+    void currentBootstrap_shouldReuseSuppliedReadModelVersionsWithoutVersionRoundTrips() throws Exception {
+        String availablePluginCode = "sms";
+        PluginVO.PluginAvailabilityVO availablePlugin = createValidPluginAvailability(availablePluginCode, tempDir);
+        PluginVersionEntity versionEntity = createValidVersionEntity(availablePluginCode, tempDir);
+        PluginMenuRelEntity menuRelation = createMenuRelation(availablePluginCode, "1.0.0", "plugin.sms");
+
+        when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of(availablePlugin));
+        when(pluginPersistenceService.pluginStatus(availablePluginCode)).thenReturn(java.util.Optional.empty());
+        when(pluginPersistenceService.findVersion(availablePluginCode, "1.0.0")).thenReturn(Optional.of(versionEntity));
+        when(pluginPersistenceService.listMenuRelations(availablePluginCode, "1.0.0")).thenReturn(List.of(menuRelation));
+
+        MenuNodeDTO builtinMenu = new MenuNodeDTO();
+        builtinMenu.setMenuCode("system.dashboard");
+        builtinMenu.setName("Dashboard");
+        builtinMenu.setPath("/dashboard");
+        builtinMenu.setSortNo(1);
+        builtinMenu.setChildren(List.of());
+        when(systemInternalApi.builtinMenus()).thenReturn(List.of(builtinMenu));
+
+        Map<String, Object> bootstrap = pluginManagementAppService.currentBootstrap(
+                List.of("plugin:sms:view"),
+                "v10:data-scope-cache-v4",
+                10L,
+                20L
+        );
+
+        assertThat(bootstrap).containsKeys("menuTree", "availablePlugins");
+        verify(systemInternalApi, never()).readModelVersion("plugin", "bootstrap");
+        verify(systemInternalApi, never()).readModelVersion("platform", "menu-tree");
+        verify(systemInternalApi, times(1)).builtinMenus();
+        verify(pluginPersistenceService, times(1)).listAvailablePlugins();
+        verify(pluginPersistenceService, times(1)).listMenuRelations(availablePluginCode, "1.0.0");
+    }
+
+    @Test
+    void currentBootstrap_shouldSingleFlightConcurrentWarmMissesPerPermissionVersion() throws Exception {
+        MenuNodeDTO builtinMenu = new MenuNodeDTO();
+        builtinMenu.setMenuCode("system.dashboard");
+        builtinMenu.setName("Dashboard");
+        builtinMenu.setPath("/dashboard");
+        builtinMenu.setSortNo(1);
+        builtinMenu.setChildren(List.of());
+
+        when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L);
+        when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(20L);
+        when(systemInternalApi.builtinMenus()).thenReturn(List.of(builtinMenu));
+        when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of());
+
+        int threadCount = 16;
+        CountDownLatch ready = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        @SuppressWarnings("unchecked")
+        CompletableFuture<Map<String, Object>>[] futures = new CompletableFuture[threadCount];
+        for (int index = 0; index < threadCount; index++) {
+            futures[index] = CompletableFuture.supplyAsync(() -> {
+                try {
+                    ready.await();
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException(exception);
+                }
+                return pluginManagementAppService.currentBootstrap(
+                        List.of("dashboard:view"),
+                        "v10:data-scope-cache-v4"
+                );
+            }, executor);
+        }
+
+        ready.countDown();
+        CompletableFuture.allOf(futures).join();
+        executor.shutdown();
+        assertThat(executor.awaitTermination(5L, TimeUnit.SECONDS)).isTrue();
+
+        for (CompletableFuture<Map<String, Object>> future : futures) {
+            assertThat(future.join()).containsKeys("menuTree", "availablePlugins");
+        }
+
+        verify(systemInternalApi, times(1)).builtinMenus();
+        verify(pluginPersistenceService, times(1)).listAvailablePlugins();
+    }
+
+    @Test
+    void currentBootstrap_shouldReuseCompiledMenusForDifferentPermissionSignature() throws Exception {
         String availablePluginCode = "sms";
         PluginVO.PluginAvailabilityVO availablePlugin = createValidPluginAvailability(availablePluginCode, tempDir);
         PluginVersionEntity versionEntity = createValidVersionEntity(availablePluginCode, tempDir);
         PluginMenuRelEntity menuRelation = createMenuRelation(availablePluginCode, "1.0.0", "plugin.sms");
 
         when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L);
+        when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(20L);
         when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of(availablePlugin));
         when(pluginPersistenceService.pluginStatus(availablePluginCode)).thenReturn(java.util.Optional.empty());
         when(pluginPersistenceService.findVersion(availablePluginCode, "1.0.0")).thenReturn(Optional.of(versionEntity));
@@ -300,8 +398,10 @@ class PluginManagementAppServiceTest {
         pluginManagementAppService.currentBootstrap(List.of("*"));
 
         verify(systemInternalApi, times(1)).readModelVersion("plugin", "bootstrap");
+        verify(systemInternalApi, times(1)).readModelVersion("platform", "menu-tree");
+        verify(systemInternalApi, times(1)).builtinMenus();
         verify(pluginPersistenceService, times(1)).listAvailablePlugins();
-        verify(pluginPersistenceService, times(3)).listMenuRelations(availablePluginCode, "1.0.0");
+        verify(pluginPersistenceService, times(1)).listMenuRelations(availablePluginCode, "1.0.0");
     }
 
     @Test
@@ -330,6 +430,7 @@ class PluginManagementAppServiceTest {
         projectRootMenu.setChildren(List.of(projectManagementMenu));
 
         when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L, 11L);
+        when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(20L, 20L);
         when(systemInternalApi.builtinMenus())
                 .thenReturn(List.of(dashboardMenu))
                 .thenReturn(List.of(dashboardMenu, projectRootMenu));
@@ -344,6 +445,51 @@ class PluginManagementAppServiceTest {
         assertThat(collectMenuCodes((List<Map<String, Object>>) secondBootstrap.get("menuTree")))
                 .contains("project.root", "project.management");
         verify(systemInternalApi, times(2)).builtinMenus();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void currentBootstrap_shouldReloadBuiltinMenusWhenPlatformMenuTreeVersionChanges() throws Exception {
+        MenuNodeDTO dashboardMenu = new MenuNodeDTO();
+        dashboardMenu.setMenuCode("system.dashboard");
+        dashboardMenu.setName("Dashboard");
+        dashboardMenu.setPath("/dashboard");
+        dashboardMenu.setSortNo(1);
+        dashboardMenu.setChildren(List.of());
+
+        MenuNodeDTO projectManagementMenu = new MenuNodeDTO();
+        projectManagementMenu.setMenuCode("project.management");
+        projectManagementMenu.setName("Project Management");
+        projectManagementMenu.setPath("/projects/management");
+        projectManagementMenu.setPermissionKey("aiadc:project:view");
+        projectManagementMenu.setSortNo(1);
+        projectManagementMenu.setChildren(List.of());
+
+        MenuNodeDTO projectRootMenu = new MenuNodeDTO();
+        projectRootMenu.setMenuCode("project.root");
+        projectRootMenu.setName("Projects");
+        projectRootMenu.setPath("/projects");
+        projectRootMenu.setSortNo(5);
+        projectRootMenu.setChildren(List.of(projectManagementMenu));
+
+        when(systemInternalApi.readModelVersion("plugin", "bootstrap")).thenReturn(10L, 10L);
+        when(systemInternalApi.readModelVersion("platform", "menu-tree")).thenReturn(20L, 21L);
+        when(systemInternalApi.builtinMenus())
+                .thenReturn(List.of(dashboardMenu))
+                .thenReturn(List.of(dashboardMenu, projectRootMenu));
+        when(pluginPersistenceService.listAvailablePlugins()).thenReturn(List.of());
+
+        Map<String, Object> firstBootstrap = pluginManagementAppService.currentBootstrap(List.of("aiadc:project:view"));
+        expireReadModelVersionCache();
+        Map<String, Object> secondBootstrap = pluginManagementAppService.currentBootstrap(List.of("aiadc:project:view"));
+
+        assertThat(collectMenuCodes((List<Map<String, Object>>) firstBootstrap.get("menuTree")))
+                .doesNotContain("project.management");
+        assertThat(collectMenuCodes((List<Map<String, Object>>) secondBootstrap.get("menuTree")))
+                .contains("project.root", "project.management");
+        verify(systemInternalApi, times(2)).builtinMenus();
+        verify(systemInternalApi, times(2)).readModelVersion("plugin", "bootstrap");
+        verify(systemInternalApi, times(2)).readModelVersion("platform", "menu-tree");
     }
 
     @Test
@@ -520,7 +666,7 @@ class PluginManagementAppServiceTest {
     private void expireReadModelVersionCache() throws Exception {
         java.lang.reflect.Field field = PluginManagementAppService.class.getDeclaredField("readModelVersionCache");
         field.setAccessible(true);
-        var cache = (java.util.Map<String, Object>) field.get(pluginManagementAppService);
+        var cache = (com.lumira.common.runtime.ReadModelVersionCache) field.get(pluginManagementAppService);
         cache.clear();
     }
 }

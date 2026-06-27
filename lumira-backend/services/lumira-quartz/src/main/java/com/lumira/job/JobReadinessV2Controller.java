@@ -3,6 +3,7 @@ package com.lumira.job;
 import com.lumira.api.architecture.OwnerObservabilityDTO;
 import com.lumira.api.architecture.OwnerReadinessDTO;
 import com.lumira.common.api.ApiResponse;
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -13,6 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v2/job")
+@ConditionalOnLumiraAsyncEnabled
 public class JobReadinessV2Controller {
 
     private final JobExecutorProperties properties;

@@ -2,10 +2,12 @@ package com.lumira.file.processing;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+@Lazy
 @Service
 public class FileAiParseProcessor {
 

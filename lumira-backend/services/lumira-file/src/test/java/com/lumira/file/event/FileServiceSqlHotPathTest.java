@@ -14,13 +14,14 @@ class FileServiceSqlHotPathTest {
     void hotPathSqlInOutboxServiceShouldUseFileOwnerBoundedDispatchFilters() throws Exception {
         String source = serviceSource("src/main/java/com/lumira/file/event/PlatformEventOutboxService.java");
 
-        assertThat(source).contains(normalizeSql("from platform_event_outbox force index (idx_platform_event_outbox_owner_queue)"));
+        assertThat(source).contains(normalizeSql("update platform_event_outbox t join ( select id from platform_event_outbox force index (idx_platform_event_outbox_owner_queue)"));
         assertThat(source).contains(normalizeSql("where deleted = 0"));
         assertThat(source).contains(normalizeSql("source_type = ?"));
         assertThat(source).contains(normalizeSql("dispatch_status = ?"));
         assertThat(source).contains(normalizeSql("next_retry_at is null or next_retry_at <= ?"));
         assertThat(source).contains(normalizeSql("order by created_at asc, id asc"));
         assertThat(source).contains(normalizeSql("limit ?"));
+        assertThat(source).contains(normalizeSql("where deleted = 0 and source_type = ? and claim_token = ?"));
         assertThat(source).contains(normalizeSql("where id = ? and deleted = 0 and source_type = ?"));
     }
 

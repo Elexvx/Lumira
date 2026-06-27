@@ -2,15 +2,18 @@ package com.lumira.saas.infrastructure.security.service;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.SecurityProperties;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Component
@@ -34,6 +37,9 @@ public class SecuritySettingsService {
     private static final String PASSWORD_REQUIRE_SPECIAL_CHARACTER_KEY = "security.password-require-special-character";
     private static final String PASSWORD_ALLOW_CONSECUTIVE_CHARACTERS_KEY = "security.password-allow-consecutive-characters";
     private static final long SETTINGS_CACHE_TTL_MS = 30_000L;
+    private static final long READ_MODEL_VERSION_CACHE_TTL_MS = 2_000L;
+    private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
+    private static final String READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP = "public-bootstrap";
     private static final List<String> SETTINGS_KEYS = List.of(
             IDLE_TIMEOUT_KEY,
             ACCESS_TOKEN_EXPIRE_KEY,
@@ -55,12 +61,23 @@ public class SecuritySettingsService {
 
     private final SysConfigMapper sysConfigMapper;
     private final SecurityProperties securityProperties;
-    private volatile SecuritySettingsSnapshot cachedSettings;
-    private volatile long cachedSettingsUntilMillis;
+    private final ReadModelVersionService readModelVersionService;
+    private volatile CachedSecuritySettings cachedSettings;
+    private volatile CachedReadModelVersion cachedReadModelVersion;
 
     public SecuritySettingsService(SysConfigMapper sysConfigMapper, SecurityProperties securityProperties) {
+        this(sysConfigMapper, securityProperties, null);
+    }
+
+    @Autowired
+    public SecuritySettingsService(
+            SysConfigMapper sysConfigMapper,
+            SecurityProperties securityProperties,
+            ReadModelVersionService readModelVersionService
+    ) {
         this.sysConfigMapper = sysConfigMapper;
         this.securityProperties = securityProperties;
+        this.readModelVersionService = readModelVersionService;
     }
 
     public long getIdleTimeoutSeconds() {
@@ -128,25 +145,32 @@ public class SecuritySettingsService {
     }
 
     public SecuritySettingsSnapshot loadSettings() {
-        long now = System.currentTimeMillis();
-        SecuritySettingsSnapshot cached = cachedSettings;
-        if (cached != null && now < cachedSettingsUntilMillis) {
-            return cached;
+        Long publicBootstrapVersion = currentPublicBootstrapVersion();
+        CachedSecuritySettings cached = cachedSettings;
+        if (isSettingsCacheCurrent(cached, publicBootstrapVersion)) {
+            return cached.settings();
         }
         synchronized (this) {
-            now = System.currentTimeMillis();
+            publicBootstrapVersion = currentPublicBootstrapVersion();
             cached = cachedSettings;
-            if (cached != null && now < cachedSettingsUntilMillis) {
-                return cached;
+            if (isSettingsCacheCurrent(cached, publicBootstrapVersion)) {
+                return cached.settings();
             }
-            SecuritySettingsSnapshot loaded = loadSettingsFresh();
-            cachedSettings = loaded;
-            cachedSettingsUntilMillis = now + SETTINGS_CACHE_TTL_MS;
+            SecuritySettingsSnapshot loaded = loadSettingsFreshFromDatabase();
+            cachedSettings = new CachedSecuritySettings(
+                    loaded,
+                    publicBootstrapVersion,
+                    System.currentTimeMillis() + SETTINGS_CACHE_TTL_MS
+            );
             return loaded;
         }
     }
 
-    private SecuritySettingsSnapshot loadSettingsFresh() {
+    public SecuritySettingsSnapshot loadSettingsFresh() {
+        return loadSettingsFreshFromDatabase();
+    }
+
+    private SecuritySettingsSnapshot loadSettingsFreshFromDatabase() {
         Map<String, String> values = loadConfigValues(SETTINGS_KEYS);
         return new SecuritySettingsSnapshot(
                 resolveSeconds(values, IDLE_TIMEOUT_KEY, securityProperties.getIdleTimeoutSeconds()),
@@ -278,6 +302,13 @@ public class SecuritySettingsService {
         );
 
         clearCache();
+        if (readModelVersionService != null) {
+            readModelVersionService.bump(
+                    READ_MODEL_CONTEXT_PLATFORM,
+                    READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP,
+                    "security-update"
+            );
+        }
         return loadSettings();
     }
 
@@ -293,7 +324,39 @@ public class SecuritySettingsService {
 
     private void clearCache() {
         cachedSettings = null;
-        cachedSettingsUntilMillis = 0L;
+        cachedReadModelVersion = null;
+    }
+
+    private boolean isSettingsCacheCurrent(CachedSecuritySettings cached, Long publicBootstrapVersion) {
+        if (cached == null || cached.settings() == null) {
+            return false;
+        }
+        if (publicBootstrapVersion == null) {
+            return !cached.isExpired();
+        }
+        return Objects.equals(cached.publicBootstrapVersion(), publicBootstrapVersion);
+    }
+
+    private Long currentPublicBootstrapVersion() {
+        if (readModelVersionService == null) {
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        CachedReadModelVersion cached = cachedReadModelVersion;
+        if (cached != null && cached.expiresAtMillis() > now) {
+            return cached.version();
+        }
+        Long version = null;
+        try {
+            version = readModelVersionService.currentVersion(
+                    READ_MODEL_CONTEXT_PLATFORM,
+                    READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP
+            );
+        } catch (Throwable ignored) {
+            version = null;
+        }
+        cachedReadModelVersion = new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MS);
+        return version;
     }
 
     private long resolveSeconds(Map<String, String> values, String configKey, long defaultValue) {
@@ -567,5 +630,18 @@ public class SecuritySettingsService {
         public void setPasswordAllowConsecutiveCharacters(boolean passwordAllowConsecutiveCharacters) {
             this.passwordAllowConsecutiveCharacters = passwordAllowConsecutiveCharacters;
         }
+    }
+
+    private record CachedSecuritySettings(
+            SecuritySettingsSnapshot settings,
+            Long publicBootstrapVersion,
+            long expiresAtMillis
+    ) {
+        private boolean isExpired() {
+            return System.currentTimeMillis() > expiresAtMillis;
+        }
+    }
+
+    private record CachedReadModelVersion(Long version, long expiresAtMillis) {
     }
 }

@@ -1,10 +1,12 @@
 package com.lumira.job;
 
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnLumiraAsyncEnabled
 public class MessageHeartbeatJobHandler {
 
     private final BackendJobClient backendJobClient;

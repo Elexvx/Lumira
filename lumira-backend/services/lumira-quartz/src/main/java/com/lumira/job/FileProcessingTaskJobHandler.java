@@ -1,5 +1,6 @@
 package com.lumira.job;
 
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.job.domain.model.JobDomainModels.RelayTaskReadModel;
 import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.core.handler.annotation.XxlJob;
@@ -7,6 +8,7 @@ import java.time.Instant;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnLumiraAsyncEnabled
 public class FileProcessingTaskJobHandler {
 
     private final BackendJobClient backendJobClient;

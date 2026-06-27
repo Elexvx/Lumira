@@ -60,11 +60,16 @@ const buildTableScroll = <RecordType extends object>(columns: ProColumns<RecordT
 const buildAutoWidthScroll = <RecordType extends object>(
   scroll: TableProps<RecordType>['scroll'] | undefined,
   fallbackScroll: TableProps<RecordType>['scroll'] | undefined,
+  autoContentWidth: boolean,
 ) => {
   const resolvedScroll = scroll ?? fallbackScroll;
   const fallbackX = fallbackScroll?.x;
   if (!resolvedScroll) {
     return fallbackScroll ?? { x: TABLE_HORIZONTAL_SCROLL_WIDTH_THRESHOLD };
+  }
+
+  if (autoContentWidth && resolvedScroll.x === 'max-content') {
+    return resolvedScroll;
   }
 
   return {
@@ -73,9 +78,9 @@ const buildAutoWidthScroll = <RecordType extends object>(
   };
 };
 
-const buildAutoWidthColumns = <RecordType extends object>(columns: ProColumns<RecordType>[]): ProColumns<RecordType>[] =>
+const buildAutoWidthColumns = <RecordType extends object>(columns: ProColumns<RecordType>[], autoContentWidth = false): ProColumns<RecordType>[] =>
   columns.map((column) => {
-    const children = Array.isArray(column.children) ? buildAutoWidthColumns(column.children as ProColumns<RecordType>[]) : column.children;
+    const children = Array.isArray(column.children) ? buildAutoWidthColumns(column.children as ProColumns<RecordType>[], autoContentWidth) : column.children;
     const isFixedColumn = Boolean(column.fixed);
     const isActionColumn = column.valueType === 'option';
     const isIndexColumn = column.valueType === 'index';
@@ -93,6 +98,14 @@ const buildAutoWidthColumns = <RecordType extends object>(columns: ProColumns<Re
     }
 
     const width = parseColumnWidth(column.width);
+    if (autoContentWidth && !width && column.width === undefined) {
+      return {
+        ...column,
+        children,
+        minWidth: column.minWidth ?? DEFAULT_DATA_COLUMN_WIDTH,
+      };
+    }
+
     const normalizedWidth = width ?? column.minWidth ?? DEFAULT_DATA_COLUMN_WIDTH;
     return {
       ...column,
@@ -177,6 +190,7 @@ export interface ManagementTableProps<RecordType extends object = object, Params
   extends ProTableProps<RecordType, Params> {
   columns: ProColumns<RecordType>[];
   isMobile: boolean;
+  autoContentWidth?: boolean;
   onRefresh?: () => void | Promise<unknown>;
 }
 
@@ -226,6 +240,7 @@ const buildManagementToolbar = <
 };
 
 export const ManagementTable = <RecordType extends object = object, Params extends Record<string, unknown> = Record<string, unknown>>({
+  autoContentWidth = false,
   columns,
   isMobile,
   pagination = { showSizeChanger: true, defaultPageSize: DEFAULT_TABLE_PAGE_SIZE },
@@ -239,10 +254,10 @@ export const ManagementTable = <RecordType extends object = object, Params exten
   <div className="saas-table-wrap">
     <ProTable<RecordType, Params>
       {...props}
-      columns={normalizeFixedColumnOrder(buildAutoWidthColumns(columns))}
+      columns={normalizeFixedColumnOrder(buildAutoWidthColumns(columns, autoContentWidth))}
       options={buildManagementTableOptions(options)}
       pagination={buildMobilePagination(pagination, isMobile) as ProTableProps<RecordType, Params>['pagination']}
-      scroll={buildAutoWidthScroll(scroll, buildTableScroll(columns, isMobile))}
+      scroll={buildAutoWidthScroll(scroll, buildTableScroll(columns, isMobile), autoContentWidth)}
       tableLayout={tableLayout}
       toolBarRender={buildManagementToolbar(toolBarRender, onRefresh)}
     />

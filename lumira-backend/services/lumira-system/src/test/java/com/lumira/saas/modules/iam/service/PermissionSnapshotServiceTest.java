@@ -96,18 +96,22 @@ class PermissionSnapshotServiceTest {
     }
 
     @Test
-    void invalidatePermissionsRefreshesAllSessionPayloads() {
+    void invalidatePermissionsBumpsVersionWithoutRefreshingAllSessionPayloads() {
         AuthSessionStore authSessionStore = mock(AuthSessionStore.class);
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
         PermissionSnapshotService service = new PermissionSnapshotService(
                 new MyBatisQueryOperations(new RecordingJdbcTemplate(List.of("ai:view"))),
                 new InMemoryCacheTemplate(),
                 new ObjectMapper().findAndRegisterModules(),
-                authSessionStore
+                authSessionStore,
+                readModelVersionService,
+                null
         );
 
         service.invalidatePermissions();
 
-        verify(authSessionStore).refreshAllSessionPayloads();
+        verify(authSessionStore, times(0)).refreshAllSessionPayloads();
+        verify(readModelVersionService).bump("IAM", "permission-snapshot", "iam.permission.invalidate");
     }
 
     @Test

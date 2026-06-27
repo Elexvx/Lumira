@@ -16,8 +16,9 @@ public class PlatformEventProperties {
     public static class Outbox {
 
         private boolean relayEnabled = false;
-        private long relayFixedDelayMs = 5000;
         private int batchSize = 100;
+        private int maxDrainRounds = 4;
+        private int maxBurstRounds = 12;
         private String dispatcher = "logging";
         private String redisStreamKey = "saas:platform-events";
 
@@ -27,14 +28,6 @@ public class PlatformEventProperties {
 
         public void setRelayEnabled(boolean relayEnabled) {
             this.relayEnabled = relayEnabled;
-        }
-
-        public long getRelayFixedDelayMs() {
-            return relayFixedDelayMs;
-        }
-
-        public void setRelayFixedDelayMs(long relayFixedDelayMs) {
-            this.relayFixedDelayMs = relayFixedDelayMs;
         }
 
         public int getBatchSize() {
@@ -47,6 +40,22 @@ public class PlatformEventProperties {
 
         public String getDispatcher() {
             return dispatcher;
+        }
+
+        public int getMaxDrainRounds() {
+            return maxDrainRounds;
+        }
+
+        public void setMaxDrainRounds(int maxDrainRounds) {
+            this.maxDrainRounds = maxDrainRounds;
+        }
+
+        public int getMaxBurstRounds() {
+            return maxBurstRounds;
+        }
+
+        public void setMaxBurstRounds(int maxBurstRounds) {
+            this.maxBurstRounds = maxBurstRounds;
         }
 
         public void setDispatcher(String dispatcher) {

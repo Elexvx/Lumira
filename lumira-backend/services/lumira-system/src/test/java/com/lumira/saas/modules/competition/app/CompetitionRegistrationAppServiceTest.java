@@ -197,8 +197,14 @@ class CompetitionRegistrationAppServiceTest {
         assertThat(record.getProjectTitle()).isEqualTo("AI Project");
         assertThat(record.getAmountMinor()).isEqualTo(8_800L);
         assertThat(record.getPaymentStatus()).isEqualTo("PENDING");
-        assertThat(sql.lastPaymentRecordCountSql).contains("po.order_no collate utf8mb4_unicode_ci = cr.payment_order_no collate utf8mb4_unicode_ci");
-        assertThat(sql.lastPaymentRecordQuerySql).contains("po.order_no collate utf8mb4_unicode_ci = cr.payment_order_no collate utf8mb4_unicode_ci");
+        assertThat(sql.lastPaymentRecordCountSql)
+                .contains("left join payment_order po on\npo.order_no collate utf8mb4_unicode_ci = cr.payment_order_no collate utf8mb4_unicode_ci")
+                .doesNotContain("utf8mb4_unicode_ciand")
+                .doesNotContain("onpo.");
+        assertThat(sql.lastPaymentRecordQuerySql)
+                .contains("left join payment_order po on\npo.order_no collate utf8mb4_unicode_ci = cr.payment_order_no collate utf8mb4_unicode_ci")
+                .doesNotContain("utf8mb4_unicode_ciand")
+                .doesNotContain("onpo.");
     }
 
     @Test

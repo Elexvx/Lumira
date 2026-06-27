@@ -11,6 +11,7 @@ public class JobExecutorProperties {
     private String paymentServiceBaseUrl;
     private String pluginServiceBaseUrl;
     private String internalToken;
+    private AdaptiveRelay adaptiveRelay = new AdaptiveRelay();
 
     public String getBackendBaseUrl() {
         return backendBaseUrl;
@@ -58,5 +59,107 @@ public class JobExecutorProperties {
 
     public void setInternalToken(String internalToken) {
         this.internalToken = internalToken;
+    }
+
+    public AdaptiveRelay getAdaptiveRelay() {
+        return adaptiveRelay;
+    }
+
+    public void setAdaptiveRelay(AdaptiveRelay adaptiveRelay) {
+        this.adaptiveRelay = adaptiveRelay;
+    }
+
+    public static class AdaptiveRelay {
+
+        private boolean enabled;
+        private long initialDelayMs = 5_000L;
+        private long minDelayMs = 1_000L;
+        private long maxDelayMs = 30_000L;
+        private long failureDelayMs = 10_000L;
+        private boolean platformEnabled = true;
+        private boolean messageEnabled = true;
+        private boolean fileEnabled = true;
+        private boolean paymentEnabled = true;
+        private boolean pluginEnabled = true;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public long getInitialDelayMs() {
+            return initialDelayMs;
+        }
+
+        public void setInitialDelayMs(long initialDelayMs) {
+            this.initialDelayMs = initialDelayMs;
+        }
+
+        public long getMinDelayMs() {
+            return minDelayMs;
+        }
+
+        public void setMinDelayMs(long minDelayMs) {
+            this.minDelayMs = minDelayMs;
+        }
+
+        public long getMaxDelayMs() {
+            return maxDelayMs;
+        }
+
+        public void setMaxDelayMs(long maxDelayMs) {
+            this.maxDelayMs = maxDelayMs;
+        }
+
+        public long getFailureDelayMs() {
+            return failureDelayMs;
+        }
+
+        public void setFailureDelayMs(long failureDelayMs) {
+            this.failureDelayMs = failureDelayMs;
+        }
+
+        public boolean isPlatformEnabled() {
+            return platformEnabled;
+        }
+
+        public void setPlatformEnabled(boolean platformEnabled) {
+            this.platformEnabled = platformEnabled;
+        }
+
+        public boolean isMessageEnabled() {
+            return messageEnabled;
+        }
+
+        public void setMessageEnabled(boolean messageEnabled) {
+            this.messageEnabled = messageEnabled;
+        }
+
+        public boolean isFileEnabled() {
+            return fileEnabled;
+        }
+
+        public void setFileEnabled(boolean fileEnabled) {
+            this.fileEnabled = fileEnabled;
+        }
+
+        public boolean isPaymentEnabled() {
+            return paymentEnabled;
+        }
+
+        public void setPaymentEnabled(boolean paymentEnabled) {
+            this.paymentEnabled = paymentEnabled;
+        }
+
+        public boolean isPluginEnabled() {
+            return pluginEnabled;
+        }
+
+        public void setPluginEnabled(boolean pluginEnabled) {
+            this.pluginEnabled = pluginEnabled;
+        }
     }
 }

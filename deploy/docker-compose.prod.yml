@@ -1,7 +1,7 @@
 x-service-build:
   context: ..
   dockerfile: deploy/docker/service.Dockerfile
-x-common-env:
+x-common-env: &common-env
   TZ: Asia/Shanghai
   NACOS_SERVER_ADDR: ${NACOS_SERVER_ADDR:-nacos:8848}
   NACOS_NAMESPACE: ${NACOS_NAMESPACE:-}
@@ -63,8 +63,11 @@ x-common-env:
     is required}
   SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:?CORS_ALLOWED_ORIGIN_PATTERNS
     is required}
-  APP_VERSION: ${APP_VERSION:-0.1.0}
-  BUILD_VERSION: ${BUILD_VERSION:-0.1.0}
+  FRONTEND_VERSION: ${FRONTEND_VERSION:-0.1.0}
+  BACKEND_VERSION: ${BACKEND_VERSION:-0.1.0}
+  DATABASE_VERSION: ${DATABASE_VERSION:-unknown}
+  APP_VERSION: ${APP_VERSION:-${BACKEND_VERSION:-0.1.0}}
+  BUILD_VERSION: ${BUILD_VERSION:-${BACKEND_VERSION:-0.1.0}}
   BUILD_TIME: ${BUILD_TIME:-}
   GIT_COMMIT: ${GIT_COMMIT:-}
   GIT_BRANCH: ${GIT_BRANCH:-}
@@ -76,7 +79,7 @@ x-common-env:
   OTEL_METRICS_EXPORTER: none
   OTEL_LOGS_EXPORTER: none
   OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED: ${OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED:-true}
-  OTEL_RESOURCE_ATTRIBUTES: service.namespace=lumira,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BUILD_VERSION:-0.1.0}
+  OTEL_RESOURCE_ATTRIBUTES: service.namespace=lumira,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BACKEND_VERSION:-${BUILD_VERSION:-0.1.0}},db.version=${DATABASE_VERSION:-unknown}
 x-json-logging: &id001
   driver: json-file
   options:
@@ -97,12 +100,14 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-saas}
       MYSQL_INITDB_SKIP_TZINFO: '1'
       TZ: Asia/Shanghai
+      DATABASE_VERSION: ${DATABASE_VERSION:-unknown}
     command:
     - --character-set-server=utf8mb4
     - --collation-server=utf8mb4_unicode_ci
     volumes:
     - mysql_data:/var/lib/mysql
     - ../lumira-backend/sql/saas.sql:/docker-entrypoint-initdb.d/001-saas.sql:ro
+    - ./.generated/database-version/002-database-version.sql:/docker-entrypoint-initdb.d/002-database-version.sql:ro
     healthcheck:
       test:
       - CMD-SHELL
@@ -184,6 +189,10 @@ services:
       args:
         NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
         NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.29-alpine}
+        FRONTEND_VERSION: ${FRONTEND_VERSION:-0.1.0}
+        BUILD_TIME: ${BUILD_TIME:-}
+        GIT_COMMIT: ${GIT_COMMIT:-}
+        GIT_BRANCH: ${GIT_BRANCH:-}
     image: ${LUMIRA_FRONTEND_IMAGE:-lumira/lumira-ui:0.1.0}
     container_name: lumira-ui
     restart: unless-stopped
@@ -353,13 +362,8 @@ services:
         is required}
       SAAS_JOB_INTERNAL_TOKEN: ${SAAS_JOB_INTERNAL_TOKEN:?SAAS_JOB_INTERNAL_TOKEN
         is required}
-      XXL_JOB_ADMIN_ADDRESSES: ${XXL_JOB_ADMIN_ADDRESSES:-http://lumira-xxl-job-admin:8080/xxl-job-admin}
-      XXL_JOB_ADMIN_ACCESS_TOKEN: ${XXL_JOB_ADMIN_ACCESS_TOKEN:?XXL_JOB_ADMIN_ACCESS_TOKEN is required}
-      XXL_JOB_EXECUTOR_ENABLED: ${XXL_JOB_EXECUTOR_ENABLED:-true}
-      XXL_JOB_EXECUTOR_APPNAME: ${XXL_JOB_EXECUTOR_APPNAME:-lumira-server}
-      XXL_JOB_EXECUTOR_PORT: ${XXL_JOB_EXECUTOR_PORT:-9998}
-      XXL_JOB_EXECUTOR_LOG_PATH: ${XXL_JOB_EXECUTOR_LOG_PATH:-/tmp/xxl-job/logs}
-      TRUST_FORWARDED_HEADERS: 'true'
+      LUMIRA_RUNTIME_ASYNC_ENABLED: ${LUMIRA_SERVER_RUNTIME_ASYNC_ENABLED:-false}
+      TRUST_FORWARDED_HEADERS: ${TRUST_FORWARDED_HEADERS:-true}
       JAVA_OPTS: ${JAVA_OPTS:--XX:MaxRAMPercentage=58 -XX:InitialRAMPercentage=18
         -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=96m -Xss512k -XX:+UseG1GC
         -XX:MaxGCPauseMillis=200 -Djava.security.egd=file:/dev/./urandom}
@@ -402,8 +406,11 @@ services:
         is required}
       SAAS_WEB_CORS_ALLOWED_ORIGIN_PATTERNS: ${CORS_ALLOWED_ORIGIN_PATTERNS:?CORS_ALLOWED_ORIGIN_PATTERNS
         is required}
-      APP_VERSION: ${APP_VERSION:-0.1.0}
-      BUILD_VERSION: ${BUILD_VERSION:-0.1.0}
+      FRONTEND_VERSION: ${FRONTEND_VERSION:-0.1.0}
+      BACKEND_VERSION: ${BACKEND_VERSION:-0.1.0}
+      DATABASE_VERSION: ${DATABASE_VERSION:-unknown}
+      APP_VERSION: ${APP_VERSION:-${BACKEND_VERSION:-0.1.0}}
+      BUILD_VERSION: ${BUILD_VERSION:-${BACKEND_VERSION:-0.1.0}}
       BUILD_TIME: ${BUILD_TIME:-}
       GIT_COMMIT: ${GIT_COMMIT:-}
       GIT_BRANCH: ${GIT_BRANCH:-}
@@ -415,7 +422,7 @@ services:
       OTEL_METRICS_EXPORTER: none
       OTEL_LOGS_EXPORTER: none
       OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED: ${OTEL_INSTRUMENTATION_LOGBACK_MDC_ENABLED:-true}
-      OTEL_RESOURCE_ATTRIBUTES: service.namespace=lumira,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BUILD_VERSION:-0.1.0}
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=lumira,deployment.environment=${OBSERVABILITY_ENVIRONMENT:-prod},service.version=${BACKEND_VERSION:-${BUILD_VERSION:-0.1.0}},db.version=${DATABASE_VERSION:-unknown}
       SERVER_PORT: 8080
       OTEL_SERVICE_NAME: lumira-server
       UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
@@ -427,6 +434,86 @@ services:
     - plugin_staging:/data/plugin-staging
     depends_on:
       redis:
+        condition: service_started
+    networks:
+    - default
+    - 1panel-network
+  lumira-async:
+    build:
+      context: ..
+      dockerfile: deploy/docker/service.Dockerfile
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.11-eclipse-temurin-21}
+        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
+        OTEL_JAVAAGENT_URL: ${OTEL_JAVAAGENT_URL:-}
+        SERVICE_DIR: services/lumira-async
+        SERVICE_MODULE: services/lumira-async
+    image: ${LUMIRA_ASYNC_IMAGE:-lumira/lumira-async:0.1.0}
+    container_name: lumira-async
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: ${DOCKER_LOG_MAX_SIZE:-100m}
+        max-file: ${DOCKER_LOG_MAX_FILE:-3}
+    mem_limit: ${ASYNC_RUNTIME_MEM_LIMIT:-512m}
+    cpus: ${ASYNC_RUNTIME_CPUS:-0.75}
+    environment:
+      <<: *common-env
+      SPRING_PROFILES_ACTIVE: ${ASYNC_RUNTIME_PROFILES_ACTIVE:-prod}
+      LEGENDARY_MONOLITH: 'true'
+      LUMIRA_RUNTIME_CONTROL_PLANE_ENABLED: ${LUMIRA_ASYNC_RUNTIME_CONTROL_PLANE_ENABLED:-false}
+      LUMIRA_RUNTIME_ASYNC_ENABLED: ${LUMIRA_ASYNC_RUNTIME_ASYNC_ENABLED:-true}
+      OTEL_SERVICE_NAME: lumira-async
+      SERVER_PORT: 8080
+      UPLOAD_STORAGE_ROOT: ${UPLOAD_STORAGE_ROOT:-/data/uploads}
+      PLUGIN_STORAGE_ROOT: ${PLUGIN_STORAGE_ROOT:-/data/plugins}
+      PLUGIN_STAGING_ROOT: ${PLUGIN_STAGING_ROOT:-/data/plugin-staging}
+    volumes:
+    - upload_data:/data/uploads
+    - plugin_data:/data/plugins
+    - plugin_staging:/data/plugin-staging
+    depends_on:
+      redis:
+        condition: service_started
+    networks:
+    - default
+    - 1panel-network
+  lumira-job-executor:
+    build:
+      context: ..
+      dockerfile: deploy/docker/service.Dockerfile
+      args:
+        MAVEN_IMAGE: ${MAVEN_IMAGE:-maven:3.9.11-eclipse-temurin-21}
+        JRE_IMAGE: ${JRE_IMAGE:-eclipse-temurin:21-jre}
+        OTEL_JAVAAGENT_URL: ${OTEL_JAVAAGENT_URL:-}
+        SERVICE_DIR: services/lumira-quartz
+        SERVICE_MODULE: services/lumira-quartz
+    image: ${LUMIRA_JOB_EXECUTOR_IMAGE:-lumira/lumira-job-executor:0.1.0}
+    container_name: lumira-job-executor
+    restart: unless-stopped
+    logging: *id001
+    mem_limit: ${JOB_EXECUTOR_MEM_LIMIT:-256m}
+    cpus: ${JOB_EXECUTOR_CPUS:-0.5}
+    environment:
+      <<: *common-env
+      SPRING_PROFILES_ACTIVE: ${JOB_EXECUTOR_PROFILES_ACTIVE:-prod}
+      LUMIRA_RUNTIME_ASYNC_ENABLED: ${LUMIRA_JOB_RUNTIME_ASYNC_ENABLED:-true}
+      SAAS_JOB_BACKEND_BASE_URL: ${SAAS_JOB_BACKEND_BASE_URL:-http://lumira-async:8080}
+      SAAS_JOB_MESSAGE_SERVICE_BASE_URL: ${SAAS_JOB_MESSAGE_SERVICE_BASE_URL:-http://lumira-server:8080}
+      SAAS_JOB_FILE_SERVICE_BASE_URL: ${SAAS_JOB_FILE_SERVICE_BASE_URL:-http://lumira-async:8080}
+      SAAS_JOB_PAYMENT_SERVICE_BASE_URL: ${SAAS_JOB_PAYMENT_SERVICE_BASE_URL:-http://lumira-async:8080}
+      SAAS_JOB_PLUGIN_SERVICE_BASE_URL: ${SAAS_JOB_PLUGIN_SERVICE_BASE_URL:-http://lumira-async:8080}
+      XXL_JOB_ADMIN_ADDRESSES: ${XXL_JOB_ADMIN_ADDRESSES:-http://lumira-xxl-job-admin:8080/xxl-job-admin}
+      XXL_JOB_ADMIN_ACCESS_TOKEN: ${XXL_JOB_ADMIN_ACCESS_TOKEN:?XXL_JOB_ADMIN_ACCESS_TOKEN is required}
+      XXL_JOB_EXECUTOR_ENABLED: ${XXL_JOB_EXECUTOR_ENABLED:-true}
+      XXL_JOB_EXECUTOR_APPNAME: ${XXL_JOB_EXECUTOR_APPNAME:-lumira-job-executor}
+      XXL_JOB_EXECUTOR_PORT: ${XXL_JOB_EXECUTOR_PORT:-9998}
+      XXL_JOB_EXECUTOR_LOG_PATH: ${XXL_JOB_EXECUTOR_LOG_PATH:-/tmp/xxl-job/logs}
+      SERVER_PORT: 8080
+      OTEL_SERVICE_NAME: lumira-job-executor
+    depends_on:
+      lumira-async:
         condition: service_started
       xxl-job-admin:
         condition: service_healthy

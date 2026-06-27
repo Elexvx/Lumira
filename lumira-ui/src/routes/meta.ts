@@ -124,7 +124,8 @@ export const systemRoutes: BackendRouteRecord[] = [
   { path: '/files', redirect: '/settings/files/all' },
   { path: '/files/my', redirect: '/user-center/personal-center/files' },
   { path: '/files/all', redirect: '/settings/files/all' },
-  { path: '/files/download-center', redirect: '/download-center' },
+  { path: '/download-center', redirect: '/data-management/download-center', hideInMenu: true },
+  { path: '/files/download-center', redirect: '/data-management/download-center', hideInMenu: true },
   { path: '/system/menus', redirect: '/settings/menus' },
   { path: '/system/dicts', redirect: '/settings/dicts' },
   { path: '/system/profile-fields', redirect: '/settings/profile-fields' },
@@ -217,12 +218,10 @@ const userCenterRoutes: BackendRouteRecord[] = [
 const dashboardRouteMeta: BackendRouteMeta[] = [
   { path: '/dashboard', name: 'nav.dashboard.root', icon: 'DashboardOutlined', access: 'canVisitDashboard', hideInMenu: true },
   { path: '/dashboard/home', name: 'nav.dashboard.home', icon: 'DashboardOutlined', access: 'canVisitDashboard' },
-  { path: '/download-center', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
 ];
 
 const dashboardRoutes: BackendRouteRecord[] = [
   { path: '/', redirect: '/dashboard/home' },
-  { path: '/download-center', component: '@/pages/files/DownloadCenter', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
   {
     path: '/dashboard',
     name: 'nav.dashboard.root',
@@ -403,12 +402,13 @@ const expertRoutes: BackendRouteRecord[] = [
 
 const dataManagementRouteMeta: BackendRouteMeta[] = [
   { path: '/data-management', name: 'nav.data.management', icon: 'DatabaseOutlined' },
-  { path: '/data-management/query-center', name: 'nav.data.queryCenter', icon: 'SearchOutlined' },
   ...competitionRouteMeta,
   ...activityRouteMeta.map((item) => item.path === '/activities' ? { ...item, hideInMenu: true } : item),
   ...projectRouteMeta,
   ...teamRouteMeta.map((item) => item.path === '/team' ? { ...item, hideInMenu: true } : item),
   ...paymentRouteMeta,
+  { path: '/data-management/download-center', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
+  { path: '/data-management/query-center', name: 'nav.data.queryCenter', icon: 'SearchOutlined' },
 ];
 
 const dataSourceRoutes = [
@@ -422,6 +422,7 @@ const dataSourceRoutes = [
 const dataManagementRoutes: BackendRouteRecord[] = [
   ...dataSourceRoutes,
   { path: '/data-management', redirect: '/competitions/management', name: 'nav.data.management', icon: 'DatabaseOutlined' },
+  { path: '/data-management/download-center', component: '@/pages/files/DownloadCenter', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
   { path: '/data-management/query-center', redirect: '/team/search', name: 'nav.data.queryCenter', icon: 'SearchOutlined', hideInMenu: true },
 ];
 

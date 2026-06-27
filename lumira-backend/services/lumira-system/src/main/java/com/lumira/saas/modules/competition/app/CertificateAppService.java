@@ -7,6 +7,7 @@ import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
@@ -33,6 +34,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class CertificateAppService {
     private static final Set<String> TEMPLATE_STATUS = Set.of("DRAFT", "PUBLISHED", "ARCHIVED");
     private static final Set<String> VERSION_STATUS = Set.of("DRAFT", "PUBLISHED", "ARCHIVED");

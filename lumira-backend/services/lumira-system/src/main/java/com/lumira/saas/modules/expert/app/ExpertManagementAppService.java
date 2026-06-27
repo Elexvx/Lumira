@@ -2,6 +2,7 @@ package com.lumira.saas.modules.expert.app;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
@@ -24,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class ExpertManagementAppService {
     private static final Set<String> STATUSES = Set.of("active", "inactive");
     private static final long MAX_PAGE_SIZE = 100L;

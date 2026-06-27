@@ -31,6 +31,7 @@ COPY lumira-backend/services/lumira-plugin/pom.xml services/lumira-plugin/pom.xm
 COPY lumira-backend/services/lumira-localization/pom.xml services/lumira-localization/pom.xml
 COPY lumira-backend/services/lumira-quartz/pom.xml services/lumira-quartz/pom.xml
 COPY lumira-backend/services/lumira-admin/pom.xml services/lumira-admin/pom.xml
+COPY lumira-backend/services/lumira-async/pom.xml services/lumira-async/pom.xml
 
 COPY lumira-backend/services services
 COPY lumira-backend/libs libs

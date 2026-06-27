@@ -77,28 +77,30 @@ class PluginV2ControllerTest {
     @Test
     void currentBootstrap_shouldUseSortedPermissionSnapshot() {
         CurrentUser currentUser = currentUser("plugin:sms:view", "dashboard:view");
+        currentUser.setPermissionsVersion("v10:data-scope-cache-v4");
         Map<String, Object> bootstrap = Map.of("plugins", List.of());
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(pluginManagementAppService.currentBootstrap(List.of("dashboard:view", "plugin:sms:view")))
+        when(pluginManagementAppService.currentBootstrap(List.of("dashboard:view", "plugin:sms:view"), "v10:data-scope-cache-v4"))
                 .thenReturn(bootstrap);
 
         var response = controller.currentBootstrap();
 
         assertThat(response.getData()).isSameAs(bootstrap);
-        verify(pluginManagementAppService).currentBootstrap(List.of("dashboard:view", "plugin:sms:view"));
+        verify(pluginManagementAppService).currentBootstrap(List.of("dashboard:view", "plugin:sms:view"), "v10:data-scope-cache-v4");
     }
 
     @Test
     void currentMenus_shouldDelegateWithPermissionSnapshot() {
         CurrentUser currentUser = currentUser("plugin:sms:view");
+        currentUser.setPermissionsVersion("v11:data-scope-cache-v4");
         List<Map<String, Object>> menus = List.of(Map.of("menuCode", "plugin.sms"));
         when(securityContextFacade.getCurrentUser()).thenReturn(currentUser);
-        when(pluginManagementAppService.currentMenus(List.of("plugin:sms:view"))).thenReturn(menus);
+        when(pluginManagementAppService.currentMenus(List.of("plugin:sms:view"), "v11:data-scope-cache-v4")).thenReturn(menus);
 
         var response = controller.currentMenus();
 
         assertThat(response.getData()).isSameAs(menus);
-        verify(pluginManagementAppService).currentMenus(List.of("plugin:sms:view"));
+        verify(pluginManagementAppService).currentMenus(List.of("plugin:sms:view"), "v11:data-scope-cache-v4");
     }
 
     @Test

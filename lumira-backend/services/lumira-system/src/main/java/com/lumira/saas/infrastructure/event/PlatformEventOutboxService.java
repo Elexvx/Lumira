@@ -16,6 +16,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -30,6 +31,7 @@ public class PlatformEventOutboxService {
     private static final int MAX_ERROR_LENGTH = 1024;
     private static final int MAX_RETRY_DELAY_SECONDS = 300;
     private static final int MAX_RETRY_COUNT = 8;
+    private static final long SNAPSHOT_CACHE_TTL_MS = 15_000L;
     private static final String SYSTEM_SOURCE_TYPE = PlatformEventTypes.SOURCE_SYSTEM;
 
     private static final String SQL_LIST_DISPATCHABLE = """
@@ -93,6 +95,8 @@ public class PlatformEventOutboxService {
     private final PlatformEventOutboxMapper platformEventOutboxMapper;
     private final MyBatisQueryOperations queryOperations;
     private final BeanPropertyRowMapper<PlatformEventOutboxEntity> rowMapper = new BeanPropertyRowMapper<>(PlatformEventOutboxEntity.class);
+    private volatile OutboxMetricsSnapshot cachedSnapshot;
+    private volatile long cachedSnapshotUntilMillis;
 
     @Autowired
     public PlatformEventOutboxService(ObjectMapper objectMapper,
@@ -191,6 +195,29 @@ public class PlatformEventOutboxService {
         );
     }
 
+    public long dispatchableBacklog() {
+        return snapshot().dispatchableBacklog();
+    }
+
+    public OutboxMetricsSnapshot snapshot() {
+        long now = System.currentTimeMillis();
+        OutboxMetricsSnapshot cached = cachedSnapshot;
+        if (cached != null && now < cachedSnapshotUntilMillis) {
+            return cached;
+        }
+        synchronized (this) {
+            now = System.currentTimeMillis();
+            cached = cachedSnapshot;
+            if (cached != null && now < cachedSnapshotUntilMillis) {
+                return cached;
+            }
+            OutboxMetricsSnapshot snapshot = loadSnapshot();
+            cachedSnapshot = snapshot;
+            cachedSnapshotUntilMillis = now + SNAPSHOT_CACHE_TTL_MS;
+            return snapshot;
+        }
+    }
+
     public PlatformEventOutboxEntity findById(Long id) {
         if (id == null) {
             return null;
@@ -205,6 +232,48 @@ public class PlatformEventOutboxService {
         }
 
         return queryOperations.queryForObject(SQL_FIND_BY_ID, rowMapper, id, SYSTEM_SOURCE_TYPE);
+    }
+
+    private OutboxMetricsSnapshot loadSnapshot() {
+        Map<String, Object> row = firstRow(
+                """
+                        select coalesce(sum(case when dispatch_status = 'RECORDED' then 1 else 0 end), 0) as pending_backlog,
+                               coalesce(sum(case when dispatch_status = 'FAILED' then 1 else 0 end), 0) as failed_backlog,
+                               coalesce(sum(case when dispatch_status = 'DEAD_LETTER' then 1 else 0 end), 0) as dead_letter_count,
+                               coalesce(sum(case when dispatch_status = 'RECORDED'
+                                                 or (dispatch_status = 'FAILED' and (next_retry_at is null or next_retry_at <= ?))
+                                                 then 1 else 0 end), 0) as dispatchable_backlog
+                        from platform_event_outbox
+                        where deleted = 0
+                          and source_type = ?
+                        """,
+                LocalDateTime.now(),
+                SYSTEM_SOURCE_TYPE
+        );
+        return new OutboxMetricsSnapshot(
+                longValue(row.get("pending_backlog")),
+                longValue(row.get("failed_backlog")),
+                longValue(row.get("dead_letter_count")),
+                longValue(row.get("dispatchable_backlog"))
+        );
+    }
+
+    private Map<String, Object> firstRow(String sql, Object... args) {
+        if (queryOperations == null) {
+            return Map.of();
+        }
+        List<Map<String, Object>> rows = queryOperations.queryForList(sql, args);
+        return rows.isEmpty() ? Map.of() : rows.get(0);
+    }
+
+    private long longValue(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
     }
 
     public boolean claimForDispatch(PlatformEventOutboxEntity event) {
@@ -515,5 +584,13 @@ public class PlatformEventOutboxService {
         if (!SYSTEM_SOURCE_TYPE.equals(sourceType)) {
             throw new IllegalArgumentException("平台事件 outbox sourceType 必须为 SYSTEM");
         }
+    }
+
+    public record OutboxMetricsSnapshot(
+            long pendingBacklog,
+            long failedBacklog,
+            long deadLetterCount,
+            long dispatchableBacklog
+    ) {
     }
 }

@@ -19,6 +19,7 @@ import { confirmAction } from '@/utils/confirm';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { DEFAULT_DOCUMENT_UPLOAD_MAX_SIZE_MB, validateDocumentUploadFile } from '@/utils/uploadValidation';
 import { request, requestEventStream } from '@/services/common/request';
+import { ErrorCode } from '@/enums/errorCode';
 import { copyTextToClipboard } from '@/utils/clipboard';
 import type {
   AiConversationExportRecord,
@@ -58,6 +59,9 @@ import { normalizeLocale } from '@/i18n/locale';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+
+const isNotFoundApiError = (error: unknown) =>
+  Boolean(error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === ErrorCode.NOT_FOUND);
 
 const resolveNextActiveSessionId = (sessions: ChatSession[], currentSessionId: string, deletedSessionId: string) => {
   if (currentSessionId !== deletedSessionId) {
@@ -146,8 +150,9 @@ const useAiChatData = (shareToken: string) => {
       request<PagedResult<AiEmployeeRecord>>('/ai/employees', {
         method: 'GET',
         params: { pageNo: 1, pageSize: 50 },
-        ...API_OPTS.NO_REDIRECT,
+        ...API_OPTS.SILENT_NO_REDIRECT,
       }),
+    retry: false,
   });
 
   const assistantQuery = useQuery({
@@ -158,7 +163,7 @@ const useAiChatData = (shareToken: string) => {
         method: 'GET',
         ...API_OPTS.SILENT_NO_REDIRECT,
       }).catch((error) => {
-        if (error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === 'A0404') {
+        if (isNotFoundApiError(error)) {
           return null;
         }
         throw error;
@@ -173,8 +178,9 @@ const useAiChatData = (shareToken: string) => {
       request<PagedResult<AiConversationRecord>>('/ai/conversations', {
         method: 'GET',
         params: { pageNo: 1, pageSize: 50 },
-        ...API_OPTS.NO_REDIRECT,
+        ...API_OPTS.SILENT_NO_REDIRECT,
       }),
+    retry: false,
   });
 
   const shareQuery = useQuery({
@@ -261,7 +267,7 @@ const useAiChatData = (shareToken: string) => {
       try {
         const records = await request<AiConversationMessageRecord[]>(`/ai/conversations/${activeSession.conversationId}/messages`, {
           method: 'GET',
-          ...API_OPTS.NO_REDIRECT,
+          ...API_OPTS.SILENT_NO_REDIRECT,
         });
         if (!alive) return;
         updateSession(activeSession.id, (session) => ({
@@ -269,16 +275,37 @@ const useAiChatData = (shareToken: string) => {
           messages: records.map(mapMessageRecord),
         }));
       } catch (error) {
-        if (alive) {
-          showErrorMessage(error, t('加载对话记录失败', 'Failed to load conversation messages'));
+        if (!alive) return;
+        if (isNotFoundApiError(error)) {
+          setSessions((currentSessions) => {
+            const remainingSessions = currentSessions.filter((session) => session.id !== activeSession.id);
+            const nextSessions = remainingSessions.length
+              ? remainingSessions
+              : [buildInitialSession(employeeSelection.selectedEmployee)];
+            setActiveSessionId((currentActiveSessionId) =>
+              currentActiveSessionId === activeSession.id ? nextSessions[0]?.id || 'session-default' : currentActiveSessionId,
+            );
+            return sortSessions(nextSessions);
+          });
+          void queryClient.invalidateQueries({ queryKey: CONVERSATIONS_QUERY_KEY });
+          return;
         }
+        showErrorMessage(error, t('加载对话记录失败', 'Failed to load conversation messages'));
       }
     };
     void loadMessages();
     return () => {
       alive = false;
     };
-  }, [activeSession?.conversationId, activeSession?.id, activeSession?.messages.length, isShareMode, updateSession]);
+  }, [
+    activeSession?.conversationId,
+    activeSession?.id,
+    activeSession?.messages.length,
+    employeeSelection.selectedEmployee,
+    isShareMode,
+    queryClient,
+    updateSession,
+  ]);
 
   const handleCreateSession = useCallback(() => {
     if (isShareMode) return;

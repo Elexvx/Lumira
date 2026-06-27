@@ -8,6 +8,9 @@ public record ServiceVersionInfo(
         String commitId,
         String branch,
         String profiles,
-        String javaVersion
+        String javaVersion,
+        String frontendVersion,
+        String backendVersion,
+        String databaseVersion
 ) {
 }

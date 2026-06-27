@@ -2,6 +2,7 @@ package com.lumira.saas.modules.system.role.app;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.domain.event.DomainEventPublisher;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.common.security.CurrentUser;
@@ -34,12 +35,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class SystemRoleManagementAppService {
 
     private static final String DEFAULT_REGISTRATION_ROLE_CODE_KEY = "auth.default-registration-role-code";
     private static final String DEFAULT_REGISTRATION_ROLE_CODE = "commonuser";
     private static final String DEFAULT_HOME_PATH = "/dashboard/home";
     private static final long MAX_PAGE_SIZE = 100L;
+    private static final int BULK_INSERT_BATCH_SIZE = 200;
     private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
     private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_PREFIXES = Set.of(
             "ai:employee:",
@@ -362,18 +365,36 @@ public class SystemRoleManagementAppService {
         if (CollectionUtils.isEmpty(permissionKeys)) {
             return;
         }
-        for (String permissionKey : permissionKeys) {
-            jdbcTemplate.update(
-                    """
-                            insert into sys_role_permission (role_id, permission_key, created_by, updated_by, deleted)
-                            values (?, ?, ?, ?, 0)
-                            """,
+        List<String> orderedPermissionKeys = new ArrayList<>(permissionKeys);
+        for (int start = 0; start < orderedPermissionKeys.size(); start += BULK_INSERT_BATCH_SIZE) {
+            insertRolePermissionsBatch(
                     roleId,
-                    permissionKey,
-                    operatorId,
+                    orderedPermissionKeys.subList(start, Math.min(orderedPermissionKeys.size(), start + BULK_INSERT_BATCH_SIZE)),
                     operatorId
             );
         }
+    }
+
+    private void insertRolePermissionsBatch(Long roleId, List<String> permissionKeys, Long operatorId) {
+        if (CollectionUtils.isEmpty(permissionKeys)) {
+            return;
+        }
+        StringBuilder sql = new StringBuilder("""
+                insert into sys_role_permission (role_id, permission_key, created_by, updated_by, deleted)
+                values
+                """);
+        List<Object> params = new ArrayList<>(permissionKeys.size() * 4);
+        for (int index = 0; index < permissionKeys.size(); index += 1) {
+            if (index > 0) {
+                sql.append(", ");
+            }
+            sql.append("(?, ?, ?, ?, 0)");
+            params.add(roleId);
+            params.add(permissionKeys.get(index));
+            params.add(operatorId);
+            params.add(operatorId);
+        }
+        jdbcTemplate.update(sql.toString(), params.toArray());
     }
 
     private List<String> listRolePermissionKeys(Long roleId) {
@@ -457,28 +478,55 @@ public class SystemRoleManagementAppService {
                 ? List.of(defaultDataScope(roleCode))
                 : dataScopes;
         Set<String> seenResources = new LinkedHashSet<>();
+        List<NormalizedRoleDataScope> normalizedScopes = new ArrayList<>();
         for (RoleDataScopeRequest request : effectiveScopes) {
             String resourceCode = normalizeResourceCode(request.getResourceCode());
             if (!seenResources.add(resourceCode.toLowerCase(Locale.ROOT))) {
                 continue;
             }
             String scopeType = normalizeScopeType(request.getScopeType());
-            jdbcTemplate.update(
-                    """
-                            insert into sys_role_data_scope (
-                                role_id, resource_code, scope_type, custom_dept_ids, custom_user_ids,
-                                created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, 0)
-                            """,
-                    roleId,
+            normalizedScopes.add(new NormalizedRoleDataScope(
                     resourceCode,
                     scopeType,
                     joinIds(request.getCustomDeptIds()),
-                    joinIds(request.getCustomUserIds()),
-                    operatorId,
+                    joinIds(request.getCustomUserIds())
+            ));
+        }
+        for (int start = 0; start < normalizedScopes.size(); start += BULK_INSERT_BATCH_SIZE) {
+            insertRoleDataScopesBatch(
+                    roleId,
+                    normalizedScopes.subList(start, Math.min(normalizedScopes.size(), start + BULK_INSERT_BATCH_SIZE)),
                     operatorId
             );
         }
+    }
+
+    private void insertRoleDataScopesBatch(Long roleId, List<NormalizedRoleDataScope> scopes, Long operatorId) {
+        if (CollectionUtils.isEmpty(scopes)) {
+            return;
+        }
+        StringBuilder sql = new StringBuilder("""
+                insert into sys_role_data_scope (
+                    role_id, resource_code, scope_type, custom_dept_ids, custom_user_ids,
+                    created_by, updated_by, deleted
+                ) values
+                """);
+        List<Object> params = new ArrayList<>(scopes.size() * 7);
+        for (int index = 0; index < scopes.size(); index += 1) {
+            if (index > 0) {
+                sql.append(", ");
+            }
+            sql.append("(?, ?, ?, ?, ?, ?, ?, 0)");
+            NormalizedRoleDataScope scope = scopes.get(index);
+            params.add(roleId);
+            params.add(scope.resourceCode());
+            params.add(scope.scopeType());
+            params.add(scope.customDeptIds());
+            params.add(scope.customUserIds());
+            params.add(operatorId);
+            params.add(operatorId);
+        }
+        jdbcTemplate.update(sql.toString(), params.toArray());
     }
 
     private RoleDataScopeRequest defaultDataScope(String roleCode) {
@@ -749,6 +797,14 @@ public class SystemRoleManagementAppService {
 
     private String normalizeConfigText(Object value) {
         return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private record NormalizedRoleDataScope(
+            String resourceCode,
+            String scopeType,
+            String customDeptIds,
+            String customUserIds
+    ) {
     }
 
 }

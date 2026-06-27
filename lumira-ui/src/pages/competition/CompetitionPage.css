@@ -205,6 +205,7 @@
 }
 
 .competition-qr-upload__preview {
+  position: relative;
   display: grid;
   width: 160px;
   height: 160px;
@@ -213,6 +214,43 @@
   border: 1px dashed var(--ant-color-border);
   border-radius: var(--saas-card-radius);
   background: var(--ant-color-fill-quaternary);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.competition-qr-upload__preview:hover,
+.competition-qr-upload__preview:focus-visible {
+  border-color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+  box-shadow: 0 0 0 2px var(--ant-color-primary-bg);
+  outline: none;
+}
+
+.competition-qr-upload__preview.is-uploading {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.competition-qr-upload__preview.has-image:hover .competition-qr-upload__hint,
+.competition-qr-upload__preview.has-image:focus-visible .competition-qr-upload__hint {
+  opacity: 1;
+}
+
+.competition-qr-upload__hint {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 6px 8px;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  background: rgb(0 0 0 / 55%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .competition-homepage-step {

@@ -4,6 +4,7 @@ import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
@@ -21,6 +22,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class WorkOrderFeedbackService {
 
     private static final int MAX_PAGE_SIZE = 100;

@@ -6,6 +6,7 @@ import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.MenuNodeDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ReadModelVersionCache;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.domain.event.DomainEvent;
@@ -25,6 +26,7 @@ import com.lumira.saas.modules.plugin.service.PluginSemver;
 import com.lumira.saas.modules.plugin.vo.PluginVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -78,13 +80,19 @@ public class PluginManagementAppService {
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
     private final DomainEventPublisher domainEventPublisher;
-    private static final long AVAILABLE_PLUGINS_CACHE_TTL_MILLIS = Duration.ofSeconds(8).toMillis();
-    private static final long CURRENT_BOOTSTRAP_CACHE_TTL_MILLIS = Duration.ofSeconds(3).toMillis();
+    private final ReadModelVersionCache readModelVersionCache;
     private static final long READ_MODEL_VERSION_CACHE_TTL_MILLIS = Duration.ofSeconds(2).toMillis();
     private static final String GLOBAL_PLUGIN_SCOPE_KEY = "global";
+    private static final String READ_MODEL_CACHE_KEY_PLUGIN_BOOTSTRAP = "plugin:bootstrap";
+    private static final String READ_MODEL_CACHE_KEY_PLATFORM_MENU_TREE = "platform:menu-tree";
+    private static final String READ_MODEL_CONTEXT_PLUGIN = "plugin";
+    private static final String READ_MODEL_SCOPE_PLUGIN_BOOTSTRAP = "bootstrap";
+    private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
+    private static final String READ_MODEL_SCOPE_PLATFORM_MENU_TREE = "menu-tree";
     private final ConcurrentMap<String, CachedAvailablePlugins> availablePluginsCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<MenuCompilationVersion, CachedCompiledMenuTree> compiledMenuTreeCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<VisibleMenuTreeCacheKey, CachedVisibleMenuTree> visibleMenuTreeCache = new ConcurrentHashMap<>();
     private final ConcurrentMap<BootstrapCacheKey, CachedCurrentBootstrap> currentBootstrapCache = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, CachedReadModelVersion> readModelVersionCache = new ConcurrentHashMap<>();
     private final LongAdder availablePluginsCacheHits = new LongAdder();
     private final LongAdder availablePluginsCacheMisses = new LongAdder();
     private final LongAdder currentBootstrapCacheHits = new LongAdder();
@@ -104,6 +112,35 @@ public class PluginManagementAppService {
             ObjectMapper objectMapper,
             @Qualifier("pluginDomainEventPublisher") DomainEventPublisher domainEventPublisher
     ) {
+        this(
+                pluginArtifactLoader,
+                pluginPersistenceService,
+                pluginMigrationService,
+                pluginRuntimeLoader,
+                pluginRegistry,
+                pluginSemver,
+                systemInternalApi,
+                transactionManager,
+                objectMapper,
+                domainEventPublisher,
+                new ReadModelVersionCache(READ_MODEL_VERSION_CACHE_TTL_MILLIS)
+        );
+    }
+
+    @Autowired
+    public PluginManagementAppService(
+            PluginArtifactLoader pluginArtifactLoader,
+            PluginPersistenceService pluginPersistenceService,
+            PluginMigrationService pluginMigrationService,
+            PluginRuntimeLoader pluginRuntimeLoader,
+            PluginRegistry pluginRegistry,
+            PluginSemver pluginSemver,
+            SystemInternalApi systemInternalApi,
+            PlatformTransactionManager transactionManager,
+            ObjectMapper objectMapper,
+            @Qualifier("pluginDomainEventPublisher") DomainEventPublisher domainEventPublisher,
+            ReadModelVersionCache readModelVersionCache
+    ) {
         this.pluginArtifactLoader = pluginArtifactLoader;
         this.pluginPersistenceService = pluginPersistenceService;
         this.pluginMigrationService = pluginMigrationService;
@@ -114,6 +151,7 @@ public class PluginManagementAppService {
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.objectMapper = objectMapper;
         this.domainEventPublisher = domainEventPublisher;
+        this.readModelVersionCache = readModelVersionCache;
     }
 
     @Transactional
@@ -320,20 +358,20 @@ public class PluginManagementAppService {
 
     public List<PluginVO.PluginAvailabilityVO> availablePlugins() {
         long bootstrapVersion = readPluginBootstrapVersion();
+        return availablePlugins(bootstrapVersion);
+    }
+
+    private List<PluginVO.PluginAvailabilityVO> availablePlugins(long bootstrapVersion) {
+        pruneStalePluginBootstrapCaches(bootstrapVersion);
         CachedAvailablePlugins cached = availablePluginsCache.get(GLOBAL_PLUGIN_SCOPE_KEY);
-        long now = System.currentTimeMillis();
-        if (cached != null && cached.version() == bootstrapVersion && cached.expiresAtEpochMillis() > now) {
+        if (cached != null && cached.version() == bootstrapVersion) {
             availablePluginsCacheHits.increment();
             return new ArrayList<>(cached.availablePlugins());
         }
         availablePluginsCacheMisses.increment();
         List<PluginVO.PluginAvailabilityVO> fromPersistence = pluginPersistenceService.listAvailablePlugins();
         if (fromPersistence == null || fromPersistence.isEmpty()) {
-            CachedAvailablePlugins emptySnapshot = new CachedAvailablePlugins(
-                    bootstrapVersion,
-                    now + AVAILABLE_PLUGINS_CACHE_TTL_MILLIS,
-                    List.of()
-            );
+            CachedAvailablePlugins emptySnapshot = new CachedAvailablePlugins(bootstrapVersion, List.of());
             availablePluginsCache.put(GLOBAL_PLUGIN_SCOPE_KEY, emptySnapshot);
             return List.of();
         }
@@ -348,11 +386,7 @@ public class PluginManagementAppService {
                 log.warn("Skipping plugin {} {} because runtime metadata failed to load", plugin.getPluginCode(), plugin.getVersion(), exception);
             }
         }
-        CachedAvailablePlugins snapshot = new CachedAvailablePlugins(
-                bootstrapVersion,
-                System.currentTimeMillis() + AVAILABLE_PLUGINS_CACHE_TTL_MILLIS,
-                result
-        );
+        CachedAvailablePlugins snapshot = new CachedAvailablePlugins(bootstrapVersion, result);
         availablePluginsCache.put(GLOBAL_PLUGIN_SCOPE_KEY, snapshot);
         return new ArrayList<>(result);
     }
@@ -469,29 +503,46 @@ public class PluginManagementAppService {
     }
 
     public Map<String, Object> currentBootstrap(List<String> permissions) {
+        return currentBootstrap(permissions, null);
+    }
+
+    public Map<String, Object> currentBootstrap(List<String> permissions, String permissionsVersion) {
+        return currentBootstrap(permissions, permissionsVersion, null, null);
+    }
+
+    public Map<String, Object> currentBootstrap(
+            List<String> permissions,
+            String permissionsVersion,
+            Long pluginBootstrapVersion,
+            Long platformMenuTreeVersion
+    ) {
         Set<String> permissionSet = normalizePermissionSet(permissions);
-        long bootstrapVersion = readPluginBootstrapVersion();
-        String permissionSignature = permissionSignature(permissionSet);
-        BootstrapCacheKey cacheKey = new BootstrapCacheKey(GLOBAL_PLUGIN_SCOPE_KEY, bootstrapVersion, permissionSignature);
-        long now = System.currentTimeMillis();
+        long resolvedPluginBootstrapVersion = resolveVersion(pluginBootstrapVersion, this::readPluginBootstrapVersion);
+        MenuCompilationVersion menuCompilationVersion = currentMenuCompilationVersion(
+                resolvedPluginBootstrapVersion,
+                platformMenuTreeVersion
+        );
+        pruneStalePluginBootstrapCaches(resolvedPluginBootstrapVersion, menuCompilationVersion);
+        String permissionCacheKey = permissionCacheKey(permissionSet, permissionsVersion);
+        BootstrapCacheKey cacheKey = new BootstrapCacheKey(GLOBAL_PLUGIN_SCOPE_KEY, menuCompilationVersion, permissionCacheKey);
         CachedCurrentBootstrap cached = currentBootstrapCache.get(cacheKey);
-        if (cached != null && cached.expiresAtEpochMillis() > now) {
+        if (cached != null) {
             currentBootstrapCacheHits.increment();
             return cached.bootstrapPayload();
         }
         currentBootstrapCacheMisses.increment();
-        List<PluginVO.PluginAvailabilityVO> availablePlugins = availablePlugins();
-        Map<String, Object> payload = Map.of(
-                "menuTree", currentMenus(availablePlugins, permissionSet),
-                "availablePlugins", availablePlugins
+        CachedCurrentBootstrap snapshot = currentBootstrapCache.computeIfAbsent(
+                cacheKey,
+                ignored -> {
+                    List<PluginVO.PluginAvailabilityVO> availablePlugins = availablePlugins(resolvedPluginBootstrapVersion);
+                    Map<String, Object> payload = Map.of(
+                            "menuTree", currentMenus(menuCompilationVersion, availablePlugins, permissionSet, permissionCacheKey),
+                            "availablePlugins", availablePlugins
+                    );
+                    return new CachedCurrentBootstrap(menuCompilationVersion, payload);
+                }
         );
-        currentBootstrapCache.put(cacheKey, new CachedCurrentBootstrap(
-                bootstrapVersion,
-                permissionSignature,
-                now + CURRENT_BOOTSTRAP_CACHE_TTL_MILLIS,
-                payload
-        ));
-        return payload;
+        return snapshot.bootstrapPayload();
     }
 
     private void bumpBootstrapVersions(String pluginCode, String eventKey) {
@@ -502,7 +553,7 @@ public class PluginManagementAppService {
     private List<Map<String, Object>> pluginActivationMenus(List<PluginVO.PluginAvailabilityVO> availablePlugins, Set<String> permissions) {
         List<Map<String, Object>> menus = new ArrayList<>();
         for (PluginVO.PluginAvailabilityVO plugin : availablePlugins) {
-            for (Map<String, Object> menu : buildPluginMenus(plugin.getPluginCode(), plugin.getVersion())) {
+            for (Map<String, Object> menu : pluginMenuSnapshot(plugin)) {
                 String permissionKey = (String) menu.get("permissionKey");
                 if (permissionKey == null || permissions.contains("*") || permissions.contains(permissionKey)) {
                     menus.add(menu);
@@ -512,17 +563,53 @@ public class PluginManagementAppService {
         return menus;
     }
 
-    public List<Map<String, Object>> currentMenus(List<String> permissions) {
-        Map<String, Object> bootstrap = currentBootstrap(permissions);
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> menuTree = (List<Map<String, Object>>) bootstrap.get("menuTree");
-        return menuTree == null ? List.of() : menuTree;
+    private List<Map<String, Object>> pluginActivationMenus(List<PluginVO.PluginAvailabilityVO> availablePlugins) {
+        List<Map<String, Object>> menus = new ArrayList<>();
+        for (PluginVO.PluginAvailabilityVO plugin : availablePlugins) {
+            menus.addAll(pluginMenuSnapshot(plugin));
+        }
+        return menus;
     }
 
-    private List<Map<String, Object>> currentMenus(List<PluginVO.PluginAvailabilityVO> availablePlugins, Set<String> permissionSet) {
-        List<Map<String, Object>> baseMenus = builtinMenus();
-        List<Map<String, Object>> mergedMenus = mergeMenus(baseMenus, pluginActivationMenus(availablePlugins, permissionSet));
-        return pruneMenuTree(mergedMenus, permissionSet);
+    public List<Map<String, Object>> currentMenus(List<String> permissions) {
+        return currentMenus(permissions, null);
+    }
+
+    public List<Map<String, Object>> currentMenus(List<String> permissions, String permissionsVersion) {
+        Set<String> permissionSet = normalizePermissionSet(permissions);
+        long pluginBootstrapVersion = readPluginBootstrapVersion();
+        MenuCompilationVersion menuCompilationVersion = currentMenuCompilationVersion(pluginBootstrapVersion);
+        pruneStalePluginBootstrapCaches(pluginBootstrapVersion, menuCompilationVersion);
+        List<PluginVO.PluginAvailabilityVO> availablePlugins = availablePlugins();
+        return currentMenus(
+                menuCompilationVersion,
+                availablePlugins,
+                permissionSet,
+                permissionCacheKey(permissionSet, permissionsVersion)
+        );
+    }
+
+    private List<Map<String, Object>> currentMenus(
+            MenuCompilationVersion menuCompilationVersion,
+            List<PluginVO.PluginAvailabilityVO> availablePlugins,
+            Set<String> permissionSet,
+            String permissionCacheKey
+    ) {
+        VisibleMenuTreeCacheKey cacheKey = new VisibleMenuTreeCacheKey(menuCompilationVersion, permissionCacheKey);
+        CachedVisibleMenuTree cached = visibleMenuTreeCache.get(cacheKey);
+        if (cached != null) {
+            return copyMenus(cached.menus());
+        }
+
+        CachedVisibleMenuTree snapshot = visibleMenuTreeCache.computeIfAbsent(
+                cacheKey,
+                ignored -> {
+                    List<Map<String, Object>> compiledMenus = compiledMenuTree(menuCompilationVersion, availablePlugins);
+                    List<Map<String, Object>> visibleMenus = pruneMenuTree(compiledMenus, permissionSet);
+                    return new CachedVisibleMenuTree(menuCompilationVersion, copyMenus(visibleMenus));
+                }
+        );
+        return copyMenus(snapshot.menus());
     }
 
     public Path resolveManifestPath(String pluginCode, String version) {
@@ -821,8 +908,39 @@ public class PluginManagementAppService {
 
     private void invalidatePluginBootstrapCaches() {
         availablePluginsCache.remove(GLOBAL_PLUGIN_SCOPE_KEY);
-        readModelVersionCache.remove(GLOBAL_PLUGIN_SCOPE_KEY);
+        compiledMenuTreeCache.clear();
+        visibleMenuTreeCache.clear();
+        readModelVersionCache.invalidate(READ_MODEL_CACHE_KEY_PLUGIN_BOOTSTRAP);
+        readModelVersionCache.invalidate(READ_MODEL_CACHE_KEY_PLATFORM_MENU_TREE);
         currentBootstrapCache.keySet().removeIf(key -> GLOBAL_PLUGIN_SCOPE_KEY.equals(key.scopeKey()));
+    }
+
+    private void pruneStalePluginBootstrapCaches(long bootstrapVersion) {
+        CachedAvailablePlugins cachedAvailablePlugins = availablePluginsCache.get(GLOBAL_PLUGIN_SCOPE_KEY);
+        if (cachedAvailablePlugins != null && cachedAvailablePlugins.version() != bootstrapVersion) {
+            availablePluginsCache.remove(GLOBAL_PLUGIN_SCOPE_KEY, cachedAvailablePlugins);
+        }
+        compiledMenuTreeCache.keySet().removeIf(version -> version.pluginBootstrapVersion() != bootstrapVersion);
+        visibleMenuTreeCache.keySet().removeIf(key -> key.version().pluginBootstrapVersion() != bootstrapVersion);
+        currentBootstrapCache.keySet().removeIf(
+                key -> GLOBAL_PLUGIN_SCOPE_KEY.equals(key.scopeKey()) && key.version().pluginBootstrapVersion() != bootstrapVersion
+        );
+    }
+
+    private void pruneStalePluginBootstrapCaches(long bootstrapVersion, MenuCompilationVersion menuCompilationVersion) {
+        pruneStalePluginBootstrapCaches(bootstrapVersion);
+        compiledMenuTreeCache.keySet().removeIf(version -> !version.equals(menuCompilationVersion));
+        visibleMenuTreeCache.keySet().removeIf(key -> !key.version().equals(menuCompilationVersion));
+        currentBootstrapCache.keySet().removeIf(
+                key -> GLOBAL_PLUGIN_SCOPE_KEY.equals(key.scopeKey()) && !key.version().equals(menuCompilationVersion)
+        );
+    }
+
+    private String permissionCacheKey(Set<String> permissions, String permissionsVersion) {
+        if (StringUtils.hasText(permissionsVersion)) {
+            return "perm-version:" + permissionsVersion.trim();
+        }
+        return "perm-signature:" + permissionSignature(permissions);
     }
 
     private String permissionSignature(Set<String> permissions) {
@@ -835,28 +953,110 @@ public class PluginManagementAppService {
     }
 
     private long readPluginBootstrapVersion() {
-        CachedReadModelVersion cached = readModelVersionCache.get(GLOBAL_PLUGIN_SCOPE_KEY);
-        long now = System.currentTimeMillis();
-        if (cached != null && cached.expiresAtEpochMillis() > now) {
-            readModelVersionCacheHits.increment();
-            return cached.version();
+        long fallback = 0L;
+        CachedAvailablePlugins cachedAvailablePlugins = availablePluginsCache.get(GLOBAL_PLUGIN_SCOPE_KEY);
+        if (cachedAvailablePlugins != null) {
+            fallback = cachedAvailablePlugins.version();
         }
-        readModelVersionCacheMisses.increment();
-        long version = 0L;
+        return readReadModelVersion(
+                READ_MODEL_CACHE_KEY_PLUGIN_BOOTSTRAP,
+                READ_MODEL_CONTEXT_PLUGIN,
+                READ_MODEL_SCOPE_PLUGIN_BOOTSTRAP,
+                fallback,
+                "plugin bootstrap"
+        );
+    }
+
+    private long readPlatformMenuTreeVersion() {
+        return readReadModelVersion(
+                READ_MODEL_CACHE_KEY_PLATFORM_MENU_TREE,
+                READ_MODEL_CONTEXT_PLATFORM,
+                READ_MODEL_SCOPE_PLATFORM_MENU_TREE,
+                0L,
+                "platform menu tree"
+        );
+    }
+
+    private MenuCompilationVersion currentMenuCompilationVersion(long pluginBootstrapVersion) {
+        return new MenuCompilationVersion(pluginBootstrapVersion, readPlatformMenuTreeVersion());
+    }
+
+    private MenuCompilationVersion currentMenuCompilationVersion(long pluginBootstrapVersion, Long platformMenuTreeVersion) {
+        return new MenuCompilationVersion(
+                pluginBootstrapVersion,
+                resolveVersion(platformMenuTreeVersion, this::readPlatformMenuTreeVersion)
+        );
+    }
+
+    private long resolveVersion(Long suppliedVersion, java.util.function.LongSupplier fallback) {
+        if (suppliedVersion != null && suppliedVersion >= 0L) {
+            return suppliedVersion;
+        }
+        return fallback.getAsLong();
+    }
+
+    private long readReadModelVersion(
+            String cacheKey,
+            String context,
+            String scope,
+            long fallback,
+            String label
+    ) {
         try {
-            Long actualVersion = systemInternalApi.readModelVersion("plugin", "bootstrap");
-            if (actualVersion != null) {
-                version = actualVersion;
+            ReadModelVersionCache.ReadResult result = readModelVersionCache.read(
+                    cacheKey,
+                    READ_MODEL_VERSION_CACHE_TTL_MILLIS,
+                    () -> {
+                        try {
+                            Long actualVersion = systemInternalApi.readModelVersion(context, scope);
+                            return actualVersion == null ? fallback : actualVersion;
+                        } catch (Exception exception) {
+                            log.warn("Failed to read {} read-model version context={} scope={}", label, context, scope, exception);
+                            return fallback;
+                        }
+                    }
+            );
+            if (result.cacheHit()) {
+                readModelVersionCacheHits.increment();
+            } else {
+                readModelVersionCacheMisses.increment();
             }
-        } catch (Exception exception) {
-            log.warn("Failed to read plugin bootstrap read-model version", exception);
-            CachedAvailablePlugins cachedAvailablePlugins = availablePluginsCache.get(GLOBAL_PLUGIN_SCOPE_KEY);
-            if (cachedAvailablePlugins != null) {
-                version = cachedAvailablePlugins.version();
-            }
+            return result.version() == null ? fallback : result.version();
+        } catch (RuntimeException exception) {
+            readModelVersionCacheMisses.increment();
+            log.warn("Failed to read {} read-model version context={} scope={}", label, context, scope, exception);
+            return fallback;
         }
-        readModelVersionCache.put(GLOBAL_PLUGIN_SCOPE_KEY, new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MILLIS));
-        return version;
+    }
+
+    private List<Map<String, Object>> compiledMenuTree(
+            MenuCompilationVersion menuCompilationVersion,
+            List<PluginVO.PluginAvailabilityVO> availablePlugins
+    ) {
+        CachedCompiledMenuTree cached = compiledMenuTreeCache.get(menuCompilationVersion);
+        if (cached != null) {
+            return copyMenus(cached.menus());
+        }
+
+        CachedCompiledMenuTree snapshot = compiledMenuTreeCache.computeIfAbsent(
+                menuCompilationVersion,
+                ignored -> {
+                    List<Map<String, Object>> mergedMenus = mergeMenus(builtinMenus(), pluginActivationMenus(availablePlugins));
+                    return new CachedCompiledMenuTree(menuCompilationVersion, copyMenus(mergedMenus));
+                }
+        );
+        return copyMenus(snapshot.menus());
+    }
+
+    private List<Map<String, Object>> pluginMenuSnapshot(PluginVO.PluginAvailabilityVO plugin) {
+        if (plugin == null) {
+            return List.of();
+        }
+        List<Map<String, Object>> menus = plugin.getMenus();
+        if (menus != null) {
+            return copyMenus(menus);
+        }
+        return copyMenus(buildPluginMenus(plugin.getPluginCode(), plugin.getVersion()));
     }
 
     private Path resolveVersionHome(String pluginCode, String version) {
@@ -973,21 +1173,15 @@ public class PluginManagementAppService {
 
     private static final class CachedAvailablePlugins {
         private final long version;
-        private final long expiresAtEpochMillis;
         private final List<PluginVO.PluginAvailabilityVO> availablePlugins;
 
-        private CachedAvailablePlugins(long version, long expiresAtEpochMillis, List<PluginVO.PluginAvailabilityVO> availablePlugins) {
+        private CachedAvailablePlugins(long version, List<PluginVO.PluginAvailabilityVO> availablePlugins) {
             this.version = version;
-            this.expiresAtEpochMillis = expiresAtEpochMillis;
             this.availablePlugins = availablePlugins == null ? List.of() : List.copyOf(availablePlugins);
         }
 
         private long version() {
             return version;
-        }
-
-        private long expiresAtEpochMillis() {
-            return expiresAtEpochMillis;
         }
 
         private List<PluginVO.PluginAvailabilityVO> availablePlugins() {
@@ -996,20 +1190,12 @@ public class PluginManagementAppService {
     }
 
     private static final class CachedCurrentBootstrap {
-        private final long version;
-        private final String permissionSignature;
-        private final long expiresAtEpochMillis;
+        private final MenuCompilationVersion version;
         private final Map<String, Object> bootstrapPayload;
 
-        private CachedCurrentBootstrap(long version, String permissionSignature, long expiresAtEpochMillis, Map<String, Object> bootstrapPayload) {
+        private CachedCurrentBootstrap(MenuCompilationVersion version, Map<String, Object> bootstrapPayload) {
             this.version = version;
-            this.permissionSignature = permissionSignature;
-            this.expiresAtEpochMillis = expiresAtEpochMillis;
             this.bootstrapPayload = bootstrapPayload;
-        }
-
-        private long expiresAtEpochMillis() {
-            return expiresAtEpochMillis;
         }
 
         private Map<String, Object> bootstrapPayload() {
@@ -1017,25 +1203,49 @@ public class PluginManagementAppService {
         }
     }
 
-    private static final class CachedReadModelVersion {
-        private final long version;
-        private final long expiresAtEpochMillis;
+    private static final class CachedCompiledMenuTree {
+        private final MenuCompilationVersion version;
+        private final List<Map<String, Object>> menus;
 
-        private CachedReadModelVersion(long version, long expiresAtEpochMillis) {
+        private CachedCompiledMenuTree(MenuCompilationVersion version, List<Map<String, Object>> menus) {
             this.version = version;
-            this.expiresAtEpochMillis = expiresAtEpochMillis;
+            this.menus = menus == null ? List.of() : List.copyOf(menus);
         }
 
-        private long version() {
+        private MenuCompilationVersion version() {
             return version;
         }
 
-        private long expiresAtEpochMillis() {
-            return expiresAtEpochMillis;
+        private List<Map<String, Object>> menus() {
+            return menus;
         }
     }
 
-    private static final record BootstrapCacheKey(String scopeKey, long version, String permissionSignature) {
+    private static final class CachedVisibleMenuTree {
+        private final MenuCompilationVersion version;
+        private final List<Map<String, Object>> menus;
+
+        private CachedVisibleMenuTree(MenuCompilationVersion version, List<Map<String, Object>> menus) {
+            this.version = version;
+            this.menus = menus == null ? List.of() : List.copyOf(menus);
+        }
+
+        private MenuCompilationVersion version() {
+            return version;
+        }
+
+        private List<Map<String, Object>> menus() {
+            return menus;
+        }
+    }
+
+    private static final record MenuCompilationVersion(long pluginBootstrapVersion, long platformMenuTreeVersion) {
+    }
+
+    private static final record BootstrapCacheKey(String scopeKey, MenuCompilationVersion version, String permissionCacheKey) {
+    }
+
+    private static final record VisibleMenuTreeCacheKey(MenuCompilationVersion version, String permissionCacheKey) {
     }
 
     private record BuiltinPluginRuntime(List<String> routes, List<String> runtimeContributions) {

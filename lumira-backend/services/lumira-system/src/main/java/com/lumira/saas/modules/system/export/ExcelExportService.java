@@ -2,6 +2,7 @@ package com.lumira.saas.modules.system.export;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Font;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.StringJoiner;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class ExcelExportService {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");

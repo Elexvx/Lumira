@@ -1,43 +1,28 @@
 package com.lumira.server;
 
-import org.apache.ibatis.annotations.Mapper;
-import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
+import org.springframework.boot.context.metrics.buffering.BufferingApplicationStartup;
+import org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration;
+import org.springframework.context.annotation.Import;
 
-import com.lumira.auth.AuthServiceApplication;
-import com.lumira.file.FileServiceApplication;
-import com.lumira.job.JobExecutorApplication;
-import com.lumira.localization.LocalizationServiceApplication;
-import com.lumira.message.MessageServiceApplication;
-import com.lumira.payment.PaymentServiceApplication;
-import com.lumira.plugin.PluginServiceApplication;
-
-@SpringBootApplication(scanBasePackages = {"com.lumira"})
-@ComponentScan(
-        basePackages = {"com.lumira"},
-        excludeFilters = @ComponentScan.Filter(
-                type = FilterType.ASSIGNABLE_TYPE,
-                classes = {
-                        AuthServiceApplication.class,
-                        FileServiceApplication.class,
-                        JobExecutorApplication.class,
-                        LocalizationServiceApplication.class,
-                        MessageServiceApplication.class,
-                        PaymentServiceApplication.class,
-                        PluginServiceApplication.class,
-                        com.lumira.saas.modules.ai.AiServiceApplication.class
-                }
-        )
-)
-@ConfigurationPropertiesScan("com.lumira")
-@MapperScan(basePackages = "com.lumira", annotationClass = Mapper.class)
+@SpringBootApplication(exclude = UserDetailsServiceAutoConfiguration.class)
+@Import(LumiraAdminRuntimeAssemblyConfiguration.class)
 public class LumiraServerApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(LumiraServerApplication.class, args);
+        SpringApplication application = new SpringApplication(LumiraServerApplication.class);
+        if (isStartupProfilingEnabled()) {
+            application.setApplicationStartup(new BufferingApplicationStartup(2048));
+        }
+        application.run(args);
+    }
+
+    private static boolean isStartupProfilingEnabled() {
+        String systemProperty = System.getProperty("lumira.startup.profiling.enabled");
+        if (systemProperty != null && !systemProperty.isBlank()) {
+            return Boolean.parseBoolean(systemProperty);
+        }
+        return Boolean.parseBoolean(System.getenv().getOrDefault("LUMIRA_STARTUP_PROFILING_ENABLED", "false"));
     }
 }

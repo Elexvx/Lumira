@@ -70,6 +70,10 @@ export default defineConfig({
     'process.env.UMI_APP_API_BASE_URL': process.env.UMI_APP_API_BASE_URL || '',
     'process.env.UMI_APP_API_PREFIX': process.env.UMI_APP_API_PREFIX || '',
     'process.env.UMI_APP_REQUEST_TIMEOUT': process.env.UMI_APP_REQUEST_TIMEOUT || '',
+    'process.env.UMI_APP_FRONTEND_VERSION': process.env.UMI_APP_FRONTEND_VERSION || '',
+    'process.env.UMI_APP_BUILD_TIME': process.env.UMI_APP_BUILD_TIME || '',
+    'process.env.UMI_APP_GIT_COMMIT': process.env.UMI_APP_GIT_COMMIT || '',
+    'process.env.UMI_APP_GIT_BRANCH': process.env.UMI_APP_GIT_BRANCH || '',
   },
   routes: backendRoutes,
   proxy: {

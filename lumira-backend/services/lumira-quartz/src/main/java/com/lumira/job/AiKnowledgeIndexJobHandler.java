@@ -1,5 +1,6 @@
 package com.lumira.job;
 
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.job.domain.model.JobDomainModels.RelayTaskReadModel;
 import com.xxl.job.core.context.XxlJobHelper;
 import com.xxl.job.core.handler.annotation.XxlJob;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 
 @Component
+@ConditionalOnLumiraAsyncEnabled
 public class AiKnowledgeIndexJobHandler {
 
     private final BackendJobClient backendJobClient;

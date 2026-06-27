@@ -7,6 +7,7 @@ import com.lumira.file.mapper.FileObjectMapper;
 import com.lumira.file.mapper.FileStorageSpaceMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriUtils;
@@ -16,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Set;
 
+@Lazy
 @Component("fileUploadResourceSecurityInterceptor")
 public class UploadResourceSecurityInterceptor implements HandlerInterceptor {
 

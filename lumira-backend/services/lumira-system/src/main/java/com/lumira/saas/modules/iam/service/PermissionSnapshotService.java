@@ -370,9 +370,6 @@ public class PermissionSnapshotService {
                 readModelVersionService.bump(CONTEXT_IAM, SCOPE_PERMISSION_SNAPSHOT, "iam.permission.invalidate");
             }
             cacheTemplate.put(CacheKeyConstants.globalKey(VERSION_SUFFIX), String.valueOf(System.currentTimeMillis()), Duration.ofDays(30));
-            if (authSessionStore != null) {
-                authSessionStore.refreshAllSessionPayloads();
-            }
             invalidateLocalCaches();
             clearInFlight();
         } catch (Throwable throwable) {

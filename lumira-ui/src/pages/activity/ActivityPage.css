@@ -20,6 +20,61 @@
   width: 100%;
 }
 
+.activity-image-upload {
+  width: 100%;
+}
+
+.activity-image-upload .ant-upload {
+  display: block;
+  width: min(280px, 100%);
+}
+
+.activity-image-upload__preview {
+  position: relative;
+  display: grid;
+  width: 100%;
+  aspect-ratio: 5 / 3;
+  place-items: center;
+  overflow: hidden;
+  border: 1px dashed var(--ant-color-border);
+  border-radius: 8px;
+  background: var(--ant-color-fill-quaternary);
+  color: var(--ant-color-text-secondary);
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.activity-image-upload__preview:hover,
+.activity-image-upload__preview:focus-visible {
+  border-color: var(--ant-color-primary);
+  background: var(--ant-color-primary-bg);
+  outline: none;
+}
+
+.activity-image-upload__preview.is-uploading {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.activity-image-upload__preview.has-image {
+  border-style: solid;
+  background: var(--ant-color-fill-secondary);
+}
+
+.activity-image-upload__hint {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.58);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .activity-search-hero {
   display: flex;
   flex-direction: column;
@@ -38,20 +93,20 @@
   border-radius: 8px;
 }
 
-.activity-search-results .ant-card-body {
-  min-height: 178px;
-}
-
-.activity-search-results--empty .ant-card-body {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .activity-search-results {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 18px;
+}
+
+.activity-search-results--empty {
+  display: flex;
+  min-height: 304px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(5, 5, 5, 0.06);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .activity-search-results > div {
@@ -69,6 +124,18 @@
 .activity-search-results > div:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
+}
+
+.activity-search-results.activity-search-results--empty > div {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.activity-search-results.activity-search-results--empty > div:hover {
+  box-shadow: none;
+  transform: none;
 }
 
 .activity-search-results .ant-divider {

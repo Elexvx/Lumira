@@ -31,7 +31,23 @@ SET @ddl = (SELECT IF(COUNT(*) > 0, 'ALTER TABLE `payment_event_outbox` DROP IND
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+SET @ddl = (SELECT IF(COUNT(*) > 0, 'ALTER TABLE `payment_event_outbox` DROP INDEX `idx_payment_outbox_claim_token`', 'SELECT 1') FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'payment_event_outbox' AND index_name = 'idx_payment_outbox_claim_token');
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 SET @ddl = (SELECT IF(COUNT(*) > 0, 'ALTER TABLE `payment_event_outbox` DROP COLUMN `tenant_id`', 'SELECT 1') FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'payment_event_outbox' AND column_name = 'tenant_id');
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @ddl = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `payment_event_outbox` ADD COLUMN `claimed_by` varchar(128) DEFAULT NULL AFTER `last_error_message`', 'SELECT 1') FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'payment_event_outbox' AND column_name = 'claimed_by');
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @ddl = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `payment_event_outbox` ADD COLUMN `claim_token` varchar(128) DEFAULT NULL AFTER `claimed_by`', 'SELECT 1') FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'payment_event_outbox' AND column_name = 'claim_token');
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @ddl = (SELECT IF(COUNT(*) = 0, 'ALTER TABLE `payment_event_outbox` ADD COLUMN `claim_expires_at` datetime DEFAULT NULL AFTER `claim_token`', 'SELECT 1') FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'payment_event_outbox' AND column_name = 'claim_expires_at');
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
@@ -41,7 +57,8 @@ ALTER TABLE `payment_event_outbox`
     ADD KEY `idx_payment_outbox_created_at` (`created_at`),
     ADD KEY `idx_payment_outbox_deleted_status_retry_created` (`deleted`, `status`, `next_retry_at`, `created_at`, `id`),
     ADD KEY `idx_payment_outbox_deleted_status` (`deleted`, `status`),
-    ADD KEY `idx_payment_outbox_owner_queue` (`deleted`, `source_type`, `status`, `next_retry_at`, `created_at`, `id`);
+    ADD KEY `idx_payment_outbox_owner_queue` (`deleted`, `source_type`, `status`, `next_retry_at`, `created_at`, `id`),
+    ADD KEY `idx_payment_outbox_claim_token` (`claim_token`);
 
 SET @ddl = (SELECT IF(COUNT(*) > 0, 'ALTER TABLE `payment_order` DROP INDEX `uk_payment_order_tenant_order_no`', 'SELECT 1') FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'payment_order' AND index_name = 'uk_payment_order_tenant_order_no');
 PREPARE stmt FROM @ddl;

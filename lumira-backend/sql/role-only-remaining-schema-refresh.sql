@@ -102,6 +102,23 @@ BEGIN
     END IF;
 END $$
 
+DROP PROCEDURE IF EXISTS role_only_remaining_add_column $$
+CREATE PROCEDURE role_only_remaining_add_column(IN p_table VARCHAR(64), IN p_column VARCHAR(64), IN p_sql TEXT)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = DATABASE()
+          AND table_name = p_table
+          AND column_name = p_column
+    ) THEN
+        SET @role_only_ddl = p_sql;
+        PREPARE role_only_stmt FROM @role_only_ddl;
+        EXECUTE role_only_stmt;
+        DEALLOCATE PREPARE role_only_stmt;
+    END IF;
+END $$
+
 DROP PROCEDURE IF EXISTS role_only_remaining_drop_tenant_column $$
 CREATE PROCEDURE role_only_remaining_drop_tenant_column(IN p_table VARCHAR(64))
 BEGIN
@@ -158,12 +175,20 @@ BEGIN
         'ALTER TABLE `iam_subject_role` ADD UNIQUE INDEX `uk_iam_subject_role` (`subject_id`, `role_id`, `deleted`)');
 
     CALL role_only_remaining_drop_tenant_column('plugin_event_outbox');
+    CALL role_only_remaining_add_column('plugin_event_outbox', 'claimed_by',
+        'ALTER TABLE `plugin_event_outbox` ADD COLUMN `claimed_by` varchar(128) DEFAULT NULL AFTER `last_error_message`');
+    CALL role_only_remaining_add_column('plugin_event_outbox', 'claim_token',
+        'ALTER TABLE `plugin_event_outbox` ADD COLUMN `claim_token` varchar(128) DEFAULT NULL AFTER `claimed_by`');
+    CALL role_only_remaining_add_column('plugin_event_outbox', 'claim_expires_at',
+        'ALTER TABLE `plugin_event_outbox` ADD COLUMN `claim_expires_at` datetime DEFAULT NULL AFTER `claim_token`');
     CALL role_only_remaining_add_index('plugin_event_outbox', 'uk_plugin_event_outbox_event',
         'ALTER TABLE `plugin_event_outbox` ADD UNIQUE INDEX `uk_plugin_event_outbox_event` (`event_type`, `event_key`)');
     CALL role_only_remaining_add_index('plugin_event_outbox', 'idx_plugin_event_outbox_status',
         'ALTER TABLE `plugin_event_outbox` ADD INDEX `idx_plugin_event_outbox_status` (`status`, `next_retry_at`)');
     CALL role_only_remaining_add_index('plugin_event_outbox', 'idx_plugin_event_outbox_created_at',
         'ALTER TABLE `plugin_event_outbox` ADD INDEX `idx_plugin_event_outbox_created_at` (`created_at`)');
+    CALL role_only_remaining_add_index('plugin_event_outbox', 'idx_plugin_event_outbox_claim_token',
+        'ALTER TABLE `plugin_event_outbox` ADD INDEX `idx_plugin_event_outbox_claim_token` (`claim_token`)');
 
     CALL role_only_remaining_drop_tenant_column('sys_config');
     CALL role_only_remaining_add_index('sys_config', 'uk_sys_config_key',

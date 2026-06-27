@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
+import { ReloadOutlined } from '@ant-design/icons';
 import { PageContainer, ProCard } from '@ant-design/pro-components';
-import { Avatar, Empty, Skeleton, Space, Tabs, Tag, Typography } from 'antd';
+import { Avatar, Button, Empty, Skeleton, Space, Tabs, Tag, Typography } from 'antd';
 import type { ProColumns } from '@ant-design/pro-components';
 import { useInitialStateModel } from '@/hooks/useInitialStateModel';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -241,11 +242,22 @@ const DashboardHomePage = () => {
     LOGIN_LOG_TABLE_SCROLL_X,
     OPERATION_LOG_TABLE_SCROLL_X,
   } = useDashboardHome();
+  const renderActivityToolbar = () => [
+    <Button
+      key="refresh"
+      icon={<ReloadOutlined />}
+      loading={dashboardQuery.isFetching}
+      size={responsive.isMobile ? 'small' : 'middle'}
+      onClick={() => dashboardQuery.refetch()}
+    >
+      刷新
+    </Button>,
+  ];
 
   return (
     <PageContainer title={t('工作台', 'Dashboard')} ghost content={null} token={pageContainerToken} className="saas-dashboard-home__page">
       <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
-        <ProCard variant="borderless" className="saas-dashboard-home__hero">
+        <ProCard variant="outlined" className="saas-dashboard-home__hero">
           <Space direction="vertical" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} style={{ width: '100%' }}>
             <Space align="center" size={resolveResponsiveValue(APP_SPACING.sectionGap, responsive.isMobile)} wrap>
               <Avatar size={resolveResponsiveValue(APP_SPACING.avatarSize.normal, responsive.isMobile)} src={normalizeUploadUrl(currentUser?.avatarUrl) || undefined}>
@@ -278,7 +290,7 @@ const DashboardHomePage = () => {
                     isMobile={responsive.isMobile}
                     search={false}
                     scroll={{ x: LOGIN_LOG_TABLE_SCROLL_X }}
-                    onRefresh={() => dashboardQuery.refetch()}
+                    toolBarRender={renderActivityToolbar}
                     loading={dashboardQuery.isLoading && !summary}
                     columns={loginLogColumns}
                     dataSource={recentLoginLogs}
@@ -300,7 +312,7 @@ const DashboardHomePage = () => {
                     isMobile={responsive.isMobile}
                     search={false}
                     scroll={{ x: OPERATION_LOG_TABLE_SCROLL_X }}
-                    onRefresh={() => dashboardQuery.refetch()}
+                    toolBarRender={renderActivityToolbar}
                     loading={dashboardQuery.isLoading && !summary}
                     columns={operationLogColumns}
                     dataSource={recentOperationLogs}

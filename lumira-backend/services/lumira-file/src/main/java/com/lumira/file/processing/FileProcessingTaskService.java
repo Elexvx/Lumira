@@ -1,24 +1,21 @@
 package com.lumira.file.processing;
 
-import com.lumira.api.file.FileObjectDTO;
-import com.lumira.file.event.FilePlatformEventTypes;
-import com.lumira.file.event.PlatformEventOutboxService;
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
+import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 @Service
+@ConditionalOnLumiraAsyncEnabled
 public class FileProcessingTaskService {
     private static final Logger log = LoggerFactory.getLogger(FileProcessingTaskService.class);
 
@@ -38,46 +35,46 @@ public class FileProcessingTaskService {
     private static final int MAX_ERROR_LENGTH = 512;
 
     private final JdbcTemplate jdbcTemplate;
-    private final PlatformEventOutboxService outboxService;
+    @Nullable
     private final FileSecurityScanProcessor securityScanProcessor;
+    @Nullable
     private final FileThumbnailProcessor thumbnailProcessor;
+    @Nullable
     private final FileOcrProcessor ocrProcessor;
+    @Nullable
     private final FileTextExtractionProcessor textExtractionProcessor;
+    @Nullable
     private final FileAiParseProcessor aiParseProcessor;
+    @Nullable
     private final FileProcessingMetrics processingMetrics;
 
     public FileProcessingTaskService(
             JdbcTemplate jdbcTemplate,
-            PlatformEventOutboxService outboxService,
+            @Nullable
+            @Lazy
             FileSecurityScanProcessor securityScanProcessor,
+            @Nullable
+            @Lazy
             FileThumbnailProcessor thumbnailProcessor,
+            @Nullable
+            @Lazy
             FileOcrProcessor ocrProcessor,
+            @Nullable
+            @Lazy
             FileTextExtractionProcessor textExtractionProcessor,
+            @Nullable
+            @Lazy
             FileAiParseProcessor aiParseProcessor,
+            @Nullable
             FileProcessingMetrics processingMetrics
     ) {
         this.jdbcTemplate = jdbcTemplate;
-        this.outboxService = outboxService;
         this.securityScanProcessor = securityScanProcessor;
         this.thumbnailProcessor = thumbnailProcessor;
         this.ocrProcessor = ocrProcessor;
         this.textExtractionProcessor = textExtractionProcessor;
         this.aiParseProcessor = aiParseProcessor;
         this.processingMetrics = processingMetrics;
-    }
-
-    public int requestTasksForUpload(FileObjectDTO file, Long userId) {
-        if (file == null || file.id() == null) {
-            return 0;
-        }
-        int requested = 0;
-        for (String taskType : resolveTaskTypes(file)) {
-            if (upsertTask(file, taskType, userId) > 0) {
-                requested++;
-                publishTaskRequested(file, taskType, userId);
-            }
-        }
-        return requested;
     }
 
     public int processPendingTasks(int limit) {
@@ -87,11 +84,11 @@ public class FileProcessingTaskService {
             try {
                 process(task);
                 markSucceeded(task);
-                processingMetrics.recordSucceeded(task.taskType(), Duration.between(startedAt, Instant.now()));
+                recordSucceeded(task.taskType(), Duration.between(startedAt, Instant.now()));
                 processed++;
             } catch (RuntimeException exception) {
                 markFailed(task, exception.getMessage());
-                processingMetrics.recordFailed(task.taskType(), Duration.between(startedAt, Instant.now()), exception);
+                recordFailed(task.taskType(), Duration.between(startedAt, Instant.now()), exception);
             }
         }
         return processed;
@@ -217,7 +214,7 @@ public class FileProcessingTaskService {
         );
         if (updated == 0) {
             log.warn("File processing task markSucceeded claim mismatch taskId={}", taskId);
-            processingMetrics.recordClaimMismatch("UNKNOWN", "markSucceeded");
+            recordClaimMismatch("UNKNOWN", "markSucceeded");
         }
     }
 
@@ -254,133 +251,66 @@ public class FileProcessingTaskService {
         }
         log.warn("File processing task claim mismatch operation={} taskId={} taskType={}",
                 operation, task.id(), task.taskType());
-        processingMetrics.recordClaimMismatch(task.taskType(), operation);
+        recordClaimMismatch(task.taskType(), operation);
     }
 
     private void process(ProcessingTask task) {
         if (TASK_SECURITY_SCAN.equals(task.taskType())) {
+            requireProcessor(securityScanProcessor, task.taskType(), FileSecurityScanProcessor.class.getSimpleName());
             securityScanProcessor.scan(task.fileId(), task.updatedBy());
             return;
         }
         if (TASK_THUMBNAIL.equals(task.taskType())) {
+            requireProcessor(thumbnailProcessor, task.taskType(), FileThumbnailProcessor.class.getSimpleName());
             thumbnailProcessor.generateThumbnail(task.fileId(), task.updatedBy());
             return;
         }
         if (TASK_OCR.equals(task.taskType())) {
+            requireProcessor(ocrProcessor, task.taskType(), FileOcrProcessor.class.getSimpleName());
             ocrProcessor.extractImageText(task.fileId(), task.updatedBy());
             return;
         }
         if (TASK_TEXT_EXTRACT.equals(task.taskType())) {
+            requireProcessor(textExtractionProcessor, task.taskType(), FileTextExtractionProcessor.class.getSimpleName());
             textExtractionProcessor.extractText(task.fileId(), task.updatedBy());
             return;
         }
         if (TASK_AI_PARSE.equals(task.taskType())) {
+            requireProcessor(aiParseProcessor, task.taskType(), FileAiParseProcessor.class.getSimpleName());
             aiParseProcessor.prepareForAiParse(task.fileId(), task.updatedBy());
             return;
         }
         throw new IllegalStateException("File processing task processor is not implemented: " + task.taskType());
     }
 
-    private int upsertTask(FileObjectDTO file, String taskType, Long userId) {
-        return jdbcTemplate.update(
-                """
-                        insert into file_processing_task (
-                            file_id, task_type, status, priority, retry_count,
-                            created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, 0, ?, ?, 0)
-                        on duplicate key update
-                            deleted = 0,
-                            updated_at = current_timestamp,
-                            updated_by = values(updated_by)
-                        """,
-                file.id(),
-                taskType,
-                STATUS_PENDING,
-                priority(taskType),
-                userId == null ? 0L : userId,
-                userId == null ? 0L : userId
+    private void requireProcessor(@Nullable Object processor, String taskType, String processorName) {
+        if (processor != null) {
+            return;
+        }
+        throw new IllegalStateException(
+                "File processing task processor is not available for task type "
+                        + taskType
+                        + ": "
+                        + processorName
         );
     }
 
-    private void publishTaskRequested(FileObjectDTO file, String taskType, Long userId) {
-        outboxService.recordAfterCommit(
-                FilePlatformEventTypes.SOURCE_FILE,
-                FilePlatformEventTypes.FILE_PROCESSING_TASK_REQUESTED,
-                userId,
-                buildTaskEventKey(file.id(), taskType),
-                buildTaskPayload(file, taskType, userId)
-        );
-    }
-
-    private String buildTaskEventKey(Long fileId, String taskType) {
-        return FilePlatformEventTypes.FILE_PROCESSING_TASK_REQUESTED
-                + ":" + FilePlatformEventTypes.AGGREGATE_FILE_PROCESSING_TASK
-                + ":" + (fileId == null ? "none" : fileId)
-                + ":" + taskType;
-    }
-
-    private Map<String, Object> buildTaskPayload(FileObjectDTO file, String taskType, Long userId) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("schemaVersion", 1);
-        payload.put("occurredAt", LocalDateTime.now());
-        payload.put("userId", userId);
-        payload.put("aggregateType", FilePlatformEventTypes.AGGREGATE_FILE_PROCESSING_TASK);
-        payload.put("aggregateId", file.id() + ":" + taskType);
-        payload.put("attributes", Map.of(
-                "fileId", file.id(),
-                "taskType", taskType,
-                "mimeType", file.mimeType() == null ? "" : file.mimeType(),
-                "fileExtension", file.fileExtension() == null ? "" : file.fileExtension(),
-                "storagePath", file.storagePath() == null ? "" : file.storagePath()
-        ));
-        return payload;
-    }
-
-    private List<String> resolveTaskTypes(FileObjectDTO file) {
-        List<String> taskTypes = new ArrayList<>();
-        taskTypes.add(TASK_SECURITY_SCAN);
-        if (isImage(file)) {
-            taskTypes.add(TASK_THUMBNAIL);
-            taskTypes.add(TASK_OCR);
+    private void recordSucceeded(String taskType, Duration duration) {
+        if (processingMetrics != null) {
+            processingMetrics.recordSucceeded(taskType, duration);
         }
-        if (isTextExtractable(file)) {
-            taskTypes.add(TASK_TEXT_EXTRACT);
-            taskTypes.add(TASK_AI_PARSE);
+    }
+
+    private void recordFailed(String taskType, Duration duration, RuntimeException exception) {
+        if (processingMetrics != null) {
+            processingMetrics.recordFailed(taskType, duration, exception);
         }
-        return taskTypes.stream().distinct().toList();
     }
 
-    private boolean isImage(FileObjectDTO file) {
-        String mimeType = normalize(file.mimeType());
-        String extension = normalize(file.fileExtension());
-        return mimeType.startsWith("image/")
-                || List.of("png", "jpg", "jpeg", "gif", "webp", "bmp").contains(extension);
-    }
-
-    private boolean isTextExtractable(FileObjectDTO file) {
-        String mimeType = normalize(file.mimeType());
-        String extension = normalize(file.fileExtension());
-        return mimeType.startsWith("text/")
-                || mimeType.contains("pdf")
-                || mimeType.contains("word")
-                || mimeType.contains("excel")
-                || mimeType.contains("powerpoint")
-                || List.of("pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "md", "markdown", "txt", "csv", "json", "log").contains(extension);
-    }
-
-    private String normalize(String value) {
-        return StringUtils.hasText(value) ? value.trim().toLowerCase(Locale.ROOT).replaceFirst("^\\.", "") : "";
-    }
-
-    private int priority(String taskType) {
-        return switch (taskType) {
-            case TASK_SECURITY_SCAN -> 100;
-            case TASK_THUMBNAIL -> 80;
-            case TASK_TEXT_EXTRACT -> 70;
-            case TASK_OCR -> 60;
-            case TASK_AI_PARSE -> 40;
-            default -> 0;
-        };
+    private void recordClaimMismatch(String taskType, String operation) {
+        if (processingMetrics != null) {
+            processingMetrics.recordClaimMismatch(taskType, operation);
+        }
     }
 
     private long calculateRetryDelaySeconds(int retryCount) {

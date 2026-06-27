@@ -208,7 +208,7 @@ public class PluginManagementController {
         CurrentUser currentUser = currentUser();
         List<String> permissions = currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions().stream().toList();
         return ApiResponse.success(
-                pluginManagementAppService.currentBootstrap(permissions),
+                pluginManagementAppService.currentBootstrap(permissions, currentUser.getPermissionsVersion()),
                 TraceContext.getRequestId()
         );
     }
@@ -218,7 +218,7 @@ public class PluginManagementController {
         CurrentUser currentUser = currentUser();
         List<String> permissions = currentUser.getPermissions() == null ? List.of() : currentUser.getPermissions().stream().toList();
         return ApiResponse.success(
-                pluginManagementAppService.currentMenus(permissions),
+                pluginManagementAppService.currentMenus(permissions, currentUser.getPermissionsVersion()),
                 TraceContext.getRequestId()
         );
     }

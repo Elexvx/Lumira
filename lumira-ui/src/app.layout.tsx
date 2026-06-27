@@ -53,7 +53,14 @@ const PERSONAL_CENTER_GROUP_PATH = '/user-center/personal-center';
 const PERSONAL_CENTER_CHILD_PATHS = ['/user-center/personal-center/profile', '/user-center/personal-center/files'];
 const DATA_MANAGEMENT_GROUP_PATH = '/data-management';
 const DATA_QUERY_CENTER_GROUP_PATH = '/data-management/query-center';
-const DATA_MANAGEMENT_DIRECT_CHILD_PATHS = ['/competitions/management', '/activities/management', '/projects/management', '/team/management', '/payments/management'];
+const DATA_MANAGEMENT_DIRECT_CHILD_PATHS = [
+  '/competitions/management',
+  '/activities/management',
+  '/projects/management',
+  '/team/management',
+  '/payments/management',
+  '/data-management/download-center',
+];
 const DATA_QUERY_CHILD_PATHS = ['/team/search', '/projects/search', '/activities/search', '/payments/status'];
 const DATA_SOURCE_GROUP_PATHS = ['/activities', '/competitions', '/projects', '/team', '/payments'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);

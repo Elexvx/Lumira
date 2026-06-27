@@ -151,6 +151,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 "/api/v2/auth/current-user".equals(path)
                         || "/api/v1/auth/current-user".equals(path)
                         || "/api/auth/current-user".equals(path)
+                        || "/api/v2/auth/bootstrap".equals(path)
+                        || "/api/v1/auth/bootstrap".equals(path)
+                        || "/api/auth/bootstrap".equals(path)
                         || "/api/v1/auth/passkeys".equals(path)))
                 || ("POST".equalsIgnoreCase(method) && (
                 "/api/v2/auth/session/keepalive".equals(path)

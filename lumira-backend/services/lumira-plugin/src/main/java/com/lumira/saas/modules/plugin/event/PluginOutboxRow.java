@@ -16,6 +16,9 @@ public class PluginOutboxRow {
     private LocalDateTime createdAt;
     private Long updatedBy;
     private LocalDateTime updatedAt;
+    private String claimedBy;
+    private String claimToken;
+    private LocalDateTime claimExpiresAt;
     private Integer deleted;
 
     public Long getId() { return id; }
@@ -44,6 +47,12 @@ public class PluginOutboxRow {
     public void setUpdatedBy(Long updatedBy) { this.updatedBy = updatedBy; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public String getClaimedBy() { return claimedBy; }
+    public void setClaimedBy(String claimedBy) { this.claimedBy = claimedBy; }
+    public String getClaimToken() { return claimToken; }
+    public void setClaimToken(String claimToken) { this.claimToken = claimToken; }
+    public LocalDateTime getClaimExpiresAt() { return claimExpiresAt; }
+    public void setClaimExpiresAt(LocalDateTime claimExpiresAt) { this.claimExpiresAt = claimExpiresAt; }
     public Integer getDeleted() { return deleted; }
     public void setDeleted(Integer deleted) { this.deleted = deleted; }
 }

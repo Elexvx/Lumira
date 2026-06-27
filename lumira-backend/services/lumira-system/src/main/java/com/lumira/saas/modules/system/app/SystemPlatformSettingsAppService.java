@@ -1,5 +1,6 @@
 package com.lumira.saas.modules.system.app;
 
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -37,10 +38,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class SystemPlatformSettingsAppService {
 
     private static final String CONTEXT_PLATFORM = "platform";
     private static final String SCOPE_RUNTIME_APPEARANCE = "runtime-appearance";
+    private static final String SCOPE_PUBLIC_BOOTSTRAP = "public-bootstrap";
     private static final String RUNTIME_APPEARANCE_CACHE_KEY = "runtime-appearance";
     private static final Duration CONFIG_SNAPSHOT_TTL = Duration.ofSeconds(30);
     private static final int CONFIG_SNAPSHOT_MAX_ENTRIES = 4096;
@@ -253,6 +256,7 @@ public class SystemPlatformSettingsAppService {
                 "更新个性化设置"
         );
         markRuntimeAppearanceChanged("branding-update");
+        markPublicBootstrapChanged("branding-update");
         return loadBrandingSettings();
     }
 
@@ -272,6 +276,7 @@ public class SystemPlatformSettingsAppService {
                 "更新协议设置"
         );
         markRuntimeAppearanceChanged("agreement-update");
+        markPublicBootstrapChanged("agreement-update");
         return loadAgreementSettings();
     }
 
@@ -606,6 +611,12 @@ public class SystemPlatformSettingsAppService {
         runtimeAppearanceVersionLoadInFlight.invalidate(RUNTIME_APPEARANCE_CACHE_KEY);
         if (readModelVersionService != null) {
             readModelVersionService.bump(CONTEXT_PLATFORM, SCOPE_RUNTIME_APPEARANCE, eventKey);
+        }
+    }
+
+    private void markPublicBootstrapChanged(String eventKey) {
+        if (readModelVersionService != null) {
+            readModelVersionService.bump(CONTEXT_PLATFORM, SCOPE_PUBLIC_BOOTSTRAP, eventKey);
         }
     }
 

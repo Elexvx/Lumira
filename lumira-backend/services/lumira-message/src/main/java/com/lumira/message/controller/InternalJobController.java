@@ -3,6 +3,7 @@ package com.lumira.message.controller;
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.common.web.InternalJobTokenValidator;
 import com.lumira.message.app.PlatformEventOutboxService;
 import com.lumira.message.config.MessageProperties;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController("messageInternalJobController")
 @RequestMapping("/message/internal/jobs")
+@ConditionalOnLumiraAsyncEnabled
 public class InternalJobController {
 
     private final MessageWebSocketRegistry messageWebSocketRegistry;

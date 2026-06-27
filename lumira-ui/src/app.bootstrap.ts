@@ -9,6 +9,7 @@ import { loadRuntimeLocalizationBundle } from '@/i18n/runtimeLocalization';
 import { normalizeLocale } from '@/i18n/locale';
 import { clearAuthSession, isLoggedIn } from '@/auth/sessionLifecycle';
 import { restoreSession } from '@/auth/sessionBootstrap';
+import type { SessionBootstrapResult } from '@/auth/sessionBootstrap';
 import enUSMessages from '@/locales/en-US';
 import zhCNMessages from '@/locales/zh-CN';
 import { request } from '@/services/common/request';
@@ -17,10 +18,12 @@ import { normalizeWatermarkSettings } from '@/watermark/settingsNormalize';
 import { persistWatermarkSettings } from '@/watermark/settingsStorage';
 import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } from '@/floatingWindow/settings';
 import type { AppInitialState } from '@/app.types';
-import type { AgreementSettings, BrandingSettings, CurrentUser, FloatingWindowSettings, LoginCapabilities, MenuNode, SecuritySettings, PluginAvailability, WatermarkSettings } from '@/types/api';
+import type { AgreementSettings, BrandingSettings, FloatingWindowSettings, LoginCapabilities, MenuNode, SecuritySettings, PluginAvailability, RuntimeAppearanceSettings, WatermarkSettings } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
 
 const MAX_AUTHENTICATED_BOOTSTRAP_RETRIES = 3;
+const GUEST_BOOTSTRAP_TIMEOUT_MS = 3000;
+const GUEST_PUBLIC_REQUEST_TIMEOUT_MS = 1500;
 const resolveBootstrapLocale = () => {
   if (typeof document !== 'undefined') {
     const domLocale = normalizeLocale(document.documentElement.lang);
@@ -66,12 +69,6 @@ interface PublicBootstrapResponse {
   securitySettings?: SecuritySettings;
   agreementSettings?: AgreementSettings;
   loginCapabilities?: LoginCapabilities;
-}
-
-interface RuntimeAppearanceSettingsResponse {
-  brandingSettings?: BrandingSettings;
-  watermarkSettings?: WatermarkSettings;
-  floatingWindowSettings?: FloatingWindowSettings;
 }
 
 const buildInitialBootstrapSnapshot = (): BootstrapSnapshot => ({
@@ -140,6 +137,7 @@ const loadBrandingSettings = async (authenticated: boolean): Promise<BrandingSet
           method: 'GET',
           skipAuth: true,
           silent: true,
+          timeoutMs: GUEST_PUBLIC_REQUEST_TIMEOUT_MS,
           ...API_OPTS.SILENT_NO_REDIRECT,
         }).catch(() => DEFAULT_BRANDING_SETTINGS),
   );
@@ -202,6 +200,7 @@ const loadPublicSecuritySettings = async (): Promise<SecuritySettings> => {
       method: 'GET',
       skipAuth: true,
       silent: true,
+      timeoutMs: GUEST_PUBLIC_REQUEST_TIMEOUT_MS,
       ...API_OPTS.SILENT_NO_REDIRECT,
     }).catch(() => DEFAULT_SECURITY_SETTINGS),
   );
@@ -215,6 +214,7 @@ const loadPublicAgreementSettings = async (): Promise<AgreementSettings> =>
       method: 'GET',
       skipAuth: true,
       silent: true,
+      timeoutMs: GUEST_PUBLIC_REQUEST_TIMEOUT_MS,
       ...API_OPTS.SILENT_NO_REDIRECT,
     }).catch(() => DEFAULT_AGREEMENT_SETTINGS),
   );
@@ -224,6 +224,7 @@ const loadPublicLoginCapabilities = async (): Promise<LoginCapabilities> =>
     method: 'GET',
     skipAuth: true,
     silent: true,
+    timeoutMs: GUEST_PUBLIC_REQUEST_TIMEOUT_MS,
     ...API_OPTS.SILENT_NO_REDIRECT,
   }).catch(() => ({
     passwordLoginAvailable: true,
@@ -254,6 +255,7 @@ const loadPublicBootstrap = async (): Promise<{
       method: 'GET',
       skipAuth: true,
       silent: true,
+      timeoutMs: GUEST_BOOTSTRAP_TIMEOUT_MS,
       ...API_OPTS.SILENT_NO_REDIRECT,
     });
     const brandingSettings = normalizeBrandingSettings(bootstrap.brandingSettings || DEFAULT_BRANDING_SETTINGS);
@@ -273,6 +275,7 @@ const loadPublicBootstrap = async (): Promise<{
         method: 'GET',
         skipAuth: true,
         silent: true,
+        timeoutMs: GUEST_BOOTSTRAP_TIMEOUT_MS,
         ...API_OPTS.SILENT_NO_REDIRECT,
       });
       const brandingSettings = normalizeBrandingSettings(bootstrap.brandingSettings || DEFAULT_BRANDING_SETTINGS);
@@ -298,30 +301,32 @@ const loadPublicBootstrap = async (): Promise<{
   }
 };
 
+const normalizeRuntimeAppearanceSettingsPayload = (settings?: RuntimeAppearanceSettings) => ({
+  brandingSettings: normalizeBrandingSettings(settings?.brandingSettings || DEFAULT_BRANDING_SETTINGS),
+  watermarkSettings: normalizeWatermarkSettings(settings?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS),
+  floatingWindowSettings: normalizeFloatingWindowSettings(settings?.floatingWindowSettings || DEFAULT_FLOATING_WINDOW_SETTINGS),
+});
+
 const loadRuntimeAppearanceSettings = async (): Promise<{
   brandingSettings: BrandingSettings;
   watermarkSettings: WatermarkSettings;
   floatingWindowSettings: FloatingWindowSettings;
 }> => {
   try {
-    const settings = await request<RuntimeAppearanceSettingsResponse>('/v2/platform/runtime-appearance-settings', {
+    const settings = await request<RuntimeAppearanceSettings>('/v2/platform/runtime-appearance-settings', {
       method: 'GET',
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
       silent: true,
     }).catch(() =>
-      request<RuntimeAppearanceSettingsResponse>('/v1/system/runtime-appearance-settings', {
+      request<RuntimeAppearanceSettings>('/v1/system/runtime-appearance-settings', {
         method: 'GET',
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
         silent: true,
       }),
     );
-    return {
-      brandingSettings: normalizeBrandingSettings(settings.brandingSettings || DEFAULT_BRANDING_SETTINGS),
-      watermarkSettings: normalizeWatermarkSettings(settings.watermarkSettings || DEFAULT_WATERMARK_SETTINGS),
-      floatingWindowSettings: normalizeFloatingWindowSettings(settings.floatingWindowSettings || DEFAULT_FLOATING_WINDOW_SETTINGS),
-    };
+    return normalizeRuntimeAppearanceSettingsPayload(settings);
   } catch {
     const [brandingSettings, watermarkSettings, floatingWindowSettings] = await Promise.all([
       loadBrandingSettings(true),
@@ -347,10 +352,16 @@ const loadRuntimeAppearanceSettings = async (): Promise<{
 };
 
 const buildAuthenticatedInitialState = async (
-  currentUser: CurrentUser,
-  securitySettings: SecuritySettings,
+  sessionBootstrap: SessionBootstrapResult,
   storedBrandingSettings: BrandingSettings,
 ): Promise<AppInitialState> => {
+  const {
+    currentUser,
+    securitySettings,
+    menuTree: bootstrapMenuTree,
+    availablePlugins: bootstrapAvailablePlugins,
+    runtimeAppearanceSettings: bootstrapRuntimeAppearanceSettings,
+  } = sessionBootstrap;
   setBootstrapSnapshot({
     phase: 'branding',
     progress: 48,
@@ -364,8 +375,12 @@ const buildAuthenticatedInitialState = async (
     runtimeAppearanceSettings,
     _guestLocaleBundle,
   ] = await Promise.all([
-    loadPluginBootstrap(),
-    loadRuntimeAppearanceSettings(),
+    bootstrapMenuTree !== undefined && bootstrapAvailablePlugins !== undefined
+      ? Promise.resolve<[MenuNode[], PluginAvailability[]]>([bootstrapMenuTree, bootstrapAvailablePlugins])
+      : loadPluginBootstrap(),
+    bootstrapRuntimeAppearanceSettings !== undefined
+      ? Promise.resolve(normalizeRuntimeAppearanceSettingsPayload(bootstrapRuntimeAppearanceSettings))
+      : loadRuntimeAppearanceSettings(),
     // Keep localization warm while resource bootstrap is doing I/O.
     loadRuntimeLocalizationBundle(currentUser.locale || getLocale()),
   ]);
@@ -431,6 +446,7 @@ const buildGuestInitialState = async (storedBrandingSettings: BrandingSettings):
     currentUser: undefined,
     menuTree: [],
     menuVersion: 0,
+    publicBootstrapLoadedAt: Date.now(),
     availablePlugins: [],
     securitySettings,
     brandingSettings,
@@ -512,7 +528,7 @@ export async function getAppInitialState(): Promise<AppInitialState> {
   if (!isLoggedIn()) {
     const restored = await restoreSession().catch(() => null);
     if (restored?.currentUser) {
-      return await buildAuthenticatedInitialState(restored.currentUser, restored.securitySettings, storedBrandingSettings);
+      return await buildAuthenticatedInitialState(restored, storedBrandingSettings);
     }
 
     setBootstrapSnapshot({
@@ -546,7 +562,7 @@ export async function getAppInitialState(): Promise<AppInitialState> {
       });
 
       if (restored?.currentUser) {
-        return await buildAuthenticatedInitialState(restored.currentUser, restored.securitySettings, storedBrandingSettings);
+        return await buildAuthenticatedInitialState(restored, storedBrandingSettings);
       }
 
       await waitForBackendReady({ maxAttempts: MAX_AUTHENTICATED_BOOTSTRAP_RETRIES });

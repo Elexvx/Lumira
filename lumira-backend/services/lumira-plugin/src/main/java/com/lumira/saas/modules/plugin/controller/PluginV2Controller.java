@@ -91,7 +91,7 @@ public class PluginV2Controller {
     public ApiResponse<Map<String, Object>> currentBootstrap() {
         CurrentUser currentUser = currentUser();
         return ApiResponse.success(
-                pluginManagementAppService.currentBootstrap(permissionList(currentUser)),
+                pluginManagementAppService.currentBootstrap(permissionList(currentUser), currentUser == null ? null : currentUser.getPermissionsVersion()),
                 TraceContext.getRequestId()
         );
     }
@@ -100,7 +100,7 @@ public class PluginV2Controller {
     public ApiResponse<List<Map<String, Object>>> currentMenus() {
         CurrentUser currentUser = currentUser();
         return ApiResponse.success(
-                pluginManagementAppService.currentMenus(permissionList(currentUser)),
+                pluginManagementAppService.currentMenus(permissionList(currentUser), currentUser == null ? null : currentUser.getPermissionsVersion()),
                 TraceContext.getRequestId()
         );
     }

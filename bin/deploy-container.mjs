@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -19,6 +19,7 @@ const buildIdentityPath = process.env.BUILD_IDENTITY_FILE || path.join(repoRoot,
 const composeFile = path.join(repoRoot, 'deploy', 'docker-compose.prod.yml');
 const alertRulesPath = path.join(repoRoot, 'deploy', 'observability', 'grafana', 'provisioning', 'alerting', 'rules.yml');
 const generatedAlertingDir = path.join(repoRoot, 'deploy', '.generated', 'grafana-alerting');
+const generatedDatabaseVersionSqlPath = path.join(repoRoot, 'deploy', '.generated', 'database-version', '002-database-version.sql');
 
 const rawArgs = process.argv.slice(2);
 const args = new Set(rawArgs);
@@ -56,6 +57,7 @@ const appWritableDockerVolumes = [
 ];
 const appRuntimeUid = process.env.LEGENDARY_APP_UID || '100';
 const appRuntimeGid = process.env.LEGENDARY_APP_GID || '101';
+let dockerDirectInvocation;
 
 
 function parseServiceNames(argv) {
@@ -100,12 +102,18 @@ function run(command, commandArgs, options = {}) {
   try {
     return execRun(command, commandArgs, { cwd: repoRoot, ...options });
   } catch (err) {
+    const renderedCommand = [command, ...commandArgs].join(' ');
+    console.error(`[deploy] Command failed with exit code ${err.status ?? 1}: ${renderedCommand}`);
+    if (err.message) {
+      console.error(`[deploy] ${err.message}`);
+    }
     process.exit(err.status ?? 1);
   }
 }
 function runWithRetry(command, commandArgs, retries = 1) {
   for (let attempt = 0; attempt <= retries; attempt += 1) {
-    const result = spawnSync(command, commandArgs, {
+    const invocation = command === 'docker' ? resolveDockerDirectInvocation(commandArgs) : { command, args: commandArgs };
+    const result = spawnSync(invocation.command, invocation.args, {
       cwd: repoRoot,
       stdio: 'inherit',
       shell: false,
@@ -116,11 +124,66 @@ function runWithRetry(command, commandArgs, retries = 1) {
     }
 
     if (attempt === retries) {
+      const renderedCommand = [command, ...commandArgs].join(' ');
+      console.error(`[deploy] Command failed with exit code ${result.status ?? 1}: ${renderedCommand}`);
+      if (result.error) {
+        console.error(`[deploy] ${result.error.message}`);
+      }
       process.exit(result.status ?? 1);
     }
 
     log('Command failed, retrying once. This often recovers transient registry or Maven network errors.');
   }
+}
+
+function runDockerDirect(commandArgs, options = {}) {
+  const invocation = resolveDockerDirectInvocation(commandArgs);
+  const result = spawnSync(invocation.command, invocation.args, {
+    cwd: repoRoot,
+    stdio: options.stdio ?? 'inherit',
+    shell: false,
+  });
+  if (result.status !== 0) {
+    console.error(`[deploy] Command failed with exit code ${result.status ?? 1}: docker ${commandArgs.join(' ')}`);
+    process.exit(result.status ?? 1);
+  }
+  return result;
+}
+
+function resolveDockerDirectInvocation(commandArgs) {
+  if (process.platform !== 'win32') {
+    return { command: 'docker', args: commandArgs };
+  }
+  if (!dockerDirectInvocation) {
+    dockerDirectInvocation = resolveDockerWrapperInvocation();
+  }
+  return {
+    command: dockerDirectInvocation.command,
+    args: [...dockerDirectInvocation.prefixArgs, ...commandArgs],
+  };
+}
+
+function resolveDockerWrapperInvocation() {
+  const whereResult = spawnSync('where.exe', ['docker'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: 'pipe',
+    shell: false,
+  });
+  const dockerPath = whereResult.status === 0
+    ? whereResult.stdout.split(/\r?\n/).map((line) => line.trim()).find(Boolean)
+    : '';
+  if (dockerPath && /\.cmd$/i.test(dockerPath) && existsSync(dockerPath)) {
+    const wrapper = readFileSync(dockerPath, 'utf8');
+    const match = wrapper.match(/\bwsl\s+-d\s+(\S+)\s+-u\s+(\S+)\s+--\s+docker\b/i);
+    if (match) {
+      return {
+        command: 'wsl.exe',
+        prefixArgs: ['-d', match[1], '-u', match[2], '--', 'docker'],
+      };
+    }
+  }
+  return { command: dockerPath || 'docker', prefixArgs: [] };
 }
 
 function output(command, commandArgs) {
@@ -133,41 +196,88 @@ function optionalOutput(command, commandArgs) {
 
 function configureBuildIdentity() {
   const env = parseEnvFile(envPath);
-  const buildIdentity = parseEnvFile(buildIdentityPath);
   const gitCommit = firstDeployText(
     process.env.GIT_COMMIT,
     optionalOutput('git', ['rev-parse', '--short=12', 'HEAD']),
-    buildIdentity.GIT_COMMIT,
     env.GIT_COMMIT
   );
-  const appVersion = firstDeployText(process.env.APP_VERSION, env.APP_VERSION, buildIdentity.APP_VERSION, '0.1.0');
   const gitBranch = firstDeployText(
     process.env.GIT_BRANCH,
     optionalOutput('git', ['rev-parse', '--abbrev-ref', 'HEAD']),
-    buildIdentity.GIT_BRANCH,
     env.GIT_BRANCH
   );
-  const buildTime = firstDeployText(process.env.BUILD_TIME, buildIdentity.BUILD_TIME, env.BUILD_TIME, new Date().toISOString());
-  const buildVersion = firstDeployText(
-    process.env.BUILD_VERSION,
-    gitCommit ? `${appVersion}+${gitCommit}` : null,
-    buildIdentity.BUILD_VERSION,
-    env.BUILD_VERSION,
-    appVersion
-  );
+  const buildTime = firstDeployText(process.env.BUILD_TIME, new Date().toISOString());
+  const buildStamp = formatBuildStamp(buildTime);
+  const sourceRef = gitCommit || hashExistingFile(path.join(repoRoot, 'lumira-backend', 'pom.xml'));
+  const databaseHash = hashExistingFile(path.join(repoRoot, 'lumira-backend', 'sql', 'saas.sql'));
+  const frontendVersion = firstDeployText(process.env.FRONTEND_VERSION, `fe-${buildStamp}-${sourceRef}`);
+  const backendVersion = firstDeployText(process.env.BACKEND_VERSION, `be-${buildStamp}-${sourceRef}`);
+  const databaseVersion = firstDeployText(process.env.DATABASE_VERSION, `db-${buildStamp}-${databaseHash}`);
+  const appVersion = firstDeployText(process.env.APP_VERSION, backendVersion);
+  const buildVersion = firstDeployText(process.env.BUILD_VERSION, backendVersion);
 
+  process.env.FRONTEND_VERSION = frontendVersion;
+  process.env.BACKEND_VERSION = backendVersion;
+  process.env.DATABASE_VERSION = databaseVersion;
   process.env.APP_VERSION = appVersion;
   process.env.BUILD_VERSION = buildVersion;
   process.env.BUILD_TIME = buildTime;
   process.env.GIT_COMMIT = gitCommit;
   process.env.GIT_BRANCH = gitBranch;
-  writeBuildIdentityFile({ appVersion, buildVersion, buildTime, gitCommit, gitBranch });
+  writeBuildIdentityFile({ frontendVersion, backendVersion, databaseVersion, appVersion, buildVersion, buildTime, gitCommit, gitBranch });
+  writeDatabaseVersionInitSql({ databaseVersion, buildTime, gitCommit, gitBranch });
   if (observability) {
     process.env.OBSERVABILITY_ENVIRONMENT = process.env.OBSERVABILITY_ENVIRONMENT || env.OBSERVABILITY_ENVIRONMENT || 'prod';
     process.env.OTEL_JAVAAGENT_ENABLED = 'true';
     process.env.OTEL_EXPORTER_OTLP_ENDPOINT = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://alloy:4318';
   }
-  log(`Build identity: version=${buildVersion}, commit=${gitCommit || 'unknown'}, branch=${gitBranch || 'unknown'}`);
+  log(`Build identity: frontend=${frontendVersion}, backend=${backendVersion}, database=${databaseVersion}, commit=${gitCommit || 'unknown'}, branch=${gitBranch || 'unknown'}`);
+}
+
+function formatBuildStamp(value) {
+  const parsed = new Date(value);
+  const date = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  return date.toISOString().replace(/[-:.]/g, '').replace('T', '').slice(0, 14);
+}
+
+function hashExistingFile(filePath) {
+  if (!existsSync(filePath)) {
+    return 'unknown';
+  }
+  return createHash('sha256').update(readFileSync(filePath)).digest('hex').slice(0, 12);
+}
+
+function sqlString(value) {
+  return `'${String(value ?? '').replaceAll('\\', '\\\\').replaceAll("'", "''")}'`;
+}
+
+function writeDatabaseVersionInitSql({ databaseVersion, buildTime, gitCommit, gitBranch }) {
+  mkdirSync(path.dirname(generatedDatabaseVersionSqlPath), { recursive: true });
+  const payload = JSON.stringify({
+    databaseVersion,
+    buildTime,
+    gitCommit,
+    gitBranch,
+    source: 'lumira-backend/sql/saas.sql',
+  });
+  const content = [
+    '-- Generated by bin\/deploy-container.mjs. Do not commit.',
+    'INSERT INTO `sys_config` (',
+    '    `config_key`, `config_name`, `config_value`, `config_scope`, `is_system`, `remark`,',
+    '    `created_by`, `updated_by`, `deleted`',
+    ')',
+    `VALUES ('platform.database.version', 'Database version', ${sqlString(payload)}, 'PLATFORM', 1, 'Generated database identity for the current startup', 0, 0, 0)`,
+    'ON DUPLICATE KEY UPDATE',
+    '    `config_name` = VALUES(`config_name`),',
+    '    `config_value` = VALUES(`config_value`),',
+    '    `config_scope` = VALUES(`config_scope`),',
+    '    `is_system` = VALUES(`is_system`),',
+    '    `remark` = VALUES(`remark`),',
+    '    `updated_by` = VALUES(`updated_by`),',
+    '    `deleted` = 0;',
+    '',
+  ].join('\n');
+  writeFileSync(generatedDatabaseVersionSqlPath, content, { mode: 0o600 });
 }
 
 function configureLocalDeploymentDefaults() {
@@ -200,9 +310,12 @@ function envLine(key, value) {
   return `${key}=${String(value ?? '').replaceAll('\n', '')}`;
 }
 
-function writeBuildIdentityFile({ appVersion, buildVersion, buildTime, gitCommit, gitBranch }) {
+function writeBuildIdentityFile({ frontendVersion, backendVersion, databaseVersion, appVersion, buildVersion, buildTime, gitCommit, gitBranch }) {
   const content = [
     '# Generated by bin\/deploy-container.mjs. Do not commit.',
+    envLine('FRONTEND_VERSION', frontendVersion),
+    envLine('BACKEND_VERSION', backendVersion),
+    envLine('DATABASE_VERSION', databaseVersion),
     envLine('APP_VERSION', appVersion),
     envLine('BUILD_VERSION', buildVersion),
     envLine('BUILD_TIME', buildTime),
@@ -479,9 +592,8 @@ function ensureDockerVolumeOwnership() {
 
   for (const volume of appWritableDockerVolumes) {
     const resolvedVolumeName = resolveComposeVolumeName(volume.key);
-    run('docker', ['volume', 'create', resolvedVolumeName], { stdio: 'ignore' });
-    run(
-      'docker',
+    runDockerDirect(['volume', 'create', resolvedVolumeName], { stdio: 'ignore' });
+    runDockerDirect(
       [
         'run',
         '--rm',

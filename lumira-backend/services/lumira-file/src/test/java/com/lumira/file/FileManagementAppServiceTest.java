@@ -12,7 +12,7 @@ import com.lumira.file.entity.FileObjectEntity;
 import com.lumira.file.entity.FileStorageSpaceEntity;
 import com.lumira.file.mapper.FileObjectMapper;
 import com.lumira.file.mapper.FileStorageSpaceMapper;
-import com.lumira.file.processing.FileProcessingTaskService;
+import com.lumira.file.processing.FileProcessingTaskRequestService;
 import com.lumira.file.security.SafeUrlValidator;
 import com.lumira.file.upload.DocumentUploadService;
 import com.lumira.file.upload.FileStorageMetrics;
@@ -68,7 +68,7 @@ class FileManagementAppServiceTest {
     private DomainEventPublisher domainEventPublisher;
 
     @Mock
-    private FileProcessingTaskService fileProcessingTaskService;
+    private FileProcessingTaskRequestService fileProcessingTaskRequestService;
 
     @Mock
     private FieldCryptoService fieldCryptoService;
@@ -94,7 +94,7 @@ class FileManagementAppServiceTest {
                 documentUploadService,
                 imageUploadService,
                 domainEventPublisher,
-                fileProcessingTaskService,
+                fileProcessingTaskRequestService,
                 fieldCryptoService,
                 storageMetrics,
                 new SafeUrlValidator()

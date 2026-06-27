@@ -7,8 +7,8 @@
   overflow: hidden;
   border: 1px solid var(--saas-color-border);
   border-radius: var(--saas-card-radius);
-  background: var(--saas-color-bg-surface-strong);
-  box-shadow: var(--saas-shadow-sm);
+  background: var(--ant-color-bg-container);
+  box-shadow: none;
 }
 
 .saas-dashboard-home__hero .ant-pro-card-body {
@@ -19,18 +19,12 @@
   height: 100%;
   overflow: hidden;
   border-radius: var(--saas-card-radius);
-  background: var(--saas-color-bg-surface-strong);
-  box-shadow: var(--saas-shadow-sm);
+  background: var(--ant-color-bg-container);
+  box-shadow: none;
 }
 
 .saas-dashboard-home__panel .ant-pro-card-body {
   height: 100%;
-}
-
-.saas-dashboard-home__panel .ant-tabs-content-holder,
-.saas-dashboard-home__panel .ant-tabs-content,
-.saas-dashboard-home__panel .ant-tabs-tabpane {
-  background: var(--saas-color-bg-surface-strong);
 }
 
 .saas-dashboard-home__shortcut-card {
@@ -100,52 +94,20 @@
   padding-inline: 0;
 }
 
-.saas-dashboard-home__activity-table {
-  --ant-table-bg: transparent;
-}
-
 .saas-table-wrap:has(.saas-dashboard-home__activity-table) {
   overflow: visible;
-  background: var(--saas-color-bg-surface-strong);
+  background: var(--ant-color-bg-container);
 }
 
 .saas-table-wrap > .saas-dashboard-home__activity-table.ant-pro-table > .ant-pro-card {
   overflow: visible;
   border: 0;
-  background: var(--saas-color-bg-surface-strong);
+  background: var(--ant-color-bg-container);
   box-shadow: none;
 }
 
 .saas-dashboard-home__activity-table .ant-pro-card-body {
   padding-block: 0;
-}
-
-.saas-dashboard-home__activity-table .ant-pro-table-list,
-.saas-dashboard-home__activity-table .ant-pro-table-list-toolbar {
-  background: var(--saas-color-bg-surface-strong);
-}
-
-.saas-dashboard-home__activity-table .ant-table-wrapper,
-.saas-dashboard-home__activity-table .ant-table,
-.saas-dashboard-home__activity-table .ant-table-container,
-.saas-dashboard-home__activity-table .ant-table-content,
-.saas-dashboard-home__activity-table .ant-table-tbody,
-.saas-dashboard-home__activity-table .ant-table-placeholder {
-  background: var(--saas-color-bg-surface-strong) !important;
-  border-radius: 0;
-}
-
-.saas-dashboard-home__activity-table .ant-table-tbody > tr,
-.saas-dashboard-home__activity-table .ant-table-tbody > tr > td,
-.saas-dashboard-home__activity-table .ant-table-tbody > tr > .ant-table-cell-fix-left,
-.saas-dashboard-home__activity-table .ant-table-tbody > tr > .ant-table-cell-fix-right {
-  background: var(--saas-color-bg-surface-strong) !important;
-}
-
-.saas-dashboard-home__activity-table .ant-table-tbody > tr:hover > td,
-.saas-dashboard-home__activity-table .ant-table-tbody > tr:hover > .ant-table-cell-fix-left,
-.saas-dashboard-home__activity-table .ant-table-tbody > tr:hover > .ant-table-cell-fix-right {
-  background: var(--ant-table-row-hover-bg, var(--ant-color-fill-tertiary)) !important;
 }
 
 .saas-dashboard-home__activity-table .ant-pro-table-list-toolbar {

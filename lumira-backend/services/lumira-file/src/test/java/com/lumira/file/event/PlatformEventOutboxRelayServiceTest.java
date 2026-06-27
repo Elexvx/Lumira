@@ -24,45 +24,52 @@ import static org.mockito.Mockito.when;
 class PlatformEventOutboxRelayServiceTest {
 
     @Test
-    void dispatchPendingShouldUseBoundedQueueQueryAndFileOwnerConstraints() {
+    void dispatchPendingShouldUseBatchClaimSqlAndFileOwnerConstraints() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        ArgumentCaptor<String> querySql = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<String> updateSql = ArgumentCaptor.forClass(String.class);
         PlatformEventOutboxEntity row = outboxRow(15L, PlatformEventOutboxService.STATUS_RECORDED, 0);
         when(jdbcTemplate.query(
-                querySql.capture(),
+                contains("claim_token = ?"),
                 any(BeanPropertyRowMapper.class),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
                 any(),
                 any()
         )).thenReturn(List.of(row));
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        when(jdbcTemplate.update(updateSql.capture(), any(Object[].class))).thenReturn(1, 1);
         FileOutboxDispatcher dispatcher = mock(FileOutboxDispatcher.class);
         PlatformEventOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(dispatcher, 500);
 
         assertThat(delivered).isEqualTo(1);
-        assertThat(querySql.getValue().toLowerCase())
+        assertThat(updateSql.getAllValues().get(0).toLowerCase())
+                .contains("update platform_event_outbox t")
                 .contains("from platform_event_outbox force index (idx_platform_event_outbox_owner_queue)")
                 .contains("where deleted = 0")
                 .contains("source_type = ?")
                 .contains("dispatch_status = ?")
                 .contains("next_retry_at is null or next_retry_at <= ?")
                 .contains("order by created_at asc, id asc");
-        verify(jdbcTemplate).query(
-                anyString(),
-                any(BeanPropertyRowMapper.class),
+        verify(jdbcTemplate).update(
+                contains("update platform_event_outbox t"),
                 eq(FilePlatformEventTypes.SOURCE_FILE),
                 eq(PlatformEventOutboxService.STATUS_RECORDED),
                 eq(PlatformEventOutboxService.STATUS_FAILED),
                 any(LocalDateTime.class),
                 eq(PlatformEventOutboxService.STATUS_DISPATCHING),
                 any(LocalDateTime.class),
-                eq(200)
+                eq(200),
+                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                anyString(),
+                any(LocalDateTime.class),
+                any(LocalDateTime.class),
+                eq(0L),
+                eq(FilePlatformEventTypes.SOURCE_FILE)
+        );
+        verify(jdbcTemplate).query(
+                contains("where deleted = 0"),
+                any(BeanPropertyRowMapper.class),
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                anyString()
         );
     }
 
@@ -71,17 +78,12 @@ class PlatformEventOutboxRelayServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxEntity row = outboxRow(10L, PlatformEventOutboxService.STATUS_RECORDED, 0);
         doReturn(List.of(row)).when(jdbcTemplate).query(
-                anyString(),
+                contains("claim_token = ?"),
                 any(BeanPropertyRowMapper.class),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
                 any(),
                 any()
         );
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1, 1);
         FileOutboxDispatcher dispatcher = mock(FileOutboxDispatcher.class);
         PlatformEventOutboxService service = service(jdbcTemplate);
 
@@ -90,17 +92,26 @@ class PlatformEventOutboxRelayServiceTest {
         assertThat(delivered).isEqualTo(1);
         verify(dispatcher).dispatch(row);
         verify(jdbcTemplate).update(
-                contains("set dispatch_status = ?, claim_token = ?"),
+                contains("update platform_event_outbox t"),
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(PlatformEventOutboxService.STATUS_RECORDED),
+                eq(PlatformEventOutboxService.STATUS_FAILED),
+                any(LocalDateTime.class),
+                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                any(LocalDateTime.class),
+                eq(50),
                 eq(PlatformEventOutboxService.STATUS_DISPATCHING),
                 anyString(),
                 any(LocalDateTime.class),
-                any(),
-                eq(9L),
-                eq(10L),
+                any(LocalDateTime.class),
+                eq(0L),
+                eq(FilePlatformEventTypes.SOURCE_FILE)
+        );
+        verify(jdbcTemplate).query(
+                contains("claim_token = ?"),
+                any(BeanPropertyRowMapper.class),
                 eq(FilePlatformEventTypes.SOURCE_FILE),
-                eq(PlatformEventOutboxService.STATUS_RECORDED),
-                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
-                any(LocalDateTime.class)
+                anyString()
         );
         verify(jdbcTemplate).update(
                 contains("claim_token = ?"),
@@ -120,34 +131,38 @@ class PlatformEventOutboxRelayServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         PlatformEventOutboxEntity row = outboxRow(11L, PlatformEventOutboxService.STATUS_FAILED, 7);
         doReturn(List.of(row)).when(jdbcTemplate).query(
-                anyString(),
+                contains("claim_token = ?"),
                 any(BeanPropertyRowMapper.class),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
                 any(),
                 any()
         );
-        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1, 1);
         PlatformEventOutboxService service = service(jdbcTemplate);
 
         int delivered = service.dispatchPending(failingDispatcher(), 50);
 
         assertThat(delivered).isZero();
         verify(jdbcTemplate).update(
-                contains("set dispatch_status = ?, claim_token = ?"),
+                contains("update platform_event_outbox t"),
+                eq(FilePlatformEventTypes.SOURCE_FILE),
+                eq(PlatformEventOutboxService.STATUS_RECORDED),
+                eq(PlatformEventOutboxService.STATUS_FAILED),
+                any(LocalDateTime.class),
+                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
+                any(LocalDateTime.class),
+                eq(50),
                 eq(PlatformEventOutboxService.STATUS_DISPATCHING),
                 anyString(),
                 any(LocalDateTime.class),
-                any(),
-                eq(9L),
-                eq(11L),
+                any(LocalDateTime.class),
+                eq(0L),
+                eq(FilePlatformEventTypes.SOURCE_FILE)
+        );
+        verify(jdbcTemplate).query(
+                contains("claim_token = ?"),
+                any(BeanPropertyRowMapper.class),
                 eq(FilePlatformEventTypes.SOURCE_FILE),
-                eq(PlatformEventOutboxService.STATUS_FAILED),
-                eq(PlatformEventOutboxService.STATUS_DISPATCHING),
-                any(LocalDateTime.class)
+                anyString()
         );
         verify(jdbcTemplate).update(
                 contains("claim_token = ?"),
@@ -174,17 +189,6 @@ class PlatformEventOutboxRelayServiceTest {
                 eq(12L),
                 eq(FilePlatformEventTypes.SOURCE_FILE)
         );
-        doReturn(List.of(outboxRow(99L, PlatformEventOutboxService.STATUS_RECORDED, 0), outboxRow(12L, PlatformEventOutboxService.STATUS_RECORDED, 0))).when(jdbcTemplate).query(
-                anyString(),
-                any(BeanPropertyRowMapper.class),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any()
-        );
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
         FileOutboxDispatcher dispatcher = mock(FileOutboxDispatcher.class);
         PlatformEventOutboxService service = service(jdbcTemplate);
@@ -208,17 +212,6 @@ class PlatformEventOutboxRelayServiceTest {
                 eq(33L),
                 eq(FilePlatformEventTypes.SOURCE_FILE)
         )).thenReturn(deadLetter);
-        when(jdbcTemplate.query(
-                anyString(),
-                any(BeanPropertyRowMapper.class),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any()
-        )).thenReturn(List.of(outboxRow(33L, PlatformEventOutboxService.STATUS_RECORDED, 0)));
         when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
 
         FileOutboxDispatcher dispatcher = mock(FileOutboxDispatcher.class);
@@ -245,6 +238,8 @@ class PlatformEventOutboxRelayServiceTest {
         row.setPayloadJson("{}");
         row.setDispatchStatus(status);
         row.setRetryCount(retryCount);
+        row.setClaimToken("claim-" + id);
+        row.setClaimExpiresAt(LocalDateTime.now().plusMinutes(15));
         row.setCreatedAt(LocalDateTime.now().minusMinutes(1));
         row.setUpdatedBy(9L);
         row.setUpdatedAt(LocalDateTime.now().minusMinutes(1));

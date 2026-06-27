@@ -23,6 +23,9 @@ spring:
 # Monolith mode flag - disables sub-module security configs that would conflict.
 lumira:
   monolith: ${LUMIRA_MONOLITH:${LEGENDARY_MONOLITH:true}}
+  runtime:
+    control-plane-enabled: ${LUMIRA_RUNTIME_CONTROL_PLANE_ENABLED:true}
+    async-enabled: ${LUMIRA_RUNTIME_ASYNC_ENABLED:false}
   file:
     security-scan:
       mode: ${LUMIRA_FILE_SECURITY_SCAN_MODE:INLINE}
@@ -45,8 +48,6 @@ FILE_SERVICE_BASE_URL: http://localhost:${server.port}
 MESSAGE_SERVICE_BASE_URL: http://localhost:${server.port}
 PLUGIN_SERVICE_BASE_URL: http://localhost:${server.port}
 LOCALIZATION_SERVICE_BASE_URL: http://localhost:${server.port}
-JOB_EXECUTOR_BASE_URL: http://localhost:${server.port}
-
 # Disable Nacos / Sentinel
 spring.cloud.nacos.discovery.enabled: false
 spring.cloud.nacos.config.enabled: false
@@ -64,7 +65,14 @@ spring.data.redis.password: ${REDIS_PASSWORD:}
 spring.data.redis.database: ${REDIS_DATABASE:0}
 
 mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
+  mapper-locations:
+    - classpath*:/mapper/FileStorageSpaceMapper.xml
+    - classpath*:/mapper/LocalizationManagementMapper.xml
+    - classpath*:/mapper/MessageDeliveryLogMapper.xml
+    - classpath*:/mapper/MessageNoticeMapper.xml
+    - classpath*:/mapper/PasskeyCredentialMapper.xml
+    - classpath*:/mapper/PluginPersistenceMapper.xml
+    - classpath*:/mapper/SysConfigMapper.xml
   configuration:
     map-underscore-to-camel-case: true
 
@@ -95,8 +103,8 @@ saas:
     idle-timeout-seconds: ${IDLE_TIMEOUT_SECONDS:1800}
     access-token-expire-seconds: ${ACCESS_TOKEN_EXPIRE_SECONDS:1800}
     refresh-token-expire-seconds: ${REFRESH_TOKEN_EXPIRE_SECONDS:604800}
-    auth-bootstrap-cache-ttl-seconds: ${AUTH_BOOTSTRAP_CACHE_TTL_SECONDS:5}
-    login-capabilities-cache-ttl-seconds: ${LOGIN_CAPABILITIES_CACHE_TTL_SECONDS:5}
+    auth-bootstrap-cache-ttl-seconds: ${AUTH_BOOTSTRAP_CACHE_TTL_SECONDS:300}
+    login-capabilities-cache-ttl-seconds: ${LOGIN_CAPABILITIES_CACHE_TTL_SECONDS:300}
     captcha-enabled: ${CAPTCHA_ENABLED:false}
     captcha-type: ${CAPTCHA_TYPE:IMAGE}
     allow-plaintext-login-password: ${ALLOW_PLAINTEXT_LOGIN_PASSWORD:false}
@@ -164,17 +172,13 @@ saas:
     max-image-size-bytes: ${UPLOAD_MAX_IMAGE_SIZE_BYTES:5242880}
     max-document-size-bytes: ${UPLOAD_MAX_DOCUMENT_SIZE_BYTES:52428800}
   job:
-    lumira-backend-base-url: ${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}
-    message-service-base-url: ${SAAS_JOB_MESSAGE_SERVICE_BASE_URL:http://localhost:${server.port}}
-    file-service-base-url: ${SAAS_JOB_FILE_SERVICE_BASE_URL:http://localhost:${server.port}}
-    payment-service-base-url: ${SAAS_JOB_PAYMENT_SERVICE_BASE_URL:http://localhost:${server.port}}
-    plugin-service-base-url: ${SAAS_JOB_PLUGIN_SERVICE_BASE_URL:http://localhost:${server.port}}
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
   event:
     outbox:
       relay-enabled: ${SAAS_EVENT_OUTBOX_RELAY_ENABLED:false}
-      relay-fixed-delay-ms: ${SAAS_EVENT_OUTBOX_RELAY_FIXED_DELAY_MS:5000}
       batch-size: ${SAAS_EVENT_OUTBOX_BATCH_SIZE:100}
+      max-drain-rounds: ${SAAS_EVENT_OUTBOX_MAX_DRAIN_ROUNDS:4}
+      max-burst-rounds: ${SAAS_EVENT_OUTBOX_MAX_BURST_ROUNDS:12}
       dispatcher: ${SAAS_EVENT_OUTBOX_DISPATCHER:logging}
       redis-stream-key: ${SAAS_EVENT_REDIS_STREAM_KEY:saas:platform-events}
   redis:
@@ -205,30 +209,6 @@ saas:
     expose-debug-code: ${VERIFICATION_EXPOSE_DEBUG_CODE:false}
     email-login-enabled: ${VERIFICATION_EMAIL_LOGIN_ENABLED:false}
 
-# XXL-Job executor config (from job-executor module)
-xxl:
-  job:
-    accessToken: ${XXL_JOB_ACCESS_TOKEN:${XXL_JOB_ADMIN_ACCESS_TOKEN:}}
-    admin:
-      addresses: ${XXL_JOB_ADMIN_ADDRESSES:http://lumira-xxl-job-admin:8080/xxl-job-admin}
-      timeout: ${XXL_JOB_ADMIN_TIMEOUT:3}
-    executor:
-      enabled: ${XXL_JOB_EXECUTOR_ENABLED:true}
-      appname: ${XXL_JOB_EXECUTOR_APPNAME:lumira-job-executor}
-      address: ${XXL_JOB_EXECUTOR_ADDRESS:}
-      ip: ${XXL_JOB_EXECUTOR_IP:}
-      port: ${XXL_JOB_EXECUTOR_PORT:9998}
-      logpath: ${XXL_JOB_EXECUTOR_LOG_PATH:/tmp/xxl-job/logs}
-      logretentiondays: ${XXL_JOB_EXECUTOR_LOG_RETENTION_DAYS:30}
----
-spring:
-  config:
-    activate:
-      on-profile: default
-xxl:
-  job:
-    executor:
-      enabled: ${XXL_JOB_EXECUTOR_ENABLED:false}
 ---
 spring:
   config:
@@ -240,11 +220,6 @@ spring:
     user:
       name: ${SPRING_SECURITY_USER_NAME:dev-only}
       password: ${SPRING_SECURITY_USER_PASSWORD:dev-only-password}
-xxl:
-  job:
-    executor:
-      enabled: ${XXL_JOB_EXECUTOR_ENABLED:false}
-
 saas:
   web:
     cors-allowed-origin-patterns:
@@ -294,6 +269,38 @@ saas:
       - ::1/128
   security:
     field-secret: ${FIELD_SECRET:saas_foundation_field_secret_for_dev_env_please_change_me_2026}
+---
+spring:
+  config:
+    activate:
+      on-profile: docker-local
+
+lumira:
+  runtime:
+    async-enabled: ${LUMIRA_RUNTIME_ASYNC_ENABLED:false}
+
+saas:
+  web:
+    cors-allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
+    trust-forwarded-headers: ${TRUST_FORWARDED_HEADERS:false}
+    trusted-proxy-cidrs:
+      - 127.0.0.1/32
+      - ::1/128
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}
+
+management:
+  endpoint:
+    startup:
+      enabled: ${MANAGEMENT_ENDPOINT_STARTUP_ENABLED:${LUMIRA_STARTUP_PROFILING_ENABLED:false}}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,startup
 ---
 spring:
   config:

@@ -2,6 +2,7 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, SearchOutlined, UploadOutli
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Button, Card, DatePicker, Divider, Empty, Form, Image, Input, InputNumber, Modal, Pagination, Select, Space, Spin, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
+import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -135,14 +136,27 @@ const parseActivityDateTimeRange = (date?: string | null, time?: string | null):
   }
   const startDateTime = dayjs(`${normalizedDate} ${start}`);
   const endDateTime = dayjs(`${normalizedDate} ${end}`);
-  return startDateTime.isValid() && endDateTime.isValid() ? [startDateTime, endDateTime] : undefined;
+  if (!startDateTime.isValid() || !endDateTime.isValid()) {
+    return undefined;
+  }
+  return endDateTime.isAfter(startDateTime) ? [startDateTime, endDateTime] : [startDateTime, startDateTime.hour(23).minute(59).second(0)];
+};
+
+const normalizeActivityDateTime = (value?: Dayjs | string) => {
+  if (!value) {
+    return undefined;
+  }
+  const parsed = dayjs.isDayjs(value) ? value : dayjs(value);
+  return parsed.isValid() ? parsed : undefined;
 };
 
 const normalizePayload = (values: ActivityFormValues): ActivityUpsertPayload => {
-  const [startDateTime, endDateTime] = values.activityDateTimeRange || [];
-  const activityDate = startDateTime && typeof startDateTime !== 'string' ? startDateTime.format('YYYY.MM.DD') : '';
+  const [rangeStartDateTime, rangeEndDateTime] = values.activityDateTimeRange || [];
+  const startDateTime = normalizeActivityDateTime(rangeStartDateTime);
+  const endDateTime = normalizeActivityDateTime(rangeEndDateTime);
+  const activityDate = startDateTime ? startDateTime.format('YYYY.MM.DD') : '';
   const activityTime =
-    startDateTime && endDateTime && typeof startDateTime !== 'string' && typeof endDateTime !== 'string'
+    startDateTime && endDateTime
       ? `${startDateTime.format('HH:mm')}-${endDateTime.format('HH:mm')}`
       : '';
   const { activityDateTimeRange: _activityDateTimeRange, ...payloadValues } = values;
@@ -166,6 +180,92 @@ const normalizePayload = (values: ActivityFormValues): ActivityUpsertPayload => 
     sort: values.sort ?? 100,
     featured: Boolean(values.featured),
   };
+};
+
+const ActivityDateTimeRangePicker = ({
+  value,
+  onChange,
+}: {
+  value?: ActivityFormValues['activityDateTimeRange'];
+  onChange?: (value?: ActivityFormValues['activityDateTimeRange']) => void;
+}) => {
+  const pickerRef = useRef<HTMLDivElement | null>(null);
+  const [draftRange, setDraftRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
+
+  useEffect(() => {
+    const [startDateTime, endDateTime] = value || [];
+    setDraftRange([normalizeActivityDateTime(startDateTime) || null, normalizeActivityDateTime(endDateTime) || null]);
+  }, [value]);
+
+  const commitRange = (startDateTime?: Dayjs | null, endDateTime?: Dayjs | null) => {
+    const nextRange: [Dayjs | null, Dayjs | null] = [startDateTime || null, endDateTime || null];
+    setDraftRange(nextRange);
+    onChange?.(startDateTime && endDateTime ? [startDateTime, endDateTime] : undefined);
+  };
+
+  const focusEndInput = () => {
+    window.setTimeout(() => {
+      pickerRef.current?.querySelector<HTMLInputElement>('input[placeholder="结束日期"]')?.focus();
+    });
+  };
+
+  return (
+    <div ref={pickerRef}>
+      <DatePicker.RangePicker
+        value={draftRange}
+        needConfirm={false}
+        showTime={{
+          format: 'HH:mm',
+          defaultValue: [dayjs().hour(0).minute(0).second(0), dayjs().hour(23).minute(59).second(0)],
+        }}
+        format="YYYY.MM.DD HH:mm"
+        minuteStep={15}
+        placeholder={['开始日期', '结束日期']}
+        placement="topRight"
+        getPopupContainer={() => document.body}
+        style={{ width: '100%' }}
+        onCalendarChange={(dates) => {
+          const [nextStartDateTime, nextEndDateTime] = dates || [];
+          const normalizedStartDateTime = normalizeActivityDateTime(nextStartDateTime || undefined);
+          const normalizedEndDateTime = normalizeActivityDateTime(nextEndDateTime || undefined);
+          const [draftStartDateTime, draftEndDateTime] = draftRange;
+
+          if (!normalizedStartDateTime) {
+            commitRange();
+            return;
+          }
+
+          if (!draftStartDateTime || draftEndDateTime) {
+            setDraftRange([normalizedStartDateTime, null]);
+            onChange?.(undefined);
+            focusEndInput();
+            return;
+          }
+
+          if (normalizedEndDateTime) {
+            commitRange(normalizedStartDateTime, normalizedEndDateTime);
+            return;
+          }
+
+          if (normalizedStartDateTime.isSame(draftStartDateTime)) {
+            setDraftRange([draftStartDateTime, null]);
+            focusEndInput();
+            return;
+          }
+
+          const [startDateTime, endDateTime] = normalizedStartDateTime.isBefore(draftStartDateTime)
+            ? [normalizedStartDateTime, draftStartDateTime]
+            : [draftStartDateTime, normalizedStartDateTime];
+          commitRange(startDateTime, endDateTime);
+        }}
+        onChange={(dates) => {
+          if (!dates) {
+            commitRange();
+          }
+        }}
+      />
+    </div>
+  );
 };
 
 const parseFeaturedFilter = (value: unknown) => {
@@ -260,19 +360,21 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
         rules={[
           { required: true, message: '请选择活动日期和时间' },
           {
-            validator: (_, value: ActivityFormValues['activityDateTimeRange']) =>
-              Array.isArray(value) && value.length === 2 ? Promise.resolve() : Promise.reject(new Error('请选择开始和结束日期时间')),
+            validator: (_, value: ActivityFormValues['activityDateTimeRange']) => {
+              const [startDateTime, endDateTime] = value || [];
+              const normalizedStartDateTime = normalizeActivityDateTime(startDateTime);
+              const normalizedEndDateTime = normalizeActivityDateTime(endDateTime);
+              if (!normalizedStartDateTime || !normalizedEndDateTime) {
+                return Promise.reject(new Error('请选择开始和结束日期时间'));
+              }
+              return normalizedEndDateTime.isAfter(normalizedStartDateTime)
+                ? Promise.resolve()
+                : Promise.reject(new Error('结束日期时间必须晚于开始日期时间'));
+            },
           },
         ]}
       >
-        <DatePicker.RangePicker
-          showTime={{ format: 'HH:mm' }}
-          needConfirm={false}
-          format="YYYY.MM.DD HH:mm"
-          minuteStep={15}
-          placeholder={['开始日期', '结束日期']}
-          style={{ width: '100%' }}
-        />
+        <ActivityDateTimeRangePicker />
       </Form.Item>
       <Form.Item name="location" label="活动地点" rules={[{ required: true, message: '请输入活动地点' }]}>
         <Input maxLength={255} />
@@ -289,51 +391,65 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
         <Switch checkedChildren="是" unCheckedChildren="否" />
       </Form.Item>
       <Form.Item label="活动图片">
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          <Space wrap align="start">
-            <div
-              style={{
-                width: 180,
-                height: 108,
-                border: '1px dashed var(--ant-color-border)',
-                borderRadius: 8,
-                background: 'var(--ant-color-fill-quaternary)',
-                display: 'grid',
-                placeItems: 'center',
-                overflow: 'hidden',
+        <Space direction="vertical" size={8} className="activity-image-upload">
+          <ImgCrop
+            modalTitle="裁剪活动图片"
+            rotationSlider
+            aspect={5 / 3}
+            beforeCrop={(file) => {
+              if (!file.type.startsWith('image/')) {
+                message.error('请上传图片文件');
+                return false;
+              }
+              return true;
+            }}
+          >
+            <Upload
+              accept="image/*"
+              showUploadList={false}
+              beforeUpload={async (file) => {
+                await handleImageUpload(file);
+                return Upload.LIST_IGNORE;
               }}
+              disabled={uploadingImage}
             >
-              {previewUrl ? (
-                <Image width={180} height={108} src={previewUrl} preview={false} style={{ objectFit: 'cover' }} />
-              ) : (
-                <Typography.Text type="secondary">未上传图片</Typography.Text>
-              )}
-            </div>
-            <Space direction="vertical" size={8}>
-              <Upload
-                accept="image/*"
-                showUploadList={false}
-                beforeUpload={async (file) => {
-                  await handleImageUpload(file);
-                  return Upload.LIST_IGNORE;
-                }}
-                disabled={uploadingImage}
-              >
-                <Button icon={<UploadOutlined />} loading={uploadingImage}>
-                  上传图片
-                </Button>
-              </Upload>
-              <Button
-                icon={<DeleteOutlined />}
-                disabled={!imageUrl || uploadingImage}
-                onClick={() => {
-                  form.setFieldValue('imageUrl', undefined);
+              <div
+                className={`activity-image-upload__preview${uploadingImage ? ' is-uploading' : ''}${previewUrl ? ' has-image' : ''}`}
+                role="button"
+                aria-label="上传活动图片"
+                tabIndex={uploadingImage ? -1 : 0}
+                onKeyDown={(event) => {
+                  if (uploadingImage) {
+                    return;
+                  }
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
                 }}
               >
-                清空图片
-              </Button>
-            </Space>
-          </Space>
+                {previewUrl ? (
+                  <Image width="100%" height="100%" src={previewUrl} preview={false} style={{ objectFit: 'cover' }} />
+                ) : (
+                  <Space direction="vertical" size={6} align="center">
+                    <UploadOutlined />
+                    <Typography.Text type="secondary">{uploadingImage ? '上传中...' : '点击上传图片'}</Typography.Text>
+                  </Space>
+                )}
+                {previewUrl ? <span className="activity-image-upload__hint">{uploadingImage ? '上传中...' : '点击更换图片'}</span> : null}
+              </div>
+            </Upload>
+          </ImgCrop>
+          <Button
+            icon={<DeleteOutlined />}
+            disabled={!imageUrl || uploadingImage}
+            onClick={() => {
+              form.setFieldValue('imageUrl', undefined);
+            }}
+          >
+            清空图片
+          </Button>
+          <Typography.Text type="secondary">图片将按 5:3 比例裁剪后上传。</Typography.Text>
           <Form.Item name="imageUrl" hidden>
             <Input type="hidden" />
           </Form.Item>
@@ -522,7 +638,7 @@ const ActivitySearchView = () => {
         </Card>
 
         <Spin spinning={loading}>
-        <div className="activity-search-results">
+          <div className={`activity-search-results${records.length ? '' : ' activity-search-results--empty'}`}>
           {records.length ? (
             records.map((record, index) => {
                 const tags = splitActivityTags(record.tags);

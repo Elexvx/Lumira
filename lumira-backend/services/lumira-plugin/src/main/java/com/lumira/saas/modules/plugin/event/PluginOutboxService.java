@@ -1,6 +1,11 @@
 package com.lumira.saas.modules.plugin.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.lang.management.ManagementFactory;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.BeanPropertyRowMapper;
@@ -8,10 +13,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 
 @Service
 public class PluginOutboxService {
@@ -22,11 +23,13 @@ public class PluginOutboxService {
     private static final int MAX_RETRY_COUNT = 8;
     private static final int MAX_ERROR_LENGTH = 512;
     private static final long SNAPSHOT_CACHE_TTL_MS = 15_000L;
+    private static final long CLAIM_LEASE_MINUTES = 5L;
     private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_DISPATCHING = "DISPATCHING";
     private static final String STATUS_DELIVERED = "DELIVERED";
     private static final String STATUS_FAILED = "FAILED";
     private static final String STATUS_DEAD_LETTER = "DEAD_LETTER";
+    private static final String WORKER_ID = "plugin-outbox@" + ManagementFactory.getRuntimeMXBean().getName();
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
@@ -78,17 +81,13 @@ public class PluginOutboxService {
             return 0;
         }
         int delivered = 0;
-        for (PluginOutboxRow row : listDispatchable(limit)) {
-            if (!claimForDispatch(row)) {
-                continue;
-            }
+        for (PluginOutboxRow row : claimForDispatchBatch(limit)) {
             try {
                 dispatcher.dispatch(row);
                 markDelivered(row);
                 delivered++;
             } catch (RuntimeException exception) {
-                logger.warn("插件 outbox 投递失败: id={}, eventType={}, message={}",
-                        row.getId(), row.getEventType(), exception.getMessage());
+                logger.warn("Plugin outbox dispatch failed, id={}, eventType={}, message={}", row.getId(), row.getEventType(), exception.getMessage());
                 markFailed(row, exception);
             }
         }
@@ -176,29 +175,61 @@ public class PluginOutboxService {
         return Long.parseLong(String.valueOf(value));
     }
 
-    private List<PluginOutboxRow> listDispatchable(int limit) {
+    private List<PluginOutboxRow> claimForDispatchBatch(int limit) {
         int normalizedLimit = Math.max(1, Math.min(limit, MAX_DISPATCH_LIMIT));
         LocalDateTime now = LocalDateTime.now();
+        String claimToken = UUID.randomUUID().toString();
+        LocalDateTime claimExpiresAt = now.plusMinutes(CLAIM_LEASE_MINUTES);
+        int updated = jdbcTemplate.update(
+                """
+                        update plugin_event_outbox t
+                        join (
+                            select id
+                            from plugin_event_outbox force index (idx_plugin_event_outbox_deleted_status_retry_created)
+                            where deleted = 0
+                              and (
+                                    status = ?
+                                    or (status = ? and (next_retry_at is null or next_retry_at <= ?))
+                                    or (status = ? and claim_expires_at is not null and claim_expires_at <= ?)
+                              )
+                            order by created_at asc, id asc
+                            limit ?
+                        ) picked on picked.id = t.id
+                        set t.status = ?,
+                            t.claimed_by = ?,
+                            t.claim_token = ?,
+                            t.claim_expires_at = ?,
+                            t.updated_at = ?
+                        where t.deleted = 0
+                        """,
+                STATUS_PENDING,
+                STATUS_FAILED,
+                now,
+                STATUS_DISPATCHING,
+                now,
+                normalizedLimit,
+                STATUS_DISPATCHING,
+                workerId(),
+                claimToken,
+                claimExpiresAt,
+                now
+        );
+        if (updated <= 0) {
+            return List.of();
+        }
         return jdbcTemplate.query(
                 """
                         select id, user_id as userId, event_type as eventType,
                                event_key as eventKey, payload_json as payloadJson, status, retry_count as retryCount,
                                next_retry_at as nextRetryAt, last_error_message as lastErrorMessage, created_by as createdBy,
-                               created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
+                               created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted,
+                               claimed_by as claimedBy, claim_token as claimToken, claim_expires_at as claimExpiresAt
                         from plugin_event_outbox
-                        where deleted = 0
-                          and (
-                                status = ?
-                                or (status = ? and (next_retry_at is null or next_retry_at <= ?))
-                          )
+                        where deleted = 0 and claim_token = ?
                         order by created_at asc, id asc
-                        limit ?
                         """,
                 new BeanPropertyRowMapper<>(PluginOutboxRow.class),
-                STATUS_PENDING,
-                STATUS_FAILED,
-                now,
-                normalizedLimit
+                claimToken
         );
     }
 
@@ -209,7 +240,8 @@ public class PluginOutboxService {
                             select id, user_id as userId, event_type as eventType,
                                    event_key as eventKey, payload_json as payloadJson, status, retry_count as retryCount,
                                    next_retry_at as nextRetryAt, last_error_message as lastErrorMessage, created_by as createdBy,
-                                   created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted
+                                   created_at as createdAt, updated_by as updatedBy, updated_at as updatedAt, deleted,
+                                   claimed_by as claimedBy, claim_token as claimToken, claim_expires_at as claimExpiresAt
                             from plugin_event_outbox
                             where id = ? and deleted = 0
                             limit 1
@@ -226,33 +258,54 @@ public class PluginOutboxService {
         if (row == null || row.getId() == null) {
             return false;
         }
+        LocalDateTime now = LocalDateTime.now();
+        String claimToken = UUID.randomUUID().toString();
+        LocalDateTime claimExpiresAt = now.plusMinutes(CLAIM_LEASE_MINUTES);
         int updated = jdbcTemplate.update(
                 """
                         update plugin_event_outbox
-                        set status = ?, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0 and status = ?
+                        set status = ?, claimed_by = ?, claim_token = ?, claim_expires_at = ?, updated_at = ?
+                        where id = ? and deleted = 0
+                          and (
+                                status = ?
+                                or (status = ? and claim_expires_at is not null and claim_expires_at <= ?)
+                          )
                         """,
                 STATUS_DISPATCHING,
-                LocalDateTime.now(),
-                row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
+                workerId(),
+                claimToken,
+                claimExpiresAt,
+                now,
                 row.getId(),
-                row.getStatus()
+                row.getStatus(),
+                STATUS_DISPATCHING,
+                now
         );
+        if (updated > 0) {
+            row.setStatus(STATUS_DISPATCHING);
+            row.setClaimedBy(workerId());
+            row.setClaimToken(claimToken);
+            row.setClaimExpiresAt(claimExpiresAt);
+        }
         return updated > 0;
     }
 
     private void markDelivered(PluginOutboxRow row) {
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update plugin_event_outbox
-                        set status = ?, next_retry_at = null, last_error_message = null, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0
+                        set status = ?, claimed_by = null, claim_token = null, claim_expires_at = null,
+                            next_retry_at = null, last_error_message = null, updated_at = ?, updated_by = ?
+                        where id = ? and deleted = 0 and status = ? and claim_token = ?
                         """,
                 STATUS_DELIVERED,
                 LocalDateTime.now(),
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
-                row.getId()
+                row.getId(),
+                STATUS_DISPATCHING,
+                row.getClaimToken()
         );
+        logClaimMismatchIfNeeded(updated, row, "markDelivered");
     }
 
     private void markFailed(PluginOutboxRow row, RuntimeException exception) {
@@ -260,11 +313,13 @@ public class PluginOutboxService {
         int nextRetryCount = retryCount + 1;
         boolean deadLetter = nextRetryCount >= MAX_RETRY_COUNT;
         LocalDateTime now = LocalDateTime.now();
-        jdbcTemplate.update(
+        int updated = jdbcTemplate.update(
                 """
                         update plugin_event_outbox
-                        set status = ?, retry_count = ?, next_retry_at = ?, last_error_message = ?, updated_at = ?, updated_by = ?
-                        where id = ? and deleted = 0
+                        set status = ?, retry_count = ?, next_retry_at = ?, last_error_message = ?,
+                            claimed_by = null, claim_token = null, claim_expires_at = null,
+                            updated_at = ?, updated_by = ?
+                        where id = ? and deleted = 0 and status = ? and claim_token = ?
                         """,
                 deadLetter ? STATUS_DEAD_LETTER : STATUS_FAILED,
                 nextRetryCount,
@@ -272,15 +327,20 @@ public class PluginOutboxService {
                 truncate(exception == null ? "unknown error" : exception.getMessage()),
                 now,
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
-                row.getId()
+                row.getId(),
+                STATUS_DISPATCHING,
+                row.getClaimToken()
         );
+        logClaimMismatchIfNeeded(updated, row, "markFailed");
     }
 
     private void resetForReplay(PluginOutboxRow row) {
         jdbcTemplate.update(
                 """
                         update plugin_event_outbox
-                        set status = ?, retry_count = 0, next_retry_at = null, last_error_message = null, updated_at = ?, updated_by = ?
+                        set status = ?, retry_count = 0, next_retry_at = null, last_error_message = null,
+                            claimed_by = null, claim_token = null, claim_expires_at = null,
+                            updated_at = ?, updated_by = ?
                         where id = ? and deleted = 0
                         """,
                 STATUS_PENDING,
@@ -288,6 +348,13 @@ public class PluginOutboxService {
                 row.getUpdatedBy() == null ? 0L : row.getUpdatedBy(),
                 row.getId()
         );
+        row.setStatus(STATUS_PENDING);
+        row.setRetryCount(0);
+        row.setNextRetryAt(null);
+        row.setLastErrorMessage(null);
+        row.setClaimedBy(null);
+        row.setClaimToken(null);
+        row.setClaimExpiresAt(null);
     }
 
     private boolean dispatchSingle(PluginOutboxRow row, PluginOutboxDispatcher dispatcher) {
@@ -303,8 +370,7 @@ public class PluginOutboxService {
             markDelivered(row);
             return true;
         } catch (RuntimeException exception) {
-            logger.warn("插件 outbox 投递失败: id={}, eventType={}, message={}",
-                    row.getId(), row.getEventType(), exception.getMessage());
+            logger.warn("Plugin outbox dispatch failed, id={}, eventType={}, message={}", row.getId(), row.getEventType(), exception.getMessage());
             markFailed(row, exception);
             return false;
         }
@@ -326,8 +392,19 @@ public class PluginOutboxService {
         try {
             return objectMapper.writeValueAsString(payload == null ? Map.of() : payload);
         } catch (Exception exception) {
-            throw new IllegalStateException("插件 outbox payload 序列化失败", exception);
+            throw new IllegalStateException("Plugin outbox payload serialization failed", exception);
         }
+    }
+
+    private void logClaimMismatchIfNeeded(int updated, PluginOutboxRow row, String operation) {
+        if (updated > 0) {
+            return;
+        }
+        logger.warn("Plugin outbox claim mismatch operation={} id={} eventType={}", operation, row.getId(), row.getEventType());
+    }
+
+    private String workerId() {
+        return WORKER_ID;
     }
 
     public record OutboxMetricsSnapshot(

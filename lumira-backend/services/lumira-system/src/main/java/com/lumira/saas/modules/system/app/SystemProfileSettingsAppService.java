@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.app;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -35,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class SystemProfileSettingsAppService {
 
     private static final String PROFILE_SETTINGS_CACHE_KEY = "global-profile-field-settings";

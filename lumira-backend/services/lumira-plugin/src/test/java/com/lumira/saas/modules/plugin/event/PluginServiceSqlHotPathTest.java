@@ -14,12 +14,13 @@ class PluginServiceSqlHotPathTest {
     void hotPathSqlInOutboxServiceShouldUseDeleteAwareDispatchFiltersAndBoundedLimit() throws Exception {
         String source = serviceSource("src/main/java/com/lumira/saas/modules/plugin/event/PluginOutboxService.java");
 
-        assertThat(source).contains(normalizeSql("select id, user_id as userId"));
-        assertThat(source).contains(normalizeSql("from plugin_event_outbox"));
+        assertThat(source).contains(normalizeSql("from plugin_event_outbox force index (idx_plugin_event_outbox_deleted_status_retry_created)"));
         assertThat(source).contains(normalizeSql("where deleted = 0"));
         assertThat(source).contains(normalizeSql("status = ? or (status = ? and (next_retry_at is null or next_retry_at <= ?)"));
+        assertThat(source).contains(normalizeSql("or (status = ? and claim_expires_at is not null and claim_expires_at <= ?)"));
         assertThat(source).contains(normalizeSql("order by created_at asc, id asc"));
         assertThat(source).contains(normalizeSql("limit ?"));
+        assertThat(source).contains(normalizeSql("claim_token = ?"));
         assertThat(source).contains(normalizeSql("sum(case when status = 'PENDING' then 1 else 0 end"));
         assertThat(source).contains(normalizeSql("sum(case when status = 'FAILED' then 1 else 0 end"));
         assertThat(source).contains(normalizeSql("sum(case when status = 'DEAD_LETTER' then 1 else 0 end"));
@@ -29,6 +30,7 @@ class PluginServiceSqlHotPathTest {
     void pluginOutboxHotPathMigrationShouldIntroduceQueueIndex() throws Exception {
         String sql = consolidatedSchemaSql();
         assertThat(sql).contains("idx_plugin_event_outbox_deleted_status_retry_created");
+        assertThat(sql).contains("idx_plugin_event_outbox_claim_token");
         assertThat(sql).contains("deleted");
         assertThat(sql).contains("status");
         assertThat(sql).contains("next_retry_at");

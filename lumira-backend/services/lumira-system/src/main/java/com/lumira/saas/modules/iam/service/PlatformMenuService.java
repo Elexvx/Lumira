@@ -1,5 +1,6 @@
 package com.lumira.saas.modules.iam.service;
 
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +16,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class PlatformMenuService {
 
     private static final Logger log = LoggerFactory.getLogger(PlatformMenuService.class);

@@ -18,7 +18,7 @@ import { ErrorCode } from '@/enums/errorCode';
 import { ApiRequestError } from '@/services/common/requestInternalsTypes';
 import { resolveApiErrorFeedback, type ApiErrorLike, type ErrorFeedback } from '@/services/common/errorFeedback';
 import type { LoginCodeChallenge, LoginEncryptionKey } from '@/types/api';
-import type { AgreementSettings, CaptchaChallenge, CaptchaType, LoginResponse, SecuritySettings } from '@/types/api';
+import type { AgreementSettings, CaptchaChallenge, CaptchaType, LoginResponse, RuntimeAppearanceSettings, SecuritySettings } from '@/types/api';
 import type { LoginFormValues, LoginMode } from '@/pages/user/login/components/LoginFormFields';
 import { showErrorMessage } from '@/utils/errorMessage';
 import type { LoginBootstrapFlow } from './useLoginFlow';
@@ -125,24 +125,24 @@ type PluginBootstrapResponse = {
   availablePlugins?: PluginAvailability[];
 };
 
-type RuntimeAppearanceSettingsResponse = {
-  brandingSettings?: BrandingSettings;
-  watermarkSettings?: WatermarkSettings;
-  floatingWindowSettings?: FloatingWindowSettings;
-};
-
 const TEXT_ENCODER = new TextEncoder();
 const KEY_CACHE = new Map<string, Promise<CryptoKey>>();
 
-const loadRuntimeAppearanceSettings = async (): Promise<RuntimeAppearanceSettingsResponse> => {
-  const response = await request<RuntimeAppearanceSettingsResponse>('/v2/platform/runtime-appearance-settings', {
+const normalizeRuntimeAppearanceSettingsResponse = (settings?: RuntimeAppearanceSettings) => ({
+  brandingSettings: normalizeBrandingSettings(settings?.brandingSettings || DEFAULT_BRANDING_SETTINGS),
+  watermarkSettings: normalizeWatermarkSettings(settings?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS),
+  floatingWindowSettings: normalizeFloatingWindowSettings(settings?.floatingWindowSettings || DEFAULT_FLOATING_WINDOW_SETTINGS),
+});
+
+const loadRuntimeAppearanceSettings = async (): Promise<RuntimeAppearanceSettings> => {
+  const response = await request<RuntimeAppearanceSettings>('/v2/platform/runtime-appearance-settings', {
     method: 'GET',
     autoRedirectOnUnauthorized: false,
     allowUnauthorizedWithoutRedirect: true,
     silent: true,
     timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
   }).catch(() =>
-    request<RuntimeAppearanceSettingsResponse>('/v1/system/runtime-appearance-settings', {
+    request<RuntimeAppearanceSettings>('/v1/system/runtime-appearance-settings', {
       method: 'GET',
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
@@ -312,15 +312,85 @@ const useLoginFlowInteractions = ({
         suppressLoginBroadcastRedirectRef.current = false;
         throw error;
       }
-      const pluginBootstrap = await loadPluginBootstrap().catch(() => ({
-        menuTree: initialState?.menuTree || [],
-        availablePlugins: initialState?.availablePlugins || [],
-      }));
+      const pluginBootstrapPromise = sessionResult.menuTree !== undefined && sessionResult.availablePlugins !== undefined
+        ? null
+        : loadPluginBootstrap().catch(() => ({
+            menuTree: initialState?.menuTree || [],
+            availablePlugins: initialState?.availablePlugins || [],
+          }));
+      const bootstrapRuntimeAppearanceSettings = sessionResult.runtimeAppearanceSettings
+        ? normalizeRuntimeAppearanceSettingsResponse(sessionResult.runtimeAppearanceSettings)
+        : null;
+      const baseAppearanceResources = {
+        brandingSettings: bootstrapRuntimeAppearanceSettings?.brandingSettings
+          || normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS),
+        watermarkSettings: bootstrapRuntimeAppearanceSettings?.watermarkSettings
+          || initialState?.watermarkSettings
+          || DEFAULT_WATERMARK_SETTINGS,
+        floatingWindowSettings: bootstrapRuntimeAppearanceSettings?.floatingWindowSettings
+          || initialState?.floatingWindowSettings
+          || DEFAULT_FLOATING_WINDOW_SETTINGS,
+      };
+      const runtimeAppearancePromise = bootstrapRuntimeAppearanceSettings
+        ? null
+        : loadRuntimeAppearanceSettings()
+            .then((appearanceSettings) => ({
+              brandingSettings: normalizeBrandingSettings(appearanceSettings.brandingSettings || baseAppearanceResources.brandingSettings),
+              watermarkSettings: normalizeWatermarkSettings(appearanceSettings.watermarkSettings || baseAppearanceResources.watermarkSettings),
+              floatingWindowSettings: normalizeFloatingWindowSettings(
+                appearanceSettings.floatingWindowSettings || baseAppearanceResources.floatingWindowSettings,
+              ),
+            }))
+            .catch(async () => {
+              const [brandingResult, watermarkResult, floatingWindowResult] = await Promise.allSettled([
+                request<BrandingSettings>('/v2/platform/branding-settings', {
+                  method: 'GET',
+                  autoRedirectOnUnauthorized: false,
+                  allowUnauthorizedWithoutRedirect: true,
+                  silent: true,
+                  timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+                }).catch(() =>
+                  request<BrandingSettings>('/v1/system/branding-settings', {
+                    method: 'GET',
+                    autoRedirectOnUnauthorized: false,
+                    allowUnauthorizedWithoutRedirect: true,
+                    silent: true,
+                    timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+                  }),
+                ),
+                request<WatermarkSettings>('/v1/system/watermark-settings', {
+                  method: 'GET',
+                  autoRedirectOnUnauthorized: false,
+                  allowUnauthorizedWithoutRedirect: true,
+                  silent: true,
+                  timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+                }),
+                request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
+                  method: 'GET',
+                  autoRedirectOnUnauthorized: false,
+                  allowUnauthorizedWithoutRedirect: true,
+                  silent: true,
+                  timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
+                }),
+              ]);
+              return {
+                brandingSettings: normalizeBrandingSettings(
+                  brandingResult.status === 'fulfilled' ? brandingResult.value : baseAppearanceResources.brandingSettings,
+                ),
+                watermarkSettings: normalizeWatermarkSettings(
+                  watermarkResult.status === 'fulfilled' ? watermarkResult.value : baseAppearanceResources.watermarkSettings,
+                ),
+                floatingWindowSettings: normalizeFloatingWindowSettings(
+                  floatingWindowResult.status === 'fulfilled'
+                    ? floatingWindowResult.value
+                    : baseAppearanceResources.floatingWindowSettings,
+                ),
+              };
+            });
       const resources = {
-        menuTree: pluginBootstrap.menuTree || [],
-        availablePlugins: pluginBootstrap.availablePlugins || [],
-        brandingSettings: normalizeBrandingSettings(initialState?.brandingSettings || DEFAULT_BRANDING_SETTINGS),
-        watermarkSettings: initialState?.watermarkSettings || DEFAULT_WATERMARK_SETTINGS,
+        menuTree: sessionResult.menuTree || initialState?.menuTree || [],
+        availablePlugins: sessionResult.availablePlugins || initialState?.availablePlugins || [],
+        ...baseAppearanceResources,
       };
 
       persistBrandingSettings(resources.brandingSettings);
@@ -335,6 +405,7 @@ const useLoginFlowInteractions = ({
           securitySettings: sessionResult.securitySettings,
           brandingSettings: resources.brandingSettings,
           watermarkSettings: resources.watermarkSettings,
+          floatingWindowSettings: resources.floatingWindowSettings,
           agreementSettings: prev?.agreementSettings || bootstrapFlow.agreementSettings,
           loginCapabilities: prev?.loginCapabilities || bootstrapFlow.loginCapabilities,
         }));
@@ -346,59 +417,32 @@ const useLoginFlowInteractions = ({
         suppressLoginBroadcastRedirectRef.current = false;
       }, 0);
 
-      void loadRuntimeAppearanceSettings()
-        .then((appearanceSettings) => ({
-          brandingSettings: normalizeBrandingSettings(appearanceSettings.brandingSettings || resources.brandingSettings),
-          watermarkSettings: normalizeWatermarkSettings(appearanceSettings.watermarkSettings || resources.watermarkSettings),
-          floatingWindowSettings: normalizeFloatingWindowSettings(appearanceSettings.floatingWindowSettings || DEFAULT_FLOATING_WINDOW_SETTINGS),
-        }))
-        .catch(async () => {
-          const [brandingResult, watermarkResult, floatingWindowResult] = await Promise.allSettled([
-            request<BrandingSettings>('/v2/platform/branding-settings', {
-              method: 'GET',
-              autoRedirectOnUnauthorized: false,
-              allowUnauthorizedWithoutRedirect: true,
-              silent: true,
-              timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
-            }).catch(() =>
-              request<BrandingSettings>('/v1/system/branding-settings', {
-                method: 'GET',
-                autoRedirectOnUnauthorized: false,
-                allowUnauthorizedWithoutRedirect: true,
-                silent: true,
-                timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
-              }),
-            ),
-            request<WatermarkSettings>('/v1/system/watermark-settings', {
-              method: 'GET',
-              autoRedirectOnUnauthorized: false,
-              allowUnauthorizedWithoutRedirect: true,
-              silent: true,
-              timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
-            }),
-            request<FloatingWindowSettings>('/v1/system/floating-window-settings', {
-              method: 'GET',
-              autoRedirectOnUnauthorized: false,
-              allowUnauthorizedWithoutRedirect: true,
-              silent: true,
-              timeoutMs: POST_LOGIN_OPTIONAL_TIMEOUT_MS,
-            }),
-          ]);
-          return {
-            brandingSettings: normalizeBrandingSettings(
-              brandingResult.status === 'fulfilled' ? brandingResult.value : resources.brandingSettings,
-            ),
-            watermarkSettings: normalizeWatermarkSettings(
-              watermarkResult.status === 'fulfilled' ? watermarkResult.value : resources.watermarkSettings,
-            ),
-            floatingWindowSettings: normalizeFloatingWindowSettings(
-              floatingWindowResult.status === 'fulfilled'
-                ? floatingWindowResult.value
-                : initialState?.floatingWindowSettings || DEFAULT_FLOATING_WINDOW_SETTINGS,
-            ),
-          };
-        })
-        .then(({ brandingSettings: nextBrandingSettings, watermarkSettings: nextWatermarkSettings, floatingWindowSettings }) => {
+      if (pluginBootstrapPromise) {
+        void pluginBootstrapPromise.then((pluginBootstrap) => {
+          const nextMenuTree = pluginBootstrap.menuTree || resources.menuTree;
+          const nextAvailablePlugins = pluginBootstrap.availablePlugins || resources.availablePlugins;
+          setInitialState((prev: AppInitialState | undefined) =>
+            prev
+              ? {
+                  ...prev,
+                  menuTree: nextMenuTree,
+                  menuVersion: (prev.menuVersion ?? 0) + 1,
+                  availablePlugins: nextAvailablePlugins,
+                }
+              : prev,
+          );
+
+          if (redirectTarget === '/403') {
+            const recoveredRedirectTarget = resolveAuthorizedLoginRedirectTarget(locationSearch, sessionResult.currentUser, nextMenuTree);
+            if (recoveredRedirectTarget !== redirectTarget) {
+              history.replace(recoveredRedirectTarget);
+            }
+          }
+        });
+      }
+
+      if (runtimeAppearancePromise) {
+        void runtimeAppearancePromise.then(({ brandingSettings: nextBrandingSettings, watermarkSettings: nextWatermarkSettings, floatingWindowSettings }) => {
           persistBrandingSettings(nextBrandingSettings);
           persistWatermarkSettings(nextWatermarkSettings);
           setInitialState((prev: AppInitialState | undefined) =>
@@ -412,6 +456,7 @@ const useLoginFlowInteractions = ({
               : prev,
           );
         });
+      }
     },
     [
       bootstrapFlow.agreementSettings,

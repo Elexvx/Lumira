@@ -5,8 +5,6 @@ import com.lumira.api.auth.WechatLoginRequest;
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.system.PermissionSnapshotDTO;
 import com.lumira.api.system.SystemUserSnapshotDTO;
-import com.lumira.api.system.VerificationChallengeDTO;
-import com.lumira.api.system.VerificationProviderDTO;
 import com.lumira.auth.config.AuthSecurityProperties;
 import com.lumira.common.web.repeatsubmit.ClientIpResolver;
 import com.lumira.common.security.SecurityContextFacade;
@@ -69,26 +67,18 @@ class AuthAppServiceWechatSecondFactorTest {
                 "zh-CN"
         );
         PermissionSnapshotDTO snapshot = new PermissionSnapshotDTO("v1", List.of("dashboard:view"), List.of(1L), null, List.of(), List.of(), List.of(), "/dashboard/home");
-        VerificationProviderDTO provider = new VerificationProviderDTO();
-        provider.setFactorCode("totp");
-        provider.setFactorName("2FA");
-        provider.setEnabled(true);
-        provider.setBound(true);
-        provider.setMaskedContact("Authenticator app");
-        provider.setPromptMessage("Enter your 2FA code");
-        VerificationChallengeDTO challenge = new VerificationChallengeDTO();
-        challenge.setFactorCode("totp");
-        challenge.setFactorName("2FA");
-        challenge.setChallengeId("challenge-1");
-        challenge.setMaskedContact("Authenticator app");
-        challenge.setPromptMessage("Enter your 2FA code");
+        LoginResponseDTO.SecondFactorOptionDTO option = new LoginResponseDTO.SecondFactorOptionDTO();
+        option.setFactorCode("totp");
+        option.setFactorName("2FA");
+        option.setChallengeId("challenge-1");
+        option.setMaskedContact("Authenticator app");
+        option.setPromptMessage("Enter your 2FA code");
 
         when(wechatLoginService.exchangeCode("code", "state"))
                 .thenReturn(new WechatLoginService.WechatOAuthUser("openid", "unionid", "snsapi_login"));
         when(systemInternalApi.resolveWechatLoginUser(any())).thenReturn(user);
         when(systemInternalApi.permissionSnapshot(user.userId())).thenReturn(snapshot);
-        when(systemInternalApi.listVerificationProviders(user.userId())).thenReturn(List.of(provider));
-        when(systemInternalApi.verificationChallenge(user.userId(), "totp")).thenReturn(challenge);
+        when(systemInternalApi.listLoginSecondFactorOptions(user.userId())).thenReturn(List.of(option));
         when(clientIpResolver.resolve(request)).thenReturn("127.0.0.1");
         when(request.getHeader("User-Agent")).thenReturn("JUnit");
 

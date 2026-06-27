@@ -2,6 +2,7 @@ package com.lumira.message.service;
 
 import com.lumira.api.client.SystemInternalApi;
 import com.lumira.api.message.MessageNoticeDTO;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -13,9 +14,9 @@ import java.util.Set;
 @Component
 public class MessageRecipientResolver {
 
-    private final SystemInternalApi systemInternalApi;
+    private final ObjectProvider<SystemInternalApi> systemInternalApi;
 
-    public MessageRecipientResolver(SystemInternalApi systemInternalApi) {
+    public MessageRecipientResolver(ObjectProvider<SystemInternalApi> systemInternalApi) {
         this.systemInternalApi = systemInternalApi;
     }
 
@@ -31,7 +32,11 @@ public class MessageRecipientResolver {
             return notice.getTargetUserId() == null ? List.of() : List.of(notice.getTargetUserId());
         }
         if ("ROLE".equalsIgnoreCase(targetScope) && notice.getTargetRoleId() != null) {
-            return deduplicate(systemInternalApi.userIdsByRole(notice.getTargetRoleId()));
+            SystemInternalApi internalApi = systemInternalApi.getIfAvailable();
+            if (internalApi == null) {
+                return List.of();
+            }
+            return deduplicate(internalApi.userIdsByRole(notice.getTargetRoleId()));
         }
         return List.of();
     }

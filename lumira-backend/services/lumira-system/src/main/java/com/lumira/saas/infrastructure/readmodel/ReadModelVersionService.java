@@ -4,7 +4,13 @@ import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class ReadModelVersionService {
@@ -27,6 +33,50 @@ public class ReadModelVersionService {
                 normalize(contextName),
                 normalize(scope)
         );
+    }
+
+    public Map<ReadModelScopeKey, Long> currentVersions(List<ReadModelScopeKey> scopes) {
+        if (scopes == null || scopes.isEmpty()) {
+            return Map.of();
+        }
+        List<ReadModelScopeKey> normalizedScopes = scopes.stream()
+                .filter(Objects::nonNull)
+                .map(scope -> new ReadModelScopeKey(normalize(scope.contextName()), normalize(scope.scope())))
+                .distinct()
+                .toList();
+        if (normalizedScopes.isEmpty()) {
+            return Map.of();
+        }
+        String predicate = normalizedScopes.stream()
+                .map(ignored -> "(context_name = ? and scope = ?)")
+                .collect(Collectors.joining(" or "));
+        List<Object> params = new ArrayList<>(normalizedScopes.size() * 2);
+        for (ReadModelScopeKey scope : normalizedScopes) {
+            params.add(scope.contextName());
+            params.add(scope.scope());
+        }
+        List<ReadModelScopeVersion> rows = jdbcTemplate.query(
+                """
+                        select context_name, scope, version
+                        from ddd_read_model_version
+                        where
+                        """
+                        + predicate,
+                (rs, rowNum) -> new ReadModelScopeVersion(
+                        rs.getString("context_name"),
+                        rs.getString("scope"),
+                        rs.getObject("version", Long.class)
+                ),
+                params.toArray()
+        );
+        Map<ReadModelScopeKey, Long> versions = new LinkedHashMap<>();
+        for (ReadModelScopeKey scope : normalizedScopes) {
+            versions.put(scope, 0L);
+        }
+        for (ReadModelScopeVersion row : rows) {
+            versions.put(new ReadModelScopeKey(normalize(row.contextName()), normalize(row.scope())), row.version() == null ? 0L : row.version());
+        }
+        return Map.copyOf(versions);
     }
 
     public Long latestVersion(String contextName, String scope) {
@@ -88,5 +138,11 @@ public class ReadModelVersionService {
             return "default";
         }
         return value.trim();
+    }
+
+    public record ReadModelScopeKey(String contextName, String scope) {
+    }
+
+    private record ReadModelScopeVersion(String contextName, String scope, Long version) {
     }
 }

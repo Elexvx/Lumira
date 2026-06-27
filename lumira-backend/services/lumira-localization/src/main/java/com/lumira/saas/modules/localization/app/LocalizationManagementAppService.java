@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.lumira.api.client.SystemInternalApi;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.modules.localization.dto.LocalizationDTO;
 import com.lumira.saas.modules.localization.dto.LocalizationQueryModels.EntryQuery;
@@ -47,6 +48,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class LocalizationManagementAppService {
 
     private static final long MAX_PAGE_SIZE = 100L;

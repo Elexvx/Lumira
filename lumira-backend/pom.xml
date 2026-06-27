@@ -11,6 +11,7 @@
     <modules>
         <module>services/lumira-system</module>
         <module>services/lumira-admin</module>
+        <module>services/lumira-async</module>
         <module>libs/lumira-common-core</module>
         <module>libs/lumira-common-domain</module>
         <module>libs/lumira-common-web</module>

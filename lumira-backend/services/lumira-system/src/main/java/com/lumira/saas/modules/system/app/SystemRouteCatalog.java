@@ -7,6 +7,7 @@ public final class SystemRouteCatalog {
     private static final Set<String> BUILT_IN_ROUTE_PATHS = Set.of(
             "/dashboard/home",
             "/data-management",
+            "/data-management/download-center",
             "/data-management/query-center",
             "/activities",
             "/activities/management",
@@ -54,7 +55,6 @@ public final class SystemRouteCatalog {
             "/system/files/all",
             "/files",
             "/files/all",
-            "/download-center",
             "/team",
             "/team/management",
             "/team/search",

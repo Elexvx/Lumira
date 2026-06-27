@@ -1,5 +1,6 @@
 package com.lumira.saas.infrastructure.security.service;
 
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.infrastructure.security.SecurityProperties;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
@@ -38,11 +39,16 @@ class SecuritySettingsServiceTest {
     @Test
     void updateSettingsInvalidatesCachedSnapshot() {
         SysConfigMapper mapper = mock(SysConfigMapper.class);
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
         when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
                 .thenReturn(List.of(config("security.idle-timeout-seconds", "900")))
                 .thenReturn(List.of(config("security.idle-timeout-seconds", "1200")));
 
-        SecuritySettingsService service = new SecuritySettingsService(mapper, new SecurityProperties());
+        SecuritySettingsService service = new SecuritySettingsService(
+                mapper,
+                new SecurityProperties(),
+                readModelVersionService
+        );
         assertEquals(900L, service.getIdleTimeoutSeconds());
 
         SecuritySettingsService.SecuritySettingsSnapshot request = service.loadSettings();
@@ -51,6 +57,31 @@ class SecuritySettingsServiceTest {
 
         assertEquals(1200L, service.getIdleTimeoutSeconds());
         verify(mapper, times(2)).listEffectiveValues(eq("PLATFORM"), any());
+        verify(readModelVersionService).bump("platform", "public-bootstrap", "security-update");
+    }
+
+    @Test
+    void loadSettingsReloadsWhenPublicBootstrapVersionChanges() throws Exception {
+        SysConfigMapper mapper = mock(SysConfigMapper.class);
+        ReadModelVersionService readModelVersionService = mock(ReadModelVersionService.class);
+        when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
+                .thenReturn(List.of(config("security.idle-timeout-seconds", "900")))
+                .thenReturn(List.of(config("security.idle-timeout-seconds", "1200")));
+        when(readModelVersionService.currentVersion("platform", "public-bootstrap"))
+                .thenReturn(11L, 12L);
+
+        SecuritySettingsService service = new SecuritySettingsService(
+                mapper,
+                new SecurityProperties(),
+                readModelVersionService
+        );
+
+        assertEquals(900L, service.getIdleTimeoutSeconds());
+        Thread.sleep(2100L);
+        assertEquals(1200L, service.getIdleTimeoutSeconds());
+
+        verify(mapper, times(2)).listEffectiveValues(eq("PLATFORM"), any());
+        verify(readModelVersionService, times(2)).currentVersion("platform", "public-bootstrap");
     }
 
     private static SysConfigEntity config(String key, String value) {

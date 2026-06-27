@@ -16,6 +16,7 @@ export interface AppInitialState {
   menuVersion: number;
   themeRevision?: number;
   brandingRevision?: number;
+  publicBootstrapLoadedAt?: number;
   availablePlugins: PluginAvailability[];
   securitySettings: SecuritySettings;
   brandingSettings: BrandingSettings;

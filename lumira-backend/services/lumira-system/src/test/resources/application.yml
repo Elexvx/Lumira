@@ -109,8 +109,8 @@ saas:
   event:
     outbox:
       relay-enabled: false
-      relay-fixed-delay-ms: 5000
       batch-size: 100
+      max-drain-rounds: 4
       dispatcher: logging
       redis-stream-key: saas:platform-events
   plugin:

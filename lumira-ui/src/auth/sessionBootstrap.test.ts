@@ -9,6 +9,7 @@ type CurrentUserFixture = {
 
 const mocks = vi.hoisted(() => ({
   hasToken: vi.fn(),
+  setTokens: vi.fn(),
   request: vi.fn(),
   loadSecuritySettings: vi.fn(),
   clearAuthSession: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/auth/token', () => ({
   tokenManager: {
     hasToken: mocks.hasToken,
+    setTokens: mocks.setTokens,
   },
 }));
 
@@ -57,6 +59,7 @@ vi.mock('@/i18n/locale', () => ({
 describe('sessionBootstrap', () => {
   beforeEach(() => {
     mocks.hasToken.mockReset();
+    mocks.setTokens.mockReset();
     mocks.request.mockReset();
     mocks.loadSecuritySettings.mockReset();
     mocks.clearAuthSession.mockReset();
@@ -83,10 +86,20 @@ describe('sessionBootstrap', () => {
       locale: 'zh-CN',
     };
     const securitySettings = { captchaEnabled: true };
+    const runtimeAppearanceSettings = {
+      brandingSettings: { websiteName: 'Lumira Fast' },
+      watermarkSettings: { enabled: false },
+      floatingWindowSettings: { apiDocsQrEnabled: false },
+    };
+    const menuTree = [{ menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' }];
+    const availablePlugins = [{ pluginCode: 'work-order-feedback', pluginName: '工单反馈', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' }];
 
     mocks.request.mockResolvedValue({
       currentUser: bootstrapUser,
       securitySettings,
+      menuTree,
+      availablePlugins,
+      runtimeAppearanceSettings,
     });
 
     const { restoreSession } = await import('@/auth/sessionBootstrap');
@@ -96,11 +109,61 @@ describe('sessionBootstrap', () => {
     expect(restored).toMatchObject({
       currentUser: bootstrapUser,
       securitySettings,
+      menuTree,
+      availablePlugins,
+      runtimeAppearanceSettings,
     });
     expect(mocks.request).toHaveBeenCalledWith('/v2/auth/bootstrap', expect.objectContaining({ method: 'GET' }));
     expect(mocks.loadSecuritySettings).not.toHaveBeenCalled();
     expect(mocks.tryRefreshToken).not.toHaveBeenCalled();
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
+  });
+
+  it('uses /v2/auth/bootstrap after login without triggering redundant security settings fetch', async () => {
+    const bootstrapUser = {
+      userId: 18,
+      username: 'after-login',
+      nickname: 'After Login User',
+      permissions: ['dashboard:view'],
+      sessionId: 'session-after-login',
+      locale: 'zh-CN',
+    };
+    const securitySettings = { captchaEnabled: false };
+    const runtimeAppearanceSettings = {
+      brandingSettings: { websiteName: 'Lumira Fast' },
+      watermarkSettings: { enabled: false },
+      floatingWindowSettings: { apiDocsQrEnabled: false },
+    };
+    const menuTree = [{ menuCode: 'dashboard.home', name: '宸ヤ綔鍙?', path: '/dashboard/home' }];
+    const availablePlugins = [{ pluginCode: 'work-order-feedback', pluginName: '宸ュ崟鍙嶉', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' }];
+
+    mocks.request.mockResolvedValue({
+      currentUser: bootstrapUser,
+      securitySettings,
+      menuTree,
+      availablePlugins,
+      runtimeAppearanceSettings,
+    });
+
+    const { initializeAfterLogin } = await import('@/auth/sessionBootstrap');
+
+    const restored = await initializeAfterLogin({
+      accessToken: 'access-token',
+      refreshToken: 'refresh-token',
+      tokenType: 'Bearer',
+      expiresIn: 3600,
+      user: bootstrapUser,
+    });
+
+    expect(restored).toMatchObject({
+      currentUser: bootstrapUser,
+      securitySettings,
+      menuTree,
+      availablePlugins,
+      runtimeAppearanceSettings,
+    });
+    expect(mocks.request).toHaveBeenCalledWith('/v2/auth/bootstrap', expect.objectContaining({ method: 'GET' }));
+    expect(mocks.loadSecuritySettings).not.toHaveBeenCalled();
   });
 
   it('restores a new browser tab by refreshing when no access token is stored', async () => {
@@ -113,12 +176,16 @@ describe('sessionBootstrap', () => {
       locale: 'zh-CN',
     };
     const securitySettings = { captchaEnabled: false };
+    const menuTree = [{ menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' }];
+    const availablePlugins = [{ pluginCode: 'work-order-feedback', pluginName: '工单反馈', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' }];
 
     mocks.hasToken.mockReturnValue(false);
     mocks.tryRefreshToken.mockResolvedValue(true);
     mocks.request.mockResolvedValue({
       currentUser: bootstrapUser,
       securitySettings,
+      menuTree,
+      availablePlugins,
     });
 
     const { restoreSession } = await import('@/auth/sessionBootstrap');
@@ -128,6 +195,8 @@ describe('sessionBootstrap', () => {
     expect(restored).toMatchObject({
       currentUser: bootstrapUser,
       securitySettings,
+      menuTree,
+      availablePlugins,
     });
     expect(mocks.tryRefreshToken).toHaveBeenCalledTimes(1);
     expect(mocks.request).toHaveBeenCalledWith('/v2/auth/bootstrap', expect.objectContaining({ method: 'GET' }));

@@ -2,10 +2,12 @@ package com.lumira.saas.modules.system.verification;
 
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.system.support.SmtpMailService;
@@ -26,10 +28,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class SystemVerificationSettingsAppService {
 
     private static final Duration CONFIG_SNAPSHOT_TTL = Duration.ofSeconds(30);
     private static final int CONFIG_SNAPSHOT_MAX_ENTRIES = 2048;
+    private static final long READ_MODEL_VERSION_CACHE_TTL_MS = 2_000L;
 
     private static final String TOTP_CONFIG_ENABLED_KEY = "verification.totp.enabled";
     private static final String PASSWORD_LOGIN_ENABLED_KEY = "verification.password-login.enabled";
@@ -51,27 +55,53 @@ public class SystemVerificationSettingsAppService {
     private static final String PASSKEY_RP_NAME_KEY = "verification.passkey.rp-name";
     private static final String PASSKEY_ALLOWED_ORIGINS_KEY = "verification.passkey.allowed-origins";
     private static final String PASSKEY_CHALLENGE_TTL_KEY = "verification.passkey.challenge-ttl-seconds";
+    private static final String READ_MODEL_CONTEXT_PLATFORM = "platform";
+    private static final String READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP = "public-bootstrap";
+    private static final List<String> LOGIN_CAPABILITY_CONFIG_KEYS = List.of(
+            PASSWORD_LOGIN_ENABLED_KEY,
+            EMAIL_LOGIN_ENABLED_KEY,
+            LOGIN_MODE_ORDER_KEY,
+            SMS_CONFIG_ENABLED_KEY,
+            SMS_CONFIG_PROVIDER_KEY,
+            SMS_CONFIG_SIGN_NAME_KEY,
+            SMS_CONFIG_TEMPLATE_CODE_KEY,
+            SMS_CONFIG_ACCESS_KEY_ID_KEY,
+            SMS_CONFIG_ACCESS_KEY_SECRET_KEY,
+            SMS_CONFIG_ENDPOINT_KEY,
+            SMS_CONFIG_REGION_KEY,
+            PASSKEY_ENABLED_KEY,
+            PASSKEY_PASSWORDLESS_ENABLED_KEY,
+            PASSKEY_SELF_BINDING_ENABLED_KEY,
+            PASSKEY_RP_ID_KEY,
+            PASSKEY_RP_NAME_KEY,
+            PASSKEY_ALLOWED_ORIGINS_KEY,
+            PASSKEY_CHALLENGE_TTL_KEY
+    );
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final SystemVerificationProperties properties;
     private final SmtpMailService smtpMailService;
     private final WechatLoginSettingsService wechatLoginSettingsService;
     private final FieldCryptoService fieldCryptoService;
+    private final ReadModelVersionService readModelVersionService;
     private final Cache<String, Map<String, String>> configSnapshotCache;
     private final Cache<String, CompletableFuture<Map<String, String>>> configLoadInFlight;
+    private volatile CachedReadModelVersion cachedPublicBootstrapVersion;
 
     public SystemVerificationSettingsAppService(
             MyBatisQueryOperations jdbcTemplate,
             SystemVerificationProperties properties,
             SmtpMailService smtpMailService,
             WechatLoginSettingsService wechatLoginSettingsService,
-            FieldCryptoService fieldCryptoService
+            FieldCryptoService fieldCryptoService,
+            ReadModelVersionService readModelVersionService
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.properties = properties;
         this.smtpMailService = smtpMailService;
         this.wechatLoginSettingsService = wechatLoginSettingsService;
         this.fieldCryptoService = fieldCryptoService;
+        this.readModelVersionService = readModelVersionService;
         this.configSnapshotCache = CacheBuilder.newBuilder()
                 .maximumSize(CONFIG_SNAPSHOT_MAX_ENTRIES)
                 .expireAfterWrite(CONFIG_SNAPSHOT_TTL.toMillis(), TimeUnit.MILLISECONDS)
@@ -99,24 +129,47 @@ public class SystemVerificationSettingsAppService {
     }
 
     public SystemVO.VerificationSettingsVO getVerificationSettings() {
+        Map<String, String> values = loadConfigValuesByKeys(List.of(
+                TOTP_CONFIG_ENABLED_KEY,
+                EMAIL_LOGIN_ENABLED_KEY,
+                PASSWORD_LOGIN_ENABLED_KEY,
+                LOGIN_MODE_ORDER_KEY
+        ));
         SystemVO.VerificationSettingsVO settings = new SystemVO.VerificationSettingsVO();
-        settings.setEnabled(isTotpEnabled());
-        settings.setEmailLoginEnabled(isEmailLoginEnabled());
-        settings.setPasswordLoginEnabled(isPasswordLoginEnabled());
-        settings.setLoginModeOrder(loginModeOrder());
+        settings.setEnabled(isTotpEnabled(values));
+        settings.setEmailLoginEnabled(isEmailLoginEnabled(values));
+        settings.setPasswordLoginEnabled(isPasswordLoginEnabled(values));
+        settings.setLoginModeOrder(loginModeOrder(values));
         return settings;
     }
 
     public SystemVO.LoginCapabilitiesVO loadLoginCapabilities() {
+        return buildLoginCapabilities(
+                loadConfigValuesByKeys(LOGIN_CAPABILITY_CONFIG_KEYS),
+                wechatLoginSettingsService.loadSettings()
+        );
+    }
+
+    public SystemVO.LoginCapabilitiesVO loadLoginCapabilitiesFresh() {
+        return buildLoginCapabilities(
+                loadConfigValuesByKeysFresh(LOGIN_CAPABILITY_CONFIG_KEYS),
+                wechatLoginSettingsService.loadSettingsFresh()
+        );
+    }
+
+    private SystemVO.LoginCapabilitiesVO buildLoginCapabilities(
+            Map<String, String> values,
+            WechatLoginSettingsService.WechatLoginSettingsRecord wechatSettings
+    ) {
         SystemVO.LoginCapabilitiesVO capabilities = new SystemVO.LoginCapabilitiesVO();
-        capabilities.setPasswordLoginAvailable(isPasswordLoginEnabled());
-        capabilities.setSmsLoginAvailable(isSmsLoginAvailable());
-        capabilities.setEmailLoginAvailable(isEmailLoginAvailable());
-        capabilities.setWechatLoginAvailable(wechatLoginSettingsService.isAvailable());
-        SystemVO.PasskeySettingsVO passkey = getPasskeySettings();
+        capabilities.setPasswordLoginAvailable(isPasswordLoginEnabled(values));
+        capabilities.setSmsLoginAvailable(isSmsLoginAvailable(values));
+        capabilities.setEmailLoginAvailable(isEmailLoginAvailable(values));
+        capabilities.setWechatLoginAvailable(wechatSettings.configured());
+        SystemVO.PasskeySettingsVO passkey = toPasskeySettings(values);
         capabilities.setPasskeyLoginAvailable(Boolean.TRUE.equals(passkey.getEnabled()));
         capabilities.setPasskeyPasswordlessAvailable(Boolean.TRUE.equals(passkey.getEnabled()) && Boolean.TRUE.equals(passkey.getPasswordlessEnabled()));
-        capabilities.setLoginModeOrder(loginModeOrder());
+        capabilities.setLoginModeOrder(loginModeOrder(values));
         return capabilities;
     }
 
@@ -125,7 +178,10 @@ public class SystemVerificationSettingsAppService {
     }
 
     public SystemVO.PasskeySettingsVO getPasskeySettings() {
-        Map<String, String> values = loadConfigValuesByKeys(passkeyConfigKeys());
+        return toPasskeySettings(loadConfigValuesByKeys(passkeyConfigKeys()));
+    }
+
+    private SystemVO.PasskeySettingsVO toPasskeySettings(Map<String, String> values) {
         SystemVO.PasskeySettingsVO settings = new SystemVO.PasskeySettingsVO();
         settings.setEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_ENABLED_KEY), "false")));
         settings.setPasswordlessEnabled(Boolean.parseBoolean(defaultIfBlank(values.get(PASSKEY_PASSWORDLESS_ENABLED_KEY), "false")));
@@ -148,6 +204,7 @@ public class SystemVerificationSettingsAppService {
         if (request.getLoginModeOrder() != null) {
             upsertPlatformConfigValue(LOGIN_MODE_ORDER_KEY, "登录方式排序", String.join(",", normalizeLoginModeOrder(request.getLoginModeOrder())), "登录页分段控制器展示顺序", operatorId);
         }
+        markPublicBootstrapChanged("verification-settings-update");
         return getVerificationSettings();
     }
 
@@ -173,6 +230,7 @@ public class SystemVerificationSettingsAppService {
         upsertSmsConfigValue(SMS_CONFIG_ENDPOINT_KEY, "短信服务地址", endpoint, "短信验证码服务端点", operatorId);
         upsertSmsConfigValue(SMS_CONFIG_REGION_KEY, "短信服务地域", region, "短信验证码服务地域", operatorId);
 
+        markPublicBootstrapChanged("sms-settings-update");
         return getSmsSettings();
     }
 
@@ -186,6 +244,7 @@ public class SystemVerificationSettingsAppService {
         upsertSmsConfigValue(SMS_CONFIG_ACCESS_KEY_SECRET_KEY, "短信 Access Key Secret", "", "短信验证码访问密钥 Secret", operatorId);
         upsertSmsConfigValue(SMS_CONFIG_ENDPOINT_KEY, "短信服务地址", "", "短信验证码服务端点", operatorId);
         upsertSmsConfigValue(SMS_CONFIG_REGION_KEY, "短信服务地域", "", "短信验证码服务地域", operatorId);
+        markPublicBootstrapChanged("sms-settings-reset");
         return getSmsSettings();
     }
 
@@ -219,6 +278,7 @@ public class SystemVerificationSettingsAppService {
         upsertPlatformConfigValue(PASSKEY_RP_NAME_KEY, "通行密钥 RP 名称", rpName, "WebAuthn RP 显示名称", operatorId);
         upsertPlatformConfigValue(PASSKEY_ALLOWED_ORIGINS_KEY, "通行密钥允许 Origin", String.join("\n", origins), "WebAuthn 允许的前端 Origin", operatorId);
         upsertPlatformConfigValue(PASSKEY_CHALLENGE_TTL_KEY, "通行密钥 Challenge TTL", String.valueOf(ttl), "WebAuthn challenge 有效期秒数", operatorId);
+        markPublicBootstrapChanged("passkey-settings-update");
         return getPasskeySettings();
     }
 
@@ -231,11 +291,15 @@ public class SystemVerificationSettingsAppService {
         upsertPlatformConfigValue(PASSKEY_RP_NAME_KEY, "通行密钥 RP 名称", "", "WebAuthn RP 显示名称", operatorId);
         upsertPlatformConfigValue(PASSKEY_ALLOWED_ORIGINS_KEY, "通行密钥允许 Origin", "", "WebAuthn 允许的前端 Origin", operatorId);
         upsertPlatformConfigValue(PASSKEY_CHALLENGE_TTL_KEY, "通行密钥 Challenge TTL", "120", "WebAuthn challenge 有效期秒数", operatorId);
+        markPublicBootstrapChanged("passkey-settings-reset");
         return getPasskeySettings();
     }
 
     private SmsVerificationSettingsRecord loadSmsSettingsRecord() {
-        Map<String, String> values = loadConfigValuesByKeys(smsConfigKeys());
+        return toSmsSettingsRecord(loadConfigValuesByKeys(smsConfigKeys()));
+    }
+
+    private SmsVerificationSettingsRecord toSmsSettingsRecord(Map<String, String> values) {
         boolean enabled = Boolean.parseBoolean(defaultIfBlank(values.get(SMS_CONFIG_ENABLED_KEY), "false"));
         String provider = defaultIfBlank(values.get(SMS_CONFIG_PROVIDER_KEY), "aliyun");
         String signName = defaultIfBlank(values.get(SMS_CONFIG_SIGN_NAME_KEY), "");
@@ -341,7 +405,7 @@ public class SystemVerificationSettingsAppService {
     }
 
     private Map<String, String> loadConfigValuesByKeys(List<String> keys) {
-        String cacheKey = configSnapshotCacheKey(keys);
+        String cacheKey = configSnapshotCacheKey(keys, currentPublicBootstrapVersion());
         Map<String, String> cached = configSnapshotCache.getIfPresent(cacheKey);
         if (cached != null) {
             return new LinkedHashMap<>(cached);
@@ -365,11 +429,21 @@ public class SystemVerificationSettingsAppService {
         }
     }
 
+    private Map<String, String> loadConfigValuesByKeysFresh(List<String> keys) {
+        return queryConfigValuesByKeys(keys);
+    }
+
     private Map<String, String> loadConfigValuesByKeysFromDatabase(String cacheKey, List<String> keys) {
         Map<String, String> cached = configSnapshotCache.getIfPresent(cacheKey);
         if (cached != null) {
             return new LinkedHashMap<>(cached);
         }
+        Map<String, String> valueByKey = queryConfigValuesByKeys(keys);
+        configSnapshotCache.put(cacheKey, new LinkedHashMap<>(valueByKey));
+        return valueByKey;
+    }
+
+    private Map<String, String> queryConfigValuesByKeys(List<String> keys) {
         String placeholders = keys.stream().map(item -> "?").collect(Collectors.joining(", "));
         String sql = """
                 select config_key as configKey, config_value as configValue
@@ -388,17 +462,31 @@ public class SystemVerificationSettingsAppService {
                 valueByKey.put(configKey, normalizeConfigText(decryptConfigValue(configKey, normalizeConfigTextRaw(row.get("configValue")))));
             }
         }
-        configSnapshotCache.put(cacheKey, new LinkedHashMap<>(valueByKey));
         return valueByKey;
     }
 
-    private String configSnapshotCacheKey(List<String> keys) {
-        return "global:" + keys.stream().sorted().collect(Collectors.joining(","));
+    private String configSnapshotCacheKey(List<String> keys, Long publicBootstrapVersion) {
+        String keySignature = keys.stream().sorted().collect(Collectors.joining(","));
+        if (publicBootstrapVersion == null) {
+            return "global:" + keySignature;
+        }
+        return "global:v" + publicBootstrapVersion + ":" + keySignature;
     }
 
     private void invalidateConfigCaches() {
         configSnapshotCache.invalidateAll();
         configLoadInFlight.invalidateAll();
+        cachedPublicBootstrapVersion = null;
+    }
+
+    private void markPublicBootstrapChanged(String eventKey) {
+        if (readModelVersionService != null) {
+            readModelVersionService.bump(
+                    READ_MODEL_CONTEXT_PLATFORM,
+                    READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP,
+                    eventKey
+            );
+        }
     }
 
     private String encryptConfigValue(String configKey, String configValue) {
@@ -439,21 +527,37 @@ public class SystemVerificationSettingsAppService {
 
     private boolean isTotpEnabled() {
         Map<String, String> values = loadConfigValuesByKeys(List.of(TOTP_CONFIG_ENABLED_KEY));
+        return isTotpEnabled(values);
+    }
+
+    private boolean isTotpEnabled(Map<String, String> values) {
         return Boolean.parseBoolean(defaultIfBlank(values.get(TOTP_CONFIG_ENABLED_KEY), "true"));
     }
 
     private boolean isEmailLoginEnabled() {
         Map<String, String> values = loadConfigValuesByKeys(List.of(EMAIL_LOGIN_ENABLED_KEY));
+        return isEmailLoginEnabled(values);
+    }
+
+    private boolean isEmailLoginEnabled(Map<String, String> values) {
         return Boolean.parseBoolean(defaultIfBlank(values.get(EMAIL_LOGIN_ENABLED_KEY), String.valueOf(properties.isEmailLoginEnabled())));
     }
 
     private boolean isPasswordLoginEnabled() {
         Map<String, String> values = loadConfigValuesByKeys(List.of(PASSWORD_LOGIN_ENABLED_KEY));
+        return isPasswordLoginEnabled(values);
+    }
+
+    private boolean isPasswordLoginEnabled(Map<String, String> values) {
         return Boolean.parseBoolean(defaultIfBlank(values.get(PASSWORD_LOGIN_ENABLED_KEY), "true"));
     }
 
     private List<String> loginModeOrder() {
         Map<String, String> values = loadConfigValuesByKeys(List.of(LOGIN_MODE_ORDER_KEY));
+        return loginModeOrder(values);
+    }
+
+    private List<String> loginModeOrder(Map<String, String> values) {
         String configured = values.get(LOGIN_MODE_ORDER_KEY);
         if (!StringUtils.hasText(configured)) {
             return DEFAULT_LOGIN_MODE_ORDER;
@@ -480,9 +584,40 @@ public class SystemVerificationSettingsAppService {
         return isEmailLoginEnabled() && smtpMailService.isConfigured();
     }
 
+    private boolean isEmailLoginAvailable(Map<String, String> values) {
+        return isEmailLoginEnabled(values) && smtpMailService.isConfigured();
+    }
+
     private boolean isSmsLoginAvailable() {
         SmsVerificationSettingsRecord smsSettings = loadSmsSettingsRecord();
         return smsSettings.enabled() && smsSettings.configured();
+    }
+
+    private boolean isSmsLoginAvailable(Map<String, String> values) {
+        SmsVerificationSettingsRecord smsSettings = toSmsSettingsRecord(values);
+        return smsSettings.enabled() && smsSettings.configured();
+    }
+
+    private Long currentPublicBootstrapVersion() {
+        if (readModelVersionService == null) {
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        CachedReadModelVersion cached = cachedPublicBootstrapVersion;
+        if (cached != null && cached.expiresAtMillis() > now) {
+            return cached.version();
+        }
+        Long version = null;
+        try {
+            version = readModelVersionService.currentVersion(
+                    READ_MODEL_CONTEXT_PLATFORM,
+                    READ_MODEL_SCOPE_PUBLIC_BOOTSTRAP
+            );
+        } catch (Throwable ignored) {
+            version = null;
+        }
+        cachedPublicBootstrapVersion = new CachedReadModelVersion(version, now + READ_MODEL_VERSION_CACHE_TTL_MS);
+        return version;
     }
 
     private String normalizeConfigText(Object value) {
@@ -504,5 +639,8 @@ public class SystemVerificationSettingsAppService {
             String region,
             boolean configured
     ) {
+    }
+
+    private record CachedReadModelVersion(Long version, long expiresAtMillis) {
     }
 }

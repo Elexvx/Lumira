@@ -14,13 +14,14 @@ class PaymentServiceSqlHotPathTest {
     void hotPathSqlInOutboxServiceShouldUseDeleteAwareDispatchFiltersAndBoundedLimit() throws Exception {
         String source = serviceSource("src/main/java/com/lumira/payment/service/PaymentOutboxService.java");
 
-        assertThat(source).contains(normalizeSql("select id, user_id as userId"));
-        assertThat(source).contains(normalizeSql("from payment_event_outbox"));
+        assertThat(source).contains(normalizeSql("from payment_event_outbox force index (idx_payment_outbox_owner_queue)"));
         assertThat(source).contains(normalizeSql("where deleted = 0"));
         assertThat(source).contains(normalizeSql("source_type = ?"));
         assertThat(source).contains(normalizeSql("status = ? or (status = ? and (next_retry_at is null or next_retry_at <= ?)"));
+        assertThat(source).contains(normalizeSql("or (status = ? and claim_expires_at is not null and claim_expires_at <= ?)"));
         assertThat(source).contains(normalizeSql("order by created_at asc, id asc"));
         assertThat(source).contains(normalizeSql("limit ?"));
+        assertThat(source).contains(normalizeSql("claim_token = ?"));
         assertThat(source).contains(normalizeSql("sum(case when status = 'PENDING' then 1 else 0 end"));
         assertThat(source).contains(normalizeSql("sum(case when status = 'FAILED' then 1 else 0 end"));
         assertThat(source).contains(normalizeSql("sum(case when status = 'DEAD_LETTER' then 1 else 0 end"));
@@ -52,6 +53,7 @@ class PaymentServiceSqlHotPathTest {
 
         assertThat(migrationSql).contains("idx_payment_outbox_deleted_status_retry_created");
         assertThat(migrationSql).contains("idx_payment_outbox_deleted_status");
+        assertThat(migrationSql).contains("idx_payment_outbox_claim_token");
         assertThat(migrationSql).contains("idx_payment_webhook_event_provider_nonce_deleted_received");
         assertThat(migrationSql).contains("idx_payment_webhook_event_provider_event_deleted_id");
         assertThat(migrationSql).contains("idx_payment_provider_config_provider_deleted_id");

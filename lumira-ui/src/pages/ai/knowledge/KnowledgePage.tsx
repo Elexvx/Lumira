@@ -16,9 +16,10 @@ import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import { DeleteOutlined, EditOutlined, FileSearchOutlined, ReloadOutlined } from '@ant-design/icons';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { request } from '@/services/common/request';
+import type { RequestOptions } from '@/services/common/request';
 import type { AiKnowledgeBasePayload } from '@/services/ai/types';
 import { confirmAction } from '@/utils/confirm';
-import { API_OPTS, extractErrorMessage } from '@/utils/errorMessage';
+import { API_OPTS, extractErrorMessage, showErrorMessage } from '@/utils/errorMessage';
 import { DEFAULT_DOCUMENT_UPLOAD_MAX_SIZE_MB, DOCUMENT_UPLOAD_ACCEPT, validateDocumentUploadFile } from '@/utils/uploadValidation';
 import { STANDARD_DRAWER_WIDTH } from '@/constants/ui';
 import type { AiKnowledgeBaseRecord, AiKnowledgeDocumentRecord, AiKnowledgeReferenceRecord, PagedResult } from '@/types/api';
@@ -26,6 +27,7 @@ import type { FormInstance } from 'antd';
 import type { UploadProps } from 'antd';
 import { getLocale } from '@umijs/max';
 import { normalizeLocale } from '@/i18n/locale';
+import { ErrorCode } from '@/enums/errorCode';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
@@ -38,6 +40,26 @@ const SCOPE_TABS = [
 ];
 
 const formatNumber = (value?: number | null) => (typeof value === 'number' ? value.toLocaleString() : '0');
+
+const isNotFoundError = (error: unknown) =>
+  Boolean(error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === ErrorCode.NOT_FOUND);
+
+const requestWithV2ReadFallback = async <T,>(
+  url: string,
+  v2Url: string,
+  options: RequestOptions,
+  fallbackMessage: string,
+) => {
+  try {
+    return await request<T>(url, { ...options, silent: true });
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return request<T>(v2Url, options);
+    }
+    showErrorMessage(error, fallbackMessage);
+    throw error;
+  }
+};
 
 const visibilityTag = (scope?: string | null) => {
   if (scope === 'PLATFORM') {
@@ -232,11 +254,16 @@ const useKnowledgePageAccess = () => {
     }
     setSearching(true);
     try {
-      const records = await request<AiKnowledgeReferenceRecord[]>('/ai/knowledge-bases/search', {
-        method: 'POST',
-        data: { query, knowledgeBaseIds: [selectedKnowledgeBase.id], limit: 6 },
-        ...requestOptions,
-      });
+      const records = await requestWithV2ReadFallback<AiKnowledgeReferenceRecord[]>(
+        '/ai/knowledge-bases/search',
+        '/v2/ai/knowledge-bases/search',
+        {
+          method: 'POST',
+          data: { query, knowledgeBaseIds: [selectedKnowledgeBase.id], limit: 6 },
+          ...requestOptions,
+        },
+        t('知识库检索失败，请稍后重试', 'Knowledge base search failed. Please try again later.'),
+      );
       setSearchResults(records);
     } finally {
       setSearching(false);
@@ -269,11 +296,16 @@ const useKnowledgePageAccess = () => {
     async (params: { current?: number; pageSize?: number; scope?: string | number | null; [key: string]: unknown }) => {
       const { current, pageSize, scope, ...rest } = params;
       const requestScope = typeof scope === 'string' ? scope : activeScope;
-      const result = await request<PagedResult<AiKnowledgeBaseRecord>>('/ai/knowledge-bases', {
-        method: 'GET',
-        params: { pageNo: Number(current) || 1, pageSize: Number(pageSize) || 10, scope: requestScope, ...rest },
-        ...requestOptions,
-      });
+      const result = await requestWithV2ReadFallback<PagedResult<AiKnowledgeBaseRecord>>(
+        '/ai/knowledge-bases',
+        '/v2/ai/knowledge-bases',
+        {
+          method: 'GET',
+          params: { pageNo: Number(current) || 1, pageSize: Number(pageSize) || 10, scope: requestScope, ...rest },
+          ...requestOptions,
+        },
+        t('知识库列表加载失败，请稍后重试', 'Failed to load knowledge bases. Please try again later.'),
+      );
       return adaptPageResult(result);
     },
     [activeScope, requestOptions],
@@ -283,13 +315,15 @@ const useKnowledgePageAccess = () => {
       if (!selectedKnowledgeBase) {
         return { data: [], success: true, total: 0 };
       }
-      const result = await request<PagedResult<AiKnowledgeDocumentRecord>>(
+      const result = await requestWithV2ReadFallback<PagedResult<AiKnowledgeDocumentRecord>>(
         `/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents`,
+        `/v2/ai/knowledge-bases/${selectedKnowledgeBase.id}/documents`,
         {
           method: 'GET',
           params: { pageNo: Number(params.current) || 1, pageSize: Number(params.pageSize) || 10 },
           ...requestOptions,
         },
+        t('知识库文档加载失败，请稍后重试', 'Failed to load knowledge base documents. Please try again later.'),
       );
       return adaptPageResult(result);
     },

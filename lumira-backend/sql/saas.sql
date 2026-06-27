@@ -681,6 +681,9 @@ CREATE TABLE `payment_event_outbox` (
   `retry_count` int NOT NULL DEFAULT '0',
   `next_retry_at` datetime DEFAULT NULL,
   `last_error_message` varchar(512) DEFAULT NULL,
+  `claimed_by` varchar(128) DEFAULT NULL,
+  `claim_token` varchar(128) DEFAULT NULL,
+  `claim_expires_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint DEFAULT NULL,
@@ -866,6 +869,9 @@ CREATE TABLE `plugin_event_outbox` (
   `retry_count` int NOT NULL DEFAULT '0',
   `next_retry_at` datetime DEFAULT NULL,
   `last_error_message` varchar(512) DEFAULT NULL,
+  `claimed_by` varchar(128) DEFAULT NULL,
+  `claim_token` varchar(128) DEFAULT NULL,
+  `claim_expires_at` datetime DEFAULT NULL,
   `created_by` bigint NOT NULL DEFAULT '0',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_by` bigint NOT NULL DEFAULT '0',
@@ -2175,6 +2181,8 @@ ALTER TABLE `payment_provider_config`
     ADD INDEX `idx_payment_provider_config_provider_deleted_id` (`provider_code`, `deleted`, `id`);
 ALTER TABLE `payment_event_outbox`
     ADD INDEX `idx_payment_outbox_owner_queue` (`deleted`, `source_type`, `status`, `next_retry_at`, `created_at`, `id`);
+ALTER TABLE `payment_event_outbox`
+    ADD INDEX `idx_payment_outbox_claim_token` (`claim_token`);
 ALTER TABLE `sys_plugin_definition`
     ADD INDEX `idx_sys_plugin_definition_deleted_status_sort_code` (`deleted`, `status`, `sort_no`, `plugin_code`);
 ALTER TABLE `sys_plugin_version`
@@ -2189,6 +2197,8 @@ ALTER TABLE `sys_plugin_permission_rel`
     ADD INDEX `idx_sys_plugin_permission_rel_code_version_deleted` (`plugin_code`, `plugin_version`, `deleted`, `id`);
 ALTER TABLE `plugin_event_outbox`
     ADD INDEX `idx_plugin_event_outbox_deleted_status_retry_created` (`deleted`, `status`, `next_retry_at`, `created_at`, `id`);
+ALTER TABLE `plugin_event_outbox`
+    ADD INDEX `idx_plugin_event_outbox_claim_token` (`claim_token`);
 ALTER TABLE `msg_notice_read`
     ADD INDEX `idx_msg_notice_read_notice_user_deleted` (`notice_id`, `user_id`, `deleted`);
 ALTER TABLE `file_object`
@@ -2390,13 +2400,13 @@ INSERT INTO `sys_menu` (
 )
 VALUES
     (-955, 0, 'dashboard.home', '首页', 'MENU', '/dashboard/home', '@/pages/dashboard/DashboardHomePage', 'DashboardOutlined', 0, 'dashboard:view', 'ENABLED', 0, 0, 0),
-    (-956, 0, 'files.download-center', '下载中心', 'MENU', '/download-center', '@/pages/files/DownloadCenter', 'DownloadOutlined', 1, 'download:center:view', 'ENABLED', 0, 0, 0),
+    (-956, -1100, 'files.download-center', '下载中心', 'MENU', '/data-management/download-center', '@/pages/files/DownloadCenter', 'DownloadOutlined', 6, 'download:center:view', 'ENABLED', 0, 0, 0),
     (-990, 0, 'ai.root', 'AI', 'CATALOG', '/ai', 'redirect:/ai/assistant', 'RobotOutlined', 2, NULL, 'ENABLED', 0, 0, 0),
     (-989, -990, 'ai.assistant', 'AI 助手', 'MENU', '/ai/assistant', '@/pages/ai/Assistant', 'RobotOutlined', 1, 'ai:assistant:view', 'ENABLED', 0, 0, 0),
     (-1051, -989, 'ai.assistant.send', '发送对话', 'BUTTON', NULL, NULL, NULL, 1, 'ai:chat:send', 'ENABLED', 0, 0, 0),
     (-988, -990, 'ai.knowledge', '知识库', 'MENU', '/ai/knowledge', '@/pages/ai/knowledge/KnowledgePage', 'FileSearchOutlined', 2, 'ai:knowledge:view', 'ENABLED', 0, 0, 0),
     (-1100, 0, 'data.management.root', '数据管理', 'CATALOG', '/data-management', 'redirect:/competitions/management', 'DatabaseOutlined', 3, NULL, 'ENABLED', 0, 0, 0),
-    (-1101, -1100, 'data.query-center', '查询中心', 'CATALOG', '/data-management/query-center', 'redirect:/team/search', 'SearchOutlined', 5, NULL, 'ENABLED', 0, 0, 0),
+    (-1101, -1100, 'data.query-center', '查询中心', 'CATALOG', '/data-management/query-center', 'redirect:/team/search', 'SearchOutlined', 7, NULL, 'ENABLED', 0, 0, 0),
     (-1041, 0, 'activity.root', '活动', 'CATALOG', '/activities', 'redirect:/activities/management', 'CalendarOutlined', 90, NULL, 'DISABLED', 0, 0, 1),
     (-1052, -1100, 'activity.activities', '活动管理', 'MENU', '/activities/management', '@/pages/activity', 'CalendarOutlined', 2, 'aiadc:activity:view', 'ENABLED', 0, 0, 0),
     (-1053, -1101, 'activity.search', '活动查询', 'MENU', '/activities/search', '@/pages/activity', 'SearchOutlined', 3, 'aiadc:activity:view', 'ENABLED', 0, 0, 0),

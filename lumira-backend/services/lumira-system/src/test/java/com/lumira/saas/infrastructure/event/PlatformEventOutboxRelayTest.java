@@ -23,6 +23,21 @@ class PlatformEventOutboxRelayTest {
     }
 
     @Test
+    void dispatchPendingEventsShouldDrainMultipleRoundsWhenBacklogFillsBatch() {
+        PlatformEventOutboxService service = mock(PlatformEventOutboxService.class);
+        PlatformEventDispatcher dispatcher = mock(PlatformEventDispatcher.class);
+        PlatformEventProperties properties = new PlatformEventProperties();
+        properties.getOutbox().setRelayEnabled(true);
+        properties.getOutbox().setBatchSize(25);
+        properties.getOutbox().setMaxDrainRounds(4);
+        when(service.dispatchPending(dispatcher, 25)).thenReturn(25, 25, 10);
+
+        new PlatformEventOutboxRelay(service, dispatcher, properties).dispatchPendingEvents();
+
+        verify(service, org.mockito.Mockito.times(3)).dispatchPending(dispatcher, 25);
+    }
+
+    @Test
     void dispatchPendingEventsShouldSkipWhenRelayDisabled() {
         PlatformEventOutboxService service = mock(PlatformEventOutboxService.class);
         PlatformEventDispatcher dispatcher = mock(PlatformEventDispatcher.class);
@@ -45,5 +60,22 @@ class PlatformEventOutboxRelayTest {
         new PlatformEventOutboxRelay(service, dispatcher, properties).replay(42L);
 
         verify(service).replayById(42L, dispatcher);
+    }
+
+    @Test
+    void dispatchPendingEventsShouldExpandBurstRoundsWhenDispatchableBacklogIsHigh() {
+        PlatformEventOutboxService service = mock(PlatformEventOutboxService.class);
+        PlatformEventDispatcher dispatcher = mock(PlatformEventDispatcher.class);
+        PlatformEventProperties properties = new PlatformEventProperties();
+        properties.getOutbox().setRelayEnabled(true);
+        properties.getOutbox().setBatchSize(25);
+        properties.getOutbox().setMaxDrainRounds(2);
+        properties.getOutbox().setMaxBurstRounds(6);
+        when(service.dispatchableBacklog()).thenReturn(120L);
+        when(service.dispatchPending(dispatcher, 25)).thenReturn(25, 25, 25, 25, 20);
+
+        new PlatformEventOutboxRelay(service, dispatcher, properties).dispatchPendingEvents();
+
+        verify(service, org.mockito.Mockito.times(5)).dispatchPending(dispatcher, 25);
     }
 }

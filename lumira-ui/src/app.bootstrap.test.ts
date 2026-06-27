@@ -227,6 +227,39 @@ describe('getAppInitialState', () => {
     expect(mocks.clearAuthSession).not.toHaveBeenCalled();
   }, 15_000);
 
+  it('reuses menu resources from auth bootstrap when they are already present', async () => {
+    mocks.restoreSession.mockResolvedValue({
+      currentUser: {
+        userId: 10,
+        username: 'ordinary',
+        nickname: 'Ordinary User',
+        permissions: ['dashboard:view'],
+        sessionId: 'session-ordinary',
+      },
+      securitySettings: {},
+      runtimeAppearanceSettings: {
+        brandingSettings: { websiteName: 'Lumira Fast' },
+        watermarkSettings: { enabled: false },
+        floatingWindowSettings: { apiDocsQrEnabled: false },
+      },
+      menuTree: [{ menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' }],
+      availablePlugins: [{ pluginCode: 'work-order-feedback', pluginName: '工单反馈', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' }],
+    });
+
+    const { getAppInitialState } = await import('@/app.bootstrap');
+    const initialState = await getAppInitialState();
+
+    expect(initialState.menuTree).toEqual([{ menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' }]);
+    expect(initialState.availablePlugins).toEqual([
+      { pluginCode: 'work-order-feedback', pluginName: '工单反馈', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' },
+    ]);
+    expect(initialState.brandingSettings.websiteName).toBe('Lumira Fast');
+    expect(mocks.request).not.toHaveBeenCalledWith('/v2/plugins/current/bootstrap', expect.any(Object));
+    expect(mocks.request).not.toHaveBeenCalledWith('/v1/plugins/current/bootstrap', expect.any(Object));
+    expect(mocks.request).not.toHaveBeenCalledWith('/v2/platform/runtime-appearance-settings', expect.any(Object));
+    expect(mocks.request).not.toHaveBeenCalledWith('/v1/system/runtime-appearance-settings', expect.any(Object));
+  });
+
   it('falls back to authenticated v1 platform settings when v2 runtime appearance endpoint is unavailable', async () => {
     mocks.request.mockImplementation(async (url: string) => {
       if (url === '/v2/platform/runtime-appearance-settings') {

@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.user.app;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.modules.system.export.ExcelExportService;
@@ -30,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class UserExportAppService {
     private static final String MODULE_KEY = "system:user";
     private static final String XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";

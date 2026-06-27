@@ -1,6 +1,7 @@
 package com.lumira.saas.modules.system.verification;
 
 import com.lumira.common.security.FieldCryptoService;
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import com.lumira.saas.modules.system.dto.SystemDTO;
@@ -30,7 +31,12 @@ class WechatLoginSettingsServiceTest {
                         config("verification.wechat-login.state-expire-minutes", "15")
                 ));
 
-        WechatLoginSettingsService service = new WechatLoginSettingsService(mapper, new WechatLoginProperties(), cryptoService());
+        WechatLoginSettingsService service = new WechatLoginSettingsService(
+                mapper,
+                new WechatLoginProperties(),
+                cryptoService(),
+                null
+        );
 
         WechatLoginSettingsService.WechatLoginSettingsRecord first = service.loadSettings();
         WechatLoginSettingsService.WechatLoginSettingsRecord second = service.loadSettings();
@@ -43,6 +49,7 @@ class WechatLoginSettingsServiceTest {
     @Test
     void updateSettingsShouldInvalidateCachedSnapshot() {
         SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
+        ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);
         when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
                 .thenReturn(List.of(
                         config("verification.wechat-login.enabled", "true"),
@@ -59,7 +66,12 @@ class WechatLoginSettingsServiceTest {
                         config("verification.wechat-login.state-expire-minutes", "20")
                 ));
 
-        WechatLoginSettingsService service = new WechatLoginSettingsService(mapper, new WechatLoginProperties(), cryptoService());
+        WechatLoginSettingsService service = new WechatLoginSettingsService(
+                mapper,
+                new WechatLoginProperties(),
+                cryptoService(),
+                readModelVersionService
+        );
         WechatLoginSettingsService.WechatLoginSettingsRecord before = service.loadSettings();
         assertThat(before.appId()).isEqualTo("appid-1");
 
@@ -76,6 +88,46 @@ class WechatLoginSettingsServiceTest {
         assertThat(updated.getAppId()).isEqualTo("appid-2");
         verify(mapper, times(2)).listEffectiveValues(eq("PLATFORM"), any());
         verify(mapper, times(5)).upsertPlatformConfig(any());
+        verify(readModelVersionService).bump("platform", "public-bootstrap", "wechat-settings-update");
+    }
+
+    @Test
+    void loadSettingsReloadsWhenPublicBootstrapVersionChanges() throws Exception {
+        SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
+        ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);
+        when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
+                .thenReturn(List.of(
+                        config("verification.wechat-login.enabled", "true"),
+                        config("verification.wechat-login.app-id", "appid-1"),
+                        config("verification.wechat-login.app-secret", "secret-1"),
+                        config("verification.wechat-login.redirect-uri", "https://example.com/callback"),
+                        config("verification.wechat-login.state-expire-minutes", "15")
+                ))
+                .thenReturn(List.of(
+                        config("verification.wechat-login.enabled", "false"),
+                        config("verification.wechat-login.app-id", "appid-2"),
+                        config("verification.wechat-login.app-secret", "secret-2"),
+                        config("verification.wechat-login.redirect-uri", "https://example.com/new-callback"),
+                        config("verification.wechat-login.state-expire-minutes", "20")
+                ));
+        when(readModelVersionService.currentVersion("platform", "public-bootstrap"))
+                .thenReturn(11L, 12L);
+
+        WechatLoginSettingsService service = new WechatLoginSettingsService(
+                mapper,
+                new WechatLoginProperties(),
+                cryptoService(),
+                readModelVersionService
+        );
+
+        WechatLoginSettingsService.WechatLoginSettingsRecord before = service.loadSettings();
+        Thread.sleep(2100L);
+        WechatLoginSettingsService.WechatLoginSettingsRecord after = service.loadSettings();
+
+        assertThat(before.appId()).isEqualTo("appid-1");
+        assertThat(after.appId()).isEqualTo("appid-2");
+        verify(mapper, times(2)).listEffectiveValues(eq("PLATFORM"), any());
+        verify(readModelVersionService, times(2)).currentVersion("platform", "public-bootstrap");
     }
 
     private static FieldCryptoService cryptoService() {

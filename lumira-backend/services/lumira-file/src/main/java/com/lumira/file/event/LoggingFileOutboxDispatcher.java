@@ -1,10 +1,12 @@
 package com.lumira.file.event;
 
+import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnLumiraAsyncEnabled
 public class LoggingFileOutboxDispatcher implements FileOutboxDispatcher {
 
     private static final Logger logger = LoggerFactory.getLogger(LoggingFileOutboxDispatcher.class);

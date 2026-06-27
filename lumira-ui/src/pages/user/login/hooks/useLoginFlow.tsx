@@ -21,6 +21,9 @@ import type { AgreementSettings, BrandingSettings, LoginCapabilities } from '@/t
 import { loadSecuritySettings } from '@/auth/sessionSecurity';
 
 const INITIAL_PASSWORD = '123456';
+const LOGIN_PAGE_PUBLIC_REFRESH_TIMEOUT_MS = 1500;
+const LOGIN_ENCRYPTION_KEY_TIMEOUT_MS = 2500;
+const LOGIN_PAGE_PUBLIC_BOOTSTRAP_TTL_MS = 30_000;
 type ForcedPasswordChangeFormValues = {
   newPassword: string;
   confirmPassword: string;
@@ -91,6 +94,10 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
   const agreementSettings = useMemo(() => normalizeAgreementSettings(initialState?.agreementSettings || DEFAULT_AGREEMENT_SETTINGS), [initialState?.agreementSettings]);
   const loginCapabilities: LoginCapabilitiesState = initialState?.loginCapabilities || DEFAULT_LOGIN_CAPABILITIES;
   const availableLoginModes = useMemo(() => getAvailableLoginModes(loginCapabilities), [loginCapabilities]);
+  const hasFreshPublicBootstrapSnapshot = useMemo(() => {
+    const loadedAt = initialState?.publicBootstrapLoadedAt;
+    return typeof loadedAt === 'number' && Date.now() - loadedAt < LOGIN_PAGE_PUBLIC_BOOTSTRAP_TTL_MS;
+  }, [initialState?.publicBootstrapLoadedAt]);
 
   useEffect(() => {
     brandingSettingsRef.current = brandingSettings;
@@ -109,6 +116,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
       silent: true,
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
+      timeoutMs: LOGIN_PAGE_PUBLIC_REFRESH_TIMEOUT_MS,
     })
       .then((capabilities) => {
         if (disposed) {
@@ -137,7 +145,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
   }, [initialState?.loginCapabilities, setInitialState]);
 
   useEffect(() => {
-    if (initialState?.currentUser) {
+    if (initialState?.currentUser || hasFreshPublicBootstrapSnapshot) {
       return;
     }
 
@@ -149,6 +157,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
       silent: true,
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
+      timeoutMs: LOGIN_PAGE_PUBLIC_REFRESH_TIMEOUT_MS,
     })
       .then((settings) => {
         if (disposed) {
@@ -169,6 +178,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
           return {
             ...prev,
             agreementSettings: normalizedAgreement,
+            publicBootstrapLoadedAt: Date.now(),
           };
         });
       })
@@ -179,10 +189,10 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
     return () => {
       disposed = true;
     };
-  }, [initialState?.currentUser, setInitialState]);
+  }, [hasFreshPublicBootstrapSnapshot, initialState?.currentUser, setInitialState]);
 
   useEffect(() => {
-    if (initialState?.currentUser) {
+    if (initialState?.currentUser || hasFreshPublicBootstrapSnapshot) {
       return;
     }
 
@@ -202,6 +212,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
             ? {
                 ...prev,
                 securitySettings,
+                publicBootstrapLoadedAt: Date.now(),
               }
             : prev,
         );
@@ -213,10 +224,15 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
     return () => {
       disposed = true;
     };
-  }, [initialState?.currentUser, setInitialState]);
+  }, [hasFreshPublicBootstrapSnapshot, initialState?.currentUser, setInitialState]);
 
   useEffect(() => {
     if (initialState?.currentUser) {
+      return;
+    }
+
+    if (hasFreshPublicBootstrapSnapshot) {
+      applyBrandingRuntime(brandingSettingsRef.current);
       return;
     }
 
@@ -228,6 +244,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
       silent: true,
       autoRedirectOnUnauthorized: false,
       allowUnauthorizedWithoutRedirect: true,
+      timeoutMs: LOGIN_PAGE_PUBLIC_REFRESH_TIMEOUT_MS,
     })
       .then((settings) => {
         if (disposed) {
@@ -241,6 +258,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
             ? {
                 ...prev,
                 brandingSettings: normalizedBranding,
+                publicBootstrapLoadedAt: Date.now(),
                 brandingRevision:
                   prev.brandingSettings?.websiteName === normalizedBranding.websiteName &&
                   prev.brandingSettings?.websiteLogoUrl === normalizedBranding.websiteLogoUrl &&
@@ -258,7 +276,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
     return () => {
       disposed = true;
     };
-  }, [initialState?.currentUser, setInitialState]);
+  }, [hasFreshPublicBootstrapSnapshot, initialState?.currentUser, setInitialState]);
 
   const loginPageStyle = useMemo(
     () =>
@@ -303,6 +321,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
         silent: true,
         skipAuth: true,
         method: 'GET',
+        timeoutMs: LOGIN_ENCRYPTION_KEY_TIMEOUT_MS,
       })
         .catch(() =>
           request<LoginEncryptionKey>('/v1/auth/login-encryption-key', {
@@ -311,6 +330,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
             silent: true,
             skipAuth: true,
             method: 'GET',
+            timeoutMs: LOGIN_ENCRYPTION_KEY_TIMEOUT_MS,
           }),
         )
         .then((key) => {

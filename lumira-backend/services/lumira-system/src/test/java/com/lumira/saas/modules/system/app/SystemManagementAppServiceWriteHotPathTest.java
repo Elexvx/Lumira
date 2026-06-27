@@ -32,6 +32,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class SystemManagementAppServiceWriteHotPathTest {
 
@@ -58,6 +59,50 @@ class SystemManagementAppServiceWriteHotPathTest {
         assertEquals(13, env.service.countMenus());
 
         assertEquals(2, env.jdbcTemplate.menuCountQueries);
+    }
+
+    @Test
+    void listMenusShouldReuseVersionedCacheUntilReadModelVersionCacheExpires() throws InterruptedException {
+        TestEnvironment env = new TestEnvironment();
+
+        assertEquals(1, env.service.listMenus(buildCurrentUser()).size());
+        assertEquals(1, env.service.listMenus(buildCurrentUser()).size());
+        assertEquals(1, env.jdbcTemplate.menuTreeQueries);
+
+        env.jdbcTemplate.menuTreeVersion = 2L;
+        Thread.sleep(2100L);
+
+        assertEquals(1, env.service.listMenus(buildCurrentUser()).size());
+        assertEquals(2, env.jdbcTemplate.menuTreeQueries);
+    }
+
+    @Test
+    void listPermissionTreeShouldReuseVersionedPermissionCatalogUntilVersionChanges() {
+        TestEnvironment env = new TestEnvironment();
+        when(env.permissionSnapshotService.currentPermissionSnapshotVersion()).thenReturn("v1", "v1", "v2");
+
+        assertEquals(1, env.service.listPermissionTree(buildCurrentUser()).size());
+        assertEquals(1, env.service.listPermissionTree(buildCurrentUser()).size());
+        assertEquals(1, env.jdbcTemplate.menuTreeQueries);
+        assertEquals(1, env.jdbcTemplate.permissionCatalogQueries);
+
+        assertEquals(1, env.service.listPermissionTree(buildCurrentUser()).size());
+        assertEquals(1, env.jdbcTemplate.menuTreeQueries);
+        assertEquals(2, env.jdbcTemplate.permissionCatalogQueries);
+    }
+
+    @Test
+    void createMenuShouldBumpMenuReadModelVersionAndInvalidateVersionedMenuTreeCache() {
+        TestEnvironment env = new TestEnvironment();
+
+        assertEquals(1, env.service.listMenus(buildCurrentUser()).size());
+        assertEquals(1, env.jdbcTemplate.menuTreeQueries);
+
+        env.service.createMenu(buildCurrentUser(), menuRequest());
+        assertEquals(1, env.jdbcTemplate.readModelVersionBumps);
+
+        assertEquals(1, env.service.listMenus(buildCurrentUser()).size());
+        assertEquals(2, env.jdbcTemplate.menuTreeQueries);
     }
 
     @Test
@@ -126,10 +171,11 @@ class SystemManagementAppServiceWriteHotPathTest {
 
     private static final class TestEnvironment {
         private final RecordingQueryOperations jdbcTemplate = new RecordingQueryOperations();
+        private final PermissionSnapshotService permissionSnapshotService = mock(PermissionSnapshotService.class);
         private final SystemManagementAppService service = new SystemManagementAppService(
                 jdbcTemplate,
                 mock(UserDomainService.class),
-                mock(PermissionSnapshotService.class),
+                permissionSnapshotService,
                 mock(SystemPluginViewService.class),
                 mock(OnlineSessionManagementAppService.class),
                 mock(SystemVerificationAppService.class),
@@ -146,6 +192,10 @@ class SystemManagementAppServiceWriteHotPathTest {
                 mock(SystemRoleManagementAppService.class),
                 mock(FieldCryptoService.class)
         );
+
+        private TestEnvironment() {
+            when(permissionSnapshotService.currentPermissionSnapshotVersion()).thenReturn("v1");
+        }
     }
 
     private static final class RecordingQueryOperations extends MyBatisQueryOperations {
@@ -162,6 +212,10 @@ class SystemManagementAppServiceWriteHotPathTest {
         private String menuStatus;
         private int menuCount = 12;
         private int menuCountQueries;
+        private long menuTreeVersion = 1L;
+        private int readModelVersionBumps;
+        private int menuTreeQueries;
+        private int permissionCatalogQueries;
         private Long dictTypeId;
         private String dictTypeCode;
         private String dictTypeName;
@@ -192,6 +246,10 @@ class SystemManagementAppServiceWriteHotPathTest {
                     menuCount += 1;
                 }
             }
+            if (sql.contains("insert into ddd_read_model_version")) {
+                readModelVersionBumps += 1;
+                menuTreeVersion += 1;
+            }
             if (sql.contains("insert into sys_dict_type")) {
                 dictTypeCode = (String) args[0];
                 dictTypeName = (String) args[1];
@@ -216,6 +274,9 @@ class SystemManagementAppServiceWriteHotPathTest {
             if (sql.contains("select last_insert_id()")) {
                 lastInsertIdQueries += 1;
                 return requiredType.cast(901L);
+            }
+            if (sql.contains("from ddd_read_model_version")) {
+                return requiredType.cast(Long.valueOf(menuTreeVersion));
             }
             if (sql.contains("select count(1) from sys_menu")) {
                 menuCountQueries += 1;
@@ -268,6 +329,42 @@ class SystemManagementAppServiceWriteHotPathTest {
                 return (T) dictItem;
             }
             throw new EmptyResultDataAccessException(1);
+        }
+
+        @Override
+        public <T> List<T> query(String sql, RowMapper<T> rowMapper, Object... args) {
+            String normalized = sql.toLowerCase();
+            if (normalized.contains("from sys_menu") && normalized.contains("order by sort_no asc, id asc")) {
+                menuTreeQueries += 1;
+                SystemVO.MenuVO menu = new SystemVO.MenuVO();
+                menu.setId(menuId == null ? 901L : menuId);
+                menu.setParentId(0L);
+                menu.setMenuCode(menuCode == null ? "settings.menu" : menuCode);
+                menu.setMenuName(menuName == null ? "菜单管理" : menuName);
+                menu.setMenuType(menuType == null ? "PAGE" : menuType);
+                menu.setPath(menuPath == null ? "/custom/menus" : menuPath);
+                menu.setComponent(menuComponent == null ? "CustomMenuPage" : menuComponent);
+                menu.setIcon(menuIcon == null ? "menu" : menuIcon);
+                menu.setSortNo(menuSortNo == null ? 10 : menuSortNo);
+                menu.setPermissionKey(menuPermissionKey == null ? "system:menu:view" : menuPermissionKey);
+                menu.setStatus(menuStatus == null ? "ENABLED" : menuStatus);
+                return List.of((T) menu);
+            }
+            if (normalized.contains("from sys_permission")) {
+                permissionCatalogQueries += 1;
+                SystemVO.PermissionVO pagePermission = new SystemVO.PermissionVO();
+                pagePermission.setPermissionKey("system:menu:view");
+                pagePermission.setPermissionName("菜单查看");
+                pagePermission.setPermissionGroup("system");
+                pagePermission.setSourceType("SYSTEM");
+                SystemVO.PermissionVO actionPermission = new SystemVO.PermissionVO();
+                actionPermission.setPermissionKey("system:menu:update");
+                actionPermission.setPermissionName("菜单更新");
+                actionPermission.setPermissionGroup("system");
+                actionPermission.setSourceType("SYSTEM");
+                return List.of((T) pagePermission, (T) actionPermission);
+            }
+            return List.of();
         }
     }
 }

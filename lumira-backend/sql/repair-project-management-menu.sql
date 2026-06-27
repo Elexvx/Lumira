@@ -24,7 +24,8 @@ INSERT INTO `sys_menu` (
 )
 VALUES
     (-1100, 0, 'data.management.root', '数据管理', 'CATALOG', '/data-management', 'redirect:/competitions/management', 'DatabaseOutlined', 3, NULL, 'ENABLED', 0, 0, 0),
-    (-1101, -1100, 'data.query-center', '查询中心', 'CATALOG', '/data-management/query-center', 'redirect:/team/search', 'SearchOutlined', 5, NULL, 'ENABLED', 0, 0, 0),
+    (-956, -1100, 'files.download-center', '下载中心', 'MENU', '/data-management/download-center', '@/pages/files/DownloadCenter', 'DownloadOutlined', 6, 'download:center:view', 'ENABLED', 0, 0, 0),
+    (-1101, -1100, 'data.query-center', '查询中心', 'CATALOG', '/data-management/query-center', 'redirect:/team/search', 'SearchOutlined', 7, NULL, 'ENABLED', 0, 0, 0),
     (-1070, 0, 'competition.root', '赛事', 'CATALOG', '/competitions', 'redirect:/competitions/management', 'TrophyOutlined', 91, NULL, 'DISABLED', 0, 0, 1),
     (-1071, -1100, 'competition.management', '赛事管理', 'MENU', '/competitions/management', '@/pages/competition', 'TrophyOutlined', 1, 'aiadc:competition:view', 'ENABLED', 0, 0, 0),
     (-1075, -1070, 'competition.registration', '赛事报名', 'MENU', '/competitions/register', '@/pages/competition', 'FormOutlined', 2, 'aiadc:registration:create', 'DISABLED', 0, 0, 1),

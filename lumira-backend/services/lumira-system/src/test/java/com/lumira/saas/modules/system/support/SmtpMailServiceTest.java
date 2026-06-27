@@ -1,8 +1,11 @@
 package com.lumira.saas.modules.system.support;
 
+import com.lumira.common.runtime.ReadModelVersionCache;
+import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -57,6 +60,43 @@ class SmtpMailServiceTest {
 
         assertThat(service.isConfigured()).isTrue();
         service.invalidate();
+        assertThat(service.isConfigured()).isFalse();
+        verify(mapper, times(2)).listEffectiveValues(eq("PLATFORM"), any());
+    }
+
+    @Test
+    void versionChangeShouldReloadWithoutManualInvalidate() throws Exception {
+        SysConfigMapper mapper = Mockito.mock(SysConfigMapper.class);
+        when(mapper.listEffectiveValues(eq("PLATFORM"), any()))
+                .thenReturn(List.of(
+                        config("smtp.enabled", "true"),
+                        config("smtp.host", "smtp.example.com"),
+                        config("smtp.port", "587"),
+                        config("smtp.from", "noreply@example.com"),
+                        config("smtp.auth-enabled", "false")
+                ))
+                .thenReturn(List.of(
+                        config("smtp.enabled", "false"),
+                        config("smtp.host", "smtp2.example.com"),
+                        config("smtp.port", "465"),
+                        config("smtp.from", "noreply2@example.com"),
+                        config("smtp.auth-enabled", "true")
+                ));
+        AtomicLong version = new AtomicLong(11L);
+        ReadModelVersionService readModelVersionService = Mockito.mock(ReadModelVersionService.class);
+        when(readModelVersionService.currentVersion("platform", "runtime-appearance"))
+                .thenAnswer(invocation -> version.get());
+        ReadModelVersionCache readModelVersionCache = new ReadModelVersionCache(1L);
+
+        SmtpMailService service = new SmtpMailService(mapper, readModelVersionService, readModelVersionCache);
+
+        assertThat(service.isConfigured()).isTrue();
+        assertThat(service.isConfigured()).isTrue();
+        verify(mapper, times(1)).listEffectiveValues(eq("PLATFORM"), any());
+
+        version.set(12L);
+        readModelVersionCache.clear();
+
         assertThat(service.isConfigured()).isFalse();
         verify(mapper, times(2)).listEffectiveValues(eq("PLATFORM"), any());
     }

@@ -57,7 +57,7 @@ public class PublicSystemController {
     @GetMapping("/login-capabilities")
     public ApiResponse<SystemVO.LoginCapabilitiesVO> loginCapabilities() {
         return ApiResponse.success(
-                systemVerificationAppService.loadLoginCapabilities(),
+                systemVerificationAppService.loadLoginCapabilitiesFresh(),
                 TraceContext.getRequestId()
         );
     }

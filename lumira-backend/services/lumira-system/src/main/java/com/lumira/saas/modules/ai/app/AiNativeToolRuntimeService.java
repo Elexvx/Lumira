@@ -6,6 +6,7 @@ import com.lumira.api.client.FileInternalApi;
 import com.lumira.api.file.FileObjectDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.authorization.AuthorizationDecision;
@@ -66,6 +67,7 @@ public interface AiNativeToolRuntimeService {
 
 @Service
 @Primary
+@ConditionalOnLumiraControlPlaneEnabled
 class DefaultAiNativeToolRuntimeService implements AiNativeToolRuntimeService {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultAiNativeToolRuntimeService.class);

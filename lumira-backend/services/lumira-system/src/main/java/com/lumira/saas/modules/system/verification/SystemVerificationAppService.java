@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.common.web.TraceContext;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.FieldCryptoService;
@@ -39,6 +40,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 @Service
+@ConditionalOnLumiraControlPlaneEnabled
 public class SystemVerificationAppService {
 
     private static final Logger log = LoggerFactory.getLogger(SystemVerificationAppService.class);
@@ -249,6 +251,10 @@ public class SystemVerificationAppService {
 
     public SystemVO.LoginCapabilitiesVO loadLoginCapabilities() {
         return settingsAppService.loadLoginCapabilities();
+    }
+
+    public SystemVO.LoginCapabilitiesVO loadLoginCapabilitiesFresh() {
+        return settingsAppService.loadLoginCapabilitiesFresh();
     }
 
     @Transactional
