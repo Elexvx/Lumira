@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.assembly;
 import com.lumira.common.runtime.ConditionalOnLumiraControlPlaneEnabled;
 import com.lumira.saas.modules.activity.app.ActivityManagementAppService;
 import com.lumira.saas.modules.activity.controller.ActivityV2Controller;
+import com.lumira.saas.modules.activity.controller.PublicActivityController;
 import com.lumira.saas.modules.architecture.application.OwnerReadModelMetricsService;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
 import com.lumira.saas.modules.architecture.interfaces.rest.DddArchitectureCatalogController;
@@ -28,6 +29,7 @@ import org.springframework.context.annotation.Import;
 @Import({
         ActivityManagementAppService.class,
         ActivityV2Controller.class,
+        PublicActivityController.class,
         CertificateAppService.class,
         CertificateRenderService.class,
         CompetitionManagementAppService.class,

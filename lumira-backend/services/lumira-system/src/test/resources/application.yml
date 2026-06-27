@@ -90,6 +90,7 @@ saas:
       - /api/v1/public/agreement-settings
       - /api/v1/public/login-capabilities
       - /api/v1/public/security-settings
+      - /api/v1/public/aiadc/activities
       - /api/v1/public/captcha/**
       - /api/v2/platform/public/bootstrap
       - /api/v2/localization/bundles

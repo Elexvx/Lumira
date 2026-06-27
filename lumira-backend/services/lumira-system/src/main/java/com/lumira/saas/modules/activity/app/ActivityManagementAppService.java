@@ -47,47 +47,17 @@ public class ActivityManagementAppService {
             long pageSize
     ) {
         requireAuthenticated(currentUser);
-        long normalizedPageNo = Math.max(1L, pageNo);
-        long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
-        List<Object> params = new ArrayList<>();
-        StringBuilder where = new StringBuilder(" from aiadc_activity where deleted = 0");
-        if (StringUtils.hasText(keyword)) {
-            where.append(" and (title like ? or code like ? or subtitle like ?)");
-            String pattern = "%" + keyword.trim() + "%";
-            params.add(pattern);
-            params.add(pattern);
-            params.add(pattern);
-        }
-        if (StringUtils.hasText(status)) {
-            where.append(" and status = ?");
-            params.add(normalizeEnum(status, null, STATUSES, "Invalid activity status"));
-        }
-        if (StringUtils.hasText(locale)) {
-            where.append(" and find_in_set(?, replace(locale, ' ', '')) > 0");
-            params.add(normalizeEnum(locale, null, LOCALES, "Invalid activity locale"));
-        }
-        if (featured != null) {
-            where.append(" and featured = ?");
-            params.add(Boolean.TRUE.equals(featured) ? 1 : 0);
-        }
+        return listActivitiesInternal(keyword, status, locale, featured, pageNo, pageSize);
+    }
 
-        Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
-        List<Object> selectParams = new ArrayList<>(params);
-        selectParams.add((normalizedPageNo - 1) * normalizedPageSize);
-        selectParams.add(normalizedPageSize);
-        List<ActivityVO.Activity> records = jdbcTemplate.query(
-                activitySelect() + where + " order by sort asc, updated_at desc, id desc limit ?, ?",
-                new BeanPropertyRowMapper<>(ActivityVO.Activity.class),
-                selectParams.toArray()
-        );
-
-        PageResponse<ActivityVO.Activity> response = new PageResponse<>();
-        response.setRecords(records);
-        response.setTotal(total == null ? 0L : total);
-        response.setPageNo(normalizedPageNo);
-        response.setPageSize(normalizedPageSize);
-        response.setHasMore(normalizedPageNo * normalizedPageSize < response.getTotal());
-        return response;
+    public PageResponse<ActivityVO.Activity> listPublishedActivities(
+            String keyword,
+            String locale,
+            Boolean featured,
+            long pageNo,
+            long pageSize
+    ) {
+        return listActivitiesInternal(keyword, "published", locale, featured, pageNo, pageSize);
     }
 
     public ActivityVO.Activity getActivity(CurrentUser currentUser, Long id) {
@@ -201,6 +171,57 @@ public class ActivityManagementAppService {
                 id
         );
         return records.isEmpty() ? null : records.get(0);
+    }
+
+    private PageResponse<ActivityVO.Activity> listActivitiesInternal(
+            String keyword,
+            String status,
+            String locale,
+            Boolean featured,
+            long pageNo,
+            long pageSize
+    ) {
+        long normalizedPageNo = Math.max(1L, pageNo);
+        long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
+        List<Object> params = new ArrayList<>();
+        StringBuilder where = new StringBuilder(" from aiadc_activity where deleted = 0");
+        if (StringUtils.hasText(keyword)) {
+            where.append(" and (title like ? or code like ? or subtitle like ?)");
+            String pattern = "%" + keyword.trim() + "%";
+            params.add(pattern);
+            params.add(pattern);
+            params.add(pattern);
+        }
+        if (StringUtils.hasText(status)) {
+            where.append(" and status = ?");
+            params.add(normalizeEnum(status, null, STATUSES, "Invalid activity status"));
+        }
+        if (StringUtils.hasText(locale)) {
+            where.append(" and find_in_set(?, replace(locale, ' ', '')) > 0");
+            params.add(normalizeEnum(locale, null, LOCALES, "Invalid activity locale"));
+        }
+        if (featured != null) {
+            where.append(" and featured = ?");
+            params.add(Boolean.TRUE.equals(featured) ? 1 : 0);
+        }
+
+        Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
+        List<Object> selectParams = new ArrayList<>(params);
+        selectParams.add((normalizedPageNo - 1) * normalizedPageSize);
+        selectParams.add(normalizedPageSize);
+        List<ActivityVO.Activity> records = jdbcTemplate.query(
+                activitySelect() + where + " order by sort asc, updated_at desc, id desc limit ?, ?",
+                new BeanPropertyRowMapper<>(ActivityVO.Activity.class),
+                selectParams.toArray()
+        );
+
+        PageResponse<ActivityVO.Activity> response = new PageResponse<>();
+        response.setRecords(records);
+        response.setTotal(total == null ? 0L : total);
+        response.setPageNo(normalizedPageNo);
+        response.setPageSize(normalizedPageSize);
+        response.setHasMore(normalizedPageNo * normalizedPageSize < response.getTotal());
+        return response;
     }
 
     private ActivityDTO.ActivityUpsertRequest normalizeRequest(ActivityDTO.ActivityUpsertRequest request, String fallbackCode) {
