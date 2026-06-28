@@ -29,6 +29,7 @@ export interface TeamMemberRecord {
   employeeNo?: string | null;
   departmentName?: string | null;
   remark?: string | null;
+  extraValuesJson?: string | null;
   memberSource?: string | null;
   status: string;
   invitedBy?: number | null;
@@ -89,6 +90,7 @@ export interface TeamDraftMemberPayload {
   departmentName?: string;
   role?: Exclude<TeamRole, 'OWNER'>;
   remark?: string;
+  extraValues?: Record<string, string>;
 }
 
 export interface TeamInviteCreatePayload {

@@ -42,7 +42,7 @@ public class TeamInternalApiService implements TeamInternalApi {
         return jdbcTemplate.query(
                 """
                         select id, team_id as teamId, user_id as userId,
-                               role, status, joined_at as joinedAt
+                               role, status, extra_values_json as extraValuesJson, joined_at as joinedAt
                         from team_member
                         where team_id = ?
                           and status = 'ACTIVE'
@@ -86,7 +86,7 @@ public class TeamInternalApiService implements TeamInternalApi {
         List<TeamMemberDTO> members = jdbcTemplate.query(
                 """
                         select id, team_id as teamId, user_id as userId,
-                               role, status, joined_at as joinedAt
+                               role, status, extra_values_json as extraValuesJson, joined_at as joinedAt
                         from team_member
                         where team_id = ?
                           and user_id = ?

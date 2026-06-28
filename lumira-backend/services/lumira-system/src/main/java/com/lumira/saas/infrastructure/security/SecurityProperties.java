@@ -29,7 +29,7 @@ public class SecurityProperties {
     private boolean passwordRequireLowercase = false;
     private boolean passwordRequireSpecialCharacter = false;
     private boolean passwordAllowConsecutiveCharacters = true;
-    private List<String> permitPaths = new ArrayList<>(List.of("/api/v1/public/**"));
+    private List<String> permitPaths = new ArrayList<>(List.of("/api/v1/public/**", "/api/v2/account-activation/**"));
 
     public String getJwtSecret() {
         return jwtSecret;

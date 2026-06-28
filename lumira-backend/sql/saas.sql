@@ -321,6 +321,7 @@ CREATE TABLE `ai_tool_policy` (
 CREATE TABLE `audit_login_log` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint DEFAULT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `username` varchar(64) DEFAULT NULL,
   `login_type` varchar(32) NOT NULL,
   `login_result` varchar(32) NOT NULL,
@@ -333,12 +334,14 @@ CREATE TABLE `audit_login_log` (
   PRIMARY KEY (`id`),
   KEY `idx_audit_login_created` (`created_at`),
   KEY `idx_audit_login_user_created` (`user_id`,`created_at`),
+  KEY `idx_audit_login_user_uuid_created` (`user_uuid`,`created_at`),
   KEY `idx_audit_login_result_created` (`login_result`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `audit_operation_log` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint DEFAULT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `username` varchar(64) DEFAULT NULL,
   `module_name` varchar(64) NOT NULL,
   `action_name` varchar(128) NOT NULL,
@@ -353,6 +356,7 @@ CREATE TABLE `audit_operation_log` (
   PRIMARY KEY (`id`),
   KEY `idx_audit_operation_created` (`created_at`),
   KEY `idx_audit_operation_user_created` (`user_id`,`created_at`),
+  KEY `idx_audit_operation_user_uuid_created` (`user_uuid`,`created_at`),
   KEY `idx_audit_operation_module_created` (`module_name`,`created_at`),
   KEY `idx_audit_operation_result_created` (`result_status`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -807,6 +811,7 @@ CREATE TABLE `payment_webhook_event` (
 CREATE TABLE `platform_event_outbox` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `user_id` bigint DEFAULT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
   `source_type` varchar(64) NOT NULL,
   `event_type` varchar(64) NOT NULL,
   `event_key` varchar(128) NOT NULL,
@@ -830,6 +835,7 @@ CREATE TABLE `platform_event_outbox` (
   KEY `idx_platform_event_outbox_retry` (`dispatch_status`,`next_retry_at`),
   KEY `idx_platform_event_outbox_created_at` (`created_at`),
   KEY `idx_platform_event_outbox_event_key` (`event_key`),
+  KEY `idx_platform_event_outbox_user_uuid` (`user_uuid`,`created_at`),
   KEY `idx_platform_event_outbox_owner_queue` (`source_type`,`created_at`,`id`,`dispatch_status`,`next_retry_at`,`deleted`),
   KEY `idx_platform_event_outbox_batch_claim` (`source_type`,`deleted`,`dispatch_status`,`next_retry_at`,`created_at`,`id`),
   KEY `idx_platform_event_outbox_claim_token` (`claim_token`)
@@ -1346,6 +1352,7 @@ CREATE TABLE `sys_work_order_feedback` (
 
 CREATE TABLE `sys_user` (
   `id` bigint NOT NULL AUTO_INCREMENT,
+  `uuid` char(36) NOT NULL,
   `username` varchar(64) NOT NULL,
   `nickname` varchar(64) DEFAULT NULL,
   `real_name` varchar(64) DEFAULT NULL,
@@ -1365,6 +1372,7 @@ CREATE TABLE `sys_user` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_sys_user_uuid` (`uuid`),
   UNIQUE KEY `uk_sys_user_username` (`username`),
   KEY `idx_sys_user_mobile` (`mobile`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -1575,6 +1583,8 @@ CREATE TABLE `aiadc_activity` (
 
 CREATE TABLE `aiadc_competition` (
   `id` bigint NOT NULL AUTO_INCREMENT,
+  `uuid` char(36) NOT NULL,
+  `competition_no` varchar(32) NOT NULL,
   `code` varchar(64) NOT NULL,
   `locale` varchar(64) NOT NULL DEFAULT 'zh',
   `title` varchar(128) NOT NULL,
@@ -1610,7 +1620,10 @@ CREATE TABLE `aiadc_competition` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `deleted` tinyint NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_aiadc_competition_uuid` (`uuid`),
+  UNIQUE KEY `uk_aiadc_competition_no` (`competition_no`,`deleted`),
   UNIQUE KEY `uk_aiadc_competition_code` (`code`,`locale`,`deleted`),
+  KEY `idx_aiadc_competition_uuid_deleted` (`uuid`,`deleted`),
   KEY `idx_aiadc_competition_category` (`category`,`deleted`,`sort`),
   KEY `idx_aiadc_competition_status` (`status`,`deleted`,`sort`),
   KEY `idx_aiadc_competition_featured` (`featured`,`deleted`,`sort`)
@@ -1817,6 +1830,76 @@ CREATE TABLE `competition_stage_form` (
   KEY `idx_competition_stage_form_competition` (`competition_id`,`stage_id`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `competition_config_set` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `competition_uuid` char(36) NOT NULL,
+  `version` int NOT NULL DEFAULT '1',
+  `status` varchar(32) NOT NULL DEFAULT 'DRAFT',
+  `published_at` datetime DEFAULT NULL,
+  `created_by_uuid` char(36) DEFAULT NULL,
+  `created_by` bigint NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_config_set_version` (`competition_uuid`,`version`,`deleted`),
+  KEY `idx_competition_config_set_status` (`competition_uuid`,`status`,`deleted`,`version`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_config_item` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `competition_uuid` char(36) NOT NULL,
+  `config_set_id` bigint NOT NULL,
+  `item_type` varchar(64) NOT NULL,
+  `item_key` varchar(128) NOT NULL,
+  `title` varchar(255) NOT NULL,
+  `content_json` longtext,
+  `content_text` longtext,
+  `sort_order` int NOT NULL DEFAULT '100',
+  `required_flag` tinyint NOT NULL DEFAULT '0',
+  `enabled` tinyint NOT NULL DEFAULT '1',
+  `created_by` bigint NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint NOT NULL DEFAULT '0',
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_config_item_key` (`config_set_id`,`item_type`,`item_key`,`deleted`),
+  KEY `idx_competition_config_item_lookup` (`competition_uuid`,`item_type`,`enabled`,`deleted`,`sort_order`),
+  KEY `idx_competition_config_item_set` (`config_set_id`,`deleted`,`sort_order`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_config_audit` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `competition_uuid` char(36) NOT NULL,
+  `operator_user_id` bigint NOT NULL DEFAULT '0',
+  `operator_user_uuid` char(36) DEFAULT NULL,
+  `action` varchar(64) NOT NULL,
+  `module` varchar(64) NOT NULL,
+  `detail_message` varchar(1000) DEFAULT NULL,
+  `created_by` bigint NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_competition_config_audit_competition` (`competition_uuid`,`created_at`,`id`),
+  KEY `idx_competition_config_audit_operator` (`operator_user_uuid`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `competition_submission_snapshot` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `competition_uuid` char(36) NOT NULL,
+  `user_uuid` char(36) DEFAULT NULL,
+  `registration_uuid` char(36) DEFAULT NULL,
+  `config_version` int NOT NULL DEFAULT '1',
+  `snapshot_json` longtext NOT NULL,
+  `created_by` bigint NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `idx_competition_submission_snapshot_lookup` (`competition_uuid`,`config_version`,`user_uuid`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE `registration_material_submission` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `registration_id` bigint NOT NULL,
@@ -1921,6 +2004,7 @@ CREATE TABLE `team_member` (
   `employee_no` varchar(64) DEFAULT NULL,
   `department_name` varchar(128) DEFAULT NULL,
   `remark` varchar(512) DEFAULT NULL,
+  `extra_values_json` json DEFAULT NULL,
   `member_source` varchar(32) NOT NULL DEFAULT 'REGISTERED',
   `status` varchar(32) NOT NULL DEFAULT 'ACTIVE',
   `invited_by` bigint DEFAULT NULL,
@@ -2413,9 +2497,11 @@ VALUES
     (-1043, -1052, 'activity.activities.create', '新增活动', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:activity:create', 'ENABLED', 0, 0, 0),
     (-1044, -1052, 'activity.activities.update', '编辑活动', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:activity:update', 'ENABLED', 0, 0, 0),
     (-1045, -1052, 'activity.activities.delete', '删除活动', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:activity:delete', 'ENABLED', 0, 0, 0),
-    (-1070, 0, 'competition.root', '赛事', 'CATALOG', '/competitions', 'redirect:/competitions/management', 'TrophyOutlined', 91, NULL, 'DISABLED', 0, 0, 1),
+    (-1070, 0, 'competition.root', '赛事', 'CATALOG', '/competitions', 'redirect:/competitions/register', 'TrophyOutlined', 4, NULL, 'ENABLED', 0, 0, 0),
     (-1071, -1100, 'competition.management', '赛事管理', 'MENU', '/competitions/management', '@/pages/competition', 'TrophyOutlined', 1, 'aiadc:competition:view', 'ENABLED', 0, 0, 0),
-    (-1075, -1070, 'competition.registration', '赛事报名', 'MENU', '/competitions/register', '@/pages/competition', 'FormOutlined', 2, 'aiadc:registration:create', 'DISABLED', 0, 0, 1),
+    (-1075, -1070, 'competition.registration', '赛事报名', 'MENU', '/competitions/register', '@/pages/competition', 'FormOutlined', 1, NULL, 'ENABLED', 0, 0, 0),
+    (-1076, -1070, 'activity.registration', '活动报名', 'MENU', '/competitions/activity-register', '@/pages/competition', 'CalendarOutlined', 2, NULL, 'ENABLED', 0, 0, 0),
+    (-1077, -1070, 'expert.application', '专家申请', 'MENU', '/competitions/expert-apply', '@/pages/competition', 'SolutionOutlined', 3, NULL, 'ENABLED', 0, 0, 0),
     (-1091, 0, 'project.root', '项目', 'CATALOG', '/projects', 'redirect:/projects/management', 'ProjectOutlined', 92, NULL, 'DISABLED', 0, 0, 1),
     (-1092, -1100, 'project.management', '项目管理', 'MENU', '/projects/management', '@/pages/project', 'ProjectOutlined', 3, 'aiadc:project:view', 'ENABLED', 0, 0, 0),
     (-1096, -1101, 'project.search', '项目查询', 'MENU', '/projects/search', '@/pages/project', 'SearchOutlined', 2, 'aiadc:project:view', 'ENABLED', 0, 0, 0),
@@ -2866,9 +2952,10 @@ ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
 
-INSERT INTO `sys_user` (`id`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
-VALUES (1001, 'admin', 'Administrator', 'Administrator', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
+INSERT INTO `sys_user` (`id`, `uuid`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
+VALUES (1001, '00000000-0000-0000-0000-000000001001', 'admin', 'Administrator', 'Administrator', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
+    `uuid` = VALUES(`uuid`),
     `nickname` = VALUES(`nickname`),
     `real_name` = VALUES(`real_name`),
     `password_hash` = VALUES(`password_hash`),
@@ -3062,9 +3149,10 @@ ON DUPLICATE KEY UPDATE
     `updated_by` = VALUES(`updated_by`),
     `deleted` = 0;
 
-INSERT INTO `sys_user` (`id`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
-VALUES (1002, 'user', 'Common User', 'Common User', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
+INSERT INTO `sys_user` (`id`, `uuid`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
+VALUES (1002, '00000000-0000-0000-0000-000000001002', 'user', 'Common User', 'Common User', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
+    `uuid` = VALUES(`uuid`),
     `nickname` = VALUES(`nickname`),
     `real_name` = VALUES(`real_name`),
     `password_hash` = VALUES(`password_hash`),

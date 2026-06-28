@@ -35,7 +35,7 @@ public class PlatformEventOutboxService {
     private static final String SYSTEM_SOURCE_TYPE = PlatformEventTypes.SOURCE_SYSTEM;
 
     private static final String SQL_LIST_DISPATCHABLE = """
-            select id, user_id as userId, source_type as sourceType,
+            select id, user_id as userId, user_uuid as userUuid, source_type as sourceType,
                    event_type as eventType, event_key as eventKey, payload_json as payloadJson,
                    dispatch_status as dispatchStatus, retry_count as retryCount,
                    next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
@@ -53,7 +53,7 @@ public class PlatformEventOutboxService {
             """;
 
     private static final String SQL_FIND_BY_ID = """
-            select id, user_id as userId, source_type as sourceType,
+            select id, user_id as userId, user_uuid as userUuid, source_type as sourceType,
                    event_type as eventType, event_key as eventKey, payload_json as payloadJson,
                    dispatch_status as dispatchStatus, retry_count as retryCount,
                    next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
@@ -145,11 +145,13 @@ public class PlatformEventOutboxService {
     ) {
         ensureSystemSource(sourceType);
         PlatformEventOutboxEntity entity = new PlatformEventOutboxEntity();
+        String userUuid = resolveUserUuid(userId);
         entity.setUserId(userId);
+        entity.setUserUuid(userUuid);
         entity.setSourceType(SYSTEM_SOURCE_TYPE);
         entity.setEventType(eventType);
         entity.setEventKey(eventKey);
-        entity.setPayloadJson(serialize(payload));
+        entity.setPayloadJson(serialize(enrichPayload(payload, userUuid)));
         entity.setDispatchStatus(STATUS_RECORDED);
         entity.setRetryCount(0);
         entity.setTraceId(TraceContext.getTraceId());
@@ -448,7 +450,7 @@ public class PlatformEventOutboxService {
         );
         return queryOperations.query(
                 """
-                        select id, user_id as userId, source_type as sourceType,
+                        select id, user_id as userId, user_uuid as userUuid, source_type as sourceType,
                                event_type as eventType, event_key as eventKey, payload_json as payloadJson,
                                dispatch_status as dispatchStatus, retry_count as retryCount,
                                next_retry_at as nextRetryAt, delivered_at as deliveredAt, last_error as lastError,
@@ -561,6 +563,31 @@ public class PlatformEventOutboxService {
             return objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("平台事件 outbox payload 序列化失败", exception);
+        }
+    }
+
+    private Object enrichPayload(Object payload, String userUuid) {
+        if (payload instanceof Map<?, ?> map && userUuid != null && map.get("userUuid") == null) {
+            Map<String, Object> enriched = new java.util.LinkedHashMap<>();
+            map.forEach((key, value) -> enriched.put(String.valueOf(key), value));
+            enriched.put("userUuid", userUuid);
+            return enriched;
+        }
+        return payload;
+    }
+
+    private String resolveUserUuid(Long userId) {
+        if (userId == null || queryOperations == null) {
+            return null;
+        }
+        try {
+            return queryOperations.queryForObject(
+                    "select uuid from sys_user where id = ? and deleted = 0 limit 1",
+                    String.class,
+                    userId
+            );
+        } catch (RuntimeException ignored) {
+            return null;
         }
     }
 

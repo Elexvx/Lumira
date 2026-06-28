@@ -8,6 +8,8 @@ public class ProfileFieldSettingItem {
     @NotBlank
     private String fieldKey;
 
+    private String pageKey;
+
     private Boolean visible;
 
     @Positive
@@ -28,6 +30,14 @@ public class ProfileFieldSettingItem {
 
     public void setFieldKey(String fieldKey) {
         this.fieldKey = fieldKey;
+    }
+
+    public String getPageKey() {
+        return pageKey;
+    }
+
+    public void setPageKey(String pageKey) {
+        this.pageKey = pageKey;
     }
 
     public Boolean getVisible() {

@@ -1,4 +1,5 @@
 export type ExpertStatus = 'active' | 'inactive';
+export type ExpertApprovalStatus = 'PENDING' | 'RUNNING' | 'APPROVED' | 'REJECTED';
 
 export interface ExpertRecord {
   id: number;
@@ -20,6 +21,8 @@ export interface ExpertRecord {
   bio?: string | null;
   tags?: string | null;
   status: ExpertStatus;
+  approvalStatus?: ExpertApprovalStatus | null;
+  approvalInstanceId?: number | null;
   sort: number;
   createdAt?: string | null;
   updatedAt?: string | null;
@@ -46,6 +49,7 @@ export interface ExpertUpsertPayload {
 export interface ExpertQueryParams {
   keyword?: string;
   status?: ExpertStatus;
+  approvalStatus?: ExpertApprovalStatus;
   pageNo?: number;
   pageSize?: number;
 }

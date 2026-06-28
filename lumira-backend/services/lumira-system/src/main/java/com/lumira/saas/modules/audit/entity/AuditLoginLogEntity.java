@@ -12,6 +12,7 @@ public class AuditLoginLogEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    private String userUuid;
     private String username;
     private String loginType;
     private String loginResult;
@@ -36,6 +37,14 @@ public class AuditLoginLogEntity {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getUserUuid() {
+        return userUuid;
+    }
+
+    public void setUserUuid(String userUuid) {
+        this.userUuid = userUuid;
     }
 
     public String getUsername() {

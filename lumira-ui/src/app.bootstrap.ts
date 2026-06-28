@@ -71,6 +71,94 @@ interface PublicBootstrapResponse {
   loginCapabilities?: LoginCapabilities;
 }
 
+const COMPETITION_MENU_ROOT: MenuNode = {
+  id: -1070,
+  menuCode: 'competition.root',
+  name: '赛事',
+  path: '/competitions',
+  component: 'redirect:/competitions/register',
+  icon: 'TrophyOutlined',
+  sortNo: 4,
+  children: [],
+};
+
+const COMPETITION_APPLICATION_MENUS: MenuNode[] = [
+  {
+    id: -1075,
+    parentId: -1070,
+    menuCode: 'competition.registration',
+    name: '赛事报名',
+    path: '/competitions/register',
+    component: '@/pages/competition',
+    icon: 'FormOutlined',
+    sortNo: 1,
+  },
+  {
+    id: -1076,
+    parentId: -1070,
+    menuCode: 'activity.registration',
+    name: '活动报名',
+    path: '/competitions/activity-register',
+    component: '@/pages/competition',
+    icon: 'CalendarOutlined',
+    sortNo: 2,
+  },
+  {
+    id: -1077,
+    parentId: -1070,
+    menuCode: 'expert.application',
+    name: '专家申请',
+    path: '/competitions/expert-apply',
+    component: '@/pages/competition',
+    icon: 'SolutionOutlined',
+    sortNo: 3,
+  },
+];
+
+const hasMenuPath = (menus: MenuNode[] | undefined, path: string): boolean =>
+  Boolean(menus?.some((menu) => menu.path === path || hasMenuPath(menu.children, path)));
+
+const mergeCompetitionApplicationChildren = (children: MenuNode[] | undefined) => {
+  const nextChildren = [...(children || [])];
+  COMPETITION_APPLICATION_MENUS.forEach((requiredMenu) => {
+    if (!hasMenuPath(nextChildren, requiredMenu.path)) {
+      nextChildren.push({ ...requiredMenu });
+    }
+  });
+  nextChildren.sort((left, right) => (left.sortNo ?? 0) - (right.sortNo ?? 0));
+  return nextChildren;
+};
+
+const ensureCompetitionApplicationMenus = (menus: MenuNode[]): MenuNode[] => {
+  if (COMPETITION_APPLICATION_MENUS.every((menu) => hasMenuPath(menus, menu.path))) {
+    return menus;
+  }
+
+  let attached = false;
+  const nextMenus = menus.map((menu) => {
+    const isCompetitionRoot = menu.menuCode === COMPETITION_MENU_ROOT.menuCode || menu.path === COMPETITION_MENU_ROOT.path;
+    if (!isCompetitionRoot) {
+      return menu;
+    }
+
+    attached = true;
+    return {
+      ...menu,
+      children: mergeCompetitionApplicationChildren(menu.children),
+    };
+  });
+
+  return attached
+    ? nextMenus
+    : [
+        ...nextMenus,
+        {
+          ...COMPETITION_MENU_ROOT,
+          children: mergeCompetitionApplicationChildren(COMPETITION_MENU_ROOT.children),
+        },
+      ];
+};
+
 const buildInitialBootstrapSnapshot = (): BootstrapSnapshot => ({
   phase: 'idle',
   progress: 0,
@@ -403,7 +491,7 @@ const buildAuthenticatedInitialState = async (
 
   return {
     currentUser,
-    menuTree,
+    menuTree: ensureCompetitionApplicationMenus(menuTree),
     menuVersion: 0,
     availablePlugins,
     securitySettings,

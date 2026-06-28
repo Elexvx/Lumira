@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.concurrent.CompletableFuture;
 
@@ -450,11 +451,12 @@ public class SystemUserManagementAppService {
                 jdbcTemplate.update(
                         """
                                 insert into sys_user (
-                                    username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
+                                    uuid, username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
                                     available_time, id_card_number, status,
                                     created_by, updated_by, deleted
-                                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                                ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                                 """,
+                        UUID.randomUUID().toString(),
                         request.getUsername(),
                         passwordEncoder.encode(password),
                         normalizeNullableText(request.getMobile()),

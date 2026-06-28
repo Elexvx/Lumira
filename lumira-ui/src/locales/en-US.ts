@@ -9,6 +9,7 @@ import pageLogin from './en-US/pageLogin';
 import chrome from './en-US/chrome';
 import messageCenter from './en-US/messageCenter';
 import systemFiles from './en-US/systemFiles';
+import pageCompetition from './en-US/pageCompetition';
 
 export default {
   ...app,
@@ -22,4 +23,5 @@ export default {
   ...chrome,
   ...messageCenter,
   ...systemFiles,
+  ...pageCompetition,
 };

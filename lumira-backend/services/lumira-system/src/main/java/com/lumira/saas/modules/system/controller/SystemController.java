@@ -405,19 +405,22 @@ public class SystemController {
     }
 
     @GetMapping("/profile-field-settings")
-    public ApiResponse<List<ProfileFieldSettingVO>> profileFieldSettings() {
+    public ApiResponse<List<ProfileFieldSettingVO>> profileFieldSettings(
+            @RequestParam(name = "pageKey", required = false) String pageKey
+    ) {
         require("system:config:view");
-        return ApiResponse.success(systemManagementAppService.getProfileFieldSettings(securityContextFacade.getCurrentUser()), TraceContext.getRequestId());
+        return ApiResponse.success(systemManagementAppService.getProfileFieldSettings(securityContextFacade.getCurrentUser(), pageKey), TraceContext.getRequestId());
     }
 
     @PutMapping("/profile-field-settings")
     @RepeatSubmit
     public ApiResponse<List<ProfileFieldSettingVO>> updateProfileFieldSettings(
+            @RequestParam(name = "pageKey", required = false) String pageKey,
             @Valid @RequestBody SystemDTO.ProfileFieldSettingsRequest request
     ) {
         require("system:config:update");
         return ApiResponse.success(
-                systemManagementAppService.updateProfileFieldSettings(securityContextFacade.getCurrentUser(), request),
+                systemManagementAppService.updateProfileFieldSettings(securityContextFacade.getCurrentUser(), request, pageKey),
                 TraceContext.getRequestId()
         );
     }

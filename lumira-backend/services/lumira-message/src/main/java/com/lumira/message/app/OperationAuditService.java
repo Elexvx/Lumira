@@ -24,6 +24,7 @@ public class OperationAuditService {
     ) {
         systemInternalApi.recordOperationAudit(new OperationAuditRecordRequestDTO(
                 userId,
+                null,
                 username,
                 moduleName,
                 actionName,

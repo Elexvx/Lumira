@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -39,7 +40,10 @@ import java.util.stream.Collectors;
 @ConditionalOnLumiraControlPlaneEnabled
 public class SystemProfileSettingsAppService {
 
-    private static final String PROFILE_SETTINGS_CACHE_KEY = "global-profile-field-settings";
+    public static final String PROFILE_PAGE_KEY = "PROFILE";
+    public static final String TEAM_MEMBER_PAGE_KEY = "TEAM_MEMBER";
+    private static final Set<String> SUPPORTED_PAGE_KEYS = Set.of(PROFILE_PAGE_KEY, TEAM_MEMBER_PAGE_KEY);
+    private static final String PROFILE_SETTINGS_CACHE_KEY_PREFIX = "global-field-settings:";
     private static final long PROFILE_SETTINGS_CACHE_TTL_MS = 30_000L;
     private static final int PROFILE_SETTINGS_CACHE_MAX_ENTRIES = 2048;
     private static final Integer PROFILE_SCORE_MAX = 100;
@@ -62,13 +66,13 @@ public class SystemProfileSettingsAppService {
             new ProfileFieldDefinition("region", "所在地区", "控制个人中心是否展示所在地区字段", PROFILE_FIELD_GROUP_BASIC_KEY, "基础资料", "profile.field.region.visible", "profile.field.region.weight", true, 10, "TEXT", false, "请输入所在地区", 70, false),
             new ProfileFieldDefinition("idCardNumber", "身份证号码", "控制个人中心是否展示身份证号码字段", PROFILE_FIELD_GROUP_IDENTITY_KEY, "证件信息", "profile.field.id-card-number.visible", "profile.field.id-card-number.weight", true, 5, "ID_CARD", false, "请输入身份证号码", 80, false)
     );
-    private static final List<String> PROFILE_FIELD_CONFIG_KEYS = PROFILE_FIELD_DEFINITIONS.stream()
-            .flatMap(definition -> List.of(definition.visibleConfigKey(), definition.weightConfigKey(), definition.requiredConfigKey(), definition.sortConfigKey()).stream())
-            .collect(Collectors.collectingAndThen(Collectors.toCollection(ArrayList::new), keys -> {
-                keys.add(SYSTEM_PROFILE_FIELD_OVERRIDES_KEY);
-                keys.add(CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY);
-                return List.copyOf(keys);
-            }));
+    private static final List<ProfileFieldDefinition> TEAM_MEMBER_FIELD_DEFINITIONS = List.of(
+            new ProfileFieldDefinition("memberName", "成员姓名", "团队成员姓名", "teamMember", "团队成员", "team.member.field.member-name.visible", "team.member.field.member-name.weight", true, 10, "TEXT", true, "请输入成员姓名", 10, false),
+            new ProfileFieldDefinition("employeeNo", "工号", "团队成员工号或学号", "teamMember", "团队成员", "team.member.field.employee-no.visible", "team.member.field.employee-no.weight", true, 5, "TEXT", false, "请输入工号或学号", 20, false),
+            new ProfileFieldDefinition("departmentName", "所属部门", "团队成员所属部门", "teamMember", "团队成员", "team.member.field.department-name.visible", "team.member.field.department-name.weight", true, 5, "TEXT", false, "请输入所属部门", 30, false),
+            new ProfileFieldDefinition("role", "角色", "团队成员角色", "teamMember", "团队成员", "team.member.field.role.visible", "team.member.field.role.weight", true, 5, "SELECT", false, "请选择角色", 40, false),
+            new ProfileFieldDefinition("remark", "备注", "团队成员备注", "teamMember", "团队成员", "team.member.field.remark.visible", "team.member.field.remark.weight", true, 5, "TEXTAREA", false, "请输入备注", 50, false)
+    );
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final OperationAuditService operationAuditService;
@@ -89,37 +93,48 @@ public class SystemProfileSettingsAppService {
     }
 
     public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser) {
-        return loadProfileFieldSettings();
+        return getProfileFieldSettings(currentUser, PROFILE_PAGE_KEY);
+    }
+
+    public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser, String pageKey) {
+        return loadProfileFieldSettings(normalizePageKey(pageKey));
     }
 
     @Transactional
     public List<ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request) {
+        return updateProfileFieldSettings(currentUser, request, request.getPageKey());
+    }
+
+    @Transactional
+    public List<ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request, String pageKey) {
+        String normalizedPageKey = normalizePageKey(pageKey);
+        List<ProfileFieldDefinition> builtInDefinitions = builtInDefinitions(normalizedPageKey);
         Map<String, ProfileFieldSettingItem> requestedSettings = new LinkedHashMap<>();
         request.getItems().forEach(item -> requestedSettings.put(item.getFieldKey(), item));
-        List<ProfileFieldMetadataOverride> systemOverrides = normalizeSystemFieldOverrides(request.getItems());
-        List<ProfileFieldDefinition> customDefinitions = normalizeCustomDefinitions(request.getItems(), requestedSettings.keySet());
-        PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
+        List<ProfileFieldMetadataOverride> systemOverrides = normalizeSystemFieldOverrides(request.getItems(), builtInDefinitions);
+        List<ProfileFieldDefinition> customDefinitions = normalizeCustomDefinitions(request.getItems(), requestedSettings.keySet(), builtInDefinitions, normalizedPageKey);
+        builtInDefinitions.forEach(definition -> upsertConfigValue(
                 definition.visibleConfigKey(),
                 definition.fieldLabel() + "展示开关",
                 String.valueOf(requestedVisibility(requestedSettings.get(definition.fieldKey()), definition.defaultVisible())),
                 definition.fieldDescription(),
                 currentUser.getUserId()
         ));
-        PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
+        builtInDefinitions.forEach(definition -> upsertConfigValue(
                 definition.weightConfigKey(),
                 definition.fieldLabel() + "评分权重",
                 String.valueOf(resolveRequestedWeight(requestedSettings.get(definition.fieldKey()), definition.defaultWeight())),
                 definition.fieldDescription(),
                 currentUser.getUserId()
         ));
-        PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
+        builtInDefinitions.forEach(definition -> upsertConfigValue(
                 definition.requiredConfigKey(),
                 definition.fieldLabel() + " required",
                 String.valueOf(requestedRequired(requestedSettings.get(definition.fieldKey()), definition.required())),
                 definition.fieldDescription(),
                 currentUser.getUserId()
         ));
-        PROFILE_FIELD_DEFINITIONS.forEach(definition -> upsertConfigValue(
+        builtInDefinitions.forEach(definition -> upsertConfigValue(
                 definition.sortConfigKey(),
                 definition.fieldLabel() + " sort",
                 String.valueOf(resolveRequestedSortNo(requestedSettings.get(definition.fieldKey()), definition.sortNo())),
@@ -127,69 +142,71 @@ public class SystemProfileSettingsAppService {
                 currentUser.getUserId()
         ));
         upsertConfigValue(
-                SYSTEM_PROFILE_FIELD_OVERRIDES_KEY,
+                systemOverridesConfigKey(normalizedPageKey),
                 "System profile field metadata overrides",
                 serializeSystemFieldOverrides(systemOverrides),
                 "Stores editable labels, descriptions, placeholders, and groups for built-in profile fields",
                 currentUser.getUserId()
         );
         upsertConfigValue(
-                CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY,
+                customDefinitionsConfigKey(normalizedPageKey),
                 "自定义资料字段定义",
                 serializeCustomDefinitions(customDefinitions),
                 "保存个人中心可扩展的自定义资料字段定义",
                 currentUser.getUserId()
         );
         operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile-field", "update", "UPDATE", "SUCCESS", "更新个人中心字段展示设置");
-        invalidateProfileFieldSettingsCache();
-        return loadProfileFieldSettings();
+        invalidateProfileFieldSettingsCache(normalizedPageKey);
+        return loadProfileFieldSettings(normalizedPageKey);
     }
 
-    private List<ProfileFieldSettingVO> loadProfileFieldSettings() {
-        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(PROFILE_SETTINGS_CACHE_KEY);
+    private List<ProfileFieldSettingVO> loadProfileFieldSettings(String pageKey) {
+        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(cacheKey(pageKey));
         if (cached != null) {
             return new ArrayList<>(cached);
         }
-        return loadProfileFieldSettingsWithSingleFlight();
+        return loadProfileFieldSettingsWithSingleFlight(pageKey);
     }
 
-    private List<ProfileFieldSettingVO> loadProfileFieldSettingsWithSingleFlight() {
+    private List<ProfileFieldSettingVO> loadProfileFieldSettingsWithSingleFlight(String pageKey) {
         try {
             CompletableFuture<List<ProfileFieldSettingVO>> future = profileFieldSettingsLoadInFlight.get(
-                    PROFILE_SETTINGS_CACHE_KEY,
-                    () -> CompletableFuture.completedFuture(loadProfileFieldSettingsFresh())
+                    cacheKey(pageKey),
+                    () -> CompletableFuture.completedFuture(loadProfileFieldSettingsFresh(pageKey))
             );
             List<ProfileFieldSettingVO> settings = future.join();
-            profileFieldSettingsLoadInFlight.invalidate(PROFILE_SETTINGS_CACHE_KEY);
+            profileFieldSettingsLoadInFlight.invalidate(cacheKey(pageKey));
             return settings;
         } catch (ExecutionException ex) {
-            profileFieldSettingsLoadInFlight.invalidate(PROFILE_SETTINGS_CACHE_KEY);
+            profileFieldSettingsLoadInFlight.invalidate(cacheKey(pageKey));
             Throwable cause = ex.getCause();
             if (cause instanceof RuntimeException runtimeException) {
                 throw runtimeException;
             }
             throw new IllegalStateException("Failed to load profile field settings", cause);
         } catch (RuntimeException ex) {
-            profileFieldSettingsLoadInFlight.invalidate(PROFILE_SETTINGS_CACHE_KEY);
+            profileFieldSettingsLoadInFlight.invalidate(cacheKey(pageKey));
             throw ex;
         }
     }
 
-    private List<ProfileFieldSettingVO> loadProfileFieldSettingsFresh() {
-        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(PROFILE_SETTINGS_CACHE_KEY);
+    private List<ProfileFieldSettingVO> loadProfileFieldSettingsFresh(String pageKey) {
+        List<ProfileFieldSettingVO> cached = profileFieldSettingsCache.getIfPresent(cacheKey(pageKey));
         if (cached != null) {
             return new ArrayList<>(cached);
         }
-        Map<String, String> valueByKey = loadConfigValuesByKeys(PROFILE_FIELD_CONFIG_KEYS);
-        Map<String, ProfileFieldMetadataOverride> systemOverrides = parseSystemFieldOverrides(valueByKey.get(SYSTEM_PROFILE_FIELD_OVERRIDES_KEY));
-        List<ProfileFieldDefinition> definitions = new ArrayList<>(PROFILE_FIELD_DEFINITIONS);
-        definitions.addAll(parseCustomDefinitions(valueByKey.get(CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY)));
+        List<ProfileFieldDefinition> builtInDefinitions = builtInDefinitions(pageKey);
+        Map<String, String> valueByKey = loadConfigValuesByKeys(fieldConfigKeys(pageKey, builtInDefinitions));
+        Map<String, ProfileFieldMetadataOverride> systemOverrides = parseSystemFieldOverrides(valueByKey.get(systemOverridesConfigKey(pageKey)), builtInDefinitions);
+        List<ProfileFieldDefinition> definitions = new ArrayList<>(builtInDefinitions);
+        definitions.addAll(parseCustomDefinitions(valueByKey.get(customDefinitionsConfigKey(pageKey)), builtInDefinitions, pageKey));
         List<ProfileFieldSettingVO> settings = definitions.stream()
                 .sorted(Comparator.comparing(ProfileFieldDefinition::sortNo).thenComparing(ProfileFieldDefinition::fieldKey))
                 .map(definition -> {
             ProfileFieldMetadataOverride override = definition.custom() ? null : systemOverrides.get(definition.fieldKey());
             ProfileFieldSettingVO item = new ProfileFieldSettingVO();
             item.setFieldKey(definition.fieldKey());
+            item.setPageKey(pageKey);
             item.setFieldLabel(overrideText(override == null ? null : override.fieldLabel(), definition.fieldLabel()));
             item.setFieldDescription(overrideText(override == null ? null : override.fieldDescription(), definition.fieldDescription()));
             item.setGroupKey(definition.groupKey());
@@ -211,13 +228,13 @@ public class SystemProfileSettingsAppService {
             item.setCustom(definition.custom());
             return item;
         }).toList();
-        profileFieldSettingsCache.put(PROFILE_SETTINGS_CACHE_KEY, new ArrayList<>(settings));
+        profileFieldSettingsCache.put(cacheKey(pageKey), new ArrayList<>(settings));
         return settings;
     }
 
-    private void invalidateProfileFieldSettingsCache() {
-        profileFieldSettingsCache.invalidate(PROFILE_SETTINGS_CACHE_KEY);
-        profileFieldSettingsLoadInFlight.invalidate(PROFILE_SETTINGS_CACHE_KEY);
+    private void invalidateProfileFieldSettingsCache(String pageKey) {
+        profileFieldSettingsCache.invalidate(cacheKey(pageKey));
+        profileFieldSettingsLoadInFlight.invalidate(cacheKey(pageKey));
     }
 
     public ProfileCompletionSummaryVO buildProfileCompletionSummary(
@@ -312,8 +329,8 @@ public class SystemProfileSettingsAppService {
         return summary;
     }
 
-    private List<ProfileFieldDefinition> normalizeCustomDefinitions(List<ProfileFieldSettingItem> items, Set<String> requestedKeys) {
-        Map<String, ProfileFieldDefinition> builtInByKey = PROFILE_FIELD_DEFINITIONS.stream()
+    private List<ProfileFieldDefinition> normalizeCustomDefinitions(List<ProfileFieldSettingItem> items, Set<String> requestedKeys, List<ProfileFieldDefinition> builtInDefinitions, String pageKey) {
+        Map<String, ProfileFieldDefinition> builtInByKey = builtInDefinitions.stream()
                 .collect(Collectors.toMap(ProfileFieldDefinition::fieldKey, item -> item, (left, right) -> left, LinkedHashMap::new));
         List<ProfileFieldDefinition> customDefinitions = new ArrayList<>();
         Set<String> usedKeys = new java.util.HashSet<>(builtInByKey.keySet());
@@ -358,8 +375,8 @@ public class SystemProfileSettingsAppService {
         return customDefinitions;
     }
 
-    private List<ProfileFieldMetadataOverride> normalizeSystemFieldOverrides(List<ProfileFieldSettingItem> items) {
-        Map<String, ProfileFieldDefinition> builtInByKey = PROFILE_FIELD_DEFINITIONS.stream()
+    private List<ProfileFieldMetadataOverride> normalizeSystemFieldOverrides(List<ProfileFieldSettingItem> items, List<ProfileFieldDefinition> builtInDefinitions) {
+        Map<String, ProfileFieldDefinition> builtInByKey = builtInDefinitions.stream()
                 .collect(Collectors.toMap(ProfileFieldDefinition::fieldKey, item -> item, (left, right) -> left, LinkedHashMap::new));
         List<ProfileFieldMetadataOverride> overrides = new ArrayList<>();
         for (ProfileFieldSettingItem item : items) {
@@ -391,14 +408,14 @@ public class SystemProfileSettingsAppService {
         return overrides;
     }
 
-    private Map<String, ProfileFieldMetadataOverride> parseSystemFieldOverrides(String json) {
+    private Map<String, ProfileFieldMetadataOverride> parseSystemFieldOverrides(String json, List<ProfileFieldDefinition> builtInDefinitions) {
         if (!StringUtils.hasText(json)) {
             return Map.of();
         }
         try {
             List<ProfileFieldSettingItem> items = OBJECT_MAPPER.readValue(json, new TypeReference<>() {
             });
-            return normalizeSystemFieldOverrides(items).stream()
+            return normalizeSystemFieldOverrides(items, builtInDefinitions).stream()
                     .collect(Collectors.toMap(ProfileFieldMetadataOverride::fieldKey, item -> item, (left, right) -> left, LinkedHashMap::new));
         } catch (JsonProcessingException | RuntimeException exception) {
             return Map.of();
@@ -427,14 +444,14 @@ public class SystemProfileSettingsAppService {
         return StringUtils.hasText(override) ? override : fallback;
     }
 
-    private List<ProfileFieldDefinition> parseCustomDefinitions(String json) {
+    private List<ProfileFieldDefinition> parseCustomDefinitions(String json, List<ProfileFieldDefinition> builtInDefinitions, String pageKey) {
         if (!StringUtils.hasText(json)) {
             return List.of();
         }
         try {
             List<ProfileFieldSettingItem> items = OBJECT_MAPPER.readValue(json, new TypeReference<>() {
             });
-            return normalizeCustomDefinitions(items, items.stream().map(ProfileFieldSettingItem::getFieldKey).collect(Collectors.toSet()));
+            return normalizeCustomDefinitions(items, items.stream().map(ProfileFieldSettingItem::getFieldKey).collect(Collectors.toSet()), builtInDefinitions, pageKey);
         } catch (JsonProcessingException | RuntimeException exception) {
             return List.of();
         }
@@ -482,6 +499,37 @@ public class SystemProfileSettingsAppService {
         }
         String normalized = value.trim();
         return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength);
+    }
+
+    private String normalizePageKey(String pageKey) {
+        String normalized = StringUtils.hasText(pageKey) ? pageKey.trim().toUpperCase() : PROFILE_PAGE_KEY;
+        return SUPPORTED_PAGE_KEYS.contains(normalized) ? normalized : PROFILE_PAGE_KEY;
+    }
+
+    private List<ProfileFieldDefinition> builtInDefinitions(String pageKey) {
+        return TEAM_MEMBER_PAGE_KEY.equals(pageKey) ? TEAM_MEMBER_FIELD_DEFINITIONS : PROFILE_FIELD_DEFINITIONS;
+    }
+
+    private String cacheKey(String pageKey) {
+        return PROFILE_SETTINGS_CACHE_KEY_PREFIX + pageKey;
+    }
+
+    private String systemOverridesConfigKey(String pageKey) {
+        return PROFILE_PAGE_KEY.equals(pageKey) ? SYSTEM_PROFILE_FIELD_OVERRIDES_KEY : pageKey.toLowerCase(Locale.ROOT) + ".field.system.overrides";
+    }
+
+    private String customDefinitionsConfigKey(String pageKey) {
+        return PROFILE_PAGE_KEY.equals(pageKey) ? CUSTOM_PROFILE_FIELD_DEFINITIONS_KEY : pageKey.toLowerCase(Locale.ROOT) + ".field.custom.definitions";
+    }
+
+    private List<String> fieldConfigKeys(String pageKey, List<ProfileFieldDefinition> builtInDefinitions) {
+        return builtInDefinitions.stream()
+                .flatMap(definition -> List.of(definition.visibleConfigKey(), definition.weightConfigKey(), definition.requiredConfigKey(), definition.sortConfigKey()).stream())
+                .collect(Collectors.collectingAndThen(Collectors.toCollection(ArrayList::new), keys -> {
+                    keys.add(systemOverridesConfigKey(pageKey));
+                    keys.add(customDefinitionsConfigKey(pageKey));
+                    return List.copyOf(keys);
+                }));
     }
 
     private Map<String, String> loadConfigValuesByKeys(List<String> keys) {

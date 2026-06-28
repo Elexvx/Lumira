@@ -3,6 +3,7 @@ package com.lumira.saas.modules.system.profile.vo;
 public class ProfileFieldSettingVO {
 
     private String fieldKey;
+    private String pageKey;
     private String fieldLabel;
     private String fieldDescription;
     private Boolean visible;
@@ -21,6 +22,14 @@ public class ProfileFieldSettingVO {
 
     public void setFieldKey(String fieldKey) {
         this.fieldKey = fieldKey;
+    }
+
+    public String getPageKey() {
+        return pageKey;
+    }
+
+    public void setPageKey(String pageKey) {
+        this.pageKey = pageKey;
     }
 
     public String getFieldLabel() {

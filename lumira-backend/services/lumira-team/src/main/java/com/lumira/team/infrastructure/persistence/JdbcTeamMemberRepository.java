@@ -1,5 +1,7 @@
 package com.lumira.team.infrastructure.persistence;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.team.dto.TeamDTO;
 import com.lumira.team.repository.TeamMemberRepository;
 import com.lumira.team.vo.TeamVO;
@@ -11,6 +13,8 @@ import java.util.List;
 
 @Repository
 public class JdbcTeamMemberRepository implements TeamMemberRepository {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final MyBatisQueryOperations jdbcTemplate;
 
     public JdbcTeamMemberRepository(MyBatisQueryOperations jdbcTemplate) {
@@ -145,9 +149,9 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
                 """
                         insert into team_member (
                             team_id, user_id, role, member_alias, member_name,
-                            employee_no, department_name, remark, member_source, status,
+                            employee_no, department_name, remark, extra_values_json, member_source, status,
                             joined_at, created_at, updated_at, deleted
-                        ) values (?, null, ?, ?, ?, ?, ?, ?, 'DRAFT', 'ACTIVE', ?, ?, ?, 0)
+                        ) values (?, null, ?, ?, ?, ?, ?, ?, ?, 'DRAFT', 'ACTIVE', ?, ?, ?, 0)
                         """,
                 teamId,
                 request.getRole(),
@@ -156,6 +160,7 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
                 request.getEmployeeNo(),
                 request.getDepartmentName(),
                 request.getRemark(),
+                serializeExtraValues(request.getExtraValues()),
                 now,
                 now,
                 now
@@ -196,9 +201,21 @@ public class JdbcTeamMemberRepository implements TeamMemberRepository {
                 select id, team_id as teamId, user_id as userId, role,
                        member_alias as memberAlias, member_name as memberName,
                        employee_no as employeeNo, department_name as departmentName,
+                       extra_values_json as extraValuesJson,
                        remark, member_source as memberSource, status, invited_by as invitedBy,
                        joined_at as joinedAt, created_at as createdAt
                 from team_member
                 """ + tail;
+    }
+
+    private String serializeExtraValues(java.util.Map<String, String> extraValues) {
+        if (extraValues == null || extraValues.isEmpty()) {
+            return null;
+        }
+        try {
+            return OBJECT_MAPPER.writeValueAsString(extraValues);
+        } catch (JsonProcessingException exception) {
+            return "{}";
+        }
     }
 }

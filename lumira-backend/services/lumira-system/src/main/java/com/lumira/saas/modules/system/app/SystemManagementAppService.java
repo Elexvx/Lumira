@@ -62,6 +62,7 @@ import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -756,9 +757,18 @@ public class SystemManagementAppService {
         return systemProfileSettingsAppService.getProfileFieldSettings(currentUser);
     }
 
+    public List<ProfileFieldSettingVO> getProfileFieldSettings(CurrentUser currentUser, String pageKey) {
+        return systemProfileSettingsAppService.getProfileFieldSettings(currentUser, pageKey);
+    }
+
     @Transactional
     public List<ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request) {
         return systemProfileSettingsAppService.updateProfileFieldSettings(currentUser, request);
+    }
+
+    @Transactional
+    public List<ProfileFieldSettingVO> updateProfileFieldSettings(CurrentUser currentUser, SystemDTO.ProfileFieldSettingsRequest request, String pageKey) {
+        return systemProfileSettingsAppService.updateProfileFieldSettings(currentUser, request, pageKey);
     }
 
     public PageResponse<SystemVO.UserVO> listUsers(
@@ -2418,11 +2428,12 @@ public class SystemManagementAppService {
             jdbcTemplate.update(
                     """
                             insert into sys_user (
-                                username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
+                                uuid, username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
                                 available_time, id_card_number, status,
                                 created_by, updated_by, deleted
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
+                    UUID.randomUUID().toString(),
                     request.getUsername(),
                     passwordEncoder.encode(password),
                     normalizeNullableText(request.getMobile()),

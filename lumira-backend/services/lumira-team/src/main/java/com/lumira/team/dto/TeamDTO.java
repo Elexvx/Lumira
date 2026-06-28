@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public final class TeamDTO {
     private TeamDTO() {
@@ -58,6 +59,7 @@ public final class TeamDTO {
         private String role;
         @Size(max = 512)
         private String remark;
+        private Map<String, String> extraValues;
         public String getMemberName() { return memberName; }
         public void setMemberName(String memberName) { this.memberName = memberName; }
         public String getEmployeeNo() { return employeeNo; }
@@ -68,6 +70,8 @@ public final class TeamDTO {
         public void setRole(String role) { this.role = role; }
         public String getRemark() { return remark; }
         public void setRemark(String remark) { this.remark = remark; }
+        public Map<String, String> getExtraValues() { return extraValues; }
+        public void setExtraValues(Map<String, String> extraValues) { this.extraValues = extraValues; }
     }
 
     public static class MemberCreateRequest extends DraftMemberRequest {

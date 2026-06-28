@@ -68,6 +68,17 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void createRegistrationDoesNotRequireApplicantToBeActiveTeamMember() {
+        RegistrationSql sql = new RegistrationSql();
+        CompetitionRegistrationAppService service = service(sql, teamApiRejectingMembershipCheck(2001L, 2));
+
+        CompetitionRegistrationVO.Registration registration = service.createRegistration(student(), registrationRequest());
+
+        assertThat(registration.getTeamId()).isEqualTo(21L);
+        assertThat(registration.getMemberCount()).isEqualTo(2);
+    }
+
+    @Test
     void requiredMaterialFieldsMustBeSubmittedBeforePayment() {
         RegistrationSql sql = new RegistrationSql();
         sql.seedRegistration(1L, "PENDING_PAYMENT", null, 8_800L);
@@ -299,6 +310,31 @@ class CompetitionRegistrationAppServiceTest {
         };
     }
 
+    private TeamInternalApi teamApiRejectingMembershipCheck(Long userId, int memberCount) {
+        return new TeamInternalApi() {
+            private final TeamInternalApi delegate = teamApiWithMembers(userId, memberCount);
+
+            @Override
+            public TeamSummaryDTO getTeam(Long teamId) {
+                return delegate.getTeam(teamId);
+            }
+
+            @Override
+            public List<TeamMemberDTO> listActiveMembers(Long teamId) {
+                return delegate.listActiveMembers(teamId);
+            }
+
+            @Override
+            public TeamMemberDTO requireActiveMember(Long teamId, Long userId) {
+                throw new AssertionError("Registration must not require applicant team membership");
+            }
+
+            @Override public boolean isTeamOwner(Long teamId, Long userId) { return delegate.isTeamOwner(teamId, userId); }
+            @Override public boolean isTeamAdmin(Long teamId, Long userId) { return delegate.isTeamAdmin(teamId, userId); }
+            @Override public boolean isTeamManager(Long teamId, Long userId) { return delegate.isTeamManager(teamId, userId); }
+        };
+    }
+
     private ObjectProvider<TeamInternalApi> objectProvider(TeamInternalApi teamInternalApi) {
         return new ObjectProvider<>() {
             @Override public TeamInternalApi getObject(Object... args) { return teamInternalApi; }
@@ -348,19 +384,19 @@ class CompetitionRegistrationAppServiceTest {
                 wroteTeamTables = true;
             }
             if (normalized.contains("insert into competition_registration")) {
-                registration = newRegistration(lastInsertedId, String.valueOf(args[6]), null, ((Number) args[10]).longValue());
-                registration.put("registrationNo", args[1]);
-                registration.put("competitionId", args[2]);
-                registration.put("teamId", args[3]);
-                registration.put("projectId", args[4]);
-                registration.put("ownerUserId", args[5]);
-                registration.put("feeMode", args[7]);
-                registration.put("entryFeeMinor", args[8]);
-                registration.put("memberCount", args[9]);
-                registration.put("currency", args[11]);
-                registration.put("teamSnapshotJson", args[12]);
-                registration.put("projectSnapshotJson", args[13]);
-                registration.put("memberSnapshotJson", args[14]);
+                registration = newRegistration(lastInsertedId, String.valueOf(args[5]), null, ((Number) args[9]).longValue());
+                registration.put("registrationNo", args[0]);
+                registration.put("competitionId", args[1]);
+                registration.put("teamId", args[2]);
+                registration.put("projectId", args[3]);
+                registration.put("ownerUserId", args[4]);
+                registration.put("feeMode", args[6]);
+                registration.put("entryFeeMinor", args[7]);
+                registration.put("memberCount", args[8]);
+                registration.put("currency", args[10]);
+                registration.put("teamSnapshotJson", args[11]);
+                registration.put("projectSnapshotJson", args[12]);
+                registration.put("memberSnapshotJson", args[13]);
                 return 1;
             }
             if (normalized.contains("insert into registration_material_submission")) {
@@ -373,8 +409,8 @@ class CompetitionRegistrationAppServiceTest {
             }
             if (normalized.contains("insert into payment_order")) {
                 paymentOrderInserts += 1;
-                paymentOrderNo = String.valueOf(args[1]);
-                paymentRequestJson = String.valueOf(args[11]);
+                paymentOrderNo = String.valueOf(args[0]);
+                paymentRequestJson = String.valueOf(args[10]);
                 return 1;
             }
             if (normalized.contains("update competition_registration set payment_order_no")) {

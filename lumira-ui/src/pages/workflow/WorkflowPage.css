@@ -1,0 +1,57 @@
+.workflow-page {
+  min-height: calc(100vh - 160px);
+}
+
+.workflow-designer {
+  display: grid;
+  grid-template-columns: 180px minmax(520px, 1fr) 300px;
+  min-height: calc(100vh - 190px);
+  border: 1px solid rgba(128, 128, 128, 0.24);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.workflow-sidebar,
+.workflow-properties {
+  padding: 16px;
+  border-right: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.workflow-properties {
+  border-right: 0;
+  border-left: 1px solid rgba(128, 128, 128, 0.2);
+  overflow: auto;
+}
+
+.workflow-sidebar__stack {
+  width: 100%;
+}
+
+.workflow-sidebar__stack .ant-btn {
+  width: 100%;
+}
+
+.workflow-canvas {
+  position: relative;
+  min-height: 620px;
+}
+
+.workflow-title-input {
+  position: absolute;
+  z-index: 5;
+  top: 12px;
+  left: 12px;
+  width: 280px;
+}
+
+@media (max-width: 1100px) {
+  .workflow-designer {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-sidebar,
+  .workflow-properties {
+    border: 0;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+  }
+}

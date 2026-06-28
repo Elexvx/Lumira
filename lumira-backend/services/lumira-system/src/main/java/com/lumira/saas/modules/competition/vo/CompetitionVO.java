@@ -8,6 +8,8 @@ public final class CompetitionVO {
 
     public static class Competition {
         private Long id;
+        private String uuid;
+        private String competitionNo;
         private String code;
         private String locale;
         private String title;
@@ -42,6 +44,10 @@ public final class CompetitionVO {
 
         public Long getId() { return id; }
         public void setId(Long id) { this.id = id; }
+        public String getUuid() { return uuid; }
+        public void setUuid(String uuid) { this.uuid = uuid; }
+        public String getCompetitionNo() { return competitionNo; }
+        public void setCompetitionNo(String competitionNo) { this.competitionNo = competitionNo; }
         public String getCode() { return code; }
         public void setCode(String code) { this.code = code; }
         public String getLocale() { return locale; }
@@ -100,6 +106,99 @@ public final class CompetitionVO {
         public void setFeatured(Boolean featured) { this.featured = featured; }
         public Integer getSort() { return sort; }
         public void setSort(Integer sort) { this.sort = sort; }
+        public LocalDateTime getCreatedAt() { return createdAt; }
+        public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+        public LocalDateTime getUpdatedAt() { return updatedAt; }
+        public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    }
+
+    public static class Settings {
+        private Competition competition;
+        private ConfigSet activeConfigSet;
+        private java.util.List<ConfigItem> documents = java.util.List.of();
+        private java.util.List<ConfigItem> fields = java.util.List.of();
+        private java.util.List<ConfigItem> files = java.util.List.of();
+        private java.util.List<ConfigItem> stageMaterials = java.util.List.of();
+        private java.util.List<ConfigItem> timeline = java.util.List.of();
+
+        public Competition getCompetition() { return competition; }
+        public void setCompetition(Competition competition) { this.competition = competition; }
+        public ConfigSet getActiveConfigSet() { return activeConfigSet; }
+        public void setActiveConfigSet(ConfigSet activeConfigSet) { this.activeConfigSet = activeConfigSet; }
+        public java.util.List<ConfigItem> getDocuments() { return documents; }
+        public void setDocuments(java.util.List<ConfigItem> documents) { this.documents = documents; }
+        public java.util.List<ConfigItem> getFields() { return fields; }
+        public void setFields(java.util.List<ConfigItem> fields) { this.fields = fields; }
+        public java.util.List<ConfigItem> getFiles() { return files; }
+        public void setFiles(java.util.List<ConfigItem> files) { this.files = files; }
+        public java.util.List<ConfigItem> getStageMaterials() { return stageMaterials; }
+        public void setStageMaterials(java.util.List<ConfigItem> stageMaterials) { this.stageMaterials = stageMaterials; }
+        public java.util.List<ConfigItem> getTimeline() { return timeline; }
+        public void setTimeline(java.util.List<ConfigItem> timeline) { this.timeline = timeline; }
+    }
+
+    public static class ConfigSet {
+        private Long id;
+        private String competitionUuid;
+        private Integer version;
+        private String status;
+        private LocalDateTime publishedAt;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public String getCompetitionUuid() { return competitionUuid; }
+        public void setCompetitionUuid(String competitionUuid) { this.competitionUuid = competitionUuid; }
+        public Integer getVersion() { return version; }
+        public void setVersion(Integer version) { this.version = version; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public LocalDateTime getPublishedAt() { return publishedAt; }
+        public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
+        public LocalDateTime getCreatedAt() { return createdAt; }
+        public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+        public LocalDateTime getUpdatedAt() { return updatedAt; }
+        public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+    }
+
+    public static class ConfigItem {
+        private Long id;
+        private String competitionUuid;
+        private Long configSetId;
+        private String itemType;
+        private String itemKey;
+        private String title;
+        private String contentJson;
+        private String contentText;
+        private Integer sortOrder;
+        private Boolean requiredFlag;
+        private Boolean enabled;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+
+        public Long getId() { return id; }
+        public void setId(Long id) { this.id = id; }
+        public String getCompetitionUuid() { return competitionUuid; }
+        public void setCompetitionUuid(String competitionUuid) { this.competitionUuid = competitionUuid; }
+        public Long getConfigSetId() { return configSetId; }
+        public void setConfigSetId(Long configSetId) { this.configSetId = configSetId; }
+        public String getItemType() { return itemType; }
+        public void setItemType(String itemType) { this.itemType = itemType; }
+        public String getItemKey() { return itemKey; }
+        public void setItemKey(String itemKey) { this.itemKey = itemKey; }
+        public String getTitle() { return title; }
+        public void setTitle(String title) { this.title = title; }
+        public String getContentJson() { return contentJson; }
+        public void setContentJson(String contentJson) { this.contentJson = contentJson; }
+        public String getContentText() { return contentText; }
+        public void setContentText(String contentText) { this.contentText = contentText; }
+        public Integer getSortOrder() { return sortOrder; }
+        public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+        public Boolean getRequiredFlag() { return requiredFlag; }
+        public void setRequiredFlag(Boolean requiredFlag) { this.requiredFlag = requiredFlag; }
+        public Boolean getEnabled() { return enabled; }
+        public void setEnabled(Boolean enabled) { this.enabled = enabled; }
         public LocalDateTime getCreatedAt() { return createdAt; }
         public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
         public LocalDateTime getUpdatedAt() { return updatedAt; }

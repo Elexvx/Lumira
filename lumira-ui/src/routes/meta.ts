@@ -30,10 +30,12 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/activities/': '/activities/management',
   '/activities/management/': '/activities/management',
   '/activities/search/': '/activities/search',
-  '/competitions': '/competitions/management',
-  '/competitions/': '/competitions/management',
+  '/competitions': '/competitions/register',
+  '/competitions/': '/competitions/register',
   '/competitions/management/': '/competitions/management',
   '/competitions/register/': '/competitions/register',
+  '/competitions/activity-register/': '/competitions/activity-register',
+  '/competitions/expert-apply/': '/competitions/expert-apply',
   '/projects': '/projects/management',
   '/projects/': '/projects/management',
   '/projects/management/': '/projects/management',
@@ -51,6 +53,10 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/experts/': '/experts/management',
   '/experts/management/': '/experts/management',
   '/experts/query/': '/experts/query',
+  '/workflows': '/workflows/tasks',
+  '/workflows/': '/workflows/tasks',
+  '/workflows/tasks/': '/workflows/tasks',
+  '/workflows/config/': '/workflows/config',
   '/user-center/files': '/user-center/personal-center/files',
   '/user-center/files/': '/user-center/personal-center/files',
   '/user-center/personal-center/files/': '/user-center/personal-center/files',
@@ -288,10 +294,13 @@ const activityRoutes: BackendRouteRecord[] = [
 ];
 
 const competitionRouteMeta: BackendRouteMeta[] = [
-  { path: '/competitions', name: 'nav.competitions.root', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
-  { path: '/competitions/management', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions' },
-  { path: '/competitions/register', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitions', hideInMenu: true },
+  { path: '/competitions', name: 'nav.competitions.root', icon: 'TrophyOutlined', access: 'isLogin' },
+  { path: '/competitions/management', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
+  { path: '/competitions/register', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'isLogin' },
+  { path: '/competitions/activity-register', name: 'nav.competitions.activityRegister', icon: 'CalendarOutlined', access: 'isLogin' },
+  { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin' },
   { path: '/competitions/create', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
+  { path: '/competitions/:competitionUuid/settings', name: 'nav.competitions.settings', icon: 'SettingOutlined', access: 'canVisitCompetitions', hideInMenu: true },
 ];
 
 const projectRouteMeta: BackendRouteMeta[] = [
@@ -321,12 +330,15 @@ const competitionRoutes: BackendRouteRecord[] = [
     component: '@/layouts/SettingsLayout/SettingsLayout',
     name: 'nav.competitions.root',
     icon: 'TrophyOutlined',
-    access: 'canVisitCompetitions',
+    access: 'isLogin',
     routes: [
-      { path: '/competitions', redirect: '/competitions/management', hideInMenu: true },
-      { path: '/competitions/management', component: '@/pages/competition', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions' },
-      { path: '/competitions/register', component: '@/pages/competition', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitions' },
+      { path: '/competitions', redirect: '/competitions/register', hideInMenu: true },
+      { path: '/competitions/management', component: '@/pages/competition', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
+      { path: '/competitions/register', component: '@/pages/competition', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'isLogin' },
+      { path: '/competitions/activity-register', component: '@/pages/competition', name: 'nav.competitions.activityRegister', icon: 'CalendarOutlined', access: 'isLogin' },
+      { path: '/competitions/expert-apply', component: '@/pages/competition', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin' },
       { path: '/competitions/create', component: '@/pages/competition', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
+      { path: '/competitions/:competitionUuid/settings', component: '@/pages/competition', name: 'nav.competitions.settings', icon: 'SettingOutlined', access: 'canVisitCompetitions', hideInMenu: true },
     ],
   },
 ];
@@ -400,6 +412,27 @@ const expertRoutes: BackendRouteRecord[] = [
   },
 ];
 
+const workflowRouteMeta: BackendRouteMeta[] = [
+  { path: '/workflows', name: 'nav.workflow.root', icon: 'BranchesOutlined', access: 'canVisitWorkflow' },
+  { path: '/workflows/tasks', name: 'nav.workflow.tasks', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
+  { path: '/workflows/config', name: 'nav.workflow.config', icon: 'BranchesOutlined', access: 'canVisitWorkflowConfig' },
+];
+
+const workflowRoutes: BackendRouteRecord[] = [
+  {
+    path: '/workflows',
+    component: '@/layouts/SettingsLayout/SettingsLayout',
+    name: 'nav.workflow.root',
+    icon: 'BranchesOutlined',
+    access: 'canVisitWorkflow',
+    routes: [
+      { path: '/workflows', redirect: '/workflows/tasks', hideInMenu: true },
+      { path: '/workflows/tasks', component: '@/pages/workflow/WorkflowTasksPage', name: 'nav.workflow.tasks', icon: 'AuditOutlined', access: 'canVisitWorkflowTasks' },
+      { path: '/workflows/config', component: '@/pages/workflow/WorkflowConfigPage', name: 'nav.workflow.config', icon: 'BranchesOutlined', access: 'canVisitWorkflowConfig' },
+    ],
+  },
+];
+
 const dataManagementRouteMeta: BackendRouteMeta[] = [
   { path: '/data-management', name: 'nav.data.management', icon: 'DatabaseOutlined' },
   ...competitionRouteMeta,
@@ -433,6 +466,7 @@ const publicRouteMeta: BackendRouteMeta[] = [
   { path: '/blank/workflow', name: 'common.failure', hideInMenu: true },
   { path: '/public/certificate/verify', name: 'nav.certificates.verify', hideInMenu: true },
   { path: '/certificate/verify/:publicToken', name: 'nav.certificates.verify', hideInMenu: true },
+  { path: '/account-activation', name: 'nav.account.activation', hideInMenu: true },
   { path: '/user/login', name: 'page.login.title', hideInMenu: true },
   { path: '/403', name: 'common.failure', hideInMenu: true },
   { path: '/404', name: 'common.failure', hideInMenu: true },
@@ -446,6 +480,7 @@ const publicRoutes: BackendRouteRecord[] = [
   { path: '/blank/workflow', redirect: '/404', name: 'common.failure', hideInMenu: true },
   { path: '/public/certificate/verify', component: '@/pages/certificates/PublicVerifyPage', layout: false, name: 'nav.certificates.verify', hideInMenu: true },
   { path: '/certificate/verify/:publicToken', component: '@/pages/certificates/PublicVerifyPage', layout: false, name: 'nav.certificates.verify', hideInMenu: true },
+  { path: '/account-activation', component: '@/pages/account/ActivationPage', layout: false, name: 'nav.account.activation', hideInMenu: true },
   { path: '/user/login', component: '@/pages/user/Login', layout: false, name: 'page.login.title', hideInMenu: true },
   { path: '/403', component: '@/pages/exception/NoPermission', name: 'common.failure', hideInMenu: true },
   { path: '/404', component: '@/pages/exception/NotFound', name: 'common.failure', hideInMenu: true },
@@ -458,6 +493,7 @@ export const backendRouteMeta: BackendRouteMeta[] = [
   ...dataManagementRouteMeta,
   ...certificateRouteMeta,
   ...expertRouteMeta,
+  ...workflowRouteMeta,
   ...aiRouteMeta,
   ...systemRouteMeta,
   ...userCenterRouteMeta,
@@ -469,13 +505,14 @@ export const backendRoutes: BackendRouteRecord[] = [
   ...dataManagementRoutes,
   ...certificateRoutes,
   ...expertRoutes,
+  ...workflowRoutes,
   ...aiRoutes,
   ...systemRoutes,
   ...userCenterRoutes,
   ...publicRoutes,
 ];
 
-const NON_AUTHORIZED_ROUTE_PATHS = new Set(['/user/login', '/403', '/404', '/500', '/blank/workflow']);
+const NON_AUTHORIZED_ROUTE_PATHS = new Set(['/user/login', '/account-activation', '/403', '/404', '/500', '/blank/workflow']);
 
 const collectRealPageRouteMeta = (routes: BackendRouteRecord[], result = new Map<string, BackendRouteMeta>()) => {
   routes.forEach((route) => {

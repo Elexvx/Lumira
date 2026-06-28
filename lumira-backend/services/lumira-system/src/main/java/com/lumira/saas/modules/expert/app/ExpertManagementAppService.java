@@ -9,9 +9,7 @@ import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.modules.expert.dto.ExpertDTO;
 import com.lumira.saas.modules.expert.vo.ExpertVO;
-import com.lumira.saas.modules.system.dto.SystemDTO;
-import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
-import com.lumira.saas.modules.system.vo.SystemVO;
+import com.lumira.saas.modules.workflow.app.WorkflowAppService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -21,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -34,14 +33,14 @@ public class ExpertManagementAppService {
     private static final char[] CHINA_ID_CARD_CHECK_CODES = {'1', '0', 'X', '9', '8', '7', '6', '5', '4', '3', '2'};
 
     private final MyBatisQueryOperations jdbcTemplate;
-    private final SystemUserManagementAppService systemUserManagementAppService;
+    private final WorkflowAppService workflowAppService;
 
-    public ExpertManagementAppService(MyBatisQueryOperations jdbcTemplate, SystemUserManagementAppService systemUserManagementAppService) {
+    public ExpertManagementAppService(MyBatisQueryOperations jdbcTemplate, WorkflowAppService workflowAppService) {
         this.jdbcTemplate = jdbcTemplate;
-        this.systemUserManagementAppService = systemUserManagementAppService;
+        this.workflowAppService = workflowAppService;
     }
 
-    public PageResponse<ExpertVO.Expert> listExperts(CurrentUser currentUser, String keyword, String status, long pageNo, long pageSize) {
+    public PageResponse<ExpertVO.Expert> listExperts(CurrentUser currentUser, String keyword, String status, String approvalStatus, long pageNo, long pageSize) {
         requireAuthenticated(currentUser);
         long normalizedPageNo = Math.max(1L, pageNo);
         long normalizedPageSize = Math.max(1L, Math.min(pageSize, MAX_PAGE_SIZE));
@@ -60,6 +59,10 @@ public class ExpertManagementAppService {
         if (StringUtils.hasText(status)) {
             where.append(" and status = ?");
             params.add(normalizeStatus(status));
+        }
+        if (StringUtils.hasText(approvalStatus)) {
+            where.append(" and approval_status = ?");
+            params.add(normalizeApprovalStatus(approvalStatus));
         }
 
         Long total = jdbcTemplate.queryForObject("select count(1)" + where, Long.class, params.toArray());
@@ -98,8 +101,8 @@ public class ExpertManagementAppService {
                 """
                         insert into aiadc_expert (
                             code, name, title, organization, position, expertise,
-                            phone, mobile, id_card_number, email, avatar_url, bio, tags, status, sort, created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            phone, mobile, id_card_number, email, avatar_url, bio, tags, status, approval_status, sort, created_by, updated_by, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, 0)
                         """,
                 normalized.getCode(),
                 normalized.getName(),
@@ -114,15 +117,32 @@ public class ExpertManagementAppService {
                 normalized.getAvatarUrl(),
                 normalized.getBio(),
                 normalized.getTags(),
-                normalized.getStatus(),
+                "inactive",
                 normalized.getSort(),
                 userId,
                 userId
         );
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        String initialPassword = createExpertAccount(currentUser, id, normalized);
+        Long workflowInstanceId = workflowAppService.startWorkflow(
+                currentUser,
+                WorkflowAppService.BUSINESS_EXPERT_APPLICATION,
+                id,
+                normalized.getCode(),
+                normalized.getName(),
+                Map.of(
+                        "name", normalized.getName(),
+                        "email", normalized.getEmail() == null ? "" : normalized.getEmail(),
+                        "expertise", normalized.getExpertise()
+                )
+        );
+        jdbcTemplate.update(
+                "update aiadc_expert set approval_instance_id = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+                workflowInstanceId,
+                userId,
+                LocalDateTime.now(),
+                id
+        );
         ExpertVO.Expert expert = getExpert(currentUser, id);
-        expert.setInitialPassword(initialPassword);
         return expert;
     }
 
@@ -214,52 +234,18 @@ public class ExpertManagementAppService {
         return "exp-" + LocalDateTime.now().format(EXPERT_CODE_TIME_FORMATTER) + "-" + random;
     }
 
-    private String createExpertAccount(CurrentUser currentUser, Long expertId, ExpertDTO.ExpertUpsertRequest expert) {
-        String username = "expert_" + expert.getCode().replaceAll("[^A-Za-z0-9_-]", "_");
-        String initialPassword = generateInitialPassword();
-        SystemDTO.UserUpsertRequest userRequest = new SystemDTO.UserUpsertRequest();
-        userRequest.setUsername(username);
-        userRequest.setPassword(initialPassword);
-        userRequest.setMobile(expert.getMobile());
-        userRequest.setEmail(expert.getEmail());
-        userRequest.setRealName(expert.getName());
-        userRequest.setNickname(expert.getName());
-        userRequest.setStatus("ENABLED");
-        Long expertRoleId = findRoleId("EXPERT");
-        userRequest.setRoleIds(expertRoleId == null ? List.of() : List.of(expertRoleId));
-        SystemVO.UserDetailVO createdUser = systemUserManagementAppService.createUser(currentUser, userRequest);
-        jdbcTemplate.update(
-                """
-                        update aiadc_expert
-                        set user_id = ?, account_status = 'ENABLED', initial_password_reset_required = 1,
-                            updated_by = ?, updated_at = ?
-                        where id = ? and deleted = 0
-                        """,
-                createdUser.getId(),
-                requireUserId(currentUser),
-                LocalDateTime.now(),
-                expertId
-        );
-        return initialPassword;
-    }
-
-    private Long findRoleId(String roleCode) {
-        return jdbcTemplate.queryForObject(
-                "select id from sys_role where role_code = ? and deleted = 0 limit 1",
-                Long.class,
-                roleCode
-        );
-    }
-
-    private String generateInitialPassword() {
-        String random = Long.toString(ThreadLocalRandom.current().nextLong(36L * 36L * 36L * 36L * 36L * 36L), 36);
-        return "Ex" + random + "Aa1!";
-    }
-
     private String normalizeStatus(String status) {
         String normalized = status.trim().toLowerCase(Locale.ROOT);
         if (!STATUSES.contains(normalized)) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Invalid expert status");
+        }
+        return normalized;
+    }
+
+    private String normalizeApprovalStatus(String approvalStatus) {
+        String normalized = approvalStatus.trim().toUpperCase(Locale.ROOT);
+        if (!Set.of("PENDING", "RUNNING", "APPROVED", "REJECTED").contains(normalized)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid expert approval status");
         }
         return normalized;
     }
@@ -368,7 +354,8 @@ public class ExpertManagementAppService {
                 select id, code, name, title, organization, position, expertise,
                        phone, mobile, id_card_number as idCardNumber, user_id as userId, account_status as accountStatus,
                        initial_password_reset_required as initialPasswordResetRequired,
-                       email, avatar_url as avatarUrl, bio, tags, status, sort,
+                       email, avatar_url as avatarUrl, bio, tags, status, approval_status as approvalStatus,
+                       approval_instance_id as approvalInstanceId, sort,
                        created_at as createdAt, updated_at as updatedAt
                 """;
     }

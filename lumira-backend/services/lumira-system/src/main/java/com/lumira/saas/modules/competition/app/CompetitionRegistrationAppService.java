@@ -209,7 +209,7 @@ public class CompetitionRegistrationAppService {
     public CompetitionRegistrationVO.Registration createRegistration(CurrentUser currentUser, CompetitionRegistrationDTO.RegistrationCreateRequest request) {
         Long userId = requireUserId(currentUser);
         CompetitionRow competition = requireCompetition(request.getCompetitionId());
-        TeamSnapshot team = resolveTeamSnapshot(request.getTeamId(), userId);
+        TeamSnapshot team = resolveTeamSnapshot(request.getTeamId());
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId());
         int memberCount = team.members().size();
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
@@ -246,7 +246,7 @@ public class CompetitionRegistrationAppService {
     public CompetitionRegistrationVO.Registration updateRegistration(CurrentUser currentUser, Long id, CompetitionRegistrationDTO.RegistrationCreateRequest request) {
         CompetitionRegistrationVO.Registration existing = getRegistration(currentUser, id);
         CompetitionRow competition = requireCompetition(request.getCompetitionId());
-        TeamSnapshot team = resolveTeamSnapshot(request.getTeamId(), requireUserId(currentUser));
+        TeamSnapshot team = resolveTeamSnapshot(request.getTeamId());
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId());
         int memberCount = team.members().size();
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
@@ -525,6 +525,64 @@ public class CompetitionRegistrationAppService {
         }
     }
 
+    @Transactional
+    public CompetitionRegistrationVO.PaymentOrder simulatePayment(CurrentUser currentUser, Long registrationId) {
+        CompetitionRegistrationVO.Registration registration = getRegistration(currentUser, registrationId);
+        if (!Set.of("PENDING_PAYMENT", "PAID", "CONFIRMED").contains(registration.getStatus())) {
+            throw biz(ErrorCode.BIZ_ERROR, "Only pending-payment registrations can be paid");
+        }
+
+        String orderNo = registration.getPaymentOrderNo();
+        if (!StringUtils.hasText(orderNo)) {
+            orderNo = "MOCK-REG-" + registration.getId() + "-" + Long.toString(ThreadLocalRandom.current().nextLong(36L * 36L * 36L * 36L), 36).toUpperCase(Locale.ROOT);
+            String providerOrderNo = "mock-" + orderNo;
+            jdbcTemplate.update(
+                    """
+                            insert into payment_order (
+                                order_no, provider_code, provider_order_no, subject, amount_minor, currency,
+                                status, payment_url, request_json, response_json, idempotency_key,
+                                expires_at, paid_at, created_by, updated_by, deleted
+                            ) values (?, 'mock', ?, ?, ?, ?, 'PAID', ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            """,
+                    orderNo,
+                    providerOrderNo,
+                    "Mock competition registration " + registration.getRegistrationNo(),
+                    registration.getPayableAmountMinor() == null ? 0L : registration.getPayableAmountMinor(),
+                    registration.getCurrency(),
+                    "/payment/mock/orders/" + orderNo,
+                    serialize(Map.of("providerCode", "mock", "orderNo", orderNo, "registrationId", registration.getId())),
+                    serialize(Map.of("providerCode", "mock", "providerOrderNo", providerOrderNo, "status", "PAID")),
+                    "mock-competition-registration-" + registration.getId(),
+                    LocalDateTime.now().plusHours(2),
+                    LocalDateTime.now(),
+                    requireUserId(currentUser),
+                    requireUserId(currentUser)
+            );
+            jdbcTemplate.update(
+                    "update competition_registration set payment_order_no = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+                    orderNo,
+                    requireUserId(currentUser),
+                    LocalDateTime.now(),
+                    registration.getId()
+            );
+        } else {
+            jdbcTemplate.update(
+                    """
+                            update payment_order
+                            set status = 'PAID', paid_at = coalesce(paid_at, ?), updated_by = ?, updated_at = ?
+                            where order_no = ? and deleted = 0
+                            """,
+                    LocalDateTime.now(),
+                    requireUserId(currentUser),
+                    LocalDateTime.now(),
+                    orderNo
+            );
+        }
+
+        confirmPaidRegistration(registration.getId(), orderNo);
+        return findPaymentOrder(orderNo);
+    }
+
     private void confirmPaidRegistration(Long registrationId, String orderNo) {
         CompetitionRegistrationVO.Registration registration = findRegistration(registrationId);
         if (registration == null || StringUtils.hasText(registration.getParticipantNo())) {
@@ -574,14 +632,13 @@ public class CompetitionRegistrationAppService {
         }
     }
 
-    private TeamSnapshot resolveTeamSnapshot(Long teamId, Long userId) {
+    private TeamSnapshot resolveTeamSnapshot(Long teamId) {
         TeamInternalApi api = teamInternalApiProvider.getIfAvailable();
         if (api != null) {
             TeamSummaryDTO team = api.getTeam(teamId);
             if (team == null) {
                 throw biz(ErrorCode.NOT_FOUND, "Team not found");
             }
-            api.requireActiveMember(teamId, userId);
             List<TeamMemberDTO> members = api.listActiveMembers(teamId);
             return new TeamSnapshot(teamId, team, members == null ? List.of() : members);
         }
@@ -598,17 +655,10 @@ public class CompetitionRegistrationAppService {
         if (team == null) {
             throw biz(ErrorCode.NOT_FOUND, "Team not found");
         }
-        boolean member = jdbcTemplate.exists(
-                "select 1 from team_member where team_id = ? and user_id = ? and status = 'ACTIVE' and deleted = 0 limit 1",
-                                teamId,
-                userId
-        );
-        if (!member) {
-            throw biz(ErrorCode.FORBIDDEN, "Current user is not an active team member");
-        }
         List<Map<String, Object>> members = jdbcTemplate.queryForList(
                 """
-                        select id, team_id as teamId, user_id as userId, role, status, joined_at as joinedAt
+                        select id, team_id as teamId, user_id as userId, role, status,
+                               extra_values_json as extraValuesJson, joined_at as joinedAt
                         from team_member
                         where team_id = ? and status = 'ACTIVE' and deleted = 0
                         order by id asc

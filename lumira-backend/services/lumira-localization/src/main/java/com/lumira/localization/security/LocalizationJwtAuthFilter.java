@@ -78,6 +78,7 @@ public class LocalizationJwtAuthFilter extends OncePerRequestFilter {
                                 true,
                                 snapshot.permissions() == null ? Set.of() : snapshot.permissions().stream().collect(Collectors.toUnmodifiableSet())
                         );
+                        currentUser.setUserUuid(snapshot.userUuid());
                         UsernamePasswordAuthenticationToken authentication =
                                 new UsernamePasswordAuthenticationToken(currentUser, authorization, List.of());
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

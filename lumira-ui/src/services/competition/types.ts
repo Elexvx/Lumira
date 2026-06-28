@@ -4,6 +4,8 @@ export type CompetitionFeeMode = 'TEAM' | 'MEMBER';
 
 export interface CompetitionRecord {
   id: number;
+  uuid?: string;
+  competitionNo?: string;
   code: string;
   locale: string;
   title: string;
@@ -35,6 +37,53 @@ export interface CompetitionRecord {
   sort: number;
   createdAt?: string | null;
   updatedAt?: string | null;
+}
+
+export type CompetitionConfigItemType =
+  | 'AGREEMENT'
+  | 'CONSENT'
+  | 'REGISTRATION_FIELD'
+  | 'TEAM_FIELD'
+  | 'MEMBER_FIELD'
+  | 'PROJECT_FIELD'
+  | 'REQUIRED_FILE'
+  | 'STAGE_MATERIAL'
+  | 'TIMELINE';
+
+export interface CompetitionConfigSet {
+  id: number;
+  competitionUuid: string;
+  version: number;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  publishedAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface CompetitionConfigItem {
+  id?: number;
+  competitionUuid?: string;
+  configSetId?: number;
+  itemType: CompetitionConfigItemType;
+  itemKey: string;
+  title: string;
+  contentJson?: string | null;
+  contentText?: string | null;
+  sortOrder?: number;
+  requiredFlag?: boolean;
+  enabled?: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface CompetitionSettingsRecord {
+  competition: CompetitionRecord;
+  activeConfigSet: CompetitionConfigSet;
+  documents: CompetitionConfigItem[];
+  fields: CompetitionConfigItem[];
+  files: CompetitionConfigItem[];
+  stageMaterials: CompetitionConfigItem[];
+  timeline: CompetitionConfigItem[];
 }
 
 export interface CompetitionUpsertPayload {
@@ -133,6 +182,7 @@ export interface CompetitionRegistrationRecord {
   competitionId: number;
   teamId: number;
   projectId: number;
+  ownerUserId?: number;
   status: string;
   feeMode: CompetitionFeeMode;
   entryFeeMinor: number;
@@ -141,6 +191,11 @@ export interface CompetitionRegistrationRecord {
   currency: string;
   paymentOrderNo?: string | null;
   participantNo?: string | null;
+  teamSnapshotJson?: string | null;
+  projectSnapshotJson?: string | null;
+  memberSnapshotJson?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface CompetitionStageRecord {

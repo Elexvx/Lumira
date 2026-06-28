@@ -6,11 +6,8 @@ import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.SqlRow;
 import com.lumira.saas.modules.expert.dto.ExpertDTO;
 import com.lumira.saas.modules.expert.vo.ExpertVO;
-import com.lumira.saas.modules.system.dto.SystemDTO;
-import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
-import com.lumira.saas.modules.system.vo.SystemVO;
+import com.lumira.saas.modules.workflow.app.WorkflowAppService;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -20,6 +17,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -27,31 +25,20 @@ import static org.mockito.Mockito.when;
 class ExpertManagementAppServiceTest {
 
     @Test
-    void createExpertDelegatesSystemUserCreationAndStoresUserId() {
+    void createExpertStartsApprovalWorkflowWithoutCreatingAccount() {
         ExpertSql sql = new ExpertSql();
-        SystemUserManagementAppService userManagementAppService = mock(SystemUserManagementAppService.class);
-        SystemVO.UserDetailVO createdUser = new SystemVO.UserDetailVO();
-        createdUser.setId(9001L);
-        when(userManagementAppService.createUser(any(CurrentUser.class), any(SystemDTO.UserUpsertRequest.class))).thenReturn(createdUser);
-        ExpertManagementAppService service = new ExpertManagementAppService(sql, userManagementAppService);
+        WorkflowAppService workflowAppService = mock(WorkflowAppService.class);
+        when(workflowAppService.startWorkflow(any(CurrentUser.class), eq(WorkflowAppService.BUSINESS_EXPERT_APPLICATION), eq(501L), eq("exp-001"), eq("Ada Expert"), any(Map.class))).thenReturn(7001L);
+        ExpertManagementAppService service = new ExpertManagementAppService(sql, workflowAppService);
 
         ExpertVO.Expert expert = service.createExpert(admin(), expertRequest());
 
-        assertThat(expert.getUserId()).isEqualTo(9001L);
-        assertThat(expert.getAccountStatus()).isEqualTo("ENABLED");
-        assertThat(expert.getInitialPasswordResetRequired()).isTrue();
-        ArgumentCaptor<SystemDTO.UserUpsertRequest> captor = ArgumentCaptor.forClass(SystemDTO.UserUpsertRequest.class);
-        verify(userManagementAppService).createUser(any(CurrentUser.class), captor.capture());
-        SystemDTO.UserUpsertRequest userRequest = captor.getValue();
-        assertThat(userRequest.getUsername()).isEqualTo("expert_exp-001");
-        assertThat(userRequest.getPassword()).isNotBlank();
-        assertThat(expert.getInitialPassword()).isEqualTo(userRequest.getPassword());
-        assertThat(userRequest.getRealName()).isEqualTo("Ada Expert");
-        assertThat(userRequest.getMobile()).isEqualTo("13800000000");
-        assertThat(userRequest.getEmail()).isEqualTo("ada@example.com");
-        assertThat(userRequest.getStatus()).isEqualTo("ENABLED");
-        assertThat(userRequest.getRoleIds()).containsExactly(1003L);
-        assertThat(sql.expertUserIdUpdates).isEqualTo(1);
+        assertThat(expert.getUserId()).isNull();
+        assertThat(expert.getStatus()).isEqualTo("inactive");
+        assertThat(expert.getApprovalStatus()).isEqualTo("PENDING");
+        assertThat(expert.getApprovalInstanceId()).isEqualTo(7001L);
+        verify(workflowAppService).startWorkflow(any(CurrentUser.class), eq(WorkflowAppService.BUSINESS_EXPERT_APPLICATION), eq(501L), eq("exp-001"), eq("Ada Expert"), any(Map.class));
+        assertThat(sql.workflowInstanceUpdates).isEqualTo(1);
     }
 
     private ExpertDTO.ExpertUpsertRequest expertRequest() {
@@ -79,7 +66,7 @@ class ExpertManagementAppServiceTest {
 
     private static final class ExpertSql extends MyBatisQueryOperations {
         private final Map<String, Object> expert = new LinkedHashMap<>();
-        private int expertUserIdUpdates;
+        private int workflowInstanceUpdates;
 
         @Override
         public int update(String sql, Object... args) {
@@ -100,16 +87,15 @@ class ExpertManagementAppServiceTest {
                 expert.put("bio", args[12]);
                 expert.put("tags", args[13]);
                 expert.put("status", args[14]);
+                expert.put("approvalStatus", "PENDING");
                 expert.put("sort", args[15]);
                 expert.put("createdAt", LocalDateTime.now());
                 expert.put("updatedAt", LocalDateTime.now());
                 return 1;
             }
-            if (normalized.contains("set user_id = ?")) {
-                expert.put("userId", args[0]);
-                expert.put("accountStatus", "ENABLED");
-                expert.put("initialPasswordResetRequired", 1);
-                expertUserIdUpdates += 1;
+            if (normalized.contains("set approval_instance_id = ?")) {
+                expert.put("approvalInstanceId", args[0]);
+                workflowInstanceUpdates += 1;
                 return 1;
             }
             return 1;

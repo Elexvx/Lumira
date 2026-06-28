@@ -1,0 +1,12 @@
+.activation-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  background: #0f1115;
+}
+
+.activation-card {
+  width: min(420px, 100%);
+}

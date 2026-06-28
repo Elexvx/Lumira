@@ -67,6 +67,7 @@ public class MessageSessionAuthenticationService {
                 : Collections.unmodifiableSet(new LinkedHashSet<>(snapshot.permissions()));
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(snapshot.userId());
+        currentUser.setUserUuid(snapshot.userUuid());
         currentUser.setUsername(snapshot.username());
         currentUser.setSessionId(snapshot.sessionId());
         currentUser.setSessionVersion(snapshot.sessionVersion());

@@ -10,6 +10,7 @@ public class OnlineSessionEvent {
 
     private String action;
     private Long userId;
+    private String userUuid;
     private String sessionId;
     private String operatorUsername;
     private Instant occurredAt;
@@ -28,6 +29,14 @@ public class OnlineSessionEvent {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getUserUuid() {
+        return userUuid;
+    }
+
+    public void setUserUuid(String userUuid) {
+        this.userUuid = userUuid;
     }
 
     public String getSessionId() {

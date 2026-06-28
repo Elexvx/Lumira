@@ -162,6 +162,26 @@ class SystemProfileSettingsAppServiceTest {
     }
 
     @Test
+    void profileFieldSettingsSupportTeamMemberPageDefinitions() {
+        RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of(
+                "team_member.field.custom.definitions",
+                "[{\"fieldKey\":\"shirtSize\",\"fieldLabel\":\"Shirt size\",\"fieldType\":\"TEXT\",\"visible\":true,\"required\":true,\"sortNo\":120,\"custom\":true}]"
+        ));
+        SystemProfileSettingsAppService service = newService(jdbcTemplate);
+
+        List<ProfileFieldSettingVO> teamMemberSettings = service.getProfileFieldSettings(buildCurrentUser(), "TEAM_MEMBER");
+        List<ProfileFieldSettingVO> profileSettings = service.getProfileFieldSettings(buildCurrentUser());
+
+        ProfileFieldSettingVO memberName = findSetting(teamMemberSettings, "memberName");
+        ProfileFieldSettingVO shirtSize = findSetting(teamMemberSettings, "shirtSize");
+        assertEquals("TEAM_MEMBER", memberName.getPageKey());
+        assertEquals("TEAM_MEMBER", shirtSize.getPageKey());
+        assertTrue(shirtSize.getCustom());
+        assertTrue(shirtSize.getRequired());
+        assertTrue(profileSettings.stream().noneMatch(item -> "memberName".equals(item.getFieldKey())));
+    }
+
+    @Test
     void updateProfileFieldSettingsPersistsCustomDefinitionsAsJson() {
         RecordingJdbcTemplate jdbcTemplate = new RecordingJdbcTemplate(Map.of());
         SystemProfileSettingsAppService service = newService(jdbcTemplate);

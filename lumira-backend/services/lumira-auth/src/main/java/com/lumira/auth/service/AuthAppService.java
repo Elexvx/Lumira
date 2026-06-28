@@ -331,14 +331,14 @@ public class AuthAppService {
             }
             if (!"ENABLED".equalsIgnoreCase(user.status())) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(user.userId(), user.username(), "PASSWORD", "FAIL", "ACCOUNT_DISABLED", loginIp, userAgent);
+                recordLoginAudit(user.userId(), user.userUuid(), user.username(), "PASSWORD", "FAIL", "ACCOUNT_DISABLED", loginIp, userAgent);
                 throw loginFailed();
             }
 
             String loginPassword = resolveLoginPassword(request, httpServletRequest);
             if (!passwordEncoder.matches(loginPassword, user.passwordHash())) {
                 loginProtectionService.recordFailure(account, loginIp);
-                recordLoginAudit(user.userId(), user.username(), "PASSWORD", "FAIL", "PASSWORD_MISMATCH", loginIp, userAgent);
+                recordLoginAudit(user.userId(), user.userUuid(), user.username(), "PASSWORD", "FAIL", "PASSWORD_MISMATCH", loginIp, userAgent);
                 throw loginFailed();
             }
             boolean requiresPasswordChange = requiresInitialAdminPasswordChange(account, user, loginPassword);
@@ -352,7 +352,7 @@ public class AuthAppService {
                 LoginResponseDTO response = new LoginResponseDTO();
                 response.setRequiresSecondFactor(Boolean.TRUE);
                 response.setSecondFactorOptions(secondFactorOptions);
-                recordLoginAudit(user.userId(), user.username(), "PASSWORD", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
+                recordLoginAudit(user.userId(), user.userUuid(), user.username(), "PASSWORD", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
                 return response;
             }
 
@@ -362,7 +362,7 @@ public class AuthAppService {
             AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresPasswordChange);
             saveSessionWithMultiDevicePolicy(session);
             loginProtectionService.clearFailureState(account, loginIp);
-            recordLoginAudit(user.userId(), user.username(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
+            recordLoginAudit(user.userId(), user.userUuid(), user.username(), "PASSWORD", "SUCCESS", null, loginIp, userAgent);
             return toLoginResponse(session, user, snapshot, requiresPasswordChange);
         } finally {
             stopAuthTimer(authLoginTimer, start);
@@ -438,13 +438,13 @@ public class AuthAppService {
         String userAgent = httpServletRequest.getHeader("User-Agent");
         List<LoginResponseDTO.SecondFactorOptionDTO> secondFactorOptions = secondFactorOptionsFuture.join();
         if (!secondFactorOptions.isEmpty()) {
-            recordLoginAudit(user.userId(), user.username(), "WECHAT", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
+            recordLoginAudit(user.userId(), user.userUuid(), user.username(), "WECHAT", "PENDING", "SECOND_FACTOR_REQUIRED", loginIp, userAgent);
             return toPendingSecondFactorResponse(user, snapshot, secondFactorOptions);
         }
 
         AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user));
         saveSessionWithMultiDevicePolicy(session);
-        recordLoginAudit(user.userId(), user.username(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
+        recordLoginAudit(user.userId(), user.userUuid(), user.username(), "WECHAT", "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
     public LoginResponseDTO completeSecondFactorLogin(SecondFactorCompleteRequest request, HttpServletRequest httpServletRequest) {
@@ -666,7 +666,7 @@ public class AuthAppService {
         String userAgent = request.getHeader("User-Agent");
         AuthSession session = buildSession(user, loginIp, userAgent, snapshot, requiresInitialAdminPasswordChange(user));
         saveSessionWithMultiDevicePolicy(session);
-        recordLoginAudit(user.userId(), user.username(), loginType, "SUCCESS", null, loginIp, userAgent);
+        recordLoginAudit(user.userId(), user.userUuid(), user.username(), loginType, "SUCCESS", null, loginIp, userAgent);
         return toLoginResponse(session, user, snapshot);
     }
 
@@ -679,9 +679,23 @@ public class AuthAppService {
             String loginIp,
             String userAgent
     ) {
+        recordLoginAudit(userId, null, username, loginType, loginResult, failReason, loginIp, userAgent);
+    }
+
+    private void recordLoginAudit(
+            Long userId,
+            String userUuid,
+            String username,
+            String loginType,
+            String loginResult,
+            String failReason,
+            String loginIp,
+            String userAgent
+    ) {
         try {
             systemInternalApi.recordLoginAudit(new LoginAuditRecordRequestDTO(
                     userId,
+                    userUuid,
                     username,
                     loginType,
                     loginResult,
@@ -721,6 +735,7 @@ public class AuthAppService {
         AuthSession session = new AuthSession();
         session.setSessionId(UUID.randomUUID().toString());
         session.setUserId(user.userId());
+        session.setUserUuid(user.userUuid());
         session.setUsername(user.username());
         session.setLoginTime(Instant.now());
         session.setLastActivityAt(Instant.now());
@@ -734,6 +749,7 @@ public class AuthAppService {
     }
 
     private void hydrateSessionSnapshot(AuthSession session, SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot, boolean requiresPasswordChange) {
+        session.setUserUuid(user.userUuid());
         session.setUsername(user.username());
         session.setNickname(user.nickname());
         session.setRealName(user.realName());
@@ -784,6 +800,7 @@ public class AuthAppService {
     private AuthUserDTO toAuthUser(SystemUserSnapshotDTO user, PermissionSnapshotDTO snapshot, String sessionId) {
         return new AuthUserDTO(
                 user.userId(),
+                user.userUuid(),
                 user.username(),
                 user.nickname(),
                 user.realName(),
@@ -1176,6 +1193,7 @@ public class AuthAppService {
     private CurrentUserDTO currentUserFromSession(AuthSession session) {
         return new CurrentUserDTO(
                 session.getUserId(),
+                session.getUserUuid(),
                 session.getUsername(),
                 session.getNickname(),
                 session.getRealName(),

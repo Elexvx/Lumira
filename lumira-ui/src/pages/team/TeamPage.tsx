@@ -47,6 +47,7 @@ import { useResponsive } from '@/hooks/useResponsive';
 import { message } from '@/theme/antdFeedbackBridge';
 import { request } from '@/services/common/request';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
+import type { ProfileFieldSetting } from '@/types/api';
 import {
   adminDeleteTeam,
   adminUpdateTeam,
@@ -134,6 +135,31 @@ const useTeamDictOptions = () => {
   const { options: joinModeOptions } = useDictOptions(TEAM_JOIN_MODE_DICT_CODE, fallbackJoinModeOptions);
 
   return { teamTypeOptions, visibilityOptions, joinModeOptions };
+};
+
+const useTeamMemberFieldSettings = () => {
+  const [fields, setFields] = useState<ProfileFieldSetting[]>([]);
+
+  useEffect(() => {
+    void request<ProfileFieldSetting[]>('/v1/system/profile-field-settings?pageKey=TEAM_MEMBER', {
+      method: 'GET',
+      ...API_OPTS.NO_REDIRECT,
+    }).then((records) => setFields((records || []).filter((item) => item.visible && item.custom)));
+  }, []);
+
+  return fields;
+};
+
+const renderTeamMemberExtraFieldInput = (field: ProfileFieldSetting) => {
+  const placeholder = field.placeholder || field.fieldLabel || undefined;
+  switch ((field.fieldType || 'TEXT').toUpperCase()) {
+    case 'NUMBER':
+      return <InputNumber min={0} style={{ width: '100%' }} placeholder={placeholder} />;
+    case 'TEXTAREA':
+      return <Input.TextArea rows={2} placeholder={placeholder} />;
+    default:
+      return <Input placeholder={placeholder} />;
+  }
 };
 
 const optionLabel = (options: TeamDictOption[], value?: string | null) => {
@@ -345,22 +371,29 @@ const TeamListPage = () => {
     {
       title: '团队',
       dataIndex: 'teamName',
+      width: 360,
+      minWidth: 320,
+      className: 'team-list-name-column',
       render: (_, record) => (
-        <Space>
+        <Space className="team-list-name-cell">
           <Avatar size={32} src={normalizeUploadUrl(record.avatarUrl) || undefined} icon={<TeamOutlined />} />
-          <Space direction="vertical" size={0}>
-            <Typography.Text strong>{record.teamName}</Typography.Text>
-            <Typography.Text type="secondary">{record.teamCode}</Typography.Text>
-          </Space>
+          <div className="team-list-name-cell__text">
+            <Typography.Text className="team-list-name-cell__title" strong ellipsis={{ tooltip: record.teamName }}>
+              {record.teamName}
+            </Typography.Text>
+            <Typography.Text className="team-list-name-cell__code" type="secondary" ellipsis={{ tooltip: record.teamCode }}>
+              {record.teamCode}
+            </Typography.Text>
+          </div>
         </Space>
       ),
     },
-    { title: '类型', dataIndex: 'teamType', render: (value) => <Tag>{optionLabel(teamTypeOptions, String(value))}</Tag> },
-    { title: '可见性', dataIndex: 'visibility', render: (value) => optionLabel(visibilityOptions, String(value)) },
-    { title: '加入方式', dataIndex: 'joinMode', render: (value) => optionLabel(joinModeOptions, String(value)) },
-    { title: '成员数', dataIndex: 'memberCount' },
-    { title: '状态', dataIndex: 'status', render: (value) => <Tag color={value === 'ACTIVE' ? 'green' : 'default'}>{statusLabel[String(value)] || String(value)}</Tag> },
-    { title: '更新时间', dataIndex: 'updatedAt', render: (value) => value || '-' },
+    { title: '类型', dataIndex: 'teamType', width: 140, render: (value) => <Tag>{optionLabel(teamTypeOptions, String(value))}</Tag> },
+    { title: '可见性', dataIndex: 'visibility', width: 120, render: (value) => optionLabel(visibilityOptions, String(value)) },
+    { title: '加入方式', dataIndex: 'joinMode', width: 140, render: (value) => optionLabel(joinModeOptions, String(value)) },
+    { title: '成员数', dataIndex: 'memberCount', width: 100 },
+    { title: '状态', dataIndex: 'status', width: 110, render: (value) => <Tag color={value === 'ACTIVE' ? 'green' : 'default'}>{statusLabel[String(value)] || String(value)}</Tag> },
+    { title: '更新时间', dataIndex: 'updatedAt', width: 180, render: (value) => value || '-' },
     {
       title: '操作',
       fixed: 'right',
@@ -416,8 +449,9 @@ const TeamListPage = () => {
           dataSource={teams}
           loading={loading}
           isMobile={responsive.isMobile}
+          autoContentWidth
           search={false}
-          scroll={{ x: 1180 }}
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           locale={{ emptyText: <Empty description="暂无团队" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
           onRefresh={() => void load()}
@@ -612,6 +646,7 @@ const TeamSearchPage = () => {
 const CreateTeamPage = () => {
   const actionPermission = useActionPermission();
   const { teamTypeOptions, visibilityOptions, joinModeOptions } = useTeamDictOptions();
+  const customTeamMemberFields = useTeamMemberFieldSettings();
   const [form] = Form.useForm<TeamUpsertPayload>();
   const avatarUrlValue = Form.useWatch('avatarUrl', form);
   const [saving, setSaving] = useState(false);
@@ -669,7 +704,7 @@ const CreateTeamPage = () => {
           visibility: 'PRIVATE',
           joinMode: 'INVITE_ONLY',
           initialMembers: [
-            { memberName: '', employeeNo: '', departmentName: '', role: 'MEMBER', remark: '' },
+            { memberName: '', employeeNo: '', departmentName: '', role: 'MEMBER', remark: '', extraValues: {} },
           ],
         }}
       >
@@ -778,6 +813,18 @@ const CreateTeamPage = () => {
                         </Form.Item>
                       ),
                     },
+                    ...customTeamMemberFields.map((customField) => ({
+                      title: customField.fieldLabel,
+                      render: (_: unknown, field: { name: number }) => (
+                        <Form.Item
+                          name={[field.name, 'extraValues', customField.fieldKey]}
+                          className="team-table-form-item"
+                          rules={[{ required: Boolean(customField.required), message: `Please enter ${customField.fieldLabel}` }]}
+                        >
+                          {renderTeamMemberExtraFieldInput(customField)}
+                        </Form.Item>
+                      ),
+                    })),
                     {
                       title: '操作',
                       width: 96,
@@ -793,7 +840,7 @@ const CreateTeamPage = () => {
                   block
                   className="team-member-add-row"
                   icon={<PlusOutlined />}
-                  onClick={() => add({ memberName: '', employeeNo: '', departmentName: '', role: 'MEMBER', remark: '' })}
+                  onClick={() => add({ memberName: '', employeeNo: '', departmentName: '', role: 'MEMBER', remark: '', extraValues: {} })}
                 >
                   添加一行数据
                 </Button>
@@ -1023,6 +1070,7 @@ const TeamDetailPage = () => {
 const MembersPage = () => {
   const teamId = useTeamId();
   const actionPermission = useActionPermission();
+  const customTeamMemberFields = useTeamMemberFieldSettings();
   const [members, setMembers] = useState<TeamMemberRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -1107,7 +1155,7 @@ const MembersPage = () => {
         onCancel={() => setCreateOpen(false)}
         destroyOnHidden
       >
-        <Form form={form} layout="vertical" initialValues={{ role: 'MEMBER' }}>
+        <Form form={form} layout="vertical" initialValues={{ role: 'MEMBER', extraValues: {} }}>
           <Form.Item name="memberName" label="成员姓名" rules={[{ required: true, message: '请输入成员姓名' }]}>
             <Input maxLength={128} />
           </Form.Item>
@@ -1120,6 +1168,16 @@ const MembersPage = () => {
           <Form.Item name="role" label="角色">
             <Select options={roleOptions.map((role) => ({ value: role, label: roleLabel[role] }))} />
           </Form.Item>
+          {customTeamMemberFields.map((field) => (
+            <Form.Item
+              key={field.fieldKey}
+              name={['extraValues', field.fieldKey]}
+              label={field.fieldLabel}
+              rules={[{ required: Boolean(field.required), message: `Please enter ${field.fieldLabel}` }]}
+            >
+              {renderTeamMemberExtraFieldInput(field)}
+            </Form.Item>
+          ))}
           <Form.Item name="remark" label="备注">
             <Input.TextArea rows={3} maxLength={512} />
           </Form.Item>

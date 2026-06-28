@@ -1,12 +1,12 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined, SettingOutlined, UploadOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Alert, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Modal, Radio, Select, Space, Steps, Switch, Tag, Typography, Upload } from 'antd';
+import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { history, useLocation } from '@umijs/max';
+import { formatMessage, history, useLocation, useParams } from '@umijs/max';
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import { XMarkdown } from '@ant-design/x-markdown';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
@@ -19,33 +19,45 @@ import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
 import {
   createCompetition,
-  createCompetitionStage,
   createProject,
   createRegistration,
-  createRegistrationPaymentOrder,
   deleteCompetition,
+  getRegistration,
+  getCompetitionSettings,
   getCompetitionStageForm,
   listCompetitionStages,
   listCompetitions,
   listProjects,
+  listRegistrations,
+  publishCompetitionSettings,
+  saveCompetitionSettingsModule,
+  simulateRegistrationPayment,
   submitRegistrationMaterials,
   updateCompetition,
-  upsertCompetitionStageForm,
+  updateRegistration,
 } from '@/services/competition/api';
 import type {
   CompetitionFeeMode,
   CompetitionLocale,
+  CompetitionConfigItem,
+  CompetitionConfigItemType,
   CompetitionRecord,
+  CompetitionRegistrationRecord,
+  CompetitionSettingsRecord,
   CompetitionStageFormRecord,
   CompetitionStatus,
   CompetitionUpsertPayload,
   ProjectRecord,
 } from '@/services/competition/types';
 import { request } from '@/services/common/request';
-import { createTeam, listMyTeams } from '@/services/team/api';
-import type { TeamRecord } from '@/services/team/types';
+import { createTeam, getTeam, listMyTeams, listTeamMembers } from '@/services/team/api';
+import type { TeamDraftMemberPayload, TeamRecord, TeamRole, TeamUpsertPayload } from '@/services/team/types';
+import { normalizeTeamCreatePayload, pruneBlankDraftMembers } from '@/pages/team/teamPayload';
+import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPage';
+import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
 import { message } from '@/theme/antdFeedbackBridge';
+import type { ProfileFieldSetting } from '@/types/api';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
 import { sanitizeMarkdownInput } from '@/utils/markdownSecurity';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
@@ -71,6 +83,49 @@ type CompetitionFormValues = Omit<Partial<CompetitionUpsertPayload>, 'locale'> &
   schedules?: CompetitionScheduleFormItem[];
 };
 
+type RegistrationFormValues = {
+  competitionId?: number;
+  teamId?: number;
+  newTeamName?: string;
+  newTeam?: TeamUpsertPayload;
+  projectId?: number;
+  newProjectTitle?: string;
+  newProjectDescription?: string;
+  materials?: Record<string, unknown>;
+};
+
+const registrationTeamRoleOptions: Exclude<TeamRole, 'OWNER'>[] = ['ADMIN', 'MANAGER', 'MEMBER'];
+const registrationTeamRoleLabel: Record<string, string> = {
+  ADMIN: 'Admin',
+  MANAGER: 'Manager',
+  MEMBER: 'Member',
+};
+const fallbackRegistrationTeamTypeOptions = [
+  { value: 'GENERAL', label: 'General' },
+  { value: 'DEV', label: 'Development' },
+  { value: 'COMPETITION', label: 'Competition' },
+  { value: 'CLUB', label: 'Club' },
+  { value: 'OTHER', label: 'Other' },
+];
+const fallbackRegistrationTeamVisibilityOptions = [
+  { value: 'PRIVATE', label: 'Private' },
+  { value: 'PUBLIC', label: 'Public' },
+];
+const fallbackRegistrationTeamJoinModeOptions = [
+  { value: 'INVITE_ONLY', label: 'Invite only' },
+  { value: 'APPLY', label: 'Apply' },
+  { value: 'OPEN', label: 'Open' },
+];
+
+const emptyRegistrationTeamMember = (): TeamDraftMemberPayload => ({
+  memberName: '',
+  employeeNo: '',
+  departmentName: '',
+  role: 'MEMBER',
+  remark: '',
+  extraValues: {},
+});
+
 type CompetitionJsonSchedule = {
   timeMode?: CompetitionTimeMode;
   title?: string;
@@ -83,12 +138,6 @@ type CompetitionCreateDraftStorage = {
   termsAccepted?: boolean;
   savedAt?: number;
   values?: Partial<CompetitionFormValues>;
-};
-
-type MaterialStageFormValues = {
-  stageName?: string;
-  formName?: string;
-  formSchemaJson?: string;
 };
 
 const COMPETITION_CATEGORY_DICT = 'aiadc_competition_category';
@@ -143,6 +192,12 @@ const competitionCreateSteps = [
 ];
 
 const competitionCreateStepQueryKey = 'step';
+
+const getCompetitionCreateSteps = () => [
+  { title: formatMessage({ id: 'page.competition.create.steps.terms', defaultMessage: 'Terms' }) },
+  { title: formatMessage({ id: 'page.competition.create.steps.basic', defaultMessage: 'Basic information' }) },
+  { title: formatMessage({ id: 'page.competition.create.steps.homepage', defaultMessage: 'Competition homepage' }) },
+];
 
 const parseCompetitionCreateStepFromSearch = (search: string) => {
   const stepValue = Number(new URLSearchParams(search).get(competitionCreateStepQueryKey));
@@ -472,6 +527,13 @@ const toValidDayjs = (value?: Dayjs | string) => {
   return parsed.isValid() ? parsed : undefined;
 };
 
+const competitionDateTimeFormats = ['YYYY-MM-DD HH:mm', 'YYYY.MM.DD HH:mm', 'YYYY/MM/DD HH:mm'];
+
+const toPositiveId = (value: unknown) => {
+  const id = Number(value);
+  return Number.isFinite(id) && id > 0 ? id : undefined;
+};
+
 const getCompleteTimeRange = (
   range?: CompetitionFormValues['registrationRange'] | CompetitionScheduleFormItem['timeRange'],
 ): [Dayjs, Dayjs] | undefined => {
@@ -746,7 +808,7 @@ const CompetitionBasicFields = ({
           },
         ]}
       >
-        <DatePicker.RangePicker showTime format="YYYY.MM.DD HH:mm" minuteStep={15} style={{ width: '100%' }} />
+        <DatePicker.RangePicker showTime format={competitionDateTimeFormats} minuteStep={15} style={{ width: '100%' }} />
       </Form.Item>
       <Form.List name="schedules">
         {(fields, { add, remove }) => (
@@ -798,7 +860,7 @@ const CompetitionBasicFields = ({
                         >
                           <DatePicker.RangePicker
                             showTime
-                            format="YYYY.MM.DD HH:mm"
+                            format={competitionDateTimeFormats}
                             minuteStep={15}
                             disabledDate={(current) => isOutsideRegistrationDate(current, registrationRange)}
                             style={{ width: '100%' }}
@@ -936,6 +998,7 @@ const CreateCompetitionPage = () => {
   const [saving, setSaving] = useState(false);
   const [draftSavedAt, setDraftSavedAt] = useState<number>();
   const [draftHydrated, setDraftHydrated] = useState(false);
+  const [createdCompetition, setCreatedCompetition] = useState<CompetitionRecord>();
 
   const collectCompetitionCreateValues = () => ({
     ...defaultCompetitionFormValues,
@@ -1039,11 +1102,11 @@ const CreateCompetitionPage = () => {
     }
     setSaving(true);
     try {
-      await createCompetition(normalizePayload(values as CompetitionFormValues));
+      const created = await createCompetition(normalizePayload(values as CompetitionFormValues));
       clearCompetitionCreateDraft();
       setDraftSavedAt(undefined);
+      setCreatedCompetition(created);
       message.success('赛事已新增');
-      history.push('/competitions/management');
     } catch (error) {
       showErrorMessage(error, '赛事保存失败');
     } finally {
@@ -1051,11 +1114,61 @@ const CreateCompetitionPage = () => {
     }
   };
 
+  if (createdCompetition) {
+    const competitionNo = createdCompetition.competitionNo || createdCompetition.code;
+    return (
+      <ManagementPage
+        title={formatMessage({ id: 'page.competition.create.success.pageTitle', defaultMessage: 'Competition Created' })}
+        extra={
+          <Button onClick={() => history.push('/competitions/management')}>
+            {formatMessage({ id: 'page.competition.create.success.backToList', defaultMessage: 'Back to list' })}
+          </Button>
+        }
+      >
+        <ManagementPageBody>
+          <Card>
+            <Result
+              status="success"
+              title={formatMessage({ id: 'page.competition.create.success.title', defaultMessage: 'Competition created' })}
+              subTitle={formatMessage(
+                { id: 'page.competition.create.success.subtitle', defaultMessage: '{title} · No. {competitionNo}' },
+                { title: createdCompetition.title, competitionNo },
+              )}
+              extra={[
+                <Button
+                  key="continue"
+                  onClick={() => {
+                    form.resetFields();
+                    form.setFieldsValue(defaultCompetitionFormValues);
+                    setTermsAccepted(false);
+                    setCurrentStep(0);
+                    setCreatedCompetition(undefined);
+                    history.push({ pathname: '/competitions/create', search: createCompetitionStepSearch(0) });
+                  }}
+                >
+                  {formatMessage({ id: 'page.competition.create.success.continue', defaultMessage: 'Continue creating' })}
+                </Button>,
+                <Button
+                  key="settings"
+                  type="primary"
+                  disabled={!createdCompetition.uuid}
+                  onClick={() => createdCompetition.uuid && history.push(`/competitions/${createdCompetition.uuid}/settings`)}
+                >
+                  {formatMessage({ id: 'page.competition.create.success.settings', defaultMessage: 'Enter detailed settings' })}
+                </Button>,
+              ]}
+            />
+          </Card>
+        </ManagementPageBody>
+      </ManagementPage>
+    );
+  }
+
   return (
     <ManagementPage title="新增赛事" extra={<Button onClick={() => history.push('/competitions/management')}>返回赛事管理</Button>}>
       <ManagementPageBody className="competition-create-page">
         <Card className="competition-create-shell">
-          <Steps current={currentStep} items={competitionCreateSteps} responsive />
+          <Steps current={currentStep} items={getCompetitionCreateSteps()} responsive />
           <Form<CompetitionFormValues>
             form={form}
             layout="vertical"
@@ -1133,46 +1246,307 @@ const parseFormFields = (form?: CompetitionStageFormRecord) => {
   }
 };
 
+const renderRegistrationTeamMemberExtraInput = (field: ProfileFieldSetting) => {
+  const placeholder = field.placeholder || field.fieldLabel || undefined;
+  switch ((field.fieldType || 'TEXT').toUpperCase()) {
+    case 'NUMBER':
+      return <InputNumber min={0} style={{ width: '100%' }} placeholder={placeholder} />;
+    case 'TEXTAREA':
+      return <Input.TextArea rows={2} placeholder={placeholder} />;
+    case 'DATE':
+      return <DatePicker style={{ width: '100%' }} placeholder={placeholder} />;
+    default:
+      return <Input placeholder={placeholder} />;
+  }
+};
+
+const parseTeamMemberExtraValues = (value?: string | null): Record<string, string> => {
+  if (!value) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const registrationStatusValueEnum = {
+  CREATED: { text: '待提交材料' },
+  MATERIAL_SUBMITTED: { text: '待支付' },
+  PENDING_PAYMENT: { text: '待支付' },
+  PAID: { text: '已支付' },
+  CONFIRMED: { text: '已确认' },
+  CANCELLED: { text: '已取消' },
+};
+
+const registrationStatusColor: Record<string, string> = {
+  CREATED: 'processing',
+  MATERIAL_SUBMITTED: 'warning',
+  PENDING_PAYMENT: 'warning',
+  PAID: 'success',
+  CONFIRMED: 'success',
+  CANCELLED: 'default',
+};
+
+const formatRegistrationAmount = (amountMinor?: number | null, currency?: string | null) => {
+  if (amountMinor == null) {
+    return '-';
+  }
+  return `${currency || 'CNY'} ${(amountMinor / 100).toFixed(2)}`;
+};
+
+const formatRegistrationTime = (value?: string | null) => (value ? value.replace('T', ' ') : '-');
+
+const renderRegistrationStatusTag = (status?: string | null) => {
+  const normalized = status || 'CREATED';
+  const text = registrationStatusValueEnum[normalized as keyof typeof registrationStatusValueEnum]?.text || normalized;
+  return <Tag color={registrationStatusColor[normalized] || 'default'}>{text}</Tag>;
+};
+
+const parseSnapshotName = (snapshotJson?: string | null, keys: string[] = []) => {
+  if (!snapshotJson) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(snapshotJson);
+    if (!parsed || typeof parsed !== 'object') {
+      return undefined;
+    }
+    for (const key of keys) {
+      const value = (parsed as Record<string, unknown>)[key];
+      if (typeof value === 'string' && value.trim()) {
+        return value;
+      }
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+};
+
 const CompetitionRegistrationPage = () => {
+  const responsive = useResponsive();
+  const registrationActionRef = useRef<ActionType | undefined>(undefined);
+  const [viewMode, setViewMode] = useState<'list' | 'wizard'>('list');
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [competitions, setCompetitions] = useState<CompetitionRecord[]>([]);
   const [teams, setTeams] = useState<TeamRecord[]>([]);
+  const [teamMemberFields, setTeamMemberFields] = useState<ProfileFieldSetting[]>([]);
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [stageForm, setStageForm] = useState<CompetitionStageFormRecord>();
   const [registrationId, setRegistrationId] = useState<number>();
   const [paymentStatus, setPaymentStatus] = useState<string>();
-  const [form] = Form.useForm();
+  const [teamDetailLoading, setTeamDetailLoading] = useState(false);
+  const [teamAvatarUploading, setTeamAvatarUploading] = useState(false);
+  const confirmedTeamIdRef = useRef<number | undefined>(undefined);
+  const confirmedProjectIdRef = useRef<number | undefined>(undefined);
+  const [form] = Form.useForm<RegistrationFormValues>();
+  const { options: teamTypeOptions } = useDictOptions('team_type', fallbackRegistrationTeamTypeOptions);
+  const { options: visibilityOptions } = useDictOptions('team_visibility', fallbackRegistrationTeamVisibilityOptions);
+  const { options: joinModeOptions } = useDictOptions('team_join_mode', fallbackRegistrationTeamJoinModeOptions);
   const selectedCompetitionId = Form.useWatch('competitionId', form);
   const selectedTeamId = Form.useWatch('teamId', form);
   const selectedProjectId = Form.useWatch('projectId', form);
+  const newTeamAvatarUrl = Form.useWatch(['newTeam', 'avatarUrl'], form);
+  const customTeamMemberFields = teamMemberFields.filter((item) => item.visible && item.custom);
+  const usingExistingTeam = Boolean(toPositiveId(selectedTeamId));
+  const fields = parseFormFields(stageForm);
 
   useEffect(() => {
     void listCompetitions({ status: 'published', pageSize: 100 }).then((response) => setCompetitions(response.records || []));
+    void request<ProfileFieldSetting[]>('/v1/system/profile-field-settings?pageKey=TEAM_MEMBER', {
+      method: 'GET',
+      ...API_OPTS.NO_REDIRECT,
+    }).then((records) => setTeamMemberFields(records || []));
   }, []);
 
-  const loadTeams = async () => {
+  useEffect(() => {
+    const teamId = toPositiveId(selectedTeamId);
+    if (step !== 1) {
+      return;
+    }
+    if (!teamId) {
+      confirmedTeamIdRef.current = undefined;
+      form.setFieldsValue({
+        newTeamName: '',
+        newTeam: {
+          teamType: 'GENERAL',
+          visibility: 'PRIVATE',
+          joinMode: 'INVITE_ONLY',
+          avatarUrl: undefined,
+          description: undefined,
+          initialMembers: [emptyRegistrationTeamMember()],
+        },
+      });
+      return;
+    }
+
+    let mounted = true;
+    confirmedTeamIdRef.current = teamId;
+    setTeamDetailLoading(true);
+    Promise.all([getTeam(teamId), listTeamMembers(teamId)])
+      .then(([team, members]) => {
+        if (!mounted) {
+          return;
+        }
+        form.setFieldsValue({
+          newTeamName: team.teamName,
+          newTeam: {
+            teamType: team.teamType,
+            visibility: team.visibility,
+            joinMode: team.joinMode,
+            avatarUrl: team.avatarUrl || undefined,
+            description: team.description || undefined,
+            initialMembers: (members?.length ? members : []).map((member) => ({
+              memberName: member.memberName || member.memberAlias || '',
+              employeeNo: member.employeeNo || '',
+              departmentName: member.departmentName || '',
+              role: (member.role === 'OWNER' ? 'ADMIN' : member.role) as Exclude<TeamRole, 'OWNER'>,
+              remark: member.remark || '',
+              extraValues: parseTeamMemberExtraValues(member.extraValuesJson),
+            })),
+          },
+        });
+      })
+      .catch((error) => showErrorMessage(error, '团队信息加载失败'))
+      .finally(() => {
+        if (mounted) {
+          setTeamDetailLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [form, selectedTeamId, step]);
+
+  const loadTeams = async (promptReuse = true) => {
     const records = await listMyTeams();
     setTeams(records || []);
-    if (records?.length) {
+    if (promptReuse && records?.length) {
       Modal.confirm({
         title: '检测到你已有团队',
         content: '是否复用已有团队？',
-        onOk: () => form.setFieldValue('teamId', records[0].id),
+        onOk: () => {
+          confirmedTeamIdRef.current = records[0]!.id;
+          form.setFieldValue('teamId', records[0]!.id);
+        },
+        onCancel: () => {
+          confirmedTeamIdRef.current = undefined;
+          form.setFieldValue('teamId', undefined);
+        },
       });
     }
   };
 
-  const loadProjects = async () => {
+  const loadProjects = async (promptReuse = true) => {
     const response = await listProjects({ pageSize: 100 });
     const records = response.records || [];
     setProjects(records);
-    if (records.length) {
+    if (promptReuse && records.length) {
       Modal.confirm({
         title: '检测到你已有项目',
         content: '是否复用已有项目？',
-        onOk: () => form.setFieldValue('projectId', records[0].id),
+        onOk: () => {
+          confirmedProjectIdRef.current = records[0]!.id;
+          form.setFieldValue('projectId', records[0]!.id);
+        },
+        onCancel: () => {
+          confirmedProjectIdRef.current = undefined;
+          form.setFieldValue('projectId', undefined);
+        },
       });
+    }
+  };
+
+  const uploadRegistrationTeamAvatar = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      message.error('请上传图片文件');
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      message.error('请上传小于 20MB 的图片');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    setTeamAvatarUploading(true);
+    try {
+      const uploadedUrl = await request<string>('/v1/system/uploads/image', {
+        method: 'POST',
+        headers: {},
+        data: formData,
+      });
+      if (uploadedUrl) {
+        form.setFieldValue(['newTeam', 'avatarUrl'], uploadedUrl);
+        message.success('上传成功');
+      }
+    } catch (error) {
+      showErrorMessage(error, '上传失败');
+    } finally {
+      setTeamAvatarUploading(false);
+    }
+  };
+
+  const loadStageFormForCompetition = async (competitionId: number) => {
+    const stages = await listCompetitionStages(competitionId);
+    const preliminary = stages.find((item) => item.stageCode === 'PRELIMINARY') || stages[0];
+    if (!preliminary) {
+      setStageForm(undefined);
+      return;
+    }
+    try {
+      setStageForm(await getCompetitionStageForm(preliminary.id));
+    } catch {
+      setStageForm(undefined);
+    }
+  };
+
+  const startNewRegistration = () => {
+    form.resetFields();
+    form.setFieldsValue({
+      newTeam: {
+        teamType: 'GENERAL',
+        visibility: 'PRIVATE',
+        joinMode: 'INVITE_ONLY',
+        initialMembers: [emptyRegistrationTeamMember()],
+      },
+    });
+    confirmedTeamIdRef.current = undefined;
+    confirmedProjectIdRef.current = undefined;
+    setRegistrationId(undefined);
+    setPaymentStatus(undefined);
+    setStageForm(undefined);
+    setStep(0);
+    setViewMode('wizard');
+  };
+
+  const openRegistrationFlow = async (record: CompetitionRegistrationRecord) => {
+    setLoading(true);
+    try {
+      const latest = await getRegistration(record.id);
+      const competitionId = toPositiveId(latest.competitionId);
+      const teamId = toPositiveId(latest.teamId);
+      const projectId = toPositiveId(latest.projectId);
+      form.resetFields();
+      form.setFieldsValue({ competitionId, teamId, projectId });
+      confirmedTeamIdRef.current = teamId;
+      confirmedProjectIdRef.current = projectId;
+      setRegistrationId(latest.id);
+      setPaymentStatus(latest.status);
+      if (competitionId) {
+        await loadStageFormForCompetition(competitionId);
+      }
+      await Promise.all([loadTeams(false), loadProjects(false)]);
+      setStep(latest.status === 'PAID' || latest.status === 'CONFIRMED' ? 4 : 3);
+      setViewMode('wizard');
+    } catch (error) {
+      showErrorMessage(error, '报名记录加载失败');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1181,24 +1555,44 @@ const CompetitionRegistrationPage = () => {
     try {
       if (step === 0) {
         await form.validateFields(['competitionId']);
+        confirmedTeamIdRef.current = undefined;
+        confirmedProjectIdRef.current = undefined;
+        form.setFieldValue('teamId', undefined);
         await loadTeams();
         setStep(1);
       } else if (step === 1) {
-        if (!selectedTeamId) {
-          const teamName = form.getFieldValue('newTeamName');
+        let teamId = toPositiveId(form.getFieldValue('teamId')) || confirmedTeamIdRef.current;
+        if (!teamId) {
+          const teamName = form.getFieldValue('newTeamName')?.trim();
           if (!teamName) {
-            await form.validateFields(['teamId']);
+            message.error('请输入团队名称');
+            return;
           }
-          const team = await createTeam({ teamName, teamType: 'GENERAL', visibility: 'PRIVATE', joinMode: 'INVITE_ONLY' });
+          form.setFieldValue(
+            ['newTeam', 'initialMembers'],
+            pruneBlankDraftMembers(form.getFieldValue(['newTeam', 'initialMembers']) as TeamDraftMemberPayload[]),
+          );
+          await form.validateFields([['newTeamName'], ['newTeam', 'initialMembers']]);
+          const team = await createTeam(
+            normalizeTeamCreatePayload({
+              ...(form.getFieldValue('newTeam') as TeamUpsertPayload),
+              teamName,
+            }),
+          );
           form.setFieldValue('teamId', team.id);
+          confirmedTeamIdRef.current = team.id;
+          teamId = team.id;
         }
+        form.setFieldValue('teamId', teamId);
         await loadProjects();
         setStep(2);
       } else if (step === 2) {
-        if (!selectedProjectId) {
-          const title = form.getFieldValue('newProjectTitle');
+        let projectId = toPositiveId(form.getFieldValue('projectId')) || confirmedProjectIdRef.current;
+        if (!projectId) {
+          const title = form.getFieldValue('newProjectTitle')?.trim();
           if (!title) {
-            await form.validateFields(['projectId']);
+            message.error('请选择已有项目或填写新建项目名称');
+            return;
           }
           const project = await createProject({
             code: `proj-${Date.now()}`,
@@ -1208,38 +1602,38 @@ const CompetitionRegistrationPage = () => {
             description: form.getFieldValue('newProjectDescription'),
           });
           form.setFieldValue('projectId', project.id);
+          confirmedProjectIdRef.current = project.id;
+          projectId = project.id;
         }
-        const registration = await createRegistration({
-          competitionId: Number(selectedCompetitionId),
-          teamId: Number(form.getFieldValue('teamId')),
-          projectId: Number(form.getFieldValue('projectId')),
-        });
+        const competitionId = toPositiveId(form.getFieldValue('competitionId')) || toPositiveId(selectedCompetitionId);
+        const teamId = toPositiveId(form.getFieldValue('teamId')) || confirmedTeamIdRef.current;
+        if (!competitionId || !teamId || !projectId) {
+          message.error('请先选择或创建团队和项目');
+          return;
+        }
+        const registration = registrationId
+          ? await updateRegistration(registrationId, { competitionId, teamId, projectId })
+          : await createRegistration({ competitionId, teamId, projectId });
         setRegistrationId(registration.id);
-        const stages = await listCompetitionStages(Number(selectedCompetitionId));
-        const preliminary = stages.find((item) => item.stageCode === 'PRELIMINARY') || stages[0];
-        if (preliminary) {
-          try {
-            setStageForm(await getCompetitionStageForm(preliminary.id));
-          } catch {
-            setStageForm(undefined);
-          }
-        }
+        await loadStageFormForCompetition(competitionId);
         setStep(3);
       } else if (step === 3) {
-        const fields = parseFormFields(stageForm);
-        const materialValues = fields.map((field: any) => ({
-          fieldKey: field.key,
-          fieldType: field.type,
-          textValue: field.type === 'file' ? undefined : form.getFieldValue(['materials', field.key]),
-          fileId: field.type === 'file' ? form.getFieldValue(['materials', field.key]) : undefined,
-        }));
-        if (stageForm && registrationId) {
-          await submitRegistrationMaterials(registrationId, { stageId: stageForm.stageId, values: materialValues });
+        if (registrationId && stageForm) {
+          const materialValues = form.getFieldValue('materials') || {};
+          await submitRegistrationMaterials(registrationId, {
+            stageId: stageForm.stageId,
+            values: fields.map((field: any) => ({
+              fieldKey: field.key,
+              fieldType: field.type || 'text',
+              textValue: materialValues[field.key] != null ? String(materialValues[field.key]) : undefined,
+              fileId: field.type === 'file' && materialValues[field.key] ? Number(materialValues[field.key]) : undefined,
+            })),
+          });
         }
         setStep(4);
       }
     } catch (error) {
-      showErrorMessage(error, '报名流程处理失败');
+      showErrorMessage(error, '操作失败');
     } finally {
       setLoading(false);
     }
@@ -1247,43 +1641,280 @@ const CompetitionRegistrationPage = () => {
 
   const pay = async () => {
     if (!registrationId) {
+      message.error('报名记录不存在');
       return;
     }
     setLoading(true);
     try {
-      const order = await createRegistrationPaymentOrder(registrationId, { providerCode: 'manual' });
-      setPaymentStatus(order.status);
-      message.success(order.orderNo ? '支付订单已生成' : '报名已确认');
+      const order = await simulateRegistrationPayment(registrationId);
+      setPaymentStatus(order.status || 'CONFIRMED');
+      registrationActionRef.current?.reload();
+      message.success('模拟支付成功');
     } catch (error) {
-      showErrorMessage(error, '支付订单创建失败');
+      showErrorMessage(error, '模拟支付失败');
     } finally {
       setLoading(false);
     }
   };
 
-  const fields = parseFormFields(stageForm);
+  const competitionTitleMap = useMemo(
+    () => new Map(competitions.map((item) => [item.id, item.title || item.code])),
+    [competitions],
+  );
+
+  const registrationColumns = useMemo<ProColumns<CompetitionRegistrationRecord>[]>(
+    () => [
+      {
+        title: '报名记录',
+        dataIndex: 'registrationNo',
+        fieldProps: {
+          placeholder: '报名号/参赛号',
+        },
+        render: (_, record) => (
+          <Space direction="vertical" size={0}>
+            <Typography.Text strong ellipsis>
+              {record.registrationNo || `报名 ${record.id}`}
+            </Typography.Text>
+            {record.participantNo ? <Tag color="blue">{record.participantNo}</Tag> : null}
+          </Space>
+        ),
+      },
+      {
+        title: '赛事',
+        dataIndex: 'competitionId',
+        search: false,
+        ellipsis: true,
+        render: (_, record) => competitionTitleMap.get(record.competitionId) || `赛事 ${record.competitionId}`,
+      },
+      {
+        title: '团队',
+        dataIndex: 'teamId',
+        search: false,
+        ellipsis: true,
+        render: (_, record) => parseSnapshotName(record.teamSnapshotJson, ['teamName', 'name']) || `团队 ${record.teamId}`,
+      },
+      {
+        title: '项目',
+        dataIndex: 'projectId',
+        search: false,
+        ellipsis: true,
+        render: (_, record) => parseSnapshotName(record.projectSnapshotJson, ['title', 'projectTitle', 'name']) || `项目 ${record.projectId}`,
+      },
+      {
+        title: '状态',
+        dataIndex: 'status',
+        valueType: 'select',
+        valueEnum: registrationStatusValueEnum,
+        width: 128,
+        render: (_, record) => renderRegistrationStatusTag(record.status),
+      },
+      {
+        title: '应付金额',
+        dataIndex: 'payableAmountMinor',
+        search: false,
+        width: 128,
+        render: (_, record) => formatRegistrationAmount(record.payableAmountMinor, record.currency),
+      },
+      {
+        title: '报名时间',
+        dataIndex: 'createdAt',
+        search: false,
+        width: 172,
+        render: (value) => formatRegistrationTime(typeof value === 'string' ? value : undefined),
+      },
+      {
+        title: '操作',
+        valueType: 'option',
+        fixed: responsive.isDesktop ? 'right' : undefined,
+        width: 112,
+        align: 'right',
+        render: (_, record) => (
+          <Button type="text" icon={<EyeOutlined />} loading={loading && registrationId === record.id} onClick={() => void openRegistrationFlow(record)}>
+            {record.status === 'PAID' || record.status === 'CONFIRMED' ? '查看' : '继续'}
+          </Button>
+        ),
+      },
+    ],
+    [competitionTitleMap, loading, registrationId, responsive.isDesktop],
+  );
+
+  if (viewMode === 'list') {
+    return (
+      <ManagementPage title="赛事报名">
+        <ManagementPageBody>
+          <ManagementTable<CompetitionRegistrationRecord>
+            actionRef={registrationActionRef}
+            rowKey="id"
+            columns={registrationColumns}
+            isMobile={responsive.isMobile}
+            scroll={{ x: 1180 }}
+            request={async (params) => {
+              const response = await listRegistrations({
+                pageNo: params.current,
+                pageSize: params.pageSize,
+              });
+              return {
+                data: response.records,
+                total: response.total,
+                success: true,
+              };
+            }}
+            pagination={{ pageSize: 10, showSizeChanger: true }}
+            toolBarRender={() => [
+              <Button key="refresh" icon={<ReloadOutlined />} onClick={() => registrationActionRef.current?.reload()}>
+                刷新
+              </Button>,
+              <Button key="new" type="primary" icon={<PlusOutlined />} onClick={startNewRegistration}>
+                新增报名
+              </Button>,
+            ]}
+          />
+          <Form form={form} component={false} />
+        </ManagementPageBody>
+      </ManagementPage>
+    );
+  }
+
+  const renderTeamForm = () => (
+    <>
+      <Form.Item name="teamId" label="复用已有团队">
+        <Select
+          allowClear
+          loading={teamDetailLoading}
+          placeholder="选择已有团队；清空后可新建团队"
+          options={teams.map((item) => ({ label: item.teamName, value: item.id }))}
+        />
+      </Form.Item>
+      <Card size="small" title={usingExistingTeam ? '团队信息（复用，只读）' : '团队信息（新建，可编辑）'} loading={teamDetailLoading}>
+        <Form.Item name="newTeamName" label="团队名称" rules={[{ required: true, message: '请输入团队名称' }]}>
+          <Input disabled={usingExistingTeam} maxLength={128} />
+        </Form.Item>
+        <Form.Item name={["newTeam", "teamType"]} label="团队类型">
+          <Select disabled={usingExistingTeam} options={teamTypeOptions} />
+        </Form.Item>
+        <Form.Item name={["newTeam", "avatarUrl"]} hidden>
+          <Input />
+        </Form.Item>
+        <Form.Item label="团队头像">
+          <Space>
+            <Avatar size={48} src={normalizeUploadUrl(newTeamAvatarUrl) || undefined} icon={<TeamOutlined />} />
+            <Upload
+              accept="image/*"
+              showUploadList={false}
+              disabled={usingExistingTeam || teamAvatarUploading}
+              beforeUpload={async (file) => {
+                await uploadRegistrationTeamAvatar(file);
+                return Upload.LIST_IGNORE;
+              }}
+            >
+              <Button icon={<UploadOutlined />} loading={teamAvatarUploading} disabled={usingExistingTeam}>
+                上传
+              </Button>
+            </Upload>
+            {newTeamAvatarUrl && !usingExistingTeam ? (
+              <Button type="link" onClick={() => form.setFieldValue(["newTeam", "avatarUrl"], undefined)}>
+                移除
+              </Button>
+            ) : null}
+          </Space>
+        </Form.Item>
+        <Form.Item name={["newTeam", "visibility"]} label="可见性">
+          <Select disabled={usingExistingTeam} options={visibilityOptions} />
+        </Form.Item>
+        <Form.Item name={["newTeam", "joinMode"]} label="加入方式">
+          <Select disabled={usingExistingTeam} options={joinModeOptions} />
+        </Form.Item>
+        <Form.Item name={["newTeam", "description"]} label="团队简介">
+          <Input.TextArea disabled={usingExistingTeam} rows={3} maxLength={1000} />
+        </Form.Item>
+        <Form.List name={["newTeam", "initialMembers"]}>
+          {(memberFields, { add, remove }) => (
+            <Space direction="vertical" style={{ width: '100%' }} size={12}>
+              {memberFields.map((memberField, index) => (
+                <Card
+                  key={memberField.key}
+                  size="small"
+                  title={`成员 ${index + 1}`}
+                  extra={
+                    usingExistingTeam ? null : (
+                      <Button danger type="link" disabled={memberFields.length <= 1} onClick={() => remove(memberField.name)}>
+                        移除
+                      </Button>
+                    )
+                  }
+                >
+                  <Form.Item name={[memberField.name, "memberName"]} label="成员姓名" rules={[{ required: true, message: '请输入成员姓名' }]}>
+                    <Input disabled={usingExistingTeam} maxLength={128} />
+                  </Form.Item>
+                  <Form.Item name={[memberField.name, "employeeNo"]} label="工号">
+                    <Input disabled={usingExistingTeam} maxLength={64} />
+                  </Form.Item>
+                  <Form.Item name={[memberField.name, "departmentName"]} label="部门">
+                    <Input disabled={usingExistingTeam} maxLength={128} />
+                  </Form.Item>
+                  <Form.Item name={[memberField.name, "role"]} label="角色">
+                    <Select disabled={usingExistingTeam} options={registrationTeamRoleOptions.map((role) => ({ value: role, label: registrationTeamRoleLabel[role] }))} />
+                  </Form.Item>
+                  <Form.Item name={[memberField.name, "remark"]} label="备注">
+                    <Input.TextArea disabled={usingExistingTeam} rows={2} maxLength={512} />
+                  </Form.Item>
+                  {customTeamMemberFields.map((field) => (
+                    <Form.Item
+                      key={field.fieldKey}
+                      name={[memberField.name, "extraValues", field.fieldKey]}
+                      label={field.fieldLabel}
+                      rules={[{ required: !usingExistingTeam && Boolean(field.required), message: `请输入${field.fieldLabel}` }]}
+                    >
+                      {usingExistingTeam ? <Input disabled /> : renderRegistrationTeamMemberExtraInput(field)}
+                    </Form.Item>
+                  ))}
+                </Card>
+              ))}
+              {!usingExistingTeam ? (
+                <Button block icon={<PlusOutlined />} onClick={() => add(emptyRegistrationTeamMember())}>
+                  添加成员
+                </Button>
+              ) : null}
+            </Space>
+          )}
+        </Form.List>
+      </Card>
+    </>
+  );
 
   return (
-    <ManagementPage title="赛事报名" extra={<Button onClick={() => history.push('/competitions/management')}>返回赛事</Button>}>
+    <ManagementPage title="赛事报名" extra={<Button onClick={() => setViewMode('list')}>返回报名记录</Button>}>
       <ManagementPageBody>
         <Card>
-          <Steps current={step} items={['选择赛事', '选择/创建团队', '选择/创建项目', '初赛材料', '确认支付'].map((title) => ({ title }))} />
-          <Form form={form} layout="vertical" style={{ maxWidth: 760, marginTop: 24 }}>
+          <Steps
+            current={step}
+            items={[
+              { title: '选择赛事' },
+              { title: '选择/创建团队' },
+              { title: '选择/创建项目' },
+              { title: '初赛材料' },
+              { title: '确认支付' },
+            ]}
+          />
+          <Form<RegistrationFormValues>
+            form={form}
+            layout="vertical"
+            style={{ marginTop: 24, maxWidth: 920 }}
+            initialValues={{
+              newTeam: {
+                teamType: 'GENERAL',
+                visibility: 'PRIVATE',
+                joinMode: 'INVITE_ONLY',
+                initialMembers: [emptyRegistrationTeamMember()],
+              },
+            }}
+          >
             {step === 0 ? (
               <Form.Item name="competitionId" label="赛事" rules={[{ required: true, message: '请选择赛事' }]}>
                 <Select options={competitions.map((item) => ({ label: item.title, value: item.id }))} />
               </Form.Item>
             ) : null}
-            {step === 1 ? (
-              <>
-                <Form.Item name="teamId" label="复用团队">
-                  <Select allowClear options={teams.map((item) => ({ label: item.teamName, value: item.id }))} />
-                </Form.Item>
-                <Form.Item name="newTeamName" label="新建团队名称">
-                  <Input disabled={Boolean(selectedTeamId)} />
-                </Form.Item>
-              </>
-            ) : null}
+            {step === 1 ? renderTeamForm() : null}
             {step === 2 ? (
               <>
                 <Form.Item name="projectId" label="复用项目">
@@ -1302,11 +1933,17 @@ const CompetitionRegistrationPage = () => {
                 fields.map((field: any) => (
                   <Form.Item
                     key={field.key}
-                    name={['materials', field.key]}
+                    name={["materials", field.key]}
                     label={field.label || field.key}
                     rules={[{ required: Boolean(field.required), message: `请填写${field.label || field.key}` }]}
                   >
-                    {field.type === 'textarea' ? <Input.TextArea rows={4} maxLength={field.maxLength} /> : field.type === 'file' ? <InputNumber min={1} style={{ width: '100%' }} placeholder="请输入已上传文件ID" /> : <Input maxLength={field.maxLength} />}
+                    {field.type === 'textarea' ? (
+                      <Input.TextArea rows={4} maxLength={field.maxLength} />
+                    ) : field.type === 'file' ? (
+                      <InputNumber min={1} style={{ width: '100%' }} placeholder="请输入已上传文件ID" />
+                    ) : (
+                      <Input maxLength={field.maxLength} />
+                    )}
                   </Form.Item>
                 ))
               ) : (
@@ -1315,9 +1952,9 @@ const CompetitionRegistrationPage = () => {
             ) : null}
             {step === 4 ? (
               <Alert
-                type={paymentStatus === 'CONFIRMED' ? 'success' : 'info'}
+                type={paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID' ? 'success' : 'info'}
                 showIcon
-                message={paymentStatus ? `当前支付状态：${paymentStatus}` : '材料已提交，请确认费用并生成支付订单。'}
+                message={paymentStatus ? `当前支付状态：${paymentStatus}` : '材料已提交，请确认费用并使用模拟接口支付。'}
               />
             ) : null}
           </Form>
@@ -1329,11 +1966,650 @@ const CompetitionRegistrationPage = () => {
               </Button>
             ) : (
               <Button type="primary" loading={loading} onClick={() => void pay()}>
-                生成支付订单
+                模拟支付
               </Button>
             )}
           </Space>
         </Card>
+      </ManagementPageBody>
+    </ManagementPage>
+  );
+};
+
+type CompetitionSettingsModuleKey = 'documents' | 'fields' | 'files' | 'stage-materials' | 'timeline';
+
+type CompetitionSettingsModuleConfig = {
+  key: CompetitionSettingsModuleKey;
+  labelId: string;
+  defaultLabel: string;
+  descriptionId: string;
+  defaultDescription: string;
+  itemTypes: CompetitionConfigItemType[];
+};
+
+type ConfigItemMetadata = {
+  documentKind?: 'AGREEMENT' | 'CONSENT';
+  fieldScope?: CompetitionConfigItemType;
+  fieldType?: string;
+  placeholder?: string;
+  description?: string;
+  groupLabel?: string;
+  validationRule?: string;
+  options?: string;
+  weight?: number;
+  fileFormat?: string;
+  maxSizeMb?: number;
+  stageName?: string;
+  materialType?: string;
+  timelineKind?: string;
+  startAt?: string;
+  endAt?: string;
+};
+
+type EditableCompetitionConfigItem = CompetitionConfigItem & {
+  metadata?: ConfigItemMetadata;
+};
+
+const competitionSettingsModules: CompetitionSettingsModuleConfig[] = [
+  {
+    key: 'documents',
+    labelId: 'page.competition.settings.module.documents',
+    defaultLabel: 'Documents',
+    descriptionId: 'page.competition.settings.module.documents.description',
+    defaultDescription: 'Commitment, informed consent and other required reading documents.',
+    itemTypes: ['AGREEMENT', 'CONSENT'],
+  },
+  {
+    key: 'fields',
+    labelId: 'page.competition.settings.module.fields',
+    defaultLabel: 'Collected Fields',
+    descriptionId: 'page.competition.settings.module.fields.description',
+    defaultDescription: 'Registration, team, member and project fields collected from participants.',
+    itemTypes: ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'],
+  },
+  {
+    key: 'files',
+    labelId: 'page.competition.settings.module.files',
+    defaultLabel: 'Required Files',
+    descriptionId: 'page.competition.settings.module.files.description',
+    defaultDescription: 'Files participants must upload, including works, proof and authorization files.',
+    itemTypes: ['REQUIRED_FILE'],
+  },
+  {
+    key: 'stage-materials',
+    labelId: 'page.competition.settings.module.stageMaterials',
+    defaultLabel: 'Stage Materials',
+    descriptionId: 'page.competition.settings.module.stageMaterials.description',
+    defaultDescription: 'Submission requirements and fields for each competition stage.',
+    itemTypes: ['STAGE_MATERIAL'],
+  },
+  {
+    key: 'timeline',
+    labelId: 'page.competition.settings.module.timeline',
+    defaultLabel: 'Timeline',
+    descriptionId: 'page.competition.settings.module.timeline.description',
+    defaultDescription: 'Registration, competition, material submission and review windows.',
+    itemTypes: ['TIMELINE'],
+  },
+];
+
+const getCompetitionSettingsModuleLabel = (module: CompetitionSettingsModuleConfig) =>
+  formatMessage({ id: module.labelId, defaultMessage: module.defaultLabel });
+
+const getCompetitionSettingsModuleDescription = (module: CompetitionSettingsModuleConfig) =>
+  formatMessage({ id: module.descriptionId, defaultMessage: module.defaultDescription });
+
+const parseConfigItemMetadata = (contentJson?: string | null): ConfigItemMetadata => {
+  if (!contentJson) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(contentJson);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const serializeConfigItemMetadata = (metadata?: ConfigItemMetadata) => {
+  const cleaned = Object.fromEntries(
+    Object.entries(metadata || {}).filter(([, value]) => value !== undefined && value !== null && value !== ''),
+  );
+  return JSON.stringify(cleaned, null, 2);
+};
+
+const toEditableConfigItems = (items: CompetitionConfigItem[]): EditableCompetitionConfigItem[] =>
+  items.map((item) => ({
+    ...item,
+    metadata: {
+      ...parseConfigItemMetadata(item.contentJson),
+      fieldScope: ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(item.itemType)
+        ? item.itemType
+        : undefined,
+      documentKind: item.itemType === 'AGREEMENT' || item.itemType === 'CONSENT' ? item.itemType : undefined,
+    },
+  }));
+
+const toConfigItems = (items: EditableCompetitionConfigItem[]): CompetitionConfigItem[] =>
+  items.map(({ metadata, ...item }) => {
+    const itemType = metadata?.fieldScope || metadata?.documentKind || item.itemType;
+    return {
+      ...item,
+      itemType,
+      contentJson: serializeConfigItemMetadata({ ...metadata, fieldScope: undefined, documentKind: undefined }),
+      sortOrder: item.sortOrder ?? 0,
+      requiredFlag: Boolean(item.requiredFlag),
+      enabled: item.enabled ?? true,
+    };
+  });
+
+const normalizeConfigKey = (value: string) => value.trim().replace(/[^A-Za-z0-9_-]/g, '');
+
+const fieldScopeOptions = [
+  { label: '报名信息', value: 'REGISTRATION_FIELD' },
+  { label: '团队信息', value: 'TEAM_FIELD' },
+  { label: '成员信息', value: 'MEMBER_FIELD' },
+  { label: '项目信息', value: 'PROJECT_FIELD' },
+];
+
+const fieldTypeOptions = [
+  { label: '单行文本', value: 'TEXT' },
+  { label: '多行文本', value: 'TEXTAREA' },
+  { label: '数字', value: 'NUMBER' },
+  { label: '日期', value: 'DATE' },
+  { label: '下拉选择', value: 'SELECT' },
+  { label: '手机号', value: 'MOBILE' },
+  { label: '邮箱', value: 'EMAIL' },
+];
+
+const validationRuleOptions = [
+  { label: '不限制', value: 'NONE' },
+  { label: '中国大陆手机号', value: 'CHINA_MOBILE' },
+  { label: '邮箱地址', value: 'EMAIL' },
+  { label: '身份证号', value: 'ID_CARD' },
+];
+
+const documentKindOptions = [
+  { label: '承诺书', value: 'AGREEMENT' },
+  { label: '知情同意书', value: 'CONSENT' },
+];
+
+const fileFormatOptions = [
+  { label: '不限格式', value: 'ANY' },
+  { label: 'PDF', value: 'PDF' },
+  { label: '图片', value: 'IMAGE' },
+  { label: 'Word 文档', value: 'WORD' },
+  { label: '压缩包', value: 'ARCHIVE' },
+];
+
+const materialTypeOptions = [
+  { label: '表单字段', value: 'FIELD' },
+  { label: '上传文件', value: 'FILE' },
+  { label: '说明文档', value: 'DOCUMENT' },
+];
+
+const timelineKindOptions = [
+  { label: '报名时间', value: 'REGISTRATION' },
+  { label: '比赛时间', value: 'COMPETITION' },
+  { label: '材料提交时间', value: 'MATERIAL_SUBMISSION' },
+  { label: '评审时间', value: 'REVIEW' },
+  { label: '公示时间', value: 'PUBLICITY' },
+];
+
+const emptyConfigItem = (itemType: CompetitionConfigItemType, sortOrder: number): CompetitionConfigItem => ({
+  itemType,
+  itemKey: `${itemType.toLowerCase()}-${Date.now()}`,
+  title: '',
+  contentJson: serializeConfigItemMetadata(
+    itemType === 'REGISTRATION_FIELD'
+      ? { fieldScope: itemType, fieldType: 'TEXT', validationRule: 'NONE', weight: 5 }
+      : itemType === 'REQUIRED_FILE'
+        ? { fileFormat: 'ANY', maxSizeMb: 20 }
+        : itemType === 'STAGE_MATERIAL'
+          ? { materialType: 'FIELD' }
+          : itemType === 'TIMELINE'
+            ? { timelineKind: 'REGISTRATION' }
+            : itemType === 'AGREEMENT' || itemType === 'CONSENT'
+              ? { documentKind: itemType }
+              : {},
+  ),
+  contentText: '',
+  sortOrder,
+  requiredFlag: false,
+  enabled: true,
+});
+
+const getModuleItems = (settings: CompetitionSettingsRecord | undefined, key: CompetitionSettingsModuleKey) => {
+  if (!settings) {
+    return [];
+  }
+  if (key === 'documents') {
+    return settings.documents;
+  }
+  if (key === 'fields') {
+    return settings.fields;
+  }
+  if (key === 'files') {
+    return settings.files;
+  }
+  if (key === 'stage-materials') {
+    return settings.stageMaterials;
+  }
+  return settings.timeline;
+};
+
+const renderConfigItemFields = (module: CompetitionSettingsModuleConfig, fieldName: number) => {
+  if (module.key === 'documents') {
+    return (
+      <>
+        <div className="competition-config-grid">
+          <Form.Item name={[fieldName, 'metadata', 'documentKind']} label="文书类型" rules={[{ required: true, message: '请选择文书类型' }]}>
+            <Select options={documentKindOptions} />
+          </Form.Item>
+          <Form.Item name={[fieldName, 'itemKey']} label="文书标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入文书标识' }]}>
+            <Input placeholder="例如 commitment、consent" maxLength={64} />
+          </Form.Item>
+          <Form.Item className="competition-config-grid__full" name={[fieldName, 'title']} label="文书标题" rules={[{ required: true, message: '请输入文书标题' }]}>
+            <Input placeholder="例如 参赛承诺书、知情同意书" maxLength={64} />
+          </Form.Item>
+        </div>
+        <Form.Item name={[fieldName, 'contentText']} label="文书内容">
+          <AgreementMarkdownEditor placeholder="请输入承诺书、知情同意书等内容，支持 Markdown" />
+        </Form.Item>
+      </>
+    );
+  }
+
+  if (module.key === 'fields') {
+    return (
+      <>
+        <div className="competition-config-grid">
+          <Form.Item name={[fieldName, 'metadata', 'fieldScope']} label="收集位置" rules={[{ required: true, message: '请选择收集位置' }]}>
+            <Select options={fieldScopeOptions} />
+          </Form.Item>
+          <Form.Item name={[fieldName, 'metadata', 'fieldType']} label="字段类型" rules={[{ required: true, message: '请选择字段类型' }]}>
+            <Select options={fieldTypeOptions} />
+          </Form.Item>
+          <Form.Item name={[fieldName, 'itemKey']} label="字段标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入字段标识' }]}>
+            <Input placeholder="例如 mobile、school、projectName" maxLength={64} />
+          </Form.Item>
+          <Form.Item name={[fieldName, 'title']} label="字段名称" rules={[{ required: true, message: '请输入字段名称' }]}>
+            <Input placeholder="例如 手机号、学校、项目名称" maxLength={64} />
+          </Form.Item>
+          <Form.Item name={[fieldName, 'metadata', 'placeholder']} label="占位提示">
+            <Input placeholder="例如 请输入 11 位手机号" maxLength={120} />
+          </Form.Item>
+          <Form.Item name={[fieldName, 'metadata', 'groupLabel']} label="字段分组">
+            <Input placeholder="例如 联系方式、教育信息、项目信息" maxLength={64} />
+          </Form.Item>
+          <Form.Item name={[fieldName, 'metadata', 'validationRule']} label="校验规则">
+            <Select options={validationRuleOptions} />
+          </Form.Item>
+          <Form.Item name={[fieldName, 'sortOrder']} label="排序">
+            <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
+        </div>
+        <Form.Item name={[fieldName, 'metadata', 'description']} label="字段说明">
+          <Input.TextArea rows={2} placeholder="说明该字段在报名或参赛资料中的用途" maxLength={200} />
+        </Form.Item>
+        <Form.Item name={[fieldName, 'metadata', 'options']} label="选项内容">
+          <Input.TextArea rows={2} placeholder="下拉选择时填写，每行一个选项" maxLength={500} />
+        </Form.Item>
+      </>
+    );
+  }
+
+  if (module.key === 'files') {
+    return (
+      <div className="competition-config-grid">
+        <Form.Item name={[fieldName, 'itemKey']} label="文件标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入文件标识' }]}>
+          <Input placeholder="例如 work、authorization" maxLength={64} />
+        </Form.Item>
+        <Form.Item name={[fieldName, 'title']} label="文件名称" rules={[{ required: true, message: '请输入文件名称' }]}>
+          <Input placeholder="例如 参赛作品、授权证明" maxLength={64} />
+        </Form.Item>
+        <Form.Item name={[fieldName, 'metadata', 'fileFormat']} label="文件格式">
+          <Select options={fileFormatOptions} />
+        </Form.Item>
+        <Form.Item name={[fieldName, 'metadata', 'maxSizeMb']} label="大小上限 MB">
+          <InputNumber min={1} max={1024} style={{ width: '100%' }} />
+        </Form.Item>
+        <Form.Item className="competition-config-grid__full" name={[fieldName, 'metadata', 'description']} label="上传说明">
+          <Input.TextArea rows={2} placeholder="说明文件要求、命名规则或盖章要求" maxLength={200} />
+        </Form.Item>
+      </div>
+    );
+  }
+
+  if (module.key === 'stage-materials') {
+    return (
+      <div className="competition-config-grid">
+        <Form.Item name={[fieldName, 'metadata', 'stageName']} label="赛事阶段" rules={[{ required: true, message: '请输入赛事阶段' }]}>
+          <Input placeholder="例如 初赛、复赛、决赛" maxLength={64} />
+        </Form.Item>
+        <Form.Item name={[fieldName, 'metadata', 'materialType']} label="材料类型">
+          <Select options={materialTypeOptions} />
+        </Form.Item>
+        <Form.Item name={[fieldName, 'itemKey']} label="材料标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入材料标识' }]}>
+          <Input placeholder="例如 preliminary_plan" maxLength={64} />
+        </Form.Item>
+        <Form.Item name={[fieldName, 'title']} label="材料名称" rules={[{ required: true, message: '请输入材料名称' }]}>
+          <Input placeholder="例如 初赛方案书" maxLength={64} />
+        </Form.Item>
+        <Form.Item className="competition-config-grid__full" name={[fieldName, 'metadata', 'description']} label="提交要求">
+          <Input.TextArea rows={2} placeholder="说明该阶段需要提交的内容和格式" maxLength={240} />
+        </Form.Item>
+      </div>
+    );
+  }
+
+  return (
+    <div className="competition-config-grid">
+      <Form.Item name={[fieldName, 'metadata', 'timelineKind']} label="时间类型" rules={[{ required: true, message: '请选择时间类型' }]}>
+        <Select options={timelineKindOptions} />
+      </Form.Item>
+      <Form.Item name={[fieldName, 'title']} label="时间名称" rules={[{ required: true, message: '请输入时间名称' }]}>
+        <Input placeholder="例如 报名时间、初赛评审" maxLength={64} />
+      </Form.Item>
+      <Form.Item name={[fieldName, 'itemKey']} label="时间标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入时间标识' }]}>
+        <Input placeholder="例如 registration、review_preliminary" maxLength={64} />
+      </Form.Item>
+      <Form.Item name={[fieldName, 'metadata', 'startAt']} label="开始时间">
+        <Input placeholder="例如 2026-07-01 09:00" maxLength={32} />
+      </Form.Item>
+      <Form.Item name={[fieldName, 'metadata', 'endAt']} label="结束时间">
+        <Input placeholder="例如 2026-07-31 18:00" maxLength={32} />
+      </Form.Item>
+      <Form.Item name={[fieldName, 'sortOrder']} label="排序">
+        <InputNumber min={0} style={{ width: '100%' }} />
+      </Form.Item>
+      <Form.Item className="competition-config-grid__full" name={[fieldName, 'metadata', 'description']} label="时间说明">
+        <Input.TextArea rows={2} placeholder="补充说明该时间窗口覆盖的事项" maxLength={200} />
+      </Form.Item>
+    </div>
+  );
+};
+
+const renderFieldSettingsTable = (
+  fields: Array<{ key: number; name: number }>,
+  add: (defaultValue?: EditableCompetitionConfigItem) => void,
+  remove: (index: number | number[]) => void,
+  module: CompetitionSettingsModuleConfig,
+) => {
+  return (
+    <Space className="competition-config-list" direction="vertical" size={16}>
+      <Form.Item noStyle shouldUpdate>
+        {({ getFieldValue }) => {
+          const items = (getFieldValue('items') || []) as EditableCompetitionConfigItem[];
+          const enabledWeight = items
+            .filter((item) => item.enabled !== false)
+            .reduce((total, item) => total + Number(item.metadata?.weight || 0), 0);
+          return <Alert type={enabledWeight === 100 ? 'success' : 'info'} showIcon message={`当前启用字段权重总和：${enabledWeight}`} />;
+        }}
+      </Form.Item>
+      <div className="competition-field-table">
+        <div className="competition-field-table__head">
+          <span>字段</span>
+          <span>类型</span>
+          <span>占位提示</span>
+          <span>必填</span>
+          <span>权重</span>
+          <span>排序</span>
+          <span>启用</span>
+          <span>操作</span>
+        </div>
+        {fields.map((field) => (
+          <div className="competition-field-table__row" key={field.key}>
+            <div className="competition-field-table__field">
+              <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入字段名称' }]}>
+                <Input placeholder="字段名称" maxLength={64} />
+              </Form.Item>
+              <Form.Item name={[field.name, 'itemKey']} normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入字段标识' }]}>
+                <Input placeholder="字段标识" maxLength={64} />
+              </Form.Item>
+              <Form.Item name={[field.name, 'metadata', 'fieldScope']} rules={[{ required: true, message: '请选择收集位置' }]}>
+                <Select options={fieldScopeOptions} />
+              </Form.Item>
+            </div>
+            <Form.Item name={[field.name, 'metadata', 'fieldType']} rules={[{ required: true, message: '请选择字段类型' }]}>
+              <Select options={fieldTypeOptions} />
+            </Form.Item>
+            <Form.Item name={[field.name, 'metadata', 'placeholder']}>
+              <Input placeholder="占位提示" maxLength={120} />
+            </Form.Item>
+            <Form.Item name={[field.name, 'requiredFlag']} valuePropName="checked">
+              <Switch />
+            </Form.Item>
+            <Form.Item name={[field.name, 'metadata', 'weight']}>
+              <InputNumber min={1} precision={0} controls={false} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name={[field.name, 'sortOrder']}>
+              <InputNumber min={0} precision={0} controls={false} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name={[field.name, 'enabled']} valuePropName="checked">
+              <Switch />
+            </Form.Item>
+            <Button danger type="link" onClick={() => remove(field.name)}>
+              删除
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button
+        block
+        icon={<PlusOutlined />}
+        onClick={() => add(toEditableConfigItems([emptyConfigItem(module.itemTypes[0], (fields.length + 1) * 10)])[0])}
+      >
+        新增字段
+      </Button>
+    </Space>
+  );
+};
+
+const ConfigModulePanel = ({
+  competitionUuid,
+  module,
+  items,
+  onSaved,
+}: {
+  competitionUuid: string;
+  module: CompetitionSettingsModuleConfig;
+  items: CompetitionConfigItem[];
+  onSaved: (settings: CompetitionSettingsRecord) => void;
+}) => {
+  const [form] = Form.useForm<{ items: EditableCompetitionConfigItem[] }>();
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    form.setFieldsValue({ items: toEditableConfigItems(items) });
+  }, [form, items]);
+
+  const save = async () => {
+    const values = await form.validateFields();
+    setSaving(true);
+    try {
+      const saved = await saveCompetitionSettingsModule(competitionUuid, module.key, toConfigItems(values.items || []));
+      onSaved(saved);
+      message.success(formatMessage({ id: 'page.competition.settings.item.saveSuccess', defaultMessage: 'Settings saved' }));
+    } catch (error) {
+      showErrorMessage(error, formatMessage({ id: 'page.competition.settings.item.saveFailed', defaultMessage: 'Settings save failed' }));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card
+      title={getCompetitionSettingsModuleLabel(module)}
+      extra={
+        <Button type="primary" loading={saving} onClick={() => void save()}>
+          {formatMessage({ id: 'page.competition.settings.item.save', defaultMessage: 'Save' })}
+        </Button>
+      }
+    >
+      <Typography.Paragraph type="secondary">{getCompetitionSettingsModuleDescription(module)}</Typography.Paragraph>
+      <Form form={form} layout="vertical" initialValues={{ items: toEditableConfigItems(items) }}>
+        <Form.List name="items">
+          {(fields, { add, remove }) =>
+            module.key === 'fields' ? (
+              renderFieldSettingsTable(fields, add, remove, module)
+            ) : (
+              <Space className="competition-config-list" direction="vertical" size={16}>
+              {fields.map((field, index) => (
+                <Card
+                  key={field.key}
+                  className="competition-config-item"
+                  size="small"
+                  title={
+                    <Space size={8} wrap>
+                      <span>{formatMessage({ id: 'page.competition.settings.item.title', defaultMessage: 'Item {index}' }, { index: index + 1 })}</span>
+                      <Form.Item noStyle shouldUpdate>
+                        {({ getFieldValue }) => {
+                          const enabled = getFieldValue(['items', field.name, 'enabled']);
+                          const required = getFieldValue(['items', field.name, 'requiredFlag']);
+                          return (
+                            <>
+                              {required ? <Tag color="red">必填</Tag> : null}
+                              {enabled === false ? <Tag>停用</Tag> : <Tag color="green">启用</Tag>}
+                            </>
+                          );
+                        }}
+                      </Form.Item>
+                    </Space>
+                  }
+                  extra={
+                    <Button danger onClick={() => remove(field.name)}>
+                      {formatMessage({ id: 'page.competition.settings.item.remove', defaultMessage: 'Remove' })}
+                    </Button>
+                  }
+                >
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    {renderConfigItemFields(module, field.name)}
+                    <div className="competition-config-switches">
+                      <Form.Item name={[field.name, 'requiredFlag']} label={formatMessage({ id: 'page.competition.settings.item.required', defaultMessage: 'Required' })} valuePropName="checked">
+                        <Switch checkedChildren="必填" unCheckedChildren="选填" />
+                      </Form.Item>
+                      <Form.Item name={[field.name, 'enabled']} label={formatMessage({ id: 'page.competition.settings.item.enabled', defaultMessage: 'Enabled' })} valuePropName="checked">
+                        <Switch checkedChildren="启用" unCheckedChildren="停用" />
+                      </Form.Item>
+                      {module.key !== 'fields' && module.key !== 'timeline' ? (
+                        <Form.Item name={[field.name, 'sortOrder']} label={formatMessage({ id: 'page.competition.settings.item.sort', defaultMessage: 'Sort' })}>
+                          <InputNumber min={0} style={{ width: 120 }} />
+                        </Form.Item>
+                      ) : null}
+                    </div>
+                  </Space>
+                </Card>
+              ))}
+              <Button
+                block
+                icon={<PlusOutlined />}
+                onClick={() => add(toEditableConfigItems([emptyConfigItem(module.itemTypes[0], (fields.length + 1) * 10)])[0])}
+              >
+                {formatMessage({ id: 'page.competition.settings.item.add', defaultMessage: 'Add item' })}
+              </Button>
+            </Space>
+            )
+          }
+        </Form.List>
+      </Form>
+    </Card>
+  );
+};
+
+const CompetitionSettingsPage = () => {
+  const params = useParams<{ competitionUuid: string }>();
+  const competitionUuid = params.competitionUuid || '';
+  const [settings, setSettings] = useState<CompetitionSettingsRecord>();
+  const [activeKey, setActiveKey] = useState<CompetitionSettingsModuleKey>('documents');
+  const [loading, setLoading] = useState(true);
+  const [publishing, setPublishing] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    getCompetitionSettings(competitionUuid)
+      .then((result) => {
+        if (mounted) {
+          setSettings(result);
+        }
+      })
+      .catch((error) => showErrorMessage(error, formatMessage({ id: 'page.competition.settings.loadFailed', defaultMessage: 'Competition settings load failed' })))
+      .finally(() => {
+        if (mounted) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [competitionUuid]);
+
+  const activeModule = competitionSettingsModules.find((item) => item.key === activeKey) || competitionSettingsModules[0];
+
+  const publish = async () => {
+    if (!settings) {
+      return;
+    }
+    setPublishing(true);
+    try {
+      const published = await publishCompetitionSettings(settings.competition.uuid || competitionUuid);
+      setSettings({ ...settings, activeConfigSet: published });
+      message.success(formatMessage({ id: 'page.competition.settings.publishSuccess', defaultMessage: 'Settings published' }));
+    } catch (error) {
+      showErrorMessage(error, formatMessage({ id: 'page.competition.settings.publishFailed', defaultMessage: 'Settings publish failed' }));
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  return (
+    <ManagementPage
+      title={formatMessage({ id: 'page.competition.settings.title', defaultMessage: 'Competition Settings' })}
+      extra={
+        <Space>
+          <Button onClick={() => history.push('/competitions/management')}>
+            {formatMessage({ id: 'page.competition.settings.back', defaultMessage: 'Back' })}
+          </Button>
+          <Button type="primary" loading={publishing} onClick={() => void publish()}>
+            {formatMessage({ id: 'page.competition.settings.publish', defaultMessage: 'Publish' })}
+          </Button>
+        </Space>
+      }
+    >
+      <ManagementPageBody>
+        {loading ? (
+          <Card loading />
+        ) : settings ? (
+          <div className="competition-settings-layout">
+            <aside className="competition-settings-sidebar">
+              <Typography.Title level={5}>{settings.competition.title}</Typography.Title>
+              <Typography.Text type="secondary">
+                {formatMessage(
+                  { id: 'page.competition.settings.no', defaultMessage: 'No. {competitionNo}' },
+                  { competitionNo: settings.competition.competitionNo || settings.competition.code },
+                )}
+              </Typography.Text>
+              <Menu
+                mode="inline"
+                selectedKeys={[activeKey]}
+                items={competitionSettingsModules.map((item) => ({ key: item.key, label: getCompetitionSettingsModuleLabel(item) }))}
+                onClick={({ key }) => setActiveKey(key as CompetitionSettingsModuleKey)}
+              />
+            </aside>
+            <main className="competition-settings-content">
+              <ConfigModulePanel
+                key={activeModule.key}
+                competitionUuid={settings.competition.uuid || competitionUuid}
+                module={activeModule}
+                items={getModuleItems(settings, activeModule.key)}
+                onSaved={setSettings}
+              />
+            </main>
+          </div>
+        ) : (
+          <Alert type="error" showIcon message={formatMessage({ id: 'page.competition.settings.notFound', defaultMessage: 'Competition settings not found' })} />
+        )}
       </ManagementPageBody>
     </ManagementPage>
   );
@@ -1349,14 +2625,9 @@ const CompetitionPage = () => {
   const levelLabelMap = useMemo(() => buildOptionLabelMap(levelOptions), [levelOptions]);
   const actionRef = useRef<ActionType | undefined>(undefined);
   const [form] = Form.useForm<CompetitionFormValues>();
-  const [materialForm] = Form.useForm<MaterialStageFormValues>();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<CompetitionRecord>();
-  const [materialRecord, setMaterialRecord] = useState<CompetitionRecord>();
-  const [materialStageId, setMaterialStageId] = useState<number>();
-  const [materialModalOpen, setMaterialModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [materialSaving, setMaterialSaving] = useState(false);
 
   useEffect(() => {
     if (location.pathname === '/competitions') {
@@ -1381,44 +2652,6 @@ const CompetitionPage = () => {
     form.resetFields();
     form.setFieldsValue({ ...defaultCompetitionFormValues, ...recordToFormValues(record) });
     setDrawerOpen(true);
-  };
-
-  const closeMaterialModal = () => {
-    setMaterialModalOpen(false);
-    setMaterialRecord(undefined);
-    setMaterialStageId(undefined);
-    materialForm.resetFields();
-  };
-
-  const openMaterialModal = async (record: CompetitionRecord) => {
-    setMaterialRecord(record);
-    setMaterialStageId(undefined);
-    materialForm.setFieldsValue({
-      stageName: '初赛',
-      formName: '初赛材料',
-      formSchemaJson: defaultPreliminaryFormSchema,
-    });
-    setMaterialModalOpen(true);
-    try {
-      const stages = await listCompetitionStages(record.id);
-      const preliminary = stages.find((item) => item.stageCode === 'PRELIMINARY');
-      if (!preliminary) {
-        return;
-      }
-      setMaterialStageId(preliminary.id);
-      materialForm.setFieldValue('stageName', preliminary.stageName || '初赛');
-      try {
-        const formRecord = await getCompetitionStageForm(preliminary.id);
-        materialForm.setFieldsValue({
-          formName: formRecord.formName || '初赛材料',
-          formSchemaJson: formRecord.formSchemaJson || defaultPreliminaryFormSchema,
-        });
-      } catch {
-        materialForm.setFieldValue('formSchemaJson', defaultPreliminaryFormSchema);
-      }
-    } catch (error) {
-      showErrorMessage(error, '材料表单加载失败');
-    }
   };
 
   const saveCompetition = async () => {
@@ -1455,50 +2688,6 @@ const CompetitionPage = () => {
     }
   }, []);
 
-  const saveMaterialForm = async () => {
-    if (!materialRecord) {
-      return;
-    }
-    const values = await materialForm.validateFields();
-    let parsedSchema: unknown;
-    try {
-      parsedSchema = JSON.parse(values.formSchemaJson || '');
-    } catch {
-      message.error('表单 Schema 必须是合法 JSON');
-      return;
-    }
-    if (!Array.isArray((parsedSchema as { fields?: unknown }).fields)) {
-      message.error('表单 Schema 必须包含 fields 数组');
-      return;
-    }
-    setMaterialSaving(true);
-    try {
-      let stageId = materialStageId;
-      if (!stageId) {
-        const stage = await createCompetitionStage(materialRecord.id, {
-          stageCode: 'PRELIMINARY',
-          stageName: values.stageName || '初赛',
-          status: 'ENABLED',
-          sort: 10,
-        });
-        stageId = stage.id;
-        setMaterialStageId(stage.id);
-      }
-      await upsertCompetitionStageForm(stageId, {
-        formName: values.formName || '初赛材料',
-        formSchemaJson: values.formSchemaJson || defaultPreliminaryFormSchema,
-        version: 1,
-        status: 'ENABLED',
-      });
-      message.success('初赛材料表单已保存');
-      closeMaterialModal();
-    } catch (error) {
-      showErrorMessage(error, '材料表单保存失败');
-    } finally {
-      setMaterialSaving(false);
-    }
-  };
-
   const columns = useMemo<ProColumns<CompetitionRecord>[]>(
     () => [
       {
@@ -1526,22 +2715,12 @@ const CompetitionPage = () => {
         dataIndex: 'status',
         valueType: 'select',
         valueEnum: {
-          draft: { text: '草稿' },
-          published: { text: '已发布' },
-          archived: { text: '已归档' },
+          draft: { text: statusText.draft },
+          published: { text: statusText.published },
+          archived: { text: statusText.archived },
         },
         width: 110,
-        render: (_, record) =>
-          record.status === 'archived' ? (
-            <Tag color={statusColor[record.status]}>{statusText[record.status]}</Tag>
-          ) : (
-            <Switch
-              checked={record.status === 'published'}
-              checkedChildren="已发布"
-              unCheckedChildren="草稿"
-              onChange={() => void toggleCompetitionStatus(record)}
-            />
-          ),
+        render: (_, record) => <Tag color={statusColor[record.status]}>{statusText[record.status]}</Tag>,
       },
       {
         title: '类别',
@@ -1597,7 +2776,7 @@ const CompetitionPage = () => {
           return (
             <Space size={4} wrap>
               {locales.map((item) => (
-                <Tag key={item}>{item === 'zh' ? '涓枃' : 'English'}</Tag>
+                <Tag key={item}>{item === 'zh' ? '中文' : 'English'}</Tag>
               ))}
             </Space>
           );
@@ -1663,18 +2842,47 @@ const CompetitionPage = () => {
             isMobile={responsive.isMobile}
             items={actionPermission.buildTableActions([
               {
+                key: 'status',
+                label: record.status === 'published' ? '撤回' : '发布',
+                icon: record.status === 'published' ? <RollbackOutlined /> : <CheckCircleOutlined />,
+                permission: 'aiadc:competition:update',
+                hidden: record.status === 'archived',
+                onClick: () => {
+                  if (record.status === 'published') {
+                    void toggleCompetitionStatus(record);
+                    return;
+                  }
+
+                  Modal.confirm({
+                    title: '确认发布该赛事？',
+                    content: `发布后，赛事「${record.title}」将出现在学生报名入口中。`,
+                    okText: '确认发布',
+                    cancelText: '取消',
+                    onOk: async () => {
+                      await toggleCompetitionStatus(record);
+                    },
+                  });
+                },
+              },
+              {
+                key: 'settings',
+                label: '配置',
+                icon: <SettingOutlined />,
+                permission: 'aiadc:competition:update',
+                onClick: () => {
+                  if (!record.uuid) {
+                    message.warning('Competition UUID is missing. Please refresh the data after database migration.');
+                    return;
+                  }
+                  history.push(`/competitions/${record.uuid}/settings`);
+                },
+              },
+              {
                 key: 'edit',
                 label: '编辑',
                 icon: <EditOutlined />,
                 permission: 'aiadc:competition:update',
                 onClick: () => openEditDrawer(record),
-              },
-              {
-                key: 'materials',
-                label: '材料',
-                icon: <SettingOutlined />,
-                permission: 'aiadc:stage:manage',
-                onClick: () => void openMaterialModal(record),
               },
               {
                 key: 'delete',
@@ -1707,8 +2915,20 @@ const CompetitionPage = () => {
     return <CreateCompetitionPage />;
   }
 
+  if (/^\/competitions\/[^/]+\/settings$/.test(location.pathname)) {
+    return <CompetitionSettingsPage />;
+  }
+
   if (location.pathname === '/competitions/register') {
     return <CompetitionRegistrationPage />;
+  }
+
+  if (location.pathname === '/competitions/activity-register') {
+    return <ActivityRegistrationPage />;
+  }
+
+  if (location.pathname === '/competitions/expert-apply') {
+    return <ExpertApplicationPage />;
   }
 
   return (
@@ -1773,45 +2993,10 @@ const CompetitionPage = () => {
         <CompetitionForm form={form} categoryOptions={categoryOptions as Array<{ label: string; value: string }>} levelOptions={levelOptions as Array<{ label: string; value: string }>} />
       </ManagementDrawer>
 
-      <Modal
-        title={materialRecord ? `配置初赛材料：${materialRecord.title}` : '配置初赛材料'}
-        open={materialModalOpen}
-        onCancel={closeMaterialModal}
-        onOk={() => void saveMaterialForm()}
-        confirmLoading={materialSaving}
-        destroyOnHidden
-        width={760}
-      >
-        <Form<MaterialStageFormValues> form={materialForm} layout="vertical">
-          <Form.Item name="stageName" label="阶段名称" rules={[{ required: true, message: '请输入阶段名称' }]}>
-            <Input maxLength={128} />
-          </Form.Item>
-          <Form.Item name="formName" label="表单名称" rules={[{ required: true, message: '请输入表单名称' }]}>
-            <Input maxLength={128} />
-          </Form.Item>
-          <Form.Item
-            name="formSchemaJson"
-            label="材料表单 Schema"
-            rules={[
-              { required: true, message: '请输入表单 Schema' },
-              {
-                validator: (_, value?: string) => {
-                  try {
-                    const parsed = JSON.parse(value || '');
-                    return Array.isArray(parsed.fields) ? Promise.resolve() : Promise.reject(new Error('Schema 必须包含 fields 数组'));
-                  } catch {
-                    return Promise.reject(new Error('Schema 必须是合法 JSON'));
-                  }
-                },
-              },
-            ]}
-          >
-            <Input.TextArea rows={14} spellCheck={false} />
-          </Form.Item>
-        </Form>
-      </Modal>
     </ManagementPage>
   );
 };
 
 export default CompetitionPage;
+
+

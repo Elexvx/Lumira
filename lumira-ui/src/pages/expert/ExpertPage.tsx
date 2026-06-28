@@ -13,14 +13,14 @@ import { TableActionBar } from '@/features/table/TableActionBar';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useDictOptions } from '@/hooks/useDictOptions';
 import { createExpert, deleteExpert, listExperts, updateExpert, uploadExpertAvatar } from '@/services/expert/api';
-import type { ExpertRecord, ExpertStatus, ExpertUpsertPayload } from '@/services/expert/types';
+import type { ExpertApprovalStatus, ExpertRecord, ExpertStatus, ExpertUpsertPayload } from '@/services/expert/types';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
 import { normalizeUploadUrl } from '@/utils/uploadUrl';
 import { trimString, validateOptionalChinaIdCard, validateOptionalChinaMobile } from '@/utils/validators';
 import './ExpertPage.css';
 
-type ExpertFormValues = Omit<ExpertUpsertPayload, 'expertise' | 'tags'> & {
+export type ExpertFormValues = Omit<ExpertUpsertPayload, 'expertise' | 'tags'> & {
   expertise?: string[];
   tags?: string[];
 };
@@ -41,6 +41,20 @@ const statusText: Record<ExpertStatus, string> = {
 const statusColor: Record<ExpertStatus, string> = {
   active: 'green',
   inactive: 'default',
+};
+
+const approvalStatusText: Record<ExpertApprovalStatus, string> = {
+  PENDING: '待审批',
+  RUNNING: '审批中',
+  APPROVED: '已通过',
+  REJECTED: '已驳回',
+};
+
+const approvalStatusColor: Record<ExpertApprovalStatus, string> = {
+  PENDING: 'blue',
+  RUNNING: 'processing',
+  APPROVED: 'green',
+  REJECTED: 'red',
 };
 
 const expertTitleFallbackOptions = [
@@ -85,7 +99,7 @@ const trimOptional = (value?: string) => {
 
 const joinOptions = (values?: string[]) => values?.map((value) => value.trim()).filter(Boolean).join(',') || undefined;
 
-const normalizePayload = (values: ExpertFormValues): ExpertUpsertPayload => ({
+export const normalizeExpertPayload = (values: ExpertFormValues): ExpertUpsertPayload => ({
   code: trimOptional(values.code),
   name: values.name.trim(),
   title: trimOptional(values.title),
@@ -117,7 +131,7 @@ const validateOptionalPhone = async (_: unknown, value?: string) => {
   throw new Error('请输入有效联系电话');
 };
 
-const ExpertForm = ({
+export const ExpertForm = ({
   form,
   uploadingAvatar,
   onAvatarUpload,
@@ -319,10 +333,10 @@ const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }
     setSaving(true);
     try {
       if (editingRecord) {
-        await updateExpert(editingRecord.id, normalizePayload(values));
+        await updateExpert(editingRecord.id, normalizeExpertPayload(values));
         message.success('专家已更新');
       } else {
-        const created = await createExpert(normalizePayload(values));
+        const created = await createExpert(normalizeExpertPayload(values));
         message.success('专家已新增');
         if (created.initialPassword) {
           const username = `expert_${created.code.replace(/[^A-Za-z0-9_-]/g, '_')}`;
@@ -410,6 +424,22 @@ const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }
             {!splitTags(record.tags).length ? '-' : null}
           </Space>
         ),
+      },
+      {
+        title: '审批',
+        dataIndex: 'approvalStatus',
+        valueType: 'select',
+        valueEnum: {
+          PENDING: { text: '待审批' },
+          RUNNING: { text: '审批中' },
+          APPROVED: { text: '已通过' },
+          REJECTED: { text: '已驳回' },
+        },
+        width: 120,
+        render: (_, record) => {
+          const approvalStatus = (record.approvalStatus || 'APPROVED') as ExpertApprovalStatus;
+          return <Tag color={approvalStatusColor[approvalStatus]}>{approvalStatusText[approvalStatus]}</Tag>;
+        },
       },
       {
         title: '账号',
@@ -512,6 +542,7 @@ const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }
                     ? params.competitionKeyword
                     : undefined,
               status: params.status as ExpertStatus | undefined,
+              approvalStatus: params.approvalStatus as ExpertApprovalStatus | undefined,
               pageNo: params.current,
               pageSize: params.pageSize,
             });

@@ -119,6 +119,7 @@ saas:
       - /api/v2/auth/login/code/challenge
       - /api/v2/auth/login/code/complete
       - /api/v2/auth/login-encryption-key
+      - /api/v2/account-activation/**
       - /api/v1/auth/wechat/authorize-url
       - /api/v1/auth/wechat/login
       - /api/v1/auth/passkeys/authentication/options

@@ -13,8 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -165,7 +168,7 @@ public class TeamAppService {
         requireUserId(currentUser);
         TeamVO.Member actor = permissionService.activeMember(teamId, currentUser.getUserId());
         TeamVO.Member target = requireMember(teamId, memberId);
-        boolean self = target.getUserId().equals(currentUser.getUserId());
+        boolean self = Objects.equals(target.getUserId(), currentUser.getUserId());
         if (!permissionService.canRemoveMember(actor == null ? null : actor.getRole(), target.getRole(), self)) {
             throw biz(ErrorCode.FORBIDDEN, "Cannot remove this team member");
         }
@@ -294,6 +297,22 @@ public class TeamAppService {
             throw biz(ErrorCode.VALIDATION_ERROR, "Draft members cannot be owner");
         }
         normalized.setRemark(trimToNull(request.getRemark()));
+        normalized.setExtraValues(normalizeExtraValues(request.getExtraValues()));
+        return normalized;
+    }
+
+    private Map<String, String> normalizeExtraValues(Map<String, String> extraValues) {
+        if (extraValues == null || extraValues.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> normalized = new LinkedHashMap<>();
+        extraValues.forEach((key, value) -> {
+            String normalizedKey = trimToNull(key);
+            String normalizedValue = trimToNull(value);
+            if (normalizedKey != null && normalizedValue != null) {
+                normalized.put(normalizedKey, normalizedValue);
+            }
+        });
         return normalized;
     }
 

@@ -214,6 +214,7 @@ public class SessionAuthenticationService {
     ) {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(claims.getUserId());
+        currentUser.setUserUuid(session.getUserUuid());
         currentUser.setUsername(claims.getUsername());
         currentUser.setSimulatedRoleId(session.getSimulatedRoleId());
         currentUser.setSessionId(claims.getSessionId());

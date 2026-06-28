@@ -91,6 +91,7 @@ public class LumiraAuthPostLoginBootstrapProvider implements AuthPostLoginBootst
                 true,
                 permissions
         );
+        authenticatedCurrentUser.setUserUuid(currentUser.userUuid());
         authenticatedCurrentUser.setPermissionsVersion(currentUser.permissionsVersion());
         authenticatedCurrentUser.setRoleIds(currentUser.roleIds() == null ? Set.of() : new LinkedHashSet<>(currentUser.roleIds()));
         authenticatedCurrentUser.setPrimaryDeptId(currentUser.primaryDeptId());

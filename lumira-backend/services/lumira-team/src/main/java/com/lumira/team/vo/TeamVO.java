@@ -64,6 +64,7 @@ public final class TeamVO {
         private String employeeNo;
         private String departmentName;
         private String remark;
+        private String extraValuesJson;
         private String memberSource;
         private String status;
         private Long invitedBy;
@@ -87,6 +88,8 @@ public final class TeamVO {
         public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
         public String getRemark() { return remark; }
         public void setRemark(String remark) { this.remark = remark; }
+        public String getExtraValuesJson() { return extraValuesJson; }
+        public void setExtraValuesJson(String extraValuesJson) { this.extraValuesJson = extraValuesJson; }
         public String getMemberSource() { return memberSource; }
         public void setMemberSource(String memberSource) { this.memberSource = memberSource; }
         public String getStatus() { return status; }

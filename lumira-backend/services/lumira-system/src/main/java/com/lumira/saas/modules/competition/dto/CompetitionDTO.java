@@ -3,6 +3,8 @@ package com.lumira.saas.modules.competition.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.List;
+
 public final class CompetitionDTO {
     private CompetitionDTO() {
     }
@@ -122,5 +124,46 @@ public final class CompetitionDTO {
         public void setFeatured(Boolean featured) { this.featured = featured; }
         public Integer getSort() { return sort; }
         public void setSort(Integer sort) { this.sort = sort; }
+    }
+
+    public static class ConfigItemRequest {
+        @NotBlank
+        @Size(max = 64)
+        private String itemType;
+        @NotBlank
+        @Size(max = 128)
+        private String itemKey;
+        @NotBlank
+        @Size(max = 255)
+        private String title;
+        private String contentJson;
+        private String contentText;
+        private Integer sortOrder;
+        private Boolean requiredFlag;
+        private Boolean enabled;
+
+        public String getItemType() { return itemType; }
+        public void setItemType(String itemType) { this.itemType = itemType; }
+        public String getItemKey() { return itemKey; }
+        public void setItemKey(String itemKey) { this.itemKey = itemKey; }
+        public String getTitle() { return title; }
+        public void setTitle(String title) { this.title = title; }
+        public String getContentJson() { return contentJson; }
+        public void setContentJson(String contentJson) { this.contentJson = contentJson; }
+        public String getContentText() { return contentText; }
+        public void setContentText(String contentText) { this.contentText = contentText; }
+        public Integer getSortOrder() { return sortOrder; }
+        public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+        public Boolean getRequiredFlag() { return requiredFlag; }
+        public void setRequiredFlag(Boolean requiredFlag) { this.requiredFlag = requiredFlag; }
+        public Boolean getEnabled() { return enabled; }
+        public void setEnabled(Boolean enabled) { this.enabled = enabled; }
+    }
+
+    public static class SettingsModuleRequest {
+        private List<ConfigItemRequest> items = List.of();
+
+        public List<ConfigItemRequest> getItems() { return items; }
+        public void setItems(List<ConfigItemRequest> items) { this.items = items == null ? List.of() : items; }
     }
 }

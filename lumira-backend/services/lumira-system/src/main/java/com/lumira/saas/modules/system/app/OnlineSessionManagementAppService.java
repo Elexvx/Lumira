@@ -247,7 +247,7 @@ public class OnlineSessionManagementAppService {
     private java.util.Optional<UserRow> loadUser(Long userId) {
         List<UserRow> rows = jdbcTemplate.query(
                 """
-                        select u.id, u.username, u.nickname, u.real_name as realName
+                        select u.id, u.uuid, u.username, u.nickname, u.real_name as realName
                         from sys_user u
                         where u.id = ? and u.deleted = 0
                         limit 1
@@ -262,6 +262,7 @@ public class OnlineSessionManagementAppService {
         SystemVO.OnlineSessionVO vo = new SystemVO.OnlineSessionVO();
         vo.setSessionId(session.getSessionId());
         vo.setUserId(session.getUserId());
+        vo.setUserUuid(session.getUserUuid() != null ? session.getUserUuid() : (userRow == null ? null : userRow.getUuid()));
         vo.setUsername(session.getUsername());
         vo.setNickname(userRow != null && userRow.getNickname() != null ? userRow.getNickname() : null);
         vo.setRealName(userRow != null && userRow.getRealName() != null ? userRow.getRealName() : null);
@@ -286,6 +287,7 @@ public class OnlineSessionManagementAppService {
 
     public static class UserRow {
         private Long id;
+        private String uuid;
         private String username;
         private String nickname;
         private String realName;
@@ -296,6 +298,14 @@ public class OnlineSessionManagementAppService {
 
         public void setId(Long id) {
             this.id = id;
+        }
+
+        public String getUuid() {
+            return uuid;
+        }
+
+        public void setUuid(String uuid) {
+            this.uuid = uuid;
         }
 
         public String getUsername() {

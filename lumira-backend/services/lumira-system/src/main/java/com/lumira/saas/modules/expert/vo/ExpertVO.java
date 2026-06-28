@@ -26,6 +26,8 @@ public final class ExpertVO {
         private String bio;
         private String tags;
         private String status;
+        private String approvalStatus;
+        private Long approvalInstanceId;
         private Integer sort;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
@@ -68,6 +70,10 @@ public final class ExpertVO {
         public void setTags(String tags) { this.tags = tags; }
         public String getStatus() { return status; }
         public void setStatus(String status) { this.status = status; }
+        public String getApprovalStatus() { return approvalStatus; }
+        public void setApprovalStatus(String approvalStatus) { this.approvalStatus = approvalStatus; }
+        public Long getApprovalInstanceId() { return approvalInstanceId; }
+        public void setApprovalInstanceId(Long approvalInstanceId) { this.approvalInstanceId = approvalInstanceId; }
         public Integer getSort() { return sort; }
         public void setSort(Integer sort) { this.sort = sort; }
         public LocalDateTime getCreatedAt() { return createdAt; }

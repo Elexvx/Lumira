@@ -11,6 +11,7 @@ public class AuthSession {
 
     private String sessionId;
     private Long userId;
+    private String userUuid;
     private String username;
     private Long simulatedRoleId;
     private Instant loginTime;
@@ -45,6 +46,14 @@ public class AuthSession {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getUserUuid() {
+        return userUuid;
+    }
+
+    public void setUserUuid(String userUuid) {
+        this.userUuid = userUuid;
     }
 
     public String getUsername() {

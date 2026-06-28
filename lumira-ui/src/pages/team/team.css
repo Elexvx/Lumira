@@ -13,6 +13,26 @@
   max-width: 640px;
 }
 
+.team-list-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.team-list-name-cell__text {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-direction: column;
+}
+
+.team-list-name-cell__title,
+.team-list-name-cell__code {
+  max-width: 100%;
+}
+
 .team-advanced-page {
   width: 100%;
   max-width: none;

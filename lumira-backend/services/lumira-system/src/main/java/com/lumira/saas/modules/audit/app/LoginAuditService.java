@@ -25,8 +25,22 @@ public class LoginAuditService {
             String loginIp,
             String userAgent
     ) {
+        log(userId, null, username, loginType, loginResult, failReason, loginIp, userAgent);
+    }
+
+    public void log(
+            Long userId,
+            String userUuid,
+            String username,
+            String loginType,
+            String loginResult,
+            String failReason,
+            String loginIp,
+            String userAgent
+    ) {
         AuditLoginLogEntity entity = new AuditLoginLogEntity();
         entity.setUserId(userId);
+        entity.setUserUuid(userUuid);
         entity.setUsername(username);
         entity.setLoginType(loginType);
         entity.setLoginResult(loginResult);

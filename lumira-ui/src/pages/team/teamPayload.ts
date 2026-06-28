@@ -4,7 +4,8 @@ export const isBlankDraftMemberRow = (member?: Partial<TeamDraftMemberPayload> |
   !member?.memberName?.trim() &&
   !member?.employeeNo?.trim() &&
   !member?.departmentName?.trim() &&
-  !member?.remark?.trim();
+  !member?.remark?.trim() &&
+  !Object.values(member?.extraValues || {}).some((value) => value?.trim());
 
 export const pruneBlankDraftMembers = (members?: TeamDraftMemberPayload[]) =>
   (members || []).filter((member) => !isBlankDraftMemberRow(member));
@@ -18,6 +19,11 @@ export const normalizeTeamCreatePayload = (values: TeamUpsertPayload): TeamUpser
       departmentName: member.departmentName?.trim(),
       role: member.role || 'MEMBER',
       remark: member.remark?.trim(),
+      extraValues: Object.fromEntries(
+        Object.entries(member.extraValues || {})
+          .map(([key, value]) => [key, value?.trim?.() || ''])
+          .filter(([, value]) => Boolean(value)),
+      ),
     }));
 
   return {

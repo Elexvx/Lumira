@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public class OnlineSessionVO {
     private String sessionId;
     private Long userId;
+    private String userUuid;
     private String username;
     private String nickname;
     private String realName;
@@ -22,6 +23,10 @@ public class OnlineSessionVO {
     public Long getUserId() { return userId; }
 
     public void setUserId(Long userId) { this.userId = userId; }
+
+    public String getUserUuid() { return userUuid; }
+
+    public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
 
     public String getUsername() { return username; }
 

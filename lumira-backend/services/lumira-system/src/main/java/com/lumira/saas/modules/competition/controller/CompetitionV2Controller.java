@@ -65,6 +65,39 @@ public class CompetitionV2Controller {
         return ApiResponse.success(competitionManagementAppService.getCompetition(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
     }
 
+    @GetMapping("/{competitionUuid}/settings")
+    public ApiResponse<CompetitionVO.Settings> competitionSettings(@PathVariable("competitionUuid") String competitionUuid) {
+        require(VIEW);
+        return ApiResponse.success(
+                competitionManagementAppService.getCompetitionSettings(securityContextFacade.getCurrentUser(), competitionUuid),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PutMapping("/{competitionUuid}/settings/{module}")
+    @RepeatSubmit
+    public ApiResponse<CompetitionVO.Settings> saveCompetitionSettingsModule(
+            @PathVariable("competitionUuid") String competitionUuid,
+            @PathVariable("module") String module,
+            @Valid @RequestBody CompetitionDTO.SettingsModuleRequest request
+    ) {
+        require(UPDATE);
+        return ApiResponse.success(
+                competitionManagementAppService.saveSettingsModule(securityContextFacade.getCurrentUser(), competitionUuid, module, request),
+                TraceContext.getRequestId()
+        );
+    }
+
+    @PostMapping("/{competitionUuid}/settings/publish")
+    @RepeatSubmit
+    public ApiResponse<CompetitionVO.ConfigSet> publishCompetitionSettings(@PathVariable("competitionUuid") String competitionUuid) {
+        require(UPDATE);
+        return ApiResponse.success(
+                competitionManagementAppService.publishSettings(securityContextFacade.getCurrentUser(), competitionUuid),
+                TraceContext.getRequestId()
+        );
+    }
+
     @PostMapping
     @RepeatSubmit
     public ApiResponse<CompetitionVO.Competition> createCompetition(@Valid @RequestBody CompetitionDTO.CompetitionUpsertRequest request) {

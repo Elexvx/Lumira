@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,7 +26,7 @@ class RedisStreamPlatformEventDispatcherTest {
         properties.getOutbox().setRedisStreamKey("test:platform-events");
         PlatformEventOutboxEntity event = buildEvent();
 
-        new RedisStreamPlatformEventDispatcher(redisTemplate, properties).dispatch(event);
+        new RedisStreamPlatformEventDispatcher(redisTemplate, properties, List.of()).dispatch(event);
 
         verify(streamOperations).add(any(MapRecord.class));
     }

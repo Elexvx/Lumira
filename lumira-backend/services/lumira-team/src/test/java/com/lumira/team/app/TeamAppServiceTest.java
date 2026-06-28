@@ -9,8 +9,10 @@ import com.lumira.team.repository.TeamMemberRepository;
 import com.lumira.team.repository.TeamRepository;
 import com.lumira.team.vo.TeamVO;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,6 +58,23 @@ class TeamAppServiceTest {
         assertThat(member.getId()).isEqualTo(9L);
         verify(fixtures.teamMemberRepository).addDraftMember(anyLong(), any());
         verify(fixtures.teamMemberRepository).refreshMemberCount(2001L);
+    }
+
+    @Test
+    void addDraftMemberNormalizesExtraValues() {
+        Fixtures fixtures = fixtures("MANAGER");
+        TeamDTO.MemberCreateRequest request = new TeamDTO.MemberCreateRequest();
+        request.setMemberName("External Member");
+        request.setRole("MEMBER");
+        request.setExtraValues(Map.of(" shirtSize ", " L ", "empty", " "));
+        when(fixtures.teamMemberRepository.addDraftMember(anyLong(), any())).thenReturn(9L);
+        when(fixtures.teamMemberRepository.findMemberById(2001L, 9L)).thenReturn(member(9L, null, "MEMBER"));
+
+        fixtures.service.addMember(currentUser(3001L), 2001L, request);
+
+        ArgumentCaptor<TeamDTO.DraftMemberRequest> captor = ArgumentCaptor.forClass(TeamDTO.DraftMemberRequest.class);
+        verify(fixtures.teamMemberRepository).addDraftMember(anyLong(), captor.capture());
+        assertThat(captor.getValue().getExtraValues()).containsExactlyEntriesOf(Map.of("shirtSize", "L"));
     }
 
     @Test
@@ -107,6 +126,19 @@ class TeamAppServiceTest {
         assertThatThrownBy(() -> fixtures.service.leaveTeam(currentUser(3001L), 2001L))
                 .isInstanceOf(BizException.class)
                 .hasMessageContaining("Owner must transfer");
+    }
+
+    @Test
+    void managerCanRemoveDraftMemberWithoutRegisteredUser() {
+        Fixtures fixtures = fixtures("MANAGER");
+        when(fixtures.permissionService.activeMember(2001L, 3001L)).thenReturn(member(1L, 3001L, "MANAGER"));
+        when(fixtures.permissionService.canRemoveMember("MANAGER", "MEMBER", false)).thenReturn(true);
+        when(fixtures.teamMemberRepository.findMemberById(2001L, 9L)).thenReturn(member(9L, null, "MEMBER"));
+
+        assertThat(fixtures.service.removeMember(currentUser(3001L), 2001L, 9L)).isTrue();
+
+        verify(fixtures.teamMemberRepository).removeMember(2001L, 9L);
+        verify(fixtures.teamMemberRepository).refreshMemberCount(2001L);
     }
 
     @Test

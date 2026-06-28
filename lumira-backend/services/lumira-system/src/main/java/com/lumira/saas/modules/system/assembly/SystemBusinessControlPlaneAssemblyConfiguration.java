@@ -18,9 +18,13 @@ import com.lumira.saas.modules.config.controller.HealthController;
 import com.lumira.saas.modules.config.controller.VersionController;
 import com.lumira.saas.modules.config.runtime.DatabaseVersionStartupRecorder;
 import com.lumira.saas.modules.expert.app.ExpertManagementAppService;
+import com.lumira.saas.modules.expert.app.ExpertApprovalEventConsumer;
 import com.lumira.saas.modules.expert.controller.ExpertV2Controller;
 import com.lumira.saas.modules.project.app.ProjectManagementAppService;
 import com.lumira.saas.modules.project.controller.ProjectV2Controller;
+import com.lumira.saas.modules.workflow.app.WorkflowAppService;
+import com.lumira.saas.modules.workflow.app.WorkflowSchemaBootstrap;
+import com.lumira.saas.modules.workflow.controller.WorkflowV2Controller;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 
@@ -39,6 +43,7 @@ import org.springframework.context.annotation.Import;
         CompetitionV2Controller.class,
         DatabaseVersionStartupRecorder.class,
         DddArchitectureCatalogController.class,
+        ExpertApprovalEventConsumer.class,
         ExpertManagementAppService.class,
         ExpertV2Controller.class,
         HealthController.class,
@@ -46,6 +51,9 @@ import org.springframework.context.annotation.Import;
         OwnerRuntimeMetrics.class,
         ProjectManagementAppService.class,
         ProjectV2Controller.class,
+        WorkflowAppService.class,
+        WorkflowSchemaBootstrap.class,
+        WorkflowV2Controller.class,
         VersionController.class
 })
 public class SystemBusinessControlPlaneAssemblyConfiguration {

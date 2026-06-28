@@ -416,6 +416,7 @@ public class AuthSessionStore {
         OnlineSessionEvent event = new OnlineSessionEvent();
         event.setAction(action);
         event.setUserId(session.getUserId());
+        event.setUserUuid(session.getUserUuid());
         event.setSessionId(session.getSessionId());
         event.setOccurredAt(Instant.now());
         onlineSessionEventPublisher.publish(event);

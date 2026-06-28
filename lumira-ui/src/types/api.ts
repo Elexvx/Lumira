@@ -10,6 +10,7 @@ export interface ApiResponse<T> {
 
 export interface AuthUser {
   userId: number;
+  userUuid?: string | null;
   username: string;
   nickname?: string;
   realName?: string;
@@ -339,6 +340,7 @@ export interface RefreshTokenResponse {
 
 export interface CurrentUser {
   userId: number;
+  userUuid?: string | null;
   username: string;
   nickname?: string;
   realName?: string;
@@ -1477,6 +1479,7 @@ export interface ProfileSummary {
 
 export interface ProfileFieldSetting {
   fieldKey: string;
+  pageKey?: string | null;
   fieldLabel: string;
   fieldDescription?: string | null;
   visible: boolean;
@@ -1561,6 +1564,7 @@ export interface UserDetail extends UserRecord {
 export interface OnlineSessionRecord {
   sessionId: string;
   userId: number;
+  userUuid?: string | null;
   username: string;
   nickname?: string | null;
   realName?: string | null;

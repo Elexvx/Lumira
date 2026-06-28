@@ -43,6 +43,11 @@ const FIELD_TYPE_OPTIONS = [
   { label: t("下拉选择", "Select"), value: "SELECT" },
 ];
 
+const FIELD_PAGE_OPTIONS = [
+  { label: t("个人资料", "Profile"), value: "PROFILE" },
+  { label: t("团队成员", "Team members"), value: "TEAM_MEMBER" },
+];
+
 type CustomFieldFormValues = {
   fieldKey: string;
   fieldLabel: string;
@@ -67,6 +72,7 @@ const ProfileFieldManagementPage = () => {
   const tagWrapGap = resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile);
   const [form] = Form.useForm<CustomFieldFormValues>();
   const [items, setItems] = useState<ProfileFieldSetting[]>([]);
+  const [pageKey, setPageKey] = useState("PROFILE");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -89,7 +95,7 @@ const ProfileFieldManagementPage = () => {
     setLoading(true);
     try {
       const result = await request<ProfileFieldSetting[]>(
-        "/v1/system/profile-field-settings",
+          `/v1/system/profile-field-settings?pageKey=${pageKey}`,
         {
           method: "GET",
           ...API_OPTS.NO_REDIRECT,
@@ -108,18 +114,20 @@ const ProfileFieldManagementPage = () => {
 
   useEffect(() => {
     void loadItems();
-  }, []);
+  }, [pageKey]);
 
   const saveItems = async (nextItems: ProfileFieldSetting[]) => {
     setSaving(true);
     try {
       const result = await request<ProfileFieldSetting[]>(
-        "/v1/system/profile-field-settings",
+        `/v1/system/profile-field-settings?pageKey=${pageKey}`,
         {
           method: "PUT",
           data: {
+            pageKey,
             items: nextItems.map((item) => ({
               fieldKey: item.fieldKey,
+              pageKey,
               fieldLabel: item.fieldLabel,
               fieldDescription: item.fieldDescription,
               fieldType: item.fieldType,
@@ -228,6 +236,7 @@ const ProfileFieldManagementPage = () => {
     const nextItem: ProfileFieldSetting = editing && !editing.custom
       ? {
           ...editing,
+          pageKey,
           fieldLabel: values.fieldLabel.trim(),
           fieldDescription: values.fieldDescription?.trim() || editing.fieldDescription,
           placeholder: values.placeholder?.trim() || null,
@@ -241,6 +250,7 @@ const ProfileFieldManagementPage = () => {
         }
       : {
       fieldKey,
+      pageKey,
       fieldLabel: values.fieldLabel.trim(),
       fieldDescription:
         values.fieldDescription?.trim() ||
@@ -426,6 +436,13 @@ const ProfileFieldManagementPage = () => {
           title={t("个人中心字段定义", "Profile field definitions")}
           extra={
             <Space wrap>
+              <Select
+                value={pageKey}
+                options={FIELD_PAGE_OPTIONS}
+                style={{ width: 160 }}
+                disabled={loading || saving}
+                onChange={(value) => setPageKey(value)}
+              />
               <Button
                 onClick={() => void loadItems()}
                 disabled={loading || saving}

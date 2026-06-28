@@ -11,6 +11,58 @@
   max-width: 260px;
 }
 
+.competition-application-card .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.competition-application-form,
+.competition-application-intro {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.competition-application-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+}
+
+.competition-application-grid__full {
+  grid-column: 1 / -1;
+}
+
+.competition-application-actions {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.competition-application-intro {
+  padding-top: 8px;
+}
+
+.competition-expert-application-card .ant-form,
+.competition-expert-application-card .expert-form-grid {
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.competition-expert-application-card .expert-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.competition-expert-application-card .competition-application-actions {
+  max-width: 760px;
+  margin-inline: auto;
+}
+
 .competition-create-page {
   padding: 0 0 32px;
 }
@@ -325,5 +377,147 @@
   .competition-schedule-row__actions {
     min-width: 0;
     justify-content: flex-start;
+  }
+
+  .competition-application-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.competition-settings-layout {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background: var(--ant-color-bg-container);
+}
+
+.competition-settings-sidebar {
+  position: sticky;
+  top: 88px;
+  width: 260px;
+  flex: 0 0 260px;
+  padding: 16px;
+  border-inline-end: 1px solid var(--ant-color-border-secondary);
+  background: transparent;
+}
+
+.competition-settings-sidebar .ant-menu {
+  margin-top: 16px;
+  border-inline-end: 0;
+}
+
+.competition-settings-content {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  padding: 24px;
+}
+
+.competition-config-list {
+  width: 100%;
+}
+
+.competition-config-item .ant-card-head {
+  align-items: flex-start;
+}
+
+.competition-config-item .ant-card-head-title {
+  min-width: 0;
+  padding: 12px 0;
+}
+
+.competition-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+  width: 100%;
+}
+
+.competition-config-grid__full {
+  grid-column: 1 / -1;
+}
+
+.competition-config-grid .ant-form-item {
+  min-width: 0;
+}
+
+.competition-config-grid .ant-input-number,
+.competition-config-grid .ant-select {
+  width: 100%;
+}
+
+.competition-config-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
+  align-items: flex-start;
+  padding-top: 8px;
+  border-top: 1px solid var(--ant-color-border-secondary);
+}
+
+.competition-field-table {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+}
+
+.competition-field-table__head,
+.competition-field-table__row {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.6fr) minmax(132px, 0.9fr) minmax(180px, 1.1fr) 80px 112px 112px 80px 88px;
+  gap: 12px;
+  align-items: center;
+  min-width: 1040px;
+  padding: 12px;
+}
+
+.competition-field-table__head {
+  color: var(--ant-color-text-heading);
+  font-weight: 600;
+  background: var(--ant-color-fill-quaternary);
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.competition-field-table__row {
+  border-bottom: 1px solid var(--ant-color-border-secondary);
+}
+
+.competition-field-table__row:last-child {
+  border-bottom: 0;
+}
+
+.competition-field-table__field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.competition-field-table .ant-form-item {
+  margin-bottom: 0;
+}
+
+.competition-field-table .ant-input-number,
+.competition-field-table .ant-select {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .competition-settings-layout {
+    flex-direction: column;
+  }
+
+  .competition-settings-sidebar {
+    position: static;
+    width: 100%;
+    flex-basis: auto;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--ant-color-border-secondary);
+  }
+
+  .competition-config-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -46,12 +46,13 @@ public class ExpertV2Controller {
     public ApiResponse<PageResponse<ExpertVO.Expert>> experts(
             @RequestParam(name = "keyword", required = false) String keyword,
             @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "approvalStatus", required = false) String approvalStatus,
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
     ) {
         require(VIEW);
         return ApiResponse.success(
-                expertManagementAppService.listExperts(securityContextFacade.getCurrentUser(), keyword, status, pageNo, pageSize),
+                expertManagementAppService.listExperts(securityContextFacade.getCurrentUser(), keyword, status, approvalStatus, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }

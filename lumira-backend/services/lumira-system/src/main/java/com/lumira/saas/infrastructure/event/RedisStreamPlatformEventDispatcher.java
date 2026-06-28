@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -14,13 +15,16 @@ public class RedisStreamPlatformEventDispatcher implements PlatformEventDispatch
 
     private final StringRedisTemplate stringRedisTemplate;
     private final PlatformEventProperties platformEventProperties;
+    private final List<PlatformEventConsumer> consumers;
 
     public RedisStreamPlatformEventDispatcher(
             StringRedisTemplate stringRedisTemplate,
-            PlatformEventProperties platformEventProperties
+            PlatformEventProperties platformEventProperties,
+            List<PlatformEventConsumer> consumers
     ) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.platformEventProperties = platformEventProperties;
+        this.consumers = consumers == null ? List.of() : consumers;
     }
 
     @Override
@@ -29,6 +33,11 @@ public class RedisStreamPlatformEventDispatcher implements PlatformEventDispatch
                 platformEventProperties.getOutbox().getRedisStreamKey(),
                 toRecord(event)
         ));
+        for (PlatformEventConsumer consumer : consumers) {
+            if (consumer.supports(event)) {
+                consumer.consume(event);
+            }
+        }
     }
 
     private Map<String, String> toRecord(PlatformEventOutboxEntity event) {

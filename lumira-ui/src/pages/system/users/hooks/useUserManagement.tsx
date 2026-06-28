@@ -122,8 +122,16 @@ const userListIdentityColumns: ProColumns<UserRecord>[] = [
     render: (_: unknown, __: UserRecord, index: number) => index + 1,
   },
   {
+    title: 'ID',
+    dataIndex: 'id',
+    search: true,
+    width: 96,
+    render: (_, record) => <Typography.Text copyable={{ text: String(record.id) }}>{record.id}</Typography.Text>,
+  },
+  {
     title: t('用户编号', 'User number'),
     dataIndex: 'userNo',
+    hideInTable: true,
     search: false,
     responsive: ['lg', 'xl', 'xxl'],
     ellipsis: true,

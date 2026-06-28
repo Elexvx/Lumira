@@ -51,6 +51,7 @@ public class PlatformEventPublisher {
         payload.put("schemaVersion", SCHEMA_VERSION);
         payload.put("occurredAt", LocalDateTime.now());
         payload.put("userId", userId);
+        payload.put("userUuid", null);
         payload.put("aggregateType", normalize(aggregateType, "aggregate"));
         payload.put("aggregateId", aggregateId);
         payload.put("attributes", attributes == null ? Map.of() : new LinkedHashMap<>(attributes));

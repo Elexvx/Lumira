@@ -149,6 +149,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         return jdbcTemplate.query(
                 """
                         select u.id,
+                               u.uuid,
                                u.username,
                                u.password_hash,
                                u.status,
@@ -171,6 +172,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                         """,
                 (rs, rowNum) -> new SystemUserSnapshotDTO(
                         rs.getLong("id"),
+                        rs.getString("uuid"),
                         rs.getString("username"),
                         rs.getString("password_hash"),
                         rs.getString("status"),
@@ -455,6 +457,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     public Boolean recordLoginAudit(@RequestBody LoginAuditRecordRequestDTO request) {
         loginAuditService.log(
                 request.userId(),
+                request.userUuid(),
                 request.username(),
                 request.loginType(),
                 request.loginResult(),
@@ -469,6 +472,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     public Boolean recordOperationAudit(@RequestBody OperationAuditRecordRequestDTO request) {
         operationAuditService.log(
                 request.userId(),
+                request.userUuid(),
                 request.username(),
                 request.moduleName(),
                 request.actionName(),
@@ -745,6 +749,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
     private SystemUserSnapshotDTO toSnapshot(SysUserEntity user) {
         return new SystemUserSnapshotDTO(
                 user.getId(),
+                user.getUuid(),
                 user.getUsername(),
                 user.getPasswordHash(),
                 user.getStatus(),
@@ -801,11 +806,12 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         jdbcTemplate.update(
                 """
                         insert into sys_user (
-                            username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
+                            uuid, username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
                             available_time, id_card_number, status,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
+                UUID.randomUUID().toString(),
                 username,
                 passwordEncoder.encode(UUID.randomUUID().toString()),
                 null,
@@ -846,11 +852,12 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
         jdbcTemplate.update(
                 """
                         insert into sys_user (
-                            username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
+                            uuid, username, password_hash, mobile, nickname, real_name, avatar_url, email, birth_month, gender, region,
                             available_time, id_card_number, status,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ENABLED', 0, 0, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ENABLED', 0, 0, 0)
                         """,
+                UUID.randomUUID().toString(),
                 username,
                 randomPassword,
                 FACTOR_SMS.equals(normalizedLoginType) ? normalizedAccount : null,

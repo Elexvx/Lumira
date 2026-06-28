@@ -21,12 +21,16 @@ describe('normalizeTeamCreatePayload', () => {
       normalizeTeamCreatePayload({
         teamName: 'Core Team',
         initialMembers: [
-          {
-            memberName: ' Alice ',
-            employeeNo: ' E001 ',
-            departmentName: ' Product ',
-            remark: ' Lead ',
+        {
+          memberName: ' Alice ',
+          employeeNo: ' E001 ',
+          departmentName: ' Product ',
+          remark: ' Lead ',
+          extraValues: {
+            shirtSize: ' L ',
+            empty: ' ',
           },
+        },
         ],
       }),
     ).toEqual({
@@ -38,6 +42,9 @@ describe('normalizeTeamCreatePayload', () => {
           departmentName: 'Product',
           role: 'MEMBER',
           remark: 'Lead',
+          extraValues: {
+            shirtSize: 'L',
+          },
         },
       ],
     });
@@ -52,6 +59,15 @@ describe('normalizeTeamCreatePayload', () => {
           { memberName: 'Bob', role: 'MANAGER' },
         ],
       }).initialMembers,
-    ).toEqual([{ memberName: 'Bob', employeeNo: undefined, departmentName: undefined, role: 'MANAGER', remark: undefined }]);
+    ).toEqual([{ memberName: 'Bob', employeeNo: undefined, departmentName: undefined, role: 'MANAGER', remark: undefined, extraValues: {} }]);
+  });
+
+  it('keeps partially filled rows when only custom member fields are filled', () => {
+    expect(
+      pruneBlankDraftMembers([
+        { memberName: '', role: 'MEMBER', extraValues: { shirtSize: ' ' } },
+        { memberName: '', role: 'MEMBER', extraValues: { shirtSize: 'M' } },
+      ]),
+    ).toEqual([{ memberName: '', role: 'MEMBER', extraValues: { shirtSize: 'M' } }]);
   });
 });

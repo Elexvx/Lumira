@@ -5,6 +5,9 @@ import type {
   CompetitionQueryParams,
   CompetitionRecord,
   CompetitionRegistrationRecord,
+  CompetitionConfigItem,
+  CompetitionConfigSet,
+  CompetitionSettingsRecord,
   CompetitionStageFormUpsertPayload,
   CompetitionStageFormRecord,
   CompetitionStageRecord,
@@ -40,6 +43,20 @@ export const deleteCompetition = (id: number) =>
     method: 'DELETE',
   });
 
+export const getCompetitionSettings = (competitionUuid: string) =>
+  request<CompetitionSettingsRecord>(`${COMPETITION_API}/${competitionUuid}/settings`);
+
+export const saveCompetitionSettingsModule = (competitionUuid: string, module: string, items: CompetitionConfigItem[]) =>
+  request<CompetitionSettingsRecord>(`${COMPETITION_API}/${competitionUuid}/settings/${module}`, {
+    method: 'PUT',
+    data: { items },
+  });
+
+export const publishCompetitionSettings = (competitionUuid: string) =>
+  request<CompetitionConfigSet>(`${COMPETITION_API}/${competitionUuid}/settings/publish`, {
+    method: 'POST',
+  });
+
 export const listProjects = (params: Record<string, unknown> = {}) =>
   request<PageResponse<ProjectRecord>>('/v2/aiadc/projects', {
     method: 'GET',
@@ -66,6 +83,20 @@ export const deleteProject = (id: number) =>
 export const createRegistration = (data: { competitionId: number; teamId: number; projectId: number }) =>
   request<CompetitionRegistrationRecord>('/v2/aiadc/registrations', {
     method: 'POST',
+    data,
+  });
+
+export const listRegistrations = (params: { pageNo?: number; pageSize?: number } = {}) =>
+  request<PageResponse<CompetitionRegistrationRecord>>('/v2/aiadc/registrations', {
+    method: 'GET',
+    params,
+  });
+
+export const getRegistration = (id: number) => request<CompetitionRegistrationRecord>(`/v2/aiadc/registrations/${id}`);
+
+export const updateRegistration = (id: number, data: { competitionId: number; teamId: number; projectId: number }) =>
+  request<CompetitionRegistrationRecord>(`/v2/aiadc/registrations/${id}`, {
+    method: 'PUT',
     data,
   });
 
@@ -103,4 +134,9 @@ export const createRegistrationPaymentOrder = (registrationId: number, data: { p
   request<CompetitionPaymentOrderRecord>(`/v2/aiadc/registrations/${registrationId}/payment-order`, {
     method: 'POST',
     data,
+  });
+
+export const simulateRegistrationPayment = (registrationId: number) =>
+  request<CompetitionPaymentOrderRecord>(`/v2/aiadc/registrations/${registrationId}/mock-payment`, {
+    method: 'POST',
   });

@@ -12,6 +12,7 @@ public class PlatformEventOutboxEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    private String userUuid;
     private String sourceType;
     private String eventType;
     private String eventKey;
@@ -46,6 +47,14 @@ public class PlatformEventOutboxEntity {
 
     public void setUserId(Long userId) {
         this.userId = userId;
+    }
+
+    public String getUserUuid() {
+        return userUuid;
+    }
+
+    public void setUserUuid(String userUuid) {
+        this.userUuid = userUuid;
     }
 
     public String getSourceType() {

@@ -84,6 +84,7 @@ public class PaymentJwtAuthFilter extends OncePerRequestFilter {
                                 snapshot.descendantDeptIds() == null ? Set.of() : snapshot.descendantDeptIds().stream().collect(Collectors.toUnmodifiableSet()),
                                 snapshot.dataScopes()
                         );
+                        currentUser.setUserUuid(snapshot.userUuid());
                         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(currentUser, authorization, List.of());
                         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(authentication);

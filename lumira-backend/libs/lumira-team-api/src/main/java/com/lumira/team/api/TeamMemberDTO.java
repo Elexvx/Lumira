@@ -8,6 +8,7 @@ public class TeamMemberDTO {
     private Long userId;
     private String role;
     private String status;
+    private String extraValuesJson;
     private LocalDateTime joinedAt;
 
     public Long getId() { return id; }
@@ -20,6 +21,8 @@ public class TeamMemberDTO {
     public void setRole(String role) { this.role = role; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getExtraValuesJson() { return extraValuesJson; }
+    public void setExtraValuesJson(String extraValuesJson) { this.extraValuesJson = extraValuesJson; }
     public LocalDateTime getJoinedAt() { return joinedAt; }
     public void setJoinedAt(LocalDateTime joinedAt) { this.joinedAt = joinedAt; }
 }

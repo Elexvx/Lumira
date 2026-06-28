@@ -19,7 +19,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -29,10 +31,28 @@ public class CompetitionManagementAppService {
     private static final List<String> LOCALE_ORDER = List.of("zh", "en");
     private static final Set<String> STATUSES = Set.of("draft", "published", "archived");
     private static final Set<String> FEE_MODES = Set.of("TEAM", "MEMBER");
+    private static final Set<String> CONFIG_ITEM_TYPES = Set.of(
+            "AGREEMENT",
+            "CONSENT",
+            "REGISTRATION_FIELD",
+            "TEAM_FIELD",
+            "MEMBER_FIELD",
+            "PROJECT_FIELD",
+            "REQUIRED_FILE",
+            "STAGE_MATERIAL",
+            "TIMELINE"
+    );
+    private static final Map<String, Set<String>> SETTINGS_MODULE_TYPES = Map.of(
+            "documents", Set.of("AGREEMENT", "CONSENT"),
+            "fields", Set.of("REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD"),
+            "files", Set.of("REQUIRED_FILE"),
+            "stage-materials", Set.of("STAGE_MATERIAL"),
+            "timeline", Set.of("TIMELINE")
+    );
     private static final String COMPETITION_CATEGORY_DICT = "aiadc_competition_category";
     private static final String COMPETITION_LEVEL_DICT = "aiadc_competition_level";
     private static final long MAX_PAGE_SIZE = 100L;
-    private static final DateTimeFormatter COMPETITION_CODE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final DateTimeFormatter COMPETITION_NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final DictRuntimeService dictRuntimeService;
@@ -109,20 +129,39 @@ public class CompetitionManagementAppService {
         return competition;
     }
 
+    public CompetitionVO.Settings getCompetitionSettings(CurrentUser currentUser, String competitionUuid) {
+        requireAuthenticated(currentUser);
+        CompetitionVO.Competition competition = requireCompetitionByUuid(competitionUuid);
+        CompetitionVO.ConfigSet configSet = ensureCurrentConfigSet(competition, requireUserId(currentUser));
+        CompetitionVO.Settings settings = new CompetitionVO.Settings();
+        settings.setCompetition(competition);
+        settings.setActiveConfigSet(configSet);
+        settings.setDocuments(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("documents")));
+        settings.setFields(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("fields")));
+        settings.setFiles(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("files")));
+        settings.setStageMaterials(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("stage-materials")));
+        settings.setTimeline(listConfigItems(competition.getUuid(), configSet.getId(), SETTINGS_MODULE_TYPES.get("timeline")));
+        return settings;
+    }
+
     @Transactional
     public CompetitionVO.Competition createCompetition(CurrentUser currentUser, CompetitionDTO.CompetitionUpsertRequest request) {
         Long userId = requireUserId(currentUser);
-        CompetitionDTO.CompetitionUpsertRequest normalized = normalizeRequest(request, generateCompetitionCode());
+        String uuid = UUID.randomUUID().toString();
+        String competitionNo = generateCompetitionNo();
+        CompetitionDTO.CompetitionUpsertRequest normalized = normalizeRequest(request, competitionNo);
         jdbcTemplate.update(
                 """
                         insert into aiadc_competition (
-                            code, locale, title, short_name, category, level, competition_level, organizer, organizers_json,
+                            uuid, competition_no, code, locale, title, short_name, category, level, competition_level, organizer, organizers_json,
                             registration_start, registration_end, competition_start, competition_end,
                             location, participation_scope, participation_requirement, schedule_json, description, image_url,
                             contact_name, contact_qr_code_url, homepage_content, tags, status, fee_mode, entry_fee_minor, currency, featured, sort,
                             created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
+                uuid,
+                competitionNo,
                 normalized.getCode(),
                 normalized.getLocale(),
                 normalized.getTitle(),
@@ -156,7 +195,10 @@ public class CompetitionManagementAppService {
                 userId
         );
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
-        return getCompetition(currentUser, id);
+        CompetitionVO.Competition competition = getCompetition(currentUser, id);
+        ensureCurrentConfigSet(competition, userId);
+        recordConfigAudit(currentUser, competition.getUuid(), "CREATE_COMPETITION", "BASIC", "Created competition " + competition.getCompetitionNo());
+        return competition;
     }
 
     @Transactional
@@ -165,11 +207,11 @@ public class CompetitionManagementAppService {
         if (existing == null) {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
-        CompetitionDTO.CompetitionUpsertRequest normalized = normalizeRequest(request, existing.getCode());
+        CompetitionDTO.CompetitionUpsertRequest normalized = normalizeRequest(request, existing.getCompetitionNo());
         int updated = jdbcTemplate.update(
                 """
                         update aiadc_competition
-                        set code = ?, locale = ?, title = ?, short_name = ?, category = ?, level = ?, competition_level = ?, organizer = ?, organizers_json = ?,
+                        set locale = ?, title = ?, short_name = ?, category = ?, level = ?, competition_level = ?, organizer = ?, organizers_json = ?,
                             registration_start = ?, registration_end = ?, competition_start = ?, competition_end = ?,
                             location = ?, participation_scope = ?, participation_requirement = ?, schedule_json = ?,
                             description = ?, image_url = ?, contact_name = ?, contact_qr_code_url = ?, homepage_content = ?, tags = ?, status = ?,
@@ -177,7 +219,6 @@ public class CompetitionManagementAppService {
                             featured = ?, sort = ?, updated_by = ?, updated_at = ?
                         where id = ? and deleted = 0
                         """,
-                normalized.getCode(),
                 normalized.getLocale(),
                 normalized.getTitle(),
                 normalized.getShortName(),
@@ -213,11 +254,94 @@ public class CompetitionManagementAppService {
         if (updated == 0) {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
-        return getCompetition(currentUser, id);
+        CompetitionVO.Competition competition = getCompetition(currentUser, id);
+        recordConfigAudit(currentUser, competition.getUuid(), "UPDATE_COMPETITION", "BASIC", "Updated competition basic information");
+        return competition;
+    }
+
+    @Transactional
+    public CompetitionVO.Settings saveSettingsModule(
+            CurrentUser currentUser,
+            String competitionUuid,
+            String module,
+            CompetitionDTO.SettingsModuleRequest request
+    ) {
+        Long userId = requireUserId(currentUser);
+        CompetitionVO.Competition competition = requireCompetitionByUuid(competitionUuid);
+        Set<String> allowedTypes = SETTINGS_MODULE_TYPES.get(module);
+        if (allowedTypes == null) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid competition settings module");
+        }
+        CompetitionVO.ConfigSet configSet = ensureCurrentConfigSet(competition, userId);
+        jdbcTemplate.update(
+                "update competition_config_item set deleted = 1, updated_by = ?, updated_at = ? where competition_uuid = ? and config_set_id = ? and item_type in (" + placeholders(allowedTypes.size()) + ") and deleted = 0",
+                concat(new Object[]{userId, LocalDateTime.now(), competition.getUuid(), configSet.getId()}, allowedTypes.toArray())
+        );
+        int index = 0;
+        for (CompetitionDTO.ConfigItemRequest item : request.getItems()) {
+            CompetitionDTO.ConfigItemRequest normalized = normalizeConfigItem(item);
+            if (!allowedTypes.contains(normalized.getItemType())) {
+                throw biz(ErrorCode.VALIDATION_ERROR, "Invalid item type for settings module");
+            }
+            jdbcTemplate.update(
+                    """
+                            insert into competition_config_item (
+                                competition_uuid, config_set_id, item_type, item_key, title, content_json, content_text,
+                                sort_order, required_flag, enabled, created_by, updated_by, deleted
+                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                            """,
+                    competition.getUuid(),
+                    configSet.getId(),
+                    normalized.getItemType(),
+                    normalized.getItemKey(),
+                    normalized.getTitle(),
+                    trimToNull(normalized.getContentJson()),
+                    trimToNull(normalized.getContentText()),
+                    normalized.getSortOrder() == null ? (index + 1) * 10 : normalized.getSortOrder(),
+                    Boolean.TRUE.equals(normalized.getRequiredFlag()) ? 1 : 0,
+                    normalized.getEnabled() == null || Boolean.TRUE.equals(normalized.getEnabled()) ? 1 : 0,
+                    userId,
+                    userId
+            );
+            index += 1;
+        }
+        recordConfigAudit(currentUser, competition.getUuid(), "SAVE_SETTINGS", module.toUpperCase(Locale.ROOT), "Saved " + request.getItems().size() + " config items");
+        return getCompetitionSettings(currentUser, competition.getUuid());
+    }
+
+    @Transactional
+    public CompetitionVO.ConfigSet publishSettings(CurrentUser currentUser, String competitionUuid) {
+        Long userId = requireUserId(currentUser);
+        CompetitionVO.Competition competition = requireCompetitionByUuid(competitionUuid);
+        CompetitionVO.ConfigSet current = ensureCurrentConfigSet(competition, userId);
+        jdbcTemplate.update(
+                "update competition_config_set set status = 'PUBLISHED', published_at = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
+                LocalDateTime.now(),
+                userId,
+                LocalDateTime.now(),
+                current.getId()
+        );
+        jdbcTemplate.update(
+                "update competition_config_set set status = 'ARCHIVED', updated_by = ?, updated_at = ? where competition_uuid = ? and id <> ? and deleted = 0",
+                userId,
+                LocalDateTime.now(),
+                competition.getUuid(),
+                current.getId()
+        );
+        recordConfigAudit(currentUser, competition.getUuid(), "PUBLISH_SETTINGS", "PUBLISH", "Published current config");
+        return requireConfigSet(current.getId());
     }
 
     @Transactional
     public boolean deleteCompetition(CurrentUser currentUser, Long id) {
+        Long registrationCount = jdbcTemplate.queryForObject(
+                "select count(1) from competition_registration where competition_id = ? and deleted = 0",
+                Long.class,
+                id
+        );
+        if (registrationCount != null && registrationCount > 0) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "赛事已有报名记录，不能删除");
+        }
         int updated = jdbcTemplate.update(
                 "update aiadc_competition set deleted = 1, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 requireUserId(currentUser),
@@ -237,6 +361,19 @@ public class CompetitionManagementAppService {
                 id
         );
         return records.isEmpty() ? null : records.get(0);
+    }
+
+    private CompetitionVO.Competition requireCompetitionByUuid(String competitionUuid) {
+        String normalized = trimRequired(competitionUuid, "Competition uuid is required");
+        List<CompetitionVO.Competition> records = jdbcTemplate.query(
+                competitionSelect() + " from aiadc_competition where uuid = ? and deleted = 0 limit 1",
+                new BeanPropertyRowMapper<>(CompetitionVO.Competition.class),
+                normalized
+        );
+        if (records.isEmpty()) {
+            throw biz(ErrorCode.NOT_FOUND, "Competition not found");
+        }
+        return records.get(0);
     }
 
     private CompetitionDTO.CompetitionUpsertRequest normalizeRequest(CompetitionDTO.CompetitionUpsertRequest request, String fallbackCode) {
@@ -288,9 +425,150 @@ public class CompetitionManagementAppService {
         return normalized;
     }
 
-    private String generateCompetitionCode() {
-        String random = Long.toString(ThreadLocalRandom.current().nextLong(36L * 36L * 36L * 36L), 36);
-        return "cmp-" + LocalDateTime.now().format(COMPETITION_CODE_TIME_FORMATTER) + "-" + random;
+    private String generateCompetitionNo() {
+        for (int i = 0; i < 8; i += 1) {
+            String candidate = LocalDateTime.now().format(COMPETITION_NO_TIME_FORMATTER)
+                    + String.format(Locale.ROOT, "%04d", ThreadLocalRandom.current().nextInt(0, 10000));
+            Long count = jdbcTemplate.queryForObject(
+                    "select count(1) from aiadc_competition where competition_no = ? and deleted = 0",
+                    Long.class,
+                    candidate
+            );
+            if (count == null || count == 0) {
+                return candidate;
+            }
+        }
+        throw biz(ErrorCode.BIZ_ERROR, "Failed to generate competition number");
+    }
+
+    private CompetitionVO.ConfigSet ensureCurrentConfigSet(CompetitionVO.Competition competition, Long userId) {
+        List<CompetitionVO.ConfigSet> configSets = jdbcTemplate.query(
+                configSetSelect() + " from competition_config_set where competition_uuid = ? and status in ('DRAFT', 'PUBLISHED') and deleted = 0 order by id desc limit 1",
+                new BeanPropertyRowMapper<>(CompetitionVO.ConfigSet.class),
+                competition.getUuid()
+        );
+        if (!configSets.isEmpty()) {
+            return configSets.get(0);
+        }
+        jdbcTemplate.update(
+                """
+                        insert into competition_config_set (
+                            competition_uuid, version, status, created_by_uuid, created_by, updated_by, deleted
+                        ) values (?, 1, 'DRAFT', ?, ?, ?, 0)
+                        """,
+                competition.getUuid(),
+                userUuidOrNull(userId),
+                userId,
+                userId
+        );
+        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        seedDefaultConfigItems(competition.getUuid(), id, userId);
+        return requireConfigSet(id);
+    }
+
+    private void seedDefaultConfigItems(String competitionUuid, Long configSetId, Long userId) {
+        Long existing = jdbcTemplate.queryForObject(
+                "select count(1) from competition_config_item where competition_uuid = ? and deleted = 0",
+                Long.class,
+                competitionUuid
+        );
+        if (existing != null && existing > 0) {
+            return;
+        }
+        insertConfigItem(competitionUuid, configSetId, "AGREEMENT", "commitment", "承诺书", "", "请在这里配置赛事承诺书。", 10, true, true, userId);
+        insertConfigItem(competitionUuid, configSetId, "CONSENT", "informed-consent", "知情同意", "", "请在这里配置知情同意内容。", 20, true, true, userId);
+        insertConfigItem(competitionUuid, configSetId, "REGISTRATION_FIELD", "contact-name", "联系人姓名", "{\"type\":\"input\",\"target\":\"registration\"}", null, 10, true, true, userId);
+        insertConfigItem(competitionUuid, configSetId, "REQUIRED_FILE", "work-file", "作品文件", "{\"accept\":\"*\",\"maxSizeMb\":100,\"maxCount\":1}", null, 10, true, true, userId);
+    }
+
+    private void insertConfigItem(String competitionUuid, Long configSetId, String itemType, String itemKey, String title, String contentJson, String contentText, int sortOrder, boolean required, boolean enabled, Long userId) {
+        jdbcTemplate.update(
+                """
+                        insert into competition_config_item (
+                            competition_uuid, config_set_id, item_type, item_key, title, content_json, content_text,
+                            sort_order, required_flag, enabled, created_by, updated_by, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        """,
+                competitionUuid,
+                configSetId,
+                itemType,
+                itemKey,
+                title,
+                contentJson,
+                contentText,
+                sortOrder,
+                required ? 1 : 0,
+                enabled ? 1 : 0,
+                userId,
+                userId
+        );
+    }
+
+    private CompetitionVO.ConfigSet requireConfigSet(Long id) {
+        List<CompetitionVO.ConfigSet> records = jdbcTemplate.query(
+                configSetSelect() + " from competition_config_set where id = ? and deleted = 0 limit 1",
+                new BeanPropertyRowMapper<>(CompetitionVO.ConfigSet.class),
+                id
+        );
+        if (records.isEmpty()) {
+            throw biz(ErrorCode.NOT_FOUND, "Competition config set not found");
+        }
+        return records.get(0);
+    }
+
+    private List<CompetitionVO.ConfigItem> listConfigItems(String competitionUuid, Long configSetId, Set<String> itemTypes) {
+        return jdbcTemplate.query(
+                configItemSelect() + " from competition_config_item where competition_uuid = ? and config_set_id = ? and item_type in (" + placeholders(itemTypes.size()) + ") and deleted = 0 order by sort_order asc, id asc",
+                new BeanPropertyRowMapper<>(CompetitionVO.ConfigItem.class),
+                concat(new Object[]{competitionUuid, configSetId}, itemTypes.toArray())
+        );
+    }
+
+    private CompetitionDTO.ConfigItemRequest normalizeConfigItem(CompetitionDTO.ConfigItemRequest request) {
+        CompetitionDTO.ConfigItemRequest normalized = new CompetitionDTO.ConfigItemRequest();
+        String itemType = trimRequired(request.getItemType(), "Config item type is required").toUpperCase(Locale.ROOT);
+        if (!CONFIG_ITEM_TYPES.contains(itemType)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Invalid config item type");
+        }
+        normalized.setItemType(itemType);
+        normalized.setItemKey(trimRequired(request.getItemKey(), "Config item key is required"));
+        normalized.setTitle(trimRequired(request.getTitle(), "Config item title is required"));
+        normalized.setContentJson(trimToNull(request.getContentJson()));
+        normalized.setContentText(trimToNull(request.getContentText()));
+        normalized.setSortOrder(request.getSortOrder());
+        normalized.setRequiredFlag(Boolean.TRUE.equals(request.getRequiredFlag()));
+        normalized.setEnabled(request.getEnabled() == null || Boolean.TRUE.equals(request.getEnabled()));
+        return normalized;
+    }
+
+    private void recordConfigAudit(CurrentUser currentUser, String competitionUuid, String action, String module, String detail) {
+        Long userId = currentUser == null ? 0L : currentUser.getUserId();
+        jdbcTemplate.update(
+                """
+                        insert into competition_config_audit (
+                            competition_uuid, operator_user_id, operator_user_uuid, action, module, detail_message, created_by, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, 0)
+                        """,
+                competitionUuid,
+                userId == null ? 0L : userId,
+                userUuidOrNull(userId),
+                action,
+                module,
+                detail,
+                userId == null ? 0L : userId
+        );
+    }
+
+    private String userUuidOrNull(Long userId) {
+        if (userId == null || userId <= 0) {
+            return null;
+        }
+        List<String> uuids = jdbcTemplate.query(
+                "select uuid from sys_user where id = ? and deleted = 0 limit 1",
+                (rs, rowNum) -> rs.getString("uuid"),
+                userId
+        );
+        return uuids.isEmpty() ? null : uuids.get(0);
     }
 
     private void requireAuthenticated(CurrentUser currentUser) {
@@ -370,7 +648,7 @@ public class CompetitionManagementAppService {
 
     private String competitionSelect() {
         return """
-                select id, code, locale, title, short_name as shortName,
+                select id, uuid, competition_no as competitionNo, code, locale, title, short_name as shortName,
                        category, level, competition_level as competitionLevel, organizer, organizers_json as organizersJson,
                        registration_start as registrationStart, registration_end as registrationEnd,
                        competition_start as competitionStart, competition_end as competitionEnd,
@@ -380,6 +658,33 @@ public class CompetitionManagementAppService {
                        tags, status, fee_mode as feeMode, entry_fee_minor as entryFeeMinor, currency, featured, sort,
                        created_at as createdAt, updated_at as updatedAt
                 """;
+    }
+
+    private String configSetSelect() {
+        return """
+                select id, competition_uuid as competitionUuid, version, status, published_at as publishedAt,
+                       created_at as createdAt, updated_at as updatedAt
+                """;
+    }
+
+    private String configItemSelect() {
+        return """
+                select id, competition_uuid as competitionUuid, config_set_id as configSetId, item_type as itemType,
+                       item_key as itemKey, title, content_json as contentJson, content_text as contentText,
+                       sort_order as sortOrder, required_flag as requiredFlag, enabled,
+                       created_at as createdAt, updated_at as updatedAt
+                """;
+    }
+
+    private String placeholders(int count) {
+        return java.util.stream.IntStream.range(0, count).mapToObj(i -> "?").collect(Collectors.joining(","));
+    }
+
+    private Object[] concat(Object[] first, Object[] second) {
+        Object[] result = new Object[first.length + second.length];
+        System.arraycopy(first, 0, result, 0, first.length);
+        System.arraycopy(second, 0, result, first.length, second.length);
+        return result;
     }
 
     private static BizException biz(ErrorCode code, String message) {

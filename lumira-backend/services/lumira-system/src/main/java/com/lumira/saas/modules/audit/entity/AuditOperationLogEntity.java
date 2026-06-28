@@ -11,6 +11,7 @@ public class AuditOperationLogEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;
+    private String userUuid;
     private String username;
     private String moduleName;
     private String actionName;
@@ -27,6 +28,8 @@ public class AuditOperationLogEntity {
     public void setId(Long id) { this.id = id; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public String getUserUuid() { return userUuid; }
+    public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
     public String getModuleName() { return moduleName; }

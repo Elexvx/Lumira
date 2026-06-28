@@ -1,16 +1,16 @@
 package com.lumira.saas.modules.system.support;
 
-import com.lumira.common.runtime.ReadModelVersionCache;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
+import com.lumira.common.runtime.ReadModelVersionCache;
 import com.lumira.saas.infrastructure.readmodel.ReadModelVersionService;
 import com.lumira.saas.modules.system.config.entity.SysConfigEntity;
 import com.lumira.saas.modules.system.config.mapper.SysConfigMapper;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -89,18 +89,26 @@ public class SmtpMailService {
     }
 
     public void sendVerificationCode(String toEmail, String verificationCode, String subjectPrefix) {
+        sendPlainText(
+                toEmail,
+                StringUtils.hasText(subjectPrefix) ? subjectPrefix : "Email verification code",
+                "Your verification code is " + verificationCode + ". It expires in 5 minutes."
+        );
+    }
+
+    public void sendPlainText(String toEmail, String subject, String text) {
         Map<String, String> values = loadValues();
         JavaMailSenderImpl sender = buildSmtpSender(values);
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
         message.setFrom(defaultIfBlank(values.get(SMTP_FROM_KEY), values.get(SMTP_USERNAME_KEY)));
-        message.setSubject(StringUtils.hasText(subjectPrefix) ? subjectPrefix : "邮箱验证码");
-        message.setText("您的验证码是 " + verificationCode + "，请在 5 分钟内完成验证。");
+        message.setSubject(StringUtils.hasText(subject) ? subject : "Lumira notification");
+        message.setText(StringUtils.hasText(text) ? text : "");
 
         try {
             sender.send(message);
         } catch (Exception exception) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "邮件发送失败，请检查 SMTP 配置");
+            throw new BizException(ErrorCode.BIZ_ERROR, "Failed to send email. Please check SMTP settings.");
         }
     }
 

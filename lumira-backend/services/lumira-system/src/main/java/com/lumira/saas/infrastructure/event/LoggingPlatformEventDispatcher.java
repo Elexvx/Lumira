@@ -2,9 +2,11 @@ package com.lumira.saas.infrastructure.event;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Primary;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Component
 @Primary
@@ -12,15 +14,25 @@ import org.springframework.stereotype.Component;
 public class LoggingPlatformEventDispatcher implements PlatformEventDispatcher {
 
     private static final Logger logger = LoggerFactory.getLogger(LoggingPlatformEventDispatcher.class);
+    private final List<PlatformEventConsumer> consumers;
+
+    public LoggingPlatformEventDispatcher(List<PlatformEventConsumer> consumers) {
+        this.consumers = consumers == null ? List.of() : consumers;
+    }
 
     @Override
     public void dispatch(PlatformEventOutboxEntity event) {
         logger.info(
-                "平台事件已进入默认投递器: id={}, sourceType={}, eventType={}, eventKey={}",
+                "Platform event dispatched: id={}, sourceType={}, eventType={}, eventKey={}",
                 event.getId(),
                 event.getSourceType(),
                 event.getEventType(),
                 event.getEventKey()
         );
+        for (PlatformEventConsumer consumer : consumers) {
+            if (consumer.supports(event)) {
+                consumer.consume(event);
+            }
+        }
     }
 }
