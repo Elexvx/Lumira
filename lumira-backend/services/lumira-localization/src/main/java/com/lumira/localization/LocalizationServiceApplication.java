@@ -8,15 +8,15 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 @SpringBootApplication(scanBasePackages = {
         "com.lumira.localization",
-        "com.lumira.saas.modules.localization",
+        "com.lumira.localization",
         "com.lumira.common"
 })
 @ConfigurationPropertiesScan(basePackages = {
         "com.lumira.localization",
-        "com.lumira.saas.modules.localization",
+        "com.lumira.localization",
         "com.lumira.common"
 })
-@MapperScan(basePackages = "com.lumira.saas.modules.localization.mapper", annotationClass = Mapper.class)
+@MapperScan(basePackages = "com.lumira.localization.mapper", annotationClass = Mapper.class)
 public class LocalizationServiceApplication {
 
     public static void main(String[] args) {

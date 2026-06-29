@@ -23,6 +23,12 @@ deploy/.env.*
 deploy/build-identity.env
 deploy/.generated/
 deploy/.backup/
+runtime-logs/
+runtime-logs/*.sql
+artifacts/db-backups/
+artifacts/db-backups/*.sql
+tmp/db-backups/
+tmp/db-backups/*.sql
 lumira-ui/.env
 lumira-ui/.env.*
 !lumira-ui/.env.example

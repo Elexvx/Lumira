@@ -1,5 +1,7 @@
 package com.lumira.saas.modules.competition.app;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -27,6 +29,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class CompetitionManagementAppService {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Set<String> LOCALES = Set.of("zh", "en");
     private static final List<String> LOCALE_ORDER = List.of("zh", "en");
     private static final Set<String> STATUSES = Set.of("draft", "published", "archived");
@@ -196,8 +199,68 @@ public class CompetitionManagementAppService {
         );
         Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
-        ensureCurrentConfigSet(competition, userId);
+        CompetitionVO.ConfigSet configSet = ensureCurrentConfigSet(competition, userId);
+        if ("published".equals(competition.getStatus())) {
+            validateCompetitionReadyForPublish(competition, configSet);
+        }
         recordConfigAudit(currentUser, competition.getUuid(), "CREATE_COMPETITION", "BASIC", "Created competition " + competition.getCompetitionNo());
+        return competition;
+    }
+
+    @Transactional
+    public CompetitionVO.Competition createCompetitionDraft(CurrentUser currentUser, CompetitionDTO.CompetitionUpsertRequest request) {
+        Long userId = requireUserId(currentUser);
+        String uuid = UUID.randomUUID().toString();
+        String competitionNo = generateCompetitionNo();
+        CompetitionDTO.CompetitionUpsertRequest normalized = normalizeDraftRequest(request, competitionNo);
+        jdbcTemplate.update(
+                """
+                        insert into aiadc_competition (
+                            uuid, competition_no, code, locale, title, short_name, category, level, competition_level, organizer, organizers_json,
+                            registration_start, registration_end, competition_start, competition_end,
+                            location, participation_scope, participation_requirement, schedule_json, description, image_url,
+                            contact_name, contact_qr_code_url, homepage_content, tags, status, fee_mode, entry_fee_minor, currency, featured, sort,
+                            created_by, updated_by, deleted
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        """,
+                uuid,
+                competitionNo,
+                normalized.getCode(),
+                normalized.getLocale(),
+                normalized.getTitle(),
+                normalized.getShortName(),
+                normalized.getCategory(),
+                normalized.getLevel(),
+                normalized.getCompetitionLevel(),
+                normalized.getOrganizer(),
+                normalized.getOrganizersJson(),
+                normalized.getRegistrationStart(),
+                normalized.getRegistrationEnd(),
+                normalized.getCompetitionStart(),
+                normalized.getCompetitionEnd(),
+                normalized.getLocation(),
+                normalized.getParticipationScope(),
+                normalized.getParticipationRequirement(),
+                normalized.getScheduleJson(),
+                normalized.getDescription(),
+                normalized.getImageUrl(),
+                normalized.getContactName(),
+                normalized.getContactQrCodeUrl(),
+                normalized.getHomepageContent(),
+                normalized.getTags(),
+                "draft",
+                normalized.getFeeMode(),
+                normalized.getEntryFeeMinor(),
+                normalized.getCurrency(),
+                Boolean.TRUE.equals(normalized.getFeatured()) ? 1 : 0,
+                normalized.getSort(),
+                userId,
+                userId
+        );
+        Long id = jdbcTemplate.queryForObject("select last_insert_id()", Long.class);
+        CompetitionVO.Competition competition = getCompetition(currentUser, id);
+        ensureCurrentConfigSet(competition, userId);
+        recordConfigAudit(currentUser, competition.getUuid(), "CREATE_DRAFT", "BASIC", "Created competition draft " + competition.getCompetitionNo());
         return competition;
     }
 
@@ -255,7 +318,70 @@ public class CompetitionManagementAppService {
             throw biz(ErrorCode.NOT_FOUND, "Competition not found");
         }
         CompetitionVO.Competition competition = getCompetition(currentUser, id);
+        if ("published".equals(competition.getStatus())) {
+            validateCompetitionReadyForPublish(competition, ensureCurrentConfigSet(competition, requireUserId(currentUser)));
+        }
         recordConfigAudit(currentUser, competition.getUuid(), "UPDATE_COMPETITION", "BASIC", "Updated competition basic information");
+        return competition;
+    }
+
+    @Transactional
+    public CompetitionVO.Competition updateCompetitionDraft(CurrentUser currentUser, Long id, CompetitionDTO.CompetitionUpsertRequest request) {
+        CompetitionVO.Competition existing = findCompetition(id);
+        if (existing == null) {
+            throw biz(ErrorCode.NOT_FOUND, "Competition not found");
+        }
+        if (!"draft".equals(existing.getStatus())) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Only draft competition can be updated as draft");
+        }
+        CompetitionDTO.CompetitionUpsertRequest normalized = normalizeDraftRequest(request, existing.getCompetitionNo());
+        int updated = jdbcTemplate.update(
+                """
+                        update aiadc_competition
+                        set locale = ?, title = ?, short_name = ?, category = ?, level = ?, competition_level = ?, organizer = ?, organizers_json = ?,
+                            registration_start = ?, registration_end = ?, competition_start = ?, competition_end = ?,
+                            location = ?, participation_scope = ?, participation_requirement = ?, schedule_json = ?,
+                            description = ?, image_url = ?, contact_name = ?, contact_qr_code_url = ?, homepage_content = ?, tags = ?, status = 'draft',
+                            fee_mode = ?, entry_fee_minor = ?, currency = ?,
+                            featured = ?, sort = ?, updated_by = ?, updated_at = ?
+                        where id = ? and deleted = 0
+                        """,
+                normalized.getLocale(),
+                normalized.getTitle(),
+                normalized.getShortName(),
+                normalized.getCategory(),
+                normalized.getLevel(),
+                normalized.getCompetitionLevel(),
+                normalized.getOrganizer(),
+                normalized.getOrganizersJson(),
+                normalized.getRegistrationStart(),
+                normalized.getRegistrationEnd(),
+                normalized.getCompetitionStart(),
+                normalized.getCompetitionEnd(),
+                normalized.getLocation(),
+                normalized.getParticipationScope(),
+                normalized.getParticipationRequirement(),
+                normalized.getScheduleJson(),
+                normalized.getDescription(),
+                normalized.getImageUrl(),
+                normalized.getContactName(),
+                normalized.getContactQrCodeUrl(),
+                normalized.getHomepageContent(),
+                normalized.getTags(),
+                normalized.getFeeMode(),
+                normalized.getEntryFeeMinor(),
+                normalized.getCurrency(),
+                Boolean.TRUE.equals(normalized.getFeatured()) ? 1 : 0,
+                normalized.getSort(),
+                requireUserId(currentUser),
+                LocalDateTime.now(),
+                id
+        );
+        if (updated == 0) {
+            throw biz(ErrorCode.NOT_FOUND, "Competition not found");
+        }
+        CompetitionVO.Competition competition = getCompetition(currentUser, id);
+        recordConfigAudit(currentUser, competition.getUuid(), "UPDATE_DRAFT", "BASIC", "Updated competition draft");
         return competition;
     }
 
@@ -314,6 +440,7 @@ public class CompetitionManagementAppService {
         Long userId = requireUserId(currentUser);
         CompetitionVO.Competition competition = requireCompetitionByUuid(competitionUuid);
         CompetitionVO.ConfigSet current = ensureCurrentConfigSet(competition, userId);
+        validateCompetitionReadyForPublish(competition, current);
         jdbcTemplate.update(
                 "update competition_config_set set status = 'PUBLISHED', published_at = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
                 LocalDateTime.now(),
@@ -376,6 +503,94 @@ public class CompetitionManagementAppService {
         return records.get(0);
     }
 
+    private void validateCompetitionReadyForPublish(CompetitionVO.Competition competition, CompetitionVO.ConfigSet configSet) {
+        List<String> missing = new ArrayList<>();
+        requirePublishText(missing, competition.getTitle(), "基础信息：竞赛名称未填写");
+        requirePublishText(missing, competition.getCategory(), "基础信息：竞赛类别未选择");
+        requirePublishText(missing, firstText(competition.getCompetitionLevel(), competition.getLevel()), "基础信息：竞赛级别未选择");
+        requirePublishText(missing, competition.getParticipationScope(), "基础信息：参赛范围未填写");
+        requirePublishText(missing, competition.getFeeMode(), "基础信息：收费方式未选择");
+        requirePublishText(missing, competition.getCurrency(), "基础信息：货币未选择");
+        requirePublishText(missing, competition.getRegistrationStart(), "赛事时间：报名开始时间未选择");
+        requirePublishText(missing, competition.getRegistrationEnd(), "赛事时间：报名结束时间未选择");
+        requirePublishText(missing, competition.getCompetitionStart(), "赛事时间：竞赛安排未配置");
+
+        List<CompetitionVO.ConfigItem> items = listConfigItems(competition.getUuid(), configSet.getId(), CONFIG_ITEM_TYPES);
+        validateEnabledConfigItems(missing, items);
+        if (!missing.isEmpty()) {
+            String message = missing.stream().limit(8).collect(Collectors.joining("；"));
+            if (missing.size() > 8) {
+                message += "；等 " + missing.size() + " 项";
+            }
+            throw biz(ErrorCode.VALIDATION_ERROR, "发布前请完善配置：" + message);
+        }
+    }
+
+    private void validateEnabledConfigItems(List<String> missing, List<CompetitionVO.ConfigItem> items) {
+        for (CompetitionVO.ConfigItem item : items) {
+            if (Boolean.FALSE.equals(item.getEnabled())) {
+                continue;
+            }
+            String moduleLabel = configItemModuleLabel(item.getItemType());
+            String itemLabel = itemLabel(item);
+            requirePublishText(missing, item.getTitle(), moduleLabel + "：" + itemLabel + "名称未填写");
+            requirePublishText(missing, item.getItemKey(), moduleLabel + "：" + itemLabel + "标识未生成");
+            if ("AGREEMENT".equals(item.getItemType()) || "CONSENT".equals(item.getItemType())) {
+                requirePublishText(missing, item.getContentText(), moduleLabel + "：" + itemLabel + "内容未填写");
+            } else if (Set.of("REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD").contains(item.getItemType())) {
+                requirePublishText(missing, metadataValue(item, "fieldType"), moduleLabel + "：" + itemLabel + "字段类型未选择");
+            } else if ("REQUIRED_FILE".equals(item.getItemType())) {
+                requirePublishText(missing, metadataValue(item, "fileFormat"), moduleLabel + "：" + itemLabel + "文件格式未配置");
+            } else if ("STAGE_MATERIAL".equals(item.getItemType())) {
+                requirePublishText(missing, metadataValue(item, "stageName"), moduleLabel + "：" + itemLabel + "赛事阶段未填写");
+                requirePublishText(missing, metadataValue(item, "materialType"), moduleLabel + "：" + itemLabel + "材料类型未选择");
+            } else if ("TIMELINE".equals(item.getItemType())) {
+                requirePublishText(missing, metadataValue(item, "timelineKind"), moduleLabel + "：" + itemLabel + "时间类型未选择");
+            }
+        }
+    }
+
+    private void requirePublishText(List<String> missing, String value, String message) {
+        if (!StringUtils.hasText(value)) {
+            missing.add(message);
+        }
+    }
+
+    private String firstText(String first, String second) {
+        return StringUtils.hasText(first) ? first : second;
+    }
+
+    private String itemLabel(CompetitionVO.ConfigItem item) {
+        return StringUtils.hasText(item.getTitle()) ? item.getTitle().trim() : configItemModuleLabel(item.getItemType()) + "配置项";
+    }
+
+    private String configItemModuleLabel(String itemType) {
+        return switch (itemType == null ? "" : itemType) {
+            case "AGREEMENT", "CONSENT" -> "文书配置";
+            case "REGISTRATION_FIELD", "TEAM_FIELD", "MEMBER_FIELD", "PROJECT_FIELD" -> "收集字段";
+            case "REQUIRED_FILE" -> "上传文件";
+            case "STAGE_MATERIAL" -> "阶段材料";
+            case "TIMELINE" -> "赛事时间";
+            default -> "赛事配置";
+        };
+    }
+
+    private String metadataValue(CompetitionVO.ConfigItem item, String key) {
+        if (!StringUtils.hasText(item.getContentJson())) {
+            return null;
+        }
+        try {
+            JsonNode value = OBJECT_MAPPER.readTree(item.getContentJson()).path(key);
+            if (value.isMissingNode() || value.isNull()) {
+                return null;
+            }
+            String text = value.asText(null);
+            return StringUtils.hasText(text) ? text : null;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     private CompetitionDTO.CompetitionUpsertRequest normalizeRequest(CompetitionDTO.CompetitionUpsertRequest request, String fallbackCode) {
         CompetitionDTO.CompetitionUpsertRequest normalized = new CompetitionDTO.CompetitionUpsertRequest();
         normalized.setCode(StringUtils.hasText(request.getCode())
@@ -417,6 +632,56 @@ public class CompetitionManagementAppService {
         normalized.setHomepageContent(trimToNull(request.getHomepageContent()));
         normalized.setTags(trimToNull(request.getTags()));
         normalized.setStatus(normalizeEnum(request.getStatus(), "draft", STATUSES, "Invalid competition status"));
+        normalized.setFeeMode(normalizeFeeMode(request.getFeeMode()));
+        normalized.setEntryFeeMinor(normalizeEntryFeeMinor(request.getEntryFeeMinor()));
+        normalized.setCurrency(normalizeCurrency(request.getCurrency()));
+        normalized.setFeatured(Boolean.TRUE.equals(request.getFeatured()));
+        normalized.setSort(request.getSort() == null ? 100 : request.getSort());
+        return normalized;
+    }
+
+    private CompetitionDTO.CompetitionUpsertRequest normalizeDraftRequest(CompetitionDTO.CompetitionUpsertRequest request, String fallbackCode) {
+        CompetitionDTO.CompetitionUpsertRequest normalized = new CompetitionDTO.CompetitionUpsertRequest();
+        String competitionLevel = dictRuntimeService.normalizeValue(
+                COMPETITION_LEVEL_DICT,
+                request.getCompetitionLevel(),
+                request.getLevel(),
+                true,
+                "Invalid competition level"
+        );
+        String category = dictRuntimeService.normalizeValue(
+                COMPETITION_CATEGORY_DICT,
+                request.getCategory(),
+                null,
+                true,
+                "Invalid competition category"
+        );
+        normalized.setCode(StringUtils.hasText(request.getCode())
+                ? request.getCode().trim()
+                : trimRequired(fallbackCode, "Competition code is required"));
+        normalized.setLocale(normalizeLocales(request.getLocale(), "zh", LOCALES, "Invalid competition locale"));
+        normalized.setTitle(StringUtils.hasText(request.getTitle()) ? request.getTitle().trim() : "未命名赛事草稿");
+        normalized.setShortName(trimToNull(request.getShortName()));
+        normalized.setCategory(trimToNull(category) == null ? "OTHER" : trimToNull(category));
+        normalized.setCompetitionLevel(trimToNull(competitionLevel));
+        normalized.setLevel(trimToNull(competitionLevel == null ? request.getLevel() : competitionLevel));
+        normalized.setOrganizer(trimToNull(request.getOrganizer()));
+        normalized.setOrganizersJson(trimToNull(request.getOrganizersJson()));
+        normalized.setRegistrationStart(trimToNull(request.getRegistrationStart()));
+        normalized.setRegistrationEnd(trimToNull(request.getRegistrationEnd()));
+        normalized.setCompetitionStart(StringUtils.hasText(request.getCompetitionStart()) ? request.getCompetitionStart().trim() : "TBD");
+        normalized.setCompetitionEnd(trimToNull(request.getCompetitionEnd()));
+        normalized.setLocation(StringUtils.hasText(request.getLocation()) ? request.getLocation().trim() : "TBD");
+        normalized.setParticipationScope(trimToNull(request.getParticipationScope()));
+        normalized.setParticipationRequirement(trimToNull(request.getParticipationRequirement()));
+        normalized.setScheduleJson(trimToNull(request.getScheduleJson()));
+        normalized.setDescription(trimToNull(request.getDescription()));
+        normalized.setImageUrl(trimToNull(request.getImageUrl()));
+        normalized.setContactName(trimToNull(request.getContactName()));
+        normalized.setContactQrCodeUrl(trimToNull(request.getContactQrCodeUrl()));
+        normalized.setHomepageContent(trimToNull(request.getHomepageContent()));
+        normalized.setTags(trimToNull(request.getTags()));
+        normalized.setStatus("draft");
         normalized.setFeeMode(normalizeFeeMode(request.getFeeMode()));
         normalized.setEntryFeeMinor(normalizeEntryFeeMinor(request.getEntryFeeMinor()));
         normalized.setCurrency(normalizeCurrency(request.getCurrency()));

@@ -11,10 +11,12 @@ import org.springframework.util.StringUtils;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Repository
 public class JdbcTeamRepository implements TeamRepository {
@@ -28,15 +30,24 @@ public class JdbcTeamRepository implements TeamRepository {
 
     @Override
     public String nextTeamCode() {
-        for (int i = 0; i < 10; i += 1) {
+        int batchSize = 5;
+        List<String> candidates = new ArrayList<>(batchSize);
+        for (int i = 0; i < batchSize; i += 1) {
             byte[] bytes = new byte[6];
             SECURE_RANDOM.nextBytes(bytes);
-            String code = "T" + HexFormat.of().formatHex(bytes).toUpperCase(Locale.ROOT);
-            if (!jdbcTemplate.exists("select 1 from team where team_code = ? and deleted = 0 limit 1", code)) {
-                return code;
-            }
+            candidates.add("T" + HexFormat.of().formatHex(bytes).toUpperCase(Locale.ROOT));
         }
-        throw new BizException(ErrorCode.SYSTEM_ERROR, "Unable to allocate team code", "Unable to allocate team code");
+        String placeholders = candidates.stream().map(ignored -> "?").collect(Collectors.joining(", "));
+        List<String> existing = jdbcTemplate.queryForList(
+                "select team_code from team where team_code in (" + placeholders + ") and deleted = 0",
+                String.class,
+                candidates.toArray()
+        );
+        return candidates.stream()
+                .filter(candidate -> !existing.contains(candidate))
+                .findFirst()
+                .orElseThrow(() -> new BizException(ErrorCode.SYSTEM_ERROR,
+                        "Unable to allocate team code", "Unable to allocate team code"));
     }
 
     @Override

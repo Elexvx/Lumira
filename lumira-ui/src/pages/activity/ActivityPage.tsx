@@ -358,7 +358,6 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
         name="activityDateTimeRange"
         label="活动日期"
         rules={[
-          { required: true, message: '请选择活动日期和时间' },
           {
             validator: (_, value: ActivityFormValues['activityDateTimeRange']) => {
               const [startDateTime, endDateTime] = value || [];

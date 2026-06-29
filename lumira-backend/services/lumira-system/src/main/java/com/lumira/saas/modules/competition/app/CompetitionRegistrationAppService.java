@@ -209,7 +209,7 @@ public class CompetitionRegistrationAppService {
     public CompetitionRegistrationVO.Registration createRegistration(CurrentUser currentUser, CompetitionRegistrationDTO.RegistrationCreateRequest request) {
         Long userId = requireUserId(currentUser);
         CompetitionRow competition = requireCompetition(request.getCompetitionId());
-        TeamSnapshot team = resolveTeamSnapshot(request.getTeamId());
+        TeamSnapshot team = resolveTeamSnapshot(request);
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId());
         int memberCount = team.members().size();
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
@@ -246,7 +246,7 @@ public class CompetitionRegistrationAppService {
     public CompetitionRegistrationVO.Registration updateRegistration(CurrentUser currentUser, Long id, CompetitionRegistrationDTO.RegistrationCreateRequest request) {
         CompetitionRegistrationVO.Registration existing = getRegistration(currentUser, id);
         CompetitionRow competition = requireCompetition(request.getCompetitionId());
-        TeamSnapshot team = resolveTeamSnapshot(request.getTeamId());
+        TeamSnapshot team = resolveTeamSnapshot(request);
         ProjectSnapshot project = requireProjectSnapshot(request.getProjectId());
         int memberCount = team.members().size();
         long payableAmountMinor = calculatePayableAmount(competition.feeMode(), competition.entryFeeMinor(), memberCount);
@@ -630,6 +630,67 @@ public class CompetitionRegistrationAppService {
         if (count == null || count == 0) {
             throw biz(ErrorCode.VALIDATION_ERROR, "Preliminary materials must be submitted before payment");
         }
+    }
+
+    private TeamSnapshot resolveTeamSnapshot(CompetitionRegistrationDTO.RegistrationCreateRequest request) {
+        if (hasInlineRegistrationTeam(request)) {
+            return inlineTeamSnapshot(request);
+        }
+        Long teamId = request.getTeamId();
+        if (teamId == null || teamId <= 0) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Team information is required");
+        }
+        return resolveTeamSnapshot(teamId);
+    }
+
+    private boolean hasInlineRegistrationTeam(CompetitionRegistrationDTO.RegistrationCreateRequest request) {
+        CompetitionRegistrationDTO.TeamSnapshotRequest team = request.getTeamSnapshot();
+        return team != null || request.getMembers() != null && !request.getMembers().isEmpty();
+    }
+
+    private TeamSnapshot inlineTeamSnapshot(CompetitionRegistrationDTO.RegistrationCreateRequest request) {
+        CompetitionRegistrationDTO.TeamSnapshotRequest team = request.getTeamSnapshot();
+        String teamName = team == null ? null : trimToNull(team.getTeamName());
+        List<Map<String, Object>> members = normalizeInlineMembers(request.getMembers());
+        if (!StringUtils.hasText(teamName)) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "Team name is required");
+        }
+        if (members.isEmpty()) {
+            throw biz(ErrorCode.VALIDATION_ERROR, "At least one registration member is required");
+        }
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("teamId", request.getTeamId() == null ? 0L : request.getTeamId());
+        summary.put("teamName", teamName);
+        summary.put("teamType", team == null ? null : trimToNull(team.getTeamType()));
+        summary.put("avatarUrl", team == null ? null : trimToNull(team.getAvatarUrl()));
+        summary.put("visibility", team == null ? null : trimToNull(team.getVisibility()));
+        summary.put("joinMode", team == null ? null : trimToNull(team.getJoinMode()));
+        summary.put("description", team == null ? null : trimToNull(team.getDescription()));
+        if (team != null && team.getExtraValues() != null && !team.getExtraValues().isEmpty()) {
+            summary.put("extraValues", team.getExtraValues());
+        }
+        summary.entrySet().removeIf((entry) -> entry.getValue() == null);
+        return new TeamSnapshot(request.getTeamId() == null ? 0L : request.getTeamId(), summary, members);
+    }
+
+    private List<Map<String, Object>> normalizeInlineMembers(List<CompetitionRegistrationDTO.MemberSnapshotRequest> members) {
+        List<Map<String, Object>> normalized = new ArrayList<>();
+        for (CompetitionRegistrationDTO.MemberSnapshotRequest member : members == null ? List.<CompetitionRegistrationDTO.MemberSnapshotRequest>of() : members) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("memberName", trimToNull(member.getMemberName()));
+            row.put("employeeNo", trimToNull(member.getEmployeeNo()));
+            row.put("departmentName", trimToNull(member.getDepartmentName()));
+            row.put("role", trimToNull(member.getRole()));
+            row.put("remark", trimToNull(member.getRemark()));
+            if (member.getExtraValues() != null && !member.getExtraValues().isEmpty()) {
+                row.put("extraValues", member.getExtraValues());
+            }
+            row.entrySet().removeIf((entry) -> entry.getValue() == null);
+            if (!row.isEmpty()) {
+                normalized.add(row);
+            }
+        }
+        return normalized;
     }
 
     private TeamSnapshot resolveTeamSnapshot(Long teamId) {

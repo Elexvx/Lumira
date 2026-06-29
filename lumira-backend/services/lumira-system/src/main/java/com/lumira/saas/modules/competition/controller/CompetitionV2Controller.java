@@ -105,6 +105,18 @@ public class CompetitionV2Controller {
         return ApiResponse.success(competitionManagementAppService.createCompetition(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
+    @PostMapping("/drafts")
+    public ApiResponse<CompetitionVO.Competition> createCompetitionDraft(@RequestBody CompetitionDTO.CompetitionUpsertRequest request) {
+        require(CREATE);
+        return ApiResponse.success(competitionManagementAppService.createCompetitionDraft(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
+    }
+
+    @PutMapping("/drafts/{id}")
+    public ApiResponse<CompetitionVO.Competition> updateCompetitionDraft(@PathVariable("id") Long id, @RequestBody CompetitionDTO.CompetitionUpsertRequest request) {
+        require(CREATE);
+        return ApiResponse.success(competitionManagementAppService.updateCompetitionDraft(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
+    }
+
     @PutMapping("/{id}")
     @RepeatSubmit
     public ApiResponse<CompetitionVO.Competition> updateCompetition(@PathVariable("id") Long id, @Valid @RequestBody CompetitionDTO.CompetitionUpsertRequest request) {

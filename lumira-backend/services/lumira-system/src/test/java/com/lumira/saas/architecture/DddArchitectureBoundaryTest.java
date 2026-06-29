@@ -69,7 +69,7 @@ class DddArchitectureBoundaryTest {
             "lumira-message", List.of("com.lumira.message.mapper.", "com.lumira.message.entity."),
             "lumira-file", List.of("com.lumira.file.mapper.", "com.lumira.file.entity."),
             "lumira-plugin", List.of("com.lumira.saas.modules.plugin.mapper.", "com.lumira.saas.modules.plugin.entity."),
-            "lumira-localization", List.of("com.lumira.saas.modules.localization.mapper.", "com.lumira.saas.modules.localization.entity."),
+            "lumira-localization", List.of("com.lumira.localization.mapper.", "com.lumira.localization.entity."),
             "lumira-payment", List.of("com.lumira.payment.mapper.", "com.lumira.payment.entity."),
             "lumira-ai", List.of("com.lumira.ai.mapper.", "com.lumira.ai.entity."),
             "lumira-team", List.of("com.lumira.team.mapper.", "com.lumira.team.entity.")

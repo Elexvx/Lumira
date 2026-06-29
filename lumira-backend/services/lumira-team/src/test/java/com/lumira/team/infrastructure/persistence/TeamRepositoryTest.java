@@ -2,6 +2,7 @@ package com.lumira.team.infrastructure.persistence;
 
 import com.lumira.team.dto.TeamDTO;
 import com.lumira.team.vo.TeamVO;
+import com.lumira.common.exception.BizException;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TeamRepositoryTest {
     @Test
@@ -75,6 +77,29 @@ class TeamRepositoryTest {
         assertThat(queries.lastWriteArgs).contains(5001L);
     }
 
+    @Test
+    void jdbcTeamRepositorySelectsAvailableCodeFromBatch() {
+        RecordingQueries queries = new RecordingQueries();
+        queries.existingCodeStrategy = candidates -> candidates.subList(0, candidates.size() - 1);
+        JdbcTeamRepository repository = new JdbcTeamRepository(queries);
+
+        String code = repository.nextTeamCode();
+
+        assertThat(code).isEqualTo(queries.lastCodeCandidates.get(4));
+        assertThat(queries.lastCodeLookupSql).contains("team_code in (?, ?, ?, ?, ?)");
+    }
+
+    @Test
+    void jdbcTeamRepositoryThrowsWhenBatchCodesAllConflict() {
+        RecordingQueries queries = new RecordingQueries();
+        queries.existingCodeStrategy = List::copyOf;
+        JdbcTeamRepository repository = new JdbcTeamRepository(queries);
+
+        assertThatThrownBy(repository::nextTeamCode)
+                .isInstanceOf(BizException.class)
+                .hasMessageContaining("Unable to allocate team code");
+    }
+
     private static void assertNoScopeColumn(String sql) {
         assertThat(sql).doesNotContain("ten" + "ant_" + "id");
     }
@@ -82,6 +107,9 @@ class TeamRepositoryTest {
     private static final class RecordingQueries extends MyBatisQueryOperations {
         private String lastWriteSql;
         private List<Object> lastWriteArgs = List.of();
+        private String lastCodeLookupSql;
+        private List<String> lastCodeCandidates = List.of();
+        private java.util.function.Function<List<String>, List<String>> existingCodeStrategy = ignored -> List.of();
 
         @Override
         public int update(String sql, Object... args) {
@@ -96,6 +124,17 @@ class TeamRepositoryTest {
                 return requiredType.cast(2001L);
             }
             return null;
+        }
+
+        @Override
+        public <T> List<T> queryForList(String sql, Class<T> elementType, Object... args) {
+            lastCodeLookupSql = sql;
+            lastCodeCandidates = Arrays.stream(args)
+                    .map(String::valueOf)
+                    .toList();
+            return existingCodeStrategy.apply(lastCodeCandidates).stream()
+                    .map(elementType::cast)
+                    .toList();
         }
     }
 }

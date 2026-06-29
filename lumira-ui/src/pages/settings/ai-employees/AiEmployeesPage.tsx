@@ -13,6 +13,8 @@ import { confirmAction } from '@/utils/confirm';
 import { TableActionBar, type TableActionItem } from '@/features/table/TableActionBar';
 import { useCrudPageState } from '@/features/crud/useCrudPageState';
 import { request } from '@/services/common/request';
+import type { RequestOptions } from '@/services/common/request';
+import { ErrorCode } from '@/enums/errorCode';
 import { AppstoreOutlined, CustomerServiceOutlined, RobotOutlined, SafetyCertificateOutlined, TeamOutlined, UserOutlined } from '@ant-design/icons';
 import type {
   AiEmployeeCapabilityRecord,
@@ -32,6 +34,20 @@ import { normalizeLocale } from '@/i18n/locale';
 
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
+
+const isNotFoundError = (error: unknown) =>
+  Boolean(error && typeof error === 'object' && 'code' in error && (error as { code?: string }).code === ErrorCode.NOT_FOUND);
+
+const requestAiResource = async <T,>(url: string, options: RequestOptions) => {
+  try {
+    return await request<T>(url, { ...options, silent: true });
+  } catch (error) {
+    if (url.startsWith('/ai/') && isNotFoundError(error)) {
+      return request<T>(`/v2${url}`, options);
+    }
+    return request<T>(url, options);
+  }
+};
 
 const EMPLOYEE_TAB_KEY = 'employees';
 const LLM_TAB_KEY = 'llm-services';
@@ -141,15 +157,15 @@ const useAiEmployeesEmployeeDrawerState = ({
       employeeState.drawer.openEdit(record, record.id);
       try {
         const [detail, knowledgeBases, capabilities] = await Promise.all([
-          request<AiEmployeeDetailRecord>(`/ai/employees/${record.id}`, {
+          requestAiResource<AiEmployeeDetailRecord>(`/ai/employees/${record.id}`, {
             method: 'GET',
             ...API_OPTS.NO_REDIRECT,
           }),
-          request<AiKnowledgeBaseRecord[]>(`/ai/employees/${record.id}/knowledge-bases`, {
+          requestAiResource<AiKnowledgeBaseRecord[]>(`/ai/employees/${record.id}/knowledge-bases`, {
             method: 'GET',
             ...API_OPTS.NO_REDIRECT,
           }),
-          request<AiEmployeeCapabilityRecord[]>(`/ai/employees/${record.id}/capabilities`, {
+          requestAiResource<AiEmployeeCapabilityRecord[]>(`/ai/employees/${record.id}/capabilities`, {
             method: 'GET',
             ...API_OPTS.NO_REDIRECT,
           }),
@@ -192,18 +208,18 @@ const useAiEmployeesEmployeeDrawerState = ({
 
       if (employeeState.drawer.editingId) {
         const employeeId = employeeState.drawer.editingId;
-        await request<AiEmployeeRecord>(`/ai/employees/${employeeId}`, {
+        await requestAiResource<AiEmployeeRecord>(`/ai/employees/${employeeId}`, {
           method: 'PUT',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
         await Promise.all([
-          request<boolean>(`/ai/employees/${employeeId}/knowledge-bases`, {
+          requestAiResource<boolean>(`/ai/employees/${employeeId}/knowledge-bases`, {
             method: 'PUT',
             data: { knowledgeBaseIds: employeeKnowledgeBaseIds },
             ...API_OPTS.NO_REDIRECT,
           }),
-          request<boolean>(`/ai/employees/${employeeId}/capabilities`, {
+          requestAiResource<boolean>(`/ai/employees/${employeeId}/capabilities`, {
             method: 'PUT',
             data: {
               capabilities: employeeCapabilities.map((item) => ({
@@ -216,13 +232,13 @@ const useAiEmployeesEmployeeDrawerState = ({
         ]);
         message.success(t('数字员工已更新', 'AI employee updated'));
       } else {
-        const created = await request<AiEmployeeRecord>('/ai/employees', {
+        const created = await requestAiResource<AiEmployeeRecord>('/ai/employees', {
           method: 'POST',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
         if (created.id) {
-          await request<boolean>(`/ai/employees/${created.id}/knowledge-bases`, {
+          await requestAiResource<boolean>(`/ai/employees/${created.id}/knowledge-bases`, {
             method: 'PUT',
             data: { knowledgeBaseIds: employeeKnowledgeBaseIds },
             ...API_OPTS.NO_REDIRECT,
@@ -483,7 +499,7 @@ const AiEmployeesPage = () => {
 
   const reloadLlmServiceOptions = useCallback(async () => {
     try {
-      const services = await request<PagedResult<AiLlmServiceRecord>>('/ai/llm-services', {
+      const services = await requestAiResource<PagedResult<AiLlmServiceRecord>>('/ai/llm-services', {
         method: 'GET',
         params: { pageNo: 1, pageSize: 200 },
         ...API_OPTS.NO_REDIRECT,
@@ -518,7 +534,7 @@ const AiEmployeesPage = () => {
       llmState.drawer.openEdit(record, record.id);
       setLlmTestResult(null);
       try {
-        const detail = await request<AiLlmServiceRecord>(`/ai/llm-services/${record.id}`, {
+        const detail = await requestAiResource<AiLlmServiceRecord>(`/ai/llm-services/${record.id}`, {
           method: 'GET',
           ...API_OPTS.NO_REDIRECT,
         });
@@ -575,14 +591,14 @@ const AiEmployeesPage = () => {
       const payload = buildLlmPayload(values);
 
       if (llmState.drawer.editingId) {
-        await request<AiLlmServiceRecord>(`/ai/llm-services/${llmState.drawer.editingId}`, {
+        await requestAiResource<AiLlmServiceRecord>(`/ai/llm-services/${llmState.drawer.editingId}`, {
           method: 'PUT',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
         });
         message.success(t('LLM 服务已更新', 'LLM service updated'));
       } else {
-        await request<AiLlmServiceRecord>('/ai/llm-services', {
+        await requestAiResource<AiLlmServiceRecord>('/ai/llm-services', {
           method: 'POST',
           data: payload,
           ...API_OPTS.NO_REDIRECT,
@@ -605,7 +621,7 @@ const AiEmployeesPage = () => {
       await llmForm.validateFields(['provider']);
       const values = llmForm.getFieldsValue();
       const payload = buildLlmPayload(values);
-      const result = await request<AiLlmServiceTestResult>('/ai/llm-services/test', {
+      const result = await requestAiResource<AiLlmServiceTestResult>('/ai/llm-services/test', {
         method: 'POST',
         data: {
           ...payload,
@@ -640,7 +656,7 @@ const AiEmployeesPage = () => {
           okText: t('确认禁用', 'Disable'),
           okButtonProps: { danger: true },
           onOk: async () => {
-            await request<boolean>(`/ai/llm-services/${record.id}/enabled`, {
+            await requestAiResource<boolean>(`/ai/llm-services/${record.id}/enabled`, {
               method: 'PATCH',
               data: { enabled: false },
               ...API_OPTS.NO_REDIRECT,
@@ -652,7 +668,7 @@ const AiEmployeesPage = () => {
       }
 
       void (async () => {
-        await request<boolean>(`/ai/llm-services/${record.id}/enabled`, {
+        await requestAiResource<boolean>(`/ai/llm-services/${record.id}/enabled`, {
           method: 'PATCH',
           data: { enabled: true },
           ...API_OPTS.NO_REDIRECT,
@@ -670,7 +686,7 @@ const AiEmployeesPage = () => {
         okText: t('确认删除', 'Delete'),
         okButtonProps: { danger: true },
         onOk: async () => {
-          await request<boolean>(`/ai/llm-services/${record.id}`, {
+          await requestAiResource<boolean>(`/ai/llm-services/${record.id}`, {
             method: 'DELETE',
             ...API_OPTS.NO_REDIRECT,
           });
@@ -714,7 +730,7 @@ const AiEmployeesPage = () => {
     isMobile: responsive.isMobile,
     loading: bootstrapLoading,
     request: (params: { current?: number; pageSize?: number }) =>
-      request<PagedResult<AiLlmServiceRecord>>('/ai/llm-services', {
+      requestAiResource<PagedResult<AiLlmServiceRecord>>('/ai/llm-services', {
         method: 'GET',
         params,
         ...API_OPTS.NO_REDIRECT,
@@ -745,12 +761,12 @@ const AiEmployeesPage = () => {
       setBootstrapLoading(true);
       try {
         const [services, knowledgeBases] = await Promise.all([
-          request<PagedResult<AiLlmServiceRecord>>('/ai/llm-services', {
+          requestAiResource<PagedResult<AiLlmServiceRecord>>('/ai/llm-services', {
             method: 'GET',
             params: { pageNo: 1, pageSize: 200 },
             ...API_OPTS.NO_REDIRECT,
           }),
-          request<PagedResult<AiKnowledgeBaseRecord>>('/ai/knowledge-bases', {
+          requestAiResource<PagedResult<AiKnowledgeBaseRecord>>('/ai/knowledge-bases', {
             method: 'GET',
             params: { pageNo: 1, pageSize: 200, status: 'ENABLED' },
             ...API_OPTS.NO_REDIRECT,
@@ -803,7 +819,7 @@ const AiEmployeesPage = () => {
           okText: t('确认禁用', 'Disable'),
           okButtonProps: { danger: true },
           onOk: async () => {
-            await request<boolean>(`/ai/employees/${record.id}/enabled`, {
+            await requestAiResource<boolean>(`/ai/employees/${record.id}/enabled`, {
               method: 'PATCH',
               data: { enabled: false },
               ...API_OPTS.NO_REDIRECT,
@@ -816,7 +832,7 @@ const AiEmployeesPage = () => {
       }
 
       void (async () => {
-        await request<boolean>(`/ai/employees/${record.id}/enabled`, {
+        await requestAiResource<boolean>(`/ai/employees/${record.id}/enabled`, {
           method: 'PATCH',
           data: { enabled: true },
           ...API_OPTS.NO_REDIRECT,
@@ -836,7 +852,7 @@ const AiEmployeesPage = () => {
         okText: t('确认删除', 'Delete'),
         okButtonProps: { danger: true },
         onOk: async () => {
-          await request<boolean>(`/ai/employees/${record.id}`, {
+          await requestAiResource<boolean>(`/ai/employees/${record.id}`, {
             method: 'DELETE',
             ...API_OPTS.NO_REDIRECT,
           });
@@ -886,7 +902,7 @@ const AiEmployeesPage = () => {
     isMobile: responsive.isMobile,
     loading: bootstrapLoading,
     request: (params: { current?: number; pageSize?: number } = {}) =>
-      request<PagedResult<AiEmployeeRecord>>('/ai/employees', {
+      requestAiResource<PagedResult<AiEmployeeRecord>>('/ai/employees', {
         method: 'GET',
         params,
         ...API_OPTS.NO_REDIRECT,

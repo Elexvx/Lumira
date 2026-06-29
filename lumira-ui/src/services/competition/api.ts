@@ -32,6 +32,18 @@ export const createCompetition = (data: CompetitionUpsertPayload) =>
     data,
   });
 
+export const createCompetitionDraft = (data: CompetitionUpsertPayload) =>
+  request<CompetitionRecord>(`${COMPETITION_API}/drafts`, {
+    method: 'POST',
+    data,
+  });
+
+export const updateCompetitionDraft = (id: number, data: CompetitionUpsertPayload) =>
+  request<CompetitionRecord>(`${COMPETITION_API}/drafts/${id}`, {
+    method: 'PUT',
+    data,
+  });
+
 export const updateCompetition = (id: number, data: CompetitionUpsertPayload) =>
   request<CompetitionRecord>(`${COMPETITION_API}/${id}`, {
     method: 'PUT',
@@ -80,7 +92,34 @@ export const deleteProject = (id: number) =>
     method: 'DELETE',
   });
 
-export const createRegistration = (data: { competitionId: number; teamId: number; projectId: number }) =>
+export type RegistrationSnapshotMemberPayload = {
+  memberName?: string;
+  employeeNo?: string;
+  departmentName?: string;
+  role?: string;
+  remark?: string;
+  extraValues?: Record<string, unknown>;
+};
+
+export type RegistrationSnapshotTeamPayload = {
+  teamName?: string;
+  teamType?: string;
+  avatarUrl?: string;
+  visibility?: string;
+  joinMode?: string;
+  description?: string;
+  extraValues?: Record<string, unknown>;
+};
+
+export type RegistrationUpsertPayload = {
+  competitionId: number;
+  teamId?: number;
+  projectId: number;
+  teamSnapshot?: RegistrationSnapshotTeamPayload;
+  members?: RegistrationSnapshotMemberPayload[];
+};
+
+export const createRegistration = (data: RegistrationUpsertPayload) =>
   request<CompetitionRegistrationRecord>('/v2/aiadc/registrations', {
     method: 'POST',
     data,
@@ -94,7 +133,7 @@ export const listRegistrations = (params: { pageNo?: number; pageSize?: number }
 
 export const getRegistration = (id: number) => request<CompetitionRegistrationRecord>(`/v2/aiadc/registrations/${id}`);
 
-export const updateRegistration = (id: number, data: { competitionId: number; teamId: number; projectId: number }) =>
+export const updateRegistration = (id: number, data: RegistrationUpsertPayload) =>
   request<CompetitionRegistrationRecord>(`/v2/aiadc/registrations/${id}`, {
     method: 'PUT',
     data,

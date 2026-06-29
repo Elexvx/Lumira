@@ -68,6 +68,27 @@ class CompetitionRegistrationAppServiceTest {
     }
 
     @Test
+    void createRegistrationPersistsCollectedMembersWithoutTeamModuleWrites() throws Exception {
+        RegistrationSql sql = new RegistrationSql();
+        sql.competitionFeeMode = "MEMBER";
+        sql.competitionEntryFeeMinor = 5_000L;
+        CompetitionRegistrationAppService service = service(sql, teamApiRejectingLookup());
+
+        CompetitionRegistrationVO.Registration registration = service.createRegistration(student(), inlineRegistrationRequest());
+
+        assertThat(registration.getTeamId()).isZero();
+        assertThat(registration.getMemberCount()).isEqualTo(2);
+        assertThat(registration.getPayableAmountMinor()).isEqualTo(10_000L);
+        assertThat(objectMapper.readTree(registration.getTeamSnapshotJson()).path("teamName").asText()).isEqualTo("Collected Team");
+        JsonNode members = objectMapper.readTree(registration.getMemberSnapshotJson());
+        assertThat(members).hasSize(2);
+        assertThat(members.get(0).path("memberName").asText()).isEqualTo("Alice");
+        assertThat(members.get(0).path("extraValues").path("mobile").asText()).isEqualTo("13800138000");
+        assertThat(members.get(0).has("userId")).isFalse();
+        assertThat(sql.wroteTeamTables).isFalse();
+    }
+
+    @Test
     void createRegistrationDoesNotRequireApplicantToBeActiveTeamMember() {
         RegistrationSql sql = new RegistrationSql();
         CompetitionRegistrationAppService service = service(sql, teamApiRejectingMembershipCheck(2001L, 2));
@@ -248,6 +269,26 @@ class CompetitionRegistrationAppServiceTest {
         return request;
     }
 
+    private CompetitionRegistrationDTO.RegistrationCreateRequest inlineRegistrationRequest() {
+        CompetitionRegistrationDTO.RegistrationCreateRequest request = new CompetitionRegistrationDTO.RegistrationCreateRequest();
+        request.setCompetitionId(11L);
+        request.setProjectId(31L);
+        CompetitionRegistrationDTO.TeamSnapshotRequest team = new CompetitionRegistrationDTO.TeamSnapshotRequest();
+        team.setTeamName("Collected Team");
+        team.setTeamType("COMPETITION");
+        request.setTeamSnapshot(team);
+        CompetitionRegistrationDTO.MemberSnapshotRequest first = new CompetitionRegistrationDTO.MemberSnapshotRequest();
+        first.setMemberName("Alice");
+        first.setRole("MEMBER");
+        first.setExtraValues(Map.of("mobile", "13800138000"));
+        CompetitionRegistrationDTO.MemberSnapshotRequest second = new CompetitionRegistrationDTO.MemberSnapshotRequest();
+        second.setMemberName("Bob");
+        second.setRole("MEMBER");
+        second.setExtraValues(Map.of("mobile", "13900139000"));
+        request.setMembers(List.of(first, second));
+        return request;
+    }
+
     private CurrentUser student() {
         CurrentUser currentUser = new CurrentUser();
         currentUser.setUserId(1001L);
@@ -332,6 +373,17 @@ class CompetitionRegistrationAppServiceTest {
             @Override public boolean isTeamOwner(Long teamId, Long userId) { return delegate.isTeamOwner(teamId, userId); }
             @Override public boolean isTeamAdmin(Long teamId, Long userId) { return delegate.isTeamAdmin(teamId, userId); }
             @Override public boolean isTeamManager(Long teamId, Long userId) { return delegate.isTeamManager(teamId, userId); }
+        };
+    }
+
+    private TeamInternalApi teamApiRejectingLookup() {
+        return new TeamInternalApi() {
+            @Override public TeamSummaryDTO getTeam(Long teamId) { throw new AssertionError("Inline registration must not read Team module"); }
+            @Override public List<TeamMemberDTO> listActiveMembers(Long teamId) { throw new AssertionError("Inline registration must not read Team members"); }
+            @Override public TeamMemberDTO requireActiveMember(Long teamId, Long userId) { throw new AssertionError("Inline registration must not require team membership"); }
+            @Override public boolean isTeamOwner(Long teamId, Long userId) { return false; }
+            @Override public boolean isTeamAdmin(Long teamId, Long userId) { return false; }
+            @Override public boolean isTeamManager(Long teamId, Long userId) { return false; }
         };
     }
 

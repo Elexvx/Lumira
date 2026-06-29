@@ -298,10 +298,11 @@ const useLoginFlowInteractions = ({
   suppressLoginBroadcastRedirectRef,
 }: UseLoginFlowInteractionsParams) => {
   const pendingSecondFactorOption = flowState.pendingSecondFactorLogin?.secondFactorOptions?.[0] || null;
+  const currentUserRequiresPasswordChange = Boolean(isLoggedIn() && initialState?.currentUser?.requiresPasswordChange);
+  const restoredPasswordChangeOpen = flowState.restoredPasswordChangeRequired && currentUserRequiresPasswordChange;
   const forcedPasswordChangeOpen =
     Boolean(flowState.pendingPasswordChangeLogin) ||
-    flowState.restoredPasswordChangeRequired ||
-    Boolean(initialState?.currentUser?.requiresPasswordChange);
+    restoredPasswordChangeOpen;
   const completeSuccessfulLogin = useCallback(
     async (loginResponse: LoginResponse, remember?: boolean) => {
       suppressLoginBroadcastRedirectRef.current = true;
@@ -516,7 +517,7 @@ const useLoginFlowInteractions = ({
   );
   const handleForcedPasswordChange = useCallback(
     async (values: ForcedPasswordChangeFormValues) => {
-      if (!flowState.pendingPasswordChangeLogin && !flowState.restoredPasswordChangeRequired && !initialState?.currentUser?.requiresPasswordChange) {
+      if (!flowState.pendingPasswordChangeLogin && !restoredPasswordChangeOpen) {
         return;
       }
       flowState.setPasswordChangeSubmitting(true);
@@ -577,9 +578,9 @@ const useLoginFlowInteractions = ({
     [
       completeSuccessfulLogin,
       flowState,
-      initialState?.currentUser?.requiresPasswordChange,
       initialState?.currentUser?.username,
       loginAfterPasswordChange,
+      restoredPasswordChangeOpen,
     ],
   );
 
@@ -1333,6 +1334,7 @@ export const useLoginFlowRuntime = ({
   const wechatCallbackHandledRef = useRef(false);
   const passwordChangeRestoreHandledRef = useRef(false);
   const suppressLoginBroadcastRedirectRef = useRef(false);
+  const currentUserRequiresPasswordChange = Boolean(isLoggedIn() && initialState?.currentUser?.requiresPasswordChange);
 
   const {
     postLoginPack,
@@ -1373,7 +1375,7 @@ export const useLoginFlowRuntime = ({
   } = authPack;
 
   useEffect(() => {
-    if (flowState.pendingPasswordChangeLogin || flowState.restoredPasswordChangeRequired || initialState?.currentUser?.requiresPasswordChange) {
+    if (flowState.pendingPasswordChangeLogin || currentUserRequiresPasswordChange) {
       return;
     }
     if (!isLoggedIn() || flowState.submitting) {
@@ -1386,8 +1388,8 @@ export const useLoginFlowRuntime = ({
   }, [
     flowState,
     flowState.pendingPasswordChangeLogin,
-    flowState.restoredPasswordChangeRequired,
     flowState.submitting,
+    currentUserRequiresPasswordChange,
     initialState?.currentUser,
     initialState?.menuTree,
     locationSearch,
@@ -1418,6 +1420,22 @@ export const useLoginFlowRuntime = ({
             : prev,
         );
         history.replace(resolveAuthorizedLoginRedirectTarget(locationSearch, restoredSession.currentUser, initialState?.menuTree || []));
+        return;
+      }
+      if (!restoredSession?.currentUser) {
+        clearAuthSession();
+        flowState.setRestoredPasswordChangeRequired(false);
+        flowState.setPendingPasswordChangeLogin(null);
+        flowState.setPendingPasswordChangeCurrentPassword('');
+        flowState.forcedPasswordChangeForm.resetFields();
+        setInitialState((prev: AppInitialState | undefined) =>
+          prev
+            ? {
+                ...prev,
+                currentUser: undefined,
+              }
+            : prev,
+        );
         return;
       }
       flowState.setRestoredPasswordChangeRequired(true);

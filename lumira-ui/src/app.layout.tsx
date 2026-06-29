@@ -64,6 +64,12 @@ const DATA_MANAGEMENT_DIRECT_CHILD_PATHS = [
 const DATA_QUERY_CHILD_PATHS = ['/team/search', '/projects/search', '/activities/search', '/payments/status'];
 const DATA_SOURCE_GROUP_PATHS = ['/activities', '/competitions', '/projects', '/team', '/payments'];
 const HIDDEN_MAIN_MENU_LEAF_PATHS = new Set(['/user-center/personal-center']);
+const ACTIVE_MAIN_MENU_PATH_BY_ROUTE: Array<[RegExp, string]> = [
+  [/^\/competitions\/create$/, '/competitions/management'],
+  [/^\/competitions\/[^/]+\/settings$/, '/competitions/management'],
+  [/^\/projects\/create$/, '/projects/management'],
+  [/^\/team\/create$/, '/team/management'],
+];
 const MAIN_MENU_KEY_BY_PATH: Record<string, string> = {
   [USER_CENTER_GROUP_PATH]: 'main:user-center',
   [PERSONAL_CENTER_GROUP_PATH]: 'main:personal-center',
@@ -693,9 +699,14 @@ const collectMenuNodePaths = (items: MenuNode[] | undefined, paths = new Set<str
 const resolveSelectedMenuPath = (pathname: string, menuTree: MenuNode[] | undefined) => {
   const normalizedPathname = resolveCanonicalRoutePath(pathname);
   const visiblePaths = Array.from(collectMenuNodePaths(menuTree));
+  const activeMenuPath = ACTIVE_MAIN_MENU_PATH_BY_ROUTE.find(([pattern]) => pattern.test(normalizedPathname))?.[1];
 
   if (!visiblePaths.length) {
-    return normalizedPathname;
+    return activeMenuPath || normalizedPathname;
+  }
+
+  if (activeMenuPath && visiblePaths.includes(activeMenuPath)) {
+    return activeMenuPath;
   }
 
   const exactMatch = visiblePaths.find((path) => path === normalizedPathname);
@@ -1192,6 +1203,7 @@ export const createLayoutConfig: RunTimeLayoutConfig = ({ initialState }) => {
     unAccessible: <NoPermission />,
     pageTitleRender: (props, defaultTitle) => (!props?.title ? defaultTitle || brandName : `${props.title} - ${brandName}`),
     selectedKeys: [selectedMenuPath],
+    openKeys: siderMenuMode === 'settings' ? undefined : false,
     menuTextRender: (item, defaultDom) =>
       typeof defaultDom === 'string'
         ? resolveBuiltinMessage(

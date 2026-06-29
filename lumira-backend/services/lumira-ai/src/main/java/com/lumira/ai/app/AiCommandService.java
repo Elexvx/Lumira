@@ -9,6 +9,13 @@ import com.lumira.ai.dto.AiCommandModels.ToolExecuteRequest;
 import com.lumira.ai.dto.AiCommandModels.ToolProposeRequest;
 import com.lumira.ai.integration.AiOwnerToolGateway;
 import com.lumira.ai.provider.AiProviderRuntime;
+import com.lumira.ai.repository.AiConversationRepository;
+import com.lumira.ai.repository.AiConversationRepository.ConversationIdentity;
+import com.lumira.ai.repository.AiKnowledgeChunkRepository;
+import com.lumira.ai.repository.AiKnowledgeDocumentRepository;
+import com.lumira.ai.repository.AiMessageRepository;
+import com.lumira.ai.repository.AiToolAuditLogRepository;
+import com.lumira.ai.repository.AiToolCallPlanRepository;
 import com.lumira.ai.vo.AiChatResponseVO;
 import com.lumira.ai.vo.AiEmployeeVO;
 import com.lumira.ai.vo.AiKnowledgeDocumentVO;
@@ -20,9 +27,6 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
 import com.lumira.common.security.PermissionGuard;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -30,9 +34,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -48,7 +49,12 @@ public class AiCommandService {
     private static final int CHUNK_OVERLAP = 180;
     private static final int MAX_SEARCH_LIMIT = 20;
 
-    private final JdbcTemplate jdbcTemplate;
+    private final AiKnowledgeDocumentRepository knowledgeDocumentRepository;
+    private final AiKnowledgeChunkRepository knowledgeChunkRepository;
+    private final AiConversationRepository conversationRepository;
+    private final AiMessageRepository messageRepository;
+    private final AiToolCallPlanRepository toolCallPlanRepository;
+    private final AiToolAuditLogRepository toolAuditLogRepository;
     private final AiReadQueryService readQueryService;
     private final AiOwnerToolGateway ownerToolGateway;
     private final AiProviderRuntime providerRuntime;
@@ -56,14 +62,24 @@ public class AiCommandService {
     private final PermissionGuard permissionGuard;
 
     public AiCommandService(
-            JdbcTemplate jdbcTemplate,
+            AiKnowledgeDocumentRepository knowledgeDocumentRepository,
+            AiKnowledgeChunkRepository knowledgeChunkRepository,
+            AiConversationRepository conversationRepository,
+            AiMessageRepository messageRepository,
+            AiToolCallPlanRepository toolCallPlanRepository,
+            AiToolAuditLogRepository toolAuditLogRepository,
             AiReadQueryService readQueryService,
             AiOwnerToolGateway ownerToolGateway,
             AiProviderRuntime providerRuntime,
             ObjectMapper objectMapper,
             PermissionGuard permissionGuard
     ) {
-        this.jdbcTemplate = jdbcTemplate;
+        this.knowledgeDocumentRepository = knowledgeDocumentRepository;
+        this.knowledgeChunkRepository = knowledgeChunkRepository;
+        this.conversationRepository = conversationRepository;
+        this.messageRepository = messageRepository;
+        this.toolCallPlanRepository = toolCallPlanRepository;
+        this.toolAuditLogRepository = toolAuditLogRepository;
         this.readQueryService = readQueryService;
         this.ownerToolGateway = ownerToolGateway;
         this.providerRuntime = providerRuntime;
@@ -75,128 +91,56 @@ public class AiCommandService {
     public AiKnowledgeDocumentVO uploadKnowledgeDocument(CurrentUser currentUser, Long knowledgeBaseId, MultipartFile file) {
         readQueryService.getKnowledgeBase(currentUser, knowledgeBaseId);
         if (file == null || file.isEmpty()) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "上传文件不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Knowledge document file is required");
         }
         String originalFilename = file.getOriginalFilename() == null ? "knowledge.txt" : file.getOriginalFilename();
         String extractedText = extractText(file);
         LocalDateTime now = LocalDateTime.now();
-        Long documentId = insertAndReturnId("""
-                        insert into ai_knowledge_document (
-                            knowledge_base_id, file_id, title, original_file_name, file_extension,
-                            mime_type, file_size_bytes, status, parse_error, extracted_text, extracted_char_count,
-                            chunk_count, created_by, updated_by, is_deleted, create_time, update_time
-                        ) values (?, null, ?, ?, ?, ?, ?, 'INDEXED', null, ?, ?, 0, ?, ?, 0, ?, ?)
-                        """,
-                ps -> {
-                    ps.setLong(1, knowledgeBaseId);
-                    ps.setString(2, stripExtension(originalFilename));
-                    ps.setString(3, originalFilename);
-                    ps.setString(4, extension(originalFilename));
-                    ps.setString(5, file.getContentType());
-                    ps.setLong(6, file.getSize());
-                    ps.setString(7, extractedText);
-                    ps.setInt(8, extractedText.length());
-                    ps.setLong(9, currentUserId(currentUser));
-                    ps.setLong(10, currentUserId(currentUser));
-                    ps.setTimestamp(11, Timestamp.valueOf(now));
-                    ps.setTimestamp(12, Timestamp.valueOf(now));
-                }
+        Long documentId = knowledgeDocumentRepository.createDocument(
+                knowledgeBaseId,
+                stripExtension(originalFilename),
+                originalFilename,
+                extension(originalFilename),
+                file.getContentType(),
+                file.getSize(),
+                extractedText,
+                currentUserId(currentUser),
+                now
         );
         int chunkCount = rebuildChunks(knowledgeBaseId, documentId, extractedText, now);
-        jdbcTemplate.update(
-                "update ai_knowledge_document set chunk_count = ?, update_time = ? where id = ?",
-                chunkCount,
-                now,
-                documentId
-        );
+        knowledgeDocumentRepository.updateChunkCount(documentId, chunkCount, now);
         return readQueryService.listKnowledgeDocuments(currentUser, knowledgeBaseId, 1, 100).getRecords().stream()
                 .filter(document -> document.id().equals(documentId))
                 .findFirst()
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "知识文档不存在"));
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "Knowledge document not found"));
     }
 
     @Transactional
     public AiKnowledgeDocumentVO reindexKnowledgeDocument(CurrentUser currentUser, Long knowledgeBaseId, Long documentId) {
         readQueryService.getKnowledgeBase(currentUser, knowledgeBaseId);
-        Map<String, Object> document = jdbcTemplate.queryForMap(
-                """
-                        select extracted_text
-                        from ai_knowledge_document
-                        where knowledge_base_id = ? and id = ? and is_deleted = 0
-                        """,
-                knowledgeBaseId,
-                documentId
-        );
-        String text = String.valueOf(document.getOrDefault("extracted_text", ""));
+        String text = knowledgeDocumentRepository.findExtractedText(knowledgeBaseId, documentId);
         LocalDateTime now = LocalDateTime.now();
         int chunkCount = rebuildChunks(knowledgeBaseId, documentId, text, now);
-        jdbcTemplate.update(
-                """
-                        update ai_knowledge_document
-                        set status = 'INDEXED', parse_error = null, extracted_char_count = ?, chunk_count = ?, update_time = ?
-                        where id = ?
-                        """,
-                text.length(),
-                chunkCount,
-                now,
-                documentId
-        );
+        knowledgeDocumentRepository.markIndexed(documentId, text.length(), chunkCount, now);
         return readQueryService.listKnowledgeDocuments(currentUser, knowledgeBaseId, 1, 100).getRecords().stream()
                 .filter(item -> item.id().equals(documentId))
                 .findFirst()
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "知识文档不存在"));
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "Knowledge document not found"));
     }
 
     public List<AiKnowledgeReferenceVO> searchKnowledge(CurrentUser currentUser, KnowledgeSearchRequest request) {
         if (request == null || !StringUtils.hasText(request.query())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "检索内容不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Search query is required");
         }
         int limit = Math.min(Math.max(request.limit() == null ? 8 : request.limit(), 1), MAX_SEARCH_LIMIT);
         String like = "%" + request.query().trim() + "%";
-        List<Object> args = new ArrayList<>();
-        args.add(like);
-        args.add(like);
-        String idFilter = "";
-        if (request.knowledgeBaseIds() != null && !request.knowledgeBaseIds().isEmpty()) {
-            idFilter = " and kb.id in (" + "?,".repeat(request.knowledgeBaseIds().size()).replaceFirst(",$", "") + ")";
-            args.addAll(request.knowledgeBaseIds());
-        }
-        args.add(limit);
-        return jdbcTemplate.query(
-                """
-                        select c.id as chunk_id, kb.id as knowledge_base_id, kb.name as knowledge_base_name,
-                               d.id as document_id, d.title as document_title, d.file_id, d.original_file_name,
-                               c.chunk_index, c.content
-                        from ai_knowledge_chunk c
-                        join ai_knowledge_document d
-                          on d.id = c.document_id and d.is_deleted = 0
-                        join ai_knowledge_base kb
-                          on kb.id = c.knowledge_base_id and kb.is_deleted = 0
-                        where c.is_deleted = 0
-                          and (c.search_text like ? or c.content like ?)
-                        """ + idFilter + """
-                        order by c.update_time desc, c.id desc
-                        limit ?
-                        """,
-                (rs, rowNum) -> new AiKnowledgeReferenceVO(
-                        rs.getLong("chunk_id"),
-                        rs.getLong("knowledge_base_id"),
-                        rs.getString("knowledge_base_name"),
-                        rs.getLong("document_id"),
-                        rs.getString("document_title"),
-                        objectLong(rs, "file_id"),
-                        rs.getString("original_file_name"),
-                        rs.getInt("chunk_index"),
-                        rs.getString("content")
-                ),
-                args.toArray()
-        );
+        return knowledgeChunkRepository.search(like, request.knowledgeBaseIds(), limit);
     }
 
     @Transactional
     public AiChatResponseVO chat(CurrentUser currentUser, ChatRequest request) {
         if (request == null || !StringUtils.hasText(request.message())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "消息不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Message is required");
         }
         Long employeeId = request.employeeId() == null ? assistantId(currentUser) : request.employeeId();
         ConversationIdentity conversation = request.conversationId() == null
@@ -208,12 +152,7 @@ public class AiCommandService {
         AiProviderRuntime.ChatCompletion completion = providerRuntime.complete(new AiProviderRuntime.ChatPrompt(request.message(), references));
         String replyText = completion.text();
         insertMessage(conversation.id(), "ASSISTANT", replyText, now);
-        jdbcTemplate.update(
-                "update ai_conversation set latest_message_at = ?, update_time = ? where id = ?",
-                now,
-                now,
-                conversation.id()
-        );
+        conversationRepository.updateLatestMessageAt(conversation.id(), now, now);
         return new AiChatResponseVO(
                 conversation.id(),
                 conversation.code(),
@@ -233,36 +172,29 @@ public class AiCommandService {
     @Transactional
     public AiToolPlanVO proposeTool(CurrentUser currentUser, ToolProposeRequest request) {
         if (request == null || !StringUtils.hasText(request.toolCode())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "工具编码不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Tool code is required");
         }
         AiToolVO tool = findTool(request.toolCode());
         requireToolPermission(currentUser, tool);
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = now.plusMinutes(10);
         Map<String, Object> arguments = request.arguments() == null ? Map.of() : request.arguments();
-        Long planId = insertAndReturnId("""
-                        insert into ai_tool_call_plan (
-                            conversation_id, employee_id, owner_user_id, tool_code, tool_name, action_type,
-                            risk_level, summary, permission_key, requires_confirm, supervisor_verdict, supervisor_message,
-                            policy_verdict, policy_message, arguments_json, status, expires_at, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, ?, 'EXECUTE', ?, ?, ?, ?, 'REQUIRE_CONFIRM', ?, 'ALLOW', null, ?, 'PENDING', ?, 0, ?, ?)
-                        """,
-                ps -> {
-                    setNullableLong(ps, 1, request.conversationId());
-                    setNullableLong(ps, 2, request.employeeId());
-                    ps.setLong(3, currentUserId(currentUser));
-                    ps.setString(4, tool.toolCode());
-                    ps.setString(5, tool.toolName());
-                    ps.setString(6, tool.riskLevel());
-                    ps.setString(7, StringUtils.hasText(request.message()) ? request.message() : "执行工具 " + tool.toolName());
-                    ps.setString(8, tool.requiredPermission());
-                    ps.setInt(9, Boolean.TRUE.equals(tool.needConfirm()) ? 1 : 0);
-                    ps.setString(10, Boolean.TRUE.equals(tool.needConfirm()) ? "需要确认后执行" : "低风险工具可直接执行");
-                    ps.setString(11, toJson(arguments));
-                    ps.setTimestamp(12, Timestamp.valueOf(expiresAt));
-                    ps.setTimestamp(13, Timestamp.valueOf(now));
-                    ps.setTimestamp(14, Timestamp.valueOf(now));
-                }
+        String summary = StringUtils.hasText(request.message()) ? request.message() : "Execute tool " + tool.toolName();
+        String supervisorMessage = Boolean.TRUE.equals(tool.needConfirm()) ? "Confirmation required" : "Low risk tool can execute directly";
+        Long planId = toolCallPlanRepository.createPlan(
+                request.conversationId(),
+                request.employeeId(),
+                currentUserId(currentUser),
+                tool.toolCode(),
+                tool.toolName(),
+                tool.riskLevel(),
+                summary,
+                tool.requiredPermission(),
+                Boolean.TRUE.equals(tool.needConfirm()),
+                supervisorMessage,
+                toJson(arguments),
+                expiresAt,
+                now
         );
         return new AiToolPlanVO(
                 planId,
@@ -272,11 +204,11 @@ public class AiCommandService {
                 tool.toolName(),
                 "EXECUTE",
                 tool.riskLevel(),
-                StringUtils.hasText(request.message()) ? request.message() : "执行工具 " + tool.toolName(),
+                summary,
                 tool.requiredPermission(),
                 tool.needConfirm(),
                 "REQUIRE_CONFIRM",
-                Boolean.TRUE.equals(tool.needConfirm()) ? "需要确认后执行" : "低风险工具可直接执行",
+                supervisorMessage,
                 "ALLOW",
                 null,
                 "PENDING",
@@ -289,18 +221,9 @@ public class AiCommandService {
     @Transactional
     public AiToolExecuteResultVO confirmTool(CurrentUser currentUser, ToolConfirmRequest request) {
         if (request == null || request.pendingToolCallId() == null) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "待确认工具调用不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Pending tool call is required");
         }
-        Map<String, Object> plan = jdbcTemplate.queryForMap(
-                """
-                        select id, employee_id, conversation_id, tool_code, arguments_json
-                        from ai_tool_call_plan
-                        where owner_user_id = ? and id = ? and status = 'PENDING'
-                          and is_deleted = 0 and expires_at >= now()
-                        """,
-                currentUserId(currentUser),
-                request.pendingToolCallId()
-        );
+        Map<String, Object> plan = toolCallPlanRepository.findPendingPlan(currentUserId(currentUser), request.pendingToolCallId());
         ToolExecuteRequest executeRequest = new ToolExecuteRequest(
                 objectLong(plan, "employee_id"),
                 objectLong(plan, "conversation_id"),
@@ -309,29 +232,19 @@ public class AiCommandService {
                 true
         );
         AiToolExecuteResultVO result = executeTool(currentUser, executeRequest);
-        jdbcTemplate.update(
-                """
-                        update ai_tool_call_plan
-                        set status = 'CONFIRMED', confirmed_by = ?, confirmed_at = ?, update_time = ?
-                        where id = ?
-                        """,
-                currentUserId(currentUser),
-                LocalDateTime.now(),
-                LocalDateTime.now(),
-                request.pendingToolCallId()
-        );
+        toolCallPlanRepository.confirmPlan(request.pendingToolCallId(), currentUserId(currentUser), LocalDateTime.now());
         return result;
     }
 
     @Transactional
     public AiToolExecuteResultVO executeTool(CurrentUser currentUser, ToolExecuteRequest request) {
         if (request == null || !StringUtils.hasText(request.toolCode())) {
-            throw new BizException(ErrorCode.VALIDATION_ERROR, "工具编码不能为空");
+            throw new BizException(ErrorCode.VALIDATION_ERROR, "Tool code is required");
         }
         AiToolVO tool = findTool(request.toolCode());
         requireToolPermission(currentUser, tool);
         if (Boolean.TRUE.equals(tool.needConfirm()) && !Boolean.TRUE.equals(request.confirmed())) {
-            throw new BizException(ErrorCode.FORBIDDEN, "高风险工具需要确认后执行");
+            throw new BizException(ErrorCode.FORBIDDEN, "Tool confirmation is required");
         }
         AiOwnerToolGateway.ToolExecution execution = ownerToolGateway.execute(
                 currentUser,
@@ -341,55 +254,37 @@ public class AiCommandService {
         Map<String, Object> data = new LinkedHashMap<>(execution.data());
         data.put("remoteOwnerCall", execution.remote());
         data.put("degraded", execution.degraded());
-        AiToolExecuteResultVO result = new AiToolExecuteResultVO(tool.toolCode(), "SUCCESS", "工具调用成功", data, LocalDateTime.now());
+        AiToolExecuteResultVO result = new AiToolExecuteResultVO(tool.toolCode(), "SUCCESS", "Tool executed successfully", data, LocalDateTime.now());
         recordToolAudit(currentUser, request, tool, result);
         return result;
     }
 
     private void recordToolAudit(CurrentUser currentUser, ToolExecuteRequest request, AiToolVO tool, AiToolExecuteResultVO result) {
-        jdbcTemplate.update(
-                """
-                        insert into ai_tool_audit_log (
-                            conversation_id, employee_id, skill_code, tool_name, permission_mode,
-                            confirm_required, confirm_result, confirmed_by, confirmed_at, result_status,
-                            detail_message, request_payload_json, response_payload_json, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, 'allow', ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-                        """,
+        boolean confirmed = Boolean.TRUE.equals(request.confirmed());
+        toolAuditLogRepository.addAuditLog(
                 request.conversationId(),
                 request.employeeId(),
                 tool.toolCode(),
                 tool.toolName(),
-                Boolean.TRUE.equals(tool.needConfirm()) ? 1 : 0,
-                Boolean.TRUE.equals(request.confirmed()) ? 1 : 0,
-                Boolean.TRUE.equals(request.confirmed()) ? currentUserId(currentUser) : null,
-                Boolean.TRUE.equals(request.confirmed()) ? LocalDateTime.now() : null,
+                Boolean.TRUE.equals(tool.needConfirm()),
+                confirmed,
+                confirmed ? currentUserId(currentUser) : null,
+                confirmed ? LocalDateTime.now() : null,
                 result.resultStatus(),
                 result.message(),
                 toJson(request.arguments() == null ? Map.of() : request.arguments()),
                 toJson(result.data()),
-                result.executedAt(),
                 result.executedAt()
         );
     }
 
     private int rebuildChunks(Long knowledgeBaseId, Long documentId, String text, LocalDateTime now) {
-        jdbcTemplate.update(
-                "update ai_knowledge_chunk set is_deleted = 1, update_time = ? where document_id = ? and is_deleted = 0",
-                now,
-                documentId
-        );
+        knowledgeChunkRepository.softDeleteByDocument(documentId, now);
         List<String> chunks = splitChunks(text == null ? "" : text);
         int index = 0;
         for (String chunk : chunks) {
             AiProviderRuntime.EmbeddingVector embedding = providerRuntime.embed(chunk);
-            jdbcTemplate.update(
-                    """
-                            insert into ai_knowledge_chunk (
-                                knowledge_base_id, document_id, chunk_index, content, search_text,
-                                token_count, embedding_model, embedding_dim, embedding_vector_json, vector_indexed_at,
-                                is_deleted, create_time, update_time
-                            ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-                            """,
+            knowledgeChunkRepository.addChunk(
                     knowledgeBaseId,
                     documentId,
                     index++,
@@ -399,8 +294,6 @@ public class AiCommandService {
                     embedding.model(),
                     embedding.dimension(),
                     toJson(embedding.values()),
-                    now,
-                    now,
                     now
             );
         }
@@ -429,14 +322,14 @@ public class AiCommandService {
             byte[] bytes = file.getBytes();
             return new String(bytes, StandardCharsets.UTF_8);
         } catch (IOException exception) {
-            throw new BizException(ErrorCode.BIZ_ERROR, "知识文档读取失败");
+            throw new BizException(ErrorCode.BIZ_ERROR, "Failed to read knowledge document");
         }
     }
 
     private Long assistantId(CurrentUser currentUser) {
         AiEmployeeVO assistant = readQueryService.getAssistantEmployee(currentUser);
         if (assistant == null || assistant.getId() == null) {
-            throw new BizException(ErrorCode.NOT_FOUND, "AI 助手不存在");
+            throw new BizException(ErrorCode.NOT_FOUND, "AI assistant not found");
         }
         return assistant.getId();
     }
@@ -445,78 +338,28 @@ public class AiCommandService {
         String code = "conv_" + UUID.randomUUID().toString().replace("-", "");
         String title = message.trim().length() > 60 ? message.trim().substring(0, 60) : message.trim();
         LocalDateTime now = LocalDateTime.now();
-        Long id = insertAndReturnId("""
-                        insert into ai_conversation (
-                            employee_id, owner_user_id, conversation_code, title, status,
-                            is_pinned, latest_message_at, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, ?, 'ACTIVE', 0, ?, 0, ?, ?)
-                        """,
-                ps -> {
-                    ps.setLong(1, employeeId);
-                    ps.setLong(2, ownerUserId);
-                    ps.setString(3, code);
-                    ps.setString(4, title);
-                    ps.setTimestamp(5, Timestamp.valueOf(now));
-                    ps.setTimestamp(6, Timestamp.valueOf(now));
-                    ps.setTimestamp(7, Timestamp.valueOf(now));
-                }
-        );
-        return new ConversationIdentity(id, code);
+        return conversationRepository.createConversation(ownerUserId, employeeId, code, title, now);
     }
 
     private ConversationIdentity existingConversation(Long ownerUserId, Long conversationId) {
-        Map<String, Object> row = jdbcTemplate.queryForMap(
-                """
-                        select id, conversation_code
-                        from ai_conversation
-                        where owner_user_id = ? and id = ? and is_deleted = 0
-                        """,
-                ownerUserId,
-                conversationId
-        );
-        return new ConversationIdentity(objectLong(row, "id"), String.valueOf(row.get("conversation_code")));
+        return conversationRepository.findActiveConversation(ownerUserId, conversationId);
     }
 
     private void insertMessage(Long conversationId, String role, String content, LocalDateTime now) {
-        jdbcTemplate.update(
-                """
-                        insert into ai_message (
-                            conversation_id, role, content, is_deleted, create_time, update_time
-                        ) values (?, ?, ?, 0, ?, ?)
-                        """,
-                conversationId,
-                role,
-                content,
-                now,
-                now
-        );
+        messageRepository.addMessage(conversationId, role, content, now);
     }
 
     private AiToolVO findTool(String toolCode) {
         return readQueryService.listTools(null).stream()
                 .filter(tool -> tool.toolCode().equals(toolCode))
                 .findFirst()
-                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "AI 工具不存在: " + toolCode));
+                .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND, "AI 闁诲氦顫夐幃鍫曞磿闁秴鐭楅柟绋挎捣閳绘梻鈧箍鍎遍幊鎰板箺閻樼粯鐓? " + toolCode));
     }
 
     private void requireToolPermission(CurrentUser currentUser, AiToolVO tool) {
         if (tool != null && StringUtils.hasText(tool.requiredPermission())) {
             permissionGuard.requirePermission(currentUser, tool.requiredPermission());
         }
-    }
-
-    private Long insertAndReturnId(String sql, StatementBinder binder) {
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            binder.bind(ps);
-            return ps;
-        }, keyHolder);
-        Number key = keyHolder.getKey();
-        if (key == null) {
-            throw new BizException(ErrorCode.SYSTEM_ERROR, "新增记录失败");
-        }
-        return key.longValue();
     }
 
     private String extension(String filename) {
@@ -553,10 +396,6 @@ public class AiCommandService {
         return currentUser.getUserId();
     }
 
-    private Long objectLong(java.sql.ResultSet rs, String column) throws java.sql.SQLException {
-        long value = rs.getLong(column);
-        return rs.wasNull() ? null : value;
-    }
 
     private Long objectLong(Map<String, Object> row, String key) {
         Object value = row.get(key);
@@ -566,19 +405,4 @@ public class AiCommandService {
         return value == null ? null : Long.parseLong(String.valueOf(value));
     }
 
-    private void setNullableLong(PreparedStatement ps, int parameterIndex, Long value) throws java.sql.SQLException {
-        if (value == null) {
-            ps.setObject(parameterIndex, null);
-        } else {
-            ps.setLong(parameterIndex, value);
-        }
-    }
-
-    private record ConversationIdentity(Long id, String code) {
-    }
-
-    @FunctionalInterface
-    private interface StatementBinder {
-        void bind(PreparedStatement ps) throws java.sql.SQLException;
-    }
 }

@@ -2,6 +2,12 @@ package com.lumira.ai.app;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.ai.dto.AiCommandModels.KnowledgeSearchRequest;
+import com.lumira.ai.infrastructure.persistence.JdbcAiConversationRepository;
+import com.lumira.ai.infrastructure.persistence.JdbcAiKnowledgeChunkRepository;
+import com.lumira.ai.infrastructure.persistence.JdbcAiKnowledgeDocumentRepository;
+import com.lumira.ai.infrastructure.persistence.JdbcAiMessageRepository;
+import com.lumira.ai.infrastructure.persistence.JdbcAiToolAuditLogRepository;
+import com.lumira.ai.infrastructure.persistence.JdbcAiToolCallPlanRepository;
 import com.lumira.ai.integration.AiOwnerToolGateway;
 import com.lumira.ai.provider.AiProviderRuntime;
 import com.lumira.ai.vo.AiToolVO;
@@ -29,7 +35,7 @@ class AiCommandServiceTest {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         AiReadQueryService readQueryService = mock(AiReadQueryService.class);
         when(jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(List.of());
-        AiCommandService service = new AiCommandService(jdbcTemplate, readQueryService, noOpGateway(), noOpProvider(), new ObjectMapper(), new PermissionGuard());
+        AiCommandService service = service(jdbcTemplate, readQueryService);
 
         var references = service.searchKnowledge(user(), new KnowledgeSearchRequest("policy", List.of(1L, 2L), 500));
 
@@ -39,7 +45,7 @@ class AiCommandServiceTest {
     @Test
     void executeLocalPermissionSnapshotTool() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        AiCommandService service = new AiCommandService(jdbcTemplate, new AiReadQueryService(jdbcTemplate), noOpGateway(), noOpProvider(), new ObjectMapper(), new PermissionGuard());
+        AiCommandService service = service(jdbcTemplate, new AiReadQueryService(jdbcTemplate));
 
         var result = service.executeTool(user(), new com.lumira.ai.dto.AiCommandModels.ToolExecuteRequest(
                 1L,
@@ -58,7 +64,7 @@ class AiCommandServiceTest {
     @Test
     void executeToolShouldRequireDeclaredToolPermission() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
-        AiCommandService service = new AiCommandService(jdbcTemplate, new AiReadQueryService(jdbcTemplate), noOpGateway(), noOpProvider(), new ObjectMapper(), new PermissionGuard());
+        AiCommandService service = service(jdbcTemplate, new AiReadQueryService(jdbcTemplate));
 
         assertThrows(com.lumira.common.exception.BizException.class, () -> service.executeTool(
                 userWithPermissions("ai:tool:execute"),
@@ -70,6 +76,22 @@ class AiCommandServiceTest {
                         true
                 )
         ));
+    }
+
+    private AiCommandService service(JdbcTemplate jdbcTemplate, AiReadQueryService readQueryService) {
+        return new AiCommandService(
+                new JdbcAiKnowledgeDocumentRepository(jdbcTemplate),
+                new JdbcAiKnowledgeChunkRepository(jdbcTemplate),
+                new JdbcAiConversationRepository(jdbcTemplate),
+                new JdbcAiMessageRepository(jdbcTemplate),
+                new JdbcAiToolCallPlanRepository(jdbcTemplate),
+                new JdbcAiToolAuditLogRepository(jdbcTemplate),
+                readQueryService,
+                noOpGateway(),
+                noOpProvider(),
+                new ObjectMapper(),
+                new PermissionGuard()
+        );
     }
 
     private AiOwnerToolGateway noOpGateway() {

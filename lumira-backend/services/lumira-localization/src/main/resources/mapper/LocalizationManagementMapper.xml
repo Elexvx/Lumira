@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.lumira.saas.modules.localization.mapper.LocalizationManagementMapper">
+<mapper namespace="com.lumira.localization.mapper.LocalizationManagementMapper">
 
     <sql id="entryBaseFrom">
         from sys_localization_entry e
@@ -63,7 +63,7 @@
           e.updated_at as updated_at
     </sql>
 
-    <select id="listEntries" resultType="com.lumira.saas.modules.localization.vo.LocalizationVO$EntryVO">
+    <select id="listEntries" resultType="com.lumira.localization.vo.LocalizationVO$EntryVO">
         <include refid="entrySelectColumns"/>
         <include refid="entryBaseFrom"/>
         order by ${query.sortColumn} ${query.sortDirection}
@@ -79,7 +79,7 @@
         ) entry_candidates
     </select>
 
-    <select id="findEntry" resultType="com.lumira.saas.modules.localization.vo.LocalizationVO$EntryVO">
+    <select id="findEntry" resultType="com.lumira.localization.vo.LocalizationVO$EntryVO">
         <include refid="entrySelectColumns"/>
         from sys_localization_entry e
         join sys_localization_namespace n on n.id = e.namespace_id and n.deleted = 0
@@ -102,7 +102,7 @@
         limit 1
     </select>
 
-    <select id="listRuntimeMessages" resultType="com.lumira.saas.modules.localization.dto.LocalizationQueryModels$RuntimeMessageRow">
+    <select id="listRuntimeMessages" resultType="com.lumira.localization.dto.LocalizationQueryModels$RuntimeMessageRow">
         select
           e.message_key as message_key,
           e.default_message as default_message,
@@ -134,7 +134,7 @@
           and coalesce(t.translated_message, '') &lt;&gt; ''
     </select>
 
-    <select id="listLanguageStats" resultType="com.lumira.saas.modules.localization.dto.LocalizationQueryModels$LanguageStatRow">
+    <select id="listLanguageStats" resultType="com.lumira.localization.dto.LocalizationQueryModels$LanguageStatRow">
         select
           l.locale_code as localeCode,
           coalesce(t.translated_count, 0) as translatedCount,
@@ -186,7 +186,7 @@
           and coalesce(t.translated_message, '') &lt;&gt; ''
     </select>
 
-    <select id="listNamespaceStats" resultType="com.lumira.saas.modules.localization.dto.LocalizationQueryModels$NamespaceStatRow">
+    <select id="listNamespaceStats" resultType="com.lumira.localization.dto.LocalizationQueryModels$NamespaceStatRow">
         select
           n.namespace_code as namespaceCode,
           count(1) as entryCount,

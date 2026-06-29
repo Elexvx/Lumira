@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public final class CompetitionRegistrationDTO {
     private CompetitionRegistrationDTO() {
@@ -15,10 +16,13 @@ public final class CompetitionRegistrationDTO {
     public static class RegistrationCreateRequest {
         @NotNull
         private Long competitionId;
-        @NotNull
         private Long teamId;
         @NotNull
         private Long projectId;
+        @Valid
+        private TeamSnapshotRequest teamSnapshot;
+        @Valid
+        private List<MemberSnapshotRequest> members = new ArrayList<>();
 
         public Long getCompetitionId() { return competitionId; }
         public void setCompetitionId(Long competitionId) { this.competitionId = competitionId; }
@@ -26,6 +30,68 @@ public final class CompetitionRegistrationDTO {
         public void setTeamId(Long teamId) { this.teamId = teamId; }
         public Long getProjectId() { return projectId; }
         public void setProjectId(Long projectId) { this.projectId = projectId; }
+        public TeamSnapshotRequest getTeamSnapshot() { return teamSnapshot; }
+        public void setTeamSnapshot(TeamSnapshotRequest teamSnapshot) { this.teamSnapshot = teamSnapshot; }
+        public List<MemberSnapshotRequest> getMembers() { return members; }
+        public void setMembers(List<MemberSnapshotRequest> members) { this.members = members == null ? new ArrayList<>() : members; }
+    }
+
+    public static class TeamSnapshotRequest {
+        @Size(max = 128)
+        private String teamName;
+        @Size(max = 64)
+        private String teamType;
+        @Size(max = 1024)
+        private String avatarUrl;
+        @Size(max = 32)
+        private String visibility;
+        @Size(max = 32)
+        private String joinMode;
+        @Size(max = 1000)
+        private String description;
+        private Map<String, Object> extraValues;
+
+        public String getTeamName() { return teamName; }
+        public void setTeamName(String teamName) { this.teamName = teamName; }
+        public String getTeamType() { return teamType; }
+        public void setTeamType(String teamType) { this.teamType = teamType; }
+        public String getAvatarUrl() { return avatarUrl; }
+        public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+        public String getVisibility() { return visibility; }
+        public void setVisibility(String visibility) { this.visibility = visibility; }
+        public String getJoinMode() { return joinMode; }
+        public void setJoinMode(String joinMode) { this.joinMode = joinMode; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+        public Map<String, Object> getExtraValues() { return extraValues; }
+        public void setExtraValues(Map<String, Object> extraValues) { this.extraValues = extraValues; }
+    }
+
+    public static class MemberSnapshotRequest {
+        @Size(max = 128)
+        private String memberName;
+        @Size(max = 64)
+        private String employeeNo;
+        @Size(max = 128)
+        private String departmentName;
+        @Size(max = 32)
+        private String role;
+        @Size(max = 512)
+        private String remark;
+        private Map<String, Object> extraValues;
+
+        public String getMemberName() { return memberName; }
+        public void setMemberName(String memberName) { this.memberName = memberName; }
+        public String getEmployeeNo() { return employeeNo; }
+        public void setEmployeeNo(String employeeNo) { this.employeeNo = employeeNo; }
+        public String getDepartmentName() { return departmentName; }
+        public void setDepartmentName(String departmentName) { this.departmentName = departmentName; }
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+        public String getRemark() { return remark; }
+        public void setRemark(String remark) { this.remark = remark; }
+        public Map<String, Object> getExtraValues() { return extraValues; }
+        public void setExtraValues(Map<String, Object> extraValues) { this.extraValues = extraValues; }
     }
 
     public static class StageUpsertRequest {
