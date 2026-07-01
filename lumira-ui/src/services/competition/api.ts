@@ -1,4 +1,4 @@
-import { request } from '@/services/common/request';
+import { request, type RequestOptions } from '@/services/common/request';
 import type {
   CompetitionPaymentOrderRecord,
   CompetitionMaterialSubmissionRecord,
@@ -38,14 +38,16 @@ export const createCompetitionDraft = (data: CompetitionUpsertPayload) =>
     data,
   });
 
-export const updateCompetitionDraft = (id: number, data: CompetitionUpsertPayload) =>
+export const updateCompetitionDraft = (id: number, data: CompetitionUpsertPayload, options: RequestOptions = {}) =>
   request<CompetitionRecord>(`${COMPETITION_API}/drafts/${id}`, {
+    ...options,
     method: 'PUT',
     data,
   });
 
-export const updateCompetition = (id: number, data: CompetitionUpsertPayload) =>
+export const updateCompetition = (id: number, data: CompetitionUpsertPayload, options: RequestOptions = {}) =>
   request<CompetitionRecord>(`${COMPETITION_API}/${id}`, {
+    ...options,
     method: 'PUT',
     data,
   });
@@ -58,8 +60,9 @@ export const deleteCompetition = (id: number) =>
 export const getCompetitionSettings = (competitionUuid: string) =>
   request<CompetitionSettingsRecord>(`${COMPETITION_API}/${competitionUuid}/settings`);
 
-export const saveCompetitionSettingsModule = (competitionUuid: string, module: string, items: CompetitionConfigItem[]) =>
+export const saveCompetitionSettingsModule = (competitionUuid: string, module: string, items: CompetitionConfigItem[], options: RequestOptions = {}) =>
   request<CompetitionSettingsRecord>(`${COMPETITION_API}/${competitionUuid}/settings/${module}`, {
+    ...options,
     method: 'PUT',
     data: { items },
   });

@@ -1,4 +1,4 @@
--- Lumira consolidated database initialization script.
+﻿-- Lumira consolidated database initialization script.
 -- Generated from all service migration modules while Flyway is disabled before first production launch.
 -- Includes minimum bootstrap data required by infrastructure components such as XXL-JOB Admin.
 
@@ -1402,7 +1402,7 @@ CREATE TABLE `sys_user_passkey_credential` (
   `transports` varchar(255) DEFAULT NULL,
   `backup_eligible` tinyint NOT NULL DEFAULT '0',
   `backup_state` tinyint NOT NULL DEFAULT '0',
-  `label` varchar(128) NOT NULL DEFAULT '通行密钥',
+  `label` varchar(128) NOT NULL DEFAULT '閫氳瀵嗛挜',
   `last_used_at` datetime DEFAULT NULL,
   `created_by` bigint DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -2296,180 +2296,127 @@ CREATE INDEX `idx_sensitive_word_enabled`
 
 -- Bootstrap protected administrator.
 -- The BCrypt hashes below are for the initial password `123456`.
-INSERT INTO `ai_employee` (
-    `username`, `nickname`, `position`, `avatar_key`, `description`, `greeting`,
-    `system_prompt`, `default_llm_service_id`, `enabled`, `sort_order`, `is_deleted`, `create_time`, `update_time`
-)
-VALUES (
-    'ai-assistant',
-    'AI Assistant',
-    'General Chat',
-    NULL,
-    'Default assistant for general AI conversations.',
-    'Hello, I am AI Assistant. How can I help?',
-    'You are the general AI assistant for this enterprise platform. Help clearly and concisely, answer in the user''s language, and do not claim access to a specific digital employee''s private skills or knowledge unless one is selected.',
-    NULL,
-    1,
-    100000,
-    0,
-    NOW(),
-    NOW()
-)
-ON DUPLICATE KEY UPDATE
-    `nickname` = VALUES(`nickname`),
-    `position` = VALUES(`position`),
-    `description` = VALUES(`description`),
-    `greeting` = VALUES(`greeting`),
-    `system_prompt` = VALUES(`system_prompt`),
-    `enabled` = 1,
-    `update_time` = VALUES(`update_time`);
-
 INSERT INTO `sys_permission` (
     `permission_key`, `permission_name`, `permission_group`, `source_type`, `plugin_code`,
     `created_by`, `updated_by`, `deleted`
 )
 VALUES
-    ('ai:assistant:view', '查看 AI 助手', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:chat:send', '发送 AI 对话', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:employee:create', '新建数字员工', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:employee:delete', '删除数字员工', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:employee:skills', '配置数字员工技能', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:employee:status', '启停数字员工', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:employee:update', '编辑数字员工', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:knowledge:bind', '绑定数字员工', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:knowledge:create', '新建知识库', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:knowledge:delete', '删除知识库', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:knowledge:document:delete', '删除知识库文档', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:knowledge:document:index', '重建文档索引', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:knowledge:document:upload', '上传知识库文档', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:knowledge:query', '检索知识库', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:knowledge:share', '发布企业知识库', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:knowledge:update', '编辑知识库', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:knowledge:view', '查看知识库', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:llm:create', '新建模型服务', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:llm:delete', '删除模型服务', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:llm:status', '启停模型服务', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:llm:update', '编辑模型服务', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:tool:execute', '执行 AI 工具', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:tool:invoke', '调用 AI 工具', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:tool:view', '查看 AI 工具', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('ai:view', '访问 AI', 'ai', 'CORE', NULL, 0, 0, 0),
-    ('audit:login:view', '查看登录日志', 'audit', 'CORE', NULL, 0, 0, 0),
-    ('audit:operation:view', '查看操作日志', 'audit', 'CORE', NULL, 0, 0, 0),
-    ('audit:view', '查看审计中心', 'audit', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:activity:view', '查看活动', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:activity:create', '新建活动', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:activity:update', '编辑活动', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:activity:delete', '删除活动', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:competition:view', '查看赛事', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:competition:create', '新建赛事', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:competition:update', '编辑赛事', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:competition:delete', '删除赛事', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:registration:view', '查看赛事报名', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:registration:create', '创建赛事报名', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:registration:update', '编辑赛事报名', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:registration:pay', '支付报名费用', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:material:view', '查看报名材料', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:material:submit', '提交报名材料', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:stage:view', '查看赛事阶段', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:stage:manage', '管理赛事阶段', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate-template:view', '查看证书模板', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate-template:create', '新建证书模板', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate-template:update', '编辑证书模板', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate-template:publish', '发布证书模板', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate-template:delete', '删除证书模板', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate-batch:view', '查看证书批次', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate-batch:create', '生成证书批次', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate-batch:download', '下载证书批次', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate:view', '查看证书', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate:download', '下载证书', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate:regenerate', '重新生成证书', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:certificate:revoke', '撤销证书', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('expert:view', '查看专家', 'expert', 'CORE', NULL, 0, 0, 0),
-    ('expert:create', '新建专家', 'expert', 'CORE', NULL, 0, 0, 0),
-    ('expert:update', '编辑专家', 'expert', 'CORE', NULL, 0, 0, 0),
-    ('expert:delete', '删除专家', 'expert', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:project:view', '查看项目', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:project:create', '新建项目', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:project:update', '编辑项目', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('aiadc:project:delete', '删除项目', 'aiadc', 'CORE', NULL, 0, 0, 0),
-    ('dashboard:view', '查看工作台', 'dashboard', 'CORE', NULL, 0, 0, 0),
-    ('download:center:view', '查看下载中心', 'download', 'CORE', NULL, 0, 0, 0),
-    ('localization:view', '查看多语言设置', 'localization', 'CORE', NULL, 0, 0, 0),
-    ('payment:config:test', '测试支付配置', 'payment', 'CORE', NULL, 0, 0, 0),
-    ('payment:config:update', '编辑支付配置', 'payment', 'CORE', NULL, 0, 0, 0),
-    ('payment:config:view', '查看支付配置', 'payment', 'CORE', NULL, 0, 0, 0),
-    ('payment:order:create', '创建支付订单', 'payment', 'CORE', NULL, 0, 0, 0),
-    ('payment:order:view', '查看支付订单', 'payment', 'CORE', NULL, 0, 0, 0),
-    ('payment:refund:create', '创建退款', 'payment', 'CORE', NULL, 0, 0, 0),
-    ('payment:refund:view', '查看退款', 'payment', 'CORE', NULL, 0, 0, 0),
-    ('payment:view', '访问支付中心', 'payment', 'CORE', NULL, 0, 0, 0),
-    ('payment:webhook:retry', '重试支付回调', 'payment', 'CORE', NULL, 0, 0, 0),
-    ('payment:webhook:view', '查看支付回调', 'payment', 'CORE', NULL, 0, 0, 0),
-    ('plugin:management:view', '查看插件管理', 'plugin', 'CORE', NULL, 0, 0, 0),
-    ('plugin:sensitive-words:import', '导入敏感词', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
-    ('plugin:sensitive-words:manage', '管理敏感词', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
-    ('plugin:sensitive-words:view', '查看敏感词', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
-    ('plugin:work-order-feedback:create', '提交工单反馈', 'plugin', 'PLUGIN', 'work-order-feedback', 0, 0, 0),
-    ('plugin:work-order-feedback:manage', '处理工单反馈', 'plugin', 'PLUGIN', 'work-order-feedback', 0, 0, 0),
-    ('plugin:work-order-feedback:view', '查看工单反馈', 'plugin', 'PLUGIN', 'work-order-feedback', 0, 0, 0),
-    ('profile:view', '查看个人中心', 'profile', 'CORE', NULL, 0, 0, 0),
-    ('system:config:update', '编辑系统配置', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:config:view', '查看系统配置', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:department:create', '新建部门', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:department:delete', '删除部门', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:department:update', '编辑部门', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:department:view', '查看部门', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:dict:create', '新建字典', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:dict:delete', '删除字典', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:dict:update', '编辑字典', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:dict:view', '查看字典', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:file:delete', '删除文件', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:file:manage', '管理文件', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:file:upload', '上传文件', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:file:view', '查看文件', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:menu:create', '新建菜单', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:menu:delete', '删除菜单', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:menu:status', '启停菜单', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:menu:update', '编辑菜单', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:menu:view', '查看菜单', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:monitor:docs:view', '查看接口文档', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:monitor:redis:view', '查看 Redis 监控', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:monitor:service:view', '查看服务监控', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:monitor:view', '查看系统监控', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:notification:view', '查看消息通知', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:online-user:ban', '封禁在线用户', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:online-user:kick', '强退在线用户', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:online-user:view', '查看在线用户', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:role:create', '新建角色', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:role:delete', '删除角色', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:role:grant', '分配角色', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:role:permissions', '配置角色权限', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:role:update', '编辑角色', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:role:view', '查看角色', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:update:check', '检查系统更新', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:update:install', '安装系统更新', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:update:rollback', '回滚系统更新', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:update:view', '查看系统更新', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:user:create', '新建用户', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:user:delete', '删除用户', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:user:export', '导出用户', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:user:sensitive:view', '查看用户敏感信息', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:user:status', '启停用户', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:user:update', '编辑用户', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:user:view', '查看用户', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:verification:manage', '管理认证设置', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:verification:view', '查看认证设置', 'system', 'CORE', NULL, 0, 0, 0),
-    ('system:view', '访问系统管理', 'system', 'CORE', NULL, 0, 0, 0),
-    ('team:view', '查看团队', 'team', 'CORE', NULL, 0, 0, 0),
-    ('team:create', '新建团队', 'team', 'CORE', NULL, 0, 0, 0),
-    ('team:update', '编辑团队', 'team', 'CORE', NULL, 0, 0, 0),
-    ('team:delete', '删除团队', 'team', 'CORE', NULL, 0, 0, 0),
-    ('team:member:view', '查看团队成员', 'team', 'CORE', NULL, 0, 0, 0),
-    ('team:member:invite', '邀请团队成员', 'team', 'CORE', NULL, 0, 0, 0),
-    ('team:member:remove', '移除团队成员', 'team', 'CORE', NULL, 0, 0, 0),
-    ('team:member:role-update', '调整团队成员角色', 'team', 'CORE', NULL, 0, 0, 0),
-    ('user:center:view', '访问用户中心', 'user', 'CORE', NULL, 0, 0, 0)
+    ('audit:login:view', '鏌ョ湅鐧诲綍鏃ュ織', 'audit', 'CORE', NULL, 0, 0, 0),
+    ('audit:operation:view', '鏌ョ湅鎿嶄綔鏃ュ織', 'audit', 'CORE', NULL, 0, 0, 0),
+    ('audit:view', '鏌ョ湅瀹¤涓績', 'audit', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:activity:view', '鏌ョ湅娲诲姩', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:activity:create', '鏂板缓娲诲姩', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:activity:update', '缂栬緫娲诲姩', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:activity:delete', '鍒犻櫎娲诲姩', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:competition:view', '鏌ョ湅璧涗簨', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:competition:create', '鏂板缓璧涗簨', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:competition:update', '缂栬緫璧涗簨', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:competition:delete', '鍒犻櫎璧涗簨', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:registration:view', '鏌ョ湅璧涗簨鎶ュ悕', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:registration:create', '鍒涘缓璧涗簨鎶ュ悕', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:registration:update', '缂栬緫璧涗簨鎶ュ悕', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:registration:pay', '鏀粯鎶ュ悕璐圭敤', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:material:view', '鏌ョ湅鎶ュ悕鏉愭枡', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:material:submit', '鎻愪氦鎶ュ悕鏉愭枡', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:stage:view', '鏌ョ湅璧涗簨闃舵', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:stage:manage', '绠＄悊璧涗簨闃舵', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate-template:view', '鏌ョ湅璇佷功妯℃澘', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate-template:create', '鏂板缓璇佷功妯℃澘', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate-template:update', '缂栬緫璇佷功妯℃澘', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate-template:publish', '鍙戝竷璇佷功妯℃澘', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate-template:delete', '鍒犻櫎璇佷功妯℃澘', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate-batch:view', '鏌ョ湅璇佷功鎵规', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate-batch:create', '鐢熸垚璇佷功鎵规', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate-batch:download', '涓嬭浇璇佷功鎵规', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate:view', '鏌ョ湅璇佷功', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate:download', '涓嬭浇璇佷功', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate:regenerate', '閲嶆柊鐢熸垚璇佷功', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:certificate:revoke', '鎾ら攢璇佷功', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('expert:view', '鏌ョ湅涓撳', 'expert', 'CORE', NULL, 0, 0, 0),
+    ('expert:create', '鏂板缓涓撳', 'expert', 'CORE', NULL, 0, 0, 0),
+    ('expert:update', '缂栬緫涓撳', 'expert', 'CORE', NULL, 0, 0, 0),
+    ('expert:delete', '鍒犻櫎涓撳', 'expert', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:project:view', '鏌ョ湅椤圭洰', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:project:create', '鏂板缓椤圭洰', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:project:update', '缂栬緫椤圭洰', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('aiadc:project:delete', '鍒犻櫎椤圭洰', 'aiadc', 'CORE', NULL, 0, 0, 0),
+    ('dashboard:view', 'View dashboard', 'dashboard', 'CORE', NULL, 0, 0, 0),
+    ('download:center:view', '鏌ョ湅涓嬭浇涓績', 'download', 'CORE', NULL, 0, 0, 0),
+    ('localization:view', '鏌ョ湅澶氳瑷€璁剧疆', 'localization', 'CORE', NULL, 0, 0, 0),
+    ('payment:config:test', '娴嬭瘯鏀粯閰嶇疆', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('payment:config:update', '缂栬緫鏀粯閰嶇疆', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('payment:config:view', '鏌ョ湅鏀粯閰嶇疆', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('payment:order:create', '鍒涘缓鏀粯璁㈠崟', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('payment:order:view', '鏌ョ湅鏀粯璁㈠崟', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('payment:refund:create', 'Create refund', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('payment:refund:view', 'View refund', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('payment:view', '璁块棶鏀粯涓績', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('payment:webhook:retry', '閲嶈瘯鏀粯鍥炶皟', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('payment:webhook:view', '鏌ョ湅鏀粯鍥炶皟', 'payment', 'CORE', NULL, 0, 0, 0),
+    ('plugin:management:view', '鏌ョ湅鎻掍欢绠＄悊', 'plugin', 'CORE', NULL, 0, 0, 0),
+    ('plugin:sensitive-words:import', 'Import sensitive words', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
+    ('plugin:sensitive-words:manage', 'Manage sensitive words', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
+    ('plugin:sensitive-words:view', 'View sensitive words', 'plugin', 'PLUGIN', 'sensitive-words', 0, 0, 0),
+    ('plugin:work-order-feedback:create', '鎻愪氦宸ュ崟鍙嶉', 'plugin', 'PLUGIN', 'work-order-feedback', 0, 0, 0),
+    ('plugin:work-order-feedback:manage', '澶勭悊宸ュ崟鍙嶉', 'plugin', 'PLUGIN', 'work-order-feedback', 0, 0, 0),
+    ('plugin:work-order-feedback:view', '鏌ョ湅宸ュ崟鍙嶉', 'plugin', 'PLUGIN', 'work-order-feedback', 0, 0, 0),
+    ('profile:view', '鏌ョ湅涓汉涓績', 'profile', 'CORE', NULL, 0, 0, 0),
+    ('system:config:update', '缂栬緫绯荤粺閰嶇疆', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:config:view', '鏌ョ湅绯荤粺閰嶇疆', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:department:create', '鏂板缓閮ㄩ棬', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:department:delete', '鍒犻櫎閮ㄩ棬', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:department:update', '缂栬緫閮ㄩ棬', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:department:view', '鏌ョ湅閮ㄩ棬', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:dict:create', '鏂板缓瀛楀吀', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:dict:delete', '鍒犻櫎瀛楀吀', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:dict:update', '缂栬緫瀛楀吀', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:dict:view', '鏌ョ湅瀛楀吀', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:file:delete', '鍒犻櫎鏂囦欢', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:file:manage', '绠＄悊鏂囦欢', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:file:upload', '涓婁紶鏂囦欢', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:file:view', '鏌ョ湅鏂囦欢', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:menu:create', '鏂板缓鑿滃崟', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:menu:delete', '鍒犻櫎鑿滃崟', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:menu:status', '鍚仠鑿滃崟', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:menu:update', '缂栬緫鑿滃崟', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:menu:view', '鏌ョ湅鑿滃崟', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:monitor:docs:view', '鏌ョ湅鎺ュ彛鏂囨。', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:monitor:redis:view', '鏌ョ湅 Redis 鐩戞帶', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:monitor:service:view', '鏌ョ湅鏈嶅姟鐩戞帶', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:monitor:view', '鏌ョ湅绯荤粺鐩戞帶', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:notification:view', '鏌ョ湅娑堟伅閫氱煡', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:online-user:ban', '灏佺鍦ㄧ嚎鐢ㄦ埛', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:online-user:kick', '寮洪€€鍦ㄧ嚎鐢ㄦ埛', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:online-user:view', '鏌ョ湅鍦ㄧ嚎鐢ㄦ埛', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:role:create', '鏂板缓瑙掕壊', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:role:delete', '鍒犻櫎瑙掕壊', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:role:grant', '鍒嗛厤瑙掕壊', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:role:permissions', '閰嶇疆瑙掕壊鏉冮檺', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:role:update', '缂栬緫瑙掕壊', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:role:view', '鏌ョ湅瑙掕壊', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:update:check', 'Check system updates', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:update:install', '瀹夎绯荤粺鏇存柊', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:update:rollback', '鍥炴粴绯荤粺鏇存柊', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:update:view', '鏌ョ湅绯荤粺鏇存柊', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:user:create', '鏂板缓鐢ㄦ埛', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:user:delete', '鍒犻櫎鐢ㄦ埛', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:user:export', '瀵煎嚭鐢ㄦ埛', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:user:sensitive:view', '鏌ョ湅鐢ㄦ埛鏁忔劅淇℃伅', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:user:status', '鍚仠鐢ㄦ埛', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:user:update', '缂栬緫鐢ㄦ埛', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:user:view', '鏌ョ湅鐢ㄦ埛', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:verification:manage', '绠＄悊璁よ瘉璁剧疆', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:verification:view', '鏌ョ湅璁よ瘉璁剧疆', 'system', 'CORE', NULL, 0, 0, 0),
+    ('system:view', '璁块棶绯荤粺绠＄悊', 'system', 'CORE', NULL, 0, 0, 0),
+    ('team:view', '鏌ョ湅鍥㈤槦', 'team', 'CORE', NULL, 0, 0, 0),
+    ('team:create', '鏂板缓鍥㈤槦', 'team', 'CORE', NULL, 0, 0, 0),
+    ('team:update', '缂栬緫鍥㈤槦', 'team', 'CORE', NULL, 0, 0, 0),
+    ('team:delete', '鍒犻櫎鍥㈤槦', 'team', 'CORE', NULL, 0, 0, 0),
+    ('team:member:view', '鏌ョ湅鍥㈤槦鎴愬憳', 'team', 'CORE', NULL, 0, 0, 0),
+    ('team:member:invite', 'Invite team member', 'team', 'CORE', NULL, 0, 0, 0),
+    ('team:member:remove', '绉婚櫎鍥㈤槦鎴愬憳', 'team', 'CORE', NULL, 0, 0, 0),
+    ('team:member:role-update', '璋冩暣鍥㈤槦鎴愬憳瑙掕壊', 'team', 'CORE', NULL, 0, 0, 0),
+    ('user:center:view', '璁块棶鐢ㄦ埛涓績', 'user', 'CORE', NULL, 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `permission_name` = VALUES(`permission_name`),
     `permission_group` = VALUES(`permission_group`),
@@ -2483,40 +2430,36 @@ INSERT INTO `sys_menu` (
     `sort_no`, `permission_key`, `status`, `created_by`, `updated_by`, `deleted`
 )
 VALUES
-    (-955, 0, 'dashboard.home', '首页', 'MENU', '/dashboard/home', '@/pages/dashboard/DashboardHomePage', 'DashboardOutlined', 0, 'dashboard:view', 'ENABLED', 0, 0, 0),
-    (-956, -1100, 'files.download-center', '下载中心', 'MENU', '/data-management/download-center', '@/pages/files/DownloadCenter', 'DownloadOutlined', 6, 'download:center:view', 'ENABLED', 0, 0, 0),
-    (-990, 0, 'ai.root', 'AI', 'CATALOG', '/ai', 'redirect:/ai/assistant', 'RobotOutlined', 2, NULL, 'ENABLED', 0, 0, 0),
-    (-989, -990, 'ai.assistant', 'AI 助手', 'MENU', '/ai/assistant', '@/pages/ai/Assistant', 'RobotOutlined', 1, 'ai:assistant:view', 'ENABLED', 0, 0, 0),
-    (-1051, -989, 'ai.assistant.send', '发送对话', 'BUTTON', NULL, NULL, NULL, 1, 'ai:chat:send', 'ENABLED', 0, 0, 0),
-    (-988, -990, 'ai.knowledge', '知识库', 'MENU', '/ai/knowledge', '@/pages/ai/knowledge/KnowledgePage', 'FileSearchOutlined', 2, 'ai:knowledge:view', 'ENABLED', 0, 0, 0),
-    (-1100, 0, 'data.management.root', '数据管理', 'CATALOG', '/data-management', 'redirect:/competitions/management', 'DatabaseOutlined', 3, NULL, 'ENABLED', 0, 0, 0),
-    (-1101, -1100, 'data.query-center', '查询中心', 'CATALOG', '/data-management/query-center', 'redirect:/team/search', 'SearchOutlined', 7, NULL, 'ENABLED', 0, 0, 0),
-    (-1041, 0, 'activity.root', '活动', 'CATALOG', '/activities', 'redirect:/activities/management', 'CalendarOutlined', 90, NULL, 'DISABLED', 0, 0, 1),
-    (-1052, -1100, 'activity.activities', '活动管理', 'MENU', '/activities/management', '@/pages/activity', 'CalendarOutlined', 2, 'aiadc:activity:view', 'ENABLED', 0, 0, 0),
-    (-1053, -1101, 'activity.search', '活动查询', 'MENU', '/activities/search', '@/pages/activity', 'SearchOutlined', 3, 'aiadc:activity:view', 'ENABLED', 0, 0, 0),
-    (-1043, -1052, 'activity.activities.create', '新增活动', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:activity:create', 'ENABLED', 0, 0, 0),
-    (-1044, -1052, 'activity.activities.update', '编辑活动', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:activity:update', 'ENABLED', 0, 0, 0),
-    (-1045, -1052, 'activity.activities.delete', '删除活动', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:activity:delete', 'ENABLED', 0, 0, 0),
-    (-1070, 0, 'competition.root', '赛事', 'CATALOG', '/competitions', 'redirect:/competitions/register', 'TrophyOutlined', 4, NULL, 'ENABLED', 0, 0, 0),
-    (-1071, -1100, 'competition.management', '赛事管理', 'MENU', '/competitions/management', '@/pages/competition', 'TrophyOutlined', 1, 'aiadc:competition:view', 'ENABLED', 0, 0, 0),
-    (-1075, -1070, 'competition.registration', '赛事报名', 'MENU', '/competitions/register', '@/pages/competition', 'FormOutlined', 1, NULL, 'ENABLED', 0, 0, 0),
-    (-1076, -1070, 'activity.registration', '活动报名', 'MENU', '/competitions/activity-register', '@/pages/competition', 'CalendarOutlined', 2, NULL, 'ENABLED', 0, 0, 0),
-    (-1077, -1070, 'expert.application', '专家申请', 'MENU', '/competitions/expert-apply', '@/pages/competition', 'SolutionOutlined', 3, NULL, 'ENABLED', 0, 0, 0),
-    (-1091, 0, 'project.root', '项目', 'CATALOG', '/projects', 'redirect:/projects/management', 'ProjectOutlined', 92, NULL, 'DISABLED', 0, 0, 1),
-    (-1092, -1100, 'project.management', '项目管理', 'MENU', '/projects/management', '@/pages/project', 'ProjectOutlined', 3, 'aiadc:project:view', 'ENABLED', 0, 0, 0),
-    (-1096, -1101, 'project.search', '项目查询', 'MENU', '/projects/search', '@/pages/project', 'SearchOutlined', 2, 'aiadc:project:view', 'ENABLED', 0, 0, 0),
-    (-1093, -1092, 'project.management.create', '新增项目', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:project:create', 'ENABLED', 0, 0, 0),
-    (-1094, -1092, 'project.management.update', '编辑项目', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:project:update', 'ENABLED', 0, 0, 0),
-    (-1095, -1092, 'project.management.delete', '删除项目', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:project:delete', 'ENABLED', 0, 0, 0),
-    (-1110, -1100, 'payment.management', '支付管理', 'MENU', '/payments/management', '@/pages/payment', 'CreditCardOutlined', 5, 'payment:order:view', 'ENABLED', 0, 0, 0),
-    (-1111, -1101, 'payment.status', '支付状态查询', 'MENU', '/payments/status', '@/pages/payment', 'SearchOutlined', 4, 'payment:order:view', 'ENABLED', 0, 0, 0),
-    (-1079, 0, 'certificate.root', '证书管理', 'CATALOG', '/certificates', 'redirect:/certificates/templates', 'FileProtectOutlined', 5, NULL, 'ENABLED', 0, 0, 0),
-    (-1080, -1079, 'certificate.templates', '证书模板', 'MENU', '/certificates/templates', '@/pages/certificates/TemplatesPage', 'FileProtectOutlined', 1, 'aiadc:certificate-template:view', 'ENABLED', 0, 0, 0),
-    (-1081, -1079, 'certificate.generate', '证书生成', 'MENU', '/certificates/generate', '@/pages/certificates/GeneratePage', 'FileDoneOutlined', 2, 'aiadc:certificate-batch:create', 'ENABLED', 0, 0, 0),
-    (-1082, -1079, 'certificate.records', '证书记录', 'MENU', '/certificates/records', '@/pages/certificates/RecordsPage', 'AuditOutlined', 3, 'aiadc:certificate:view', 'ENABLED', 0, 0, 0),
-    (-1072, -1071, 'competition.management.create', '新增赛事', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:competition:create', 'ENABLED', 0, 0, 0),
-    (-1073, -1071, 'competition.management.update', '编辑赛事', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:competition:update', 'ENABLED', 0, 0, 0),
-    (-1074, -1071, 'competition.management.delete', '删除赛事', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:competition:delete', 'ENABLED', 0, 0, 0),
+    (-955, 0, 'dashboard.home', '棣栭〉', 'MENU', '/dashboard/home', '@/pages/dashboard/DashboardHomePage', 'DashboardOutlined', 0, 'dashboard:view', 'ENABLED', 0, 0, 0),
+    (-956, -1100, 'files.download-center', '涓嬭浇涓績', 'MENU', '/data-management/download-center', '@/pages/files/DownloadCenter', 'DownloadOutlined', 6, 'download:center:view', 'ENABLED', 0, 0, 0),
+    (-1100, 0, 'data.management.root', '鏁版嵁绠＄悊', 'CATALOG', '/data-management', 'redirect:/competitions/management', 'DatabaseOutlined', 3, NULL, 'ENABLED', 0, 0, 0),
+    (-1101, -1100, 'data.query-center', '鏌ヨ涓績', 'CATALOG', '/data-management/query-center', 'redirect:/team/search', 'SearchOutlined', 7, NULL, 'ENABLED', 0, 0, 0),
+    (-1041, 0, 'activity.root', '娲诲姩', 'CATALOG', '/activities', 'redirect:/activities/management', 'CalendarOutlined', 90, NULL, 'DISABLED', 0, 0, 1),
+    (-1052, -1100, 'activity.activities', '娲诲姩绠＄悊', 'MENU', '/activities/management', '@/pages/activity', 'CalendarOutlined', 2, 'aiadc:activity:view', 'ENABLED', 0, 0, 0),
+    (-1053, -1101, 'activity.search', '娲诲姩鏌ヨ', 'MENU', '/activities/search', '@/pages/activity', 'SearchOutlined', 3, 'aiadc:activity:view', 'ENABLED', 0, 0, 0),
+    (-1043, -1052, 'activity.activities.create', '鏂板娲诲姩', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:activity:create', 'ENABLED', 0, 0, 0),
+    (-1044, -1052, 'activity.activities.update', '缂栬緫娲诲姩', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:activity:update', 'ENABLED', 0, 0, 0),
+    (-1045, -1052, 'activity.activities.delete', '鍒犻櫎娲诲姩', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:activity:delete', 'ENABLED', 0, 0, 0),
+    (-1070, 0, 'competition.root', '璧涗簨', 'CATALOG', '/competitions', 'redirect:/competitions/register', 'TrophyOutlined', 4, NULL, 'ENABLED', 0, 0, 0),
+    (-1071, -1100, 'competition.management', '璧涗簨绠＄悊', 'MENU', '/competitions/management', '@/pages/competition', 'TrophyOutlined', 1, 'aiadc:competition:view', 'ENABLED', 0, 0, 0),
+    (-1075, -1070, 'competition.registration', '璧涗簨鎶ュ悕', 'MENU', '/competitions/register', '@/pages/competition', 'FormOutlined', 1, NULL, 'ENABLED', 0, 0, 0),
+    (-1076, -1041, 'activity.registration', '活动报名', 'MENU', '/activities/register', '@/pages/competition', 'CalendarOutlined', 1, NULL, 'ENABLED', 0, 0, 0),
+    (-1077, -1070, 'expert.application', '涓撳鐢宠', 'MENU', '/competitions/expert-apply', '@/pages/competition', 'SolutionOutlined', 3, NULL, 'ENABLED', 0, 0, 0),
+    (-1091, 0, 'project.root', '椤圭洰', 'CATALOG', '/projects', 'redirect:/projects/management', 'ProjectOutlined', 92, NULL, 'DISABLED', 0, 0, 1),
+    (-1092, -1100, 'project.management', '椤圭洰绠＄悊', 'MENU', '/projects/management', '@/pages/project', 'ProjectOutlined', 3, 'aiadc:project:view', 'ENABLED', 0, 0, 0),
+    (-1096, -1101, 'project.search', '椤圭洰鏌ヨ', 'MENU', '/projects/search', '@/pages/project', 'SearchOutlined', 2, 'aiadc:project:view', 'ENABLED', 0, 0, 0),
+    (-1093, -1092, 'project.management.create', '鏂板椤圭洰', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:project:create', 'ENABLED', 0, 0, 0),
+    (-1094, -1092, 'project.management.update', '缂栬緫椤圭洰', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:project:update', 'ENABLED', 0, 0, 0),
+    (-1095, -1092, 'project.management.delete', '鍒犻櫎椤圭洰', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:project:delete', 'ENABLED', 0, 0, 0),
+    (-1110, -1100, 'payment.management', '鏀粯绠＄悊', 'MENU', '/payments/management', '@/pages/payment', 'CreditCardOutlined', 5, 'payment:order:view', 'ENABLED', 0, 0, 0),
+    (-1111, -1101, 'payment.status', 'Payment status query', 'MENU', '/payments/status', '@/pages/payment', 'SearchOutlined', 4, 'payment:order:view', 'ENABLED', 0, 0, 0),
+    (-1079, 0, 'certificate.root', '璇佷功绠＄悊', 'CATALOG', '/certificates', 'redirect:/certificates/templates', 'FileProtectOutlined', 5, NULL, 'ENABLED', 0, 0, 0),
+    (-1080, -1079, 'certificate.templates', '璇佷功妯℃澘', 'MENU', '/certificates/templates', '@/pages/certificates/TemplatesPage', 'FileProtectOutlined', 1, 'aiadc:certificate-template:view', 'ENABLED', 0, 0, 0),
+    (-1081, -1079, 'certificate.generate', '璇佷功鐢熸垚', 'MENU', '/certificates/generate', '@/pages/certificates/GeneratePage', 'FileDoneOutlined', 2, 'aiadc:certificate-batch:create', 'ENABLED', 0, 0, 0),
+    (-1082, -1079, 'certificate.records', '璇佷功璁板綍', 'MENU', '/certificates/records', '@/pages/certificates/RecordsPage', 'AuditOutlined', 3, 'aiadc:certificate:view', 'ENABLED', 0, 0, 0),
+    (-1072, -1071, 'competition.management.create', '鏂板璧涗簨', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:competition:create', 'ENABLED', 0, 0, 0),
+    (-1073, -1071, 'competition.management.update', '缂栬緫璧涗簨', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:competition:update', 'ENABLED', 0, 0, 0),
+    (-1074, -1071, 'competition.management.delete', '鍒犻櫎璧涗簨', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:competition:delete', 'ENABLED', 0, 0, 0),
     (-1083, -1080, 'certificate.templates.create', 'Create certificate template', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:certificate-template:create', 'ENABLED', 0, 0, 0),
     (-1084, -1080, 'certificate.templates.update', 'Update certificate template', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:certificate-template:update', 'ENABLED', 0, 0, 0),
     (-1085, -1080, 'certificate.templates.publish', 'Publish certificate template', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:certificate-template:publish', 'ENABLED', 0, 0, 0),
@@ -2525,60 +2468,59 @@ VALUES
     (-1088, -1082, 'certificate.records.download', 'Download certificate', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:certificate:download', 'ENABLED', 0, 0, 0),
     (-1089, -1082, 'certificate.records.regenerate', 'Regenerate certificate', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:certificate:regenerate', 'ENABLED', 0, 0, 0),
     (-1090, -1082, 'certificate.records.revoke', 'Revoke certificate', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:certificate:revoke', 'ENABLED', 0, 0, 0),
-    (-1060, 0, 'expert.root', '专家库', 'CATALOG', '/experts', 'redirect:/experts/management', 'SolutionOutlined', 6, NULL, 'ENABLED', 0, 0, 0),
-    (-1061, -1060, 'expert.management', '专家管理', 'MENU', '/experts/management', '@/pages/expert', 'SolutionOutlined', 1, 'expert:view', 'ENABLED', 0, 0, 0),
-    (-1065, -1060, 'expert.query', '专家查询', 'MENU', '/experts/query', '@/pages/expert', 'SearchOutlined', 2, 'expert:view', 'ENABLED', 0, 0, 0),
-    (-1062, -1061, 'expert.management.create', '创建专家', 'BUTTON', NULL, NULL, NULL, 1, 'expert:create', 'ENABLED', 0, 0, 0),
-    (-1063, -1061, 'expert.management.update', '编辑专家', 'BUTTON', NULL, NULL, NULL, 2, 'expert:update', 'ENABLED', 0, 0, 0),
-    (-1064, -1061, 'expert.management.delete', '删除专家', 'BUTTON', NULL, NULL, NULL, 3, 'expert:delete', 'ENABLED', 0, 0, 0),
-    (-957, 0, 'team.root', '团队', 'CATALOG', '/team', 'redirect:/team/management', 'TeamOutlined', 93, 'team:view', 'DISABLED', 0, 0, 1),
-    (-1040, -1100, 'team.management', '团队管理', 'MENU', '/team/management', '@/pages/team', 'TeamOutlined', 4, 'team:view', 'ENABLED', 0, 0, 0),
-    (-1050, -1101, 'team.search', '团队查询', 'MENU', '/team/search', '@/pages/team', 'SearchOutlined', 1, 'team:view', 'ENABLED', 0, 0, 0),
-    (-958, -1040, 'team.create', '创建团队', 'BUTTON', NULL, NULL, NULL, 1, 'team:create', 'ENABLED', 0, 0, 0),
-    (-959, -1040, 'team.update', '编辑团队', 'BUTTON', NULL, NULL, NULL, 2, 'team:update', 'ENABLED', 0, 0, 0),
-    (-960, -1040, 'team.delete', '删除团队', 'BUTTON', NULL, NULL, NULL, 3, 'team:delete', 'ENABLED', 0, 0, 0),
-    (-961, -1040, 'team.member.view', '查看成员', 'BUTTON', NULL, NULL, NULL, 4, 'team:member:view', 'ENABLED', 0, 0, 0),
-    (-962, -1040, 'team.member.invite', '邀请成员', 'BUTTON', NULL, NULL, NULL, 5, 'team:member:invite', 'ENABLED', 0, 0, 0),
-    (-963, -1040, 'team.member.remove', '移除成员', 'BUTTON', NULL, NULL, NULL, 6, 'team:member:remove', 'ENABLED', 0, 0, 0),
-    (-964, -1040, 'team.member.role-update', '更新成员角色', 'BUTTON', NULL, NULL, NULL, 7, 'team:member:role-update', 'ENABLED', 0, 0, 0),
-    (-950, 0, 'user.center.root', '用户中心', 'CATALOG', '/user-center', '@/layouts/SettingsLayout', 'TeamOutlined', 18, 'user:center:view', 'ENABLED', 0, 0, 0),
-    (-951, -950, 'system.users', '用户管理', 'MENU', '/user-center/users', '@/pages/system/users', 'TeamOutlined', 21, 'system:user:view', 'ENABLED', 0, 0, 0),
-    (-965, -951, 'system.users.create', '创建用户', 'BUTTON', NULL, NULL, NULL, 1, 'system:user:create', 'ENABLED', 0, 0, 0),
-    (-966, -951, 'system.users.update', '编辑用户', 'BUTTON', NULL, NULL, NULL, 2, 'system:user:update', 'ENABLED', 0, 0, 0),
-    (-967, -951, 'system.users.delete', '删除用户', 'BUTTON', NULL, NULL, NULL, 3, 'system:user:delete', 'ENABLED', 0, 0, 0),
-    (-968, -951, 'system.users.export', '导出用户', 'BUTTON', NULL, NULL, NULL, 4, 'system:user:export', 'ENABLED', 0, 0, 0),
-    (-954, -950, 'system.departments', '组织部门', 'MENU', '/user-center/departments', '@/pages/system/departments', 'ApartmentOutlined', 22, 'system:department:view', 'ENABLED', 0, 0, 0),
-    (-952, -950, 'system.online-users', '在线用户', 'MENU', '/user-center/online-users', '@/pages/system/online-users', 'UserSwitchOutlined', 23, 'system:online-user:view', 'ENABLED', 0, 0, 0),
-    (-953, -950, 'system.roles', '角色管理', 'MENU', '/user-center/roles', '@/pages/system/roles', 'SafetyOutlined', 24, 'system:role:view', 'ENABLED', 0, 0, 0),
-    (-969, -953, 'system.roles.create', '创建角色', 'BUTTON', NULL, NULL, NULL, 1, 'system:role:create', 'ENABLED', 0, 0, 0),
-    (-970, -953, 'system.roles.update', '编辑角色', 'BUTTON', NULL, NULL, NULL, 2, 'system:role:update', 'ENABLED', 0, 0, 0),
-    (-971, -953, 'system.roles.delete', '删除角色', 'BUTTON', NULL, NULL, NULL, 3, 'system:role:delete', 'ENABLED', 0, 0, 0),
-    (-972, -953, 'system.roles.grant', '授权角色', 'BUTTON', NULL, NULL, NULL, 4, 'system:role:grant', 'ENABLED', 0, 0, 0),
-    (-940, 0, 'user.center.personal', '个人中心', 'CATALOG', '/user-center/personal-center', '@/layouts/SettingsLayout', 'IdcardOutlined', 19, 'profile:view', 'ENABLED', 0, 0, 0),
-    (-941, -940, 'profile.center', '个人资料', 'MENU', '/user-center/personal-center/profile', '@/pages/profile/Center', 'UserOutlined', 1, 'profile:view', 'ENABLED', 0, 0, 0),
-    (-942, -940, 'files.my', '我的文件', 'MENU', '/user-center/personal-center/files', '@/pages/files/Center', 'FileOutlined', 2, 'system:file:view', 'ENABLED', 0, 0, 0),
-    (-1000, 0, 'settings.root', '系统设置', 'CATALOG', '/settings', '@/layouts/SettingsLayout', 'SettingOutlined', 20, 'system:view', 'ENABLED', 0, 0, 0),
-    (-1001, -1000, 'settings.menus', '菜单管理', 'MENU', '/settings/menus', '@/pages/settings/menus', 'AppstoreOutlined', 2, 'system:menu:view', 'ENABLED', 0, 0, 0),
-    (-1020, -1001, 'settings.menus.create', '创建菜单', 'BUTTON', NULL, NULL, NULL, 1, 'system:menu:create', 'ENABLED', 0, 0, 0),
-    (-1021, -1001, 'settings.menus.update', '编辑菜单', 'BUTTON', NULL, NULL, NULL, 2, 'system:menu:update', 'ENABLED', 0, 0, 0),
-    (-1022, -1001, 'settings.menus.delete', '删除菜单', 'BUTTON', NULL, NULL, NULL, 3, 'system:menu:delete', 'ENABLED', 0, 0, 0),
-    (-1002, -1000, 'settings.dicts', '字典管理', 'MENU', '/settings/dicts', '@/pages/settings/dicts', 'DatabaseOutlined', 3, 'system:dict:view', 'ENABLED', 0, 0, 0),
-    (-1023, -1002, 'settings.dicts.create', '创建字典', 'BUTTON', NULL, NULL, NULL, 1, 'system:dict:create', 'ENABLED', 0, 0, 0),
-    (-1024, -1002, 'settings.dicts.update', '编辑字典', 'BUTTON', NULL, NULL, NULL, 2, 'system:dict:update', 'ENABLED', 0, 0, 0),
-    (-1025, -1002, 'settings.dicts.delete', '删除字典', 'BUTTON', NULL, NULL, NULL, 3, 'system:dict:delete', 'ENABLED', 0, 0, 0),
-    (-1003, -1000, 'settings.profile-fields', '字段管理', 'MENU', '/settings/profile-fields', '@/pages/settings/profile-fields', 'FormOutlined', 4, 'system:config:view', 'ENABLED', 0, 0, 0),
-    (-1004, -1000, 'settings.personalization', '个性化设置', 'MENU', '/settings/personalization', '@/pages/settings/personalization', 'SkinOutlined', 5, 'system:config:view', 'ENABLED', 0, 0, 0),
-    (-1005, -1000, 'settings.security', '安全设置', 'MENU', '/settings/security', '@/pages/settings/security', 'SafetyOutlined', 6, 'system:config:view', 'ENABLED', 0, 0, 0),
-    (-1006, -1000, 'settings.verification', '验证管理', 'MENU', '/settings/verification', '@/pages/settings/verification', 'SafetyOutlined', 7, 'system:verification:view', 'ENABLED', 0, 0, 0),
-    (-1007, -1000, 'settings.payment', '支付设置', 'MENU', '/settings/payment', '@/pages/settings/payment', 'CreditCardOutlined', 8, 'payment:view', 'ENABLED', 0, 0, 0),
-    (-1012, -1000, 'settings.files', '全站文件管理', 'MENU', '/settings/files/all', '@/pages/settings/files/Center', 'FolderOpenOutlined', 9, 'system:file:manage', 'ENABLED', 0, 0, 0),
-    (-1008, -1000, 'settings.notifications', '通知中心', 'MENU', '/settings/notifications', '@/pages/settings/notifications/index', 'NotificationOutlined', 9, 'system:notification:view', 'ENABLED', 0, 0, 0),
-    (-1015, -1000, 'settings.monitoring', '系统监控', 'MENU', '/settings/monitoring', '@/pages/settings/monitoring/index', 'FundOutlined', 10, 'system:monitor:view', 'ENABLED', 0, 0, 0),
-    (-1013, -1000, 'settings.monitoring.api-docs', '接口文档', 'MENU', '/settings/api-docs', '@/pages/settings/monitoring/ApiDocs', 'FileTextOutlined', 11, 'system:monitor:docs:view', 'ENABLED', 0, 0, 0),
-    (-1014, -1000, 'settings.monitoring.audit', '审计中心', 'MENU', '/settings/audit', '@/pages/settings/monitoring/Audit', 'AuditOutlined', 12, 'audit:view', 'ENABLED', 0, 0, 0),
-    (-1009, -1000, 'settings.plugins', '插件管理中心', 'MENU', '/settings/plugins', '@/pages/settings/plugins', 'ApiOutlined', 10, 'plugin:management:view', 'ENABLED', 0, 0, 0),
-    (-1010, -1000, 'settings.ai-employees', '数字员工', 'MENU', '/settings/ai-employees', '@/pages/settings/ai-employees', 'RobotOutlined', 24, 'ai:view', 'ENABLED', 0, 0, 0),
-    (-1011, -1000, 'localization.root', '本地化中心', 'MENU', '/settings/localization', '@/pages/settings/localization', 'TranslationOutlined', 29, 'localization:view', 'ENABLED', 0, 0, 0)
+    (-1060, 0, 'expert.root', 'Expert library', 'CATALOG', '/experts', 'redirect:/experts/management', 'SolutionOutlined', 6, NULL, 'ENABLED', 0, 0, 0),
+    (-1061, -1060, 'expert.management', '涓撳绠＄悊', 'MENU', '/experts/management', '@/pages/expert', 'SolutionOutlined', 1, 'expert:view', 'ENABLED', 0, 0, 0),
+    (-1065, -1060, 'expert.query', '涓撳鏌ヨ', 'MENU', '/experts/query', '@/pages/expert', 'SearchOutlined', 2, 'expert:view', 'ENABLED', 0, 0, 0),
+    (-1062, -1061, 'expert.management.create', '鍒涘缓涓撳', 'BUTTON', NULL, NULL, NULL, 1, 'expert:create', 'ENABLED', 0, 0, 0),
+    (-1063, -1061, 'expert.management.update', '缂栬緫涓撳', 'BUTTON', NULL, NULL, NULL, 2, 'expert:update', 'ENABLED', 0, 0, 0),
+    (-1064, -1061, 'expert.management.delete', '鍒犻櫎涓撳', 'BUTTON', NULL, NULL, NULL, 3, 'expert:delete', 'ENABLED', 0, 0, 0),
+    (-957, 0, 'team.root', '鍥㈤槦', 'CATALOG', '/team', 'redirect:/team/management', 'TeamOutlined', 93, 'team:view', 'DISABLED', 0, 0, 1),
+    (-1040, -1100, 'team.management', '鍥㈤槦绠＄悊', 'MENU', '/team/management', '@/pages/team', 'TeamOutlined', 4, 'team:view', 'ENABLED', 0, 0, 0),
+    (-1050, -1101, 'team.search', '鍥㈤槦鏌ヨ', 'MENU', '/team/search', '@/pages/team', 'SearchOutlined', 1, 'team:view', 'ENABLED', 0, 0, 0),
+    (-958, -1040, 'team.create', '鍒涘缓鍥㈤槦', 'BUTTON', NULL, NULL, NULL, 1, 'team:create', 'ENABLED', 0, 0, 0),
+    (-959, -1040, 'team.update', '缂栬緫鍥㈤槦', 'BUTTON', NULL, NULL, NULL, 2, 'team:update', 'ENABLED', 0, 0, 0),
+    (-960, -1040, 'team.delete', '鍒犻櫎鍥㈤槦', 'BUTTON', NULL, NULL, NULL, 3, 'team:delete', 'ENABLED', 0, 0, 0),
+    (-961, -1040, 'team.member.view', '鏌ョ湅鎴愬憳', 'BUTTON', NULL, NULL, NULL, 4, 'team:member:view', 'ENABLED', 0, 0, 0),
+    (-962, -1040, 'team.member.invite', 'Invite member', 'BUTTON', NULL, NULL, NULL, 5, 'team:member:invite', 'ENABLED', 0, 0, 0),
+    (-963, -1040, 'team.member.remove', '绉婚櫎鎴愬憳', 'BUTTON', NULL, NULL, NULL, 6, 'team:member:remove', 'ENABLED', 0, 0, 0),
+    (-964, -1040, 'team.member.role-update', '鏇存柊鎴愬憳瑙掕壊', 'BUTTON', NULL, NULL, NULL, 7, 'team:member:role-update', 'ENABLED', 0, 0, 0),
+    (-950, 0, 'user.center.root', '鐢ㄦ埛涓績', 'CATALOG', '/user-center', '@/layouts/SettingsLayout', 'TeamOutlined', 18, 'user:center:view', 'ENABLED', 0, 0, 0),
+    (-951, -950, 'system.users', '鐢ㄦ埛绠＄悊', 'MENU', '/user-center/users', '@/pages/system/users', 'TeamOutlined', 21, 'system:user:view', 'ENABLED', 0, 0, 0),
+    (-965, -951, 'system.users.create', '鍒涘缓鐢ㄦ埛', 'BUTTON', NULL, NULL, NULL, 1, 'system:user:create', 'ENABLED', 0, 0, 0),
+    (-966, -951, 'system.users.update', '缂栬緫鐢ㄦ埛', 'BUTTON', NULL, NULL, NULL, 2, 'system:user:update', 'ENABLED', 0, 0, 0),
+    (-967, -951, 'system.users.delete', '鍒犻櫎鐢ㄦ埛', 'BUTTON', NULL, NULL, NULL, 3, 'system:user:delete', 'ENABLED', 0, 0, 0),
+    (-968, -951, 'system.users.export', '瀵煎嚭鐢ㄦ埛', 'BUTTON', NULL, NULL, NULL, 4, 'system:user:export', 'ENABLED', 0, 0, 0),
+    (-954, -950, 'system.departments', '缁勭粐閮ㄩ棬', 'MENU', '/user-center/departments', '@/pages/system/departments', 'ApartmentOutlined', 22, 'system:department:view', 'ENABLED', 0, 0, 0),
+    (-952, -950, 'system.online-users', '鍦ㄧ嚎鐢ㄦ埛', 'MENU', '/user-center/online-users', '@/pages/system/online-users', 'UserSwitchOutlined', 23, 'system:online-user:view', 'ENABLED', 0, 0, 0),
+    (-953, -950, 'system.roles', '瑙掕壊绠＄悊', 'MENU', '/user-center/roles', '@/pages/system/roles', 'SafetyOutlined', 24, 'system:role:view', 'ENABLED', 0, 0, 0),
+    (-969, -953, 'system.roles.create', '鍒涘缓瑙掕壊', 'BUTTON', NULL, NULL, NULL, 1, 'system:role:create', 'ENABLED', 0, 0, 0),
+    (-970, -953, 'system.roles.update', '缂栬緫瑙掕壊', 'BUTTON', NULL, NULL, NULL, 2, 'system:role:update', 'ENABLED', 0, 0, 0),
+    (-971, -953, 'system.roles.delete', '鍒犻櫎瑙掕壊', 'BUTTON', NULL, NULL, NULL, 3, 'system:role:delete', 'ENABLED', 0, 0, 0),
+    (-972, -953, 'system.roles.grant', '鎺堟潈瑙掕壊', 'BUTTON', NULL, NULL, NULL, 4, 'system:role:grant', 'ENABLED', 0, 0, 0),
+    (-940, 0, 'user.center.personal', '涓汉涓績', 'CATALOG', '/user-center/personal-center', '@/layouts/SettingsLayout', 'IdcardOutlined', 19, 'profile:view', 'ENABLED', 0, 0, 0),
+    (-941, -940, 'profile.center', '涓汉璧勬枡', 'MENU', '/user-center/personal-center/profile', '@/pages/profile/Center', 'UserOutlined', 1, 'profile:view', 'ENABLED', 0, 0, 0),
+    (-942, -940, 'files.my', '鎴戠殑鏂囦欢', 'MENU', '/user-center/personal-center/files', '@/pages/files/Center', 'FileOutlined', 2, 'system:file:view', 'ENABLED', 0, 0, 0),
+    (-1000, 0, 'settings.root', '绯荤粺璁剧疆', 'CATALOG', '/settings', '@/layouts/SettingsLayout', 'SettingOutlined', 20, 'system:view', 'ENABLED', 0, 0, 0),
+    (-1001, -1000, 'settings.menus', '鑿滃崟绠＄悊', 'MENU', '/settings/menus', '@/pages/settings/menus', 'AppstoreOutlined', 2, 'system:menu:view', 'ENABLED', 0, 0, 0),
+    (-1020, -1001, 'settings.menus.create', '鍒涘缓鑿滃崟', 'BUTTON', NULL, NULL, NULL, 1, 'system:menu:create', 'ENABLED', 0, 0, 0),
+    (-1021, -1001, 'settings.menus.update', '缂栬緫鑿滃崟', 'BUTTON', NULL, NULL, NULL, 2, 'system:menu:update', 'ENABLED', 0, 0, 0),
+    (-1022, -1001, 'settings.menus.delete', '鍒犻櫎鑿滃崟', 'BUTTON', NULL, NULL, NULL, 3, 'system:menu:delete', 'ENABLED', 0, 0, 0),
+    (-1002, -1000, 'settings.dicts', '瀛楀吀绠＄悊', 'MENU', '/settings/dicts', '@/pages/settings/dicts', 'DatabaseOutlined', 3, 'system:dict:view', 'ENABLED', 0, 0, 0),
+    (-1023, -1002, 'settings.dicts.create', '鍒涘缓瀛楀吀', 'BUTTON', NULL, NULL, NULL, 1, 'system:dict:create', 'ENABLED', 0, 0, 0),
+    (-1024, -1002, 'settings.dicts.update', '缂栬緫瀛楀吀', 'BUTTON', NULL, NULL, NULL, 2, 'system:dict:update', 'ENABLED', 0, 0, 0),
+    (-1025, -1002, 'settings.dicts.delete', '鍒犻櫎瀛楀吀', 'BUTTON', NULL, NULL, NULL, 3, 'system:dict:delete', 'ENABLED', 0, 0, 0),
+    (-1003, -1000, 'settings.profile-fields', '瀛楁绠＄悊', 'MENU', '/settings/profile-fields', '@/pages/settings/profile-fields', 'FormOutlined', 4, 'system:config:view', 'ENABLED', 0, 0, 0),
+    (-1004, -1000, 'settings.personalization', '涓€у寲璁剧疆', 'MENU', '/settings/personalization', '@/pages/settings/personalization', 'SkinOutlined', 5, 'system:config:view', 'ENABLED', 0, 0, 0),
+    (-1005, -1000, 'settings.security', '瀹夊叏璁剧疆', 'MENU', '/settings/security', '@/pages/settings/security', 'SafetyOutlined', 6, 'system:config:view', 'ENABLED', 0, 0, 0),
+    (-1006, -1000, 'settings.verification', '楠岃瘉绠＄悊', 'MENU', '/settings/verification', '@/pages/settings/verification', 'SafetyOutlined', 7, 'system:verification:view', 'ENABLED', 0, 0, 0),
+    (-1007, -1000, 'settings.payment', '鏀粯璁剧疆', 'MENU', '/settings/payment', '@/pages/settings/payment', 'CreditCardOutlined', 8, 'payment:view', 'ENABLED', 0, 0, 0),
+    (-1012, -1000, 'settings.files', '鍏ㄧ珯鏂囦欢绠＄悊', 'MENU', '/settings/files/all', '@/pages/settings/files/Center', 'FolderOpenOutlined', 9, 'system:file:manage', 'ENABLED', 0, 0, 0),
+    (-1008, -1000, 'settings.notifications', '閫氱煡涓績', 'MENU', '/settings/notifications', '@/pages/settings/notifications/index', 'NotificationOutlined', 9, 'system:notification:view', 'ENABLED', 0, 0, 0),
+    (-1015, -1000, 'settings.monitoring', '绯荤粺鐩戞帶', 'MENU', '/settings/monitoring', '@/pages/settings/monitoring/index', 'FundOutlined', 10, 'system:monitor:view', 'ENABLED', 0, 0, 0),
+    (-1013, -1000, 'settings.monitoring.api-docs', '鎺ュ彛鏂囨。', 'MENU', '/settings/api-docs', '@/pages/settings/monitoring/ApiDocs', 'FileTextOutlined', 11, 'system:monitor:docs:view', 'ENABLED', 0, 0, 0),
+    (-1014, -1000, 'settings.monitoring.audit', '瀹¤涓績', 'MENU', '/settings/audit', '@/pages/settings/monitoring/Audit', 'AuditOutlined', 12, 'audit:view', 'ENABLED', 0, 0, 0),
+    (-1009, -1000, 'settings.plugins', '鎻掍欢绠＄悊涓績', 'MENU', '/settings/plugins', '@/pages/settings/plugins', 'ApiOutlined', 10, 'plugin:management:view', 'ENABLED', 0, 0, 0),
+    (-1011, -1000, 'localization.root', 'Localization center', 'MENU', '/settings/localization', '@/pages/settings/localization', 'TranslationOutlined', 29, 'localization:view', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `parent_id` = VALUES(`parent_id`),
     `menu_name` = VALUES(`menu_name`),
@@ -2646,10 +2588,6 @@ WHERE p.`deleted` = 0
       'profile:view',
       'system:file:view',
       'system:file:upload',
-      'ai:view',
-      'ai:assistant:view',
-      'ai:chat:send',
-      'ai:knowledge:view',
       'aiadc:activity:view',
       'aiadc:competition:view',
       'aiadc:registration:view',
@@ -2712,14 +2650,14 @@ ON DUPLICATE KEY UPDATE
 
 INSERT INTO `sys_dict_type` (`dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)
 VALUES
-    ('sys_user_gender', '用户性别', 'ENABLED', 1, '系统字典：用户性别', 0, 0, 0),
-    ('sys_user_status', '用户状态', 'ENABLED', 1, '系统字典：用户状态', 0, 0, 0),
-    ('sys_common_status', '通用状态', 'ENABLED', 1, '系统字典：通用状态', 0, 0, 0),
-    ('sys_yes_no', '是否', 'ENABLED', 1, '系统字典：是否', 0, 0, 0),
-    ('sys_role_type', '角色类型', 'ENABLED', 1, '系统字典：角色类型', 0, 0, 0),
-    ('sys_menu_type', '菜单类型', 'ENABLED', 1, '系统字典：菜单类型', 0, 0, 0),
-    ('sys_data_scope_type', '数据范围类型', 'ENABLED', 1, '系统字典：数据范围类型', 0, 0, 0),
-    ('team_member_role', '团队成员角色', 'ENABLED', 1, '团队模块字典', 0, 0, 0)
+    ('sys_user_gender', '鐢ㄦ埛鎬у埆', 'ENABLED', 1, '绯荤粺瀛楀吀锛氱敤鎴锋€у埆', 0, 0, 0),
+    ('sys_user_status', 'User status', 'ENABLED', 1, 'System dictionary: user status', 0, 0, 0),
+    ('sys_common_status', 'Common status', 'ENABLED', 1, 'System dictionary: common status', 0, 0, 0),
+    ('sys_yes_no', '鏄惁', 'ENABLED', 1, 'System dictionary: yes/no', 0, 0, 0),
+    ('sys_role_type', '瑙掕壊绫诲瀷', 'ENABLED', 1, 'System dictionary: role type', 0, 0, 0),
+    ('sys_menu_type', '鑿滃崟绫诲瀷', 'ENABLED', 1, 'System dictionary: menu type', 0, 0, 0),
+    ('sys_data_scope_type', '鏁版嵁鑼冨洿绫诲瀷', 'ENABLED', 1, 'System dictionary: data scope type', 0, 0, 0),
+    ('team_member_role', '鍥㈤槦鎴愬憳瑙掕壊', 'ENABLED', 1, '鍥㈤槦妯″潡瀛楀吀', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `dict_name` = VALUES(`dict_name`),
     `status` = VALUES(`status`),
@@ -2730,10 +2668,10 @@ ON DUPLICATE KEY UPDATE
 
 INSERT INTO `sys_dict_type` (`dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)
 VALUES
-    ('team_type', '团队类型', 'ENABLED', 1, '团队模块字典', 0, 0, 0),
-    ('team_visibility', '团队可见性', 'ENABLED', 1, '团队模块字典', 0, 0, 0),
-    ('team_join_mode', '团队加入方式', 'ENABLED', 1, '团队模块字典', 0, 0, 0),
-    ('project_team_member_role', '项目团队成员角色', 'ENABLED', 1, '项目申报字典：团队成员角色', 0, 0, 0)
+    ('team_type', '鍥㈤槦绫诲瀷', 'ENABLED', 1, '鍥㈤槦妯″潡瀛楀吀', 0, 0, 0),
+    ('team_visibility', 'Team visibility', 'ENABLED', 1, '鍥㈤槦妯″潡瀛楀吀', 0, 0, 0),
+    ('team_join_mode', '鍥㈤槦鍔犲叆鏂瑰紡', 'ENABLED', 1, '鍥㈤槦妯″潡瀛楀吀', 0, 0, 0),
+    ('project_team_member_role', '椤圭洰鍥㈤槦鎴愬憳瑙掕壊', 'ENABLED', 1, 'Project dictionary: team member role', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `dict_name` = VALUES(`dict_name`),
     `status` = VALUES(`status`),
@@ -2753,10 +2691,10 @@ ON DUPLICATE KEY UPDATE
 
 INSERT INTO `sys_dict_type` (`dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)
 VALUES
-    ('aiadc_expert_title', '专家头衔', 'ENABLED', 1, '专家库字典：专家头衔', 0, 0, 0),
-    ('aiadc_expert_position', '专家职务', 'ENABLED', 1, '专家库字典：专家职务', 0, 0, 0),
-    ('aiadc_expert_expertise', '专家专业领域', 'ENABLED', 1, '专家库字典：专业领域', 0, 0, 0),
-    ('aiadc_expert_tag', '专家标签', 'ENABLED', 1, '专家库字典：专家标签', 0, 0, 0)
+    ('aiadc_expert_title', '涓撳澶磋', 'ENABLED', 1, '涓撳搴撳瓧鍏革細涓撳澶磋', 0, 0, 0),
+    ('aiadc_expert_position', '涓撳鑱屽姟', 'ENABLED', 1, '涓撳搴撳瓧鍏革細涓撳鑱屽姟', 0, 0, 0),
+    ('aiadc_expert_expertise', '涓撳涓撲笟棰嗗煙', 'ENABLED', 1, '涓撳搴撳瓧鍏革細涓撲笟棰嗗煙', 0, 0, 0),
+    ('aiadc_expert_tag', '涓撳鏍囩', 'ENABLED', 1, '涓撳搴撳瓧鍏革細涓撳鏍囩', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `dict_name` = VALUES(`dict_name`),
     `status` = VALUES(`status`),
@@ -2767,9 +2705,9 @@ ON DUPLICATE KEY UPDATE
 
 INSERT INTO `sys_dict_type` (`dict_code`, `dict_name`, `status`, `is_system`, `remark`, `created_by`, `updated_by`, `deleted`)
 VALUES
-    ('aiadc_competition_category', '竞赛类别', 'ENABLED', 1, '赛事字典：竞赛类别', 0, 0, 0),
-    ('aiadc_competition_level', '竞赛级别', 'ENABLED', 1, '赛事字典：竞赛级别', 0, 0, 0),
-    ('aiadc_activity_category', '活动分类', 'ENABLED', 1, '赛事字典：活动分类', 0, 0, 0)
+    ('aiadc_competition_category', '绔炶禌绫诲埆', 'ENABLED', 1, 'Competition dictionary: category', 0, 0, 0),
+    ('aiadc_competition_level', '绔炶禌绾у埆', 'ENABLED', 1, 'Competition dictionary: level', 0, 0, 0),
+    ('aiadc_activity_category', '娲诲姩鍒嗙被', 'ENABLED', 1, 'Competition dictionary: activity category', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `dict_name` = VALUES(`dict_name`),
     `status` = VALUES(`status`),
@@ -2779,45 +2717,45 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `sys_dict_item` (`dict_type_id`, `item_value`, `item_label`, `sort_no`, `status`, `remark`, `created_by`, `updated_by`, `deleted`)
-SELECT `id`, '教授', '教授', 10, 'ENABLED', '专家头衔', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_title' AND `deleted` = 0
+SELECT `id`, '鏁欐巿', '鏁欐巿', 10, 'ENABLED', '涓撳澶磋', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_title' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '副教授', '副教授', 20, 'ENABLED', '专家头衔', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_title' AND `deleted` = 0
+SELECT `id`, 'ASSOCIATE_PROFESSOR', 'Associate Professor', 20, 'ENABLED', 'Expert title', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_title' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '研究员', '研究员', 30, 'ENABLED', '专家头衔', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_title' AND `deleted` = 0
+SELECT `id`, 'RESEARCHER', 'Researcher', 30, 'ENABLED', 'Expert title', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_title' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '高级工程师', '高级工程师', 40, 'ENABLED', '专家头衔', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_title' AND `deleted` = 0
+SELECT `id`, 'SENIOR_ENGINEER', 'Senior Engineer', 40, 'ENABLED', 'Expert title', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_title' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '行业专家', '行业专家', 50, 'ENABLED', '专家头衔', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_title' AND `deleted` = 0
+SELECT `id`, '琛屼笟涓撳', '琛屼笟涓撳', 50, 'ENABLED', '涓撳澶磋', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_title' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '主任', '主任', 10, 'ENABLED', '专家职务', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_position' AND `deleted` = 0
+SELECT `id`, '涓讳换', '涓讳换', 10, 'ENABLED', '涓撳鑱屽姟', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_position' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '院长', '院长', 20, 'ENABLED', '专家职务', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_position' AND `deleted` = 0
+SELECT `id`, '闄㈤暱', '闄㈤暱', 20, 'ENABLED', '涓撳鑱屽姟', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_position' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '总工程师', '总工程师', 30, 'ENABLED', '专家职务', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_position' AND `deleted` = 0
+SELECT `id`, '鎬诲伐绋嬪笀', '鎬诲伐绋嬪笀', 30, 'ENABLED', '涓撳鑱屽姟', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_position' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '技术负责人', '技术负责人', 40, 'ENABLED', '专家职务', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_position' AND `deleted` = 0
+SELECT `id`, '鎶€鏈礋璐ｄ汉', '鎶€鏈礋璐ｄ汉', 40, 'ENABLED', '涓撳鑱屽姟', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_position' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '投资合伙人', '投资合伙人', 50, 'ENABLED', '专家职务', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_position' AND `deleted` = 0
+SELECT `id`, 'INVESTMENT_PARTNER', 'Investment Partner', 50, 'ENABLED', 'Expert position', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_position' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '人工智能', '人工智能', 10, 'ENABLED', '专家专业领域', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_expertise' AND `deleted` = 0
+SELECT `id`, '浜哄伐鏅鸿兘', '浜哄伐鏅鸿兘', 10, 'ENABLED', '涓撳涓撲笟棰嗗煙', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_expertise' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '智能制造', '智能制造', 20, 'ENABLED', '专家专业领域', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_expertise' AND `deleted` = 0
+SELECT `id`, 'SMART_MANUFACTURING', 'Smart Manufacturing', 20, 'ENABLED', 'Expert expertise', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_expertise' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '产业投资', '产业投资', 30, 'ENABLED', '专家专业领域', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_expertise' AND `deleted` = 0
+SELECT `id`, '浜т笟鎶曡祫', '浜т笟鎶曡祫', 30, 'ENABLED', '涓撳涓撲笟棰嗗煙', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_expertise' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '数字经济', '数字经济', 40, 'ENABLED', '专家专业领域', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_expertise' AND `deleted` = 0
+SELECT `id`, '鏁板瓧缁忔祹', '鏁板瓧缁忔祹', 40, 'ENABLED', '涓撳涓撲笟棰嗗煙', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_expertise' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '科技成果转化', '科技成果转化', 50, 'ENABLED', '专家专业领域', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_expertise' AND `deleted` = 0
+SELECT `id`, '绉戞妧鎴愭灉杞寲', '绉戞妧鎴愭灉杞寲', 50, 'ENABLED', '涓撳涓撲笟棰嗗煙', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_expertise' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '评审专家', '评审专家', 10, 'ENABLED', '专家标签', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
+SELECT `id`, '璇勫涓撳', '璇勫涓撳', 10, 'ENABLED', '涓撳鏍囩', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '导师', '导师', 20, 'ENABLED', '专家标签', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
+SELECT `id`, '瀵煎笀', '瀵煎笀', 20, 'ENABLED', '涓撳鏍囩', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '产业资源', '产业资源', 30, 'ENABLED', '专家标签', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
+SELECT `id`, '浜т笟璧勬簮', '浜т笟璧勬簮', 30, 'ENABLED', '涓撳鏍囩', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '投融资', '投融资', 40, 'ENABLED', '专家标签', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
+SELECT `id`, 'FINANCING', 'Financing', 40, 'ENABLED', 'Expert tag', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '技术顾问', '技术顾问', 50, 'ENABLED', '专家标签', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
+SELECT `id`, 'TECHNICAL_CONSULTANT', 'Technical Consultant', 50, 'ENABLED', 'Expert tag', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_expert_tag' AND `deleted` = 0
 ON DUPLICATE KEY UPDATE
     `item_label` = VALUES(`item_label`),
     `sort_no` = VALUES(`sort_no`),
@@ -2827,31 +2765,31 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `sys_dict_item` (`dict_type_id`, `item_value`, `item_label`, `sort_no`, `status`, `remark`, `created_by`, `updated_by`, `deleted`)
-SELECT `id`, 'INNOVATION', '创新赛', 10, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+SELECT `id`, 'INNOVATION', 'Innovation', 10, 'ENABLED', 'Competition category', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'APPLICATION', '应用赛', 20, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+SELECT `id`, 'APPLICATION', 'Application', 20, 'ENABLED', 'Competition category', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'SPECIAL', '专项赛', 30, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+SELECT `id`, 'SPECIAL', 'Special', 30, 'ENABLED', 'Competition category', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'OTHER', '其他', 40, 'ENABLED', '竞赛类别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
+SELECT `id`, 'OTHER', '鍏朵粬', 40, 'ENABLED', '绔炶禌绫诲埆', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_category' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'SCHOOL', '校级', 10, 'ENABLED', '竞赛级别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_level' AND `deleted` = 0
+SELECT `id`, 'SCHOOL', '鏍＄骇', 10, 'ENABLED', '绔炶禌绾у埆', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_level' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'PROVINCE', '省级', 20, 'ENABLED', '竞赛级别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_level' AND `deleted` = 0
+SELECT `id`, 'PROVINCE', '鐪佺骇', 20, 'ENABLED', '绔炶禌绾у埆', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_level' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'NATIONAL', '国家级', 30, 'ENABLED', '竞赛级别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_level' AND `deleted` = 0
+SELECT `id`, 'NATIONAL', 'National', 30, 'ENABLED', 'Competition level', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_level' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'INTERNATIONAL', '国际级', 40, 'ENABLED', '竞赛级别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_level' AND `deleted` = 0
+SELECT `id`, 'INTERNATIONAL', 'International', 40, 'ENABLED', 'Competition level', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_competition_level' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '路演活动', '路演活动', 10, 'ENABLED', '活动分类', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
+SELECT `id`, '璺紨娲诲姩', '璺紨娲诲姩', 10, 'ENABLED', '娲诲姩鍒嗙被', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '创业沙龙', '创业沙龙', 20, 'ENABLED', '活动分类', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
+SELECT `id`, '鍒涗笟娌欓緳', '鍒涗笟娌欓緳', 20, 'ENABLED', '娲诲姩鍒嗙被', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '政策宣讲', '政策宣讲', 30, 'ENABLED', '活动分类', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
+SELECT `id`, '鏀跨瓥瀹ｈ', '鏀跨瓥瀹ｈ', 30, 'ENABLED', '娲诲姩鍒嗙被', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '培训活动', '培训活动', 40, 'ENABLED', '活动分类', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
+SELECT `id`, '鍩硅娲诲姩', '鍩硅娲诲姩', 40, 'ENABLED', '娲诲姩鍒嗙被', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
 UNION ALL
-SELECT `id`, '其他', '其他', 50, 'ENABLED', '活动分类', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
+SELECT `id`, '鍏朵粬', '鍏朵粬', 50, 'ENABLED', '娲诲姩鍒嗙被', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'aiadc_activity_category' AND `deleted` = 0
 ON DUPLICATE KEY UPDATE
     `item_label` = VALUES(`item_label`),
     `sort_no` = VALUES(`sort_no`),
@@ -2861,29 +2799,29 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `sys_dict_item` (`dict_type_id`, `item_value`, `item_label`, `sort_no`, `status`, `remark`, `created_by`, `updated_by`, `deleted`)
-SELECT `id`, 'GENERAL', '通用团队', 10, 'ENABLED', '团队类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_type' AND `deleted` = 0
+SELECT `id`, 'GENERAL', '閫氱敤鍥㈤槦', 10, 'ENABLED', '鍥㈤槦绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'DEV', '开发团队', 20, 'ENABLED', '团队类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_type' AND `deleted` = 0
+SELECT `id`, 'DEV', 'Development Team', 20, 'ENABLED', 'Team type', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'COMPETITION', '竞赛团队', 30, 'ENABLED', '团队类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_type' AND `deleted` = 0
+SELECT `id`, 'COMPETITION', '绔炶禌鍥㈤槦', 30, 'ENABLED', '鍥㈤槦绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'CLUB', '社团组织', 40, 'ENABLED', '团队类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_type' AND `deleted` = 0
+SELECT `id`, 'CLUB', '绀惧洟缁勭粐', 40, 'ENABLED', '鍥㈤槦绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'OTHER', '其他', 50, 'ENABLED', '团队类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_type' AND `deleted` = 0
+SELECT `id`, 'OTHER', '鍏朵粬', 50, 'ENABLED', '鍥㈤槦绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'PRIVATE', '私有', 10, 'ENABLED', '团队可见性', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_visibility' AND `deleted` = 0
+SELECT `id`, 'PRIVATE', 'Private', 10, 'ENABLED', 'Team visibility', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_visibility' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'PUBLIC', '公开', 20, 'ENABLED', '团队可见性', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_visibility' AND `deleted` = 0
+SELECT `id`, 'PUBLIC', 'Public', 20, 'ENABLED', 'Team visibility', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_visibility' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'INVITE_ONLY', '仅邀请', 10, 'ENABLED', '团队加入方式', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_join_mode' AND `deleted` = 0
+SELECT `id`, 'INVITE_ONLY', 'Invite Only', 10, 'ENABLED', 'Team join mode', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_join_mode' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'APPLY', '申请加入', 20, 'ENABLED', '团队加入方式', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_join_mode' AND `deleted` = 0
+SELECT `id`, 'APPLY', '鐢宠鍔犲叆', 20, 'ENABLED', '鍥㈤槦鍔犲叆鏂瑰紡', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_join_mode' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'OPEN', '开放加入', 30, 'ENABLED', '团队加入方式', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_join_mode' AND `deleted` = 0
+SELECT `id`, 'OPEN', 'Open', 30, 'ENABLED', 'Team join mode', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_join_mode' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'ADMIN', '负责人', 10, 'ENABLED', '项目团队成员角色', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'project_team_member_role' AND `deleted` = 0
+SELECT `id`, 'ADMIN', 'Owner', 10, 'ENABLED', 'Project team member role', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'project_team_member_role' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'MEMBER', '组员', 20, 'ENABLED', '项目团队成员角色', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'project_team_member_role' AND `deleted` = 0
+SELECT `id`, 'MEMBER', '缁勫憳', 20, 'ENABLED', '椤圭洰鍥㈤槦鎴愬憳瑙掕壊', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'project_team_member_role' AND `deleted` = 0
 ON DUPLICATE KEY UPDATE
     `item_label` = VALUES(`item_label`),
     `sort_no` = VALUES(`sort_no`),
@@ -2893,57 +2831,57 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `sys_dict_item` (`dict_type_id`, `item_value`, `item_label`, `sort_no`, `status`, `remark`, `created_by`, `updated_by`, `deleted`)
-SELECT `id`, 'MALE', '男', 10, 'ENABLED', '用户性别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_gender' AND `deleted` = 0
+SELECT `id`, 'MALE', 'Male', 10, 'ENABLED', 'User gender', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_gender' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'FEMALE', '女', 20, 'ENABLED', '用户性别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_gender' AND `deleted` = 0
+SELECT `id`, 'FEMALE', 'Female', 20, 'ENABLED', 'User gender', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_gender' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'OTHER', '其他', 30, 'ENABLED', '用户性别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_gender' AND `deleted` = 0
+SELECT `id`, 'OTHER', '鍏朵粬', 30, 'ENABLED', '鐢ㄦ埛鎬у埆', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_gender' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'UNKNOWN', '未知', 40, 'ENABLED', '用户性别', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_gender' AND `deleted` = 0
+SELECT `id`, 'UNKNOWN', '鏈煡', 40, 'ENABLED', '鐢ㄦ埛鎬у埆', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_gender' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'ENABLED', '启用', 10, 'ENABLED', '用户状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_status' AND `deleted` = 0
+SELECT `id`, 'DISABLED', 'Disabled', 20, 'ENABLED', 'User status', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_status' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'DISABLED', '禁用', 20, 'ENABLED', '用户状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_status' AND `deleted` = 0
+SELECT `id`, 'LOCKED', 'Locked', 30, 'ENABLED', 'User status', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_status' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'LOCKED', '锁定', 30, 'ENABLED', '用户状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_status' AND `deleted` = 0
+SELECT `id`, 'ENABLED', 'Enabled', 10, 'ENABLED', 'User status', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_user_status' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'ENABLED', '启用', 10, 'ENABLED', '通用状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_common_status' AND `deleted` = 0
+SELECT `id`, 'ENABLED', 'Enabled', 10, 'ENABLED', 'Common status', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_common_status' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'DISABLED', '停用', 20, 'ENABLED', '通用状态', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_common_status' AND `deleted` = 0
+SELECT `id`, 'DISABLED', 'Disabled', 20, 'ENABLED', 'Common status', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_common_status' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'YES', '是', 10, 'ENABLED', '是否', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_yes_no' AND `deleted` = 0
+SELECT `id`, 'YES', 'Yes', 10, 'ENABLED', 'Yes or no', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_yes_no' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'NO', '否', 20, 'ENABLED', '是否', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_yes_no' AND `deleted` = 0
+SELECT `id`, 'NO', 'No', 20, 'ENABLED', 'Yes or no', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_yes_no' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'SYSTEM', '系统角色', 10, 'ENABLED', '角色类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_role_type' AND `deleted` = 0
+SELECT `id`, 'SYSTEM', '绯荤粺瑙掕壊', 10, 'ENABLED', '瑙掕壊绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_role_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'CUSTOM', '自定义角色', 20, 'ENABLED', '角色类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_role_type' AND `deleted` = 0
+SELECT `id`, 'CUSTOM', 'Custom Role', 20, 'ENABLED', 'Role type', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_role_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'CATALOG', '目录', 10, 'ENABLED', '菜单类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_menu_type' AND `deleted` = 0
+SELECT `id`, 'CATALOG', '鐩綍', 10, 'ENABLED', '鑿滃崟绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_menu_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'MENU', '菜单', 20, 'ENABLED', '菜单类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_menu_type' AND `deleted` = 0
+SELECT `id`, 'MENU', '鑿滃崟', 20, 'ENABLED', '鑿滃崟绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_menu_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'BUTTON', '按钮', 30, 'ENABLED', '菜单类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_menu_type' AND `deleted` = 0
+SELECT `id`, 'BUTTON', '鎸夐挳', 30, 'ENABLED', '鑿滃崟绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_menu_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'LINK', '外链', 40, 'ENABLED', '菜单类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_menu_type' AND `deleted` = 0
+SELECT `id`, 'LINK', '澶栭摼', 40, 'ENABLED', '鑿滃崟绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_menu_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'ALL', '全部数据', 10, 'ENABLED', '数据范围类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
+SELECT `id`, 'ALL', '鍏ㄩ儴鏁版嵁', 10, 'ENABLED', '鏁版嵁鑼冨洿绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'DEPT_AND_CHILD', '本部门及下级', 20, 'ENABLED', '数据范围类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
+SELECT `id`, 'DEPT_AND_CHILD', '鏈儴闂ㄥ強涓嬬骇', 20, 'ENABLED', '鏁版嵁鑼冨洿绫诲瀷', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'DEPT', '本部门', 30, 'ENABLED', '数据范围类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
+SELECT `id`, 'DEPT', 'Department', 30, 'ENABLED', 'Data scope type', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'SELF', '仅本人', 40, 'ENABLED', '数据范围类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
+SELECT `id`, 'SELF', 'Self', 40, 'ENABLED', 'Data scope type', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'CUSTOM', '自定义', 50, 'ENABLED', '数据范围类型', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
+SELECT `id`, 'CUSTOM', 'Custom', 50, 'ENABLED', 'Data scope type', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'sys_data_scope_type' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'OWNER', '所有者', 10, 'ENABLED', '团队成员角色', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_member_role' AND `deleted` = 0
+SELECT `id`, 'OWNER', 'Owner', 10, 'ENABLED', 'Team member role', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_member_role' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'ADMIN', '管理员', 20, 'ENABLED', '团队成员角色', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_member_role' AND `deleted` = 0
+SELECT `id`, 'ADMIN', 'Admin', 20, 'ENABLED', 'Team member role', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_member_role' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'MANAGER', '协作者', 30, 'ENABLED', '团队成员角色', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_member_role' AND `deleted` = 0
+SELECT `id`, 'MANAGER', 'Manager', 30, 'ENABLED', 'Team member role', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_member_role' AND `deleted` = 0
 UNION ALL
-SELECT `id`, 'MEMBER', '成员', 40, 'ENABLED', '团队成员角色', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_member_role' AND `deleted` = 0
+SELECT `id`, 'MEMBER', '鎴愬憳', 40, 'ENABLED', '鍥㈤槦鎴愬憳瑙掕壊', 0, 0, 0 FROM `sys_dict_type` WHERE `dict_code` = 'team_member_role' AND `deleted` = 0
 ON DUPLICATE KEY UPDATE
     `item_label` = VALUES(`item_label`),
     `sort_no` = VALUES(`sort_no`),
@@ -2974,126 +2912,126 @@ INSERT INTO `sys_config` (
     `created_by`, `updated_by`, `deleted`
 )
 VALUES
-    ('branding.website-name', '站点名称', 'Lumira', 'PLATFORM', 0, '控制台顶部与浏览器标题展示名称', 0, 0, 0),
-    ('branding.website-favicon-url', '站点图标地址', '', 'PLATFORM', 0, '浏览器标签页 icon 地址', 0, 0, 0),
-    ('branding.website-logo-url', '站点 Logo 地址', '', 'PLATFORM', 0, '控制台左上角品牌 Logo 地址', 0, 0, 0),
-    ('branding.login-background-url', '登录页背景图地址', '', 'PLATFORM', 0, '登录页背景图地址', 0, 0, 0),
-    ('branding.github-link-enabled', 'GitHub 链接开关', 'true', 'PLATFORM', 0, '是否显示顶部 GitHub 图标', 0, 0, 0),
-    ('branding.github-link-url', 'GitHub 链接', '', 'PLATFORM', 0, '顶部 GitHub 图标跳转地址', 0, 0, 0),
-    ('branding.help-link-enabled', '帮助链接开关', 'true', 'PLATFORM', 0, '是否显示顶部帮助图标', 0, 0, 0),
-    ('branding.help-link-url', '帮助链接', '', 'PLATFORM', 0, '顶部帮助图标跳转地址', 0, 0, 0),
-    ('branding.company-name', '公司名称', 'Lumira', 'PLATFORM', 0, '页脚版权主体名称', 0, 0, 0),
-    ('branding.copyright-start-year', '版权起始年份', CAST(YEAR(CURRENT_DATE()) AS CHAR), 'PLATFORM', 0, '页脚版权起始年份', 0, 0, 0),
-    ('branding.footer-icp', '页脚备案', '', 'PLATFORM', 0, '页脚备案信息', 0, 0, 0),
-    ('branding.footer-police-beian', '页脚公安备案', '', 'PLATFORM', 0, '页脚公安备案信息', 0, 0, 0),
-    ('branding.footer-copyright', '页脚版权声明', CONCAT('Copyright ', YEAR(CURRENT_DATE()), ' Lumira All Rights Reserved'), 'PLATFORM', 0, '页脚版权声明', 0, 0, 0),
-    ('agreement.user-agreement-markdown', '用户协议', '', 'PLATFORM', 0, '用户协议 Markdown', 0, 0, 0),
-    ('agreement.privacy-agreement-markdown', '隐私协议', '', 'PLATFORM', 0, '隐私协议 Markdown', 0, 0, 0),
-    ('watermark.enabled', '水印开关', 'false', 'PLATFORM', 0, '全局水印开关', 0, 0, 0),
-    ('watermark.mode', '水印模式', 'TEXT', 'PLATFORM', 0, 'TEXT/IMAGE', 0, 0, 0),
-    ('watermark.text-lines', '水印文本', '', 'PLATFORM', 0, '多行文本水印', 0, 0, 0),
-    ('watermark.image-url', '水印图片', '', 'PLATFORM', 0, '图片水印 URL', 0, 0, 0),
-    ('watermark.font-color', '字体颜色', 'rgba(0,0,0,0.15)', 'PLATFORM', 0, '字体颜色', 0, 0, 0),
-    ('watermark.font-size', '字体大小', '14', 'PLATFORM', 0, '字体大小', 0, 0, 0),
-    ('watermark.font-weight', '字体粗细', 'normal', 'PLATFORM', 0, '字体粗细', 0, 0, 0),
-    ('watermark.rotate', '旋转角度', '-22', 'PLATFORM', 0, '旋转角度', 0, 0, 0),
-    ('watermark.gap-x', '横向间距', '100', 'PLATFORM', 0, '横向间距', 0, 0, 0),
-    ('watermark.gap-y', '纵向间距', '100', 'PLATFORM', 0, '纵向间距', 0, 0, 0),
-    ('watermark.offset-x', '横向偏移', '0', 'PLATFORM', 0, '横向偏移', 0, 0, 0),
-    ('watermark.offset-y', '纵向偏移', '0', 'PLATFORM', 0, '纵向偏移', 0, 0, 0),
-    ('watermark.z-index', '层级', '9', 'PLATFORM', 0, 'z-index', 0, 0, 0),
-    ('watermark.opacity', '透明度', '0.15', 'PLATFORM', 0, '透明度', 0, 0, 0),
-    ('floating-window.api-docs-qr-enabled', '接口文档二维码开关', 'false', 'PLATFORM', 0, '是否在全局悬浮窗展示接口文档二维码入口', 0, 0, 0),
-    ('floating-window.api-docs-qr-title', '接口文档二维码标题', '', 'PLATFORM', 0, '接口文档二维码弹层标题', 0, 0, 0),
-    ('floating-window.api-docs-qr-image-url', '接口文档二维码图片', '', 'PLATFORM', 0, '接口文档悬浮入口展开后展示的二维码图片', 0, 0, 0),
-    ('smtp.enabled', 'SMTP 邮箱通知启用', 'false', 'PLATFORM', 0, '是否启用邮箱通知渠道', 0, 0, 0),
-    ('smtp.host', 'SMTP 主机', '', 'PLATFORM', 0, '邮件服务器地址', 0, 0, 0),
-    ('smtp.port', 'SMTP 端口', '25', 'PLATFORM', 0, '邮件服务器端口', 0, 0, 0),
-    ('smtp.username', 'SMTP 用户名', '', 'PLATFORM', 0, 'SMTP 登录用户名', 0, 0, 0),
-    ('smtp.password', 'SMTP 密码', '', 'PLATFORM', 0, 'SMTP 登录密码', 0, 0, 0),
-    ('smtp.from', '发件人地址', '', 'PLATFORM', 0, 'SMTP 默认发件人', 0, 0, 0),
-    ('smtp.auth-enabled', 'SMTP 认证', 'true', 'PLATFORM', 0, '是否启用 SMTP AUTH', 0, 0, 0),
-    ('smtp.starttls-enabled', 'SMTP STARTTLS', 'true', 'PLATFORM', 0, '是否启用 STARTTLS', 0, 0, 0),
-    ('smtp.ssl-enabled', 'SMTP SSL', 'false', 'PLATFORM', 0, '是否启用 SSL', 0, 0, 0),
-    ('notification.wechat-official.enabled', '微信公众号通知启用', 'false', 'PLATFORM', 0, '是否启用微信公众号/服务号模板消息通知', 0, 0, 0),
-    ('notification.wechat-official.app-id', '微信公众号 AppID', '', 'PLATFORM', 0, '微信公众号或服务号 AppID', 0, 0, 0),
-    ('notification.wechat-official.app-secret', '微信公众号 AppSecret', '', 'PLATFORM', 0, '微信公众号或服务号 AppSecret', 0, 0, 0),
-    ('notification.wechat-official.template-id', '微信公众号模板 ID', '', 'PLATFORM', 0, '用于系统通知的公众号模板消息 ID', 0, 0, 0),
-    ('notification.wechat-official.detail-url', '微信公众号通知详情链接', '', 'PLATFORM', 0, '模板消息点击后打开的系统链接，可留空', 0, 0, 0),
-    ('verification.totp.enabled', '2FA 启用', 'true', 'PLATFORM', 0, '是否启用 2FA 登录方式', 0, 0, 0),
-    ('verification.password-login.enabled', '密码登录', 'true', 'PLATFORM', 0, '是否启用账号密码登录', 0, 0, 0),
-    ('verification.email-login.enabled', '邮箱验证码登录', 'false', 'PLATFORM', 0, '是否启用邮箱验证码登录', 0, 0, 0),
-    ('verification.login-mode.order', '登录方式排序', 'password,sms,email,wechat,passkey', 'PLATFORM', 0, '登录页分段控制器展示顺序', 0, 0, 0),
-    ('verification.sms.enabled', '短信验证码启用', 'false', 'PLATFORM', 0, '是否启用短信验证码服务', 0, 0, 0),
-    ('verification.sms.provider', '短信验证码服务商', 'aliyun', 'PLATFORM', 0, '短信验证码服务提供方', 0, 0, 0),
-    ('verification.sms.sign-name', '短信签名', '', 'PLATFORM', 0, '短信验证码签名', 0, 0, 0),
-    ('verification.sms.template-code', '短信模板编码', '', 'PLATFORM', 0, '短信验证码模板编码', 0, 0, 0),
-    ('verification.sms.access-key-id', '短信 Access Key ID', '', 'PLATFORM', 0, '短信验证码访问密钥 ID', 0, 0, 0),
-    ('verification.sms.access-key-secret', '短信 Access Key Secret', '', 'PLATFORM', 0, '短信验证码访问密钥 Secret', 0, 0, 0),
-    ('verification.sms.endpoint', '短信服务地址', '', 'PLATFORM', 0, '短信验证码服务端点', 0, 0, 0),
-    ('verification.sms.region', '短信服务地域', '', 'PLATFORM', 0, '短信验证码服务地域', 0, 0, 0),
-    ('verification.wechat-login.enabled', '微信登录启用', 'false', 'PLATFORM', 0, '是否启用微信扫码登录', 0, 0, 0),
-    ('verification.wechat-login.app-id', '微信 AppID', '', 'PLATFORM', 0, '微信开放平台网站应用 AppID', 0, 0, 0),
-    ('verification.wechat-login.app-secret', '微信 AppSecret', '', 'PLATFORM', 0, '微信开放平台网站应用 AppSecret', 0, 0, 0),
-    ('verification.wechat-login.redirect-uri', '微信登录回调地址', '', 'PLATFORM', 0, '微信开放平台授权回调地址', 0, 0, 0),
-    ('verification.wechat-login.state-expire-minutes', '微信登录状态有效期', '10', 'PLATFORM', 0, '微信登录 state 缓存有效期，单位分钟', 0, 0, 0),
-    ('verification.passkey.enabled', '通行密钥启用', 'false', 'PLATFORM', 0, '是否启用通行密钥登录', 0, 0, 0),
-    ('verification.passkey.passwordless-enabled', '通行密钥无账号登录', 'false', 'PLATFORM', 0, '是否允许发现式凭据无账号登录', 0, 0, 0),
-    ('verification.passkey.self-binding-enabled', '通行密钥自助绑定', 'false', 'PLATFORM', 0, '是否允许用户在个人中心自助绑定通行密钥', 0, 0, 0),
-    ('verification.passkey.rp-id', '通行密钥 RP ID', '', 'PLATFORM', 0, 'WebAuthn RP ID', 0, 0, 0),
-    ('verification.passkey.rp-name', '通行密钥 RP 名称', '', 'PLATFORM', 0, 'WebAuthn RP 显示名称', 0, 0, 0),
-    ('verification.passkey.allowed-origins', '通行密钥允许 Origin', '', 'PLATFORM', 0, 'WebAuthn 允许的前端 Origin', 0, 0, 0),
-    ('verification.passkey.challenge-ttl-seconds', '通行密钥 Challenge TTL', '120', 'PLATFORM', 0, 'WebAuthn challenge 有效期秒数', 0, 0, 0),
-    ('security.idle-timeout-seconds', '空闲超时时间', '1800', 'PLATFORM', 1, '会话在无操作状态下允许保持的秒数', 0, 0, 0),
-    ('security.access-token-expire-seconds', 'Access Token 过期时间', '1800', 'PLATFORM', 1, 'Access Token 的有效秒数', 0, 0, 0),
-    ('security.refresh-token-expire-seconds', 'Refresh Token 刷新时限', '604800', 'PLATFORM', 1, 'Refresh Token 的有效秒数', 0, 0, 0),
-    ('security.allow-multi-device-login', '多设备登录', '1', 'PLATFORM', 1, '是否允许同一账号在多个设备同时在线', 0, 0, 0),
-    ('security.captcha-enabled', '验证码开关', '0', 'PLATFORM', 1, '是否开启登录时的人机验证码', 0, 0, 0),
-    ('security.captcha-type', '验证码类型', 'IMAGE', 'PLATFORM', 1, '验证码类型：IMAGE/SLIDER', 0, 0, 0),
-    ('security.login-defense-window-minutes', '登录防御统计窗口', '5', 'PLATFORM', 1, '统计登录尝试与错误次数的时间窗口，单位分钟', 0, 0, 0),
-    ('security.login-max-validation-attempts', '最大验证次数', '100', 'PLATFORM', 1, '统计窗口内允许的最大验证码/登录验证尝试次数', 0, 0, 0),
-    ('security.login-max-failure-count', '最大错误次数', '10', 'PLATFORM', 1, '统计窗口内允许的最大登录失败次数', 0, 0, 0),
-    ('security.verification-code-expire-seconds', '验证码有效期', '300', 'PLATFORM', 1, '短信/邮箱验证码的有效秒数', 0, 0, 0),
-    ('security.verification-code-cooldown-seconds', '验证码重发冷却', '60', 'PLATFORM', 1, '同一账号同一验证码渠道再次发送前需要等待的秒数', 0, 0, 0),
-    ('security.password-min-length', '密码最短长度', '6', 'PLATFORM', 1, '用户密码允许的最少字符数', 0, 0, 0),
-    ('security.password-require-uppercase', '密码必须包含大写字母', '0', 'PLATFORM', 1, '强制密码包含 A-Z', 0, 0, 0),
-    ('security.password-require-lowercase', '密码必须包含小写字母', '0', 'PLATFORM', 1, '强制密码包含 a-z', 0, 0, 0),
-    ('security.password-require-special-character', '密码必须包含特殊字符', '0', 'PLATFORM', 1, '强制密码包含特殊字符', 0, 0, 0),
-    ('security.password-allow-consecutive-characters', '允许连续字符', '1', 'PLATFORM', 1, '是否允许密码中出现连续字符', 0, 0, 0),
+    ('branding.website-name', '绔欑偣鍚嶇О', 'Lumira', 'PLATFORM', 0, 'Website name shown in the console and browser title', 0, 0, 0),
+    ('branding.website-favicon-url', '绔欑偣鍥炬爣鍦板潃', '', 'PLATFORM', 0, '娴忚鍣ㄦ爣绛鹃〉 icon 鍦板潃', 0, 0, 0),
+    ('branding.website-logo-url', '绔欑偣 Logo 鍦板潃', '', 'PLATFORM', 0, '鎺у埗鍙板乏涓婅鍝佺墝 Logo 鍦板潃', 0, 0, 0),
+    ('branding.login-background-url', '鐧诲綍椤佃儗鏅浘鍦板潃', '', 'PLATFORM', 0, '鐧诲綍椤佃儗鏅浘鍦板潃', 0, 0, 0),
+    ('branding.github-link-enabled', 'GitHub link enabled', 'true', 'PLATFORM', 0, '鏄惁鏄剧ず椤堕儴 GitHub 鍥炬爣', 0, 0, 0),
+    ('branding.github-link-url', 'GitHub 閾炬帴', '', 'PLATFORM', 0, '椤堕儴 GitHub 鍥炬爣璺宠浆鍦板潃', 0, 0, 0),
+    ('branding.help-link-enabled', 'Help link enabled', 'true', 'PLATFORM', 0, '鏄惁鏄剧ず椤堕儴甯姪鍥炬爣', 0, 0, 0),
+    ('branding.help-link-url', '甯姪閾炬帴', '', 'PLATFORM', 0, '椤堕儴甯姪鍥炬爣璺宠浆鍦板潃', 0, 0, 0),
+    ('branding.company-name', '鍏徃鍚嶇О', 'Lumira', 'PLATFORM', 0, '椤佃剼鐗堟潈涓讳綋鍚嶇О', 0, 0, 0),
+    ('branding.copyright-start-year', '鐗堟潈璧峰骞翠唤', CAST(YEAR(CURRENT_DATE()) AS CHAR), 'PLATFORM', 0, '椤佃剼鐗堟潈璧峰骞翠唤', 0, 0, 0),
+    ('branding.footer-icp', '椤佃剼澶囨', '', 'PLATFORM', 0, '椤佃剼澶囨淇℃伅', 0, 0, 0),
+    ('branding.footer-police-beian', '椤佃剼鍏畨澶囨', '', 'PLATFORM', 0, '椤佃剼鍏畨澶囨淇℃伅', 0, 0, 0),
+    ('branding.footer-copyright', '椤佃剼鐗堟潈澹版槑', CONCAT('Copyright ', YEAR(CURRENT_DATE()), ' Lumira All Rights Reserved'), 'PLATFORM', 0, '椤佃剼鐗堟潈澹版槑', 0, 0, 0),
+    ('agreement.user-agreement-markdown', '鐢ㄦ埛鍗忚', '', 'PLATFORM', 0, '鐢ㄦ埛鍗忚 Markdown', 0, 0, 0),
+    ('agreement.privacy-agreement-markdown', '闅愮鍗忚', '', 'PLATFORM', 0, '闅愮鍗忚 Markdown', 0, 0, 0),
+    ('watermark.enabled', 'Watermark enabled', 'false', 'PLATFORM', 0, 'Global watermark enabled flag', 0, 0, 0),
+    ('watermark.mode', '姘村嵃妯″紡', 'TEXT', 'PLATFORM', 0, 'TEXT/IMAGE', 0, 0, 0),
+    ('watermark.text-lines', '姘村嵃鏂囨湰', '', 'PLATFORM', 0, '澶氳鏂囨湰姘村嵃', 0, 0, 0),
+    ('watermark.image-url', '姘村嵃鍥剧墖', '', 'PLATFORM', 0, '鍥剧墖姘村嵃 URL', 0, 0, 0),
+    ('watermark.font-color', '瀛椾綋棰滆壊', 'rgba(0,0,0,0.15)', 'PLATFORM', 0, '瀛椾綋棰滆壊', 0, 0, 0),
+    ('watermark.font-size', '瀛椾綋澶у皬', '14', 'PLATFORM', 0, '瀛椾綋澶у皬', 0, 0, 0),
+    ('watermark.font-weight', '瀛椾綋绮楃粏', 'normal', 'PLATFORM', 0, '瀛椾綋绮楃粏', 0, 0, 0),
+    ('watermark.rotate', '鏃嬭浆瑙掑害', '-22', 'PLATFORM', 0, '鏃嬭浆瑙掑害', 0, 0, 0),
+    ('watermark.gap-x', '妯悜闂磋窛', '100', 'PLATFORM', 0, '妯悜闂磋窛', 0, 0, 0),
+    ('watermark.gap-y', '绾靛悜闂磋窛', '100', 'PLATFORM', 0, '绾靛悜闂磋窛', 0, 0, 0),
+    ('watermark.offset-x', '妯悜鍋忕Щ', '0', 'PLATFORM', 0, '妯悜鍋忕Щ', 0, 0, 0),
+    ('watermark.offset-y', '绾靛悜鍋忕Щ', '0', 'PLATFORM', 0, '绾靛悜鍋忕Щ', 0, 0, 0),
+    ('watermark.z-index', '灞傜骇', '9', 'PLATFORM', 0, 'z-index', 0, 0, 0),
+    ('watermark.opacity', 'Watermark opacity', '0.15', 'PLATFORM', 0, 'Watermark opacity', 0, 0, 0),
+    ('floating-window.api-docs-qr-enabled', 'API docs QR enabled', 'false', 'PLATFORM', 0, '鏄惁鍦ㄥ叏灞€鎮诞绐楀睍绀烘帴鍙ｆ枃妗ｄ簩缁寸爜鍏ュ彛', 0, 0, 0),
+    ('floating-window.api-docs-qr-title', 'API docs QR title', '', 'PLATFORM', 0, 'API docs QR dialog title', 0, 0, 0),
+    ('floating-window.api-docs-qr-image-url', 'API docs QR image', '', 'PLATFORM', 0, 'API docs floating entry QR image URL', 0, 0, 0),
+    ('smtp.enabled', 'SMTP 閭閫氱煡鍚敤', 'false', 'PLATFORM', 0, '鏄惁鍚敤閭閫氱煡娓犻亾', 0, 0, 0),
+    ('smtp.host', 'SMTP 涓绘満', '', 'PLATFORM', 0, '閭欢鏈嶅姟鍣ㄥ湴鍧€', 0, 0, 0),
+    ('smtp.port', 'SMTP 绔彛', '25', 'PLATFORM', 0, 'SMTP server port', 0, 0, 0),
+    ('smtp.username', 'SMTP username', '', 'PLATFORM', 0, 'SMTP login username', 0, 0, 0),
+    ('smtp.password', 'SMTP 瀵嗙爜', '', 'PLATFORM', 0, 'SMTP 鐧诲綍瀵嗙爜', 0, 0, 0),
+    ('smtp.from', '鍙戜欢浜哄湴鍧€', '', 'PLATFORM', 0, 'SMTP default sender', 0, 0, 0),
+    ('smtp.auth-enabled', 'SMTP 璁よ瘉', 'true', 'PLATFORM', 0, '鏄惁鍚敤 SMTP AUTH', 0, 0, 0),
+    ('smtp.starttls-enabled', 'SMTP STARTTLS', 'true', 'PLATFORM', 0, '鏄惁鍚敤 STARTTLS', 0, 0, 0),
+    ('smtp.ssl-enabled', 'SMTP SSL', 'false', 'PLATFORM', 0, '鏄惁鍚敤 SSL', 0, 0, 0),
+    ('notification.wechat-official.enabled', '寰俊鍏紬鍙烽€氱煡鍚敤', 'false', 'PLATFORM', 0, '鏄惁鍚敤寰俊鍏紬鍙?鏈嶅姟鍙锋ā鏉挎秷鎭€氱煡', 0, 0, 0),
+    ('notification.wechat-official.app-id', '寰俊鍏紬鍙?AppID', '', 'PLATFORM', 0, '寰俊鍏紬鍙锋垨鏈嶅姟鍙?AppID', 0, 0, 0),
+    ('notification.wechat-official.app-secret', '寰俊鍏紬鍙?AppSecret', '', 'PLATFORM', 0, '寰俊鍏紬鍙锋垨鏈嶅姟鍙?AppSecret', 0, 0, 0),
+    ('notification.wechat-official.template-id', '寰俊鍏紬鍙锋ā鏉?ID', '', 'PLATFORM', 0, '鐢ㄤ簬绯荤粺閫氱煡鐨勫叕浼楀彿妯℃澘娑堟伅 ID', 0, 0, 0),
+    ('notification.wechat-official.detail-url', '寰俊鍏紬鍙烽€氱煡璇︽儏閾炬帴', '', 'PLATFORM', 0, 'System URL opened after template message click; can be empty', 0, 0, 0),
+    ('verification.totp.enabled', '2FA 鍚敤', 'true', 'PLATFORM', 0, '鏄惁鍚敤 2FA 鐧诲綍鏂瑰紡', 0, 0, 0),
+    ('verification.password-login.enabled', '瀵嗙爜鐧诲綍', 'true', 'PLATFORM', 0, '鏄惁鍚敤璐﹀彿瀵嗙爜鐧诲綍', 0, 0, 0),
+    ('verification.email-login.enabled', 'Email code login enabled', 'false', 'PLATFORM', 0, 'Whether email code login is enabled', 0, 0, 0),
+    ('verification.login-mode.order', '鐧诲綍鏂瑰紡鎺掑簭', 'password,sms,email,wechat,passkey', 'PLATFORM', 0, '鐧诲綍椤靛垎娈垫帶鍒跺櫒灞曠ず椤哄簭', 0, 0, 0),
+    ('verification.sms.enabled', 'SMS verification enabled', 'false', 'PLATFORM', 0, 'Whether SMS verification service is enabled', 0, 0, 0),
+    ('verification.sms.provider', '鐭俊楠岃瘉鐮佹湇鍔″晢', 'aliyun', 'PLATFORM', 0, '鐭俊楠岃瘉鐮佹湇鍔℃彁渚涙柟', 0, 0, 0),
+    ('verification.sms.sign-name', '鐭俊绛惧悕', '', 'PLATFORM', 0, 'SMS verification sign name', 0, 0, 0),
+    ('verification.sms.template-code', '鐭俊妯℃澘缂栫爜', '', 'PLATFORM', 0, 'SMS verification template code', 0, 0, 0),
+    ('verification.sms.access-key-id', '鐭俊 Access Key ID', '', 'PLATFORM', 0, '鐭俊楠岃瘉鐮佽闂瘑閽?ID', 0, 0, 0),
+    ('verification.sms.access-key-secret', '鐭俊 Access Key Secret', '', 'PLATFORM', 0, '鐭俊楠岃瘉鐮佽闂瘑閽?Secret', 0, 0, 0),
+    ('verification.sms.endpoint', '鐭俊鏈嶅姟鍦板潃', '', 'PLATFORM', 0, 'SMS verification endpoint', 0, 0, 0),
+    ('verification.sms.region', '鐭俊鏈嶅姟鍦板煙', '', 'PLATFORM', 0, 'SMS verification region', 0, 0, 0),
+    ('verification.wechat-login.enabled', '寰俊鐧诲綍鍚敤', 'false', 'PLATFORM', 0, '鏄惁鍚敤寰俊鎵爜鐧诲綍', 0, 0, 0),
+    ('verification.wechat-login.app-id', '寰俊 AppID', '', 'PLATFORM', 0, '寰俊寮€鏀惧钩鍙扮綉绔欏簲鐢?AppID', 0, 0, 0),
+    ('verification.wechat-login.app-secret', '寰俊 AppSecret', '', 'PLATFORM', 0, '寰俊寮€鏀惧钩鍙扮綉绔欏簲鐢?AppSecret', 0, 0, 0),
+    ('verification.wechat-login.redirect-uri', '寰俊鐧诲綍鍥炶皟鍦板潃', '', 'PLATFORM', 0, '寰俊寮€鏀惧钩鍙版巿鏉冨洖璋冨湴鍧€', 0, 0, 0),
+    ('verification.wechat-login.state-expire-minutes', '寰俊鐧诲綍鐘舵€佹湁鏁堟湡', '10', 'PLATFORM', 0, '寰俊鐧诲綍 state 缂撳瓨鏈夋晥鏈燂紝鍗曚綅鍒嗛挓', 0, 0, 0),
+    ('verification.passkey.enabled', '閫氳瀵嗛挜鍚敤', 'false', 'PLATFORM', 0, '鏄惁鍚敤閫氳瀵嗛挜鐧诲綍', 0, 0, 0),
+    ('verification.passkey.passwordless-enabled', 'Passkey passwordless enabled', 'false', 'PLATFORM', 0, '鏄惁鍏佽鍙戠幇寮忓嚟鎹棤璐﹀彿鐧诲綍', 0, 0, 0),
+    ('verification.passkey.self-binding-enabled', '閫氳瀵嗛挜鑷姪缁戝畾', 'false', 'PLATFORM', 0, '鏄惁鍏佽鐢ㄦ埛鍦ㄤ釜浜轰腑蹇冭嚜鍔╃粦瀹氶€氳瀵嗛挜', 0, 0, 0),
+    ('verification.passkey.rp-id', '閫氳瀵嗛挜 RP ID', '', 'PLATFORM', 0, 'WebAuthn RP ID', 0, 0, 0),
+    ('verification.passkey.rp-name', '閫氳瀵嗛挜 RP 鍚嶇О', '', 'PLATFORM', 0, 'WebAuthn RP 鏄剧ず鍚嶇О', 0, 0, 0),
+    ('verification.passkey.allowed-origins', '閫氳瀵嗛挜鍏佽 Origin', '', 'PLATFORM', 0, 'WebAuthn 鍏佽鐨勫墠绔?Origin', 0, 0, 0),
+    ('verification.passkey.challenge-ttl-seconds', '閫氳瀵嗛挜 Challenge TTL', '120', 'PLATFORM', 0, 'WebAuthn challenge TTL seconds', 0, 0, 0),
+    ('security.idle-timeout-seconds', '绌洪棽瓒呮椂鏃堕棿', '1800', 'PLATFORM', 1, 'Session idle timeout seconds', 0, 0, 0),
+    ('security.access-token-expire-seconds', 'Access Token 杩囨湡鏃堕棿', '1800', 'PLATFORM', 1, 'Access token TTL seconds', 0, 0, 0),
+    ('security.refresh-token-expire-seconds', 'Refresh Token 鍒锋柊鏃堕檺', '604800', 'PLATFORM', 1, 'Refresh token TTL seconds', 0, 0, 0),
+    ('security.allow-multi-device-login', 'Multi-device login', '1', 'PLATFORM', 1, 'Whether the same account can be online on multiple devices', 0, 0, 0),
+    ('security.captcha-enabled', 'Captcha enabled', '0', 'PLATFORM', 1, '鏄惁寮€鍚櫥褰曟椂鐨勪汉鏈洪獙璇佺爜', 0, 0, 0),
+    ('security.captcha-type', 'Captcha type', 'IMAGE', 'PLATFORM', 1, '楠岃瘉鐮佺被鍨嬶細IMAGE/SLIDER', 0, 0, 0),
+    ('security.login-defense-window-minutes', '鐧诲綍闃插尽缁熻绐楀彛', '5', 'PLATFORM', 1, 'Login defense statistics window in minutes', 0, 0, 0),
+    ('security.login-max-validation-attempts', 'Max validation attempts', '100', 'PLATFORM', 1, 'Maximum verification or login validation attempts in the window', 0, 0, 0),
+    ('security.login-max-failure-count', 'Max login failure count', '10', 'PLATFORM', 1, 'Maximum login failures allowed in the statistics window', 0, 0, 0),
+    ('security.verification-code-expire-seconds', '楠岃瘉鐮佹湁鏁堟湡', '300', 'PLATFORM', 1, '鐭俊/閭楠岃瘉鐮佺殑鏈夋晥绉掓暟', 0, 0, 0),
+    ('security.verification-code-cooldown-seconds', 'Verification code cooldown', '60', 'PLATFORM', 1, '鍚屼竴璐﹀彿鍚屼竴楠岃瘉鐮佹笭閬撳啀娆″彂閫佸墠闇€瑕佺瓑寰呯殑绉掓暟', 0, 0, 0),
+    ('security.password-min-length', 'Password min length', '6', 'PLATFORM', 1, '鐢ㄦ埛瀵嗙爜鍏佽鐨勬渶灏戝瓧绗︽暟', 0, 0, 0),
+    ('security.password-require-uppercase', '瀵嗙爜蹇呴』鍖呭惈澶у啓瀛楁瘝', '0', 'PLATFORM', 1, '寮哄埗瀵嗙爜鍖呭惈 A-Z', 0, 0, 0),
+    ('security.password-require-lowercase', '瀵嗙爜蹇呴』鍖呭惈灏忓啓瀛楁瘝', '0', 'PLATFORM', 1, '寮哄埗瀵嗙爜鍖呭惈 a-z', 0, 0, 0),
+    ('security.password-require-special-character', '瀵嗙爜蹇呴』鍖呭惈鐗规畩瀛楃', '0', 'PLATFORM', 1, '寮哄埗瀵嗙爜鍖呭惈鐗规畩瀛楃', 0, 0, 0),
+    ('security.password-allow-consecutive-characters', '鍏佽杩炵画瀛楃', '1', 'PLATFORM', 1, 'Whether consecutive password characters are allowed', 0, 0, 0),
     ('profile.field.system.overrides', 'System profile field metadata overrides', '[]', 'PLATFORM', 0, 'Stores editable labels, descriptions, placeholders, and groups for built-in profile fields', 0, 0, 0),
-    ('profile.field.custom.definitions', '自定义资料字段定义', '[]', 'PLATFORM', 0, '保存个人中心可扩展的自定义资料字段定义', 0, 0, 0),
-    ('profile.field.avatar.visible', '头像显示开关', 'true', 'PLATFORM', 0, '个人中心头像字段显示开关', 0, 0, 0),
-    ('profile.field.avatar.weight', '头像评分权重', '10', 'PLATFORM', 0, '个人中心头像字段评分权重', 0, 0, 0),
-    ('profile.field.avatar.required', '头像 required', 'false', 'PLATFORM', 0, '个人中心头像字段必填开关', 0, 0, 0),
-    ('profile.field.avatar.sort', '头像 sort', '10', 'PLATFORM', 0, '个人中心头像字段排序', 0, 0, 0),
-    ('profile.field.real-name.visible', '姓名显示开关', 'true', 'PLATFORM', 0, '个人中心姓名字段显示开关', 0, 0, 0),
-    ('profile.field.real-name.weight', '姓名评分权重', '15', 'PLATFORM', 0, '个人中心姓名字段评分权重', 0, 0, 0),
-    ('profile.field.real-name.required', '姓名 required', 'false', 'PLATFORM', 0, '个人中心姓名字段必填开关', 0, 0, 0),
-    ('profile.field.real-name.sort', '姓名 sort', '20', 'PLATFORM', 0, '个人中心姓名字段排序', 0, 0, 0),
-    ('profile.field.mobile.visible', '手机号显示开关', 'true', 'PLATFORM', 0, '个人中心手机号字段显示开关', 0, 0, 0),
-    ('profile.field.mobile.weight', '手机号评分权重', '15', 'PLATFORM', 0, '个人中心手机号字段评分权重', 0, 0, 0),
-    ('profile.field.mobile.required', '手机号 required', 'false', 'PLATFORM', 0, '个人中心手机号字段必填开关', 0, 0, 0),
-    ('profile.field.mobile.sort', '手机号 sort', '30', 'PLATFORM', 0, '个人中心手机号字段排序', 0, 0, 0),
-    ('profile.field.email.visible', '邮箱显示开关', 'true', 'PLATFORM', 0, '个人中心邮箱字段显示开关', 0, 0, 0),
-    ('profile.field.email.weight', '邮箱评分权重', '15', 'PLATFORM', 0, '个人中心邮箱字段评分权重', 0, 0, 0),
-    ('profile.field.email.required', '邮箱 required', 'false', 'PLATFORM', 0, '个人中心邮箱字段必填开关', 0, 0, 0),
-    ('profile.field.email.sort', '邮箱 sort', '40', 'PLATFORM', 0, '个人中心邮箱字段排序', 0, 0, 0),
-    ('profile.field.birth-month.visible', '出生年月显示开关', 'true', 'PLATFORM', 0, '个人中心出生年月字段显示开关', 0, 0, 0),
-    ('profile.field.birth-month.weight', '出生年月评分权重', '10', 'PLATFORM', 0, '个人中心出生年月字段评分权重', 0, 0, 0),
-    ('profile.field.birth-month.required', '出生年月 required', 'false', 'PLATFORM', 0, '个人中心出生年月字段必填开关', 0, 0, 0),
-    ('profile.field.birth-month.sort', '出生年月 sort', '50', 'PLATFORM', 0, '个人中心出生年月字段排序', 0, 0, 0),
-    ('profile.field.gender.visible', '性别显示开关', 'true', 'PLATFORM', 0, '个人中心性别字段显示开关', 0, 0, 0),
-    ('profile.field.gender.weight', '性别评分权重', '10', 'PLATFORM', 0, '个人中心性别字段评分权重', 0, 0, 0),
-    ('profile.field.gender.required', '性别 required', 'false', 'PLATFORM', 0, '个人中心性别字段必填开关', 0, 0, 0),
-    ('profile.field.gender.sort', '性别 sort', '60', 'PLATFORM', 0, '个人中心性别字段排序', 0, 0, 0),
-    ('profile.field.region.visible', '所在地区显示开关', 'true', 'PLATFORM', 0, '个人中心所在地区字段显示开关', 0, 0, 0),
-    ('profile.field.region.weight', '所在地区评分权重', '10', 'PLATFORM', 0, '个人中心所在地区字段评分权重', 0, 0, 0),
-    ('profile.field.region.required', '所在地区 required', 'false', 'PLATFORM', 0, '个人中心所在地区字段必填开关', 0, 0, 0),
-    ('profile.field.region.sort', '所在地区 sort', '70', 'PLATFORM', 0, '个人中心所在地区字段排序', 0, 0, 0),
-    ('profile.field.id-card-number.visible', '身份证号码显示开关', 'true', 'PLATFORM', 0, '个人中心身份证号码字段显示开关', 0, 0, 0),
-    ('profile.field.id-card-number.weight', '身份证号码评分权重', '5', 'PLATFORM', 0, '个人中心身份证号码字段评分权重', 0, 0, 0),
-    ('profile.field.id-card-number.required', '身份证号码 required', 'false', 'PLATFORM', 0, '个人中心身份证号码字段必填开关', 0, 0, 0),
-    ('profile.field.id-card-number.sort', '身份证号码 sort', '80', 'PLATFORM', 0, '个人中心身份证号码字段排序', 0, 0, 0)
+    ('profile.field.custom.definitions', 'Custom profile field definitions', '[]', 'PLATFORM', 0, 'Custom profile field definitions', 0, 0, 0),
+    ('profile.field.avatar.visible', 'Avatar visible', 'true', 'PLATFORM', 0, 'Profile avatar visible flag', 0, 0, 0),
+    ('profile.field.avatar.weight', '澶村儚璇勫垎鏉冮噸', '10', 'PLATFORM', 0, '涓汉涓績澶村儚瀛楁璇勫垎鏉冮噸', 0, 0, 0),
+    ('profile.field.avatar.required', '澶村儚 required', 'false', 'PLATFORM', 0, 'Profile avatar required flag', 0, 0, 0),
+    ('profile.field.avatar.sort', '澶村儚 sort', '10', 'PLATFORM', 0, '涓汉涓績澶村儚瀛楁鎺掑簭', 0, 0, 0),
+    ('profile.field.real-name.visible', 'Real name visible', 'true', 'PLATFORM', 0, 'Profile real name visible flag', 0, 0, 0),
+    ('profile.field.real-name.weight', '濮撳悕璇勫垎鏉冮噸', '15', 'PLATFORM', 0, '涓汉涓績濮撳悕瀛楁璇勫垎鏉冮噸', 0, 0, 0),
+    ('profile.field.real-name.required', '濮撳悕 required', 'false', 'PLATFORM', 0, 'Profile real name required flag', 0, 0, 0),
+    ('profile.field.real-name.sort', '濮撳悕 sort', '20', 'PLATFORM', 0, '涓汉涓績濮撳悕瀛楁鎺掑簭', 0, 0, 0),
+    ('profile.field.mobile.visible', 'Mobile visible', 'true', 'PLATFORM', 0, 'Profile mobile visible flag', 0, 0, 0),
+    ('profile.field.mobile.weight', 'Mobile weight', '15', 'PLATFORM', 0, 'Profile mobile field score weight', 0, 0, 0),
+    ('profile.field.mobile.required', 'Mobile required', 'false', 'PLATFORM', 0, 'Profile mobile required flag', 0, 0, 0),
+    ('profile.field.mobile.sort', 'Mobile sort', '30', 'PLATFORM', 0, 'Profile mobile field sort order', 0, 0, 0),
+    ('profile.field.email.visible', 'Email visible', 'true', 'PLATFORM', 0, 'Profile email visible flag', 0, 0, 0),
+    ('profile.field.email.weight', '閭璇勫垎鏉冮噸', '15', 'PLATFORM', 0, '涓汉涓績閭瀛楁璇勫垎鏉冮噸', 0, 0, 0),
+    ('profile.field.email.required', '閭 required', 'false', 'PLATFORM', 0, 'Profile email required flag', 0, 0, 0),
+    ('profile.field.email.sort', '閭 sort', '40', 'PLATFORM', 0, '涓汉涓績閭瀛楁鎺掑簭', 0, 0, 0),
+    ('profile.field.birth-month.visible', 'Birth month visible', 'true', 'PLATFORM', 0, 'Profile birth month visible flag', 0, 0, 0),
+    ('profile.field.birth-month.weight', '鍑虹敓骞存湀璇勫垎鏉冮噸', '10', 'PLATFORM', 0, '涓汉涓績鍑虹敓骞存湀瀛楁璇勫垎鏉冮噸', 0, 0, 0),
+    ('profile.field.birth-month.required', '鍑虹敓骞存湀 required', 'false', 'PLATFORM', 0, 'Profile birth month required flag', 0, 0, 0),
+    ('profile.field.birth-month.sort', '鍑虹敓骞存湀 sort', '50', 'PLATFORM', 0, '涓汉涓績鍑虹敓骞存湀瀛楁鎺掑簭', 0, 0, 0),
+    ('profile.field.gender.visible', 'Gender visible', 'true', 'PLATFORM', 0, 'Profile gender visible flag', 0, 0, 0),
+    ('profile.field.gender.weight', '鎬у埆璇勫垎鏉冮噸', '10', 'PLATFORM', 0, '涓汉涓績鎬у埆瀛楁璇勫垎鏉冮噸', 0, 0, 0),
+    ('profile.field.gender.required', '鎬у埆 required', 'false', 'PLATFORM', 0, 'Profile gender required flag', 0, 0, 0),
+    ('profile.field.gender.sort', '鎬у埆 sort', '60', 'PLATFORM', 0, '涓汉涓績鎬у埆瀛楁鎺掑簭', 0, 0, 0),
+    ('profile.field.region.visible', 'Region visible', 'true', 'PLATFORM', 0, 'Profile region visible flag', 0, 0, 0),
+    ('profile.field.region.weight', 'Region weight', '10', 'PLATFORM', 0, 'Profile region field score weight', 0, 0, 0),
+    ('profile.field.region.required', 'Region required', 'false', 'PLATFORM', 0, 'Profile region required flag', 0, 0, 0),
+    ('profile.field.region.sort', 'Region sort', '70', 'PLATFORM', 0, 'Profile region field sort order', 0, 0, 0),
+    ('profile.field.id-card-number.visible', 'ID card number visible', 'true', 'PLATFORM', 0, 'Profile ID card number visible flag', 0, 0, 0),
+    ('profile.field.id-card-number.weight', 'ID card number weight', '5', 'PLATFORM', 0, 'Profile ID card number score weight', 0, 0, 0),
+    ('profile.field.id-card-number.required', 'ID card number required', 'false', 'PLATFORM', 0, 'Profile ID card number required flag', 0, 0, 0),
+    ('profile.field.id-card-number.sort', 'ID card number sort', '80', 'PLATFORM', 0, 'Profile ID card number field sort order', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `config_key` = VALUES(`config_key`);
 
@@ -3225,7 +3163,7 @@ INSERT INTO `sys_plugin_definition` (
     `runtime_contributions_json`, `created_by`, `updated_by`, `deleted`
 )
 VALUES (
-    'sensitive-words', '敏感词拦截插件', 'SECURITY', '提供敏感词词库维护、请求内容拦截和导入能力。',
+    'sensitive-words', 'Sensitive Words Plugin', 'SECURITY', 'Provides sensitive word dictionary maintenance, request content blocking, and import capabilities.',
     'Lumira', '1.0', 1, 'ENABLED', 10, 'SHARED', 1, 0,
     JSON_ARRAY('routes', 'menus', 'permissions', 'importers', 'interceptors'), 0, 0, 0
 )
@@ -3255,7 +3193,7 @@ VALUES (
     'INSTALLED', 'READY', 1, 0,
     JSON_OBJECT(
         'pluginCode', 'sensitive-words',
-        'pluginName', '敏感词拦截插件',
+        'pluginName', 'Sensitive Words Plugin',
         'version', '1.0.0',
         'kind', 'SECURITY',
         'builtin', true
@@ -3279,7 +3217,7 @@ INSERT INTO `sys_plugin_menu_rel` (
     `permission_key`, `parent_menu_code`, `sort_no`, `created_by`, `updated_by`, `deleted`
 )
 VALUES (
-    'sensitive-words', '1.0.0', 'plugin.sensitive-words', '敏感词管理', '/plugins/sensitive-words', 'SafetyOutlined',
+    'sensitive-words', '1.0.0', 'plugin.sensitive-words', 'Sensitive Words Management', '/plugins/sensitive-words', 'SafetyOutlined',
     'plugin:sensitive-words:view', 'settings.plugins', 10, 0, 0, 0
 )
 ON DUPLICATE KEY UPDATE
@@ -3297,9 +3235,9 @@ INSERT INTO `sys_plugin_permission_rel` (
     `created_by`, `updated_by`, `deleted`
 )
 VALUES
-    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:view', '查看敏感词插件', 'sensitive-words', 0, 0, 0),
-    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:manage', '管理敏感词插件', 'sensitive-words', 0, 0, 0),
-    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:import', '导入敏感词', 'sensitive-words', 0, 0, 0)
+    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:view', 'View sensitive words plugin', 'sensitive-words', 0, 0, 0),
+    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:manage', 'Manage sensitive words plugin', 'sensitive-words', 0, 0, 0),
+    ('sensitive-words', '1.0.0', 'plugin:sensitive-words:import', 'Import sensitive words', 'sensitive-words', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `permission_name` = VALUES(`permission_name`),
     `permission_group` = VALUES(`permission_group`),
@@ -3312,7 +3250,7 @@ INSERT INTO `sys_plugin_definition` (
     `runtime_contributions_json`, `created_by`, `updated_by`, `deleted`
 )
 VALUES (
-    'work-order-feedback', '工单反馈', 'BUSINESS', '允许用户提交富文本问题反馈，管理员可跟进处理。',
+    'work-order-feedback', 'Work Order Feedback', 'BUSINESS', 'Allows users to submit rich-text feedback and administrators to follow up.',
     'Lumira', '1.0', 1, 'ENABLED', 20, 'SHARED', 1, 0,
     JSON_ARRAY('routes', 'menus', 'permissions', 'rich-text-upload'), 0, 0, 0
 )
@@ -3342,7 +3280,7 @@ VALUES (
     'INSTALLED', 'READY', 1, 0,
     JSON_OBJECT(
         'pluginCode', 'work-order-feedback',
-        'pluginName', '工单反馈',
+        'pluginName', '宸ュ崟鍙嶉',
         'version', '1.0.0',
         'kind', 'BUSINESS',
         'builtin', true
@@ -3366,7 +3304,7 @@ INSERT INTO `sys_plugin_menu_rel` (
     `permission_key`, `parent_menu_code`, `sort_no`, `created_by`, `updated_by`, `deleted`
 )
 VALUES (
-    'work-order-feedback', '1.0.0', 'plugin.work-order-feedback', '工单反馈', '/plugins/work-order-feedback', 'CustomerServiceOutlined',
+    'work-order-feedback', '1.0.0', 'plugin.work-order-feedback', '宸ュ崟鍙嶉', '/plugins/work-order-feedback', 'CustomerServiceOutlined',
     'plugin:work-order-feedback:view', 'settings.plugins', 20, 0, 0, 0
 )
 ON DUPLICATE KEY UPDATE
@@ -3384,9 +3322,9 @@ INSERT INTO `sys_plugin_permission_rel` (
     `created_by`, `updated_by`, `deleted`
 )
 VALUES
-    ('work-order-feedback', '1.0.0', 'plugin:work-order-feedback:view', '查看工单反馈', 'work-order-feedback', 0, 0, 0),
-    ('work-order-feedback', '1.0.0', 'plugin:work-order-feedback:create', '提交工单反馈', 'work-order-feedback', 0, 0, 0),
-    ('work-order-feedback', '1.0.0', 'plugin:work-order-feedback:manage', '处理工单反馈', 'work-order-feedback', 0, 0, 0)
+    ('work-order-feedback', '1.0.0', 'plugin:work-order-feedback:view', '鏌ョ湅宸ュ崟鍙嶉', 'work-order-feedback', 0, 0, 0),
+    ('work-order-feedback', '1.0.0', 'plugin:work-order-feedback:create', '鎻愪氦宸ュ崟鍙嶉', 'work-order-feedback', 0, 0, 0),
+    ('work-order-feedback', '1.0.0', 'plugin:work-order-feedback:manage', '澶勭悊宸ュ崟鍙嶉', 'work-order-feedback', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
     `permission_name` = VALUES(`permission_name`),
     `permission_group` = VALUES(`permission_group`),
@@ -3396,10 +3334,10 @@ ON DUPLICATE KEY UPDATE
 -- XXL-JOB scheduler tables. Keep this schema aligned with xuxueli/xxl-job-admin:3.4.0.
 CREATE TABLE `xxl_job_group` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `app_name` varchar(64) NOT NULL COMMENT '执行器AppName',
-  `title` varchar(64) NOT NULL COMMENT '执行器名称',
-  `address_type` tinyint(4) NOT NULL DEFAULT '0' COMMENT '执行器地址类型：0=自动注册、1=手动录入',
-  `address_list` text COMMENT '执行器地址列表，多地址逗号分隔',
+  `app_name` varchar(64) NOT NULL,
+  `title` varchar(64) NOT NULL,
+  `address_type` tinyint(4) NOT NULL DEFAULT '0',
+  `address_list` text,
   `update_time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -3416,38 +3354,38 @@ CREATE TABLE `xxl_job_registry` (
 
 CREATE TABLE `xxl_job_info` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `job_group` int(11) NOT NULL COMMENT '执行器主键ID',
+  `job_group` int(11) NOT NULL,
   `job_desc` varchar(255) NOT NULL,
   `add_time` datetime DEFAULT NULL,
   `update_time` datetime DEFAULT NULL,
-  `author` varchar(64) DEFAULT NULL COMMENT '作者',
-  `alarm_email` varchar(255) DEFAULT NULL COMMENT '报警邮件',
-  `schedule_type` varchar(50) NOT NULL DEFAULT 'NONE' COMMENT '调度类型',
-  `schedule_conf` varchar(128) DEFAULT NULL COMMENT '调度配置，值含义取决于调度类型',
-  `misfire_strategy` varchar(50) NOT NULL DEFAULT 'DO_NOTHING' COMMENT '调度过期策略',
-  `executor_route_strategy` varchar(50) DEFAULT NULL COMMENT '执行器路由策略',
-  `executor_handler` varchar(255) DEFAULT NULL COMMENT '任务handler',
-  `executor_param` text DEFAULT NULL COMMENT '任务参数',
-  `executor_block_strategy` varchar(50) DEFAULT NULL COMMENT '阻塞处理策略',
-  `executor_timeout` int(11) NOT NULL DEFAULT '0' COMMENT '任务执行超时时间，单位秒',
-  `executor_fail_retry_count` int(11) NOT NULL DEFAULT '0' COMMENT '失败重试次数',
-  `glue_type` varchar(50) NOT NULL COMMENT 'GLUE类型',
-  `glue_source` mediumtext COMMENT 'GLUE源代码',
-  `glue_remark` varchar(128) DEFAULT NULL COMMENT 'GLUE备注',
-  `glue_updatetime` datetime DEFAULT NULL COMMENT 'GLUE更新时间',
-  `child_jobid` varchar(255) DEFAULT NULL COMMENT '子任务ID，多个逗号分隔',
-  `trigger_status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '调度状态：0-停止、1-运行',
-  `trigger_last_time` bigint(13) NOT NULL DEFAULT '0' COMMENT '上次调度时间',
-  `trigger_next_time` bigint(13) NOT NULL DEFAULT '0' COMMENT '下次调度时间',
+  `author` varchar(64) DEFAULT NULL,
+  `alarm_email` varchar(255) DEFAULT NULL,
+  `schedule_type` varchar(50) NOT NULL DEFAULT 'NONE',
+  `schedule_conf` varchar(128) DEFAULT NULL,
+  `misfire_strategy` varchar(50) NOT NULL DEFAULT 'DO_NOTHING',
+  `executor_route_strategy` varchar(50) DEFAULT NULL,
+  `executor_handler` varchar(255) DEFAULT NULL,
+  `executor_param` text DEFAULT NULL,
+  `executor_block_strategy` varchar(50) DEFAULT NULL,
+  `executor_timeout` int(11) NOT NULL DEFAULT '0',
+  `executor_fail_retry_count` int(11) NOT NULL DEFAULT '0',
+  `glue_type` varchar(50) NOT NULL,
+  `glue_source` mediumtext,
+  `glue_remark` varchar(128) DEFAULT NULL,
+  `glue_updatetime` datetime DEFAULT NULL,
+  `child_jobid` varchar(255) DEFAULT NULL,
+  `trigger_status` tinyint(4) NOT NULL DEFAULT '0',
+  `trigger_last_time` bigint(13) NOT NULL DEFAULT '0',
+  `trigger_next_time` bigint(13) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `xxl_job_logglue` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `job_id` int(11) NOT NULL COMMENT '任务，主键ID',
-  `glue_type` varchar(50) DEFAULT NULL COMMENT 'GLUE类型',
-  `glue_source` mediumtext COMMENT 'GLUE源代码',
-  `glue_remark` varchar(128) NOT NULL COMMENT 'GLUE备注',
+  `job_id` int(11) NOT NULL,
+  `glue_type` varchar(50) DEFAULT NULL,
+  `glue_source` mediumtext,
+  `glue_remark` varchar(128) NOT NULL,
   `add_time` datetime DEFAULT NULL,
   `update_time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -3455,20 +3393,20 @@ CREATE TABLE `xxl_job_logglue` (
 
 CREATE TABLE `xxl_job_log` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `job_group` int(11) NOT NULL COMMENT '执行器主键ID',
-  `job_id` int(11) NOT NULL COMMENT '任务，主键ID',
-  `executor_address` varchar(255) DEFAULT NULL COMMENT '执行器地址，本次执行的地址',
-  `executor_handler` varchar(255) DEFAULT NULL COMMENT '任务handler',
-  `executor_param` text DEFAULT NULL COMMENT '任务参数',
-  `executor_sharding_param` varchar(20) DEFAULT NULL COMMENT '任务分片参数，格式如 1/2',
-  `executor_fail_retry_count` int(11) NOT NULL DEFAULT '0' COMMENT '失败重试次数',
-  `trigger_time` datetime DEFAULT NULL COMMENT '调度-时间',
-  `trigger_code` int(11) NOT NULL COMMENT '调度-结果',
-  `trigger_msg` text COMMENT '调度-日志',
-  `handle_time` datetime DEFAULT NULL COMMENT '执行-时间',
-  `handle_code` int(11) NOT NULL COMMENT '执行-状态',
-  `handle_msg` text COMMENT '执行-日志',
-  `alarm_status` tinyint(4) NOT NULL DEFAULT '0' COMMENT '告警状态：0-默认、1-无需告警、2-告警成功、3-告警失败',
+  `job_group` int(11) NOT NULL,
+  `job_id` int(11) NOT NULL,
+  `executor_address` varchar(255) DEFAULT NULL,
+  `executor_handler` varchar(255) DEFAULT NULL,
+  `executor_param` text DEFAULT NULL,
+  `executor_sharding_param` varchar(20) DEFAULT NULL,
+  `executor_fail_retry_count` int(11) NOT NULL DEFAULT '0',
+  `trigger_time` datetime DEFAULT NULL,
+  `trigger_code` int(11) NOT NULL,
+  `trigger_msg` text,
+  `handle_time` datetime DEFAULT NULL,
+  `handle_code` int(11) NOT NULL,
+  `handle_msg` text,
+  `alarm_status` tinyint(4) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `I_trigger_time` (`trigger_time`),
   KEY `I_handle_code` (`handle_code`),
@@ -3478,33 +3416,33 @@ CREATE TABLE `xxl_job_log` (
 
 CREATE TABLE `xxl_job_log_report` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `trigger_day` datetime DEFAULT NULL COMMENT '调度-时间',
-  `running_count` int(11) NOT NULL DEFAULT '0' COMMENT '运行中日志数量',
-  `suc_count` int(11) NOT NULL DEFAULT '0' COMMENT '执行成功-日志数量',
-  `fail_count` int(11) NOT NULL DEFAULT '0' COMMENT '执行失败-日志数量',
+  `trigger_day` datetime DEFAULT NULL,
+  `running_count` int(11) NOT NULL DEFAULT '0',
+  `suc_count` int(11) NOT NULL DEFAULT '0',
+  `fail_count` int(11) NOT NULL DEFAULT '0',
   `update_time` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `i_trigger_day` (`trigger_day`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `xxl_job_lock` (
-  `lock_name` varchar(50) NOT NULL COMMENT '锁名称',
+  `lock_name` varchar(50) NOT NULL,
   PRIMARY KEY (`lock_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `xxl_job_user` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `username` varchar(50) NOT NULL COMMENT '账号',
-  `password` varchar(100) NOT NULL COMMENT '密码加密信息',
-  `token` varchar(100) DEFAULT NULL COMMENT '登录token',
-  `role` tinyint(4) NOT NULL COMMENT '角色：0-普通用户，1-管理员',
-  `permission` varchar(255) DEFAULT NULL COMMENT '权限：执行器ID列表，多个逗号分割',
+  `username` varchar(50) NOT NULL,
+  `password` varchar(100) NOT NULL,
+  `token` varchar(100) DEFAULT NULL,
+  `role` tinyint(4) NOT NULL,
+  `permission` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `i_username` (`username`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 INSERT INTO `xxl_job_group` (`id`, `app_name`, `title`, `address_type`, `address_list`, `update_time`)
-VALUES (1, 'lumira-server', 'Lumira 后端执行器', 0, NULL, NOW());
+VALUES (1, 'lumira-server', 'Lumira Server Executor', 0, NULL, NOW());
 
 INSERT INTO `xxl_job_user` (`id`, `username`, `password`, `role`, `permission`)
 VALUES (1, 'admin', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92', 1, NULL);
@@ -3512,3 +3450,8 @@ VALUES (1, 'admin', '8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923ad
 INSERT INTO `xxl_job_lock` (`lock_name`) VALUES ('schedule_lock');
 
 SET FOREIGN_KEY_CHECKS = 1;
+
+
+
+
+

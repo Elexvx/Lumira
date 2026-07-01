@@ -107,8 +107,103 @@ class CompetitionManagementAppServiceTest {
                 .isInstanceOfSatisfying(BizException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.VALIDATION_ERROR);
                     assertThat(exception.getUserMessage()).contains("发布前请完善配置", "文书配置", "内容未填写");
-                });
+        });
         assertThat(jdbcTemplate.updates).noneMatch(sql -> sql.contains("update competition_config_set set status = 'PUBLISHED'"));
+    }
+
+    @Test
+    void updateCompetitionSkipsPublishValidationForAlreadyPublishedCompetition() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.Competition existing = competition("published");
+        CompetitionVO.Competition updated = competition("published");
+        updated.setRegistrationStart(null);
+        CompetitionVO.ConfigSet configSet = configSet();
+        jdbcTemplate.enqueue(List.of(existing), List.of(updated), List.of(configSet), List.of());
+
+        jdbcTemplate.updateCount = 1;
+
+        CompetitionVO.Competition saved = service.updateCompetition(admin(), 11L, publishRequest());
+
+        assertThat(saved.getStatus()).isEqualTo("published");
+    }
+
+    @Test
+    void updateCompetitionAllowsPageLevelDraftSaveWithoutPublishValidation() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.Competition existing = competition("draft");
+        CompetitionVO.Competition updated = competition("draft");
+        updated.setRegistrationStart("2026-07-01 09:00");
+        updated.setRegistrationEnd("2026-07-31 18:00");
+        jdbcTemplate.enqueue(List.of(existing), List.of(updated));
+        jdbcTemplate.updateCount = 1;
+        CompetitionDTO.CompetitionUpsertRequest request = new CompetitionDTO.CompetitionUpsertRequest();
+        request.setRegistrationStart("2026-07-01 09:00");
+        request.setRegistrationEnd("2026-07-31 18:00");
+        request.setCompetitionStart("TBD");
+        request.setLocation("TBD");
+        request.setStatus("draft");
+
+        CompetitionVO.Competition saved = service.updateCompetition(admin(), 11L, request);
+
+        assertThat(saved.getRegistrationStart()).isEqualTo("2026-07-01 09:00");
+        assertThat(jdbcTemplate.queryResults).isEmpty();
+    }
+
+    @Test
+    void saveSettingsModuleSynchronizesItemsByTypeAndKey() {
+        StubOperations jdbcTemplate = new StubOperations();
+        CompetitionManagementAppService service = service(jdbcTemplate);
+        CompetitionVO.Competition competition = competition("draft");
+        CompetitionVO.ConfigSet configSet = configSet();
+        CompetitionDTO.SettingsModuleRequest request = new CompetitionDTO.SettingsModuleRequest();
+        CompetitionDTO.ConfigItemRequest updatedItem = new CompetitionDTO.ConfigItemRequest();
+        updatedItem.setItemType("AGREEMENT");
+        updatedItem.setItemKey("commitment");
+        updatedItem.setTitle("承诺书新版");
+        updatedItem.setContentText("我已阅读并同意");
+        updatedItem.setRequiredFlag(true);
+        updatedItem.setEnabled(true);
+        CompetitionDTO.ConfigItemRequest newItem = new CompetitionDTO.ConfigItemRequest();
+        newItem.setItemType("CONSENT");
+        newItem.setItemKey("new-consent");
+        newItem.setTitle("知情同意");
+        newItem.setContentText("知情同意内容");
+        newItem.setRequiredFlag(true);
+        newItem.setEnabled(true);
+        request.setItems(List.of(updatedItem, newItem));
+        CompetitionVO.ConfigItem existingKept = configItem("AGREEMENT", "commitment", "承诺书", "旧内容", "{}");
+        existingKept.setId(33L);
+        CompetitionVO.ConfigItem existingRemoved = configItem("CONSENT", "old-consent", "旧知情同意", "旧内容", "{}");
+        existingRemoved.setId(34L);
+        jdbcTemplate.enqueue(
+                List.of(competition),
+                List.of(configSet),
+                List.of(existingKept, existingRemoved),
+                List.of("user-uuid"),
+                List.of(competition),
+                List.of(configSet),
+                List.of(
+                        configItem("AGREEMENT", "commitment", "承诺书新版", "我已阅读并同意", "{}"),
+                        configItem("CONSENT", "new-consent", "知情同意", "知情同意内容", "{}")
+                ),
+                List.of(),
+                List.of(),
+                List.of()
+        );
+        jdbcTemplate.updateCount = 1;
+
+        CompetitionVO.Settings settings = service.saveSettingsModule(admin(), "competition-uuid", "documents", request);
+
+        assertThat(settings.getDocuments()).hasSize(2);
+        assertThat(jdbcTemplate.updates.get(0))
+                .contains("update competition_config_item")
+                .contains("where id = ? and deleted = 0");
+        assertThat(jdbcTemplate.updates.get(1))
+                .contains("insert into competition_config_item");
+        assertThat(jdbcTemplate.updates.get(2))
+                .contains("delete from competition_config_item where id in");
     }
 
     private CompetitionManagementAppService service(MyBatisQueryOperations jdbcTemplate) {

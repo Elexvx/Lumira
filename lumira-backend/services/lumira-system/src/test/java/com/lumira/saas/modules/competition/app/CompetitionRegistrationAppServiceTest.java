@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.data.DataPermissionRule;
+import com.lumira.common.security.data.DataScopeType;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import com.lumira.saas.infrastructure.persistence.mybatis.RowMapper;
@@ -97,6 +99,44 @@ class CompetitionRegistrationAppServiceTest {
 
         assertThat(registration.getTeamId()).isEqualTo(21L);
         assertThat(registration.getMemberCount()).isEqualTo(2);
+    }
+
+    @Test
+    void listRegistrationsKeepsEditorsScopedToTheirOwnRecords() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "CONFIRMED", "REG-1-ABCD", 0L);
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1));
+        CurrentUser editor = new CurrentUser();
+        editor.setUserId(1002L);
+        editor.setUsername("editor");
+        editor.setPermissions(Set.of("aiadc:registration:view", "aiadc:registration:update"));
+        editor.setDataScopes(List.of(new DataPermissionRule("competition:registration", DataScopeType.SELF, List.of(), List.of())));
+
+        PageResponse<CompetitionRegistrationVO.Registration> page = service.listRegistrations(editor, 1, 10);
+
+        assertThat(page.getTotal()).isEqualTo(1);
+        assertThat(page.getRecords()).hasSize(1);
+        assertThat(sql.lastRegistrationCountSql).contains("owner_user_id = ?");
+        assertThat(sql.lastRegistrationQuerySql).contains("owner_user_id = ?");
+    }
+
+    @Test
+    void listRegistrationsRespectsAllDataScopeFromRoleConfiguration() {
+        RegistrationSql sql = new RegistrationSql();
+        sql.seedRegistration(1L, "CONFIRMED", "REG-1-ABCD", 0L);
+        CompetitionRegistrationAppService service = service(sql, teamApiWithMembers(1001L, 1));
+        CurrentUser manager = new CurrentUser();
+        manager.setUserId(1002L);
+        manager.setUsername("manager");
+        manager.setPermissions(Set.of("aiadc:registration:view"));
+        manager.setDataScopes(List.of(new DataPermissionRule("competition:registration", DataScopeType.ALL, List.of(), List.of())));
+
+        PageResponse<CompetitionRegistrationVO.Registration> page = service.listRegistrations(manager, 1, 10);
+
+        assertThat(page.getTotal()).isEqualTo(1);
+        assertThat(page.getRecords()).hasSize(1);
+        assertThat(sql.lastRegistrationCountSql).doesNotContain("owner_user_id = ?");
+        assertThat(sql.lastRegistrationQuerySql).doesNotContain("owner_user_id = ?");
     }
 
     @Test
@@ -413,6 +453,8 @@ class CompetitionRegistrationAppServiceTest {
         private boolean wroteTeamTables;
         private String paymentRequestJson;
         private String paymentOrderNo;
+        private String lastRegistrationCountSql;
+        private String lastRegistrationQuerySql;
         private String lastPaymentRecordCountSql;
         private String lastPaymentRecordQuerySql;
         private List<Map<String, Object>> materialSubmissions = List.of();
@@ -500,6 +542,10 @@ class CompetitionRegistrationAppServiceTest {
                 lastPaymentRecordCountSql = sql;
                 return requiredType.cast((long) paymentRecordRows.size());
             }
+            if (normalized.contains("from competition_registration where deleted = 0")) {
+                lastRegistrationCountSql = sql;
+                return requiredType.cast(registration == null ? 0L : 1L);
+            }
             if (normalized.contains("count(1) + 1 from competition_registration")) {
                 return requiredType.cast(1L);
             }
@@ -574,6 +620,10 @@ class CompetitionRegistrationAppServiceTest {
             if (normalized.contains("from competition_registration cr")) {
                 lastPaymentRecordQuerySql = sql;
                 return paymentRecordRows.stream().map((row) -> map(rowMapper, row)).toList();
+            }
+            if (normalized.contains("from competition_registration where deleted = 0")) {
+                lastRegistrationQuerySql = sql;
+                return registration == null ? List.of() : List.of(map(rowMapper, registration));
             }
             return super.query(sql, rowMapper, args);
         }

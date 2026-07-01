@@ -68,6 +68,9 @@ class SystemManagementAppServicePasswordTest {
         assertEquals("NewPass1!", jdbcTemplate.lastArgs[0]);
         assertEquals(2001L, jdbcTemplate.lastArgs[1]);
         assertEquals(2001L, jdbcTemplate.lastArgs[3]);
+        assertEquals(2001L, authSessionStore.resolvedPasswordChangeUserId);
+        assertEquals("session-1", authSessionStore.resolvedPasswordChangeSessionId);
+        assertTrue(authSessionStore.resolvedPasswordChangePublishChange);
         assertEquals(2001L, authSessionStore.revokedUserId);
         assertEquals("session-1", authSessionStore.excludedSessionId);
         assertTrue(authSessionStore.publishChange);
@@ -162,6 +165,9 @@ class SystemManagementAppServicePasswordTest {
         private Long revokedUserId;
         private String excludedSessionId;
         private boolean publishChange;
+        private Long resolvedPasswordChangeUserId;
+        private String resolvedPasswordChangeSessionId;
+        private boolean resolvedPasswordChangePublishChange;
 
         private RecordingAuthSessionStore() {
             super(null, null, null);
@@ -172,6 +178,13 @@ class SystemManagementAppServicePasswordTest {
             this.revokedUserId = userId;
             this.excludedSessionId = excludedSessionId;
             this.publishChange = publishChange;
+        }
+
+        @Override
+        public void markPasswordChangeResolved(Long userId, String sessionId, boolean publishChange) {
+            this.resolvedPasswordChangeUserId = userId;
+            this.resolvedPasswordChangeSessionId = sessionId;
+            this.resolvedPasswordChangePublishChange = publishChange;
         }
     }
 

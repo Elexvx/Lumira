@@ -42,11 +42,13 @@ class SystemRouteCatalogTest {
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/settings")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/site/carousels")).isFalse();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/ai")).isFalse();
+        assertThat(SystemRouteCatalog.isBuiltInMenuPath("/ai/assistant")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/user-center/permissions")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/user-center/personal-center/files")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuPath("/user-center/files")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/dashboard/DashboardHomePage")).isTrue();
-        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/ai/knowledge/KnowledgePage")).isTrue();
+        assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/ai/knowledge/KnowledgePage")).isFalse();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/activity")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/competition")).isTrue();
         assertThat(SystemRouteCatalog.isBuiltInMenuComponent("@/pages/expert")).isTrue();

@@ -14,14 +14,11 @@ public final class ActivityVO {
         private String subtitle;
         private String description;
         private String imageUrl;
-        private String iconKey;
         private Integer sort;
         private String status;
         private String tags;
         private String ctaLabel;
         private String ctaHref;
-        private String badgeText;
-        private String badgeTone;
         private String activityDate;
         private String activityTime;
         private String location;
@@ -43,8 +40,6 @@ public final class ActivityVO {
         public void setDescription(String description) { this.description = description; }
         public String getImageUrl() { return imageUrl; }
         public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
-        public String getIconKey() { return iconKey; }
-        public void setIconKey(String iconKey) { this.iconKey = iconKey; }
         public Integer getSort() { return sort; }
         public void setSort(Integer sort) { this.sort = sort; }
         public String getStatus() { return status; }
@@ -55,10 +50,6 @@ public final class ActivityVO {
         public void setCtaLabel(String ctaLabel) { this.ctaLabel = ctaLabel; }
         public String getCtaHref() { return ctaHref; }
         public void setCtaHref(String ctaHref) { this.ctaHref = ctaHref; }
-        public String getBadgeText() { return badgeText; }
-        public void setBadgeText(String badgeText) { this.badgeText = badgeText; }
-        public String getBadgeTone() { return badgeTone; }
-        public void setBadgeTone(String badgeTone) { this.badgeTone = badgeTone; }
         public String getActivityDate() { return activityDate; }
         public void setActivityDate(String activityDate) { this.activityDate = activityDate; }
         public String getActivityTime() { return activityTime; }

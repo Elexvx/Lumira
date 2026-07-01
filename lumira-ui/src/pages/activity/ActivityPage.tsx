@@ -5,7 +5,7 @@ import type { FormInstance } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { history, useLocation } from '@umijs/max';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -16,7 +16,7 @@ import { TableActionBar } from '@/features/table/TableActionBar';
 import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
 import { createActivity, deleteActivity, listActivities, updateActivity } from '@/services/activity/api';
-import type { ActivityBadgeTone, ActivityLocale, ActivityRecord, ActivityStatus, ActivityUpsertPayload } from '@/services/activity/types';
+import type { ActivityLocale, ActivityRecord, ActivityStatus, ActivityUpsertPayload } from '@/services/activity/types';
 import { request } from '@/services/common/request';
 import { message } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
@@ -31,15 +31,6 @@ const localeOptions: Array<{ label: string; value: ActivityLocale }> = [
 const statusOptions: Array<{ label: string; value: ActivityStatus }> = [
   { label: '草稿', value: 'draft' },
   { label: '已发布', value: 'published' },
-];
-
-const badgeToneOptions: Array<{ label: string; value: ActivityBadgeTone }> = [
-  { label: '蓝色', value: 'blue' },
-  { label: '金色', value: 'gold' },
-  { label: '银色', value: 'silver' },
-  { label: '铜色', value: 'bronze' },
-  { label: '灰色', value: 'slate' },
-  { label: '深色', value: 'dark' },
 ];
 
 const statusLabel: Record<ActivityStatus, string> = {
@@ -101,6 +92,28 @@ const getActivitySeed = (record: ActivityRecord) =>
   Array.from(`${record.code || record.id}-${record.title}`).reduce((total, char) => total + char.charCodeAt(0), 0);
 
 const getActivityCoverTheme = (record: ActivityRecord) => activityCoverThemes[getActivitySeed(record) % activityCoverThemes.length];
+const isExternalActivityHref = (href: string) => /^(https?:)?\/\//i.test(href);
+const normalizeActivityCtaHref = (href?: string | null) => {
+  const trimmedHref = href?.trim();
+  if (!trimmedHref) {
+    return undefined;
+  }
+  if (isExternalActivityHref(trimmedHref) || trimmedHref.startsWith('/')) {
+    return trimmedHref;
+  }
+  return `/${trimmedHref}`;
+};
+const openActivityCta = (href?: string | null) => {
+  const normalizedHref = normalizeActivityCtaHref(href);
+  if (!normalizedHref) {
+    return;
+  }
+  if (isExternalActivityHref(normalizedHref)) {
+    window.open(normalizedHref, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  history.push(normalizedHref);
+};
 
 const isActivitySearchRoute = (pathname: string) => pathname === '/activities/search';
 const isActivityManagementRoute = (pathname: string) => pathname === '/activities/management';
@@ -171,12 +184,9 @@ const normalizePayload = (values: ActivityFormValues): ActivityUpsertPayload => 
     subtitle: trimOptional(values.subtitle),
     description: trimOptional(values.description),
     imageUrl: trimOptional(values.imageUrl),
-    iconKey: trimOptional(values.iconKey),
     tags: trimOptional(values.tags),
     ctaLabel: trimOptional(values.ctaLabel),
     ctaHref: trimOptional(values.ctaHref),
-    badgeText: trimOptional(values.badgeText),
-    badgeTone: values.badgeTone || undefined,
     sort: values.sort ?? 100,
     featured: Boolean(values.featured),
   };
@@ -332,8 +342,8 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
         status: 'draft',
         sort: 100,
         featured: false,
-        ctaLabel: '查看详情',
-        ctaHref: '/login',
+        ctaLabel: '填写报名资料',
+        ctaHref: '/activities/register?mode=wizard&step=1',
       }}
     >
       <Form.Item name="locale" label="语言" rules={[{ required: true }]}>
@@ -454,9 +464,6 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
           </Form.Item>
         </Space>
       </Form.Item>
-      <Form.Item name="iconKey" label="图标标识">
-        <Input maxLength={64} />
-      </Form.Item>
       <Form.Item name="tags" label="标签">
         <Input maxLength={1000} placeholder="多个标签用英文逗号分隔" />
       </Form.Item>
@@ -466,14 +473,6 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
         </Form.Item>
         <Form.Item name="ctaHref" label="按钮链接" style={{ flex: 1 }}>
           <Input maxLength={512} />
-        </Form.Item>
-      </Space>
-      <Space size="middle" style={{ width: '100%' }} align="start">
-        <Form.Item name="badgeText" label="徽标文案" style={{ flex: 1 }}>
-          <Input maxLength={64} />
-        </Form.Item>
-        <Form.Item name="badgeTone" label="徽标颜色" style={{ flex: 1 }}>
-          <Select allowClear options={badgeToneOptions} />
         </Form.Item>
       </Space>
     </Form>
@@ -493,7 +492,7 @@ const ActivitySearchView = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  const loadActivities = async (nextKeyword = keyword) => {
+  const loadActivities = useCallback(async (nextKeyword = keyword) => {
     setLoading(true);
     try {
       const queryParams = {
@@ -540,11 +539,11 @@ const ActivitySearchView = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [category, featured, keyword, locale, pageNo, pageSize, status]);
 
   useEffect(() => {
     void loadActivities();
-  }, [category, locale, status, featured, pageNo, pageSize]);
+  }, [loadActivities]);
 
   return (
     <ManagementPage title="活动查询">
@@ -643,6 +642,8 @@ const ActivitySearchView = () => {
                 const tags = splitActivityTags(record.tags);
                 const coverUrl = normalizeUploadUrl(record.imageUrl || '');
                 const coverTheme = getActivityCoverTheme(record);
+                const ctaHref = normalizeActivityCtaHref(record.ctaHref);
+                const ctaLabel = record.ctaLabel?.trim() || (ctaHref ? '填写报名资料' : undefined);
                 return (
                   <div key={record.id}>
                     <article className="activity-search-result">
@@ -683,6 +684,17 @@ const ActivitySearchView = () => {
                               .join(' / ') || '-'}
                           </Typography.Text>
                         </Space>
+                          {ctaLabel ? (
+                            <Button
+                              type="primary"
+                              size="small"
+                              className="activity-search-result__cta"
+                              disabled={!ctaHref}
+                              onClick={() => openActivityCta(ctaHref)}
+                            >
+                              {ctaLabel}
+                            </Button>
+                          ) : null}
                         </div>
                       </div>
                   </article>
@@ -735,13 +747,13 @@ const ActivityManagementView = () => {
       status: 'draft',
       sort: 100,
       featured: false,
-      ctaLabel: '查看详情',
-      ctaHref: '/login',
+      ctaLabel: '填写报名资料',
+      ctaHref: '/activities/register?mode=wizard&step=1',
     });
     setDrawerOpen(true);
   };
 
-  const openEditDrawer = (record: ActivityRecord) => {
+  const openEditDrawer = useCallback((record: ActivityRecord) => {
     setEditingRecord(record);
     form.resetFields();
     form.setFieldsValue({
@@ -750,17 +762,14 @@ const ActivityManagementView = () => {
       subtitle: record.subtitle || undefined,
       description: record.description || undefined,
       imageUrl: record.imageUrl || undefined,
-      iconKey: record.iconKey || undefined,
       tags: record.tags || undefined,
       ctaLabel: record.ctaLabel || undefined,
       ctaHref: record.ctaHref || undefined,
-      badgeText: record.badgeText || undefined,
-      badgeTone: record.badgeTone || undefined,
       activityDateTimeRange: parseActivityDateTimeRange(record.activityDate, record.activityTime),
       featured: Boolean(record.featured),
     });
     setDrawerOpen(true);
-  };
+  }, [form]);
 
   const saveActivity = async () => {
     const values = await form.validateFields();
@@ -905,7 +914,7 @@ const ActivityManagementView = () => {
         ),
       },
     ],
-    [actionPermission, responsive.isDesktop, responsive.isMobile],
+    [actionPermission, openEditDrawer, responsive.isDesktop, responsive.isMobile],
   );
 
   return (

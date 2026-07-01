@@ -43,7 +43,6 @@ public class PlatformReadinessV2Controller {
                         "/api/v2/platform/audit/summary",
                         "/api/v2/platform/audit/login-logs",
                         "/api/v2/platform/audit/operation-logs",
-                        "/api/v2/platform/audit/ai-call-logs",
                         "/api/v2/platform/audit/verification-logs",
                         "/api/v2/platform/monitoring/dashboard/summary",
                         "/api/v2/platform/monitoring/online-users",

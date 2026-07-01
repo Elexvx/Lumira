@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
+import com.lumira.common.security.data.DataPermissionDecision;
+import com.lumira.common.security.data.DataPermissionResolver;
+import com.lumira.common.security.data.DataPermissionRule;
+import com.lumira.common.security.data.DataScopeType;
 import com.lumira.saas.common.vo.PageResponse;
 import com.lumira.saas.infrastructure.persistence.mybatis.BeanPropertyRowMapper;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
@@ -31,6 +35,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 public class CompetitionRegistrationAppService {
 
+    private static final String REGISTRATION_DATA_SCOPE_RESOURCE = "competition:registration";
     private static final String PAYMENT_ORDER_JOIN_ON =
             "po.order_no collate utf8mb4_unicode_ci = cr.payment_order_no collate utf8mb4_unicode_ci ";
     private static final Set<String> REGISTRATION_STATUSES = Set.of("DRAFT", "PENDING_PAYMENT", "PAID", "CONFIRMED", "CANCELLED");
@@ -915,11 +920,21 @@ public class CompetitionRegistrationAppService {
     }
 
     private boolean canViewAllRegistrations(CurrentUser currentUser) {
-        return currentUser != null
-                && currentUser.getPermissions() != null
-                && (currentUser.getPermissions().contains("*")
-                || currentUser.getPermissions().contains("aiadc:registration:manage")
-                || currentUser.getPermissions().contains("aiadc:registration:update"));
+        return resolveRegistrationDataPermission(currentUser).scopeType() == DataScopeType.ALL;
+    }
+
+    private DataPermissionDecision resolveRegistrationDataPermission(CurrentUser currentUser) {
+        if (currentUser == null) {
+            return DataPermissionDecision.self(null);
+        }
+        return DataPermissionResolver.resolve(
+                REGISTRATION_DATA_SCOPE_RESOURCE,
+                currentUser.getUserId(),
+                Set.of(),
+                Set.of(),
+                currentUser.getDataScopes() == null ? List.<DataPermissionRule>of() : currentUser.getDataScopes(),
+                currentUser.getPermissions() == null ? Set.of() : currentUser.getPermissions()
+        );
     }
 
     private boolean hasPermission(CurrentUser currentUser, String permissionKey) {

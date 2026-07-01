@@ -1,7 +1,7 @@
 import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse } from '@/types/api';
-import { CheckOutlined, KeyOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined } from '@ant-design/icons';
+import { CheckOutlined, KeyOutlined, QqOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined, WeiboOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
-import { Alert, Button, Checkbox, Form, Image, Input, Modal, Segmented, Skeleton, Typography } from 'antd';
+import { Alert, Button, Checkbox, Form, Input, Modal, Skeleton, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { LockOutlined } from '@ant-design/icons';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -13,7 +13,6 @@ import {
   shouldBlockLoginInputPaste,
   type LoginInputKind,
 } from '@/pages/user/login/hooks/useLoginFlowRuntime';
-import { hasConfiguredAgreementSettings } from '@/agreement/settings';
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 import { MailOutlined, MobileOutlined } from '@ant-design/icons';
 import { LOGIN_SLIDER_CAPTCHA_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
@@ -82,7 +81,7 @@ const LoginModeSwitcher = ({
   passkeyLoading?: boolean;
   modeContent: React.ReactNode;
 }) => {
-  const showModeControl = availableLoginModes.length > 1 || availableLoginModes[0] !== 'password';
+  const showModeControl = availableLoginModes.length > 1 || availableLoginModes[0] !== 'passkey';
   const modeOptions = availableLoginModes.map((mode) => ({
     value: mode,
     label: MODE_META[mode].label,
@@ -91,13 +90,26 @@ const LoginModeSwitcher = ({
   return (
     <>
       {showModeControl ? (
-        <Segmented
-          block
-          value={activeLoginMode}
-          options={modeOptions}
-          onChange={(key) => onModeChange(key as LoginMode)}
-          className="saas-login-page__mode-segmented"
-        />
+        <div className="saas-login-page__mode-header">
+          <div className="saas-login-page__mode-tabs" role="tablist" aria-label={formatMessage({ id: 'page.login.modeTabs', defaultMessage: 'Login method' })}>
+            {modeOptions.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="tab"
+                aria-selected={activeLoginMode === option.value}
+                className="saas-login-page__mode-tab"
+                data-active={activeLoginMode === option.value}
+                onClick={() => onModeChange(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <Button type="link" className="saas-login-page__org-link">
+            {formatMessage({ id: 'page.login.orgSignup', defaultMessage: '开通机构号' })}
+          </Button>
+        </div>
       ) : null}
       <div className="saas-login-page__mode-content">
         {activeLoginMode === 'passkey' ? (
@@ -314,8 +326,8 @@ const PasswordLoginImageCaptcha = ({
         }}
       />
     </Form.Item>
-    <Button
-      size="large"
+    <button
+      type="button"
       aria-label={formatMessage({ id: 'page.login.captcha.refresh', defaultMessage: 'Refresh captcha' })}
       title={formatMessage({ id: 'page.login.captcha.refresh', defaultMessage: 'Click to refresh the captcha' })}
       onClick={onRefreshCaptcha}
@@ -327,17 +339,16 @@ const PasswordLoginImageCaptcha = ({
       ) : captchaImageLoadFailed ? (
         <Typography.Text type="secondary">{formatMessage({ id: 'page.login.captcha.retry', defaultMessage: 'Click to retry' })}</Typography.Text>
       ) : captchaChallenge?.imageUrl ? (
-        <Image
+        <img
           src={captchaChallenge.imageUrl}
           alt={formatMessage({ id: 'page.login.captcha.alt', defaultMessage: 'Captcha' })}
-          preview={false}
           onError={onCaptchaImageError}
           className="saas-login-page__captcha-image"
         />
       ) : (
         <Typography.Text type="secondary">{formatMessage({ id: 'page.login.captcha.refreshText', defaultMessage: 'Click to refresh' })}</Typography.Text>
       )}
-    </Button>
+    </button>
   </div>
 );
 
@@ -416,7 +427,6 @@ export interface LoginFormValues {
   remember?: boolean;
   captchaCode?: string;
   captchaProof?: string;
-  agreementAccepted?: boolean;
   verificationCode?: string;
 }
 
@@ -629,9 +639,9 @@ export const LoginFormFields = ({
   onOpenAgreementPreview,
 }: LoginFormFieldsProps) => {
   const codeLoginMode: CodeLoginMode = activeLoginMode === 'sms' ? 'sms' : 'email';
-  const showAgreement = hasConfiguredAgreementSettings(agreementSettings);
   const showUserAgreement = Boolean(agreementSettings.userAgreementMarkdown.trim());
   const showPrivacyAgreement = Boolean(agreementSettings.privacyAgreementMarkdown.trim());
+  const passkeyAvailable = availableLoginModes.includes('passkey');
 
   const modeContent =
     pendingSecondFactorLogin ? (
@@ -671,47 +681,64 @@ export const LoginFormFields = ({
       />
       {activeLoginMode !== 'passkey' && !pendingSecondFactorLogin ? (
         <>
-          {wechatLoginAvailable ? (
-            <Button block size="large" icon={<WechatOutlined />} onClick={onWechatLogin} className="saas-login-page__wechat-button">
-              {formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })}
-            </Button>
-          ) : null}
-          {showAgreement ? (
-            <div className="saas-login-page__agreement">
-              <Form.Item
-                name="agreementAccepted"
-                valuePropName="checked"
-                rules={[
-                  {
-                    validator: async (_, value) => {
-                      if (!value) {
-                        throw new Error(formatMessage({ id: 'page.login.agreement.required', defaultMessage: 'Please agree to the terms before logging in' }));
-                      }
-                    },
-                  },
-                ]}
-              >
-                <Checkbox data-testid="login-agreement-checkbox">
-                  {formatMessage({ id: 'page.login.agreement.accept', defaultMessage: 'I have read and agree to' })}
-                  {showUserAgreement ? (
-                    <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
-                      {formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })}
-                    </Button>
-                  ) : null}
-                  {showUserAgreement && showPrivacyAgreement ? formatMessage({ id: 'page.login.agreement.and', defaultMessage: 'and' }) : null}
-                  {showPrivacyAgreement ? (
-                    <Button type="link" size="small" onClick={() => onOpenAgreementPreview('privacy')}>
-                      {formatMessage({ id: 'page.login.agreement.privacy', defaultMessage: 'Privacy Policy' })}
-                    </Button>
-                  ) : null}
-                </Checkbox>
-              </Form.Item>
+          <div className="saas-login-page__other-login">
+            <div className="saas-login-page__other-title">
+              <span>{formatMessage({ id: 'page.login.otherMethods', defaultMessage: '其他方式登录' })}</span>
             </div>
-          ) : null}
+            <div className="saas-login-page__social-actions">
+              <Button
+                shape="circle"
+                icon={<WechatOutlined />}
+                onClick={wechatLoginAvailable ? onWechatLogin : undefined}
+                disabled={!wechatLoginAvailable}
+                className="saas-login-page__social-button saas-login-page__social-button--wechat"
+                aria-label={formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })}
+              />
+              <Button
+                shape="circle"
+                icon={<QqOutlined />}
+                disabled
+                className="saas-login-page__social-button saas-login-page__social-button--qq"
+                aria-label={formatMessage({ id: 'page.login.qq', defaultMessage: 'QQ login' })}
+              />
+              <Button
+                shape="circle"
+                icon={passkeyAvailable ? <KeyOutlined /> : <WeiboOutlined />}
+                onClick={passkeyAvailable ? onPasskeyLogin : undefined}
+                loading={passkeyAvailable ? passkeyLoading : false}
+                disabled={!passkeyAvailable}
+                className="saas-login-page__social-button saas-login-page__social-button--weibo"
+                aria-label={
+                  passkeyAvailable
+                    ? formatMessage({ id: 'page.login.passkey', defaultMessage: 'Use passkey to log in' })
+                    : formatMessage({ id: 'page.login.weibo', defaultMessage: 'Weibo login' })
+                }
+              />
+            </div>
+          </div>
           <div className="saas-login-page__actions">
             <Form.Item noStyle name="remember" valuePropName="checked">
               <Checkbox>{formatMessage({ id: 'page.login.remember', defaultMessage: 'Remember me' })}</Checkbox>
             </Form.Item>
+            <Button type="link" className="saas-login-page__forgot-link">
+              {formatMessage({ id: 'page.login.forgotPassword', defaultMessage: '忘记密码' })}
+            </Button>
+          </div>
+          <div className="saas-login-page__agreement">
+            <span className="saas-login-page__agreement-text">
+              {formatMessage({ id: 'page.login.autoRegisterNoticePrefix', defaultMessage: '未注册手机号验证后自动登录，注册即代表同意' })}
+              <Button type="link" size="small" onClick={() => onOpenAgreementPreview('user')}>
+                {showUserAgreement
+                  ? formatMessage({ id: 'page.login.agreement.user', defaultMessage: 'User Agreement' })
+                  : formatMessage({ id: 'page.login.agreement.userPlain', defaultMessage: '用户协议' })}
+              </Button>
+              {formatMessage({ id: 'page.login.agreement.and', defaultMessage: 'and' })}
+              <Button type="link" size="small" onClick={() => onOpenAgreementPreview('privacy')}>
+                {showPrivacyAgreement
+                  ? formatMessage({ id: 'page.login.agreement.privacy', defaultMessage: 'Privacy Policy' })
+                  : formatMessage({ id: 'page.login.agreement.privacyGuide', defaultMessage: '隐私协议' })}
+              </Button>
+            </span>
           </div>
         </>
       ) : null}

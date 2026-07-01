@@ -5,6 +5,7 @@ import { useLocation } from '@umijs/max';
 import { DEFAULT_AGREEMENT_SETTINGS, normalizeAgreementSettings } from '@/agreement/settings';
 import {
   applyBrandingRuntime,
+  buildCopyrightText,
   DEFAULT_BRANDING_SETTINGS,
   getStoredBrandingSettings,
   normalizeBrandingSettings,
@@ -62,6 +63,7 @@ const defaultLoginMode = (capabilities: LoginCapabilitiesState): LoginMode => ge
 export type LoginBootstrapFlow = {
   loginPageStyle: CSSProperties;
   brandingWebsiteName: string;
+  brandingFooterItems: string[];
   agreementSettings: ReturnType<typeof normalizeAgreementSettings>;
   availableLoginModes: LoginMode[];
   activeLoginMode: LoginMode;
@@ -287,6 +289,15 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
       }) as CSSProperties,
     [brandingSettings.loginBackgroundUrl],
   );
+  const brandingFooterItems = useMemo(
+    () =>
+      [
+        brandingSettings.footerIcp,
+        brandingSettings.footerPoliceBeian,
+        brandingSettings.footerCopyright || buildCopyrightText(brandingSettings),
+      ].filter((item): item is string => Boolean(item?.trim())),
+    [brandingSettings],
+  );
 
   useEffect(() => {
     setActiveLoginMode((current) => (availableLoginModes.includes(current) ? current : defaultLoginMode(loginCapabilities)));
@@ -357,6 +368,7 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
   return {
     loginPageStyle,
     brandingWebsiteName: brandingSettings.websiteName,
+    brandingFooterItems,
     agreementSettings,
     availableLoginModes,
     activeLoginMode,

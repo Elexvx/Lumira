@@ -17,10 +17,6 @@ import com.lumira.saas.infrastructure.redis.RedisConfig;
 import com.lumira.saas.infrastructure.redis.RedisStartupCleanupProperties;
 import com.lumira.saas.infrastructure.redis.RedisStartupCleanupRunner;
 import com.lumira.saas.modules.architecture.application.OwnerRuntimeMetrics;
-import com.lumira.saas.modules.ai.app.AiKnowledgeBaseAppService;
-import com.lumira.saas.modules.ai.app.AiKnowledgeTextExtractor;
-import com.lumira.saas.modules.ai.app.AiKnowledgeVectorService;
-import com.lumira.saas.modules.ai.app.LocalHashingAiEmbeddingModel;
 import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.audit.mapper.AuditOperationLogMapper;
 import org.apache.ibatis.annotations.Mapper;
@@ -44,11 +40,7 @@ import org.springframework.context.annotation.Import;
         annotationClass = Mapper.class
 )
 @Import({
-        AiKnowledgeBaseAppService.class,
-        AiKnowledgeTextExtractor.class,
-        AiKnowledgeVectorService.class,
         JacksonCompatibilityConfig.class,
-        LocalHashingAiEmbeddingModel.class,
         LoggingPlatformEventDispatcher.class,
         MyBatisQueryOperations.class,
         OperationAuditService.class,

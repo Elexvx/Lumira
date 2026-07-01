@@ -7,7 +7,7 @@ import { history } from '@umijs/max';
 import { getLocale } from '@umijs/max';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ProDescriptions, type ActionType, type ProColumns, type ProTableProps } from '@ant-design/pro-components';
-import { Button, DatePicker, Input, InputNumber, Select, Space, Tag, Typography } from 'antd';
+import { Button, DatePicker, Select, Space, Tag, Typography } from 'antd';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { buildTableRequest } from '@/features/table/proTableRequest';
@@ -25,7 +25,7 @@ const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 type AuditRecord = AuditLogRecord;
 type AuditTableRequest = NonNullable<ProTableProps<AuditRecord, Record<string, unknown>>['request']>;
 
-type AuditLogType = 'login' | 'operation' | 'ai' | 'verification';
+type AuditLogType = 'login' | 'operation' | 'verification';
 
 const timeRangeColumn: any = {
   title: t('时间范围', 'Time range'),
@@ -156,62 +156,6 @@ const buildOperationAuditColumns = (
   buildDetailActionColumn(onOpenDetail, isDesktop, isMobile),
 ];
 
-const buildAiAuditColumns = (
-  onOpenDetail: (record: AuditRecord) => void,
-  isDesktop: boolean,
-  isMobile: boolean,
-): ProColumns<AuditRecord>[] => [
-  {
-    title: t('数字员工 ID', 'Digital employee ID'),
-    dataIndex: 'employeeId',
-    importance: 1,
-    renderFormItem: () => <InputNumber min={1} style={{ width: '100%' }} controls={false} />,
-  },
-  {
-    title: t('技能编码', 'Skill code'),
-    dataIndex: 'skillCode',
-    importance: 2,
-    renderFormItem: () => <Input placeholder={t('例如：chat', 'e.g. chat')} />,
-    ellipsis: true,
-  },
-  {
-    title: t('结果', 'Result'),
-    dataIndex: 'resultStatus',
-    importance: 1,
-    valueEnum: {
-      SUCCESS: { text: t('成功', 'Success') },
-      FAIL: { text: t('失败', 'Failed') },
-      FAILED: { text: t('失败', 'Failed') },
-      ERROR: { text: t('异常', 'Error') },
-    },
-    renderFormItem: () => (
-      <Select
-        allowClear
-        options={[
-          { label: t('成功', 'Success'), value: 'SUCCESS' },
-          { label: t('失败', 'Failed'), value: 'FAIL' },
-          { label: t('异常', 'Error'), value: 'ERROR' },
-        ]}
-      />
-    ),
-    render: (_: unknown, record: AuditRecord) => renderStatusTag(record.logResult),
-  },
-  timeRangeColumn,
-  { title: t('会话 ID', 'Conversation ID'), dataIndex: 'conversationId', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
-  { title: t('工具', 'Tool'), dataIndex: 'toolName', search: false, responsive: ['md', 'lg', 'xl', 'xxl'] },
-  { title: t('权限模式', 'Permission mode'), dataIndex: 'permissionMode', search: false, responsive: ['lg', 'xl', 'xxl'] },
-  {
-    title: t('详情', 'Details'),
-    dataIndex: 'detailMessage',
-    search: false,
-    responsive: ['lg', 'xl', 'xxl'],
-    ellipsis: true,
-    render: (_: unknown, record: AuditRecord) => buildDetailText(record.detailMessage),
-  },
-  { title: t('时间', 'Time'), dataIndex: 'createdAt', search: false, importance: 1 },
-  buildDetailActionColumn(onOpenDetail, isDesktop, isMobile),
-];
-
 const buildVerificationAuditColumns = (
   onOpenDetail: (record: AuditRecord) => void,
   isDesktop: boolean,
@@ -298,10 +242,6 @@ const buildAuditColumns = ({ activeLogType, isDesktop, isMobile, onOpenDetail }:
     return buildLoginAuditColumns(onOpenDetail, isDesktop, isMobile);
   }
 
-  if (activeLogType === 'ai') {
-    return buildAiAuditColumns(onOpenDetail, isDesktop, isMobile);
-  }
-
   if (activeLogType === 'verification') {
     return buildVerificationAuditColumns(onOpenDetail, isDesktop, isMobile);
   }
@@ -325,7 +265,6 @@ const AuditOverviewPage = () => {
         canViewLoginLogs ? { tab: t('登录日志', 'Login logs'), key: 'login' } : null,
         canViewOperationLogs ? { tab: t('操作日志', 'Operation logs'), key: 'operation' } : null,
         canViewOperationLogs ? { tab: t('验证码日志', 'Verification logs'), key: 'verification' } : null,
-        canViewOperationLogs ? { tab: t('AI 调用记录', 'AI call logs'), key: 'ai' } : null,
       ].filter((item): item is { tab: string; key: AuditLogType } => Boolean(item)),
     [canViewLoginLogs, canViewOperationLogs],
   );
@@ -360,13 +299,7 @@ const AuditOverviewPage = () => {
                 params,
                 ...API_OPTS.NO_REDIRECT,
               })
-            : activeLogType === 'ai'
-              ? request<PagedResponse<AuditLogRecord>>('/v1/audit/ai-call-logs', {
-                  method: 'GET',
-                  params,
-                  ...API_OPTS.NO_REDIRECT,
-                })
-              : activeLogType === 'verification'
+            : activeLogType === 'verification'
                 ? request<PagedResponse<AuditLogRecord>>('/v1/audit/verification-logs', {
                     method: 'GET',
                     params,
@@ -446,13 +379,8 @@ const AuditOverviewPage = () => {
               {...detailProps}
               columns={[
                 { title: t('用户名', 'Username'), dataIndex: 'username', renderText: (value) => value || '-' },
-                { title: t('会话 ID', 'Conversation ID'), dataIndex: 'conversationId', renderText: (value) => value ?? '-' },
-                { title: t('数字员工 ID', 'Digital employee ID'), dataIndex: 'employeeId', renderText: (value) => value ?? '-' },
                 { title: t('类型', 'Type'), dataIndex: 'logType', renderText: (value) => value || selectedRecord.operationType || '-' },
                 { title: t('结果', 'Result'), dataIndex: 'logResult', renderText: (value) => value || '-' },
-                { title: t('技能编码', 'Skill code'), dataIndex: 'skillCode', renderText: (value) => value || '-' },
-                { title: t('工具', 'Tool'), dataIndex: 'toolName', renderText: (value) => value || '-' },
-                { title: t('权限模式', 'Permission mode'), dataIndex: 'permissionMode', renderText: (value) => value || '-' },
                 { title: 'RequestId', dataIndex: 'requestId', renderText: (value) => value || '-' },
                 { title: 'TraceId', dataIndex: 'traceId', renderText: (value) => value || '-' },
                 { title: t('时间', 'Time'), dataIndex: 'createdAt' },

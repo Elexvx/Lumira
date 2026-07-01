@@ -24,7 +24,6 @@ export const DEFAULT_SETTING_ROUTE_ORDER = [
   '/settings/security',
   '/settings/verification',
   '/settings/notifications',
-  '/settings/ai-employees',
   '/settings/plugins',
   '/settings/files/all',
   '/settings/localization',
@@ -89,12 +88,6 @@ export const SETTINGS_FALLBACK_ITEM_MAP = new Map<string, SettingsNavigationSour
     access: 'canVisitSystemNotifications',
   },
   {
-    path: '/settings/ai-employees',
-    name: 'nav.system.aiEmployees',
-    icon: 'RobotOutlined',
-    access: 'canVisitAiEmployees',
-  },
-  {
     path: '/settings/plugins',
     name: 'nav.system.plugins',
     icon: 'ApiOutlined',
@@ -141,7 +134,6 @@ export const SETTINGS_FALLBACK_PATH_SET = new Set([
   '/settings/verification',
   '/settings/payment',
   '/settings/notifications',
-  '/settings/ai-employees',
   '/settings/plugins',
   '/settings/files/all',
   '/settings/localization',

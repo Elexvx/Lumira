@@ -312,12 +312,10 @@ public class PlatformV2Controller {
         require("audit:view");
         PageResponse<SystemVO.AuditLogVO> login = systemManagementAppService.listLoginLogs(securityContextFacade.getCurrentUser(), null, 1, 1);
         PageResponse<SystemVO.AuditLogVO> operation = systemManagementAppService.listOperationLogs(securityContextFacade.getCurrentUser(), null, 1, 1);
-        PageResponse<SystemVO.AuditLogVO> aiCall = systemManagementAppService.listAiCallLogs(securityContextFacade.getCurrentUser(), null, null, null, null, null, 1, 1);
         return ApiResponse.success(
                 Map.of(
                         "loginCount", (int) login.getTotal(),
-                        "operationCount", (int) operation.getTotal(),
-                        "aiCallCount", (int) aiCall.getTotal()
+                        "operationCount", (int) operation.getTotal()
                 ),
                 TraceContext.getRequestId()
         );
@@ -350,23 +348,6 @@ public class PlatformV2Controller {
         require("audit:operation:view");
         return ApiResponse.success(
                 systemManagementAppService.listOperationLogs(securityContextFacade.getCurrentUser(), username, startTime, endTime, pageNo, pageSize),
-                TraceContext.getRequestId()
-        );
-    }
-
-    @GetMapping("/audit/ai-call-logs")
-    public ApiResponse<PageResponse<SystemVO.AuditLogVO>> aiCallLogs(
-            @RequestParam(name = "employeeId", required = false) Long employeeId,
-            @RequestParam(name = "skillCode", required = false) String skillCode,
-            @RequestParam(name = "resultStatus", required = false) String resultStatus,
-            @RequestParam(name = "startTime", required = false) String startTime,
-            @RequestParam(name = "endTime", required = false) String endTime,
-            @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
-            @RequestParam(name = "pageSize", defaultValue = "10") long pageSize
-    ) {
-        require("audit:operation:view");
-        return ApiResponse.success(
-                systemManagementAppService.listAiCallLogs(securityContextFacade.getCurrentUser(), employeeId, skillCode, resultStatus, startTime, endTime, pageNo, pageSize),
                 TraceContext.getRequestId()
         );
     }

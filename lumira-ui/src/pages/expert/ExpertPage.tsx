@@ -2,7 +2,7 @@ import { DeleteOutlined, EditOutlined, PlusOutlined, UploadOutlined } from '@ant
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Avatar, Button, Form, Input, InputNumber, Modal, Select, Space, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { history, useLocation } from '@umijs/max';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
@@ -295,7 +295,7 @@ const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }
     setDrawerOpen(true);
   };
 
-  const openEditDrawer = (record: ExpertRecord) => {
+  const openEditDrawer = useCallback((record: ExpertRecord) => {
     setEditingRecord(record);
     form.resetFields();
     form.setFieldsValue({
@@ -313,7 +313,7 @@ const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }
       tags: splitTags(record.tags),
     });
     setDrawerOpen(true);
-  };
+  }, [form]);
 
   const handleAvatarUpload = async (file: File) => {
     setUploadingAvatar(true);
@@ -522,7 +522,7 @@ const ExpertManagementView = ({ mode = 'management' }: { mode?: ExpertPageMode }
         ),
       },
     ];
-  }, [actionPermission, isQueryMode, responsive.isDesktop, responsive.isMobile]);
+  }, [actionPermission, isQueryMode, openEditDrawer, responsive.isDesktop, responsive.isMobile]);
 
   return (
     <ManagementPage title={isQueryMode ? '专家查询' : '专家库'}>

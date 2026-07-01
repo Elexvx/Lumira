@@ -710,8 +710,51 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                         order by sort_no asc, id asc
                         """,
                 new BeanPropertyRowMapper<>(com.lumira.saas.modules.system.vo.SystemVO.MenuVO.class)
-        );
+        ).stream()
+                .filter(menu -> !isAiMenu(menu))
+                .toList();
         return buildSystemMenuTree(menus);
+    }
+
+    private boolean isAiMenu(com.lumira.saas.modules.system.vo.SystemVO.MenuVO menu) {
+        if (menu == null) {
+            return false;
+        }
+        return isAiMenuCode(menu.getMenuCode())
+                || isAiMenuPath(menu.getPath())
+                || isAiMenuComponent(menu.getComponent())
+                || isAiPermissionKey(menu.getPermissionKey());
+    }
+
+    private boolean isAiMenuCode(String menuCode) {
+        if (!StringUtils.hasText(menuCode)) {
+            return false;
+        }
+        String normalized = menuCode.trim().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("ai.") || "settings.ai-employees".equals(normalized);
+    }
+
+    private boolean isAiMenuPath(String path) {
+        if (!StringUtils.hasText(path)) {
+            return false;
+        }
+        String normalized = path.trim().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("/ai") || "/settings/ai-employees".equals(normalized);
+    }
+
+    private boolean isAiMenuComponent(String component) {
+        if (!StringUtils.hasText(component)) {
+            return false;
+        }
+        String normalized = component.trim().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("@/pages/ai/")
+                || normalized.equals("@/pages/settings/ai-employees")
+                || normalized.equals("redirect:/ai/assistant");
+    }
+
+    private boolean isAiPermissionKey(String permissionKey) {
+        return StringUtils.hasText(permissionKey)
+                && permissionKey.trim().toLowerCase(Locale.ROOT).startsWith("ai:");
     }
 
     private List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> buildSystemMenuTree(List<com.lumira.saas.modules.system.vo.SystemVO.MenuVO> flatMenus) {

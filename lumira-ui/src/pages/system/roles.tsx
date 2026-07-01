@@ -1,4 +1,4 @@
-import { Button, Checkbox, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tree, Typography } from 'antd';
+﻿import { Button, Checkbox, Empty, Form, Input, Modal, Select, Space, Spin, Tag, Tree, Typography } from 'antd';
 import { ProDescriptions } from '@ant-design/pro-components';
 import { useMemo } from 'react';
 import { ManagementDrawer, type ManagementDrawerAction } from '@/features/management/ManagementDrawer';
@@ -19,6 +19,9 @@ import { normalizeLocale } from '@/i18n/locale';
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
+const COMPETITION_REGISTRATION_SCOPE_RESOURCE = 'competition:registration';
+const ACTIVITY_REGISTRATION_SCOPE_RESOURCE = 'activity:registration';
+
 const DATA_SCOPE_OPTIONS: Array<{ label: string; value: 'ALL' | 'DEPT' | 'DEPT_AND_CHILD' | 'SELF' | 'CUSTOM' }> = [
   { label: t('全部数据', 'All data'), value: 'ALL' },
   { label: t('本部门数据', 'Current department data'), value: 'DEPT' },
@@ -26,12 +29,29 @@ const DATA_SCOPE_OPTIONS: Array<{ label: string; value: 'ALL' | 'DEPT' | 'DEPT_A
   { label: t('仅本人数据', 'My data only'), value: 'SELF' },
   { label: t('自定义范围', 'Custom scope'), value: 'CUSTOM' },
 ];
+const REGISTRATION_DATA_SCOPE_OPTIONS: Array<{ label: string; value: 'ALL' | 'SELF' }> = [
+  { label: t('全部数据', 'All data'), value: 'ALL' },
+  { label: t('仅本人数据', 'My data only'), value: 'SELF' },
+];
 const DATA_SCOPE_LABELS = DATA_SCOPE_OPTIONS.reduce<Record<string, string>>((acc, item) => {
   acc[item.value] = item.label;
   return acc;
 }, {});
 const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'SELF' }];
 const ROLE_TYPE_DICT_FALLBACK_OPTIONS = ROLE_TYPE_OPTIONS as unknown as DictOption[];
+
+const formatDataScopeResource = (resourceCode: string) => {
+  if (resourceCode === '*') {
+    return t('全局', 'Global');
+  }
+  if (resourceCode === COMPETITION_REGISTRATION_SCOPE_RESOURCE) {
+    return t('赛事报名', 'Competition registrations');
+  }
+  if (resourceCode === ACTIVITY_REGISTRATION_SCOPE_RESOURCE) {
+    return t('活动报名', 'Activity registrations');
+  }
+  return resourceCode;
+};
 
 const formatPermissionGroupLabel = (permissionGroup: string) =>
   (
@@ -461,7 +481,7 @@ const RoleManagementPage = () => {
                 <Typography.Text strong>{t('数据范围', 'Data scope')}</Typography.Text>
                 {(detailDrawer.selectedRoleDetail.dataScopes?.length ? detailDrawer.selectedRoleDetail.dataScopes : DEFAULT_DATA_SCOPES).map((scope) => (
                   <Tag key={`${scope.resourceCode}:${scope.scopeType}`} color="purple">
-                    {scope.resourceCode === '*' ? t('全局', 'Global') : scope.resourceCode} · {DATA_SCOPE_LABELS[scope.scopeType] || scope.scopeType}
+                    {formatDataScopeResource(scope.resourceCode)} · {DATA_SCOPE_LABELS[scope.scopeType] || scope.scopeType}
                   </Tag>
                 ))}
               </Space>
@@ -541,6 +561,24 @@ const RoleEditorBasicFields = ({
     <Form.Item name={['dataScopes', 0, 'resourceCode']} hidden initialValue="*" />
     <Form.Item name={['dataScopes', 0, 'scopeType']} label={t('数据范围', 'Data scope')} rules={[{ required: true, message: t('请选择数据范围', 'Please select a data scope') }]}>
       <Select disabled={isPermissionOnlyEditor} options={DATA_SCOPE_OPTIONS} />
+    </Form.Item>
+    <Form.Item name={['dataScopes', 1, 'resourceCode']} hidden initialValue={COMPETITION_REGISTRATION_SCOPE_RESOURCE} />
+    <Form.Item
+      name={['dataScopes', 1, 'scopeType']}
+      label={t('赛事报名数据范围', 'Competition registration data scope')}
+      rules={[{ required: true, message: t('请选择赛事报名数据范围', 'Please select the competition registration data scope') }]}
+      extra={t('控制该角色在赛事报名页面可查看的数据范围。', 'Controls which competition registration records this role can view on the registration page.')}
+    >
+      <Select disabled={isPermissionOnlyEditor} options={REGISTRATION_DATA_SCOPE_OPTIONS} />
+    </Form.Item>
+    <Form.Item name={['dataScopes', 2, 'resourceCode']} hidden initialValue={ACTIVITY_REGISTRATION_SCOPE_RESOURCE} />
+    <Form.Item
+      name={['dataScopes', 2, 'scopeType']}
+      label={t('活动报名数据范围', 'Activity registration data scope')}
+      rules={[{ required: true, message: t('请选择活动报名数据范围', 'Please select the activity registration data scope') }]}
+      extra={t('控制该角色在活动报名页面可查看的数据范围。', 'Controls which activity registration records this role can view on the activity registration page.')}
+    >
+      <Select disabled={isPermissionOnlyEditor} options={REGISTRATION_DATA_SCOPE_OPTIONS} />
     </Form.Item>
   </>
 );

@@ -1,15 +1,14 @@
-import { CheckCircleOutlined, DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
 import ImgCrop from 'antd-img-crop';
 import dayjs from 'dayjs';
 import type { Dayjs } from 'dayjs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { formatMessage, history, useLocation, useParams } from '@umijs/max';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { formatMessage, history, useLocation, useModel, useParams } from '@umijs/max';
 import '@ant-design/x-markdown/es/XMarkdown/index.css';
 import { XMarkdown } from '@ant-design/x-markdown';
-import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
@@ -28,7 +27,6 @@ import {
   getCompetitionStageForm,
   listCompetitionStages,
   listCompetitions,
-  listProjects,
   listRegistrations,
   publishCompetitionSettings,
   saveCompetitionSettingsModule,
@@ -52,11 +50,11 @@ import type {
   CompetitionStageFormRecord,
   CompetitionStatus,
   CompetitionUpsertPayload,
-  ProjectRecord,
 } from '@/services/competition/types';
 import { request } from '@/services/common/request';
 import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPage';
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
+import { isBasicSettingsPageReadyToSave, isTimelineSettingsPageReadyToSave } from '@/pages/competition/competitionSettingsSave';
 import { AgreementMarkdownEditor } from '@/pages/settings/personalization/components/AgreementMarkdownEditor';
 import { message } from '@/theme/antdFeedbackBridge';
 import { API_OPTS, showErrorMessage } from '@/utils/errorMessage';
@@ -102,6 +100,7 @@ type RegistrationTeamDraft = RegistrationSnapshotTeamPayload & {
 };
 
 type RegistrationMemberRole = 'ADMIN' | 'MANAGER' | 'MEMBER';
+const COMPETITION_REGISTRATION_SCOPE_RESOURCE = 'competition:registration';
 
 const registrationTeamRoleOptions: RegistrationMemberRole[] = ['ADMIN', 'MANAGER', 'MEMBER'];
 const registrationTeamRoleLabel: Record<string, string> = {
@@ -162,33 +161,33 @@ const localeOptions: Array<{ label: string; value: CompetitionLocale }> = [
 ];
 
 const fallbackCategoryOptions = [
-  { label: '创新赛', value: 'INNOVATION' },
-  { label: '应用赛', value: 'APPLICATION' },
-  { label: '专项赛', value: 'SPECIAL' },
+  { label: 'Innovation', value: 'INNOVATION' },
+  { label: 'Application', value: 'APPLICATION' },
+  { label: 'Special', value: 'SPECIAL' },
   { label: '其他', value: 'OTHER' },
 ];
 
 const fallbackLevelOptions = [
-  { label: '校级', value: 'SCHOOL' },
-  { label: '省级', value: 'PROVINCE' },
-  { label: '国家级', value: 'NATIONAL' },
-  { label: '国际级', value: 'INTERNATIONAL' },
+  { label: '鏍＄骇', value: 'SCHOOL' },
+  { label: '鐪佺骇', value: 'PROVINCE' },
+  { label: 'National', value: 'NATIONAL' },
+  { label: 'International', value: 'INTERNATIONAL' },
 ];
 
 const timeModeOptions: Array<{ label: string; value: CompetitionTimeMode }> = [
   { label: '确定', value: 'CONFIRMED' },
-  { label: '不确定', value: 'TBD' },
+  { label: 'TBD', value: 'TBD' },
 ];
 
 const feeModeOptions: Array<{ label: string; value: CompetitionFeeMode }> = [
-  { label: '按团队收费', value: 'TEAM' },
-  { label: '按人数收费', value: 'MEMBER' },
+  { label: 'Team Fee', value: 'TEAM' },
+  { label: 'Member Fee', value: 'MEMBER' },
 ];
 
 const statusText: Record<CompetitionStatus, string> = {
   draft: '草稿',
-  published: '已发布',
-  archived: '已归档',
+  published: 'Published',
+  archived: 'Archived',
 };
 
 const statusColor: Record<CompetitionStatus, string> = {
@@ -198,8 +197,8 @@ const statusColor: Record<CompetitionStatus, string> = {
 };
 
 const competitionCreateSteps = [
-  { title: '条款同意' },
-  { title: '基本信息' },
+  { title: '鏉℃��同意' },
+  { title: '基本�℃��' },
   { title: '竞赛主页' },
 ];
 
@@ -222,24 +221,24 @@ const parseCompetitionCreateStepFromSearch = (search: string) => {
 const createCompetitionStepSearch = (stepIndex: number) => `?${competitionCreateStepQueryKey}=${Math.min(stepIndex + 1, competitionCreateSteps.length)}`;
 
 const competitionTermsMarkdown = sanitizeMarkdownInput(`
-## 赛事发布条款
+## 赛事发布�℃��
 
-请在新增赛事前确认以下内容：
+请在新增赛事前�‘璁や��下内容：
 
-1. 赛事名称、时间、主办方等信息应真实、准确、完整。
-2. 竞赛主页、二维码和联系方式不得包含违法、侵权、误导或与赛事无关的内容。
-3. 如赛事涉及报名、评审、奖项或公开展示，请确保已取得必要授权，并提前准备可对外说明的规则。
-4. 发布后，赛事可能展示在前台页面、团队协作和报名相关流程中，请在提交前完成最终核对。
+1. 赛事名�О銆佹椂闂淬€�主办方等信息应真实、准确�€佸畬鏁淬€?
+2. 竞赛主页、二维码和联系方式不得包含违法�€佷镜鏉冦€�误导或与赛事无关的内容�?
+3. 如赛事涉及报名�€�评�°€�奖项或公开展�ず，请确保已取得必要授权，并提前准备可对外说明的规则�€?
+4. 发布后，赛事可能展�ず�ㄥ��台页面�€�团队协作和�ュ��相关流�▼中，请在提交前完成最终核对�€?
 
-继续创建即表示你已阅读并同意按平台规范发布赛事内容。
+�х��创建即表示你已阅读并同意按平台规范发布赛事内容�€?
 `);
 
-const defaultPreliminaryFormSchema = JSON.stringify(
+const _defaultPreliminaryFormSchema = JSON.stringify(
   {
     fields: [
       {
         key: 'project_plan',
-        label: '项目计划书',
+        label: 'Project Plan',
         type: 'file',
         required: true,
         accept: ['.pdf', '.doc', '.docx'],
@@ -247,7 +246,7 @@ const defaultPreliminaryFormSchema = JSON.stringify(
       },
       {
         key: 'project_intro',
-        label: '项目简介',
+        label: 'Project Description',
         type: 'textarea',
         required: true,
         maxLength: 1000,
@@ -343,8 +342,11 @@ const parseRange = (start?: string | null, end?: string | null): [Dayjs, Dayjs] 
 const normalizeTimeMode = (value?: string | null): CompetitionTimeMode => (value === 'CONFIRMED' ? 'CONFIRMED' : 'TBD');
 
 const formatRangeValue = (value?: Dayjs | string) => {
-  if (!value || typeof value === 'string') {
+  if (!value) {
     return undefined;
+  }
+  if (typeof value === 'string') {
+    return value;
   }
   return value.format('YYYY.MM.DD HH:mm');
 };
@@ -404,7 +406,7 @@ const sanitizeSchedules = (schedules?: CompetitionScheduleFormItem[]): Competiti
 };
 
 const organizerLabel = (organizer: CompetitionOrganizerFormItem) =>
-  [organizer.role, organizer.name].map(trimOptional).filter(Boolean).join('：');
+  [organizer.role, organizer.name].map(trimOptional).filter(Boolean).join('锛?');
 
 const normalizePayload = (values: CompetitionFormValues): CompetitionUpsertPayload => {
   const [registrationStart, registrationEnd] = values.registrationRange || [];
@@ -467,7 +469,7 @@ const recordToFormValues = (record: CompetitionRecord): Partial<CompetitionFormV
     level: normalizeOptionValue(record.level) || undefined,
     competitionLevel: normalizeOptionValue(record.competitionLevel || record.level) || undefined,
     organizer: record.organizer || undefined,
-    organizers: organizers.length ? organizers : [{ role: '主办方', name: record.organizer || '' }],
+    organizers: organizers.length ? organizers : [{ role: 'Organizer', name: record.organizer || '' }],
     registrationRange: parseRange(record.registrationStart, record.registrationEnd),
     schedules: schedules.length ? schedules : [{ timeMode: 'CONFIRMED', title: '竞赛时间', timeRange: parseRange(record.competitionStart, record.competitionEnd) }],
     participationScope: record.participationScope || record.location || undefined,
@@ -493,7 +495,7 @@ const defaultCompetitionFormValues: Partial<CompetitionFormValues> = {
   currency: 'CNY',
   sort: 100,
   featured: false,
-  organizers: [{ role: '主办方', name: '' }],
+  organizers: [{ role: 'Organizer', name: '' }],
   schedules: [{ timeMode: 'TBD', title: '' }],
 };
 
@@ -566,7 +568,7 @@ const CompetitionDateTimeRangePicker = ({
 
   const focusEndInput = () => {
     window.setTimeout(() => {
-      pickerRef.current?.querySelector<HTMLInputElement>('input[placeholder="结束日期"]')?.focus();
+      pickerRef.current?.querySelector<HTMLInputElement>('input[placeholder="结束�ユ湡"]')?.focus();
     });
   };
 
@@ -581,7 +583,7 @@ const CompetitionDateTimeRangePicker = ({
         }}
         format="YYYY.MM.DD HH:mm"
         minuteStep={15}
-        placeholder={['开始日期', '结束日期']}
+        placeholder={['Start date', 'End date']}
         placement="topRight"
         getPopupContainer={() => document.body}
         disabledDate={disabledDate}
@@ -745,16 +747,16 @@ const getCompetitionCreateMissingFields = (values: Partial<CompetitionFormValues
   const firstSchedule = values.schedules?.[0];
 
   if (!trimOptional(values.title)) {
-    missingFields.push('竞赛名称');
+    missingFields.push('竞赛名�О');
   }
   if (!organizerComplete) {
-    missingFields.push('组织者列表');
+    missingFields.push('组织者列�?');
   }
   if (!normalizeOptionValue(values.category)) {
     missingFields.push('竞赛类别');
   }
   if (!normalizeOptionValue(values.competitionLevel || values.level)) {
-    missingFields.push('竞赛级别');
+    missingFields.push('竞赛�у��');
   }
   if (!trimOptional(values.participationScope)) {
     missingFields.push('参赛范围');
@@ -766,10 +768,10 @@ const getCompetitionCreateMissingFields = (values: Partial<CompetitionFormValues
     missingFields.push('参赛费用');
   }
   if (!trimOptional(values.currency)) {
-    missingFields.push('货币');
+    missingFields.push('璐у竵');
   }
   if (!getCompleteTimeRange(values.registrationRange)) {
-    missingFields.push('报名时间');
+    missingFields.push('�ュ��时间');
   }
   if (!firstSchedule?.timeMode) {
     missingFields.push('竞赛安排');
@@ -783,11 +785,11 @@ const getCompetitionCreateMissingFields = (values: Partial<CompetitionFormValues
       (schedule) => getCompleteTimeRange(schedule.timeRange) && !isScheduleWithinRegistrationRange(schedule.timeRange, values.registrationRange),
     );
     if (hasOutOfRangeSchedule) {
-      missingFields.push('竞赛安排需在报名时间内');
+      missingFields.push('竞赛安排�€�ㄦ姤鍚嶆椂闂村唴');
     }
   }
   if (!values.locale?.length) {
-    missingFields.push('语言');
+    missingFields.push('语�█');
   }
   return missingFields;
 };
@@ -808,7 +810,7 @@ const getAllowedCompetitionCreateStep = (requestedStep: number, values: Partial<
 
 const uploadCompetitionImage = async (file: File) => {
   if (!file.type.startsWith('image/')) {
-    message.error('请上传图片文件');
+    message.error('请上传图片文�?');
     return undefined;
   }
   const formData = new FormData();
@@ -862,7 +864,7 @@ const CompetitionBasicFields = ({
         message.success('联系方式二维码已上传');
       }
     } catch (error) {
-      showErrorMessage(error, '二维码上传失败');
+      showErrorMessage(error, '浜岀淮鐮佷笂浼犲け璐?');
     } finally {
       setUploadingQrCode(false);
     }
@@ -870,29 +872,29 @@ const CompetitionBasicFields = ({
 
   return (
     <>
-      <Form.Item name="title" label="竞赛名称" rules={[{ required: true, message: '请输入竞赛名称' }]}>
-        <Input maxLength={128} placeholder="请输入竞赛名称" />
+      <Form.Item name="title" label="竞赛名�О" rules={[{ required: true, message: '请输�ョ��赛名�?' }]}>
+        <Input maxLength={128} placeholder="请输�ョ��赛名�?" />
       </Form.Item>
-      <Form.Item name="shortName" label="竞赛简称">
-        <Input maxLength={128} placeholder="请输入竞赛简称" />
+      <Form.Item name="shortName" label="竞赛�€绉?">
+        <Input maxLength={128} placeholder="请输�ョ��赛简�?" />
       </Form.Item>
       <Form.List name="organizers">
         {(fields, { add, remove }) => (
-          <Form.Item label="组织者列表" required>
+          <Form.Item label="Organizers" required>
             <Space direction="vertical" size={12} className="competition-dynamic-list">
               {fields.map((field, index) => (
                 <div key={field.key} className="competition-dynamic-list__row">
-                  <Form.Item name={[field.name, 'role']} rules={[{ required: true, message: '请输入组织者类型' }]} className="competition-dynamic-list__role">
+                  <Form.Item name={[field.name, 'role']} rules={[{ required: true, message: '请输�ョ��织�€呯被鍨?' }]} className="competition-dynamic-list__role">
                     <Input maxLength={64} placeholder="例如：主办方" />
                   </Form.Item>
-                  <Form.Item name={[field.name, 'name']} rules={[{ required: true, message: '请输入组织者名称' }]} className="competition-dynamic-list__main">
-                    <Input maxLength={128} placeholder="例如：大学生赛事组委会" />
+                  <Form.Item name={[field.name, 'name']} rules={[{ required: true, message: '请输�ョ��织�€�名�?' }]} className="competition-dynamic-list__main">
+                    <Input maxLength={128} placeholder="例如：�ぇ瀛︾��赛事组委�?" />
                   </Form.Item>
                   <div className="competition-dynamic-list__actions">
                     {index === fields.length - 1 ? (
-                      <Button aria-label="添加组织者" title="添加组织者" icon={<PlusOutlined />} onClick={() => add({ role: '', name: '' })} />
+                      <Button aria-label="Add organizer" title="Add organizer" icon={<PlusOutlined />} onClick={() => add({ role: "", name: "" })} />
                     ) : null}
-                    <Button aria-label="删除组织者" title="删除组织者" icon={<DeleteOutlined />} disabled={fields.length <= 1} onClick={() => remove(field.name)} />
+                    <Button aria-label="Remove organizer" title="Remove organizer" icon={<DeleteOutlined />} disabled={fields.length <= 1} onClick={() => remove(field.name)} />
                   </div>
                 </div>
               ))}
@@ -900,37 +902,37 @@ const CompetitionBasicFields = ({
           </Form.Item>
         )}
       </Form.List>
-      <Form.Item name="category" label="竞赛类别" rules={[{ required: true, message: '请选择竞赛类别' }]}>
-        <Select options={categoryOptions} placeholder="请选择竞赛类别" />
+      <Form.Item name="category" label="竞赛类别" rules={[{ required: true, message: '请�€�择竞赛类别' }]}>
+        <Select options={categoryOptions} placeholder="请�€�择竞赛类别" />
       </Form.Item>
-      <Form.Item name="competitionLevel" label="竞赛级别" rules={[{ required: true, message: '请选择竞赛级别' }]}>
-        <Select options={levelOptions} placeholder="请选择竞赛级别" />
+      <Form.Item name="competitionLevel" label="竞赛�у��" rules={[{ required: true, message: '请�€�择竞赛�у��' }]}>
+        <Select options={levelOptions} placeholder="请�€�择竞赛�у��" />
       </Form.Item>
-      <Form.Item name="participationScope" label="参赛范围" rules={[{ required: true, message: '请输入参赛范围' }]}>
-        <Input maxLength={255} placeholder="请输入参赛范围" />
+      <Form.Item name="participationScope" label="参赛范围" rules={[{ required: true, message: '请输�ュ��赛范�?' }]}>
+        <Input maxLength={255} placeholder="请输�ュ��赛范�?" />
       </Form.Item>
       <Form.Item name="participationRequirement" label="参赛要求">
-        <Input.TextArea rows={4} placeholder="请输入参赛要求" />
+        <Input.TextArea rows={4} placeholder="请输�ュ��赛要�?" />
       </Form.Item>
       <Space size="middle" className="competition-inline-fields" align="start">
-        <Form.Item name="feeMode" label="收费方式" rules={[{ required: true, message: '请选择收费方式' }]} className="competition-inline-fields__item">
-          <Select options={feeModeOptions} placeholder="请选择收费方式" />
+        <Form.Item name="feeMode" label="收费方式" rules={[{ required: true, message: '请�€�择收费方式' }]} className="competition-inline-fields__item">
+          <Select options={feeModeOptions} placeholder="请�€�择收费方式" />
         </Form.Item>
-        <Form.Item name="entryFeeMinor" label="参赛费用（元）" rules={[{ required: true, message: '请输入参赛费用' }]} className="competition-inline-fields__item">
+        <Form.Item name="entryFeeMinor" label="参赛费用（元�?" rules={[{ required: true, message: '请输�ュ��赛费�?' }]} className="competition-inline-fields__item">
           <InputNumber min={0} precision={2} style={{ width: '100%' }} />
         </Form.Item>
-        <Form.Item name="currency" label="货币" rules={[{ required: true, message: '请选择货币' }]} className="competition-inline-fields__item">
+        <Form.Item name="currency" label="璐у竵" rules={[{ required: true, message: '请�€�择�у竵' }]} className="competition-inline-fields__item">
           <Select options={[{ label: 'CNY', value: 'CNY' }]} />
         </Form.Item>
       </Space>
       <Form.Item
         name="registrationRange"
-        label="报名时间"
+        label="�ュ��时间"
         rules={[
-          { required: true, message: '请选择报名时间' },
+          { required: true, message: '请�€�择�ュ��时间' },
           {
             validator: (_, value: CompetitionFormValues['registrationRange']) =>
-              getCompleteTimeRange(value) ? Promise.resolve() : Promise.reject(new Error('请选择报名开始和结束时间')),
+              getCompleteTimeRange(value) ? Promise.resolve() : Promise.reject(new Error('请�€�择�ュ���€始和结束时间')),
           },
         ]}
       >
@@ -941,7 +943,7 @@ const CompetitionBasicFields = ({
           <Form.Item label="竞赛安排" required>
             {fields.length ? (
               <div className="competition-schedule-list">
-                <Form.Item name={[fields[0].name, 'timeMode']} rules={[{ required: true, message: '请选择时间状态' }]} className="competition-schedule-status">
+                <Form.Item name={[fields[0].name, 'timeMode']} rules={[{ required: true, message: '请�€�择时间状�€?' }]} className="competition-schedule-status">
                   <Radio.Group
                     options={timeModeOptions}
                     onChange={(event) => {
@@ -961,24 +963,24 @@ const CompetitionBasicFields = ({
                   <Space direction="vertical" size={8} className="competition-dynamic-list">
                     {fields.map((field, index) => (
                       <div key={field.key} className="competition-schedule-row">
-                        <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入安排名称' }]} className="competition-schedule-row__title">
-                          <Input maxLength={128} placeholder="例如：初赛" />
+                        <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输�ュ��排名�?' }]} className="competition-schedule-row__title">
+                          <Input maxLength={128} placeholder="例如：初�?" />
                         </Form.Item>
                         <Form.Item
                           name={[field.name, 'timeRange']}
                           rules={[
-                            { required: true, message: '请选择比赛时间' },
+                            { required: true, message: '请�€�择比赛时间' },
                             {
                               validator: (_, value: CompetitionScheduleFormItem['timeRange']) => {
                                 if (!getCompleteTimeRange(value)) {
-                                  return Promise.reject(new Error('请选择开始和结束时间'));
+                                  return Promise.reject(new Error('请�€�择�€始和结束时间'));
                                 }
                                 if (!getCompleteTimeRange(registrationRange)) {
-                                  return Promise.reject(new Error('请先选择报名时间'));
+                                  return Promise.reject(new Error('请先选择�ュ��时间'));
                                 }
                                 return isScheduleWithinRegistrationRange(value, registrationRange)
                                   ? Promise.resolve()
-                                  : Promise.reject(new Error('竞赛安排需在报名时间内'));
+                                  : Promise.reject(new Error('竞赛安排�€�ㄦ姤鍚嶆椂闂村唴'));
                               },
                             },
                           ]}
@@ -1006,18 +1008,18 @@ const CompetitionBasicFields = ({
           </Form.Item>
         )}
       </Form.List>
-      <Form.Item name="contactName" label="联系主办方">
-        <Input maxLength={128} placeholder="请输入主办方联系方式" />
+      <Form.Item name="contactName" label="联系主办�?">
+        <Input maxLength={128} placeholder="请输�ヤ��办方联系方式" />
       </Form.Item>
-      <Form.Item label="上传联系方式二维码">
+      <Form.Item label="上传联系方式二维�?">
         <Space direction="vertical" size={8} className="competition-qr-upload">
           <ImgCrop
-            modalTitle="裁剪二维码"
+            modalTitle="Crop QR Code"
             rotationSlider
             aspect={1}
             beforeCrop={(file) => {
               if (!file.type.startsWith('image/')) {
-                message.error('请上传图片文件');
+                message.error('请上传图片文�?');
                 return false;
               }
               return true;
@@ -1035,7 +1037,7 @@ const CompetitionBasicFields = ({
               <div
                 className={`competition-qr-upload__preview${uploadingQrCode ? ' is-uploading' : ''}${qrPreviewUrl ? ' has-image' : ''}`}
                 role="button"
-                aria-label="上传联系方式二维码"
+                aria-label="Upload contact QR code"
                 tabIndex={uploadingQrCode ? -1 : 0}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -1049,10 +1051,10 @@ const CompetitionBasicFields = ({
                 ) : (
                   <Space direction="vertical" size={6} align="center">
                     <UploadOutlined />
-                    <Typography.Text type="secondary">点击上传二维码</Typography.Text>
+                    <Typography.Text type="secondary">鐐瑰嚮涓婁紶浜岀淮鐮?</Typography.Text>
                   </Space>
                 )}
-                {qrPreviewUrl ? <span className="competition-qr-upload__hint">{uploadingQrCode ? '上传中...' : '点击更换二维码'}</span> : null}
+                {qrPreviewUrl ? <span className="competition-qr-upload__hint">{uploadingQrCode ? '涓婁紶涓?..' : '鐐瑰嚮鏇存崲浜岀淮鐮?'}</span> : null}
               </div>
             </Upload>
           </ImgCrop>
@@ -1064,7 +1066,7 @@ const CompetitionBasicFields = ({
                 onDraftChange?.();
               }}
             >
-              清空二维码
+              娓呯┖浜岀淮鐮?
             </Button>
           </Space>
           <Form.Item name="contactQrCodeUrl" hidden>
@@ -1073,15 +1075,15 @@ const CompetitionBasicFields = ({
         </Space>
       </Form.Item>
       <Space size={0} className="competition-inline-fields" align="start">
-        <Form.Item name="locale" label="语言" rules={[{ required: true }]} className="competition-inline-fields__item">
+        <Form.Item name="locale" label="语�█" rules={[{ required: true }]} className="competition-inline-fields__item">
           <Select mode="multiple" maxTagCount="responsive" options={localeOptions} />
         </Form.Item>
-        <Form.Item name="sort" label="排序" className="competition-inline-fields__item">
+        <Form.Item name="sort" label="鎺掑簭" className="competition-inline-fields__item">
           <InputNumber min={0} max={9999} style={{ width: '100%' }} />
         </Form.Item>
       </Space>
-      <Form.Item name="featured" label="推荐赛事" valuePropName="checked">
-        <Switch checkedChildren="是" unCheckedChildren="否" />
+      <Form.Item name="featured" label="鎺ㄨ��赛事" valuePropName="checked">
+        <Switch checkedChildren="Yes" unCheckedChildren="No" />
       </Form.Item>
       <Form.Item name="code" hidden>
         <Input />
@@ -1090,7 +1092,7 @@ const CompetitionBasicFields = ({
   );
 };
 
-const CompetitionForm = ({
+const _CompetitionForm = ({
   form,
   categoryOptions,
   levelOptions,
@@ -1102,7 +1104,7 @@ const CompetitionForm = ({
   <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues}>
     <CompetitionBasicFields form={form} categoryOptions={categoryOptions} levelOptions={levelOptions} />
     <Form.Item name="homepageContent" label="竞赛主页">
-      <AgreementMarkdownEditor placeholder="请输入竞赛主页内容，支持 Markdown 富文本" />
+      <AgreementMarkdownEditor placeholder="请输�ョ��赛主页内容，支持 Markdown 富文�?" />
     </Form.Item>
   </Form>
 );
@@ -1124,12 +1126,12 @@ const CreateCompetitionPage = () => {
   const draftSavingRef = useRef(false);
   const latestDraftPayloadRef = useRef<CompetitionCreateDraftStorage | undefined>(undefined);
 
-  const collectCompetitionCreateValues = () => ({
+  const collectCompetitionCreateValues = useCallback(() => ({
     ...defaultCompetitionFormValues,
     ...(form.getFieldsValue(true) as Partial<CompetitionFormValues>),
-  });
+  }), [form]);
 
-  const writeCurrentDraftState = (
+  const writeCurrentDraftState = useCallback((
     nextValues: Partial<CompetitionFormValues> = collectCompetitionCreateValues(),
     nextStep = currentStep,
     nextTermsAccepted = termsAccepted,
@@ -1152,7 +1154,7 @@ const CreateCompetitionPage = () => {
     writeCompetitionCreateDraft(draftState);
     setDraftSavedAt(savedAt);
     return draftState;
-  };
+  }, [collectCompetitionCreateValues, currentStep, draftRecord, termsAccepted]);
 
   const flushCompetitionCreateDraft = useCallback(async (draftState?: CompetitionCreateDraftStorage) => {
     const currentDraftState = draftState || latestDraftPayloadRef.current;
@@ -1208,7 +1210,7 @@ const CreateCompetitionPage = () => {
     }
   }, [writeCurrentDraftState]);
 
-  const persistCompetitionCreateDraft = (
+  const persistCompetitionCreateDraft = useCallback((
     nextValues: Partial<CompetitionFormValues> = collectCompetitionCreateValues(),
     nextStep = currentStep,
     nextTermsAccepted = termsAccepted,
@@ -1221,7 +1223,7 @@ const CreateCompetitionPage = () => {
     saveTimerRef.current = setTimeout(() => {
       void flushCompetitionCreateDraft(draftState);
     }, 600);
-  };
+  }, [collectCompetitionCreateValues, currentStep, flushCompetitionCreateDraft, termsAccepted, writeCurrentDraftState]);
 
   useEffect(() => {
     const draft = readCompetitionCreateDraft();
@@ -1268,11 +1270,11 @@ const CreateCompetitionPage = () => {
         pathname: '/competitions/create',
         search: createCompetitionStepSearch(allowedStep),
       });
-      message.warning(allowedStep === 0 ? '请先阅读并同意赛事发布条款' : '请先补全基本信息');
+      message.warning(allowedStep === 0 ? '请先阅读并同意赛事发布条�?' : '请先�ュ��基本�℃��');
       return;
     }
     setCurrentStep((currentValue) => (currentValue === requestedStep ? currentValue : requestedStep));
-  }, [draftHydrated, location.search, termsAccepted]);
+  }, [collectCompetitionCreateValues, draftHydrated, location.search, termsAccepted]);
 
   const setCompetitionCreateStep = (nextStep: number) => {
     const normalizedStep = Math.max(0, Math.min(nextStep, competitionCreateSteps.length - 1));
@@ -1297,7 +1299,7 @@ const CreateCompetitionPage = () => {
   const goNext = async () => {
     if (currentStep === 0) {
       if (!termsAccepted) {
-        message.warning('请先阅读并同意赛事发布条款');
+        message.warning('请先阅读并同意赛事发布条�?');
         return;
       }
       setCompetitionCreateStep(1);
@@ -1313,7 +1315,7 @@ const CreateCompetitionPage = () => {
     const values = collectCompetitionCreateValues();
     const missingFields = getCompetitionCreateMissingFields(values);
     if (missingFields.length) {
-      message.error(`请先补全：${missingFields[0]}`);
+      message.error(`请先�ュ叏锛?{missingFields[0]}`);
       persistCompetitionCreateDraft(values, 1);
       setCompetitionCreateStep(1);
       return;
@@ -1333,7 +1335,7 @@ const CreateCompetitionPage = () => {
       setDraftRecord(undefined);
       setDraftSavedAt(undefined);
       setCreatedCompetition(created);
-      message.success('赛事已新增');
+      message.success('赛事已新�?');
     } catch (error) {
       showErrorMessage(error, '赛事保存失败');
     } finally {
@@ -1358,7 +1360,7 @@ const CreateCompetitionPage = () => {
               status="success"
               title={formatMessage({ id: 'page.competition.create.success.title', defaultMessage: 'Competition created' })}
               subTitle={formatMessage(
-                { id: 'page.competition.create.success.subtitle', defaultMessage: '{title} · No. {competitionNo}' },
+                { id: 'page.competition.create.success.subtitle', defaultMessage: '{title} 路 No. {competitionNo}' },
                 { title: createdCompetition.title, competitionNo },
               )}
               extra={[
@@ -1409,7 +1411,7 @@ const CreateCompetitionPage = () => {
             <div className="competition-create-step">
               {currentStep === 0 ? (
                 <div className="competition-create-terms">
-                  <Alert type="info" showIcon message="请先阅读赛事发布条款，确认后继续填写基本信息。" />
+                  <Alert type="info" showIcon message="请先阅读赛事发布�℃��，�‘璁ゅ���х��填写基本�℃���?" />
                   <div className="competition-create-terms__content">
                     <XMarkdown content={competitionTermsMarkdown} openLinksInNewTab escapeRawHtml />
                   </div>
@@ -1421,7 +1423,7 @@ const CreateCompetitionPage = () => {
                       persistCompetitionCreateDraft(collectCompetitionCreateValues(), currentStep, nextChecked);
                     }}
                   >
-                    我已阅读并同意赛事发布条款
+                    我已阅读并同意赛事发布条�?
                   </Checkbox>
                 </div>
               ) : null}
@@ -1436,7 +1438,7 @@ const CreateCompetitionPage = () => {
               {currentStep === 2 ? (
                 <div className="competition-homepage-step">
                   <Form.Item name="homepageContent" label="竞赛主页">
-                    <AgreementMarkdownEditor placeholder="请输入竞赛主页内容，支持 Markdown 富文本" />
+                    <AgreementMarkdownEditor placeholder="请输�ョ��赛主页内容，支持 Markdown 富文�?" />
                   </Form.Item>
                 </div>
               ) : null}
@@ -1445,13 +1447,13 @@ const CreateCompetitionPage = () => {
           <div className="competition-create-actions">
             {draftSavedAt ? (
               <Typography.Text className="competition-create-draft-status" type="secondary">
-                草稿已自动保存
+                草稿已自�ㄤ繚瀛?
               </Typography.Text>
             ) : null}
-            {currentStep > 0 ? <Button onClick={() => setCompetitionCreateStep(currentStep - 1)}>上一步</Button> : null}
+            {currentStep > 0 ? <Button onClick={() => setCompetitionCreateStep(currentStep - 1)}>涓婁竴姝?</Button> : null}
             {currentStep < competitionCreateSteps.length - 1 ? (
               <Button type="primary" onClick={() => void goNext()}>
-                下一步
+                涓嬩竴姝?
               </Button>
             ) : (
               <Button type="primary" loading={saving} onClick={() => void submit()}>
@@ -1489,9 +1491,9 @@ type RegistrationCollectedField = {
 
 const fallbackRegistrationMemberFields: RegistrationCollectedField[] = [
   { itemKey: 'memberName', title: '成员姓名', fieldType: 'TEXT', required: true, standardMemberKey: 'memberName' },
-  { itemKey: 'employeeNo', title: '工号', fieldType: 'TEXT', standardMemberKey: 'employeeNo' },
-  { itemKey: 'departmentName', title: '部门', fieldType: 'TEXT', standardMemberKey: 'departmentName' },
-  { itemKey: 'role', title: '角色', fieldType: 'ROLE', standardMemberKey: 'role' },
+  { itemKey: 'employeeNo', title: '宸ュ彿', fieldType: 'TEXT', standardMemberKey: 'employeeNo' },
+  { itemKey: 'departmentName', title: '閮ㄩ棬', fieldType: 'TEXT', standardMemberKey: 'departmentName' },
+  { itemKey: 'role', title: '瑙掕壊', fieldType: 'ROLE', standardMemberKey: 'role' },
   { itemKey: 'remark', title: '备注', fieldType: 'TEXTAREA', standardMemberKey: 'remark' },
 ];
 
@@ -1604,12 +1606,12 @@ const normalizeRegistrationMembers = (members?: RegistrationTeamMemberDraft[]): 
     .filter((member) => hasCollectedValue(member));
 
 const registrationStatusValueEnum = {
-  CREATED: { text: '待提交材料' },
-  MATERIAL_SUBMITTED: { text: '待支付' },
-  PENDING_PAYMENT: { text: '待支付' },
-  PAID: { text: '已支付' },
-  CONFIRMED: { text: '已确认' },
-  CANCELLED: { text: '已取消' },
+  CREATED: { text: '\u5f85\u63d0\u4ea4\u6750\u6599' },
+  MATERIAL_SUBMITTED: { text: '\u6750\u6599\u5df2\u63d0\u4ea4' },
+  PENDING_PAYMENT: { text: '\u5f85\u652f\u4ed8' },
+  PAID: { text: '\u5df2\u652f\u4ed8' },
+  CONFIRMED: { text: '\u5df2\u786e\u8ba4' },
+  CANCELLED: { text: '\u5df2\u53d6\u6d88' },
 };
 
 const registrationStatusColor: Record<string, string> = {
@@ -1657,8 +1659,35 @@ const parseSnapshotName = (snapshotJson?: string | null, keys: string[] = []) =>
   return undefined;
 };
 
+const registrationWizardModeQueryKey = 'mode';
+const registrationWizardStepQueryKey = 'step';
+const registrationWizardModeValue = 'wizard';
+const registrationWizardMaxStep = 4;
+
+const parseRegistrationWizardStepFromSearch = (search: string) => {
+  const params = new URLSearchParams(search);
+  if (params.get(registrationWizardModeQueryKey) !== registrationWizardModeValue) {
+    return undefined;
+  }
+  const stepValue = Number(params.get(registrationWizardStepQueryKey));
+  if (!Number.isInteger(stepValue) || stepValue < 1) {
+    return 0;
+  }
+  return Math.min(stepValue - 1, registrationWizardMaxStep);
+};
+
+const createRegistrationWizardSearch = (stepIndex: number) => {
+  const params = new URLSearchParams();
+  params.set(registrationWizardModeQueryKey, registrationWizardModeValue);
+  params.set(registrationWizardStepQueryKey, String(Math.min(Math.max(stepIndex, 0), registrationWizardMaxStep) + 1));
+  return `?${params.toString()}`;
+};
+
 const CompetitionRegistrationPage = () => {
+  const { initialState } = useModel('@@initialState');
+  const location = useLocation();
   const responsive = useResponsive();
+  const registrationActionPermission = useActionPermission();
   const registrationActionRef = useRef<ActionType | undefined>(undefined);
   const [viewMode, setViewMode] = useState<'list' | 'wizard'>('list');
   const [step, setStep] = useState(0);
@@ -1667,8 +1696,8 @@ const CompetitionRegistrationPage = () => {
   const [registrationDocuments, setRegistrationDocuments] = useState<CompetitionConfigItem[]>([]);
   const [registrationFields, setRegistrationFields] = useState<CompetitionConfigItem[]>([]);
   const [registrationDocumentsLoading, setRegistrationDocumentsLoading] = useState(false);
-  const [readingCountdown, setReadingCountdown] = useState(0);
-  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [documentReadingCountdowns, setDocumentReadingCountdowns] = useState<Record<string, number>>({});
+  const [acceptedDocumentKeys, setAcceptedDocumentKeys] = useState<string[]>([]);
   const [stageForm, setStageForm] = useState<CompetitionStageFormRecord>();
   const [registrationId, setRegistrationId] = useState<number>();
   const [paymentStatus, setPaymentStatus] = useState<string>();
@@ -1708,21 +1737,88 @@ const CompetitionRegistrationPage = () => {
           })),
     [memberRegistrationFields],
   );
-  const maxRegistrationDocumentReadingSeconds = useMemo(
-    () => Math.max(0, ...registrationDocuments.map((item) => getConfigItemReadingSeconds(item))),
-    [registrationDocuments],
+  const registrationDocumentStates = useMemo(
+    () =>
+      registrationDocuments.map((item, index) => {
+        const documentKey = getRegistrationDocumentKey(item, index);
+        return {
+          item,
+          documentKey,
+          readingSeconds: getConfigItemReadingSeconds(item),
+          countdown: documentReadingCountdowns[documentKey] || 0,
+          accepted: acceptedDocumentKeys.includes(documentKey),
+        };
+      }),
+    [acceptedDocumentKeys, documentReadingCountdowns, registrationDocuments],
   );
+  const pendingRegistrationDocumentCount = useMemo(
+    () => registrationDocumentStates.filter((item) => item.countdown > 0 || !item.accepted).length,
+    [registrationDocumentStates],
+  );
+  const activeRegistrationDocumentCountdown = useMemo(
+    () => Math.max(0, ...registrationDocumentStates.map((item) => item.countdown)),
+    [registrationDocumentStates],
+  );
+  const allRegistrationDocumentsAccepted = useMemo(
+    () => !registrationDocumentStates.length || pendingRegistrationDocumentCount === 0,
+    [pendingRegistrationDocumentCount, registrationDocumentStates.length],
+  );
+  const acceptRegistrationDocument = useCallback((documentKey: string, checked: boolean) => {
+    setAcceptedDocumentKeys((current) => {
+      if (checked) {
+        return current.includes(documentKey) ? current : [...current, documentKey];
+      }
+      return current.filter((key) => key !== documentKey);
+    });
+  }, []);
+  const resetRegistrationDocumentProgress = useCallback(
+    (documents: CompetitionConfigItem[]) => {
+      setDocumentReadingCountdowns(
+        Object.fromEntries(
+          documents.map((item, index) => [getRegistrationDocumentKey(item, index), getConfigItemReadingSeconds(item)]),
+        ),
+      );
+      setAcceptedDocumentKeys([]);
+    },
+    [],
+  );
+
+  const setWizardStep = useCallback((nextStep: number, replace = true) => {
+    const normalizedStep = Math.min(Math.max(nextStep, 0), registrationWizardMaxStep);
+    setStep(normalizedStep);
+    setViewMode('wizard');
+    const navigate = replace ? history.replace : history.push;
+    navigate({
+      pathname: location.pathname,
+      search: createRegistrationWizardSearch(normalizedStep),
+    });
+  }, [location.pathname]);
+
+  const showRegistrationList = useCallback(() => {
+    setViewMode('list');
+    history.replace({ pathname: location.pathname, search: '' });
+  }, [location.pathname]);
 
   useEffect(() => {
     void listCompetitions({ status: 'published', pageSize: 100 }).then((response) => setCompetitions(response.records || []));
   }, []);
 
   useEffect(() => {
+    const requestedStep = parseRegistrationWizardStepFromSearch(location.search);
+    if (requestedStep === undefined) {
+      setViewMode('list');
+      return;
+    }
+    setViewMode('wizard');
+    setStep(requestedStep);
+  }, [location.search]);
+
+  useEffect(() => {
     let mounted = true;
     const competitionUuid = selectedCompetition?.uuid;
     setRegistrationDocuments([]);
     setRegistrationFields([]);
-    setReadingCountdown(0);
+    resetRegistrationDocumentProgress([]);
     if (!competitionUuid || viewMode !== 'wizard') {
       setRegistrationDocumentsLoading(false);
       return () => {
@@ -1735,11 +1831,11 @@ const CompetitionRegistrationPage = () => {
         if (!mounted) {
           return;
         }
-        setRegistrationDocuments(
-          (settings.documents || [])
-            .filter((item) => item.enabled !== false)
-            .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)),
-        );
+        const nextDocuments = (settings.documents || [])
+          .filter((item) => item.enabled !== false)
+          .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
+        setRegistrationDocuments(nextDocuments);
+        resetRegistrationDocumentProgress(nextDocuments);
         setRegistrationFields(
           (settings.fields || [])
             .filter((item) => item.enabled !== false)
@@ -1748,7 +1844,7 @@ const CompetitionRegistrationPage = () => {
       })
       .catch((error) => {
         if (mounted) {
-          showErrorMessage(error, '报名文书加载失败');
+          showErrorMessage(error, '�ュ��文书加载失败');
         }
       })
       .finally(() => {
@@ -1759,51 +1855,27 @@ const CompetitionRegistrationPage = () => {
     return () => {
       mounted = false;
     };
-  }, [selectedCompetition?.uuid, viewMode]);
+  }, [resetRegistrationDocumentProgress, selectedCompetition?.uuid, viewMode]);
 
   useEffect(() => {
-    if (step !== 0 || viewMode !== 'wizard') {
-      setReadingCountdown(0);
+    if (step !== 0 || viewMode !== 'wizard' || activeRegistrationDocumentCountdown <= 0) {
       return;
     }
-    setReadingCountdown(maxRegistrationDocumentReadingSeconds);
-  }, [maxRegistrationDocumentReadingSeconds, selectedCompetition?.uuid, step, viewMode]);
-
-  useEffect(() => {
-    if (readingCountdown <= 0 || step !== 0 || viewMode !== 'wizard') {
-      return;
-    }
-    const timer = window.setTimeout(() => setReadingCountdown((current) => Math.max(0, current - 1)), 1000);
+    const timer = window.setTimeout(() => {
+      setDocumentReadingCountdowns((current) =>
+        Object.fromEntries(Object.entries(current).map(([key, value]) => [key, Math.max(0, value - 1)])),
+      );
+    }, 1000);
     return () => window.clearTimeout(timer);
-  }, [readingCountdown, step, viewMode]);
-
-  const loadProjects = async (promptReuse = true) => {
-    const response = await listProjects({ pageSize: 100 });
-    const records = response.records || [];
-    setProjects(records);
-    if (promptReuse && records.length) {
-      Modal.confirm({
-        title: '检测到你已有项目',
-        content: '是否复用已有项目？',
-        onOk: () => {
-          confirmedProjectIdRef.current = records[0]!.id;
-          form.setFieldValue('projectId', records[0]!.id);
-        },
-        onCancel: () => {
-          confirmedProjectIdRef.current = undefined;
-          form.setFieldValue('projectId', undefined);
-        },
-      });
-    }
-  };
+  }, [activeRegistrationDocumentCountdown, step, viewMode]);
 
   const uploadRegistrationTeamAvatar = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      message.error('请上传图片文件');
+      message.error('请上传图片文�?');
       return;
     }
     if (file.size > 20 * 1024 * 1024) {
-      message.error('请上传小于 20MB 的图片');
+      message.error('请上传小�?20MB 的图�?');
       return;
     }
     const formData = new FormData();
@@ -1817,7 +1889,7 @@ const CompetitionRegistrationPage = () => {
       });
       if (uploadedUrl) {
         form.setFieldValue(['newTeam', 'avatarUrl'], uploadedUrl);
-        message.success('上传成功');
+        message.success('涓婁紶鎴愬姛');
       }
     } catch (error) {
       showErrorMessage(error, '上传失败');
@@ -1826,7 +1898,7 @@ const CompetitionRegistrationPage = () => {
     }
   };
 
-  const loadStageFormForCompetition = async (competitionId: number) => {
+  const loadStageFormForCompetition = useCallback(async (competitionId: number) => {
     const stages = await listCompetitionStages(competitionId);
     const preliminary = stages.find((item) => item.stageCode === 'PRELIMINARY') || stages[0];
     if (!preliminary) {
@@ -1838,7 +1910,7 @@ const CompetitionRegistrationPage = () => {
     } catch {
       setStageForm(undefined);
     }
-  };
+  }, []);
 
   const startNewRegistration = () => {
     form.resetFields();
@@ -1857,11 +1929,10 @@ const CompetitionRegistrationPage = () => {
     setStageForm(undefined);
     setMemberModalOpen(false);
     setEditingMemberIndex(undefined);
-    setStep(0);
-    setViewMode('wizard');
+    setWizardStep(0, false);
   };
 
-  const openRegistrationFlow = async (record: CompetitionRegistrationRecord) => {
+  const openRegistrationFlow = useCallback(async (record: CompetitionRegistrationRecord) => {
     setLoading(true);
     try {
       const latest = await getRegistration(record.id);
@@ -1877,54 +1948,65 @@ const CompetitionRegistrationPage = () => {
       if (competitionId) {
         await loadStageFormForCompetition(competitionId);
       }
-      setStep(latest.status === 'PAID' || latest.status === 'CONFIRMED' ? 4 : 3);
-      setViewMode('wizard');
+      setWizardStep(latest.status === 'PAID' || latest.status === 'CONFIRMED' ? 4 : 3, false);
     } catch (error) {
-      showErrorMessage(error, '报名记录加载失败');
+      showErrorMessage(error, '�ュ��记录加载失败');
     } finally {
       setLoading(false);
     }
-  };
+  }, [form, loadStageFormForCompetition, setWizardStep]);
 
   const goNext = async () => {
+    if (step <= 2 && !canCreateRegistration) {
+      message.error('褰撳墠璐﹀彿娌℃��创建赛事�ュ��权限');
+      return;
+    }
+    if (step > 2 && !canUpdateRegistration) {
+      message.error('褰撳墠璐﹀彿娌℃��编辑赛事�ュ��权限');
+      return;
+    }
     setLoading(true);
     try {
       if (step === 0) {
         await form.validateFields(['competitionId']);
         if (registrationDocumentsLoading) {
-          message.info('报名文书仍在加载，请稍后');
+          message.info('�ュ��文书仍在加载，请稍后');
           return;
         }
-        if (readingCountdown > 0) {
-          message.info(`请阅读文书，${readingCountdown} 秒后可继续`);
+        if (!allRegistrationDocumentsAccepted) {
+          message.info(
+            activeRegistrationDocumentCountdown > 0
+              ? `Please finish reading the terms. ${activeRegistrationDocumentCountdown}s remaining before confirmation.`
+              : '请先确认�ㄩ��文书�℃��',
+          );
           return;
         }
         confirmedTeamIdRef.current = undefined;
         confirmedProjectIdRef.current = undefined;
         form.setFieldValue('teamId', undefined);
-        setStep(1);
+        setWizardStep(1);
       } else if (step === 1) {
         const teamName = form.getFieldValue('newTeamName')?.trim();
         if (!teamName) {
-          message.error('请输入团队名称');
+          message.error('请输�ュ��队名�?');
           return;
         }
         const members = normalizeRegistrationMembers(form.getFieldValue(['newTeam', 'initialMembers']) as RegistrationTeamMemberDraft[]);
         if (!members.length) {
-          message.error('请至少填写一位参赛成员信息');
+          message.error('请至少填写一位参赛成员信�?');
           return;
         }
         form.setFieldValue(['newTeam', 'initialMembers'], members);
         await form.validateFields([['newTeamName']]);
         form.setFieldValue('teamId', undefined);
         confirmedTeamIdRef.current = undefined;
-        setStep(2);
+        setWizardStep(2);
       } else if (step === 2) {
         let projectId = toPositiveId(form.getFieldValue('projectId')) || confirmedProjectIdRef.current;
         if (!projectId) {
           const title = form.getFieldValue('newProjectTitle')?.trim();
           if (!title) {
-            message.error('请选择已有项目或填写新建项目名称');
+            message.error('请�€�择已有项目或填写新建项目名�?');
             return;
           }
           const project = await createProject({
@@ -1940,7 +2022,7 @@ const CompetitionRegistrationPage = () => {
         }
         const competitionId = toPositiveId(form.getFieldValue('competitionId')) || toPositiveId(selectedCompetitionId);
         if (!competitionId || !projectId) {
-          message.error('请先选择赛事并创建项目');
+          message.error('请先选择赛事并创建项�?');
           return;
         }
         const teamDraft = (form.getFieldValue('newTeam') || {}) as RegistrationTeamDraft;
@@ -1964,7 +2046,7 @@ const CompetitionRegistrationPage = () => {
           : await createRegistration(registrationPayload);
         setRegistrationId(registration.id);
         await loadStageFormForCompetition(competitionId);
-        setStep(3);
+        setWizardStep(3);
       } else if (step === 3) {
         if (registrationId && stageForm) {
           const materialValues = form.getFieldValue('materials') || {};
@@ -1978,7 +2060,7 @@ const CompetitionRegistrationPage = () => {
             })),
           });
         }
-        setStep(4);
+        setWizardStep(4);
       }
     } catch (error) {
       showErrorMessage(error, '操作失败');
@@ -1988,8 +2070,12 @@ const CompetitionRegistrationPage = () => {
   };
 
   const pay = async () => {
+    if (!canPayRegistration) {
+      message.error('褰撳墠璐﹀彿娌℃��支付�ュ��费用权限');
+      return;
+    }
     if (!registrationId) {
-      message.error('报名记录不存在');
+      message.error('�ュ��记录不存�?');
       return;
     }
     setLoading(true);
@@ -1997,9 +2083,9 @@ const CompetitionRegistrationPage = () => {
       const order = await simulateRegistrationPayment(registrationId);
       setPaymentStatus(order.status || 'CONFIRMED');
       registrationActionRef.current?.reload();
-      message.success('模拟支付成功');
+      message.success('妯℃��支付成功');
     } catch (error) {
-      showErrorMessage(error, '模拟支付失败');
+      showErrorMessage(error, '妯℃��支付失败');
     } finally {
       setLoading(false);
     }
@@ -2017,7 +2103,7 @@ const CompetitionRegistrationPage = () => {
     const values = await memberForm.validateFields();
     const [member] = normalizeRegistrationMembers([values]);
     if (!member) {
-      message.error('请填写成员信息');
+      message.error('请填写成员信�?');
       return;
     }
     const currentMembers = [...((form.getFieldValue(['newTeam', 'initialMembers']) || []) as RegistrationTeamMemberDraft[])];
@@ -2045,7 +2131,7 @@ const CompetitionRegistrationPage = () => {
       normalizeDisplayText(extraValues.name) ||
       normalizeDisplayText(extraValues.memberName) ||
       normalizeDisplayText(extraValues.mobile) ||
-      `成员 ${index + 1}`
+      `鎴愬憳 ${index + 1}`
     );
   };
 
@@ -2053,49 +2139,67 @@ const CompetitionRegistrationPage = () => {
     () => new Map(competitions.map((item) => [item.id, item.title || item.code])),
     [competitions],
   );
-  const nextButtonDisabled = step === 0 && (registrationDocumentsLoading || readingCountdown > 0);
-  const nextButtonText = step === 0 && readingCountdown > 0 ? `下一步（${readingCountdown}s）` : '下一步';
+  const canViewAllRegistrations = useMemo(() => {
+    const matchedScopes = (initialState?.currentUser?.dataScopes || []).filter(
+      (scope) => scope.resourceCode === '*' || scope.resourceCode === COMPETITION_REGISTRATION_SCOPE_RESOURCE,
+    );
+    return matchedScopes.some((scope) => scope.scopeType === 'ALL');
+  }, [initialState?.currentUser?.dataScopes]);
+  const canCreateRegistration = registrationActionPermission.can('aiadc:registration:create');
+  const canUpdateRegistration = registrationActionPermission.can('aiadc:registration:update');
+  const canPayRegistration = registrationActionPermission.can('aiadc:registration:pay');
+  const nextButtonDisabled = step === 0 && (registrationDocumentsLoading || !allRegistrationDocumentsAccepted);
+  const canAdvanceRegistration = step <= 2 ? canCreateRegistration : canUpdateRegistration;
+  const nextButtonText = step === 0 && pendingRegistrationDocumentCount > 0
+    ? `Next (${pendingRegistrationDocumentCount} remaining)`
+    : '\u4e0b\u4e00\u6b65';
 
   const registrationColumns = useMemo<ProColumns<CompetitionRegistrationRecord>[]>(
     () => [
       {
-        title: '报名记录',
+        title: '\u62a5\u540d\u8bb0\u5f55',
         dataIndex: 'registrationNo',
+        width: 320,
+        minWidth: 320,
         fieldProps: {
-          placeholder: '报名号/参赛号',
+          placeholder: 'Registration No. / Participant No.',
         },
         render: (_, record) => (
-          <Space direction="vertical" size={0}>
-            <Typography.Text strong ellipsis>
-              {record.registrationNo || `报名 ${record.id}`}
+          <Space className="competition-registration-record-cell" direction="vertical" size={0}>
+            <Typography.Text className="competition-registration-record-cell__no" strong ellipsis={{ tooltip: record.registrationNo }}>
+              {record.registrationNo || `\u62a5\u540d ${record.id}`}
             </Typography.Text>
-            {record.participantNo ? <Tag color="blue">{record.participantNo}</Tag> : null}
+            {record.participantNo ? (
+              <Tag className="competition-registration-record-cell__participant" color="blue">
+                {record.participantNo}
+              </Tag>
+            ) : null}
           </Space>
         ),
       },
       {
-        title: '赛事',
+        title: '\u8d5b\u4e8b',
         dataIndex: 'competitionId',
         search: false,
         ellipsis: true,
-        render: (_, record) => competitionTitleMap.get(record.competitionId) || `赛事 ${record.competitionId}`,
+        render: (_, record) => competitionTitleMap.get(record.competitionId) || `\u8d5b\u4e8b ${record.competitionId}`,
       },
       {
-        title: '团队',
+        title: '\u56e2\u961f',
         dataIndex: 'teamId',
         search: false,
         ellipsis: true,
-        render: (_, record) => parseSnapshotName(record.teamSnapshotJson, ['teamName', 'name']) || `团队 ${record.teamId}`,
+        render: (_, record) => parseSnapshotName(record.teamSnapshotJson, ['teamName', 'name']) || `\u56e2\u961f ${record.teamId}`,
       },
       {
-        title: '项目',
+        title: '\u9879\u76ee',
         dataIndex: 'projectId',
         search: false,
         ellipsis: true,
-        render: (_, record) => parseSnapshotName(record.projectSnapshotJson, ['title', 'projectTitle', 'name']) || `项目 ${record.projectId}`,
+        render: (_, record) => parseSnapshotName(record.projectSnapshotJson, ['title', 'projectTitle', 'name']) || `\u9879\u76ee ${record.projectId}`,
       },
       {
-        title: '状态',
+        title: '\u72b6\u6001',
         dataIndex: 'status',
         valueType: 'select',
         valueEnum: registrationStatusValueEnum,
@@ -2103,64 +2207,71 @@ const CompetitionRegistrationPage = () => {
         render: (_, record) => renderRegistrationStatusTag(record.status),
       },
       {
-        title: '应付金额',
+        title: '\u5e94\u4ed8\u8d39\u7528',
         dataIndex: 'payableAmountMinor',
         search: false,
         width: 128,
         render: (_, record) => formatRegistrationAmount(record.payableAmountMinor, record.currency),
       },
       {
-        title: '报名时间',
+        title: '\u62a5\u540d\u65f6\u95f4',
         dataIndex: 'createdAt',
         search: false,
         width: 172,
         render: (value) => formatRegistrationTime(typeof value === 'string' ? value : undefined),
       },
       {
-        title: '操作',
+        title: '\u64cd\u4f5c',
         valueType: 'option',
         fixed: responsive.isDesktop ? 'right' : undefined,
         width: 112,
         align: 'right',
         render: (_, record) => (
           <Button type="text" icon={<EyeOutlined />} loading={loading && registrationId === record.id} onClick={() => void openRegistrationFlow(record)}>
-            {record.status === 'PAID' || record.status === 'CONFIRMED' ? '查看' : '继续'}
+            {record.status === 'PAID' || record.status === 'CONFIRMED' ? '\u67e5\u770b' : '\u7ee7\u7eed'}
           </Button>
         ),
       },
     ],
-    [competitionTitleMap, loading, registrationId, responsive.isDesktop],
+    [competitionTitleMap, loading, openRegistrationFlow, registrationId, responsive.isDesktop],
   );
 
   if (viewMode === 'list') {
     return (
-      <ManagementPage title="赛事报名">
+      <ManagementPage title={'\u8d5b\u4e8b\u62a5\u540d'}>
         <ManagementPageBody>
           <ManagementTable<CompetitionRegistrationRecord>
             actionRef={registrationActionRef}
             rowKey="id"
             columns={registrationColumns}
             isMobile={responsive.isMobile}
-            scroll={{ x: 1180 }}
+            scroll={{ x: 1360 }}
             request={async (params) => {
               const response = await listRegistrations({
                 pageNo: params.current,
                 pageSize: params.pageSize,
               });
+              const currentUserId = initialState?.currentUser?.userId;
+              const scopedRecords = currentUserId == null || canViewAllRegistrations
+                ? (response.records || [])
+                : (response.records || []).filter((record) => record.ownerUserId == null || record.ownerUserId === currentUserId);
               return {
-                data: response.records,
-                total: response.total,
+                data: scopedRecords,
+                total: currentUserId == null || canViewAllRegistrations ? response.total : scopedRecords.length,
                 success: true,
               };
             }}
             pagination={{ pageSize: 10, showSizeChanger: true }}
             toolBarRender={() => [
               <Button key="refresh" icon={<ReloadOutlined />} onClick={() => registrationActionRef.current?.reload()}>
-                刷新
+                {'\u5237\u65b0'}
               </Button>,
-              <Button key="new" type="primary" icon={<PlusOutlined />} onClick={startNewRegistration}>
-                新增报名
-              </Button>,
+              registrationActionPermission.withPermissionGuard(
+                'aiadc:registration:create',
+                <Button key="new" type="primary" icon={<PlusOutlined />} onClick={startNewRegistration}>
+                  {'\u65b0\u589e\u62a5\u540d'}
+                </Button>,
+              ),
             ]}
           />
           <Form form={form} component={false} />
@@ -2171,17 +2282,20 @@ const CompetitionRegistrationPage = () => {
 
   const renderTeamForm = () => (
     <>
-      <Card size="small" title="团队信息（新建）">
-        <Form.Item name="newTeamName" label="团队名称" rules={[{ required: true, message: '请输入团队名称' }]}>
+      <section className="competition-registration-team-form">
+        <Typography.Title className="competition-registration-team-form__title" level={5}>
+          鍥㈤���℃��（新建）
+        </Typography.Title>
+        <Form.Item name="newTeamName" label="鍥㈤槦鍚嶇О" rules={[{ required: true, message: '请输�ュ��队名�?' }]}>
           <Input maxLength={128} />
         </Form.Item>
-        <Form.Item name={["newTeam", "teamType"]} label="团队类型">
+        <Form.Item name={["newTeam", "teamType"]} label="鍥㈤��类型">
           <Select options={teamTypeOptions} />
         </Form.Item>
         <Form.Item name={["newTeam", "avatarUrl"]} hidden>
           <Input />
         </Form.Item>
-        <Form.Item label="团队头像">
+        <Form.Item label="鍥㈤��头像">
           <Space>
             <Avatar size={48} src={normalizeUploadUrl(newTeamAvatarUrl) || undefined} icon={<TeamOutlined />} />
             <Upload
@@ -2194,7 +2308,7 @@ const CompetitionRegistrationPage = () => {
               }}
             >
               <Button icon={<UploadOutlined />} loading={teamAvatarUploading}>
-                上传
+                涓婁紶
               </Button>
             </Upload>
             {newTeamAvatarUrl ? (
@@ -2204,13 +2318,13 @@ const CompetitionRegistrationPage = () => {
             ) : null}
           </Space>
         </Form.Item>
-        <Form.Item name={["newTeam", "visibility"]} label="可见性">
+        <Form.Item name={["newTeam", "visibility"]} label="可见�?">
           <Select options={visibilityOptions} />
         </Form.Item>
-        <Form.Item name={["newTeam", "joinMode"]} label="加入方式">
+        <Form.Item name={["newTeam", "joinMode"]} label="鍔犲叆鏂瑰紡">
           <Select options={joinModeOptions} />
         </Form.Item>
-        <Form.Item name={["newTeam", "description"]} label="团队简介">
+        <Form.Item name={["newTeam", "description"]} label="鍥㈤槦绠€浠?">
           <Input.TextArea rows={3} maxLength={1000} />
         </Form.Item>
         <Form.Item label="参赛成员" required>
@@ -2224,7 +2338,7 @@ const CompetitionRegistrationPage = () => {
                   extra={
                     <Space>
                       <Button type="link" onClick={() => openMemberModal(index)}>
-                        编辑
+                        缂栬緫
                       </Button>
                       <Button danger type="link" onClick={() => removeMember(index)}>
                         移除
@@ -2233,12 +2347,12 @@ const CompetitionRegistrationPage = () => {
                   }
                 >
                   <Typography.Text type="secondary">
-                    {[member.employeeNo, member.departmentName, member.role, member.remark].map(normalizeDisplayText).filter(Boolean).join(' / ') || '已填写报名采集信息'}
+                    {[member.employeeNo, member.departmentName, member.role, member.remark].map(normalizeDisplayText).filter(Boolean).join(' / ') || '宸插～鍐欐姤鍚嶉噰闆嗕俊鎭?'}
                   </Typography.Text>
                 </Card>
               ))
             ) : (
-              <Alert type="info" showIcon message="请点击添加成员，逐个确认参赛成员信息。" />
+              <Alert type="info" showIcon message="请点击添加成员，逐个确认参赛成员�℃���?" />
             )}
             <Button block icon={<PlusOutlined />} onClick={() => openMemberModal()}>
               添加成员
@@ -2253,23 +2367,23 @@ const CompetitionRegistrationPage = () => {
                 <Card
                   key={memberField.key}
                   size="small"
-                  title={`成员 ${index + 1}`}
+                  title={`鎴愬憳 ${index + 1}`}
                   extra={
                     <Button danger type="link" disabled={memberFields.length <= 1} onClick={() => remove(memberField.name)}>
                       移除
                     </Button>
                   }
                 >
-                  <Form.Item name={[memberField.name, "memberName"]} label="成员姓名" rules={[{ required: true, message: '请输入成员姓名' }]}>
+                  <Form.Item name={[memberField.name, "memberName"]} label="成员姓名" rules={[{ required: true, message: '请输�ユ��员姓�?' }]}>
                     <Input maxLength={128} />
                   </Form.Item>
-                  <Form.Item name={[memberField.name, "employeeNo"]} label="工号">
+                  <Form.Item name={[memberField.name, "employeeNo"]} label="宸ュ彿">
                     <Input maxLength={64} />
                   </Form.Item>
-                  <Form.Item name={[memberField.name, "departmentName"]} label="部门">
+                  <Form.Item name={[memberField.name, "departmentName"]} label="閮ㄩ棬">
                     <Input maxLength={128} />
                   </Form.Item>
-                  <Form.Item name={[memberField.name, "role"]} label="角色">
+                  <Form.Item name={[memberField.name, "role"]} label="瑙掕壊">
                     <Select options={registrationTeamRoleOptions.map((role) => ({ value: role, label: registrationTeamRoleLabel[role] }))} />
                   </Form.Item>
                   <Form.Item name={[memberField.name, "remark"]} label="备注">
@@ -2280,7 +2394,7 @@ const CompetitionRegistrationPage = () => {
                       key={field.fieldKey}
                       name={[memberField.name, "extraValues", field.fieldKey]}
                       label={field.fieldLabel}
-                      rules={[{ required: Boolean(field.required), message: `请输入${field.fieldLabel}` }]}
+                      rules={[{ required: Boolean(field.required), message: `请输�?{field.fieldLabel}` }]}
                     >
                       {renderRegistrationTeamMemberExtraInput(field)}
                     </Form.Item>
@@ -2294,9 +2408,9 @@ const CompetitionRegistrationPage = () => {
           )}
         </Form.List>
         </div>
-      </Card>
+      </section>
       <Modal
-        title={editingMemberIndex === undefined ? '添加成员' : '编辑成员'}
+        title={editingMemberIndex === undefined ? '添加成员' : '缂栬緫鎴愬憳'}
         open={memberModalOpen}
         destroyOnHidden
         onCancel={() => {
@@ -2313,23 +2427,23 @@ const CompetitionRegistrationPage = () => {
                 key={field.fieldKey}
                 name={['extraValues', field.fieldKey]}
                 label={field.fieldLabel}
-                rules={[{ required: Boolean(field.required), message: `请输入${field.fieldLabel}` }]}
+                rules={[{ required: Boolean(field.required), message: `请输�?{field.fieldLabel}` }]}
               >
                 {renderRegistrationTeamMemberExtraInput(field)}
               </Form.Item>
             ))
           ) : (
             <>
-              <Form.Item name="memberName" label="成员姓名" rules={[{ required: true, message: '请输入成员姓名' }]}>
+              <Form.Item name="memberName" label="成员姓名" rules={[{ required: true, message: '请输�ユ��员姓�?' }]}>
                 <Input maxLength={128} />
               </Form.Item>
-              <Form.Item name="employeeNo" label="工号">
+              <Form.Item name="employeeNo" label="宸ュ彿">
                 <Input maxLength={64} />
               </Form.Item>
-              <Form.Item name="departmentName" label="部门">
+              <Form.Item name="departmentName" label="閮ㄩ棬">
                 <Input maxLength={128} />
               </Form.Item>
-              <Form.Item name="role" label="角色">
+              <Form.Item name="role" label="瑙掕壊">
                 <Select options={registrationTeamRoleOptions.map((role) => ({ value: role, label: registrationTeamRoleLabel[role] }))} />
               </Form.Item>
               <Form.Item name="remark" label="备注">
@@ -2343,14 +2457,14 @@ const CompetitionRegistrationPage = () => {
   );
 
   return (
-    <ManagementPage title="赛事报名" extra={<Button onClick={() => setViewMode('list')}>返回报名记录</Button>}>
+    <ManagementPage title="赛事�ュ��" extra={<Button onClick={showRegistrationList}>返回�ュ��记录</Button>}>
       <ManagementPageBody>
         <Card>
           <Steps
             current={step}
             items={[
               { title: '选择赛事' },
-              { title: '创建团队' },
+              { title: '创建�㈤槦' },
               { title: '选择/创建项目' },
               { title: '初赛材料' },
               { title: '确认支付' },
@@ -2359,7 +2473,7 @@ const CompetitionRegistrationPage = () => {
           <Form<RegistrationFormValues>
             form={form}
             layout="vertical"
-            style={{ marginTop: 24, maxWidth: 920 }}
+            style={{ margin: '24px auto 0', maxWidth: 920, width: '100%' }}
             initialValues={{
               newTeam: {
                 teamType: 'GENERAL',
@@ -2371,25 +2485,58 @@ const CompetitionRegistrationPage = () => {
           >
             {step === 0 ? (
               <>
-                <Form.Item name="competitionId" label="赛事" rules={[{ required: true, message: '请选择赛事' }]}>
+                <Form.Item name="competitionId" label="赛事" rules={[{ required: true, message: '请�€�择赛事' }]}>
                   <Select options={competitions.map((item) => ({ label: item.title, value: item.id }))} />
                 </Form.Item>
                 {selectedCompetitionId ? (
                   <div className="competition-registration-documents">
                     {registrationDocumentsLoading ? (
-                      <Alert type="info" showIcon message="正在加载报名文书..." />
-                    ) : registrationDocuments.length ? (
+                      <Alert type="info" showIcon message="正在加载�ュ��文书..." />
+                    ) : registrationDocumentStates.length ? (
                       <Space direction="vertical" size={12} style={{ width: '100%' }}>
-                        {registrationDocuments.map((documentItem) => (
-                          <Card key={documentItem.id || documentItem.itemKey} size="small" title={documentItem.title || '报名文书'}>
-                            <div className="competition-registration-documents__content">
-                              <XMarkdown content={sanitizeMarkdownInput(documentItem.contentText || '')} openLinksInNewTab escapeRawHtml />
-                            </div>
+                        {registrationDocumentStates.map(({ item: documentItem, documentKey, readingSeconds, countdown, accepted }, index) => (
+                          <Card
+                            key={documentKey}
+                            size="small"
+                            title={
+                              <Space size={8} wrap>
+                                <span>{`鏉℃�� ${index + 1}锛?{documentItem.title || '�ュ��文书'}`}</span>
+                                {readingSeconds > 0 ? (
+                                  <Tag color={countdown > 0 ? 'orange' : 'green'}>
+                                    {countdown > 0 ? `闇€阅读 ${countdown}s` : '已完成阅�?'}
+                                  </Tag>
+                                ) : (
+                                  <Tag color="blue">可直�ョ‘璁?</Tag>
+                                )}
+                              </Space>
+                            }
+                          >
+                            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                              <div className="competition-registration-documents__content">
+                                <XMarkdown content={sanitizeMarkdownInput(documentItem.contentText || '')} openLinksInNewTab escapeRawHtml />
+                              </div>
+                              <Checkbox
+                                checked={accepted}
+                                disabled={countdown > 0}
+                                onChange={(event) => acceptRegistrationDocument(documentKey, event.target.checked)}
+                              >
+                                {countdown > 0 ? `请阅�?${countdown} 秒后确认` : '我已阅读并同意本�℃��'}
+                              </Checkbox>
+                            </Space>
                           </Card>
                         ))}
+                        {!allRegistrationDocumentsAccepted ? (
+                          <Alert
+                            type="warning"
+                            showIcon
+                            message={`Please finish ${pendingRegistrationDocumentCount} remaining agreements before continuing.`}
+                          />
+                        ) : (
+                          <Alert type="success" showIcon message="�ㄩ��文书�℃��已�‘璁わ��可进�ヤ笅涓€姝ャ€?" />
+                        )}
                       </Space>
                     ) : (
-                      <Alert type="info" showIcon message="当前赛事未配置报名前展示文书，可直接进入下一步。" />
+                      <Alert type="info" showIcon message="当前赛事未配置报名前展�ず文书，可直接进入下一�ャ€?" />
                     )}
                   </div>
                 ) : null}
@@ -2398,10 +2545,10 @@ const CompetitionRegistrationPage = () => {
             {step === 1 ? renderTeamForm() : null}
             {step === 2 ? (
               <>
-                <Form.Item name="newProjectTitle" label="项目名称" rules={[{ required: true, message: '请输入项目名称' }]}>
+                <Form.Item name="newProjectTitle" label="椤圭洰鍚嶇О" rules={[{ required: true, message: '请输�ラ��目名�?' }]}>
                   <Input maxLength={128} />
                 </Form.Item>
-                <Form.Item name="newProjectDescription" label="项目简介">
+                <Form.Item name="newProjectDescription" label="椤圭洰绠€浠?">
                   <Input.TextArea rows={3} maxLength={1000} />
                 </Form.Item>
               </>
@@ -2413,38 +2560,38 @@ const CompetitionRegistrationPage = () => {
                     key={field.key}
                     name={["materials", field.key]}
                     label={field.label || field.key}
-                    rules={[{ required: Boolean(field.required), message: `请填写${field.label || field.key}` }]}
+                    rules={[{ required: Boolean(field.required), message: `请填�?{field.label || field.key}` }]}
                   >
                     {field.type === 'textarea' ? (
                       <Input.TextArea rows={4} maxLength={field.maxLength} />
                     ) : field.type === 'file' ? (
-                      <InputNumber min={1} style={{ width: '100%' }} placeholder="请输入已上传文件ID" />
+                      <InputNumber min={1} style={{ width: '100%' }} placeholder="请输�ュ凡涓婁紶鏂囦欢ID" />
                     ) : (
                       <Input maxLength={field.maxLength} />
                     )}
                   </Form.Item>
                 ))
               ) : (
-                <Alert type="info" showIcon message="当前赛事未配置初赛材料表单，可继续进入支付确认。" />
+                <Alert type="info" showIcon message="当前赛事未配置初赛材料表单，可继续进�ユ敮浠樼‘璁ゃ€?" />
               )
             ) : null}
             {step === 4 ? (
               <Alert
                 type={paymentStatus === 'CONFIRMED' || paymentStatus === 'PAID' ? 'success' : 'info'}
                 showIcon
-                message={paymentStatus ? `当前支付状态：${paymentStatus}` : '材料已提交，请确认费用并使用模拟接口支付。'}
+                message={paymentStatus ? `当前支付状�€侊細${paymentStatus}` : '鏉愭枡宸叉彁浜わ��请�‘璁よ���ㄥ苟浣跨敤妯℃嫙鎺ュ��支付�?'}
               />
             ) : null}
           </Form>
           <Space style={{ marginTop: 24 }}>
-            {step > 0 ? <Button onClick={() => setStep((current) => current - 1)}>上一步</Button> : null}
+            {step > 0 ? <Button onClick={() => setWizardStep(step - 1)}>涓婁竴姝?</Button> : null}
             {step < 4 ? (
-              <Button type="primary" loading={loading} disabled={nextButtonDisabled} onClick={() => void goNext()}>
+              <Button type="primary" loading={loading} disabled={nextButtonDisabled || !canAdvanceRegistration} onClick={() => void goNext()}>
                 {nextButtonText}
               </Button>
             ) : (
-              <Button type="primary" loading={loading} onClick={() => void pay()}>
-                模拟支付
+              <Button type="primary" loading={loading} disabled={!canPayRegistration} onClick={() => void pay()}>
+                妯℃��支付
               </Button>
             )}
           </Space>
@@ -2535,7 +2682,7 @@ const getCompetitionSettingsModuleDescription = (module: CompetitionSettingsModu
 const competitionSettingsMenuItems = [
   {
     key: 'basic' as const,
-    label: '基础信息',
+    label: '基础�℃��',
   },
   ...competitionSettingsModules.map((item) => ({ key: item.key, label: getCompetitionSettingsModuleLabel(item) })),
 ];
@@ -2566,6 +2713,9 @@ const normalizeReadingSeconds = (value?: number | string | null) => {
 
 const getConfigItemReadingSeconds = (item: CompetitionConfigItem) =>
   normalizeReadingSeconds(parseConfigItemMetadata(item.contentJson).readingSeconds);
+
+const getRegistrationDocumentKey = (item: CompetitionConfigItem, index: number) =>
+  String(item.id || item.itemKey || `${item.itemType}-${index}`);
 
 const toEditableConfigItems = (items: CompetitionConfigItem[]): EditableCompetitionConfigItem[] =>
   items.map((item) => {
@@ -2642,26 +2792,26 @@ const normalizeConfigKey = (value: string) => value.trim().replace(/[^A-Za-z0-9_
 const fieldTypeOptions = [
   { label: '单行文本', value: 'TEXT' },
   { label: '多行文本', value: 'TEXTAREA' },
-  { label: '数字', value: 'NUMBER' },
-  { label: '日期', value: 'DATE' },
+  { label: '鏁板瓧', value: 'NUMBER' },
+  { label: '�ユ湡', value: 'DATE' },
   { label: '下拉选择', value: 'SELECT' },
-  { label: '手机号', value: 'MOBILE' },
+  { label: 'Mobile', value: 'MOBILE' },
   { label: '邮箱', value: 'EMAIL' },
 ];
 
 const validationRuleOptions = [
-  { label: '不限制', value: 'NONE' },
-  { label: '中国大陆手机号', value: 'CHINA_MOBILE' },
+  { label: 'No Limit', value: 'NONE' },
+  { label: 'China Mobile', value: 'CHINA_MOBILE' },
   { label: '邮箱地址', value: 'EMAIL' },
   { label: '身份证号', value: 'ID_CARD' },
 ];
 
 const fileFormatOptions = [
-  { label: '不限格式', value: 'ANY' },
+  { label: '涓嶉檺鏍煎紡', value: 'ANY' },
   { label: 'PDF', value: 'PDF' },
-  { label: '图片', value: 'IMAGE' },
+  { label: '鍥剧墖', value: 'IMAGE' },
   { label: 'Word 文档', value: 'WORD' },
-  { label: '压缩包', value: 'ARCHIVE' },
+  { label: 'Archive', value: 'ARCHIVE' },
 ];
 
 const fileStageOptions = [
@@ -2671,18 +2821,18 @@ const fileStageOptions = [
 ];
 
 const fieldScopeOptions = [
-  { label: '报名信息', value: 'REGISTRATION_FIELD' },
-  { label: '团队信息', value: 'TEAM_FIELD' },
-  { label: '成员信息', value: 'MEMBER_FIELD' },
-  { label: '项目信息', value: 'PROJECT_FIELD' },
+  { label: '�ュ���℃��', value: 'REGISTRATION_FIELD' },
+  { label: '鍥㈤���℃��', value: 'TEAM_FIELD' },
+  { label: '成员�℃��', value: 'MEMBER_FIELD' },
+  { label: '项目�℃��', value: 'PROJECT_FIELD' },
 ];
 
 const timelineKindOptions = [
-  { label: '报名时间', value: 'REGISTRATION' },
+  { label: '�ュ��时间', value: 'REGISTRATION' },
   { label: '比赛时间', value: 'COMPETITION' },
   { label: '材料提交时间', value: 'MATERIAL_SUBMISSION' },
   { label: '评审时间', value: 'REVIEW' },
-  { label: '公示时间', value: 'PUBLICITY' },
+  { label: '公�ず时间', value: 'PUBLICITY' },
 ];
 
 const emptyConfigItem = (itemType: CompetitionConfigItemType, sortOrder: number): CompetitionConfigItem => ({
@@ -2729,6 +2879,86 @@ const splitFileConfigItemsByModule = (items: CompetitionConfigItem[]) => ({
   stageMaterials: items.filter((item) => item.itemType === 'STAGE_MATERIAL'),
 });
 
+const AUTO_SAVE_DELAY_MS = 800;
+
+const isFormValidationError = (error: unknown) =>
+  Boolean(error && typeof error === 'object' && 'errorFields' in error);
+
+type CompetitionSettingsPanelHandle = {
+  flushPendingSave: () => Promise<void>;
+};
+
+const useDebouncedAutoSave = (save: () => Promise<void>) => {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const savingRef = useRef(false);
+  const pendingRef = useRef(false);
+  const activeSaveRef = useRef<Promise<void>>(Promise.resolve());
+
+  const runSave = useCallback(async () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = undefined;
+    }
+    if (savingRef.current) {
+      return activeSaveRef.current;
+    }
+    if (!pendingRef.current) {
+      return activeSaveRef.current;
+    }
+    savingRef.current = true;
+    pendingRef.current = false;
+    const task = (async () => {
+      try {
+        await save();
+      } catch (error) {
+        if (!isFormValidationError(error)) {
+          throw error;
+        }
+      } finally {
+        savingRef.current = false;
+      }
+      if (pendingRef.current) {
+        await runSave();
+      }
+    })();
+    activeSaveRef.current = task;
+    return task;
+  }, [save]);
+
+  const scheduleSave = useCallback(() => {
+    pendingRef.current = true;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => {
+      void runSave();
+    }, AUTO_SAVE_DELAY_MS);
+  }, [runSave]);
+
+  const flushPendingSave = useCallback(async () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = undefined;
+    }
+    if (!pendingRef.current && !savingRef.current) {
+      return;
+    }
+    if (pendingRef.current) {
+      await runSave();
+      return;
+    }
+    await activeSaveRef.current;
+  }, [runSave]);
+
+  useEffect(() => () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+  }, []);
+
+  return { scheduleSave, flushPendingSave };
+};
+
 const renderConfigItemFields = (module: CompetitionSettingsModuleConfig, fieldName: number) => {
   if (module.key === 'documents') {
     return (
@@ -2740,15 +2970,15 @@ const renderConfigItemFields = (module: CompetitionSettingsModuleConfig, fieldNa
           <Input />
         </Form.Item>
         <div className="competition-config-grid competition-config-grid--document">
-          <Form.Item name={[fieldName, 'title']} label="文书标题" rules={[{ required: true, message: '请输入文书标题' }]}>
-            <Input placeholder="例如 参赛承诺书、知情同意书" maxLength={64} />
+          <Form.Item name={[fieldName, 'title']} label="鏂囦功鏍囬" rules={[{ required: true, message: '请输�ユ���︽爣棰?' }]}>
+            <Input placeholder="例如 参赛承诺�︺€佺煡鎯呭悓鎰忎功" maxLength={64} />
           </Form.Item>
-          <Form.Item name={[fieldName, 'metadata', 'readingSeconds']} label="阅读时间（秒）">
+          <Form.Item name={[fieldName, 'metadata', 'readingSeconds']} label="阅读时间（秒�?">
             <InputNumber min={0} precision={0} style={{ width: '100%' }} />
           </Form.Item>
         </div>
-        <Form.Item name={[fieldName, 'contentText']} label="文书内容">
-          <AgreementMarkdownEditor placeholder="请输入承诺书、知情同意书等内容，支持 Markdown" />
+        <Form.Item name={[fieldName, 'contentText']} label="鏂囦功鍐呭">
+          <AgreementMarkdownEditor placeholder="请输�ユ��诺书、知情同意书等内容，支持 Markdown" />
         </Form.Item>
       </>
     );
@@ -2761,33 +2991,33 @@ const renderConfigItemFields = (module: CompetitionSettingsModuleConfig, fieldNa
           <Form.Item name={[fieldName, 'metadata', 'fieldScope']} label="适用范围" initialValue="REGISTRATION_FIELD">
             <Select options={fieldScopeOptions} />
           </Form.Item>
-          <Form.Item name={[fieldName, 'metadata', 'fieldType']} label="字段类型" rules={[{ required: true, message: '请选择字段类型' }]}>
+          <Form.Item name={[fieldName, 'metadata', 'fieldType']} label="字段类型" rules={[{ required: true, message: '请�€�择字段类型' }]}>
             <Select options={fieldTypeOptions} />
           </Form.Item>
-          <Form.Item name={[fieldName, 'itemKey']} label="字段标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入字段标识' }]}>
+          <Form.Item name={[fieldName, 'itemKey']} label="瀛楁鏍囪瘑" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输�ュ��段标�?' }]}>
             <Input placeholder="例如 mobile、school、projectName" maxLength={64} />
           </Form.Item>
-          <Form.Item name={[fieldName, 'title']} label="字段名称" rules={[{ required: true, message: '请输入字段名称' }]}>
-            <Input placeholder="例如 手机号、学校、项目名称" maxLength={64} />
+          <Form.Item name={[fieldName, 'title']} label="瀛楁鍚嶇О" rules={[{ required: true, message: '请输�ュ��段名�?' }]}>
+            <Input placeholder="例如 手机号�€佸鏍°€�项目名�?" maxLength={64} />
           </Form.Item>
-          <Form.Item name={[fieldName, 'metadata', 'placeholder']} label="占位提示">
-            <Input placeholder="例如 请输入 11 位手机号" maxLength={120} />
+          <Form.Item name={[fieldName, 'metadata', 'placeholder']} label="占位提�ず">
+            <Input placeholder="例如 请输�?11 位手机号" maxLength={120} />
           </Form.Item>
           <Form.Item name={[fieldName, 'metadata', 'groupLabel']} label="字段分组">
-            <Input placeholder="例如 联系方式、教育信息" maxLength={64} />
+            <Input placeholder="例如 联系方式、教育信�?" maxLength={64} />
           </Form.Item>
-          <Form.Item name={[fieldName, 'metadata', 'validationRule']} label="校验规则">
+          <Form.Item name={[fieldName, 'metadata', 'validationRule']} label="鏍￠獙瑙勫垯">
             <Select options={validationRuleOptions} />
           </Form.Item>
-          <Form.Item name={[fieldName, 'sortOrder']} label="排序">
+          <Form.Item name={[fieldName, 'sortOrder']} label="鎺掑簭">
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
         </div>
         <Form.Item name={[fieldName, 'metadata', 'description']} label="字段说明">
-          <Input.TextArea rows={2} placeholder="说明该字段在报名或参赛资料中的用途" maxLength={200} />
+          <Input.TextArea rows={2} placeholder="说明�ュ��段在�ュ��或参赛资料中的用�?" maxLength={200} />
         </Form.Item>
         <Form.Item name={[fieldName, 'metadata', 'options']} label="选项内容">
-          <Input.TextArea rows={2} placeholder="下拉选择时填写，每行一个选项" maxLength={500} />
+          <Input.TextArea rows={2} placeholder="下拉选择时填写，每行�€个�€夐」" maxLength={500} />
         </Form.Item>
       </>
     );
@@ -2796,19 +3026,19 @@ const renderConfigItemFields = (module: CompetitionSettingsModuleConfig, fieldNa
   if (module.key === 'files') {
     return (
       <div className="competition-config-grid">
-        <Form.Item name={[fieldName, 'metadata', 'stageCode']} label="适用阶段" rules={[{ required: true, message: '请选择适用阶段' }]}>
+        <Form.Item name={[fieldName, 'metadata', 'stageCode']} label="适用阶段" rules={[{ required: true, message: '请�€�择适用阶段' }]}>
           <Select options={fileStageOptions} />
         </Form.Item>
-        <Form.Item name={[fieldName, 'itemKey']} label="文件标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入文件标识' }]}>
+        <Form.Item name={[fieldName, 'itemKey']} label="鏂囦欢鏍囪瘑" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输�ユ��件标�?' }]}>
           <Input placeholder="例如 work、authorization" maxLength={64} />
         </Form.Item>
-        <Form.Item name={[fieldName, 'title']} label="文件名称" rules={[{ required: true, message: '请输入文件名称' }]}>
-          <Input placeholder="例如 参赛作品、授权证明" maxLength={64} />
+        <Form.Item name={[fieldName, 'title']} label="鏂囦欢鍚嶇О" rules={[{ required: true, message: '请输�ユ��件名�?' }]}>
+          <Input placeholder="例如 参赛作品、授权证�?" maxLength={64} />
         </Form.Item>
-        <Form.Item name={[fieldName, 'metadata', 'fileFormat']} label="文件格式">
+        <Form.Item name={[fieldName, 'metadata', 'fileFormat']} label="鏂囦欢鏍煎紡">
           <Select options={fileFormatOptions} />
         </Form.Item>
-        <Form.Item name={[fieldName, 'metadata', 'maxSizeMb']} label="大小上限 MB">
+        <Form.Item name={[fieldName, 'metadata', 'maxSizeMb']} label="�у皬涓婇檺 MB">
           <InputNumber min={1} max={1024} style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item className="competition-config-grid__full" name={[fieldName, 'metadata', 'description']} label="上传说明">
@@ -2820,26 +3050,26 @@ const renderConfigItemFields = (module: CompetitionSettingsModuleConfig, fieldNa
 
   return (
     <div className="competition-config-grid">
-      <Form.Item name={[fieldName, 'metadata', 'timelineKind']} label="时间类型" rules={[{ required: true, message: '请选择时间类型' }]}>
+      <Form.Item name={[fieldName, 'metadata', 'timelineKind']} label="时间类型" rules={[{ required: true, message: '请�€�择时间类型' }]}>
         <Select options={timelineKindOptions} />
       </Form.Item>
-      <Form.Item name={[fieldName, 'title']} label="时间名称" rules={[{ required: true, message: '请输入时间名称' }]}>
-        <Input placeholder="例如 报名时间、初赛评审" maxLength={64} />
+      <Form.Item name={[fieldName, 'title']} label="时间名�О" rules={[{ required: true, message: '请输�ユ��间名�?' }]}>
+        <Input placeholder="例如 �ュ��时间、初赛评�?" maxLength={64} />
       </Form.Item>
-      <Form.Item name={[fieldName, 'itemKey']} label="时间标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入时间标识' }]}>
+      <Form.Item name={[fieldName, 'itemKey']} label="时间标识" normalize={normalizeConfigKey} rules={[{ required: true, message: '请输�ユ��间标�?' }]}>
         <Input placeholder="例如 registration、review_preliminary" maxLength={64} />
       </Form.Item>
-      <Form.Item name={[fieldName, 'metadata', 'startAt']} label="开始时间">
+      <Form.Item name={[fieldName, 'metadata', 'startAt']} label="寮€濮嬫椂闂?">
         <Input placeholder="例如 2026-07-01 09:00" maxLength={32} />
       </Form.Item>
       <Form.Item name={[fieldName, 'metadata', 'endAt']} label="结束时间">
         <Input placeholder="例如 2026-07-31 18:00" maxLength={32} />
       </Form.Item>
-      <Form.Item name={[fieldName, 'sortOrder']} label="排序">
+      <Form.Item name={[fieldName, 'sortOrder']} label="鎺掑簭">
         <InputNumber min={0} style={{ width: '100%' }} />
       </Form.Item>
       <Form.Item className="competition-config-grid__full" name={[fieldName, 'metadata', 'description']} label="时间说明">
-        <Input.TextArea rows={2} placeholder="补充说明该时间窗口覆盖的事项" maxLength={200} />
+        <Input.TextArea rows={2} placeholder="琛ュ��说明�ユ��间窗口覆盖的事项" maxLength={200} />
       </Form.Item>
     </div>
   );
@@ -2850,37 +3080,38 @@ const renderFieldSettingsTable = (
   add: (defaultValue?: EditableCompetitionConfigItem) => void,
   remove: (index: number | number[]) => void,
   module: CompetitionSettingsModuleConfig,
+  scheduleSave: () => void,
 ) => {
   return (
     <Space className="competition-config-list" direction="vertical" size={16}>
       <div className="competition-field-table">
         <div className="competition-field-table__head">
-          <span>字段</span>
+          <span>瀛楁</span>
           <span>类型</span>
-          <span>占位提示</span>
-          <span>必填</span>
-          <span>排序</span>
-          <span>启用</span>
+          <span>占位提�ず</span>
+          <span>蹇呭～</span>
+          <span>鎺掑簭</span>
+          <span>鍚敤</span>
           <span>操作</span>
         </div>
         {fields.map((field) => (
           <div className="competition-field-table__row" key={field.key}>
             <div className="competition-field-table__field">
-              <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入字段名称' }]}>
-                <Input placeholder="字段名称" maxLength={64} />
+              <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输�ュ��段名�?' }]}>
+                <Input placeholder="瀛楁鍚嶇О" maxLength={64} />
               </Form.Item>
-              <Form.Item name={[field.name, 'itemKey']} normalize={normalizeConfigKey} rules={[{ required: true, message: '请输入字段标识' }]}>
-                <Input placeholder="字段标识" maxLength={64} />
+              <Form.Item name={[field.name, 'itemKey']} normalize={normalizeConfigKey} rules={[{ required: true, message: '请输�ュ��段标�?' }]}>
+                <Input placeholder="瀛楁鏍囪瘑" maxLength={64} />
               </Form.Item>
               <Form.Item name={[field.name, 'metadata', 'fieldScope']} initialValue="REGISTRATION_FIELD">
                 <Select options={fieldScopeOptions} />
               </Form.Item>
             </div>
-            <Form.Item name={[field.name, 'metadata', 'fieldType']} rules={[{ required: true, message: '请选择字段类型' }]}>
+            <Form.Item name={[field.name, 'metadata', 'fieldType']} rules={[{ required: true, message: '请�€�择字段类型' }]}>
               <Select options={fieldTypeOptions} />
             </Form.Item>
             <Form.Item name={[field.name, 'metadata', 'placeholder']}>
-              <Input placeholder="占位提示" maxLength={120} />
+              <Input placeholder="占位提�ず" maxLength={120} />
             </Form.Item>
             <Form.Item name={[field.name, 'requiredFlag']} valuePropName="checked">
               <Switch />
@@ -2891,7 +3122,14 @@ const renderFieldSettingsTable = (
             <Form.Item name={[field.name, 'enabled']} valuePropName="checked">
               <Switch />
             </Form.Item>
-            <Button danger type="link" onClick={() => remove(field.name)}>
+            <Button
+              danger
+              type="link"
+              onClick={() => {
+                remove(field.name);
+                scheduleSave();
+              }}
+            >
               删除
             </Button>
           </div>
@@ -2900,7 +3138,10 @@ const renderFieldSettingsTable = (
       <Button
         block
         icon={<PlusOutlined />}
-        onClick={() => add(toEditableConfigItems([emptyConfigItem(module.itemTypes[0], (fields.length + 1) * 10)])[0])}
+        onClick={() => {
+          add(toEditableConfigItems([emptyConfigItem(module.itemTypes[0], (fields.length + 1) * 10)])[0]);
+          scheduleSave();
+        }}
       >
         新增字段
       </Button>
@@ -2908,44 +3149,46 @@ const renderFieldSettingsTable = (
   );
 };
 
-const ConfigModulePanel = ({
-  competitionUuid,
-  module,
-  items,
-  onSaved,
-}: {
+type ConfigModulePanelProps = {
   competitionUuid: string;
   module: CompetitionSettingsModuleConfig;
   items: CompetitionConfigItem[];
   onSaved: (settings: CompetitionSettingsRecord) => void;
-}) => {
+};
+
+const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModulePanelProps>(({
+  competitionUuid,
+  module,
+  items,
+  onSaved,
+}, ref) => {
   const [form] = Form.useForm<{ items: EditableCompetitionConfigItem[] }>();
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     form.setFieldsValue({ items: toEditableConfigItems(items) });
   }, [form, items]);
 
-  const save = async () => {
-    const values = await form.validateFields();
-    setSaving(true);
+  const save = useCallback(async () => {
+    const values = form.getFieldsValue(true);
     try {
       const configItems = toConfigItems(values.items || []);
       const saved = module.key === 'files'
         ? await (async () => {
             const groupedItems = splitFileConfigItemsByModule(configItems);
-            await saveCompetitionSettingsModule(competitionUuid, 'files', groupedItems.files);
-            return saveCompetitionSettingsModule(competitionUuid, 'stage-materials', groupedItems.stageMaterials);
+            await saveCompetitionSettingsModule(competitionUuid, 'files', groupedItems.files, API_OPTS.SILENT);
+            return saveCompetitionSettingsModule(competitionUuid, 'stage-materials', groupedItems.stageMaterials, API_OPTS.SILENT);
           })()
-        : await saveCompetitionSettingsModule(competitionUuid, module.key, configItems);
+        : await saveCompetitionSettingsModule(competitionUuid, module.key, configItems, API_OPTS.SILENT);
       onSaved(saved);
-      message.success(formatMessage({ id: 'page.competition.settings.item.saveSuccess', defaultMessage: 'Settings saved' }));
     } catch (error) {
       showErrorMessage(error, formatMessage({ id: 'page.competition.settings.item.saveFailed', defaultMessage: 'Settings save failed' }));
-    } finally {
-      setSaving(false);
     }
-  };
+  }, [competitionUuid, form, module.key, onSaved]);
+  const { scheduleSave, flushPendingSave } = useDebouncedAutoSave(save);
+
+  useImperativeHandle(ref, () => ({
+    flushPendingSave,
+  }), [flushPendingSave]);
 
   return (
     <section className="competition-config-module">
@@ -2953,18 +3196,15 @@ const ConfigModulePanel = ({
         <Typography.Title className="competition-config-module__title" level={4}>
           {getCompetitionSettingsModuleLabel(module)}
         </Typography.Title>
-        <Button type="primary" loading={saving} onClick={() => void save()}>
-          {formatMessage({ id: 'page.competition.settings.item.save', defaultMessage: 'Save' })}
-        </Button>
       </div>
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
         {getCompetitionSettingsModuleDescription(module)}
       </Typography.Paragraph>
-      <Form form={form} layout="vertical" initialValues={{ items: toEditableConfigItems(items) }}>
+      <Form form={form} layout="vertical" initialValues={{ items: toEditableConfigItems(items) }} onValuesChange={scheduleSave}>
         <Form.List name="items">
           {(fields, { add, remove }) =>
             module.key === 'fields' ? (
-              renderFieldSettingsTable(fields, add, remove, module)
+              renderFieldSettingsTable(fields, add, remove, module, scheduleSave)
             ) : (
               <Space className="competition-config-list" direction="vertical" size={16}>
               {fields.map((field, index) => (
@@ -2982,9 +3222,9 @@ const ConfigModulePanel = ({
                           const isDocumentModule = module.key === 'documents';
                           return (
                             <>
-                              {isDocumentModule && enabled !== false ? <Tag color="blue">需确认</Tag> : null}
-                              {!isDocumentModule && required ? <Tag color="red">必填</Tag> : null}
-                              {enabled === false ? <Tag>停用</Tag> : <Tag color="green">启用</Tag>}
+                              {isDocumentModule && enabled !== false ? <Tag color="blue">闇€确认</Tag> : null}
+                              {!isDocumentModule && required ? <Tag color="red">蹇呭～</Tag> : null}
+                              {enabled === false ? <Tag>鍋滅敤</Tag> : <Tag color="green">鍚敤</Tag>}
                             </>
                           );
                         }}
@@ -2992,7 +3232,13 @@ const ConfigModulePanel = ({
                     </Space>
                   }
                   extra={
-                    <Button danger onClick={() => remove(field.name)}>
+                    <Button
+                      danger
+                      onClick={() => {
+                        remove(field.name);
+                        scheduleSave();
+                      }}
+                    >
                       {formatMessage({ id: 'page.competition.settings.item.remove', defaultMessage: 'Remove' })}
                     </Button>
                   }
@@ -3004,11 +3250,11 @@ const ConfigModulePanel = ({
                     <div className="competition-config-switches">
                       {module.key !== 'documents' ? (
                         <Form.Item name={[field.name, 'requiredFlag']} label={formatMessage({ id: 'page.competition.settings.item.required', defaultMessage: 'Required' })} valuePropName="checked">
-                          <Switch checkedChildren="必填" unCheckedChildren="选填" />
+                          <Switch checkedChildren="蹇呭～" unCheckedChildren="选填" />
                         </Form.Item>
                       ) : null}
-                      <Form.Item name={[field.name, 'enabled']} label={module.key === 'documents' ? '报名前展示' : formatMessage({ id: 'page.competition.settings.item.enabled', defaultMessage: 'Enabled' })} valuePropName="checked">
-                        <Switch checkedChildren="启用" unCheckedChildren="停用" />
+                      <Form.Item name={[field.name, 'enabled']} label={module.key === 'documents' ? '�ュ��前展�?' : formatMessage({ id: 'page.competition.settings.item.enabled', defaultMessage: 'Enabled' })} valuePropName="checked">
+                        <Switch checkedChildren="鍚敤" unCheckedChildren="鍋滅敤" />
                       </Form.Item>
                       {module.key !== 'fields' && module.key !== 'timeline' ? (
                         <Form.Item name={[field.name, 'sortOrder']} label={formatMessage({ id: 'page.competition.settings.item.sort', defaultMessage: 'Sort' })}>
@@ -3022,7 +3268,10 @@ const ConfigModulePanel = ({
               <Button
                 block
                 icon={<PlusOutlined />}
-                onClick={() => add(toEditableConfigItems([emptyConfigItem(module.itemTypes[0], (fields.length + 1) * 10)])[0])}
+                onClick={() => {
+                  add(toEditableConfigItems([emptyConfigItem(module.itemTypes[0], (fields.length + 1) * 10)])[0]);
+                  scheduleSave();
+                }}
               >
                 {formatMessage({ id: 'page.competition.settings.item.add', defaultMessage: 'Add item' })}
               </Button>
@@ -3033,21 +3282,24 @@ const ConfigModulePanel = ({
       </Form>
     </section>
   );
-};
+});
 
-const CompetitionBasicSettingsPanel = ({
-  competition,
-  categoryOptions,
-  levelOptions,
-  onSaved,
-}: {
+ConfigModulePanel.displayName = 'ConfigModulePanel';
+
+type CompetitionBasicSettingsPanelProps = {
   competition: CompetitionRecord;
   categoryOptions: Array<{ label: string; value: string }>;
   levelOptions: Array<{ label: string; value: string }>;
   onSaved: (competition: CompetitionRecord) => void;
-}) => {
+};
+
+const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle, CompetitionBasicSettingsPanelProps>(({
+  competition,
+  categoryOptions,
+  levelOptions,
+  onSaved,
+}, ref) => {
   const [form] = Form.useForm<CompetitionFormValues>();
-  const [saving, setSaving] = useState(false);
   const [uploadingQrCode, setUploadingQrCode] = useState(false);
   const contactQrCodeUrl = Form.useWatch('contactQrCodeUrl', form);
   const qrPreviewUrl = normalizeUploadUrl(contactQrCodeUrl);
@@ -3063,88 +3315,105 @@ const CompetitionBasicSettingsPanel = ({
       const uploadedUrl = await uploadCompetitionImage(file);
       if (uploadedUrl) {
         form.setFieldValue('contactQrCodeUrl', uploadedUrl);
+        scheduleSave();
         message.success('联系方式二维码已上传');
       }
     } catch (error) {
-      showErrorMessage(error, '二维码上传失败');
+      showErrorMessage(error, '浜岀淮鐮佷笂浼犲け璐?');
     } finally {
       setUploadingQrCode(false);
     }
   };
 
-  const save = async () => {
-    const values = await form.validateFields();
-    setSaving(true);
+  const save = useCallback(async () => {
+    const values = form.getFieldsValue(true);
+    if (!isBasicSettingsPageReadyToSave(values)) {
+      return;
+    }
     try {
       const saved = await updateCompetition(competition.id, normalizePayload({
         ...defaultCompetitionFormValues,
         ...recordToFormValues(competition),
         ...values,
-      } as CompetitionFormValues));
+      } as CompetitionFormValues), API_OPTS.SILENT);
       onSaved(saved);
-      message.success('基础信息已保存');
     } catch (error) {
-      showErrorMessage(error, '基础信息保存失败');
-    } finally {
-      setSaving(false);
+      showErrorMessage(error, '基础�℃��保存失败');
     }
-  };
+  }, [competition, form, onSaved]);
+  const { scheduleSave, flushPendingSave } = useDebouncedAutoSave(save);
+
+  useImperativeHandle(ref, () => ({
+    flushPendingSave,
+  }), [flushPendingSave]);
 
   return (
     <section className="competition-config-module">
       <div className="competition-config-module__header">
         <Typography.Title className="competition-config-module__title" level={4}>
-          基础信息
+          基础�℃��
         </Typography.Title>
-        <Button type="primary" loading={saving} onClick={() => void save()}>
-          保存
-        </Button>
       </div>
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
-        管理赛事名称、组织者、参赛规则、费用、时间和展示信息。
-      </Typography.Paragraph>
-      <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues}>
+        管理赛事名�О、组织�€呫€�参赛规则�€�费�ㄣ€佹椂闂村拰灞曠ず�℃���?      </Typography.Paragraph>
+      <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues} onValuesChange={scheduleSave}>
         <section className="competition-basic-section">
           <Typography.Title className="competition-basic-section__title" level={5}>
-            基础信息
+            基础�℃��
           </Typography.Title>
           <div className="competition-basic-section__grid">
-            <Form.Item name="title" label="竞赛名称" rules={[{ required: true, message: '请输入竞赛名称' }]}>
-              <Input maxLength={128} placeholder="请输入竞赛名称" />
+            <Form.Item name="title" label="竞赛名�О" rules={[{ required: true, message: '请输�ョ��赛名�?' }]}>
+              <Input maxLength={128} placeholder="请输�ョ��赛名�?" />
             </Form.Item>
-            <Form.Item name="shortName" label="竞赛简称">
-              <Input maxLength={128} placeholder="请输入竞赛简称" />
+            <Form.Item name="shortName" label="竞赛�€绉?">
+              <Input maxLength={128} placeholder="请输�ョ��赛简�?" />
             </Form.Item>
-            <Form.Item name="category" label="竞赛类别" rules={[{ required: true, message: '请选择竞赛类别' }]}>
-              <Select options={categoryOptions} placeholder="请选择竞赛类别" />
+            <Form.Item name="category" label="竞赛类别" rules={[{ required: true, message: '请�€�择竞赛类别' }]}>
+              <Select options={categoryOptions} placeholder="请�€�择竞赛类别" />
             </Form.Item>
-            <Form.Item name="competitionLevel" label="竞赛级别" rules={[{ required: true, message: '请选择竞赛级别' }]}>
-              <Select options={levelOptions} placeholder="请选择竞赛级别" />
+            <Form.Item name="competitionLevel" label="竞赛�у��" rules={[{ required: true, message: '请�€�择竞赛�у��' }]}>
+              <Select options={levelOptions} placeholder="请�€�择竞赛�у��" />
             </Form.Item>
           </div>
         </section>
 
         <section className="competition-basic-section">
           <Typography.Title className="competition-basic-section__title" level={5}>
-            组织与参赛
-          </Typography.Title>
+            组织与参�?          </Typography.Title>
           <Form.List name="organizers">
             {(fields, { add, remove }) => (
-              <Form.Item className="competition-organizer-list" label="组织者列表" required>
+              <Form.Item className="competition-organizer-list" label="Organizers" required>
                 <Space direction="vertical" size={12} className="competition-dynamic-list">
                   {fields.map((field, index) => (
                     <div key={field.key} className="competition-dynamic-list__row">
-                      <Form.Item name={[field.name, 'role']} rules={[{ required: true, message: '请输入组织者类型' }]} className="competition-dynamic-list__role">
+                      <Form.Item name={[field.name, 'role']} rules={[{ required: true, message: '请输�ョ��织�€呯被鍨?' }]} className="competition-dynamic-list__role">
                         <Input maxLength={64} placeholder="例如：主办方" />
                       </Form.Item>
-                      <Form.Item name={[field.name, 'name']} rules={[{ required: true, message: '请输入组织者名称' }]} className="competition-dynamic-list__main">
-                        <Input maxLength={128} placeholder="例如：大学生赛事组委会" />
+                      <Form.Item name={[field.name, 'name']} rules={[{ required: true, message: '请输�ョ��织�€�名�?' }]} className="competition-dynamic-list__main">
+                        <Input maxLength={128} placeholder="例如：�ぇ瀛︾��赛事组委�?" />
                       </Form.Item>
                       <div className="competition-dynamic-list__actions">
                         {index === fields.length - 1 ? (
-                          <Button aria-label="添加组织者" title="添加组织者" icon={<PlusOutlined />} onClick={() => add({ role: '', name: '' })} />
+                          <Button
+                            aria-label="Add organizer"
+                            title="Add organizer"
+                            icon={<PlusOutlined />}
+                            onClick={() => {
+                              add({ role: '', name: '' });
+                              scheduleSave();
+                            }}
+                          />
                         ) : null}
-                        <Button aria-label="删除组织者" title="删除组织者" icon={<DeleteOutlined />} disabled={fields.length <= 1} onClick={() => remove(field.name)} />
+                        <Button
+                          aria-label="Remove organizer"
+                          title="Remove organizer"
+                          icon={<DeleteOutlined />}
+                          disabled={fields.length <= 1}
+                          onClick={() => {
+                            remove(field.name);
+                            scheduleSave();
+                          }}
+                        />
                       </div>
                     </div>
                   ))}
@@ -3153,27 +3422,27 @@ const CompetitionBasicSettingsPanel = ({
             )}
           </Form.List>
           <div className="competition-basic-section__grid">
-            <Form.Item className="competition-basic-section__full" name="participationScope" label="参赛范围" rules={[{ required: true, message: '请输入参赛范围' }]}>
-              <Input maxLength={255} placeholder="请输入参赛范围" />
+            <Form.Item className="competition-basic-section__full" name="participationScope" label="参赛范围" rules={[{ required: true, message: '请输�ュ��赛范�?' }]}>
+              <Input maxLength={255} placeholder="请输�ュ��赛范�?" />
             </Form.Item>
             <Form.Item className="competition-basic-section__full" name="participationRequirement" label="参赛要求">
-              <Input.TextArea rows={4} placeholder="请输入参赛要求" />
+              <Input.TextArea rows={4} placeholder="请输�ュ��赛要�?" />
             </Form.Item>
           </div>
         </section>
 
         <section className="competition-basic-section">
           <Typography.Title className="competition-basic-section__title" level={5}>
-            费用设置
+            璐圭敤璁剧疆
           </Typography.Title>
           <div className="competition-basic-section__grid">
-            <Form.Item name="feeMode" label="收费方式" rules={[{ required: true, message: '请选择收费方式' }]}>
-              <Select options={feeModeOptions} placeholder="请选择收费方式" />
+            <Form.Item name="feeMode" label="收费方式" rules={[{ required: true, message: '请�€�择收费方式' }]}>
+              <Select options={feeModeOptions} placeholder="请�€�择收费方式" />
             </Form.Item>
-            <Form.Item name="entryFeeMinor" label="参赛费用（元）" rules={[{ required: true, message: '请输入参赛费用' }]}>
+            <Form.Item name="entryFeeMinor" label="参赛费用（元�?" rules={[{ required: true, message: '请输�ュ��赛费�?' }]}>
               <InputNumber min={0} precision={2} style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="currency" label="货币" rules={[{ required: true, message: '请选择货币' }]}>
+            <Form.Item name="currency" label="璐у竵" rules={[{ required: true, message: '请�€�择�у竵' }]}>
               <Select options={[{ label: 'CNY', value: 'CNY' }]} />
             </Form.Item>
           </div>
@@ -3181,24 +3450,23 @@ const CompetitionBasicSettingsPanel = ({
 
         <section className="competition-basic-section">
           <Typography.Title className="competition-basic-section__title" level={5}>
-            展示与联系
-          </Typography.Title>
+            灞曠ず涓庤仈绯?          </Typography.Title>
           <div className="competition-basic-section__grid">
-            <Form.Item name="contactName" label="联系主办方">
-              <Input maxLength={128} placeholder="请输入主办方联系方式" />
+            <Form.Item name="contactName" label="联系主办�?">
+              <Input maxLength={128} placeholder="请输�ヤ��办方联系方式" />
             </Form.Item>
-            <Form.Item name="locale" label="语言" rules={[{ required: true }]}>
+            <Form.Item name="locale" label="语�█" rules={[{ required: true }]}>
               <Select mode="multiple" maxTagCount="responsive" options={localeOptions} />
             </Form.Item>
-            <Form.Item className="competition-basic-section__full" label="上传联系方式二维码">
+            <Form.Item className="competition-basic-section__full" label="上传联系方式二维�?">
               <Space direction="vertical" size={8} className="competition-qr-upload">
                 <ImgCrop
-                  modalTitle="裁剪二维码"
+                  modalTitle="Crop QR Code"
                   rotationSlider
                   aspect={1}
                   beforeCrop={(file) => {
                     if (!file.type.startsWith('image/')) {
-                      message.error('请上传图片文件');
+                      message.error('请上传图片文�?');
                       return false;
                     }
                     return true;
@@ -3216,7 +3484,7 @@ const CompetitionBasicSettingsPanel = ({
                     <div
                       className={`competition-qr-upload__preview${uploadingQrCode ? ' is-uploading' : ''}${qrPreviewUrl ? ' has-image' : ''}`}
                       role="button"
-                      aria-label="上传联系方式二维码"
+                      aria-label="Upload contact QR code"
                       tabIndex={uploadingQrCode ? -1 : 0}
                       onKeyDown={(event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
@@ -3230,23 +3498,28 @@ const CompetitionBasicSettingsPanel = ({
                       ) : (
                         <Space direction="vertical" size={6} align="center">
                           <UploadOutlined />
-                          <Typography.Text type="secondary">点击上传二维码</Typography.Text>
+                          <Typography.Text type="secondary">鐐瑰嚮涓婁紶浜岀淮鐮?</Typography.Text>
                         </Space>
                       )}
-                      {qrPreviewUrl ? <span className="competition-qr-upload__hint">{uploadingQrCode ? '上传中...' : '点击更换二维码'}</span> : null}
+                      {qrPreviewUrl ? <span className="competition-qr-upload__hint">{uploadingQrCode ? '涓婁紶涓?..' : '鐐瑰嚮鏇存崲浜岀淮鐮?'}</span> : null}
                     </div>
                   </Upload>
                 </ImgCrop>
-                <Button disabled={!contactQrCodeUrl || uploadingQrCode} onClick={() => form.setFieldValue('contactQrCodeUrl', undefined)}>
-                  清空二维码
-                </Button>
+                <Button
+                  disabled={!contactQrCodeUrl || uploadingQrCode}
+                  onClick={() => {
+                    form.setFieldValue('contactQrCodeUrl', undefined);
+                    scheduleSave();
+                  }}
+                >
+                  娓呯┖浜岀淮鐮?                </Button>
                 <Form.Item name="contactQrCodeUrl" hidden>
                   <Input />
                 </Form.Item>
               </Space>
             </Form.Item>
             <Form.Item className="competition-basic-section__full" name="homepageContent" label="竞赛主页">
-              <AgreementMarkdownEditor placeholder="请输入竞赛主页内容，支持 Markdown 富文本" />
+              <AgreementMarkdownEditor placeholder="请输�ョ��赛主页内容，支持 Markdown 富文�?" />
             </Form.Item>
           </div>
           <Form.Item name="code" hidden>
@@ -3256,17 +3529,20 @@ const CompetitionBasicSettingsPanel = ({
       </Form>
     </section>
   );
-};
+});
 
-const CompetitionTimelineSettingsPanel = ({
-  competition,
-  onSaved,
-}: {
+CompetitionBasicSettingsPanel.displayName = 'CompetitionBasicSettingsPanel';
+
+type CompetitionTimelineSettingsPanelProps = {
   competition: CompetitionRecord;
   onSaved: (competition: CompetitionRecord) => void;
-}) => {
+};
+
+const CompetitionTimelineSettingsPanel = forwardRef<CompetitionSettingsPanelHandle, CompetitionTimelineSettingsPanelProps>(({
+  competition,
+  onSaved,
+}, ref) => {
   const [form] = Form.useForm<CompetitionFormValues>();
-  const [saving, setSaving] = useState(false);
   const schedules = Form.useWatch('schedules', form) || [];
   const registrationRange = Form.useWatch('registrationRange', form);
 
@@ -3275,23 +3551,27 @@ const CompetitionTimelineSettingsPanel = ({
     form.setFieldsValue({ ...defaultCompetitionFormValues, ...recordToFormValues(competition) });
   }, [competition, form]);
 
-  const save = async () => {
-    const values = await form.validateFields();
-    setSaving(true);
+  const save = useCallback(async () => {
+    const values = form.getFieldsValue(true);
+    if (!isTimelineSettingsPageReadyToSave(values)) {
+      return;
+    }
     try {
       const saved = await updateCompetition(competition.id, normalizePayload({
         ...defaultCompetitionFormValues,
         ...recordToFormValues(competition),
         ...values,
-      } as CompetitionFormValues));
+      } as CompetitionFormValues), API_OPTS.SILENT);
       onSaved(saved);
-      message.success('赛事时间已保存');
     } catch (error) {
       showErrorMessage(error, '赛事时间保存失败');
-    } finally {
-      setSaving(false);
     }
-  };
+  }, [competition, form, onSaved]);
+  const { scheduleSave, flushPendingSave } = useDebouncedAutoSave(save);
+
+  useImperativeHandle(ref, () => ({
+    flushPendingSave,
+  }), [flushPendingSave]);
 
   return (
     <section className="competition-config-module">
@@ -3299,26 +3579,22 @@ const CompetitionTimelineSettingsPanel = ({
         <Typography.Title className="competition-config-module__title" level={4}>
           赛事时间
         </Typography.Title>
-        <Button type="primary" loading={saving} onClick={() => void save()}>
-          保存
-        </Button>
       </div>
       <Typography.Paragraph className="competition-config-module__description" type="secondary">
-        统一管理报名时间和各阶段竞赛安排。
-      </Typography.Paragraph>
-      <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues}>
+        统一管理�ュ��时间和各阶段竞赛安排�?      </Typography.Paragraph>
+      <Form<CompetitionFormValues> form={form} layout="vertical" initialValues={defaultCompetitionFormValues} onValuesChange={scheduleSave}>
         <section className="competition-basic-section">
           <Typography.Title className="competition-basic-section__title" level={5}>
-            报名时间
+            �ュ��时间
           </Typography.Title>
           <Form.Item
             name="registrationRange"
-            label="报名时间"
+            label="�ュ��时间"
             rules={[
-              { required: true, message: '请选择报名时间' },
+              { required: true, message: '请�€�择�ュ��时间' },
               {
                 validator: (_, value: CompetitionFormValues['registrationRange']) =>
-                  getCompleteTimeRange(value) ? Promise.resolve() : Promise.reject(new Error('请选择报名开始和结束时间')),
+                  getCompleteTimeRange(value) ? Promise.resolve() : Promise.reject(new Error('请�€�择�ュ���€始和结束时间')),
               },
             ]}
           >
@@ -3335,7 +3611,7 @@ const CompetitionTimelineSettingsPanel = ({
               <Form.Item label="竞赛安排" required>
                 {fields.length ? (
                   <div className="competition-schedule-list">
-                    <Form.Item name={[fields[0].name, 'timeMode']} rules={[{ required: true, message: '请选择时间状态' }]} className="competition-schedule-status">
+                    <Form.Item name={[fields[0].name, 'timeMode']} rules={[{ required: true, message: '请�€�择时间状�€?' }]} className="competition-schedule-status">
                       <Radio.Group
                         options={timeModeOptions}
                         onChange={(event) => {
@@ -3343,9 +3619,11 @@ const CompetitionTimelineSettingsPanel = ({
                           const currentSchedules = form.getFieldValue('schedules') || [];
                           if (nextMode === 'CONFIRMED') {
                             form.setFieldValue('schedules', [{ ...currentSchedules[0], timeMode: 'CONFIRMED' }]);
+                            scheduleSave();
                             return;
                           }
                           form.setFieldValue('schedules', [{ timeMode: 'TBD' }]);
+                          scheduleSave();
                         }}
                       />
                     </Form.Item>
@@ -3353,24 +3631,24 @@ const CompetitionTimelineSettingsPanel = ({
                       <Space direction="vertical" size={8} className="competition-dynamic-list">
                         {fields.map((field, index) => (
                           <div key={field.key} className="competition-schedule-row">
-                            <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输入安排名称' }]} className="competition-schedule-row__title">
-                              <Input maxLength={128} placeholder="例如：初赛" />
+                            <Form.Item name={[field.name, 'title']} rules={[{ required: true, message: '请输�ュ��排名�?' }]} className="competition-schedule-row__title">
+                              <Input maxLength={128} placeholder="例如：初�?" />
                             </Form.Item>
                             <Form.Item
                               name={[field.name, 'timeRange']}
                               rules={[
-                                { required: true, message: '请选择比赛时间' },
+                                { required: true, message: '请�€�择比赛时间' },
                                 {
                                   validator: (_, value: CompetitionScheduleFormItem['timeRange']) => {
                                     if (!getCompleteTimeRange(value)) {
-                                      return Promise.reject(new Error('请选择开始和结束时间'));
+                                      return Promise.reject(new Error('请�€�择�€始和结束时间'));
                                     }
                                     if (!getCompleteTimeRange(registrationRange)) {
-                                      return Promise.reject(new Error('请先选择报名时间'));
+                                      return Promise.reject(new Error('请先选择�ュ��时间'));
                                     }
                                     return isScheduleWithinRegistrationRange(value, registrationRange)
                                       ? Promise.resolve()
-                                      : Promise.reject(new Error('竞赛安排需在报名时间内'));
+                                      : Promise.reject(new Error('竞赛安排�€�ㄦ姤鍚嶆椂闂村唴'));
                                   },
                                 },
                               ]}
@@ -3380,9 +3658,26 @@ const CompetitionTimelineSettingsPanel = ({
                             </Form.Item>
                             <div className="competition-schedule-row__actions">
                               {index === fields.length - 1 ? (
-                                <Button aria-label="添加竞赛安排" title="添加竞赛安排" icon={<PlusOutlined />} onClick={() => add({ timeMode: 'CONFIRMED', title: '' })} />
+                                <Button
+                                  aria-label="添加竞赛安排"
+                                  title="添加竞赛安排"
+                                  icon={<PlusOutlined />}
+                                  onClick={() => {
+                                    add({ timeMode: 'CONFIRMED', title: '' });
+                                    scheduleSave();
+                                  }}
+                                />
                               ) : null}
-                              <Button aria-label="删除竞赛安排" title="删除竞赛安排" icon={<DeleteOutlined />} disabled={fields.length <= 1} onClick={() => remove(field.name)} />
+                              <Button
+                                aria-label="删除竞赛安排"
+                                title="删除竞赛安排"
+                                icon={<DeleteOutlined />}
+                                disabled={fields.length <= 1}
+                                onClick={() => {
+                                  remove(field.name);
+                                  scheduleSave();
+                                }}
+                              />
                             </div>
                           </div>
                         ))}
@@ -3397,7 +3692,9 @@ const CompetitionTimelineSettingsPanel = ({
       </Form>
     </section>
   );
-};
+});
+
+CompetitionTimelineSettingsPanel.displayName = 'CompetitionTimelineSettingsPanel';
 
 const CompetitionSettingsPage = () => {
   const params = useParams<{ competitionUuid: string }>();
@@ -3406,6 +3703,7 @@ const CompetitionSettingsPage = () => {
   const [activeKey, setActiveKey] = useState<CompetitionSettingsModuleKey>('basic');
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const activePanelRef = useRef<CompetitionSettingsPanelHandle | null>(null);
   const { options: categoryOptions } = useDictOptions(COMPETITION_CATEGORY_DICT, fallbackCategoryOptions);
   const { options: levelOptions } = useDictOptions(COMPETITION_LEVEL_DICT, fallbackLevelOptions);
 
@@ -3433,10 +3731,28 @@ const CompetitionSettingsPage = () => {
     ? undefined
     : competitionSettingsModules.find((item) => item.key === activeKey) || competitionSettingsModules[0];
 
+  const flushActivePanel = useCallback(async () => {
+    await activePanelRef.current?.flushPendingSave();
+  }, []);
+
+  const handleBack = useCallback(async () => {
+    await flushActivePanel();
+    history.push('/competitions/management');
+  }, [flushActivePanel]);
+
+  const handleModuleChange = useCallback(async (nextKey: CompetitionSettingsModuleKey) => {
+    if (nextKey === activeKey) {
+      return;
+    }
+    await flushActivePanel();
+    setActiveKey(nextKey);
+  }, [activeKey, flushActivePanel]);
+
   const publish = async () => {
     if (!settings) {
       return;
     }
+    await flushActivePanel();
     setPublishing(true);
     try {
       const published = await publishCompetitionSettings(settings.competition.uuid || competitionUuid);
@@ -3454,7 +3770,7 @@ const CompetitionSettingsPage = () => {
       title={formatMessage({ id: 'page.competition.settings.title', defaultMessage: 'Competition Settings' })}
       extra={
         <Space>
-          <Button onClick={() => history.push('/competitions/management')}>
+          <Button onClick={() => void handleBack()}>
             {formatMessage({ id: 'page.competition.settings.back', defaultMessage: 'Back' })}
           </Button>
           <Button type="primary" loading={publishing} onClick={() => void publish()}>
@@ -3480,12 +3796,13 @@ const CompetitionSettingsPage = () => {
                 mode="inline"
                 selectedKeys={[activeKey]}
                 items={competitionSettingsMenuItems}
-                onClick={({ key }) => setActiveKey(key as CompetitionSettingsModuleKey)}
+                onClick={({ key }) => void handleModuleChange(key as CompetitionSettingsModuleKey)}
               />
             </aside>
             <main className="competition-settings-content">
               {activeKey === 'basic' ? (
                 <CompetitionBasicSettingsPanel
+                  ref={activePanelRef}
                   competition={settings.competition}
                   categoryOptions={categoryOptions as Array<{ label: string; value: string }>}
                   levelOptions={levelOptions as Array<{ label: string; value: string }>}
@@ -3493,12 +3810,14 @@ const CompetitionSettingsPage = () => {
                 />
               ) : activeKey === 'timeline' ? (
                 <CompetitionTimelineSettingsPanel
+                  ref={activePanelRef}
                   competition={settings.competition}
                   onSaved={(competition) => setSettings({ ...settings, competition })}
                 />
               ) : activeModule ? (
                 <ConfigModulePanel
                   key={activeModule.key}
+                  ref={activePanelRef}
                   competitionUuid={settings.competition.uuid || competitionUuid}
                   module={activeModule}
                   items={getModuleItems(settings, activeModule.key)}
@@ -3524,21 +3843,12 @@ const CompetitionPage = () => {
   const categoryLabelMap = useMemo(() => buildOptionLabelMap(categoryOptions), [categoryOptions]);
   const levelLabelMap = useMemo(() => buildOptionLabelMap(levelOptions), [levelOptions]);
   const actionRef = useRef<ActionType | undefined>(undefined);
-  const [form] = Form.useForm<CompetitionFormValues>();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<CompetitionRecord>();
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (location.pathname === '/competitions') {
       history.replace('/competitions/management');
     }
   }, [location.pathname]);
-
-  const closeDrawer = () => {
-    setDrawerOpen(false);
-    setEditingRecord(undefined);
-  };
 
   const openCreateDrawer = () => {
     clearCompetitionCreateDraft();
@@ -3548,33 +3858,6 @@ const CompetitionPage = () => {
     });
   };
 
-  const openEditDrawer = (record: CompetitionRecord) => {
-    setEditingRecord(record);
-    form.resetFields();
-    form.setFieldsValue({ ...defaultCompetitionFormValues, ...recordToFormValues(record) });
-    setDrawerOpen(true);
-  };
-
-  const saveCompetition = async () => {
-    const values = await form.validateFields();
-    setSaving(true);
-    try {
-      if (editingRecord) {
-        await updateCompetition(editingRecord.id, normalizePayload(values));
-        message.success('赛事已更新');
-      } else {
-        await createCompetition(normalizePayload(values));
-        message.success('赛事已新增');
-      }
-      closeDrawer();
-      actionRef.current?.reload();
-    } catch (error) {
-      showErrorMessage(error, '赛事保存失败');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const toggleCompetitionStatus = useCallback(async (record: CompetitionRecord) => {
     if (record.status === 'archived') {
       return;
@@ -3582,21 +3865,21 @@ const CompetitionPage = () => {
     const nextStatus: CompetitionStatus = record.status === 'published' ? 'draft' : 'published';
     try {
       await updateCompetition(record.id, normalizePayload({ ...recordToFormValues(record), status: nextStatus }));
-      message.success(nextStatus === 'published' ? '赛事已发布' : '赛事已切换为草稿');
+      message.success(nextStatus === 'published' ? '赛事已发�?' : '赛事已切换为草稿');
       actionRef.current?.reload();
     } catch (error) {
-      showErrorMessage(error, '状态切换失败');
+      showErrorMessage(error, '鐘舵€�切�㈠け璐?');
     }
   }, []);
 
   const columns = useMemo<ProColumns<CompetitionRecord>[]>(
     () => [
       {
-        title: '赛事查询',
+        title: '赛事�ヨ',
         dataIndex: 'keyword',
         hideInTable: true,
         fieldProps: {
-          placeholder: '输入赛事名称/编码/主办方',
+          placeholder: 'Enter competition name/code/organizer',
         },
       },
       {
@@ -3612,7 +3895,7 @@ const CompetitionPage = () => {
         ),
       },
       {
-        title: '状态',
+        title: 'Status',
         dataIndex: 'status',
         valueType: 'select',
         valueEnum: {
@@ -3638,7 +3921,7 @@ const CompetitionPage = () => {
         },
       },
       {
-        title: '级别',
+        title: '绾у��',
         dataIndex: 'competitionLevel',
         search: false,
         render: (_, record) => resolveOptionLabel(levelLabelMap, record.competitionLevel || record.level) || '-',
@@ -3650,18 +3933,18 @@ const CompetitionPage = () => {
         width: 140,
         render: (_, record) => {
           const amount = Number(record.entryFeeMinor || 0) / 100;
-          return `${record.feeMode === 'MEMBER' ? '按人数' : '按团队'} / ${amount.toFixed(2)} ${record.currency || 'CNY'}`;
+          return `${record.feeMode === 'MEMBER' ? 'Per member' : 'Per team'} / ${amount.toFixed(2)} ${record.currency || 'CNY'}`;
         },
       },
       {
-        title: '组织者',
+        title: 'Organizer',
         dataIndex: 'organizer',
         search: false,
         ellipsis: true,
         render: (value) => value || '-',
       },
       {
-        title: '语言',
+        title: '语�█',
         dataIndex: 'locale',
         valueType: 'select',
         valueEnum: {
@@ -3715,18 +3998,18 @@ const CompetitionPage = () => {
         ),
       },
       {
-        title: '推荐',
+        title: '鎺ㄨ崘',
         dataIndex: 'featured',
         valueType: 'select',
         valueEnum: {
-          true: { text: '是' },
-          false: { text: '否' },
+          true: { text: '鏄?' },
+          false: { text: '鍚?' },
         },
         width: 90,
-        render: (_, record) => (record.featured ? <Tag color="gold">推荐</Tag> : <Tag>普通</Tag>),
+        render: (_, record) => (record.featured ? <Tag color="gold">鎺ㄨ崘</Tag> : <Tag>鏅€?</Tag>),
       },
       {
-        title: '排序',
+        title: '鎺掑簭',
         dataIndex: 'sort',
         search: false,
         width: 80,
@@ -3735,7 +4018,7 @@ const CompetitionPage = () => {
         title: '操作',
         valueType: 'option',
         fixed: responsive.isDesktop ? 'right' : undefined,
-        width: 208,
+        width: 160,
         align: 'right',
         className: 'saas-table-action-column',
         render: (_, record) => (
@@ -3744,7 +4027,7 @@ const CompetitionPage = () => {
             items={actionPermission.buildTableActions([
               {
                 key: 'status',
-                label: record.status === 'published' ? '撤回' : '发布',
+                label: record.status === 'published' ? '�ゅ��' : '发布',
                 icon: record.status === 'published' ? <RollbackOutlined /> : <CheckCircleOutlined />,
                 permission: 'aiadc:competition:update',
                 hidden: record.status === 'archived',
@@ -3755,8 +4038,8 @@ const CompetitionPage = () => {
                   }
 
                   Modal.confirm({
-                    title: '确认发布该赛事？',
-                    content: `发布后，赛事「${record.title}」将出现在学生报名入口中。`,
+                    title: '确认发布�ヨ��事？',
+                    content: `After publishing, ${record.title} will appear in the student registration entry.`,
                     okText: '确认发布',
                     cancelText: '取消',
                     onOk: async () => {
@@ -3767,7 +4050,7 @@ const CompetitionPage = () => {
               },
               {
                 key: 'settings',
-                label: '配置',
+                label: '閰嶇疆',
                 icon: <SettingOutlined />,
                 permission: 'aiadc:competition:update',
                 onClick: () => {
@@ -3779,13 +4062,6 @@ const CompetitionPage = () => {
                 },
               },
               {
-                key: 'edit',
-                label: '编辑',
-                icon: <EditOutlined />,
-                permission: 'aiadc:competition:update',
-                onClick: () => openEditDrawer(record),
-              },
-              {
                 key: 'delete',
                 label: '删除',
                 icon: <DeleteOutlined />,
@@ -3793,12 +4069,12 @@ const CompetitionPage = () => {
                 danger: true,
                 onClick: () => {
                   Modal.confirm({
-                    title: '确认删除该赛事？',
-                    content: `删除后赛事「${record.title}」不会再出现在赛事列表中。`,
+                    title: '确认删除�ヨ��事？',
+                    content: `After deletion, ${record.title} will no longer appear in the competition list.`,
                     okButtonProps: { danger: true },
                     onOk: async () => {
                       await deleteCompetition(record.id);
-                      message.success('赛事已删除');
+                      message.success('赛事已删�?');
                       actionRef.current?.reload();
                     },
                   });
@@ -3824,7 +4100,7 @@ const CompetitionPage = () => {
     return <CompetitionRegistrationPage />;
   }
 
-  if (location.pathname === '/competitions/activity-register') {
+  if (location.pathname === '/activities/register' || location.pathname === '/competitions/activity-register') {
     return <ActivityRegistrationPage />;
   }
 
@@ -3874,30 +4150,12 @@ const CompetitionPage = () => {
           }
         />
       </ManagementPageBody>
-
-      <ManagementDrawer
-        title={editingRecord ? '编辑赛事' : '新增赛事'}
-        open={drawerOpen}
-        onClose={closeDrawer}
-        destroyOnHidden
-        footerActions={[
-          { key: 'cancel', label: '取消', onClick: closeDrawer },
-          {
-            key: 'save',
-            label: '保存',
-            type: 'primary',
-            loading: saving,
-            onClick: () => void saveCompetition(),
-          },
-        ]}
-      >
-        <CompetitionForm form={form} categoryOptions={categoryOptions as Array<{ label: string; value: string }>} levelOptions={levelOptions as Array<{ label: string; value: string }>} />
-      </ManagementDrawer>
-
     </ManagementPage>
   );
 };
 
 export default CompetitionPage;
+
+
 
 

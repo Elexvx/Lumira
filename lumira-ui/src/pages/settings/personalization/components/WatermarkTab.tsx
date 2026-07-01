@@ -35,11 +35,6 @@ const componentToHex = (value: number) => Math.round(clamp(value, 0, 255)).toStr
 
 const rgbaToHex = ({ r, g, b }: RgbaColor) => `#${componentToHex(r)}${componentToHex(g)}${componentToHex(b)}`;
 
-const formatAlpha = (alpha: number) => {
-  const rounded = Math.round(clamp(alpha, 0, 1) * 100) / 100;
-  return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(/0+$/, '');
-};
-
 const formatWatermarkColor = (color: RgbaColor) => `${rgbaToHex(color)},${Math.round(clamp(color.a, 0, 1) * 100)}%`;
 const formatWatermarkColorDisplay = (color: RgbaColor) => rgbaToHex(color);
 

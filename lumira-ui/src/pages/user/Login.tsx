@@ -1,7 +1,6 @@
 import { formatMessage } from '@umijs/max';
-import { Alert, Button, Form, Input, Modal } from 'antd';
+import { Alert, Button, Form, Input, Modal, QRCode } from 'antd';
 import { type CSSProperties } from 'react';
-import { LoginFormPage } from '@ant-design/pro-components';
 import type { FormInstance, FormProps } from 'antd';
 import { useLoginFlow } from '@/pages/user/login/hooks/useLoginFlow';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -21,6 +20,7 @@ type LoginPageMainSectionProps = {
   loginForm: FormInstance<LoginFormValues>;
   loginPageStyle: CSSProperties;
   brandingWebsiteName: string;
+  brandingFooterItems: string[];
   loginSubTitle: string;
   submitButtonText: string;
   activeLoginMode: LoginMode;
@@ -57,6 +57,7 @@ const LoginPageMainSection = ({
   loginForm,
   loginPageStyle,
   brandingWebsiteName,
+  brandingFooterItems,
   loginSubTitle,
   submitButtonText,
   activeLoginMode,
@@ -89,79 +90,102 @@ const LoginPageMainSection = ({
   resetCaptchaProof,
 }: LoginPageMainSectionProps) => (
   <div className="saas-login-page" style={loginPageStyle}>
-    <LoginFormPage<LoginFormValues>
-      form={loginForm}
-      title={brandingWebsiteName}
-      subTitle={loginSubTitle}
-      onFinish={handleSubmit}
-      onFinishFailed={handleFinishFailed}
-      submitter={{ render: () => null, submitButtonProps: false }}
-      containerStyle={{
-        width: '100%',
-        maxWidth: 'var(--saas-spacing-536)',
-        boxSizing: 'border-box',
-      }}
-      style={{
-        width: '100%',
-        minHeight: '100%',
-        background: 'transparent',
-      }}
-      mainStyle={{ width: '100%', maxWidth: 'var(--saas-spacing-440)', margin: '0 auto', background: 'transparent' }}
-    >
-      <LoginFormFields
-        activeLoginMode={activeLoginMode}
-        availableLoginModes={availableLoginModes}
-        pendingSecondFactorLogin={pendingSecondFactorLogin}
-        pendingSecondFactorPrompt={pendingSecondFactorPrompt}
-        agreementSettings={agreementSettings}
-        securityCaptchaEnabled={securityCaptchaEnabled}
-        securityCaptchaType={securityCaptchaType}
-        captchaChallenge={captchaChallenge}
-        captchaLoading={captchaLoading}
-        captchaImageLoadFailed={captchaImageLoadFailed}
-        sendingLoginType={sendingLoginType}
-        loginCodeChallenges={loginCodeChallenges}
-        loginCodeCooldownSeconds={loginCodeCooldownSeconds}
-        wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
-        passkeyLoading={passkeySubmitting}
-        onModeChange={setActiveLoginMode}
-        onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
-        onWechatLogin={() => void handleWechatLogin()}
-        onPasskeyLogin={() => void handlePasskeyLogin()}
-        onRefreshCaptcha={() => void refreshCaptcha()}
-        onCaptchaImageError={() => setCaptchaImageLoadFailed(true)}
-        onSliderCaptchaChallengeChange={setCaptchaChallenge}
-        onSliderCaptchaVerified={setCaptchaProof}
-        onSliderCaptchaReset={resetCaptchaProof}
-        onOpenAgreementPreview={openAgreementPreview}
-      />
-      {activeLoginMode === 'passkey' && !pendingSecondFactorLogin ? null : (
-        <Button
-          block
-          size="large"
-          type="primary"
-          loading={submitting}
-          data-testid="login-submit-button"
-          className="saas-login-page__submit-button"
-          onClick={() => {
-            const formValues = loginForm.getFieldsValue(true);
-            const accountInput = document.querySelector<HTMLInputElement>('[data-testid="login-account-input"]');
-            const passwordInput = document.querySelector<HTMLInputElement>('[data-testid="login-password-input"]');
-            const agreementInput = document.querySelector<HTMLInputElement>('[data-testid="login-agreement-checkbox"] input');
-            const nextValues = {
-              ...formValues,
-              passwordAccount: formValues.passwordAccount || accountInput?.value,
-              passwordPassword: formValues.passwordPassword || passwordInput?.value,
-              agreementAccepted: Boolean(formValues.agreementAccepted || agreementInput?.checked),
-            };
-            loginForm.setFieldsValue(nextValues);
-            void handleSubmit(nextValues);
-          }}
+    <main className="saas-login-page__stage">
+      <header className="saas-login-page__brand" aria-label={brandingWebsiteName}>
+        <div className="saas-login-page__brand-title">{brandingWebsiteName}</div>
+        <div className="saas-login-page__brand-subtitle">
+          {formatMessage({ id: 'page.login.brandSubtitle', defaultMessage: '智慧平台 · 安全登录' })}
+        </div>
+      </header>
+      <section className="saas-login-page__panel" aria-label={formatMessage({ id: 'page.login.title', defaultMessage: 'Login' })}>
+        <aside className="saas-login-page__qr-panel">
+          <div className="saas-login-page__qr-title">{formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' })}</div>
+          <div className="saas-login-page__qr-copy">{formatMessage({ id: 'page.login.qr.wechatHint', defaultMessage: '使用微信扫描二维码登录' })}</div>
+          <button
+            type="button"
+            className="saas-login-page__qr-box"
+            disabled={!loginCapabilities.wechatLoginAvailable}
+            onClick={() => {
+              if (loginCapabilities.wechatLoginAvailable) {
+                void handleWechatLogin();
+              }
+            }}
+          >
+            <QRCode value={typeof window === 'undefined' ? 'https://lumira.local' : window.location.origin || 'https://lumira.local'} size={132} bordered={false} />
+          </button>
+          <div className="saas-login-page__qr-method">
+            {loginCapabilities.wechatLoginAvailable
+              ? formatMessage({ id: 'page.login.qr.wechatActionHint', defaultMessage: '点击二维码前往微信授权登录' })
+              : formatMessage({ id: 'page.login.qr.wechatUnavailable', defaultMessage: '微信登录暂未启用' })}
+          </div>
+        </aside>
+        <div className="saas-login-page__divider" aria-hidden="true" />
+        <Form<LoginFormValues>
+          form={loginForm}
+          className="saas-login-page__form"
+          onFinish={handleSubmit}
+          onFinishFailed={handleFinishFailed}
         >
-          {submitButtonText}
-        </Button>
-      )}
-    </LoginFormPage>
+          <LoginFormFields
+            activeLoginMode={activeLoginMode}
+            availableLoginModes={availableLoginModes}
+            pendingSecondFactorLogin={pendingSecondFactorLogin}
+            pendingSecondFactorPrompt={pendingSecondFactorPrompt}
+            agreementSettings={agreementSettings}
+            securityCaptchaEnabled={securityCaptchaEnabled}
+            securityCaptchaType={securityCaptchaType}
+            captchaChallenge={captchaChallenge}
+            captchaLoading={captchaLoading}
+            captchaImageLoadFailed={captchaImageLoadFailed}
+            sendingLoginType={sendingLoginType}
+            loginCodeChallenges={loginCodeChallenges}
+            loginCodeCooldownSeconds={loginCodeCooldownSeconds}
+            wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
+            passkeyLoading={passkeySubmitting}
+            onModeChange={setActiveLoginMode}
+            onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
+            onWechatLogin={() => void handleWechatLogin()}
+            onPasskeyLogin={() => void handlePasskeyLogin()}
+            onRefreshCaptcha={() => void refreshCaptcha()}
+            onCaptchaImageError={() => setCaptchaImageLoadFailed(true)}
+            onSliderCaptchaChallengeChange={setCaptchaChallenge}
+            onSliderCaptchaVerified={setCaptchaProof}
+            onSliderCaptchaReset={resetCaptchaProof}
+            onOpenAgreementPreview={openAgreementPreview}
+          />
+          {activeLoginMode === 'passkey' && !pendingSecondFactorLogin ? null : (
+            <Button
+              block
+              size="large"
+              type="primary"
+              loading={submitting}
+              data-testid="login-submit-button"
+              className="saas-login-page__submit-button"
+              htmlType="button"
+              onClick={() => {
+                const formValues = loginForm.getFieldsValue(true);
+                const accountInput = document.querySelector<HTMLInputElement>('[data-testid="login-account-input"]');
+                const passwordInput = document.querySelector<HTMLInputElement>('[data-testid="login-password-input"]');
+                const nextValues = {
+                  ...formValues,
+                  passwordAccount: formValues.passwordAccount || accountInput?.value,
+                  passwordPassword: formValues.passwordPassword || passwordInput?.value,
+                };
+                loginForm.setFieldsValue(nextValues);
+                void loginForm.validateFields().then(() => handleSubmit(nextValues));
+              }}
+            >
+              {submitButtonText}
+            </Button>
+          )}
+        </Form>
+      </section>
+    </main>
+    <footer className="saas-login-page__footer">
+      {brandingFooterItems.map((item) => (
+        <span key={item}>{item}</span>
+      ))}
+    </footer>
   </div>
 );
 
@@ -217,6 +241,7 @@ const Login = () => {
         resetCaptchaProof={loginFlow.actions.resetCaptchaProof}
         loginPageStyle={loginFlow.loginPageStyle}
         brandingWebsiteName={loginFlow.brandingWebsiteName}
+        brandingFooterItems={loginFlow.brandingFooterItems}
         loginSubTitle={loginSubTitle}
         submitButtonText={submitButtonText}
       />

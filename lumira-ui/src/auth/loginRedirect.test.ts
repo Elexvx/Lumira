@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createLoginSessionBroadcastListener, resolveRouteAccessStatus } from '@/auth/loginRedirect';
+import { createLoginSessionBroadcastListener } from '@/auth/loginRedirect';
 import { beginLoginFlow, endLoginFlow } from '@/auth/loginFlowState';
 
 class FakeBroadcastChannel {
@@ -24,19 +24,6 @@ afterEach(() => {
   if (originalBroadcastChannel) {
     vi.stubGlobal('BroadcastChannel', originalBroadcastChannel);
   }
-});
-
-describe('route access for AI sharing', () => {
-  it('allows the share page without AI assistant permissions', () => {
-    expect(
-      resolveRouteAccessStatus('/ai/share/demo-token', {
-        userId: 1,
-        username: 'guest',
-        permissions: [],
-        sessionId: 'session-guest',
-      }),
-    ).toBe('allowed');
-  });
 });
 
 describe('login session broadcast listener', () => {

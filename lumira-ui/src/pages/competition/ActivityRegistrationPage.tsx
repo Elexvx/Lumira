@@ -1,10 +1,14 @@
-import { Button, Card, Descriptions, Form, Input, Result, Select, Space, Steps, Typography } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
-import { history } from '@umijs/max';
+import { PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Descriptions, Form, Input, Result, Select, Space, Steps, Table, Tag, Typography } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { history, useLocation, useModel } from '@umijs/max';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
+import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { listActivities } from '@/services/activity/api';
 import type { ActivityRecord } from '@/services/activity/types';
+import type { RoleDataScope } from '@/types/api';
 import { message } from '@/theme/antdFeedbackBridge';
 import { showErrorMessage } from '@/utils/errorMessage';
 
@@ -18,13 +22,139 @@ type ActivityRegistrationValues = {
   remark?: string;
 };
 
+type ActivityApplicationRecord = ActivityRegistrationValues & {
+  id: string;
+  applicationNo: string;
+  activityTitle: string;
+  status: 'SUBMITTED';
+  submittedAt: string;
+  ownerUserId?: number | null;
+  ownerUsername?: string | null;
+};
+
+const activityRegistrationModeQueryKey = 'mode';
+const activityRegistrationStepQueryKey = 'step';
+const activityRegistrationModeValue = 'wizard';
+const activityRegistrationMaxStep = 3;
+const ACTIVITY_REGISTRATION_SCOPE_RESOURCE = 'activity:registration';
+const buildActivityRegistrationStorageKey = (userId?: number | null) => `lumira.activityRegistration.records.${userId ?? 'guest'}`;
+
+const parseActivityRegistrationStepFromSearch = (search: string) => {
+  const params = new URLSearchParams(search);
+  if (params.get(activityRegistrationModeQueryKey) !== activityRegistrationModeValue) {
+    return undefined;
+  }
+  const stepValue = Number(params.get(activityRegistrationStepQueryKey));
+  if (!Number.isInteger(stepValue) || stepValue < 1) {
+    return 0;
+  }
+  return Math.min(stepValue - 1, activityRegistrationMaxStep);
+};
+
+const createActivityRegistrationSearch = (stepIndex: number) => {
+  const params = new URLSearchParams();
+  params.set(activityRegistrationModeQueryKey, activityRegistrationModeValue);
+  params.set(activityRegistrationStepQueryKey, String(Math.min(Math.max(stepIndex, 0), activityRegistrationMaxStep) + 1));
+  return `?${params.toString()}`;
+};
+
+const readActivityApplicationRecords = (storageKey: string): ActivityApplicationRecord[] => {
+  try {
+    const value = window.localStorage.getItem(storageKey);
+    const parsed = value ? JSON.parse(value) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeActivityApplicationRecords = (storageKey: string, records: ActivityApplicationRecord[]) => {
+  window.localStorage.setItem(storageKey, JSON.stringify(records));
+};
+
+const formatDateTime = (value?: string) => (value ? value.replace('T', ' ').slice(0, 19) : '-');
+
+const createLocalTimestamp = () => {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 19);
+};
+
+const canViewAllActivityApplications = (dataScopes?: RoleDataScope[]) => {
+  const matchedScopes = (dataScopes || []).filter(
+    (scope) => scope.resourceCode === '*' || scope.resourceCode === ACTIVITY_REGISTRATION_SCOPE_RESOURCE,
+  );
+  return matchedScopes.some((scope) => scope.scopeType === 'ALL');
+};
+
+const readVisibleActivityApplicationRecords = (storageKey: string, canViewAll: boolean): ActivityApplicationRecord[] => {
+  if (!canViewAll) {
+    return readActivityApplicationRecords(storageKey);
+  }
+
+  const records: ActivityApplicationRecord[] = [];
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (!key || !key.startsWith('lumira.activityRegistration.records.')) {
+      continue;
+    }
+    records.push(...readActivityApplicationRecords(key));
+  }
+  return records.sort((left, right) => String(right.submittedAt || '').localeCompare(String(left.submittedAt || '')));
+};
+
 const ActivityRegistrationPage = () => {
+  const { initialState } = useModel('@@initialState');
+  const location = useLocation();
+  const actionPermission = useActionPermission();
   const [form] = Form.useForm<ActivityRegistrationValues>();
+  const [viewMode, setViewMode] = useState<'list' | 'wizard'>('list');
   const [step, setStep] = useState(0);
   const [activities, setActivities] = useState<ActivityRecord[]>([]);
+  const [records, setRecords] = useState<ActivityApplicationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [applicationNo, setApplicationNo] = useState<string>();
-  const selectedActivityId = Form.useWatch('activityId', form);
+  const [selectedActivityId, setSelectedActivityId] = useState<number>();
+  const activityRegistrationStorageKey = useMemo(
+    () => buildActivityRegistrationStorageKey(initialState?.currentUser?.userId),
+    [initialState?.currentUser?.userId],
+  );
+  const canViewAllRecords = useMemo(
+    () => canViewAllActivityApplications(initialState?.currentUser?.dataScopes),
+    [initialState?.currentUser?.dataScopes],
+  );
+  const canCreateActivityRegistration = actionPermission.can('aiadc:activity:create');
+
+  const selectedActivity = useMemo(
+    () => activities.find((activity) => activity.id === selectedActivityId),
+    [activities, selectedActivityId],
+  );
+
+  const setWizardStep = useCallback((nextStep: number, replace = true) => {
+    const normalizedStep = Math.min(Math.max(nextStep, 0), activityRegistrationMaxStep);
+    setStep(normalizedStep);
+    setViewMode('wizard');
+    const navigate = replace ? history.replace : history.push;
+    navigate({
+      pathname: location.pathname,
+      search: createActivityRegistrationSearch(normalizedStep),
+    });
+  }, [location.pathname]);
+
+  const showList = useCallback(() => {
+    setViewMode('list');
+    history.replace({ pathname: location.pathname, search: '' });
+  }, [location.pathname]);
+
+  const startNewRegistration = useCallback(() => {
+    form.resetFields();
+    setApplicationNo(undefined);
+    setSelectedActivityId(undefined);
+    setWizardStep(0, false);
+  }, [form, setWizardStep]);
+
+  useEffect(() => {
+    setRecords(readVisibleActivityApplicationRecords(activityRegistrationStorageKey, canViewAllRecords));
+  }, [activityRegistrationStorageKey, canViewAllRecords]);
 
   useEffect(() => {
     const loadActivities = async () => {
@@ -42,34 +172,122 @@ const ActivityRegistrationPage = () => {
     void loadActivities();
   }, []);
 
-  const selectedActivity = useMemo(
-    () => activities.find((activity) => activity.id === selectedActivityId),
-    [activities, selectedActivityId],
-  );
+  useEffect(() => {
+    const requestedStep = parseActivityRegistrationStepFromSearch(location.search);
+    if (requestedStep === undefined) {
+      setViewMode('list');
+      return;
+    }
+    setViewMode('wizard');
+    setStep(requestedStep);
+  }, [location.search]);
 
   const next = async () => {
+    if (!canCreateActivityRegistration) {
+      message.error('当前账号没有活动报名提交权限');
+      return;
+    }
     if (step === 0) {
       await form.validateFields(['activityId']);
-      setStep(1);
+      setSelectedActivityId(form.getFieldValue('activityId'));
+      setWizardStep(1);
       return;
     }
 
     if (step === 1) {
       await form.validateFields(['name', 'mobile', 'email', 'organization', 'position', 'remark']);
-      setStep(2);
+      setWizardStep(2);
       return;
     }
 
+    const values = form.getFieldsValue(true);
     const no = `ACT-${Date.now().toString(36).toUpperCase()}`;
+    const nextRecord: ActivityApplicationRecord = {
+      ...values,
+      id: no,
+      applicationNo: no,
+      activityTitle: selectedActivity?.title || '-',
+      status: 'SUBMITTED',
+      submittedAt: createLocalTimestamp(),
+      ownerUserId: initialState?.currentUser?.userId,
+      ownerUsername: initialState?.currentUser?.username,
+    };
+    const nextRecords = [nextRecord, ...records];
+    writeActivityApplicationRecords(
+      activityRegistrationStorageKey,
+      canViewAllRecords ? [nextRecord, ...readActivityApplicationRecords(activityRegistrationStorageKey)] : nextRecords,
+    );
+    setRecords(readVisibleActivityApplicationRecords(activityRegistrationStorageKey, canViewAllRecords));
     setApplicationNo(no);
     message.success('活动报名已提交');
-    setStep(3);
+    setWizardStep(3);
   };
 
-  const previous = () => setStep((current) => Math.max(0, current - 1));
+  const previous = () => setWizardStep(step - 1);
+
+  const columns: ColumnsType<ActivityApplicationRecord> = [
+    {
+      title: '报名编号',
+      dataIndex: 'applicationNo',
+      render: (value: string) => <Typography.Text strong>{value}</Typography.Text>,
+    },
+    {
+      title: '活动',
+      dataIndex: 'activityTitle',
+    },
+    {
+      title: '报名人',
+      dataIndex: 'name',
+      render: (value?: string) => value || '-',
+    },
+    {
+      title: '手机号',
+      dataIndex: 'mobile',
+      render: (value?: string) => value || '-',
+    },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      render: () => <Tag color="success">已提交</Tag>,
+    },
+    {
+      title: '提交时间',
+      dataIndex: 'submittedAt',
+      render: formatDateTime,
+    },
+  ];
+
+  if (viewMode === 'list') {
+    return (
+      <ManagementPage title="活动报名" extra={<Button onClick={() => history.push('/activities/management')}>返回活动管理</Button>}>
+        <ManagementPageBody>
+          <Card>
+            <Table<ActivityApplicationRecord>
+              rowKey="id"
+              columns={columns}
+              dataSource={records}
+              pagination={{ pageSize: 10, showSizeChanger: true }}
+              title={() => (
+                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <Typography.Title level={5} style={{ margin: 0 }}>
+                    活动报名记录
+                  </Typography.Title>
+                  {canCreateActivityRegistration ? (
+                    <Button type="primary" icon={<PlusOutlined />} onClick={startNewRegistration}>
+                      新增报名
+                    </Button>
+                  ) : null}
+                </Space>
+              )}
+            />
+          </Card>
+        </ManagementPageBody>
+      </ManagementPage>
+    );
+  }
 
   return (
-    <ManagementPage title="活动报名" extra={<Button onClick={() => history.push('/competitions/register')}>返回赛事报名</Button>}>
+    <ManagementPage title="活动报名" extra={<Button onClick={showList}>返回报名记录</Button>}>
       <ManagementPageBody>
         <Card className="competition-application-card">
           <Steps
@@ -87,7 +305,16 @@ const ActivityRegistrationPage = () => {
               status="success"
               title="活动报名已提交"
               subTitle={applicationNo ? `报名编号：${applicationNo}` : undefined}
-              extra={<Button type="primary" onClick={() => history.push('/competitions/register')}>返回赛事报名</Button>}
+              extra={
+                <Space>
+                  <Button onClick={showList}>返回报名记录</Button>
+                  {canCreateActivityRegistration ? (
+                    <Button type="primary" onClick={startNewRegistration}>
+                      新增报名
+                    </Button>
+                  ) : null}
+                </Space>
+              }
             />
           ) : (
             <Form form={form} layout="vertical" className="competition-application-form">
@@ -152,7 +379,7 @@ const ActivityRegistrationPage = () => {
 
               <Space className="competition-application-actions">
                 {step > 0 ? <Button onClick={previous}>上一步</Button> : null}
-                <Button type="primary" onClick={() => void next()}>
+                <Button type="primary" disabled={!canCreateActivityRegistration} onClick={() => void next()}>
                   {step === 2 ? '提交报名' : '下一步'}
                 </Button>
               </Space>

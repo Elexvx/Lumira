@@ -3,6 +3,8 @@ spring:
     name: ${SPRING_APPLICATION_NAME:lumira-job-executor}
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:prod}
+  main:
+    keep-alive: ${SPRING_MAIN_KEEP_ALIVE:true}
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3306/lumira?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
     username: ${DB_USERNAME:root}

@@ -240,6 +240,18 @@ public class AuthSessionStore {
         revokeSessions(toRevoke, publishChange);
     }
 
+    public void markPasswordChangeResolved(Long userId, String sessionId, boolean publishChange) {
+        if (userId == null || !StringUtils.hasText(sessionId)) {
+            return;
+        }
+        findBySessionId(sessionId)
+                .filter(session -> userId.equals(session.getUserId()))
+                .ifPresent(session -> {
+                    session.setRequiresPasswordChange(Boolean.FALSE);
+                    save(session, publishChange);
+                });
+    }
+
     private void revokeSessions(List<String> sessionIds, boolean publishChange) {
         if (CollectionUtils.isEmpty(sessionIds)) {
             return;

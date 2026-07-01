@@ -9,8 +9,6 @@ import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import type {
-  MessageWebSocketRuntime,
-  MessageWebSocketUserRuntime,
   PlatformUpdateStatus,
   PlatformUpdateTask,
   RedisMonitorClient,
@@ -18,7 +16,6 @@ import type {
   RedisMonitorKeyspace,
   RedisMonitorSnapshot,
   ServiceApiDocStatus,
-  ServiceInstanceStatus,
   ServiceMonitorSnapshot,
 } from '@/types/api';
 import { useQuery } from '@tanstack/react-query';
@@ -139,24 +136,86 @@ const resolveStatusKey = (status?: PlatformUpdateStatus | null) => {
   return status.currentKnown === false || status.latestKnown === false ? 'UNKNOWN' : 'UP_TO_DATE';
 };
 
-const buildServiceColumns = () => {
-  const websocketColumns = [
-    { title: t('用户', 'User'), dataIndex: 'userId', width: 'var(--saas-spacing-180)' },
-    { title: t('连接数', 'Connections'), dataIndex: 'connectionCount', width: 'var(--saas-spacing-120)' },
-  ];
+type ServiceMonitorRow = {
+  key: string;
+  serviceName: string;
+  baseUrl?: string | null;
+  serviceStatus?: string | null;
+  responseTimeMs?: number | null;
+  checkedAt?: string | null;
+  errorMessage?: string | null;
+  apiDocUrl?: string | null;
+  apiDocStatus?: string | null;
+};
 
-  const serviceColumns = [
+const renderServiceStatusTag = (status?: string | null) => {
+  if (!status) {
+    return '-';
+  }
+  return <Tag color={status === 'UP' ? 'green' : 'red'}>{status}</Tag>;
+};
+
+const buildServiceRows = (snapshot?: ServiceMonitorSnapshot): ServiceMonitorRow[] => {
+  if (!snapshot) {
+    return [];
+  }
+
+  const rows = new Map<string, ServiceMonitorRow>();
+
+  for (const service of snapshot.services || []) {
+    const key = service.serviceName || service.baseUrl;
+    rows.set(key, {
+      key,
+      serviceName: service.serviceName,
+      baseUrl: service.baseUrl,
+      serviceStatus: service.status,
+      responseTimeMs: service.responseTimeMs,
+      checkedAt: service.checkedAt,
+      errorMessage: service.errorMessage,
+    });
+  }
+
+  for (const apiDoc of snapshot.apiDocs || []) {
+    const key = apiDoc.serviceName || apiDoc.url;
+    const current = rows.get(key);
+    if (current) {
+      current.apiDocUrl = apiDoc.url;
+      current.apiDocStatus = apiDoc.status;
+      continue;
+    }
+
+    rows.set(key, {
+      key,
+      serviceName: apiDoc.serviceName,
+      apiDocUrl: apiDoc.url,
+      apiDocStatus: apiDoc.status,
+    });
+  }
+
+  return Array.from(rows.values());
+};
+
+const buildServiceColumns = () => {
+
+  const serviceColumns: ProColumns<ServiceMonitorRow>[] = [
     { title: t('服务', 'Service'), dataIndex: 'serviceName' },
     { title: t('地址', 'Address'), dataIndex: 'baseUrl', ellipsis: true },
     {
       title: t('状态', 'Status'),
-      dataIndex: 'status',
+      dataIndex: 'serviceStatus',
       width: 'var(--saas-spacing-100)',
-      render: (_: unknown, record: ServiceInstanceStatus) => <Tag color={record.status === 'UP' ? 'green' : 'red'}>{record.status || 'DOWN'}</Tag>,
+      render: (_: unknown, record: ServiceMonitorRow) => renderServiceStatusTag(record.serviceStatus),
     },
-    { title: t('响应', 'Response'), dataIndex: 'responseTimeMs', width: 'var(--saas-spacing-100)', render: (_: unknown, record: ServiceInstanceStatus) => (record.responseTimeMs == null ? '-' : `${record.responseTimeMs} ms`) },
-    { title: t('检测时间', 'Checked at'), dataIndex: 'checkedAt', width: 'var(--saas-spacing-180)', render: (_: unknown, record: ServiceInstanceStatus) => formatDateTime(record.checkedAt) },
-    { title: t('说明', 'Note'), dataIndex: 'errorMessage', ellipsis: true, render: (_: unknown, record: ServiceInstanceStatus) => record.errorMessage || '-' },
+    { title: t('响应', 'Response'), dataIndex: 'responseTimeMs', width: 'var(--saas-spacing-100)', render: (_: unknown, record: ServiceMonitorRow) => (record.responseTimeMs == null ? '-' : `${record.responseTimeMs} ms`) },
+    { title: t('检测时间', 'Checked at'), dataIndex: 'checkedAt', width: 'var(--saas-spacing-180)', render: (_: unknown, record: ServiceMonitorRow) => formatDateTime(record.checkedAt) },
+    { title: t('OpenAPI 地址', 'OpenAPI URL'), dataIndex: 'apiDocUrl', ellipsis: true, render: (_: unknown, record: ServiceMonitorRow) => record.apiDocUrl || '-' },
+    {
+      title: t('文档状态', 'API docs status'),
+      dataIndex: 'apiDocStatus',
+      width: 'var(--saas-spacing-120)',
+      render: (_: unknown, record: ServiceMonitorRow) => renderServiceStatusTag(record.apiDocStatus),
+    },
+    { title: t('说明', 'Note'), dataIndex: 'errorMessage', ellipsis: true, render: (_: unknown, record: ServiceMonitorRow) => record.errorMessage || '-' },
   ];
 
   const apiDocColumns = [
@@ -170,7 +229,7 @@ const buildServiceColumns = () => {
     },
   ];
 
-  return { websocketColumns, serviceColumns, apiDocColumns };
+  return { serviceColumns, apiDocColumns };
 };
 
 const buildRedisColumns = ({ isDesktop }: { isDesktop: boolean }) => {
@@ -641,14 +700,6 @@ const useServiceMonitor = () => {
         ...API_OPTS.NO_REDIRECT,
       }),
   });
-  const webSocketQuery = useQuery({
-    queryKey: ['message-websocket-runtime'],
-    queryFn: async () =>
-      request<MessageWebSocketRuntime>('/v1/message/ws-runtime', {
-        method: 'GET',
-        ...API_OPTS.NO_REDIRECT,
-      }),
-  });
   const detailDescriptionsProps = useDetailDescriptionsProps({ column: isMobile ? 1 : 2 });
   const fullRowSpan = isMobile ? 1 : 2;
 
@@ -657,34 +708,28 @@ const useServiceMonitor = () => {
     refreshRef.current = query.refetch;
   }, [query.refetch]);
 
-  const webSocketRefreshRef = useRef(webSocketQuery.refetch);
-  useEffect(() => {
-    webSocketRefreshRef.current = webSocketQuery.refetch;
-  }, [webSocketQuery.refetch]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       void refreshRef.current();
-      void webSocketRefreshRef.current();
     }, REALTIME_REFRESH_INTERVAL_MS);
     return () => {
       window.clearInterval(timer);
     };
   }, []);
 
-  const { websocketColumns, serviceColumns, apiDocColumns } = useMemo(() => buildServiceColumns(), []);
+  const serviceRows = useMemo(() => buildServiceRows(query.data), [query.data]);
+  const { serviceColumns } = useMemo(() => buildServiceColumns(), []);
 
   return {
     isDesktop,
     isMobile,
     query,
-    webSocketQuery,
     detailDescriptionsProps,
     fullRowSpan,
     valueStyle,
-    websocketColumns,
+    serviceRows,
     serviceColumns,
-    apiDocColumns,
   };
 };
 
@@ -1113,13 +1158,11 @@ const ServiceMonitorContent = () => {
     isDesktop,
     isMobile,
     query,
-    webSocketQuery,
     detailDescriptionsProps,
     fullRowSpan,
+    serviceRows,
     valueStyle,
-    websocketColumns,
     serviceColumns,
-    apiDocColumns,
   } = useServiceMonitor();
 
   const service = query.data;
@@ -1184,54 +1227,17 @@ const ServiceMonitorContent = () => {
         </Row>
       </Card>
 
-      <Card title={t('WebSocket 运行监控', 'WebSocket monitoring')} loading={webSocketQuery.isLoading && !webSocketQuery.data}>
-        <Row gutter={rowGutter}>
-          <Col xs={24} sm={8}>
-            <Statistic title={t('当前连接数', 'Active connections')} value={webSocketQuery.data?.activeConnections ?? 0} valueStyle={valueStyle} />
-          </Col>
-          <Col xs={24} sm={8}>
-            <Statistic title={t('在线用户数', 'Online users')} value={webSocketQuery.data?.userCount ?? 0} valueStyle={valueStyle} />
-          </Col>
-          <Col xs={24} sm={8}>
-            <Statistic title={t('采样时间', 'Sampled at')} value={formatDateTime(webSocketQuery.data?.sampledAt)} valueStyle={valueStyle} />
-          </Col>
-        </Row>
-        <ManagementTable<MessageWebSocketUserRuntime>
-          rowKey="userId"
-          size="small"
-          pagination={false}
-          isMobile={isMobile}
-          search={false}
-          onRefresh={() => webSocketQuery.refetch()}
-          dataSource={webSocketQuery.data?.topUsers || []}
-          style={{ marginTop: sectionGap }}
-          columns={websocketColumns}
-        />
-      </Card>
 
-      <Card title={t('基础服务健康', 'Service health')} loading={query.isLoading && !service}>
-        <ManagementTable<ServiceInstanceStatus>
-          rowKey="serviceName"
+      <Card title={t('基础服务与接口文档', 'Service health & API docs')} loading={query.isLoading && !service}>
+        <ManagementTable<ServiceMonitorRow>
+          rowKey="key"
           size="small"
           pagination={false}
           isMobile={isMobile}
           search={false}
           onRefresh={() => query.refetch()}
-          dataSource={service?.services || []}
+          dataSource={serviceRows}
           columns={serviceColumns}
-        />
-      </Card>
-
-      <Card title={t('接口文档入口', 'API docs entry')} loading={query.isLoading && !service}>
-        <ManagementTable<ServiceApiDocStatus>
-          rowKey="serviceName"
-          size="small"
-          pagination={false}
-          isMobile={isMobile}
-          search={false}
-          onRefresh={() => query.refetch()}
-          dataSource={service?.apiDocs || []}
-          columns={apiDocColumns}
         />
       </Card>
 

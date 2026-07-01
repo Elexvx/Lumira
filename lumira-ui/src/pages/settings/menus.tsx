@@ -543,8 +543,6 @@ const buildMenuColumns = ({
     render: (_, record) => {
       const hasChildren = expandableMenuIds.has(record.id);
       const expanded = expandedRowKeys.includes(record.id);
-      const readonly = isReadonlyMenu(record);
-
       return (
         <Space size={resolveResponsiveValue(APP_SPACING.tagWrapGap, isMobile)}>
           <Button

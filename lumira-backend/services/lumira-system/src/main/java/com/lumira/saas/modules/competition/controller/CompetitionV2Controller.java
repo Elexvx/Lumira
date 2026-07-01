@@ -75,7 +75,6 @@ public class CompetitionV2Controller {
     }
 
     @PutMapping("/{competitionUuid}/settings/{module}")
-    @RepeatSubmit
     public ApiResponse<CompetitionVO.Settings> saveCompetitionSettingsModule(
             @PathVariable("competitionUuid") String competitionUuid,
             @PathVariable("module") String module,
@@ -119,7 +118,7 @@ public class CompetitionV2Controller {
 
     @PutMapping("/{id}")
     @RepeatSubmit
-    public ApiResponse<CompetitionVO.Competition> updateCompetition(@PathVariable("id") Long id, @Valid @RequestBody CompetitionDTO.CompetitionUpsertRequest request) {
+    public ApiResponse<CompetitionVO.Competition> updateCompetition(@PathVariable("id") Long id, @RequestBody CompetitionDTO.CompetitionUpsertRequest request) {
         require(UPDATE);
         return ApiResponse.success(competitionManagementAppService.updateCompetition(securityContextFacade.getCurrentUser(), id, request), TraceContext.getRequestId());
     }

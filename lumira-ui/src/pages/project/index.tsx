@@ -1173,10 +1173,10 @@ const CreateProjectPage = () => {
   const [draftHydrated, setDraftHydrated] = useState(false);
   const draftSaveTimerRef = useRef<number | undefined>(undefined);
 
-  const collectProjectCreateValues = (): ProjectFormValues => ({
+  const collectProjectCreateValues = useCallback((): ProjectFormValues => ({
     ...defaultValuesRef.current,
     ...(form.getFieldsValue(true) as Partial<ProjectFormValues>),
-  });
+  }), [form]);
 
   const draftSaveText = useMemo(() => {
     if (draftSaveStatus === 'saving') {
@@ -1191,7 +1191,7 @@ const CreateProjectPage = () => {
     return '';
   }, [draftSavedAt, draftSaveStatus]);
 
-  const persistProjectCreateDraft = (
+  const persistProjectCreateDraft = useCallback((
     nextValues: Partial<ProjectFormValues> = collectProjectCreateValues(),
     nextStep = currentStep,
     nextInstructionConfirmed = instructionConfirmed,
@@ -1225,7 +1225,7 @@ const CreateProjectPage = () => {
     } catch {
       setDraftSaveStatus('error');
     }
-  };
+  }, [collectProjectCreateValues, commitmentConfirmed, createdTeam, currentStep, instructionConfirmed, uploadedMaterials]);
 
   useEffect(() => {
     const draft = readProjectCreateDraft();
@@ -1306,7 +1306,7 @@ const CreateProjectPage = () => {
       return;
     }
     setCurrentStep((currentValue) => (currentValue === requestedStep ? currentValue : requestedStep));
-  }, [draftHydrated, location.search, instructionConfirmed, commitmentConfirmed, materialFiles.length, uploadedMaterials.length, createdProject]);
+  }, [collectProjectCreateValues, draftHydrated, location.search, instructionConfirmed, commitmentConfirmed, materialFiles.length, uploadedMaterials.length, createdProject]);
 
   const setProjectCreateStep = (nextStep: number, nextUploadedMaterials = uploadedMaterials) => {
     const normalizedStep = Math.max(0, Math.min(nextStep, projectCreateSteps.length - 1));
@@ -1857,7 +1857,7 @@ const ProjectPage = () => {
     });
   };
 
-  const openEditDrawer = (record: ProjectRecord) => {
+  const openEditDrawer = useCallback((record: ProjectRecord) => {
     setEditingRecord(record);
     form.resetFields();
     form.setFieldsValue({
@@ -1877,7 +1877,7 @@ const ProjectPage = () => {
       featured: Boolean(record.featured),
     });
     setDrawerOpen(true);
-  };
+  }, [form]);
 
   const saveProject = async () => {
     const values = await form.validateFields();
@@ -2036,7 +2036,7 @@ const ProjectPage = () => {
         ),
       },
     ],
-    [actionPermission, responsive.isDesktop, responsive.isMobile],
+    [actionPermission, openEditDrawer, responsive.isDesktop, responsive.isMobile],
   );
   const searchColumns = useMemo(
     () => columns.filter((column) => column.valueType !== 'option'),

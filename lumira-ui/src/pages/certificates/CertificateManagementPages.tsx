@@ -1,5 +1,4 @@
 import {
-  AuditOutlined,
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
@@ -14,7 +13,7 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { history } from '@umijs/max';
 import { Alert, Button, Card, Col, Descriptions, Form, Input, Modal, Row, Select, Space, Steps, Table, Tag, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
@@ -151,11 +150,11 @@ export const TemplatesManagementPage = () => {
     setOpen(true);
   };
 
-  const openEdit = (record: CertificateTemplateRecord) => {
+  const openEdit = useCallback((record: CertificateTemplateRecord) => {
     setEditing(record);
     form.setFieldsValue(record);
     setOpen(true);
-  };
+  }, [form]);
 
   const saveTemplate = async () => {
     const values = await form.validateFields();
@@ -303,7 +302,7 @@ export const TemplatesManagementPage = () => {
         ),
       },
     ],
-    [actionPermission, responsive.isDesktop, responsive.isMobile],
+    [actionPermission, openEdit, responsive.isDesktop, responsive.isMobile],
   );
 
   return (

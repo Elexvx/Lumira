@@ -16,7 +16,6 @@ import { normalizeSecuritySettings } from '@/auth/securitySettingsNormalize';
 import { persistSecuritySettings } from '@/auth/securitySettingsStorage';
 import { ErrorCode } from '@/enums/errorCode';
 import { ApiRequestError } from '@/services/common/requestInternalsTypes';
-import { resolveApiErrorFeedback, type ApiErrorLike, type ErrorFeedback } from '@/services/common/errorFeedback';
 import type { LoginCodeChallenge, LoginEncryptionKey } from '@/types/api';
 import type { AgreementSettings, CaptchaChallenge, CaptchaType, LoginResponse, RuntimeAppearanceSettings, SecuritySettings } from '@/types/api';
 import type { LoginFormValues, LoginMode } from '@/pages/user/login/components/LoginFormFields';
@@ -33,7 +32,7 @@ import { request, type RequestOptions } from '@/services/common/request';
 import type { MenuNode, PasskeyOptions, PluginAvailability } from '@/types/api';
 import type { BrandingSettings, FloatingWindowSettings, WatermarkSettings } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
-import { hasConfiguredAgreementSettings } from '@/agreement/settings';
+import { resolveLoginErrorFeedback, shouldFallbackToLegacyPasswordLogin } from '@/pages/user/login/utils/loginErrorFeedback';
 
 export type LoginInputKind = 'account' | 'mobile' | 'email' | 'verificationCode';
 
@@ -469,6 +468,7 @@ const useLoginFlowInteractions = ({
       initialState?.watermarkSettings,
       locationSearch,
       setInitialState,
+      suppressLoginBroadcastRedirectRef,
     ],
   );
   const startForcedPasswordChange = useCallback(
@@ -480,7 +480,7 @@ const useLoginFlowInteractions = ({
       await initializeAfterLogin(loginResponse, { remember: Boolean(flowState.loginForm.getFieldValue('remember')) });
       message.warning(formatMessage({ id: 'page.login.initialPasswordChange.required', defaultMessage: '当前账号仍在使用初始密码，请先修改密码' }));
     },
-    [flowState],
+    [flowState, suppressLoginBroadcastRedirectRef],
   );
   const loginAfterPasswordChange = useCallback(
     async (account: string, newPassword: string) => {
@@ -581,6 +581,7 @@ const useLoginFlowInteractions = ({
       initialState?.currentUser?.username,
       loginAfterPasswordChange,
       restoredPasswordChangeOpen,
+      suppressLoginBroadcastRedirectRef,
     ],
   );
 
@@ -603,31 +604,6 @@ const useLoginFlowInteractions = ({
     },
     authPack: authInteractions,
   };
-};
-
-const LOGIN_WARNING_CODES = new Set<string>([
-  ErrorCode.LOGIN_FAILED,
-  ErrorCode.ACCOUNT_NOT_FOUND,
-  ErrorCode.PASSWORD_ERROR,
-  ErrorCode.ACCOUNT_DISABLED,
-]);
-
-const resolveLoginErrorFeedback = (error: ApiErrorLike): ErrorFeedback => {
-  const feedback = resolveApiErrorFeedback(error, false);
-
-  if (LOGIN_WARNING_CODES.has(error.code)) {
-    return {
-      type: 'warning',
-      message: feedback.message,
-    };
-  }
-
-  return feedback.type === 'info'
-    ? {
-        ...feedback,
-        type: 'warning',
-      }
-    : feedback;
 };
 
 const preloadImage = (imageUrl: string) =>
@@ -789,20 +765,6 @@ const useLoginSecurityFlow = ({ initialSecuritySettings }: { initialSecuritySett
     setCaptchaChallenge,
     setCaptchaImageLoadFailed,
   };
-};
-
-const ensureLoginAgreementAccepted = (agreementSettings: AgreementSettings, loginForm: FormInstance) => {
-  if (!hasConfiguredAgreementSettings(agreementSettings)) {
-    return true;
-  }
-
-  const accepted = loginForm.getFieldValue('agreementAccepted');
-  if (accepted) {
-    return true;
-  }
-
-  message.warning(formatMessage({ id: 'page.login.agreement.required', defaultMessage: 'Please agree to the terms before logging in' }));
-  return false;
 };
 
 type UseLoginFlowAuthInteractionsParams = {
@@ -967,8 +929,12 @@ export const useLoginFlowAuthInteractions = ({
         silent: true,
         allowDuplicate: true,
       })
-        .catch(() =>
-          request<LoginResponse>('/v1/auth/login', {
+        .catch((error) => {
+          if (!shouldFallbackToLegacyPasswordLogin(error)) {
+            throw error;
+          }
+
+          return request<LoginResponse>('/v1/auth/login', {
             method: 'POST',
             headers: loginPassword.headers,
             data: {
@@ -982,8 +948,8 @@ export const useLoginFlowAuthInteractions = ({
             skipAuth: true,
             silent: true,
             allowDuplicate: true,
-          }),
-        );
+          });
+        });
     },
     [bootstrapFlow, captchaChallenge?.captchaId, securitySettings.captchaEnabled, securitySettings.captchaType],
   );
@@ -1017,10 +983,6 @@ export const useLoginFlowAuthInteractions = ({
   );
 
   const handleWechatLogin = useCallback(async () => {
-    if (!ensureLoginAgreementAccepted(bootstrapFlow.agreementSettings, flowState.loginForm)) {
-      return;
-    }
-
     flowState.setSubmitting(true);
     try {
       message.loading({
@@ -1040,17 +1002,13 @@ export const useLoginFlowAuthInteractions = ({
     } finally {
       flowState.setSubmitting(false);
     }
-  }, [bootstrapFlow.agreementSettings, flowState]);
+  }, [flowState]);
 
   const handlePasskeyLogin = useCallback(async () => {
     if (!isPasskeySupported()) {
       message.warning(formatMessage({ id: 'page.login.passkey.unsupported', defaultMessage: '当前浏览器不支持通行密钥' }));
       return;
     }
-    if (!ensureLoginAgreementAccepted(bootstrapFlow.agreementSettings, flowState.loginForm)) {
-      return;
-    }
-
     flowState.setPasskeySubmitting(true);
     try {
       const options = await request<PasskeyOptions>('/v1/auth/passkeys/authentication/options', {
@@ -1084,7 +1042,7 @@ export const useLoginFlowAuthInteractions = ({
     } finally {
       flowState.setPasskeySubmitting(false);
     }
-  }, [bootstrapFlow.agreementSettings, completeSuccessfulLogin, flowState]);
+  }, [completeSuccessfulLogin, flowState]);
 
   const authMethodAccess = {
     handleWechatLogin,
@@ -1143,7 +1101,7 @@ export const useLoginFlowAuthInteractions = ({
 
       return true;
     },
-    [bootstrapFlow.activeLoginMode, bootstrapFlow.availableLoginModes, captchaChallenge?.captchaId, securitySettings.captchaEnabled, securitySettings.captchaType],
+    [bootstrapFlow.availableLoginModes, captchaChallenge?.captchaId, securitySettings.captchaEnabled, securitySettings.captchaType],
   );
 
   const handleLoginResponse = useCallback(
@@ -1172,7 +1130,7 @@ export const useLoginFlowAuthInteractions = ({
       await completeSuccessfulLogin(loginResponse, Boolean(values.remember));
       return true;
     },
-    [bootstrapFlow.activeLoginMode, completeSuccessfulLogin, flowState, startForcedPasswordChange],
+    [completeSuccessfulLogin, flowState, startForcedPasswordChange],
   );
 
   const handlePendingSecondFactorSubmit = useCallback(
@@ -1206,7 +1164,7 @@ export const useLoginFlowAuthInteractions = ({
   const handleLoginSubmissionError = useCallback(
     (error: unknown) => {
       if (error instanceof ApiRequestError) {
-        const feedback = resolveLoginErrorFeedback(error);
+        const feedback = resolveLoginErrorFeedback(error, (descriptor) => formatMessage(descriptor));
         message.open({
           type: feedback.type,
           content: feedback.message,
@@ -1335,6 +1293,10 @@ export const useLoginFlowRuntime = ({
   const passwordChangeRestoreHandledRef = useRef(false);
   const suppressLoginBroadcastRedirectRef = useRef(false);
   const currentUserRequiresPasswordChange = Boolean(isLoggedIn() && initialState?.currentUser?.requiresPasswordChange);
+  const forcePasswordChangeRequested = useMemo(() => {
+    const searchParams = new URLSearchParams(locationSearch || '');
+    return searchParams.get('forcePasswordChange') === '1';
+  }, [locationSearch]);
 
   const {
     postLoginPack,
@@ -1393,6 +1355,73 @@ export const useLoginFlowRuntime = ({
     initialState?.currentUser,
     initialState?.menuTree,
     locationSearch,
+  ]);
+  useEffect(() => {
+    if (!forcePasswordChangeRequested || !isLoggedIn()) {
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      const restoredSession = await restoreSession().catch(() => null);
+      if (cancelled) {
+        return;
+      }
+      if (!restoredSession?.currentUser) {
+        clearAuthSession();
+        flowState.setRestoredPasswordChangeRequired(false);
+        flowState.setPendingPasswordChangeLogin(null);
+        flowState.setPendingPasswordChangeCurrentPassword('');
+        flowState.forcedPasswordChangeForm.resetFields();
+        setInitialState((prev: AppInitialState | undefined) =>
+          prev
+            ? {
+                ...prev,
+                currentUser: undefined,
+              }
+            : prev,
+        );
+        history.replace(`${locationPathname}?redirect=${encodeURIComponent(redirectTarget)}`);
+        return;
+      }
+
+      setInitialState((prev: AppInitialState | undefined) =>
+        prev
+          ? {
+              ...prev,
+              currentUser: restoredSession.currentUser,
+              securitySettings: restoredSession.securitySettings,
+              menuTree: restoredSession.menuTree ?? prev.menuTree,
+              availablePlugins: restoredSession.availablePlugins ?? prev.availablePlugins,
+            }
+          : prev,
+      );
+
+      if (!restoredSession.currentUser.requiresPasswordChange) {
+        flowState.setRestoredPasswordChangeRequired(false);
+        flowState.setPendingPasswordChangeLogin(null);
+        flowState.setPendingPasswordChangeCurrentPassword('');
+        flowState.forcedPasswordChangeForm.resetFields();
+        history.replace(resolveAuthorizedLoginRedirectTarget(locationSearch, restoredSession.currentUser, restoredSession.menuTree || initialState?.menuTree || []));
+        return;
+      }
+
+      flowState.setRestoredPasswordChangeRequired(true);
+      flowState.setPendingPasswordChangeCurrentPassword(INITIAL_PASSWORD);
+      flowState.forcedPasswordChangeForm.resetFields();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    flowState,
+    flowState.forcedPasswordChangeForm,
+    forcePasswordChangeRequested,
+    initialState?.menuTree,
+    locationPathname,
+    locationSearch,
+    redirectTarget,
+    setInitialState,
   ]);
   useEffect(() => {
     if (!isLoggedIn() || !initialState?.currentUser?.requiresPasswordChange) {
@@ -1520,6 +1549,7 @@ export const useLoginFlowRuntime = ({
   return {
     loginPageStyle: bootstrapFlow.loginPageStyle,
     brandingWebsiteName: bootstrapFlow.brandingWebsiteName,
+    brandingFooterItems: bootstrapFlow.brandingFooterItems,
     agreementSettings: bootstrapFlow.agreementSettings,
     availableLoginModes: bootstrapFlow.availableLoginModes,
     activeLoginMode: bootstrapFlow.activeLoginMode,

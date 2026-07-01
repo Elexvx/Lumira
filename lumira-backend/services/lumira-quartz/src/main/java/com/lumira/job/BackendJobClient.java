@@ -85,10 +85,6 @@ public class BackendJobClient {
         post("/internal/jobs/online-session/heartbeat");
     }
 
-    public void processAiKnowledgeIndex() {
-        post("/internal/jobs/ai/knowledge-index?limit=20");
-    }
-
     private void post(String path) {
         post(restClient, path);
     }

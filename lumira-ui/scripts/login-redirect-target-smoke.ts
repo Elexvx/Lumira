@@ -56,6 +56,26 @@ const run = () => {
     'denied redirect should fall back to the role default home when it is accessible',
   );
 
+  const settingsUser: CurrentUser = {
+    userId: 13,
+    username: 'settings-operator',
+    sessionId: 'session-settings-operator',
+    permissions: ['system:config:view'],
+    defaultHomePath: '/settings/security',
+  };
+
+  assert.equal(
+    resolveRouteAccessStatus('/settings/security', settingsUser),
+    'allowed',
+    'settings routes should stay accessible for non-admin users with matching system permissions',
+  );
+
+  assert.equal(
+    resolveAuthorizedLoginRedirectTarget('?redirect=%2Fsettings%2Fsecurity', settingsUser, []),
+    '/settings/security',
+    'authorized redirects should preserve settings targets for users with matching system permissions',
+  );
+
   assert.equal(
     resolveAuthorizedLoginRedirectTarget('', { ...dashboardUser, defaultHomePath: '/dashboard' }, []),
     '/dashboard/home',

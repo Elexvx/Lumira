@@ -275,6 +275,10 @@
   font-size: 14px;
 }
 
+.activity-search-result__cta {
+  white-space: nowrap;
+}
+
 .activity-pagination {
   display: flex;
   justify-content: flex-end;
@@ -315,5 +319,9 @@
   .activity-search-result__footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .activity-search-result__cta {
+    width: 100%;
   }
 }

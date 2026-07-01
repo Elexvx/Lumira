@@ -27,7 +27,6 @@ public class ActivityManagementAppService {
     private static final Set<String> LOCALES = Set.of("zh", "en");
     private static final List<String> LOCALE_ORDER = List.of("zh", "en");
     private static final Set<String> STATUSES = Set.of("draft", "published");
-    private static final Set<String> BADGE_TONES = Set.of("blue", "gold", "silver", "bronze", "slate", "dark");
     private static final long MAX_PAGE_SIZE = 100L;
     private static final DateTimeFormatter ACTIVITY_CODE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
@@ -76,10 +75,10 @@ public class ActivityManagementAppService {
         jdbcTemplate.update(
                 """
                         insert into aiadc_activity (
-                            code, locale, title, subtitle, description, image_url, icon_key,
-                            sort, status, tags, cta_label, cta_href, badge_text, badge_tone,
+                            code, locale, title, subtitle, description, image_url,
+                            sort, status, tags, cta_label, cta_href,
                             activity_date, activity_time, location, featured, created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
                 normalized.getCode(),
                 normalized.getLocale(),
@@ -87,14 +86,11 @@ public class ActivityManagementAppService {
                 normalized.getSubtitle(),
                 normalized.getDescription(),
                 normalized.getImageUrl(),
-                normalized.getIconKey(),
                 normalized.getSort(),
                 normalized.getStatus(),
                 normalized.getTags(),
                 normalized.getCtaLabel(),
                 normalized.getCtaHref(),
-                normalized.getBadgeText(),
-                normalized.getBadgeTone(),
                 normalized.getActivityDate(),
                 normalized.getActivityTime(),
                 normalized.getLocation(),
@@ -116,8 +112,8 @@ public class ActivityManagementAppService {
         int updated = jdbcTemplate.update(
                 """
                         update aiadc_activity
-                        set code = ?, locale = ?, title = ?, subtitle = ?, description = ?, image_url = ?, icon_key = ?,
-                            sort = ?, status = ?, tags = ?, cta_label = ?, cta_href = ?, badge_text = ?, badge_tone = ?,
+                        set code = ?, locale = ?, title = ?, subtitle = ?, description = ?, image_url = ?,
+                            sort = ?, status = ?, tags = ?, cta_label = ?, cta_href = ?,
                             activity_date = ?, activity_time = ?, location = ?, featured = ?,
                             updated_by = ?, updated_at = ?
                         where id = ? and deleted = 0
@@ -128,14 +124,11 @@ public class ActivityManagementAppService {
                 normalized.getSubtitle(),
                 normalized.getDescription(),
                 normalized.getImageUrl(),
-                normalized.getIconKey(),
                 normalized.getSort(),
                 normalized.getStatus(),
                 normalized.getTags(),
                 normalized.getCtaLabel(),
                 normalized.getCtaHref(),
-                normalized.getBadgeText(),
-                normalized.getBadgeTone(),
                 normalized.getActivityDate(),
                 normalized.getActivityTime(),
                 normalized.getLocation(),
@@ -234,14 +227,11 @@ public class ActivityManagementAppService {
         normalized.setSubtitle(trimToNull(request.getSubtitle()));
         normalized.setDescription(trimToNull(request.getDescription()));
         normalized.setImageUrl(trimToNull(request.getImageUrl()));
-        normalized.setIconKey(trimToNull(request.getIconKey()));
         normalized.setSort(request.getSort() == null ? 100 : request.getSort());
         normalized.setStatus(normalizeEnum(request.getStatus(), "draft", STATUSES, "Invalid activity status"));
         normalized.setTags(trimToNull(request.getTags()));
         normalized.setCtaLabel(trimToNull(request.getCtaLabel()));
         normalized.setCtaHref(trimToNull(request.getCtaHref()));
-        normalized.setBadgeText(trimToNull(request.getBadgeText()));
-        normalized.setBadgeTone(normalizeOptionalEnum(request.getBadgeTone(), BADGE_TONES, "Invalid badge tone"));
         normalized.setActivityDate(trimRequired(request.getActivityDate(), "Activity date is required"));
         normalized.setActivityTime(trimRequired(request.getActivityTime(), "Activity time is required"));
         normalized.setLocation(trimRequired(request.getLocation(), "Activity location is required"));
@@ -273,13 +263,6 @@ public class ActivityManagementAppService {
             throw biz(ErrorCode.VALIDATION_ERROR, message);
         }
         return normalized;
-    }
-
-    private String normalizeOptionalEnum(String value, Set<String> allowed, String message) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        return normalizeEnum(value, null, allowed, message);
     }
 
     private String normalizeLocales(String value, String defaultValue, Set<String> allowed, String message) {
@@ -315,9 +298,8 @@ public class ActivityManagementAppService {
     private String activitySelect() {
         return """
                 select id, code, locale, title, subtitle, description,
-                       image_url as imageUrl, icon_key as iconKey, sort, status, tags,
-                       cta_label as ctaLabel, cta_href as ctaHref, badge_text as badgeText,
-                       badge_tone as badgeTone, activity_date as activityDate,
+                       image_url as imageUrl, sort, status, tags,
+                       cta_label as ctaLabel, cta_href as ctaHref, activity_date as activityDate,
                        activity_time as activityTime, location, featured, created_at as createdAt,
                        updated_at as updatedAt
                 """;

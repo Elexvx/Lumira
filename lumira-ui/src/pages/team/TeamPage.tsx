@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { ProColumns } from '@ant-design/pro-components';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { history, useLocation, useParams } from '@umijs/max';
 import {
   Avatar,
@@ -42,6 +42,7 @@ import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
+import { usePagePermissionActions } from '@/features/permissions/usePagePermissionActions';
 import { useDictOptions } from '@/hooks/useDictOptions';
 import { useResponsive } from '@/hooks/useResponsive';
 import { message } from '@/theme/antdFeedbackBridge';
@@ -128,6 +129,56 @@ const statusLabel: Record<string, string> = {
   REMOVED: '已移除',
   DELETED: '已删除',
 };
+
+const teamStatusOptions = [
+  { value: 'ACTIVE', label: '正常' },
+  { value: 'REMOVED', label: '已移除' },
+  { value: 'DELETED', label: '已删除' },
+];
+
+type TeamManagementFilters = {
+  keyword?: string;
+  teamType?: string;
+  visibility?: string;
+  joinMode?: string;
+  status?: string;
+};
+
+const normalizeTeamManagementFilterValue = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
+
+const buildTeamManagementFilters = (params: Record<string, unknown>): TeamManagementFilters => ({
+  keyword: normalizeTeamManagementFilterValue(params.keyword),
+  teamType: normalizeTeamManagementFilterValue(params.teamType),
+  visibility: normalizeTeamManagementFilterValue(params.visibility),
+  joinMode: normalizeTeamManagementFilterValue(params.joinMode),
+  status: normalizeTeamManagementFilterValue(params.status),
+});
+
+const matchesTeamManagementFilters = (team: TeamRecord, filters: TeamManagementFilters) => {
+  const normalizedKeyword = filters.keyword?.toLowerCase() || '';
+  const matchesKeyword =
+    !normalizedKeyword ||
+    [team.teamName, team.teamCode, team.description]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(normalizedKeyword));
+  const matchesType = !filters.teamType || team.teamType === filters.teamType;
+  const matchesVisibility = !filters.visibility || team.visibility === filters.visibility;
+  const matchesJoinMode = !filters.joinMode || team.joinMode === filters.joinMode;
+  const matchesStatus = !filters.status || team.status === filters.status;
+
+  return matchesKeyword && matchesType && matchesVisibility && matchesJoinMode && matchesStatus;
+};
+
+const buildTeamSearchValueEnum = (options: Array<{ label?: unknown; value?: unknown }>) =>
+  options.reduce<Record<string, { text: string }>>((acc, option) => {
+    if (option.value == null) {
+      return acc;
+    }
+    acc[String(option.value)] = {
+      text: String(option.label ?? option.value),
+    };
+    return acc;
+  }, {});
 
 const useTeamDictOptions = () => {
   const { options: teamTypeOptions } = useDictOptions(TEAM_TYPE_DICT_CODE, fallbackTeamTypeOptions);
@@ -314,26 +365,13 @@ const TeamMemberTable = ({
 const TeamListPage = () => {
   const responsive = useResponsive();
   const actionPermission = useActionPermission();
+  const { searchConfig } = usePagePermissionActions();
+  const actionRef = useRef<ActionType | undefined>(undefined);
   const { teamTypeOptions, visibilityOptions, joinModeOptions } = useTeamDictOptions();
   const [teamForm] = Form.useForm<TeamUpsertPayload>();
-  const [teams, setTeams] = useState<TeamRecord[]>([]);
-  const [loading, setLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingTeam, setEditingTeam] = useState<TeamRecord>();
-
-  const load = async () => {
-    setLoading(true);
-    try {
-      setTeams(await listAllTeams());
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, []);
 
   const openEditDrawer = (record: TeamRecord) => {
     setEditingTeam(record);
@@ -361,18 +399,84 @@ const TeamListPage = () => {
       await adminUpdateTeam(editingTeam.id, values);
       message.success('团队已更新');
       closeDrawer();
-      await load();
+      actionRef.current?.reload();
     } finally {
       setSaving(false);
     }
   };
 
+  const teamTypeValueEnum = useMemo(() => buildTeamSearchValueEnum(teamTypeOptions), [teamTypeOptions]);
+  const visibilityValueEnum = useMemo(() => buildTeamSearchValueEnum(visibilityOptions), [visibilityOptions]);
+  const joinModeValueEnum = useMemo(() => buildTeamSearchValueEnum(joinModeOptions), [joinModeOptions]);
+  const statusValueEnum = useMemo(() => buildTeamSearchValueEnum(teamStatusOptions), []);
+
   const columns: ProColumns<TeamRecord>[] = [
+    {
+      title: '关键字',
+      dataIndex: 'keyword',
+      hideInTable: true,
+      fieldProps: {
+        placeholder: '请输入团队名称、编码或简介',
+      },
+    },
+    {
+      title: '团队类型',
+      dataIndex: 'teamTypeFilter',
+      hideInTable: true,
+      valueType: 'select',
+      valueEnum: teamTypeValueEnum,
+      fieldProps: {
+        placeholder: '请选择',
+      },
+      search: {
+        transform: (value) => ({ teamType: value }),
+      },
+    },
+    {
+      title: '可见性',
+      dataIndex: 'visibilityFilter',
+      hideInTable: true,
+      valueType: 'select',
+      valueEnum: visibilityValueEnum,
+      fieldProps: {
+        placeholder: '请选择',
+      },
+      search: {
+        transform: (value) => ({ visibility: value }),
+      },
+    },
+    {
+      title: '加入方式',
+      dataIndex: 'joinModeFilter',
+      hideInTable: true,
+      valueType: 'select',
+      valueEnum: joinModeValueEnum,
+      fieldProps: {
+        placeholder: '请选择',
+      },
+      search: {
+        transform: (value) => ({ joinMode: value }),
+      },
+    },
+    {
+      title: '状态',
+      dataIndex: 'statusFilter',
+      hideInTable: true,
+      valueType: 'select',
+      valueEnum: statusValueEnum,
+      fieldProps: {
+        placeholder: '请选择',
+      },
+      search: {
+        transform: (value) => ({ status: value }),
+      },
+    },
     {
       title: '团队',
       dataIndex: 'teamName',
       width: 360,
       minWidth: 320,
+      search: false,
       className: 'team-list-name-column',
       render: (_, record) => (
         <Space className="team-list-name-cell">
@@ -388,12 +492,12 @@ const TeamListPage = () => {
         </Space>
       ),
     },
-    { title: '类型', dataIndex: 'teamType', width: 140, render: (value) => <Tag>{optionLabel(teamTypeOptions, String(value))}</Tag> },
-    { title: '可见性', dataIndex: 'visibility', width: 120, render: (value) => optionLabel(visibilityOptions, String(value)) },
-    { title: '加入方式', dataIndex: 'joinMode', width: 140, render: (value) => optionLabel(joinModeOptions, String(value)) },
-    { title: '成员数', dataIndex: 'memberCount', width: 100 },
-    { title: '状态', dataIndex: 'status', width: 110, render: (value) => <Tag color={value === 'ACTIVE' ? 'green' : 'default'}>{statusLabel[String(value)] || String(value)}</Tag> },
-    { title: '更新时间', dataIndex: 'updatedAt', width: 180, render: (value) => value || '-' },
+    { title: '类型', dataIndex: 'teamType', search: false, width: 140, render: (value) => <Tag>{optionLabel(teamTypeOptions, String(value))}</Tag> },
+    { title: '可见性', dataIndex: 'visibility', search: false, width: 120, render: (value) => optionLabel(visibilityOptions, String(value)) },
+    { title: '加入方式', dataIndex: 'joinMode', search: false, width: 140, render: (value) => optionLabel(joinModeOptions, String(value)) },
+    { title: '成员数', dataIndex: 'memberCount', search: false, width: 100 },
+    { title: '状态', dataIndex: 'status', search: false, width: 110, render: (value) => <Tag color={value === 'ACTIVE' ? 'green' : 'default'}>{statusLabel[String(value)] || String(value)}</Tag> },
+    { title: '更新时间', dataIndex: 'updatedAt', search: false, width: 180, render: (value) => value || '-' },
     {
       title: '操作',
       fixed: 'right',
@@ -429,7 +533,7 @@ const TeamListPage = () => {
                   onOk: async () => {
                     await adminDeleteTeam(record.id);
                     message.success('团队已删除');
-                    await load();
+                    actionRef.current?.reload();
                   },
                 });
               },
@@ -444,17 +548,28 @@ const TeamListPage = () => {
     <ManagementPage title="团队管理">
       <ManagementPageBody>
         <ManagementTable<TeamRecord>
+          actionRef={actionRef}
           rowKey="id"
           columns={columns}
-          dataSource={teams}
-          loading={loading}
           isMobile={responsive.isMobile}
           autoContentWidth
-          search={false}
+          search={searchConfig}
           scroll={{ x: 'max-content' }}
+          request={async (params) => {
+            const filters = buildTeamManagementFilters(params);
+            const teams = await listAllTeams();
+            const filteredTeams = teams.filter((team) => matchesTeamManagementFilters(team, filters));
+            const current = typeof params.current === 'number' ? params.current : Number(params.current || 1);
+            const pageSize = typeof params.pageSize === 'number' ? params.pageSize : Number(params.pageSize || 10);
+            const startIndex = (current - 1) * pageSize;
+            return {
+              data: filteredTeams.slice(startIndex, startIndex + pageSize),
+              total: filteredTeams.length,
+              success: true,
+            };
+          }}
           pagination={{ pageSize: 10, showSizeChanger: true }}
           locale={{ emptyText: <Empty description="暂无团队" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
-          onRefresh={() => void load()}
           toolBarRender={() =>
             actionPermission.buildToolbarActions([
               {
@@ -596,12 +711,7 @@ const TeamSearchPage = () => {
               <Select
                 value={status}
                 className="team-search-filter-row__small"
-                options={[
-                  { value: 'ALL', label: '不限' },
-                  { value: 'ACTIVE', label: '正常' },
-                  { value: 'REMOVED', label: '已移除' },
-                  { value: 'DELETED', label: '已删除' },
-                ]}
+                options={[{ value: 'ALL', label: '不限' }, ...teamStatusOptions]}
                 onChange={setStatus}
               />
             </Space>
@@ -878,7 +988,7 @@ const TeamDetailPage = () => {
   const [saving, setSaving] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const nextTeam = await getTeam(teamId);
     setTeam(nextTeam);
     detailForm.setFieldsValue(teamToFormValues(nextTeam));
@@ -890,11 +1000,11 @@ const TeamDetailPage = () => {
         setMembersLoading(false);
       }
     }
-  };
+  }, [actionPermission, detailForm, teamId]);
 
   useEffect(() => {
     void load();
-  }, [teamId]);
+  }, [load]);
 
   const cancelEdit = () => {
     if (team) {
@@ -1076,17 +1186,17 @@ const MembersPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form] = Form.useForm<TeamDraftMemberPayload>();
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       setMembers(await listTeamMembers(teamId));
     } finally {
       setLoading(false);
     }
-  };
+  }, [teamId]);
   useEffect(() => {
     void load();
-  }, [teamId]);
+  }, [load]);
 
   const submitMember = async () => {
     const values = await form.validateFields();
@@ -1193,10 +1303,10 @@ const InvitesPage = () => {
   const [invites, setInvites] = useState<TeamInviteRecord[]>([]);
   const [latest, setLatest] = useState<TeamInviteRecord>();
   const [form] = Form.useForm();
-  const load = async () => setInvites(await listTeamInvites(teamId));
+  const load = useCallback(async () => setInvites(await listTeamInvites(teamId)), [teamId]);
   useEffect(() => {
     void load();
-  }, [teamId]);
+  }, [load]);
 
   const columns: ColumnsType<TeamInviteRecord> = [
     { title: '邀请码', dataIndex: 'inviteCode', render: (value) => value || '-' },
@@ -1313,10 +1423,10 @@ const JoinPage = () => {
 const JoinRequestsPage = ({ teamId }: { teamId: number }) => {
   const actionPermission = useActionPermission();
   const [requests, setRequests] = useState<TeamJoinRequestRecord[]>([]);
-  const load = async () => setRequests(await listTeamJoinRequests(teamId));
+  const load = useCallback(async () => setRequests(await listTeamJoinRequests(teamId)), [teamId]);
   useEffect(() => {
     void load();
-  }, [teamId]);
+  }, [load]);
   return (
     <Table
       rowKey="id"

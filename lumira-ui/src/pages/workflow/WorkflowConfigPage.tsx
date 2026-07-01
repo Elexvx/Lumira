@@ -1,5 +1,5 @@
 import { BranchesOutlined, CheckCircleOutlined, PlusOutlined, SaveOutlined } from '@ant-design/icons';
-import { Button, Form, Input, InputNumber, Select, Space, Typography } from 'antd';
+import { Button, Form, Input, InputNumber, Select, Space, Spin, Typography } from 'antd';
 import {
   Background,
   Controls,
@@ -240,7 +240,8 @@ const WorkflowConfigPage = () => {
       }
     >
       <ManagementPageBody className="workflow-page">
-        <div className="workflow-designer">
+        <Spin spinning={loading}>
+          <div className="workflow-designer">
           <aside className="workflow-sidebar">
             <Typography.Title level={5}>节点</Typography.Title>
             <Space direction="vertical" className="workflow-sidebar__stack">
@@ -317,7 +318,8 @@ const WorkflowConfigPage = () => {
               <Typography.Text type="secondary">请选择节点</Typography.Text>
             )}
           </aside>
-        </div>
+          </div>
+        </Spin>
       </ManagementPageBody>
     </ManagementPage>
   );

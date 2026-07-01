@@ -54,9 +54,7 @@ public class PermissionSnapshotService {
     private static final String GLOBAL_PERMISSION_VERSION_CACHE_KEY = "permission-snapshot";
     private static final java.util.concurrent.Executor BLOCKING_IO_EXECUTOR = command -> Thread.ofVirtual().start(command);
     private static final Set<String> ADMIN_ONLY_ROLE_PERMISSION_PREFIXES = Set.of(
-            "ai:employee:",
-            "ai:llm:",
-            "ai:tool:",
+            "ai:",
             "audit:",
             "localization:",
             "plugin:management:",

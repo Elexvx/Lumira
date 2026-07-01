@@ -9,6 +9,7 @@ spring:
       max-request-size: ${UPLOAD_MAX_REQUEST_SIZE:50MB}
   main:
     allow-bean-definition-overriding: true
+    keep-alive: ${SPRING_MAIN_KEEP_ALIVE:true}
   cache:
     type: caffeine
   flyway:

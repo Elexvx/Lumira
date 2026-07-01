@@ -45,7 +45,7 @@ const routeMetaMap = new Map(backendRouteMeta.map((item) => [item.path, item]));
 const realPagePathSet = new Set(realPageRouteMetaMap.keys());
 const resolveIsMobileViewport = () =>
   typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 767px)').matches;
-const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/ai', '/data-management', '/certificates', '/experts', '/user-center'];
+const STABLE_MAIN_ROUTE_PATHS = ['/dashboard/home', '/data-management', '/certificates', '/experts', '/user-center'];
 const DASHBOARD_GROUP_PATH = '/dashboard';
 const DASHBOARD_HOME_PATH = '/dashboard/home';
 const USER_CENTER_GROUP_PATH = '/user-center';

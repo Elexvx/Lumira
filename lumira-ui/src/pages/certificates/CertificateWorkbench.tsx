@@ -1,12 +1,10 @@
 import {
-  AuditOutlined,
   CopyOutlined,
   DeleteOutlined,
   EditOutlined,
   DownloadOutlined,
   FileDoneOutlined,
   FileProtectOutlined,
-  EyeOutlined,
   LeftOutlined,
   PlusOutlined,
   QrcodeOutlined,
@@ -16,18 +14,12 @@ import {
   ZoomInOutlined,
   ZoomOutOutlined,
 } from '@ant-design/icons';
-import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { history, useParams } from '@umijs/max';
-import { Alert, Button, Card, Col, Descriptions, Drawer, Form, Image, Input, InputNumber, Modal, Row, Segmented, Select, Space, Steps, Table, Tag, Tooltip, Typography, Upload } from 'antd';
+import { Button, Card, Descriptions, Drawer, Form, Image, Input, InputNumber, Modal, Segmented, Select, Space, Table, Tag, Tooltip, Typography, Upload } from 'antd';
 import type { UploadProps } from 'antd';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ManagementDrawer } from '@/features/management/ManagementDrawer';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
-import { ManagementTable } from '@/features/management/ManagementTable';
-import { useActionPermission } from '@/features/permissions/useActionPermission';
-import { TableActionBar } from '@/features/table/TableActionBar';
-import { useResponsive } from '@/hooks/useResponsive';
 import {
   archiveCertificateTemplate,
   createCertificateTemplate,
@@ -175,20 +167,20 @@ const statusColor: Record<string, string> = {
   EXPIRED: 'orange',
 };
 
-const templateStatusText: Record<string, string> = {
+const _templateStatusText: Record<string, string> = {
   DRAFT: '草稿',
   PUBLISHED: '已发布',
   ARCHIVED: '已归档',
 };
 
-const certificateStatusText: Record<string, string> = {
+const _certificateStatusText: Record<string, string> = {
   GENERATED: '已生成',
   ISSUED: '已签发',
   REVOKED: '已撤销',
   EXPIRED: '已过期',
 };
 
-const sceneTypeText: Record<string, string> = {
+const _sceneTypeText: Record<string, string> = {
   COMPETITION_AWARD: '赛事获奖',
   PARTICIPATION: '参与证明',
   CUSTOM: '自定义',
@@ -252,7 +244,7 @@ export const TemplatesPage = () => {
   const [editing, setEditing] = useState<CertificateTemplateRecord | null>(null);
   const [form] = Form.useForm();
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const response = await listCertificateTemplates({ pageSize: 100 });
@@ -260,11 +252,11 @@ export const TemplatesPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const submit = async () => {
     const values = await form.validateFields();
@@ -376,7 +368,7 @@ export const DesignerPage = () => {
     verificationUrl: '/certificate/verify/example',
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const list = await listCertificateTemplateVersions(templateId);
     setVersions(list);
     const draft = list.find((item) => item.status === 'DRAFT') || list[0];
@@ -385,11 +377,11 @@ export const DesignerPage = () => {
       setVersion(detail);
       setCanvas(parseCanvas(detail.canvasJson, detail));
     }
-  };
+  }, [templateId]);
 
   useEffect(() => {
     void load();
-  }, [templateId]);
+  }, [load]);
 
   useEffect(() => {
     const handleWheel = (event: WheelEvent) => {
@@ -891,14 +883,14 @@ export const RecordsPage = () => {
   const [detail, setDetail] = useState<CertificateRecord | null>(null);
   const [filters, setFilters] = useState<Record<string, string>>({});
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const response = await listCertificates({ ...filters, pageSize: 100 });
     setRecords(response.records || []);
-  };
+  }, [filters]);
 
   useEffect(() => {
     void load();
-  }, [filters]);
+  }, [load]);
 
   return (
     <div className="certificate-page">

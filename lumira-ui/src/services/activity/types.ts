@@ -1,6 +1,5 @@
 export type ActivityLocale = 'zh' | 'en';
 export type ActivityStatus = 'draft' | 'published';
-export type ActivityBadgeTone = 'blue' | 'gold' | 'silver' | 'bronze' | 'slate' | 'dark';
 
 export interface ActivityRecord {
   id: number;
@@ -10,14 +9,11 @@ export interface ActivityRecord {
   subtitle?: string | null;
   description?: string | null;
   imageUrl?: string | null;
-  iconKey?: string | null;
   sort: number;
   status: ActivityStatus;
   tags?: string | null;
   ctaLabel?: string | null;
   ctaHref?: string | null;
-  badgeText?: string | null;
-  badgeTone?: ActivityBadgeTone | null;
   activityDate: string;
   activityTime: string;
   location: string;
@@ -33,14 +29,11 @@ export interface ActivityUpsertPayload {
   subtitle?: string;
   description?: string;
   imageUrl?: string;
-  iconKey?: string;
   sort?: number;
   status: ActivityStatus;
   tags?: string;
   ctaLabel?: string;
   ctaHref?: string;
-  badgeText?: string;
-  badgeTone?: ActivityBadgeTone;
   activityDate: string;
   activityTime: string;
   location: string;

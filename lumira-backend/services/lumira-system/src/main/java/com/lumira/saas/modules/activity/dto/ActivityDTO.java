@@ -21,8 +21,6 @@ public final class ActivityDTO {
         private String description;
         @Size(max = 512)
         private String imageUrl;
-        @Size(max = 64)
-        private String iconKey;
         private Integer sort;
         @Size(max = 32)
         private String status;
@@ -32,10 +30,6 @@ public final class ActivityDTO {
         private String ctaLabel;
         @Size(max = 512)
         private String ctaHref;
-        @Size(max = 64)
-        private String badgeText;
-        @Size(max = 32)
-        private String badgeTone;
         @NotBlank
         @Size(max = 64)
         private String activityDate;
@@ -59,8 +53,6 @@ public final class ActivityDTO {
         public void setDescription(String description) { this.description = description; }
         public String getImageUrl() { return imageUrl; }
         public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
-        public String getIconKey() { return iconKey; }
-        public void setIconKey(String iconKey) { this.iconKey = iconKey; }
         public Integer getSort() { return sort; }
         public void setSort(Integer sort) { this.sort = sort; }
         public String getStatus() { return status; }
@@ -71,10 +63,6 @@ public final class ActivityDTO {
         public void setCtaLabel(String ctaLabel) { this.ctaLabel = ctaLabel; }
         public String getCtaHref() { return ctaHref; }
         public void setCtaHref(String ctaHref) { this.ctaHref = ctaHref; }
-        public String getBadgeText() { return badgeText; }
-        public void setBadgeText(String badgeText) { this.badgeText = badgeText; }
-        public String getBadgeTone() { return badgeTone; }
-        public void setBadgeTone(String badgeTone) { this.badgeTone = badgeTone; }
         public String getActivityDate() { return activityDate; }
         public void setActivityDate(String activityDate) { this.activityDate = activityDate; }
         public String getActivityTime() { return activityTime; }

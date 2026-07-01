@@ -27,6 +27,8 @@ public class ProjectV2Controller {
     private static final String CREATE = "aiadc:project:create";
     private static final String UPDATE = "aiadc:project:update";
     private static final String DELETE = "aiadc:project:delete";
+    private static final String REGISTRATION_VIEW = "aiadc:registration:view";
+    private static final String REGISTRATION_CREATE = "aiadc:registration:create";
 
     private final ProjectManagementAppService projectManagementAppService;
     private final SecurityContextFacade securityContextFacade;
@@ -54,7 +56,7 @@ public class ProjectV2Controller {
             @RequestParam(name = "pageNo", defaultValue = "1") long pageNo,
             @RequestParam(name = "pageSize", defaultValue = "12") long pageSize
     ) {
-        require(VIEW);
+        requireAny(VIEW, REGISTRATION_VIEW, REGISTRATION_CREATE);
         return ApiResponse.success(
                 projectManagementAppService.listProjects(
                         securityContextFacade.getCurrentUser(),
@@ -74,14 +76,14 @@ public class ProjectV2Controller {
 
     @GetMapping("/{id}")
     public ApiResponse<ProjectVO.Project> project(@PathVariable("id") Long id) {
-        require(VIEW);
+        requireAny(VIEW, REGISTRATION_VIEW, REGISTRATION_CREATE);
         return ApiResponse.success(projectManagementAppService.getProject(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
     }
 
     @PostMapping
     @RepeatSubmit
     public ApiResponse<ProjectVO.Project> createProject(@Valid @RequestBody ProjectDTO.ProjectUpsertRequest request) {
-        require(CREATE);
+        requireAny(CREATE, REGISTRATION_CREATE);
         return ApiResponse.success(projectManagementAppService.createProject(securityContextFacade.getCurrentUser(), request), TraceContext.getRequestId());
     }
 
@@ -101,5 +103,21 @@ public class ProjectV2Controller {
 
     private void require(String permissionKey) {
         permissionGuard.requirePermission(securityContextFacade.getCurrentUser(), permissionKey);
+    }
+
+    private void requireAny(String... permissionKeys) {
+        RuntimeException lastError = null;
+        for (String permissionKey : permissionKeys) {
+            try {
+                require(permissionKey);
+                return;
+            } catch (RuntimeException error) {
+                lastError = error;
+            }
+        }
+        if (lastError != null) {
+            throw lastError;
+        }
+        require(permissionKeys.length == 0 ? null : permissionKeys[0]);
     }
 }

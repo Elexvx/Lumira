@@ -104,7 +104,6 @@ public class SystemManagementAppService {
     private static final String PERMISSION_CATALOG_CACHE_KEY_PREFIX = "permission-catalog:";
     private static final Set<String> BUILTIN_ROOT_MENU_CODES = Set.of(
             "dashboard.home",
-            "ai.root",
             "aiadc.root",
             "team.root",
             "user.center.root",
@@ -748,6 +747,7 @@ public class SystemManagementAppService {
                 user.getId()
         );
         iamUserService.upsertPasswordCredential(user.getId(), encodedPassword);
+        authSessionStore.markPasswordChangeResolved(currentUser.getUserId(), currentUser.getSessionId(), true);
         authSessionStore.revokeUserSessionsExcept(currentUser.getUserId(), currentUser.getSessionId(), true);
         operationAuditService.log(currentUser.getUserId(), currentUser.getUsername(), "profile", "password", "UPDATE", "SUCCESS", "修改登录密码");
         return true;
@@ -886,7 +886,9 @@ public class SystemManagementAppService {
                         order by permission_group asc, permission_key asc
                         """,
                 new BeanPropertyRowMapper<>(SystemVO.PermissionVO.class)
-        ));
+        ).stream()
+                .filter(permission -> !isAiPermission(permission))
+                .toList());
         permissions.sort(Comparator.comparing(SystemVO.PermissionVO::getPermissionGroup, Comparator.nullsLast(String::compareTo))
                 .thenComparing(SystemVO.PermissionVO::getPermissionKey, Comparator.nullsLast(String::compareTo)));
         return List.copyOf(permissions);
@@ -927,9 +929,59 @@ public class SystemManagementAppService {
                 """,
                 new BeanPropertyRowMapper<>(SystemVO.MenuVO.class)
         ).stream()
+                .filter(menu -> !isAiMenu(menu))
                 .toList();
         normalizeBuiltinRootMenuParents(menus);
         return buildMenuTree(menus);
+    }
+
+    private boolean isAiPermission(SystemVO.PermissionVO permission) {
+        if (permission == null) {
+            return false;
+        }
+        return isAiPermissionKey(permission.getPermissionKey())
+                || "ai".equalsIgnoreCase(permission.getPermissionGroup());
+    }
+
+    private boolean isAiPermissionKey(String permissionKey) {
+        return StringUtils.hasText(permissionKey)
+                && permissionKey.trim().toLowerCase(Locale.ROOT).startsWith("ai:");
+    }
+
+    private boolean isAiMenu(SystemVO.MenuVO menu) {
+        if (menu == null) {
+            return false;
+        }
+        return isAiMenuCode(menu.getMenuCode())
+                || isAiMenuPath(menu.getPath())
+                || isAiMenuComponent(menu.getComponent())
+                || isAiPermissionKey(menu.getPermissionKey());
+    }
+
+    private boolean isAiMenuCode(String menuCode) {
+        if (!StringUtils.hasText(menuCode)) {
+            return false;
+        }
+        String normalized = menuCode.trim().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("ai.") || "settings.ai-employees".equals(normalized);
+    }
+
+    private boolean isAiMenuPath(String path) {
+        if (!StringUtils.hasText(path)) {
+            return false;
+        }
+        String normalized = path.trim().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("/ai") || "/settings/ai-employees".equals(normalized);
+    }
+
+    private boolean isAiMenuComponent(String component) {
+        if (!StringUtils.hasText(component)) {
+            return false;
+        }
+        String normalized = component.trim().toLowerCase(Locale.ROOT);
+        return normalized.startsWith("@/pages/ai/")
+                || normalized.equals("@/pages/settings/ai-employees")
+                || normalized.equals("redirect:/ai/assistant");
     }
 
     private void normalizeBuiltinRootMenuParents(List<SystemVO.MenuVO> menus) {
@@ -1799,11 +1851,16 @@ public class SystemManagementAppService {
         if (cached != null) {
             return cached;
         }
-        Long count = jdbcTemplate.queryForObject(
-                "select count(1) from sys_menu where deleted = 0 and status = 'ENABLED'",
-                Long.class
-        );
-        Integer result = count == null ? 0 : count.intValue();
+        int result = (int) jdbcTemplate.query(
+                """
+                        select menu_code as menuCode, path, component, permission_key as permissionKey
+                        from sys_menu
+                        where deleted = 0 and status = 'ENABLED'
+                        """,
+                new BeanPropertyRowMapper<>(SystemVO.MenuVO.class)
+        ).stream()
+                .filter(menu -> !isAiMenu(menu))
+                .count();
         menuCountCache.put(MENU_COUNT_CACHE_KEY, result);
         return result;
     }

@@ -27,7 +27,14 @@ import { normalizeLocale } from '@/i18n/locale';
 const isEnglishLocale = () => normalizeLocale(getLocale()) === 'en-US';
 const t = (zh: string, en: string) => (isEnglishLocale() ? en : zh);
 
-const DEFAULT_DATA_SCOPES: RoleDataScope[] = [{ resourceCode: '*', scopeType: 'SELF' }];
+const GLOBAL_DATA_SCOPE_RESOURCE = '*';
+const COMPETITION_REGISTRATION_SCOPE_RESOURCE = 'competition:registration';
+const ACTIVITY_REGISTRATION_SCOPE_RESOURCE = 'activity:registration';
+const DEFAULT_DATA_SCOPES: RoleDataScope[] = [
+  { resourceCode: GLOBAL_DATA_SCOPE_RESOURCE, scopeType: 'SELF' },
+  { resourceCode: COMPETITION_REGISTRATION_SCOPE_RESOURCE, scopeType: 'SELF' },
+  { resourceCode: ACTIVITY_REGISTRATION_SCOPE_RESOURCE, scopeType: 'SELF' },
+];
 const DEFAULT_HOME_PATH = '/dashboard/home';
 const DEFAULT_CREATE_ROLE_VALUES: RoleEditorFormValues = {
   roleType: 'CUSTOM',
@@ -51,6 +58,32 @@ type PermissionTreeDataRecord = NormalizedPermissionTreeRecord & {
   title: ReactElement;
   checkable: boolean;
   disableCheckbox: boolean;
+};
+
+const normalizeRoleDataScopes = (dataScopes?: Array<Partial<RoleDataScope>>): RoleDataScope[] => {
+  const scopeMap = new Map<string, RoleDataScope>();
+
+  (dataScopes || []).forEach((scope) => {
+    const resourceCode = typeof scope.resourceCode === 'string' && scope.resourceCode.trim() ? scope.resourceCode.trim() : GLOBAL_DATA_SCOPE_RESOURCE;
+    scopeMap.set(resourceCode, {
+      resourceCode,
+      scopeType: (scope.scopeType || 'SELF') as RoleDataScope['scopeType'],
+      customDeptIds: scope.customDeptIds?.filter((id): id is number => typeof id === 'number'),
+      customUserIds: scope.customUserIds?.filter((id): id is number => typeof id === 'number'),
+    });
+  });
+
+  return [
+    scopeMap.get(GLOBAL_DATA_SCOPE_RESOURCE) || DEFAULT_DATA_SCOPES[0],
+    scopeMap.get(COMPETITION_REGISTRATION_SCOPE_RESOURCE) || {
+      resourceCode: COMPETITION_REGISTRATION_SCOPE_RESOURCE,
+      scopeType: (scopeMap.get(GLOBAL_DATA_SCOPE_RESOURCE)?.scopeType === 'ALL' ? 'ALL' : 'SELF') as RoleDataScope['scopeType'],
+    },
+    scopeMap.get(ACTIVITY_REGISTRATION_SCOPE_RESOURCE) || {
+      resourceCode: ACTIVITY_REGISTRATION_SCOPE_RESOURCE,
+      scopeType: (scopeMap.get(GLOBAL_DATA_SCOPE_RESOURCE)?.scopeType === 'ALL' ? 'ALL' : 'SELF') as RoleDataScope['scopeType'],
+    },
+  ];
 };
 
 const walkPermissionTree = (
@@ -863,7 +896,7 @@ export const useRoleManagementPageData = () => {
           ...detail,
           defaultHomePath: detail.defaultHomePath || DEFAULT_HOME_PATH,
           permissionKeys,
-          dataScopes: detail.dataScopes?.length ? detail.dataScopes : DEFAULT_DATA_SCOPES,
+          dataScopes: normalizeRoleDataScopes(detail.dataScopes),
         });
         permissionEditor.syncActivePageByPermissionKeys(permissionKeys);
       } catch {
@@ -910,8 +943,8 @@ export const useRoleManagementPageData = () => {
       roleType: String(values.roleType || 'CUSTOM'),
       defaultHomePath: typeof values.defaultHomePath === 'string' ? values.defaultHomePath.trim() : DEFAULT_HOME_PATH,
       permissionKeys: values.permissionKeys || [],
-      dataScopes: (values.dataScopes?.length ? values.dataScopes : DEFAULT_DATA_SCOPES).map((item) => ({
-        resourceCode: String(item.resourceCode || '*'),
+      dataScopes: normalizeRoleDataScopes(values.dataScopes).map((item) => ({
+        resourceCode: String(item.resourceCode || GLOBAL_DATA_SCOPE_RESOURCE),
         scopeType: (item.scopeType || 'SELF') as import('@/types/api').RoleDataScope['scopeType'],
       })),
     }),

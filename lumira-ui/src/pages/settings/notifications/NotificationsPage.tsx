@@ -13,7 +13,7 @@ import { TableActionBar } from '@/features/table/TableActionBar';
 import { buildTableRequest, DEFAULT_TABLE_PAGE_SIZE } from '@/features/table/proTableRequest';
 import { requestMessageDeliveryLogs } from '@/services/message/api';
 import { useNotificationCenter } from './hooks/useNotificationCenter';
-import type { MessageDeliveryLogRecord, MessageNoticeRecord } from '@/types/api';
+import type { MessageDeliveryLogRecord } from '@/types/api';
 import type { SmtpSettings, SmtpTestPayload, WechatOfficialAccountSettings } from '@/types/api';
 import type { MessageChannel } from '@/types/api';
 import type { FormProps } from 'antd';

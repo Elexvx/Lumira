@@ -5,7 +5,6 @@ import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
 import com.lumira.saas.infrastructure.event.PlatformEventOutboxRelay;
-import com.lumira.saas.modules.ai.app.AiKnowledgeBaseAppService;
 import com.lumira.saas.modules.system.online.OnlineSessionStreamService;
 import com.lumira.common.web.InternalJobTokenValidator;
 import org.springframework.beans.factory.ObjectProvider;
@@ -14,7 +13,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -24,18 +22,15 @@ public class InternalJobController {
 
     private final PlatformEventOutboxRelay platformEventOutboxRelay;
     private final ObjectProvider<OnlineSessionStreamService> onlineSessionStreamServiceProvider;
-    private final AiKnowledgeBaseAppService aiKnowledgeBaseAppService;
     private final String internalToken;
 
     public InternalJobController(
             PlatformEventOutboxRelay platformEventOutboxRelay,
             ObjectProvider<OnlineSessionStreamService> onlineSessionStreamServiceProvider,
-            AiKnowledgeBaseAppService aiKnowledgeBaseAppService,
             @Value("${saas.job.internal-token:${SAAS_JOB_INTERNAL_TOKEN:}}") String internalToken
     ) {
         this.platformEventOutboxRelay = platformEventOutboxRelay;
         this.onlineSessionStreamServiceProvider = onlineSessionStreamServiceProvider;
-        this.aiKnowledgeBaseAppService = aiKnowledgeBaseAppService;
         this.internalToken = internalToken;
     }
 
@@ -62,15 +57,6 @@ public class InternalJobController {
             onlineSessionStreamService.heartbeat();
         }
         return ApiResponse.success(Boolean.TRUE, null);
-    }
-
-    @PostMapping("/ai/knowledge-index")
-    public ApiResponse<Integer> aiKnowledgeIndex(
-            @RequestHeader(name = "X-Job-Token", required = false) String token,
-            @RequestParam(name = "limit", defaultValue = "20") int limit
-    ) {
-        ensureAuthorized(token);
-        return ApiResponse.success(aiKnowledgeBaseAppService.processPendingIndexTasks(limit), null);
     }
 
     private void ensureAuthorized(String token) {

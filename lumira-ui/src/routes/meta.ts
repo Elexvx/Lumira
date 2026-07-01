@@ -26,15 +26,17 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/team/': '/team/management',
   '/team/management/': '/team/management',
   '/team/search/': '/team/search',
-  '/activities': '/activities/management',
-  '/activities/': '/activities/management',
+  '/activities': '/activities/register',
+  '/activities/': '/activities/register',
   '/activities/management/': '/activities/management',
+  '/activities/register/': '/activities/register',
   '/activities/search/': '/activities/search',
   '/competitions': '/competitions/register',
   '/competitions/': '/competitions/register',
   '/competitions/management/': '/competitions/management',
   '/competitions/register/': '/competitions/register',
-  '/competitions/activity-register/': '/competitions/activity-register',
+  '/competitions/activity-register': '/activities/register',
+  '/competitions/activity-register/': '/activities/register',
   '/competitions/expert-apply/': '/competitions/expert-apply',
   '/projects': '/projects/management',
   '/projects/': '/projects/management',
@@ -78,29 +80,6 @@ export const resolveCanonicalRoutePath = (path: string) => {
   return WORKBENCH_ROUTE_ALIASES[canonical] || canonical;
 };
 
-const aiRouteMeta: BackendRouteMeta[] = [
-  { path: '/ai/share/:token', name: 'nav.ai.assistant', icon: 'RobotOutlined', access: 'canVisitAiAssistant', hideInMenu: true },
-  { path: '/ai', name: 'nav.ai.root', icon: 'RobotOutlined', access: 'canVisitAi' },
-  { path: '/ai/assistant', name: 'nav.ai.assistant', icon: 'RobotOutlined', access: 'canVisitAiAssistant' },
-  { path: '/ai/knowledge', name: 'nav.ai.knowledge', icon: 'FileSearchOutlined', access: 'canVisitAiKnowledge' },
-];
-
-const aiRoutes: BackendRouteRecord[] = [
-  { path: '/ai/share/:token', component: '@/pages/ai/Assistant', name: 'nav.ai.assistant', icon: 'RobotOutlined', hideInMenu: true },
-  {
-    path: '/ai',
-    component: '@/layouts/AiLayout/AiLayout',
-    name: 'nav.ai.root',
-    icon: 'RobotOutlined',
-    access: 'canVisitAi',
-    routes: [
-      { path: '/ai/assistant', component: '@/pages/ai/Assistant', name: 'nav.ai.assistant', icon: 'RobotOutlined', access: 'canVisitAiAssistant' },
-      { path: '/ai/knowledge', component: '@/pages/ai/knowledge/KnowledgePage', name: 'nav.ai.knowledge', icon: 'FileSearchOutlined', access: 'canVisitAiKnowledge' },
-    ],
-  },
-  { path: '/settings/ai-knowledge', redirect: '/ai/knowledge' },
-];
-
 export const systemRouteMeta: BackendRouteMeta[] = [
   { path: '/settings', name: 'nav.settings.root', icon: 'SettingOutlined', hideInMenu: true },
   { path: '/settings/monitoring', name: 'nav.system.monitoring.root', icon: 'FundOutlined', access: 'canVisitSystemMonitoring' },
@@ -112,7 +91,6 @@ export const systemRouteMeta: BackendRouteMeta[] = [
   { path: '/settings/verification', name: 'nav.system.verification', icon: 'SafetyOutlined', access: 'canVisitSystemVerification' },
   { path: '/settings/payment', name: 'nav.system.payment', icon: 'CreditCardOutlined', access: 'canVisitSystemPayment' },
   { path: '/settings/notifications', name: 'nav.system.notifications', icon: 'NotificationOutlined', access: 'canVisitSystemNotifications' },
-  { path: '/settings/ai-employees', name: 'nav.system.aiEmployees', icon: 'RobotOutlined', access: 'canVisitAiEmployees' },
   { path: '/settings/files/all', name: 'nav.files.all', icon: 'FolderOpenOutlined', access: 'canVisitSystemAllFiles' },
   { path: '/settings/plugins', name: 'nav.system.plugins', icon: 'ApiOutlined', access: 'canVisitSystemPlugins' },
   { path: '/settings/api-docs', name: 'nav.system.monitoring.apiDocs', icon: 'FileTextOutlined', access: 'canVisitSystemMonitoringDocs' },
@@ -163,7 +141,6 @@ export const systemRoutes: BackendRouteRecord[] = [
       { path: '/settings/payment', component: '@/pages/settings/payment', name: 'nav.system.payment', icon: 'CreditCardOutlined', access: 'canVisitSystemPayment' },
       { path: '/settings/smtp', redirect: '/settings/verification?tab=email' },
       { path: '/settings/notifications', component: '@/pages/settings/notifications/NotificationsPage', name: 'nav.system.notifications', icon: 'NotificationOutlined', access: 'canVisitSystemNotifications' },
-      { path: '/settings/ai-employees', component: '@/pages/settings/ai-employees/AiEmployeesPage', name: 'nav.system.aiEmployees', icon: 'RobotOutlined', access: 'canVisitAiEmployees' },
       { path: '/settings/plugins', component: '@/pages/settings/plugins/PluginsPage', name: 'nav.system.plugins', icon: 'ApiOutlined', access: 'canVisitSystemPlugins' },
       { path: '/settings/localization', component: '@/pages/settings/localization/LocalizationPage', name: 'nav.localization.root', icon: 'TranslationOutlined', access: 'canVisitLocalization' },
       { path: '/settings/files', redirect: '/settings/files/all' },
@@ -178,12 +155,12 @@ export const systemRoutes: BackendRouteRecord[] = [
 ];
 
 const userCenterRouteMeta: BackendRouteMeta[] = [
-  { path: '/user-center', name: 'nav.user.center', icon: 'TeamOutlined' },
+  { path: '/user-center', name: 'nav.user.center', icon: 'TeamOutlined', access: 'canVisitAnyUserCenter' },
   { path: '/user-center/users', name: 'nav.user.users', icon: 'TeamOutlined', access: 'canVisitSystemUsers' },
   { path: '/user-center/departments', name: 'nav.user.departments', icon: 'ApartmentOutlined', access: 'canVisitSystemDepartments' },
   { path: '/user-center/online-users', name: 'nav.user.onlineUsers', icon: 'UserSwitchOutlined', access: 'canVisitSystemOnlineUsers' },
   { path: '/user-center/roles', name: 'nav.user.roles', icon: 'SafetyOutlined', access: 'canVisitSystemRoles' },
-  { path: '/user-center/personal-center', name: 'nav.user.personalCenter', icon: 'IdcardOutlined' },
+  { path: '/user-center/personal-center', name: 'nav.user.personalCenter', icon: 'IdcardOutlined', access: 'canVisitPersonalCenter' },
   { path: '/user-center/personal-center/profile', name: 'nav.user.profile', icon: 'UserOutlined', access: 'canVisitProfile' },
   { path: '/user-center/personal-center/files', name: 'nav.files.my', icon: 'FileOutlined', access: 'canVisitSystemMyFiles' },
 ];
@@ -200,6 +177,7 @@ const userCenterRoutes: BackendRouteRecord[] = [
     component: '@/layouts/SettingsLayout/SettingsLayout',
     name: 'nav.user.center',
     icon: 'TeamOutlined',
+    access: 'canVisitAnyUserCenter',
     routes: [
       { path: '/user-center/users', component: '@/pages/system/users', name: 'nav.user.users', icon: 'TeamOutlined', access: 'canVisitSystemUsers' },
       { path: '/user-center/departments', component: '@/pages/system/departments', name: 'nav.user.departments', icon: 'ApartmentOutlined', access: 'canVisitSystemDepartments' },
@@ -212,6 +190,7 @@ const userCenterRoutes: BackendRouteRecord[] = [
     component: '@/layouts/SettingsLayout/SettingsLayout',
     name: 'nav.user.personalCenter',
     icon: 'IdcardOutlined',
+    access: 'canVisitPersonalCenter',
     routes: [
       { path: '/user-center/personal-center', redirect: '/user-center/personal-center/profile', hideInMenu: true },
       { path: '/user-center/personal-center/profile', component: '@/pages/profile/Center', name: 'nav.user.profile', icon: 'UserOutlined', access: 'canVisitProfile' },
@@ -273,8 +252,9 @@ const teamRoutes: BackendRouteRecord[] = [
 ];
 
 const activityRouteMeta: BackendRouteMeta[] = [
-  { path: '/activities', name: 'nav.activities.root', icon: 'CalendarOutlined', access: 'canVisitActivities' },
+  { path: '/activities', name: 'nav.activities.root', icon: 'CalendarOutlined', access: 'canVisitActivityRegister' },
   { path: '/activities/management', name: 'nav.activities.activities', icon: 'CalendarOutlined', access: 'canVisitActivities' },
+  { path: '/activities/register', name: 'nav.activities.activityRegister', icon: 'FormOutlined', access: 'canVisitActivityRegister' },
   { path: '/activities/search', name: 'nav.activities.activitySearch', icon: 'SearchOutlined', access: 'canVisitActivities' },
 ];
 
@@ -284,10 +264,11 @@ const activityRoutes: BackendRouteRecord[] = [
     component: '@/layouts/SettingsLayout/SettingsLayout',
     name: 'nav.activities.root',
     icon: 'CalendarOutlined',
-    access: 'canVisitActivities',
+    access: 'canVisitActivityRegister',
     routes: [
-      { path: '/activities', redirect: '/activities/management', hideInMenu: true },
+      { path: '/activities', redirect: '/activities/register', hideInMenu: true },
       { path: '/activities/management', component: '@/pages/activity', name: 'nav.activities.activities', icon: 'CalendarOutlined', access: 'canVisitActivities' },
+      { path: '/activities/register', component: '@/pages/competition', name: 'nav.activities.activityRegister', icon: 'FormOutlined', access: 'canVisitActivityRegister' },
       { path: '/activities/search', component: '@/pages/activity', name: 'nav.activities.activitySearch', icon: 'SearchOutlined', access: 'canVisitActivities' },
     ],
   },
@@ -296,9 +277,9 @@ const activityRoutes: BackendRouteRecord[] = [
 const competitionRouteMeta: BackendRouteMeta[] = [
   { path: '/competitions', name: 'nav.competitions.root', icon: 'TrophyOutlined', access: 'isLogin' },
   { path: '/competitions/management', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
-  { path: '/competitions/register', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'isLogin' },
-  { path: '/competitions/activity-register', name: 'nav.competitions.activityRegister', icon: 'CalendarOutlined', access: 'isLogin' },
-  { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin' },
+  { path: '/competitions/register', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
+  { path: '/competitions/activity-register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
+  { path: '/competitions/expert-apply', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'canVisitExperts' },
   { path: '/competitions/create', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
   { path: '/competitions/:competitionUuid/settings', name: 'nav.competitions.settings', icon: 'SettingOutlined', access: 'canVisitCompetitions', hideInMenu: true },
 ];
@@ -334,9 +315,9 @@ const competitionRoutes: BackendRouteRecord[] = [
     routes: [
       { path: '/competitions', redirect: '/competitions/register', hideInMenu: true },
       { path: '/competitions/management', component: '@/pages/competition', name: 'nav.competitions.management', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
-      { path: '/competitions/register', component: '@/pages/competition', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'isLogin' },
-      { path: '/competitions/activity-register', component: '@/pages/competition', name: 'nav.competitions.activityRegister', icon: 'CalendarOutlined', access: 'isLogin' },
-      { path: '/competitions/expert-apply', component: '@/pages/competition', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'isLogin' },
+      { path: '/competitions/register', component: '@/pages/competition', name: 'nav.competitions.register', icon: 'FormOutlined', access: 'canVisitCompetitionRegister' },
+      { path: '/competitions/activity-register', redirect: '/activities/register', name: 'nav.activities.activityRegister', icon: 'CalendarOutlined', access: 'canVisitActivityRegister', hideInMenu: true },
+      { path: '/competitions/expert-apply', component: '@/pages/competition', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'canVisitExperts' },
       { path: '/competitions/create', component: '@/pages/competition', name: 'nav.competitions.create', icon: 'TrophyOutlined', access: 'canVisitCompetitions', hideInMenu: true },
       { path: '/competitions/:competitionUuid/settings', component: '@/pages/competition', name: 'nav.competitions.settings', icon: 'SettingOutlined', access: 'canVisitCompetitions', hideInMenu: true },
     ],
@@ -434,7 +415,7 @@ const workflowRoutes: BackendRouteRecord[] = [
 ];
 
 const dataManagementRouteMeta: BackendRouteMeta[] = [
-  { path: '/data-management', name: 'nav.data.management', icon: 'DatabaseOutlined' },
+  { path: '/data-management', name: 'nav.data.management', icon: 'DatabaseOutlined', access: 'canVisitDataManagement' },
   ...competitionRouteMeta,
   ...activityRouteMeta.map((item) => item.path === '/activities' ? { ...item, hideInMenu: true } : item),
   ...projectRouteMeta,
@@ -454,7 +435,7 @@ const dataSourceRoutes = [
 
 const dataManagementRoutes: BackendRouteRecord[] = [
   ...dataSourceRoutes,
-  { path: '/data-management', redirect: '/competitions/management', name: 'nav.data.management', icon: 'DatabaseOutlined' },
+  { path: '/data-management', redirect: '/competitions/management', name: 'nav.data.management', icon: 'DatabaseOutlined', access: 'canVisitDataManagement' },
   { path: '/data-management/download-center', component: '@/pages/files/DownloadCenter', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },
   { path: '/data-management/query-center', redirect: '/team/search', name: 'nav.data.queryCenter', icon: 'SearchOutlined', hideInMenu: true },
 ];
@@ -494,7 +475,6 @@ export const backendRouteMeta: BackendRouteMeta[] = [
   ...certificateRouteMeta,
   ...expertRouteMeta,
   ...workflowRouteMeta,
-  ...aiRouteMeta,
   ...systemRouteMeta,
   ...userCenterRouteMeta,
   ...publicRouteMeta,
@@ -506,7 +486,6 @@ export const backendRoutes: BackendRouteRecord[] = [
   ...certificateRoutes,
   ...expertRoutes,
   ...workflowRoutes,
-  ...aiRoutes,
   ...systemRoutes,
   ...userCenterRoutes,
   ...publicRoutes,

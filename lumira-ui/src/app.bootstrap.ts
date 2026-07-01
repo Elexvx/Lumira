@@ -10,6 +10,7 @@ import { normalizeLocale } from '@/i18n/locale';
 import { clearAuthSession, isLoggedIn } from '@/auth/sessionLifecycle';
 import { restoreSession } from '@/auth/sessionBootstrap';
 import type { SessionBootstrapResult } from '@/auth/sessionBootstrap';
+import buildAccess from '@/access';
 import enUSMessages from '@/locales/en-US';
 import zhCNMessages from '@/locales/zh-CN';
 import { request } from '@/services/common/request';
@@ -20,6 +21,7 @@ import { DEFAULT_FLOATING_WINDOW_SETTINGS, normalizeFloatingWindowSettings } fro
 import type { AppInitialState } from '@/app.types';
 import type { AgreementSettings, BrandingSettings, FloatingWindowSettings, LoginCapabilities, MenuNode, SecuritySettings, PluginAvailability, RuntimeAppearanceSettings, WatermarkSettings } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
+import { realPageRouteMetaList, resolveCanonicalRoutePath } from '@/routes/meta';
 
 const MAX_AUTHENTICATED_BOOTSTRAP_RETRIES = 3;
 const GUEST_BOOTSTRAP_TIMEOUT_MS = 3000;
@@ -71,10 +73,12 @@ interface PublicBootstrapResponse {
   loginCapabilities?: LoginCapabilities;
 }
 
+type BootstrapMenuNode = MenuNode & { access?: string };
+
 const COMPETITION_MENU_ROOT: MenuNode = {
   id: -1070,
   menuCode: 'competition.root',
-  name: '赛事',
+  name: '\u8d5b\u4e8b',
   path: '/competitions',
   component: 'redirect:/competitions/register',
   icon: 'TrophyOutlined',
@@ -82,45 +86,103 @@ const COMPETITION_MENU_ROOT: MenuNode = {
   children: [],
 };
 
-const COMPETITION_APPLICATION_MENUS: MenuNode[] = [
+const ACTIVITY_MENU_ROOT: MenuNode = {
+  id: -1041,
+  menuCode: 'activity.root',
+  name: '\u6d3b\u52a8',
+  path: '/activities',
+  component: 'redirect:/activities/register',
+  icon: 'CalendarOutlined',
+  sortNo: 5,
+  children: [],
+};
+
+const COMPETITION_APPLICATION_MENUS: BootstrapMenuNode[] = [
   {
     id: -1075,
     parentId: -1070,
     menuCode: 'competition.registration',
-    name: '赛事报名',
+    name: '\u8d5b\u4e8b\u62a5\u540d',
     path: '/competitions/register',
     component: '@/pages/competition',
     icon: 'FormOutlined',
     sortNo: 1,
-  },
-  {
-    id: -1076,
-    parentId: -1070,
-    menuCode: 'activity.registration',
-    name: '活动报名',
-    path: '/competitions/activity-register',
-    component: '@/pages/competition',
-    icon: 'CalendarOutlined',
-    sortNo: 2,
+    access: 'canVisitCompetitionRegister',
   },
   {
     id: -1077,
     parentId: -1070,
     menuCode: 'expert.application',
-    name: '专家申请',
+    name: '\u4e13\u5bb6\u7533\u8bf7',
     path: '/competitions/expert-apply',
     component: '@/pages/competition',
     icon: 'SolutionOutlined',
-    sortNo: 3,
+    sortNo: 2,
+    access: 'canVisitExperts',
+  },
+];
+
+const ACTIVITY_APPLICATION_MENUS: BootstrapMenuNode[] = [
+  {
+    id: -1076,
+    parentId: -1041,
+    menuCode: 'activity.registration',
+    name: '\u6d3b\u52a8\u62a5\u540d',
+    path: '/activities/register',
+    component: '@/pages/competition',
+    icon: 'CalendarOutlined',
+    sortNo: 1,
+    access: 'canVisitActivityRegister',
   },
 ];
 
 const hasMenuPath = (menus: MenuNode[] | undefined, path: string): boolean =>
   Boolean(menus?.some((menu) => menu.path === path || hasMenuPath(menu.children, path)));
 
-const mergeCompetitionApplicationChildren = (children: MenuNode[] | undefined) => {
-  const nextChildren = [...(children || [])];
+const routePathMatches = (routePath: string, pathname: string) => {
+  const pattern = routePath
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/:([^/]+)/g, '[^/]+');
+
+  return new RegExp(`^${pattern}$`).test(pathname);
+};
+
+const canVisitMenuPath = (path: string | undefined, currentUser: AppInitialState['currentUser']) => {
+  if (!path) {
+    return true;
+  }
+  const canonicalPath = resolveCanonicalRoutePath(path);
+  const routeMeta = realPageRouteMetaList.find((item) => routePathMatches(item.path, canonicalPath));
+  if (!routeMeta?.access) {
+    return true;
+  }
+  const access = buildAccess({ currentUser }) as Record<string, unknown>;
+  return Boolean(access[routeMeta.access]);
+};
+
+const filterMenusByAccess = (menus: MenuNode[] | undefined, currentUser: AppInitialState['currentUser']): MenuNode[] =>
+  (menus || [])
+    .map((menu) => {
+      const children = filterMenusByAccess(menu.children, currentUser);
+      if (!canVisitMenuPath(menu.path, currentUser) && children.length === 0) {
+        return null;
+      }
+      return {
+        ...menu,
+        ...(menu.children || children.length ? { children } : {}),
+      };
+    })
+    .filter((menu): menu is MenuNode => Boolean(menu));
+
+const mergeCompetitionApplicationChildren = (children: MenuNode[] | undefined, currentUser: AppInitialState['currentUser']) => {
+  const nextChildren = (children || []).filter(
+    (menu) => menu.menuCode !== 'activity.registration' && menu.path !== '/competitions/activity-register' && menu.path !== '/activities/register',
+  );
+  const access = buildAccess({ currentUser }) as Record<string, unknown>;
   COMPETITION_APPLICATION_MENUS.forEach((requiredMenu) => {
+    if (requiredMenu.access && !access[requiredMenu.access]) {
+      return;
+    }
     if (!hasMenuPath(nextChildren, requiredMenu.path)) {
       nextChildren.push({ ...requiredMenu });
     }
@@ -129,23 +191,29 @@ const mergeCompetitionApplicationChildren = (children: MenuNode[] | undefined) =
   return nextChildren;
 };
 
-const ensureCompetitionApplicationMenus = (menus: MenuNode[]): MenuNode[] => {
-  if (COMPETITION_APPLICATION_MENUS.every((menu) => hasMenuPath(menus, menu.path))) {
-    return menus;
+const ensureCompetitionApplicationMenus = (menus: MenuNode[], currentUser: AppInitialState['currentUser']): MenuNode[] => {
+  const access = buildAccess({ currentUser }) as Record<string, unknown>;
+  const visibleCompetitionMenus = COMPETITION_APPLICATION_MENUS.filter((menu) => !menu.access || Boolean(access[menu.access]));
+  const normalizedMenus = removeLegacyActivityRegistrationMenus(menus);
+  if (!visibleCompetitionMenus.length) {
+    return normalizedMenus;
+  }
+  if (visibleCompetitionMenus.every((menu) => hasMenuPath(normalizedMenus, menu.path))) {
+    return normalizedMenus;
   }
 
   let attached = false;
-  const nextMenus = menus.map((menu) => {
+  const nextMenus = normalizedMenus.map((menu) => {
     const isCompetitionRoot = menu.menuCode === COMPETITION_MENU_ROOT.menuCode || menu.path === COMPETITION_MENU_ROOT.path;
     if (!isCompetitionRoot) {
       return menu;
     }
 
     attached = true;
-    return {
-      ...menu,
-      children: mergeCompetitionApplicationChildren(menu.children),
-    };
+      return {
+        ...menu,
+        children: mergeCompetitionApplicationChildren(menu.children, currentUser),
+      };
   });
 
   return attached
@@ -154,7 +222,70 @@ const ensureCompetitionApplicationMenus = (menus: MenuNode[]): MenuNode[] => {
         ...nextMenus,
         {
           ...COMPETITION_MENU_ROOT,
-          children: mergeCompetitionApplicationChildren(COMPETITION_MENU_ROOT.children),
+          children: mergeCompetitionApplicationChildren(COMPETITION_MENU_ROOT.children, currentUser),
+        },
+      ];
+};
+
+const mergeActivityApplicationChildren = (children: MenuNode[] | undefined, currentUser: AppInitialState['currentUser']) => {
+  const nextChildren = (children || []).filter(
+    (menu) => menu.menuCode !== 'activity.registration' && menu.path !== '/competitions/activity-register' && menu.path !== '/activities/register',
+  );
+  const access = buildAccess({ currentUser }) as Record<string, unknown>;
+  ACTIVITY_APPLICATION_MENUS.forEach((requiredMenu) => {
+    if (requiredMenu.access && !access[requiredMenu.access]) {
+      return;
+    }
+    if (!hasMenuPath(nextChildren, requiredMenu.path)) {
+      nextChildren.push({ ...requiredMenu });
+    }
+  });
+  nextChildren.sort((left, right) => (left.sortNo ?? 0) - (right.sortNo ?? 0));
+  return nextChildren;
+};
+
+const removeLegacyActivityRegistrationMenus = (menus: MenuNode[]): MenuNode[] =>
+  menus
+    .filter((menu) => menu.menuCode !== 'activity.registration' && menu.path !== '/competitions/activity-register')
+    .map((menu) => ({
+      ...menu,
+      ...(menu.children ? { children: removeLegacyActivityRegistrationMenus(menu.children) } : {}),
+    }));
+
+const ensureActivityApplicationMenus = (menus: MenuNode[], currentUser: AppInitialState['currentUser']): MenuNode[] => {
+  const access = buildAccess({ currentUser }) as Record<string, unknown>;
+  const visibleActivityMenus = ACTIVITY_APPLICATION_MENUS.filter((menu) => !menu.access || Boolean(access[menu.access]));
+  const normalizedMenus = removeLegacyActivityRegistrationMenus(menus);
+  if (!visibleActivityMenus.length) {
+    return normalizedMenus;
+  }
+  if (visibleActivityMenus.every((menu) => hasMenuPath(normalizedMenus, menu.path))) {
+    return normalizedMenus;
+  }
+
+  let attached = false;
+  const nextMenus = normalizedMenus.map((menu) => {
+    const isActivityRoot = menu.menuCode === ACTIVITY_MENU_ROOT.menuCode || menu.path === ACTIVITY_MENU_ROOT.path;
+    if (!isActivityRoot) {
+      return menu;
+    }
+
+    attached = true;
+    return {
+      ...menu,
+      path: ACTIVITY_MENU_ROOT.path,
+      component: ACTIVITY_MENU_ROOT.component,
+      children: mergeActivityApplicationChildren(menu.children, currentUser),
+    };
+  });
+
+  return attached
+    ? nextMenus
+    : [
+        ...nextMenus,
+        {
+          ...ACTIVITY_MENU_ROOT,
+          children: mergeActivityApplicationChildren(ACTIVITY_MENU_ROOT.children, currentUser),
         },
       ];
 };
@@ -491,7 +622,10 @@ const buildAuthenticatedInitialState = async (
 
   return {
     currentUser,
-    menuTree: ensureCompetitionApplicationMenus(menuTree),
+    menuTree: ensureActivityApplicationMenus(
+      ensureCompetitionApplicationMenus(filterMenusByAccess(menuTree, currentUser), currentUser),
+      currentUser,
+    ),
     menuVersion: 0,
     availablePlugins,
     securitySettings,
