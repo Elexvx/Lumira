@@ -2,6 +2,7 @@ import type { PagedResult, RoleRecord, UserDetail, UserRecord } from '@/types/ap
 
 export interface UserListQuery extends Record<string, unknown> {
   keyword?: string;
+  uid?: string;
   userId?: number;
   username?: string;
   mobile?: string;

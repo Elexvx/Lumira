@@ -1533,6 +1533,8 @@ export interface ProfileCompletionItem {
 
 export interface UserRecord {
   id: number;
+  uid?: string | null;
+  userUuid?: string | null;
   userNo?: string | null;
   username: string;
   mobile?: string | null;

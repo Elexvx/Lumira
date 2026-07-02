@@ -41,6 +41,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 @Service
 @ConditionalOnLumiraControlPlaneEnabled
@@ -85,6 +86,7 @@ public class SystemUserManagementAppService {
     public PageResponse<SystemVO.UserVO> listUsers(
             CurrentUser currentUser,
             Long userId,
+            String uid,
             String username,
             String mobile,
             String email,
@@ -109,7 +111,16 @@ public class SystemUserManagementAppService {
                 where u.deleted = 0
                 """;
         List<Object> params = new ArrayList<>();
-        if (userId != null) {
+        if (StringUtils.hasText(uid)) {
+            String normalizedUid = uid.trim();
+            if (normalizedUid.matches("\\d+")) {
+                baseSql += " and u.id = ?";
+                params.add(Long.parseLong(normalizedUid));
+            } else {
+                baseSql += " and u.uuid = ?";
+                params.add(normalizedUid);
+            }
+        } else if (userId != null) {
             baseSql += " and u.id = ?";
             params.add(userId);
         }
@@ -212,7 +223,7 @@ public class SystemUserManagementAppService {
             params.add(cursorCreatedAtValue);
         }
         String selectSql = """
-                select u.id, iu.user_no as userNo, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName,
+                select u.id, u.uuid as uid, u.uuid as user_uuid, iu.user_no as userNo, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName,
                        u.avatar_url as avatarUrl, u.email, u.birth_month as birthMonth, u.gender, u.region,
                        u.available_time as availableTime, u.status, iu.source,
                        coalesce(iu.registered_at, u.created_at) as registeredAt,
@@ -414,7 +425,7 @@ public class SystemUserManagementAppService {
     private SystemVO.UserVO queryUser(Long userId) {
         SystemVO.UserVO user = queryOne(
                 """
-                        select u.id, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName, u.avatar_url as avatarUrl,
+                        select u.id, u.uuid as uid, u.uuid as user_uuid, u.username, u.mobile, u.id_card_number as idCardNumber, u.nickname, u.real_name as realName, u.avatar_url as avatarUrl,
                                u.email, u.birth_month as birthMonth, u.gender, u.region, u.available_time as availableTime,
                                u.status, iu.user_no as userNo, iu.source,
                                coalesce(iu.registered_at, u.created_at) as registeredAt,
@@ -658,10 +669,32 @@ public class SystemUserManagementAppService {
 
         Map<Long, List<String>> roleNames = listUserRoleNames(userIds);
         Map<Long, List<String>> deptNames = listUserDeptNames(userIds);
+        Map<Long, String> userUuids = listUserUuids(userIds);
         users.forEach(user -> {
+            String userUuid = userUuids.get(user.getId());
+            if (StringUtils.hasText(userUuid)) {
+                user.setUid(userUuid);
+                user.setUserUuid(userUuid);
+            }
             user.setRoleNames(roleNames.getOrDefault(user.getId(), List.of()));
             user.setDeptNames(deptNames.getOrDefault(user.getId(), List.of()));
         });
+    }
+
+    private Map<Long, String> listUserUuids(List<Long> userIds) {
+        if (CollectionUtils.isEmpty(userIds)) {
+            return Map.of();
+        }
+        return jdbcTemplate.query(
+                """
+                        select id, uuid
+                        from sys_user
+                        where deleted = 0
+                          and id in (%s)
+                        """.formatted(placeholders(userIds.size())),
+                (rs, rowNum) -> Map.entry(rs.getLong("id"), rs.getString("uuid")),
+                userIds.toArray()
+        ).stream().collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> left));
     }
 
     private void decorateIamUserDetail(SystemVO.UserDetailVO detail, Long userId, boolean canViewSensitive) {
@@ -1169,6 +1202,8 @@ public class SystemUserManagementAppService {
 
     private void copyUser(SystemVO.UserDetailVO target, SystemVO.UserVO source) {
         target.setId(source.getId());
+        target.setUid(source.getUid());
+        target.setUserUuid(source.getUserUuid());
         target.setUserNo(source.getUserNo());
         target.setUsername(source.getUsername());
         target.setMobile(source.getMobile());

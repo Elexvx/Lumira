@@ -6,6 +6,8 @@ import java.util.List;
 public class UserVO {
 
     private Long id;
+    private String uid;
+    private String userUuid;
     private String userNo;
     private String username;
     private String mobile;
@@ -29,6 +31,10 @@ public class UserVO {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+    public String getUid() { return uid; }
+    public void setUid(String uid) { this.uid = uid; }
+    public String getUserUuid() { return userUuid; }
+    public void setUserUuid(String userUuid) { this.userUuid = userUuid; }
     public String getUserNo() { return userNo; }
     public void setUserNo(String userNo) { this.userNo = userNo; }
     public String getUsername() { return username; }

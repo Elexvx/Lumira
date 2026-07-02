@@ -24,4 +24,22 @@ describe('dictItemsToOptions', () => {
 
     expect(dictItemsToOptions(items, [])).toEqual([{ value: 'PUBLIC', label: 'Public' }]);
   });
+
+  it('uses fallback labels for matching runtime values', () => {
+    const items: DictItemRecord[] = [
+      {
+        id: 1,
+        dictTypeId: 2,
+        itemLabel: 'Innovation',
+        itemValue: 'INNOVATION',
+        sortNo: 10,
+        status: 'ENABLED',
+        remark: '',
+      },
+    ];
+
+    expect(dictItemsToOptions(items, [{ value: 'INNOVATION', label: '创新赛' }])).toEqual([
+      { value: 'INNOVATION', label: '创新赛' },
+    ]);
+  });
 });

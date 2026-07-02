@@ -92,6 +92,7 @@ public class IamV2Controller {
                 systemManagementAppService.listUsers(
                         securityContextFacade.getCurrentUser(),
                         userId,
+                        null,
                         username,
                         mobile,
                         email,

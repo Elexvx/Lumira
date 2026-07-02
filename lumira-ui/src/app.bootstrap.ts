@@ -82,33 +82,22 @@ const COMPETITION_MENU_ROOT: MenuNode = {
   path: '/competitions',
   component: 'redirect:/competitions/register',
   icon: 'TrophyOutlined',
-  sortNo: 4,
-  children: [],
-};
-
-const ACTIVITY_MENU_ROOT: MenuNode = {
-  id: -1041,
-  menuCode: 'activity.root',
-  name: '\u6d3b\u52a8',
-  path: '/activities',
-  component: 'redirect:/activities/register',
-  icon: 'CalendarOutlined',
   sortNo: 5,
   children: [],
 };
 
+const REGISTRATION_MENU_ROOT: MenuNode = {
+  id: -1069,
+  menuCode: 'registration.root',
+  name: '\u62a5\u540d',
+  path: '/registration',
+  component: 'redirect:/competitions/register',
+  icon: 'FormOutlined',
+  sortNo: 4,
+  children: [],
+};
+
 const COMPETITION_APPLICATION_MENUS: BootstrapMenuNode[] = [
-  {
-    id: -1075,
-    parentId: -1070,
-    menuCode: 'competition.registration',
-    name: '\u8d5b\u4e8b\u62a5\u540d',
-    path: '/competitions/register',
-    component: '@/pages/competition',
-    icon: 'FormOutlined',
-    sortNo: 1,
-    access: 'canVisitCompetitionRegister',
-  },
   {
     id: -1077,
     parentId: -1070,
@@ -122,16 +111,27 @@ const COMPETITION_APPLICATION_MENUS: BootstrapMenuNode[] = [
   },
 ];
 
-const ACTIVITY_APPLICATION_MENUS: BootstrapMenuNode[] = [
+const REGISTRATION_APPLICATION_MENUS: BootstrapMenuNode[] = [
+  {
+    id: -1075,
+    parentId: -1069,
+    menuCode: 'competition.registration',
+    name: '\u8d5b\u4e8b\u62a5\u540d',
+    path: '/competitions/register',
+    component: '@/pages/competition',
+    icon: 'FormOutlined',
+    sortNo: 1,
+    access: 'canVisitCompetitionRegister',
+  },
   {
     id: -1076,
-    parentId: -1041,
+    parentId: -1069,
     menuCode: 'activity.registration',
     name: '\u6d3b\u52a8\u62a5\u540d',
     path: '/activities/register',
     component: '@/pages/competition',
     icon: 'CalendarOutlined',
-    sortNo: 1,
+    sortNo: 2,
     access: 'canVisitActivityRegister',
   },
 ];
@@ -175,9 +175,7 @@ const filterMenusByAccess = (menus: MenuNode[] | undefined, currentUser: AppInit
     .filter((menu): menu is MenuNode => Boolean(menu));
 
 const mergeCompetitionApplicationChildren = (children: MenuNode[] | undefined, currentUser: AppInitialState['currentUser']) => {
-  const nextChildren = (children || []).filter(
-    (menu) => menu.menuCode !== 'activity.registration' && menu.path !== '/competitions/activity-register' && menu.path !== '/activities/register',
-  );
+  const nextChildren = [...(children || [])];
   const access = buildAccess({ currentUser }) as Record<string, unknown>;
   COMPETITION_APPLICATION_MENUS.forEach((requiredMenu) => {
     if (requiredMenu.access && !access[requiredMenu.access]) {
@@ -194,7 +192,7 @@ const mergeCompetitionApplicationChildren = (children: MenuNode[] | undefined, c
 const ensureCompetitionApplicationMenus = (menus: MenuNode[], currentUser: AppInitialState['currentUser']): MenuNode[] => {
   const access = buildAccess({ currentUser }) as Record<string, unknown>;
   const visibleCompetitionMenus = COMPETITION_APPLICATION_MENUS.filter((menu) => !menu.access || Boolean(access[menu.access]));
-  const normalizedMenus = removeLegacyActivityRegistrationMenus(menus);
+  const normalizedMenus = menus;
   if (!visibleCompetitionMenus.length) {
     return normalizedMenus;
   }
@@ -210,10 +208,10 @@ const ensureCompetitionApplicationMenus = (menus: MenuNode[], currentUser: AppIn
     }
 
     attached = true;
-      return {
-        ...menu,
-        children: mergeCompetitionApplicationChildren(menu.children, currentUser),
-      };
+    return {
+      ...menu,
+      children: mergeCompetitionApplicationChildren(menu.children, currentUser),
+    };
   });
 
   return attached
@@ -227,12 +225,27 @@ const ensureCompetitionApplicationMenus = (menus: MenuNode[], currentUser: AppIn
       ];
 };
 
-const mergeActivityApplicationChildren = (children: MenuNode[] | undefined, currentUser: AppInitialState['currentUser']) => {
+const isRegistrationApplicationMenu = (menu: MenuNode) =>
+  menu.menuCode === 'competition.registration'
+  || menu.menuCode === 'activity.registration'
+  || menu.path === '/competitions/register'
+  || menu.path === '/competitions/activity-register'
+  || menu.path === '/activities/register';
+
+const removeRegistrationApplicationMenus = (menus: MenuNode[]): MenuNode[] =>
+  menus
+    .filter((menu) => !isRegistrationApplicationMenu(menu))
+    .map((menu) => ({
+      ...menu,
+      ...(menu.children ? { children: removeRegistrationApplicationMenus(menu.children) } : {}),
+    }));
+
+const mergeRegistrationApplicationChildren = (children: MenuNode[] | undefined, currentUser: AppInitialState['currentUser']) => {
   const nextChildren = (children || []).filter(
-    (menu) => menu.menuCode !== 'activity.registration' && menu.path !== '/competitions/activity-register' && menu.path !== '/activities/register',
+    (menu) => !isRegistrationApplicationMenu(menu),
   );
   const access = buildAccess({ currentUser }) as Record<string, unknown>;
-  ACTIVITY_APPLICATION_MENUS.forEach((requiredMenu) => {
+  REGISTRATION_APPLICATION_MENUS.forEach((requiredMenu) => {
     if (requiredMenu.access && !access[requiredMenu.access]) {
       return;
     }
@@ -244,38 +257,27 @@ const mergeActivityApplicationChildren = (children: MenuNode[] | undefined, curr
   return nextChildren;
 };
 
-const removeLegacyActivityRegistrationMenus = (menus: MenuNode[]): MenuNode[] =>
-  menus
-    .filter((menu) => menu.menuCode !== 'activity.registration' && menu.path !== '/competitions/activity-register')
-    .map((menu) => ({
-      ...menu,
-      ...(menu.children ? { children: removeLegacyActivityRegistrationMenus(menu.children) } : {}),
-    }));
-
-const ensureActivityApplicationMenus = (menus: MenuNode[], currentUser: AppInitialState['currentUser']): MenuNode[] => {
+const ensureRegistrationApplicationMenus = (menus: MenuNode[], currentUser: AppInitialState['currentUser']): MenuNode[] => {
   const access = buildAccess({ currentUser }) as Record<string, unknown>;
-  const visibleActivityMenus = ACTIVITY_APPLICATION_MENUS.filter((menu) => !menu.access || Boolean(access[menu.access]));
-  const normalizedMenus = removeLegacyActivityRegistrationMenus(menus);
-  if (!visibleActivityMenus.length) {
-    return normalizedMenus;
-  }
-  if (visibleActivityMenus.every((menu) => hasMenuPath(normalizedMenus, menu.path))) {
+  const visibleRegistrationMenus = REGISTRATION_APPLICATION_MENUS.filter((menu) => !menu.access || Boolean(access[menu.access]));
+  const normalizedMenus = removeRegistrationApplicationMenus(menus);
+  if (!visibleRegistrationMenus.length) {
     return normalizedMenus;
   }
 
   let attached = false;
   const nextMenus = normalizedMenus.map((menu) => {
-    const isActivityRoot = menu.menuCode === ACTIVITY_MENU_ROOT.menuCode || menu.path === ACTIVITY_MENU_ROOT.path;
-    if (!isActivityRoot) {
+    const isRegistrationRoot = menu.menuCode === REGISTRATION_MENU_ROOT.menuCode || menu.path === REGISTRATION_MENU_ROOT.path;
+    if (!isRegistrationRoot) {
       return menu;
     }
 
     attached = true;
     return {
       ...menu,
-      path: ACTIVITY_MENU_ROOT.path,
-      component: ACTIVITY_MENU_ROOT.component,
-      children: mergeActivityApplicationChildren(menu.children, currentUser),
+      path: REGISTRATION_MENU_ROOT.path,
+      component: REGISTRATION_MENU_ROOT.component,
+      children: mergeRegistrationApplicationChildren(menu.children, currentUser),
     };
   });
 
@@ -284,8 +286,8 @@ const ensureActivityApplicationMenus = (menus: MenuNode[], currentUser: AppIniti
     : [
         ...nextMenus,
         {
-          ...ACTIVITY_MENU_ROOT,
-          children: mergeActivityApplicationChildren(ACTIVITY_MENU_ROOT.children, currentUser),
+          ...REGISTRATION_MENU_ROOT,
+          children: mergeRegistrationApplicationChildren(REGISTRATION_MENU_ROOT.children, currentUser),
         },
       ];
 };
@@ -622,7 +624,7 @@ const buildAuthenticatedInitialState = async (
 
   return {
     currentUser,
-    menuTree: ensureActivityApplicationMenus(
+    menuTree: ensureRegistrationApplicationMenus(
       ensureCompetitionApplicationMenus(filterMenusByAccess(menuTree, currentUser), currentUser),
       currentUser,
     ),

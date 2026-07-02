@@ -33,9 +33,9 @@ const INFERRED_PAGE_PERMISSIONS = new Map<
     {
       permissionKey: 'aiadc:registration:view',
       actionPermissions: [
-        { permissionKey: 'aiadc:registration:create', permissionName: '鍒涘缓璧涗簨鎶ュ悕' },
-        { permissionKey: 'aiadc:registration:update', permissionName: '缂栬緫璧涗簨鎶ュ悕' },
-        { permissionKey: 'aiadc:registration:pay', permissionName: '鏀粯鎶ュ悕璐圭敤' },
+        { permissionKey: 'aiadc:registration:create', permissionName: '创建赛事报名' },
+        { permissionKey: 'aiadc:registration:update', permissionName: '编辑赛事报名' },
+        { permissionKey: 'aiadc:registration:pay', permissionName: '支付报名费用' },
         { permissionKey: 'aiadc:project:view', permissionName: 'View projects for registration' },
         { permissionKey: 'aiadc:project:create', permissionName: 'Create projects for registration' },
       ],
@@ -153,16 +153,16 @@ export const normalizePermissionTree = (
       syntheticCompetitionChildren.push({
         nodeType: 'PAGE',
         pageKey: 'competition.registration.synthetic',
-        pageName: resolveBuiltinMessage('nav.competitions.register', '璧涗簨鎶ュ悕'),
+        pageName: resolveBuiltinMessage('nav.competitions.register', '赛事报名'),
         routePath: '/competitions/register',
         permissionKey: 'aiadc:registration:view',
         permissionGroup: 'aiadc',
         selectable: true,
         routeMatched: true,
         actionPermissions: [
-          { permissionKey: 'aiadc:registration:create', permissionName: '鍒涘缓璧涗簨鎶ュ悕' },
-          { permissionKey: 'aiadc:registration:update', permissionName: '缂栬緫璧涗簨鎶ュ悕' },
-          { permissionKey: 'aiadc:registration:pay', permissionName: '鏀粯鎶ュ悕璐圭敤' },
+          { permissionKey: 'aiadc:registration:create', permissionName: '创建赛事报名' },
+          { permissionKey: 'aiadc:registration:update', permissionName: '编辑赛事报名' },
+          { permissionKey: 'aiadc:registration:pay', permissionName: '支付报名费用' },
           { permissionKey: 'aiadc:project:view', permissionName: 'View projects for registration' },
           { permissionKey: 'aiadc:project:create', permissionName: 'Create projects for registration' },
         ],
@@ -190,7 +190,7 @@ export const normalizePermissionTree = (
       result.push({
         nodeType: 'CATALOG',
         pageKey: 'competition.synthetic.catalog',
-        pageName: resolveBuiltinMessage('nav.competitions.root', '璧涗簨'),
+        pageName: resolveBuiltinMessage('nav.competitions.root', '赛事'),
         selectable: false,
         routeMatched: true,
         children: syntheticCompetitionChildren,

@@ -774,6 +774,7 @@ public class SystemManagementAppService {
     public PageResponse<SystemVO.UserVO> listUsers(
             CurrentUser currentUser,
             Long userId,
+            String uid,
             String username,
             String mobile,
             String email,
@@ -790,7 +791,7 @@ public class SystemManagementAppService {
             long pageSize
     ) {
         return systemUserManagementAppService.listUsers(
-                currentUser, userId, username, mobile, email, deptId, status, source,
+                currentUser, userId, uid, username, mobile, email, deptId, status, source,
                 registeredStart, registeredEnd, lastLoginStart, lastLoginEnd,
                 cursorId, cursorCreatedAt, pageNo, pageSize
         );

@@ -134,8 +134,8 @@ describe('sessionBootstrap', () => {
       watermarkSettings: { enabled: false },
       floatingWindowSettings: { apiDocsQrEnabled: false },
     };
-    const menuTree = [{ menuCode: 'dashboard.home', name: '宸ヤ綔鍙?', path: '/dashboard/home' }];
-    const availablePlugins = [{ pluginCode: 'work-order-feedback', pluginName: '宸ュ崟鍙嶉', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' }];
+    const menuTree = [{ menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' }];
+    const availablePlugins = [{ pluginCode: 'work-order-feedback', pluginName: '工单反馈', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' }];
 
     mocks.request.mockResolvedValue({
       currentUser: bootstrapUser,

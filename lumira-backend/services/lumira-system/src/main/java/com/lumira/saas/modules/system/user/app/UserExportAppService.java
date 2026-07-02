@@ -115,6 +115,7 @@ public class UserExportAppService {
         PageResponse<SystemVO.UserVO> page = systemUserManagementAppService.listUsers(
                 currentUser,
                 request.getUserId(),
+                null,
                 request.getUsername(),
                 request.getMobile(),
                 request.getEmail(),
@@ -141,6 +142,7 @@ public class UserExportAppService {
             PageResponse<SystemVO.UserVO> page = systemUserManagementAppService.listUsers(
                     currentUser,
                     request.getUserId(),
+                    null,
                     request.getUsername(),
                     request.getMobile(),
                     request.getEmail(),

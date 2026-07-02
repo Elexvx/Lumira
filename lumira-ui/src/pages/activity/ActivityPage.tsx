@@ -347,7 +347,7 @@ const ActivityForm = ({ form }: { form: FormInstance<ActivityFormValues> }) => {
       }}
     >
       <Form.Item name="locale" label="语言" rules={[{ required: true }]}>
-        <Select mode="multiple" maxTagCount="responsive" options={localeOptions} placeholder="璇█锛堝彲澶氶€夛級" />
+        <Select mode="multiple" maxTagCount="responsive" options={localeOptions} placeholder="语言（可多选）" />
       </Form.Item>
       <Form.Item name="title" label="活动标题" rules={[{ required: true, message: '请输入活动标题' }]}>
         <Input maxLength={128} />
@@ -816,7 +816,7 @@ const ActivityManagementView = () => {
         render: (value) => {
           const locales = splitActivityLocales(typeof value === 'string' ? value : undefined);
           if (!locales.length) return '-';
-          return <Space size={4} wrap>{locales.map((item) => <Tag key={item}>{item === 'zh' ? '涓枃' : item === 'en' ? 'English' : item}</Tag>)}</Space>;
+          return <Space size={4} wrap>{locales.map((item) => <Tag key={item}>{item === 'zh' ? '中文' : item === 'en' ? 'English' : item}</Tag>)}</Space>;
         },
       },
       {

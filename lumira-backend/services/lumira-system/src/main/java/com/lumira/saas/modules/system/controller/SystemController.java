@@ -81,6 +81,7 @@ public class SystemController {
     public ApiResponse<PageResponse<SystemVO.UserVO>> users(
             @RequestParam(name = "username", required = false) String username,
             @RequestParam(name = "userId", required = false) Long userId,
+            @RequestParam(name = "uid", required = false) String uid,
             @RequestParam(name = "mobile", required = false) String mobile,
             @RequestParam(name = "email", required = false) String email,
             @RequestParam(name = "deptId", required = false) Long deptId,
@@ -100,6 +101,7 @@ public class SystemController {
                 systemManagementAppService.listUsers(
                         securityContextFacade.getCurrentUser(),
                         userId,
+                        uid,
                         username,
                         mobile,
                         email,

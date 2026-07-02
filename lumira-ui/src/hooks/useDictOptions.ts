@@ -9,7 +9,15 @@ export const dictItemsToOptions = (items: DictItemRecord[], fallbackOptions: Dic
   if (!items.length) {
     return fallbackOptions;
   }
-  return items.map((item) => ({ value: item.itemValue, label: item.itemLabel }));
+  const fallbackByValue = new Map(fallbackOptions.map((option) => [option.value, option]));
+  return items.map((item) => {
+    const fallback = fallbackByValue.get(item.itemValue);
+    return {
+      ...fallback,
+      value: item.itemValue,
+      label: fallback?.label ?? item.itemLabel,
+    };
+  });
 };
 
 export const useDictOptions = (dictCode: string, fallbackOptions: DictOption[] = []) => {

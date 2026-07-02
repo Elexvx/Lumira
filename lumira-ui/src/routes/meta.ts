@@ -31,6 +31,8 @@ const WORKBENCH_ROUTE_ALIASES: Record<string, string> = {
   '/activities/management/': '/activities/management',
   '/activities/register/': '/activities/register',
   '/activities/search/': '/activities/search',
+  '/registration': '/competitions/register',
+  '/registration/': '/competitions/register',
   '/competitions': '/competitions/register',
   '/competitions/': '/competitions/register',
   '/competitions/management/': '/competitions/management',
@@ -434,6 +436,7 @@ const dataSourceRoutes = [
 ];
 
 const dataManagementRoutes: BackendRouteRecord[] = [
+  { path: '/registration', redirect: '/competitions/register', name: 'nav.registration.root', icon: 'FormOutlined', hideInMenu: true },
   ...dataSourceRoutes,
   { path: '/data-management', redirect: '/competitions/management', name: 'nav.data.management', icon: 'DatabaseOutlined', access: 'canVisitDataManagement' },
   { path: '/data-management/download-center', component: '@/pages/files/DownloadCenter', name: 'nav.files.downloadCenter', icon: 'DownloadOutlined', access: 'canVisitDownloadCenter' },

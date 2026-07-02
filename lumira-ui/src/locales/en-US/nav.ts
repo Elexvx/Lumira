@@ -8,6 +8,7 @@ export default {
   'nav.activities.activities': 'Activity Management',
   'nav.activities.activityRegister': 'Activity Registration',
   'nav.activities.activitySearch': 'Activity Search',
+  'nav.registration.root': 'Registration',
   'nav.competitions.root': 'Competitions',
   'nav.competitions.management': 'Competition Management',
   'nav.competitions.register': 'Competition Registration',

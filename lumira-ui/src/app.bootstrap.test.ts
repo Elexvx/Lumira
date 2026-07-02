@@ -249,7 +249,13 @@ describe('getAppInitialState', () => {
     const { getAppInitialState } = await import('@/app.bootstrap');
     const initialState = await getAppInitialState();
 
-    expect(initialState.menuTree).toEqual([{ menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' }]);
+    expect(initialState.menuTree).toEqual([
+      { menuCode: 'dashboard.home', name: '工作台', path: '/dashboard/home' },
+      expect.objectContaining({
+        menuCode: 'registration.root',
+        children: [expect.objectContaining({ menuCode: 'activity.registration' })],
+      }),
+    ]);
     expect(initialState.availablePlugins).toEqual([
       { pluginCode: 'work-order-feedback', pluginName: '工单反馈', version: '1.0.0', manifestPath: '/plugins/work-order-feedback/manifest.json' },
     ]);
@@ -258,6 +264,35 @@ describe('getAppInitialState', () => {
     expect(mocks.request).not.toHaveBeenCalledWith('/v1/plugins/current/bootstrap', expect.any(Object));
     expect(mocks.request).not.toHaveBeenCalledWith('/v2/platform/runtime-appearance-settings', expect.any(Object));
     expect(mocks.request).not.toHaveBeenCalledWith('/v1/system/runtime-appearance-settings', expect.any(Object));
+  });
+
+  it('places competition and activity registration under the registration group when menus are missing', async () => {
+    mocks.restoreSession.mockResolvedValue({
+      currentUser: {
+        userId: 10,
+        username: 'registrar',
+        nickname: 'Registrar',
+        permissions: ['aiadc:registration:view'],
+        sessionId: 'session-registrar',
+      },
+      securitySettings: {},
+    });
+
+    const { getAppInitialState } = await import('@/app.bootstrap');
+    const initialState = await getAppInitialState();
+
+    const registrationRoot = initialState.menuTree?.find((menu) => menu.menuCode === 'registration.root');
+    expect(registrationRoot).toMatchObject({
+      name: '报名',
+      path: '/registration',
+      component: 'redirect:/competitions/register',
+    });
+    expect(registrationRoot?.children?.map((menu) => menu.menuCode)).toEqual([
+      'competition.registration',
+      'activity.registration',
+    ]);
+    expect(initialState.menuTree?.some((menu) => menu.menuCode === 'activity.registration')).toBe(false);
+    expect(Boolean(initialState.menuTree?.find((menu) => menu.menuCode === 'competition.root')?.children?.some((menu) => menu.menuCode === 'competition.registration'))).toBe(false);
   });
 
   it('falls back to authenticated v1 platform settings when v2 runtime appearance endpoint is unavailable', async () => {

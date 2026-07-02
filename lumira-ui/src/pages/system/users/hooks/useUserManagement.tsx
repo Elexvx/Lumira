@@ -87,10 +87,12 @@ const formatDateRangeBoundary = (value: unknown, index: 0 | 1) => {
 };
 
 const normalizeUserQueryParams = (params: Record<string, unknown>, deptId: number | null) => {
-  const { registeredAt, lastLoginAt, ...rest } = params;
+  const { registeredAt, lastLoginAt, id, uid, userUuid, ...rest } = params;
+  const uidValue = uid || userUuid || id || rest.userId;
 
   return {
     ...rest,
+    uid: uidValue || undefined,
     deptId: deptId || undefined,
     registeredStart: formatDateRangeBoundary(registeredAt, 0),
     registeredEnd: formatDateRangeBoundary(registeredAt, 1),
@@ -122,11 +124,14 @@ const userListIdentityColumns: ProColumns<UserRecord>[] = [
     render: (_: unknown, __: UserRecord, index: number) => index + 1,
   },
   {
-    title: 'ID',
-    dataIndex: 'id',
+    title: 'UID',
+    dataIndex: 'uid',
     search: true,
-    width: 96,
-    render: (_, record) => <Typography.Text copyable={{ text: String(record.id) }}>{record.id}</Typography.Text>,
+    width: 320,
+    render: (_, record) => {
+      const uid = record.uid || record.userUuid || String(record.id);
+      return <Typography.Text copyable={{ text: uid }} ellipsis={{ tooltip: uid }}>{uid}</Typography.Text>;
+    },
   },
   {
     title: t('用户编号', 'User number'),
@@ -683,7 +688,7 @@ export const useUserManagement = () => {
         lastUserQueryParamsRef.current = queryParams;
         return request<PagedResult<UserRecord>>('/v1/system/users', {
           method: 'GET',
-          params: queryParams,
+          params: { ...queryParams, _t: Date.now() },
           ...API_OPTS.NO_REDIRECT,
         });
       }),

@@ -8,6 +8,7 @@ export default {
   'nav.activities.activities': '活动管理',
   'nav.activities.activityRegister': '\u6d3b\u52a8\u62a5\u540d',
   'nav.activities.activitySearch': '活动查询',
+  'nav.registration.root': '报名',
   'nav.competitions.root': '赛事',
   'nav.competitions.management': '赛事管理',
   'nav.competitions.register': '赛事报名',
