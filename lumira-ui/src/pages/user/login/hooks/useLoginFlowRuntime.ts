@@ -259,6 +259,15 @@ const buildPasswordLoginPayload = async (password: string, key: LoginEncryptionK
   };
 };
 
+const isRecoverableLoginEncryptionError = (error: unknown) => {
+  if (!(error instanceof ApiRequestError) || error.code !== ErrorCode.BAD_REQUEST) {
+    return false;
+  }
+
+  const text = `${error.message || ''} ${error.userMessage || ''}`.toLowerCase();
+  return text.includes('解密') || text.includes('decrypt') || text.includes('encrypt') || text.includes('请求内容');
+};
+
 export type LoginFlowState = {
   submitting: boolean;
   setSubmitting: Dispatch<SetStateAction<boolean>>;
@@ -488,30 +497,44 @@ const useLoginFlowInteractions = ({
       if (!encryptionKey && canEncryptLoginPassword()) {
         return null;
       }
-      const loginPassword = await buildPasswordLoginPayload(newPassword, encryptionKey);
-      const loginPayload = {
-        account,
-        username: account,
-        password: loginPassword.password,
-      };
 
-      return request<LoginResponse>('/v2/auth/login', {
-        method: 'POST',
-        headers: loginPassword.headers,
-        data: loginPayload,
-        skipAuth: true,
-        silent: true,
-        allowDuplicate: true,
-      }).catch(() =>
-        request<LoginResponse>('/v1/auth/login', {
+      const submitLogin = async (key: LoginEncryptionKey | null) => {
+        const loginPassword = await buildPasswordLoginPayload(newPassword, key);
+        const loginPayload = {
+          account,
+          username: account,
+          password: loginPassword.password,
+        };
+
+        return request<LoginResponse>('/v2/auth/login', {
           method: 'POST',
           headers: loginPassword.headers,
           data: loginPayload,
           skipAuth: true,
           silent: true,
           allowDuplicate: true,
-        }),
-      );
+        }).catch(() =>
+          request<LoginResponse>('/v1/auth/login', {
+            method: 'POST',
+            headers: loginPassword.headers,
+            data: loginPayload,
+            skipAuth: true,
+            silent: true,
+            allowDuplicate: true,
+          }),
+        );
+      };
+
+      try {
+        return await submitLogin(encryptionKey);
+      } catch (error) {
+        if (!encryptionKey || !canEncryptLoginPassword() || !isRecoverableLoginEncryptionError(error)) {
+          throw error;
+        }
+
+        const refreshedKey = await bootstrapFlow.loadLoginEncryptionKey(true);
+        return submitLogin(refreshedKey);
+      }
     },
     [bootstrapFlow],
   );
@@ -912,44 +935,58 @@ export const useLoginFlowAuthInteractions = ({
       if (!encryptionKey && canEncryptLoginPassword()) {
         return null;
       }
-      const loginPassword = await buildPasswordLoginPayload(values.passwordPassword || '', encryptionKey);
 
-      return request<LoginResponse>('/v2/auth/login', {
-        method: 'POST',
-        headers: loginPassword.headers,
-        data: {
-          account: values.passwordAccount,
-          username: values.passwordAccount,
-          password: loginPassword.password,
-          captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
-          captchaCode: securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' ? values.captchaCode : undefined,
-          captchaProof: securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' ? values.captchaProof : undefined,
-        },
-        skipAuth: true,
-        silent: true,
-        allowDuplicate: true,
-      })
-        .catch((error) => {
-          if (!shouldFallbackToLegacyPasswordLogin(error)) {
-            throw error;
-          }
+      const submitLogin = async (key: LoginEncryptionKey | null) => {
+        const loginPassword = await buildPasswordLoginPayload(values.passwordPassword || '', key);
 
-          return request<LoginResponse>('/v1/auth/login', {
-            method: 'POST',
-            headers: loginPassword.headers,
-            data: {
-              account: values.passwordAccount,
-              username: values.passwordAccount,
-              password: loginPassword.password,
-              captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
-              captchaCode: securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' ? values.captchaCode : undefined,
-              captchaProof: securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' ? values.captchaProof : undefined,
-            },
-            skipAuth: true,
-            silent: true,
-            allowDuplicate: true,
+        return request<LoginResponse>('/v2/auth/login', {
+          method: 'POST',
+          headers: loginPassword.headers,
+          data: {
+            account: values.passwordAccount,
+            username: values.passwordAccount,
+            password: loginPassword.password,
+            captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
+            captchaCode: securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' ? values.captchaCode : undefined,
+            captchaProof: securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' ? values.captchaProof : undefined,
+          },
+          skipAuth: true,
+          silent: true,
+          allowDuplicate: true,
+        })
+          .catch((error) => {
+            if (!shouldFallbackToLegacyPasswordLogin(error)) {
+              throw error;
+            }
+
+            return request<LoginResponse>('/v1/auth/login', {
+              method: 'POST',
+              headers: loginPassword.headers,
+              data: {
+                account: values.passwordAccount,
+                username: values.passwordAccount,
+                password: loginPassword.password,
+                captchaId: securitySettings.captchaEnabled ? captchaChallenge?.captchaId : undefined,
+                captchaCode: securitySettings.captchaEnabled && securitySettings.captchaType === 'IMAGE' ? values.captchaCode : undefined,
+                captchaProof: securitySettings.captchaEnabled && securitySettings.captchaType === 'SLIDER' ? values.captchaProof : undefined,
+              },
+              skipAuth: true,
+              silent: true,
+              allowDuplicate: true,
+            });
           });
-        });
+      };
+
+      try {
+        return await submitLogin(encryptionKey);
+      } catch (error) {
+        if (!encryptionKey || !canEncryptLoginPassword() || !isRecoverableLoginEncryptionError(error)) {
+          throw error;
+        }
+
+        const refreshedKey = await bootstrapFlow.loadLoginEncryptionKey(true);
+        return submitLogin(refreshedKey);
+      }
     },
     [bootstrapFlow, captchaChallenge?.captchaId, securitySettings.captchaEnabled, securitySettings.captchaType],
   );

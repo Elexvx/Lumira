@@ -70,7 +70,7 @@ export type LoginBootstrapFlow = {
   setActiveLoginMode: (mode: LoginMode | ((current: LoginMode) => LoginMode)) => void;
   loginCapabilities: LoginCapabilitiesState;
   loginEncryptionKey: LoginEncryptionKey | null;
-  loadLoginEncryptionKey: () => Promise<LoginEncryptionKey | null>;
+  loadLoginEncryptionKey: (forceRefresh?: boolean) => Promise<LoginEncryptionKey | null>;
   agreementPreviewOpen: boolean;
   setAgreementPreviewOpen: (open: boolean) => void;
   agreementPreviewKind: 'user' | 'privacy';
@@ -319,9 +319,14 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
     () => (agreementPreviewKind === 'user' ? agreementSettings.userAgreementMarkdown : agreementSettings.privacyAgreementMarkdown),
     [agreementPreviewKind, agreementSettings.privacyAgreementMarkdown, agreementSettings.userAgreementMarkdown],
   );
-  const loadLoginEncryptionKey = useCallback(async () => {
-    if (loginEncryptionKey) {
+  const loadLoginEncryptionKey = useCallback(async (forceRefresh = false) => {
+    if (loginEncryptionKey && !forceRefresh) {
       return loginEncryptionKey;
+    }
+
+    if (forceRefresh) {
+      loginEncryptionLoadPromiseRef.current = null;
+      setLoginEncryptionKey(null);
     }
 
     if (!loginEncryptionLoadPromiseRef.current) {
@@ -332,6 +337,8 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
         silent: true,
         skipAuth: true,
         method: 'GET',
+        params: forceRefresh ? { _t: Date.now() } : undefined,
+        headers: forceRefresh ? { 'Cache-Control': 'no-cache' } : undefined,
         timeoutMs: LOGIN_ENCRYPTION_KEY_TIMEOUT_MS,
       })
         .catch(() =>
@@ -341,6 +348,8 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
             silent: true,
             skipAuth: true,
             method: 'GET',
+            params: forceRefresh ? { _t: Date.now() } : undefined,
+            headers: forceRefresh ? { 'Cache-Control': 'no-cache' } : undefined,
             timeoutMs: LOGIN_ENCRYPTION_KEY_TIMEOUT_MS,
           }),
         )
