@@ -429,7 +429,10 @@ const sanitizeSchedules = (schedules?: CompetitionScheduleFormItem[]): Competiti
 };
 
 const organizerLabel = (organizer: CompetitionOrganizerFormItem) =>
-  [organizer.role, organizer.name].map(trimOptional).filter(Boolean).join('锛?');
+  [organizer.role, organizer.name].map(trimOptional).filter(Boolean).join('：');
+
+const normalizeMojibakeText = (value?: string | null) =>
+  trimOptional(value)?.replace(/锛\?|锟\?/g, '：');
 
 const normalizePayload = (values: CompetitionFormValues): CompetitionUpsertPayload => {
   const [registrationStart, registrationEnd] = values.registrationRange || [];
@@ -491,8 +494,8 @@ const recordToFormValues = (record: CompetitionRecord): Partial<CompetitionFormV
     category: normalizeOptionValue(record.category) || undefined,
     level: normalizeOptionValue(record.level) || undefined,
     competitionLevel: normalizeOptionValue(record.competitionLevel || record.level) || undefined,
-    organizer: record.organizer || undefined,
-    organizers: organizers.length ? organizers : [{ role: 'Organizer', name: record.organizer || '' }],
+    organizer: normalizeMojibakeText(record.organizer),
+    organizers: organizers.length ? organizers : [{ role: '主办方', name: normalizeMojibakeText(record.organizer) || '' }],
     registrationRange: parseRange(record.registrationStart, record.registrationEnd),
     schedules: schedules.length ? schedules : [{ timeMode: 'CONFIRMED', title: '竞赛时间', timeRange: parseRange(record.competitionStart, record.competitionEnd) }],
     participationScope: record.participationScope || record.location || undefined,
@@ -3405,7 +3408,7 @@ const CompetitionBasicSettingsPanel = forwardRef<CompetitionSettingsPanelHandle,
           </Typography.Title>
           <Form.List name="organizers">
             {(fields, { add, remove }) => (
-              <Form.Item className="competition-organizer-list" label="Organizers" required>
+              <Form.Item className="competition-organizer-list" label="组织者" required>
                 <Space direction="vertical" size={12} className="competition-dynamic-list">
                   {fields.map((field, index) => (
                     <div key={field.key} className="competition-dynamic-list__row">
@@ -3969,7 +3972,7 @@ const CompetitionPage = () => {
         dataIndex: 'organizer',
         search: false,
         ellipsis: true,
-        render: (value) => value || '-',
+        render: (value) => normalizeMojibakeText(value as string | null | undefined) || '-',
       },
       {
         title: '语言',
