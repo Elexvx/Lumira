@@ -21,6 +21,23 @@ const normalizeErrorText = (error: ApiErrorLike) => `${error.userMessage || ''} 
 
 const includesAny = (text: string, keywords: string[]) => keywords.some((keyword) => text.includes(keyword.toLowerCase()));
 
+export const isLoginPasswordPayloadError = (error: ApiErrorLike) => {
+  if (error.code !== ErrorCode.BAD_REQUEST) {
+    return false;
+  }
+  const text = normalizeErrorText(error);
+  return includesAny(text, [
+    '登录密码解密失败',
+    '登录密码不能为空',
+    'login password decrypt',
+    'login password',
+    'decrypt',
+    'encrypt',
+    '请求内容',
+    'request content',
+  ]);
+};
+
 export const shouldFallbackToLegacyPasswordLogin = (error: unknown) =>
   error instanceof ApiRequestError && (error.httpStatus === 404 || error.code === ErrorCode.NOT_FOUND);
 
@@ -29,6 +46,13 @@ export const resolveLoginErrorFeedback = (error: ApiErrorLike, translate: LoginF
   const text = normalizeErrorText(error);
 
   if (LOGIN_CREDENTIAL_ERROR_CODES.has(error.code)) {
+    return {
+      type: 'warning',
+      message: translate({ id: 'page.login.error.invalidCredentials', defaultMessage: '账号或密码错误' }),
+    };
+  }
+
+  if (isLoginPasswordPayloadError(error)) {
     return {
       type: 'warning',
       message: translate({ id: 'page.login.error.invalidCredentials', defaultMessage: '账号或密码错误' }),

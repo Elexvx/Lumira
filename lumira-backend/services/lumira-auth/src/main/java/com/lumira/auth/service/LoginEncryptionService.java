@@ -58,7 +58,7 @@ public class LoginEncryptionService {
             return new String(decrypted, StandardCharsets.UTF_8);
         } catch (IllegalArgumentException | GeneralSecurityException ex) {
             log.warn("登录密码解密失败: {}", ex.getClass().getSimpleName(), ex);
-            throw new BizException(ErrorCode.BAD_REQUEST, "登录密码解密失败", ErrorCode.BAD_REQUEST.getDefaultUserMessage());
+            throw new BizException(ErrorCode.BAD_REQUEST, "登录密码解密失败", ErrorCode.LOGIN_FAILED.getDefaultUserMessage());
         }
     }
 

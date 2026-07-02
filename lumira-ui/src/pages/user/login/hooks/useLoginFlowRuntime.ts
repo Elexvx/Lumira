@@ -32,7 +32,7 @@ import { request, type RequestOptions } from '@/services/common/request';
 import type { MenuNode, PasskeyOptions, PluginAvailability } from '@/types/api';
 import type { BrandingSettings, FloatingWindowSettings, WatermarkSettings } from '@/types/api';
 import { API_OPTS } from '@/utils/errorMessage';
-import { resolveLoginErrorFeedback, shouldFallbackToLegacyPasswordLogin } from '@/pages/user/login/utils/loginErrorFeedback';
+import { isLoginPasswordPayloadError, resolveLoginErrorFeedback, shouldFallbackToLegacyPasswordLogin } from '@/pages/user/login/utils/loginErrorFeedback';
 
 export type LoginInputKind = 'account' | 'mobile' | 'email' | 'verificationCode';
 
@@ -260,12 +260,10 @@ const buildPasswordLoginPayload = async (password: string, key: LoginEncryptionK
 };
 
 const isRecoverableLoginEncryptionError = (error: unknown) => {
-  if (!(error instanceof ApiRequestError) || error.code !== ErrorCode.BAD_REQUEST) {
+  if (!(error instanceof ApiRequestError)) {
     return false;
   }
-
-  const text = `${error.message || ''} ${error.userMessage || ''}`.toLowerCase();
-  return text.includes('解密') || text.includes('decrypt') || text.includes('encrypt') || text.includes('请求内容');
+  return isLoginPasswordPayloadError(error);
 };
 
 export type LoginFlowState = {
