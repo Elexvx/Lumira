@@ -38,6 +38,17 @@ lumira:
       tesseract-command: ${LUMIRA_FILE_OCR_TESSERACT_COMMAND:tesseract}
       languages: ${LUMIRA_FILE_OCR_LANGUAGES:eng+chi_sim}
       timeout-millis: ${LUMIRA_FILE_OCR_TIMEOUT_MILLIS:5000}
+  ai:
+    owner-integrations:
+      internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
+    totp-digits: ${VERIFICATION_TOTP_DIGITS:6}
+    totp-step-seconds: ${VERIFICATION_TOTP_STEP_SECONDS:30}
+    bind-challenge-expire-minutes: ${VERIFICATION_BIND_CHALLENGE_EXPIRE_MINUTES:10}
+    login-challenge-expire-minutes: ${VERIFICATION_LOGIN_CHALLENGE_EXPIRE_MINUTES:5}
+    recovery-code-count: ${VERIFICATION_RECOVERY_CODE_COUNT:8}
+    recovery-code-length: ${VERIFICATION_RECOVERY_CODE_LENGTH:8}
+    expose-debug-code: ${VERIFICATION_EXPOSE_DEBUG_CODE:false}
+    email-login-enabled: ${VERIFICATION_EMAIL_LOGIN_ENABLED:false}
 
 server:
   port: 8080
@@ -211,19 +222,6 @@ saas:
     auth-service-base-url: ${AUTH_SERVICE_BASE_URL:http://localhost:${server.port}}
   verification:
     issuer: ${VERIFICATION_ISSUER:lumira}
-
-lumira:
-  ai:
-    owner-integrations:
-      internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
-    totp-digits: ${VERIFICATION_TOTP_DIGITS:6}
-    totp-step-seconds: ${VERIFICATION_TOTP_STEP_SECONDS:30}
-    bind-challenge-expire-minutes: ${VERIFICATION_BIND_CHALLENGE_EXPIRE_MINUTES:10}
-    login-challenge-expire-minutes: ${VERIFICATION_LOGIN_CHALLENGE_EXPIRE_MINUTES:5}
-    recovery-code-count: ${VERIFICATION_RECOVERY_CODE_COUNT:8}
-    recovery-code-length: ${VERIFICATION_RECOVERY_CODE_LENGTH:8}
-    expose-debug-code: ${VERIFICATION_EXPOSE_DEBUG_CODE:false}
-    email-login-enabled: ${VERIFICATION_EMAIL_LOGIN_ENABLED:false}
 
 ---
 spring:
