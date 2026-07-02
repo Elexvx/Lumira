@@ -292,10 +292,7 @@ const _defaultPreliminaryFormSchema = JSON.stringify(
   2,
 );
 
-const trimOptional = (value?: string | null) => {
-  const trimmed = value?.trim();
-  return trimmed || undefined;
-};
+const trimOptional = (value?: unknown) => normalizeDisplayText(value);
 
 const normalizeDisplayText = (value: unknown): string | undefined => {
   if (value === undefined || value === null) {
