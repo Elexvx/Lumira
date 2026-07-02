@@ -21,6 +21,67 @@ const CATALOG_LABEL_BY_PERMISSION_KEY = new Map<string, string>([
   ['profile:view', 'nav.user.personalCenter'],
 ]);
 
+const CATALOG_LABEL_BY_PAGE_KEY = new Map<string, string>([
+  ['-1100', 'nav.data.management'],
+  ['data.management.root', 'nav.data.management'],
+  ['-1101', 'nav.data.queryCenter'],
+  ['data.query-center', 'nav.data.queryCenter'],
+  ['-1069', 'nav.competitions.register'],
+  ['registration.root', 'nav.competitions.register'],
+  ['-1070', 'nav.competitions.root'],
+  ['competition.root', 'nav.competitions.root'],
+  ['-1079', 'nav.certificates.root'],
+  ['certificate.root', 'nav.certificates.root'],
+  ['-1060', 'nav.experts.root'],
+  ['expert.root', 'nav.experts.root'],
+  ['-950', 'nav.user.center'],
+  ['user.center.root', 'nav.user.center'],
+  ['-940', 'nav.user.personalCenter'],
+  ['user.center.personal', 'nav.user.personalCenter'],
+]);
+
+const CATALOG_LABEL_BY_RAW_NAME = new Map<string, string>([
+  ['Data Management', 'nav.data.management'],
+  ['数据管理', 'nav.data.management'],
+  ['鏁版嵁绠＄悊', 'nav.data.management'],
+  ['Query Center', 'nav.data.queryCenter'],
+  ['查询中心', 'nav.data.queryCenter'],
+  ['鏌ヨ涓績', 'nav.data.queryCenter'],
+  ['Registration', 'nav.competitions.register'],
+  ['报名', 'nav.competitions.register'],
+  ['鎶ュ悕', 'nav.competitions.register'],
+  ['Competitions', 'nav.competitions.root'],
+  ['赛事', 'nav.competitions.root'],
+  ['璧涗簨', 'nav.competitions.root'],
+  ['Certificate Management', 'nav.certificates.root'],
+  ['证书管理', 'nav.certificates.root'],
+  ['璇佷功绠＄悊', 'nav.certificates.root'],
+  ['Expert Library', 'nav.experts.root'],
+  ['Expert library', 'nav.experts.root'],
+  ['专家库', 'nav.experts.root'],
+  ['User Center', 'nav.user.center'],
+  ['用户中心', 'nav.user.center'],
+  ['鐢ㄦ埛涓績', 'nav.user.center'],
+  ['Personal Center', 'nav.user.personalCenter'],
+  ['个人中心', 'nav.user.personalCenter'],
+  ['涓汉涓績', 'nav.user.personalCenter'],
+]);
+
+const resolveCatalogMessageKey = (node: PermissionTreeRecord) => {
+  const pageKeyMessageKey = node.pageKey ? CATALOG_LABEL_BY_PAGE_KEY.get(node.pageKey) : undefined;
+  if (pageKeyMessageKey) {
+    return pageKeyMessageKey;
+  }
+
+  const rawName = node.pageName?.trim();
+  const rawNameMessageKey = rawName ? CATALOG_LABEL_BY_RAW_NAME.get(rawName) : undefined;
+  if (rawNameMessageKey) {
+    return rawNameMessageKey;
+  }
+
+  return node.permissionKey ? CATALOG_LABEL_BY_PERMISSION_KEY.get(node.permissionKey) : undefined;
+};
+
 const INFERRED_PAGE_PERMISSIONS = new Map<
   string,
   {
@@ -46,21 +107,26 @@ const INFERRED_PAGE_PERMISSIONS = new Map<
     {
       permissionKey: 'aiadc:activity:view',
       actionPermissions: [
-        { permissionKey: 'aiadc:activity:create', permissionName: '鍒涘缓娲诲姩鎶ュ悕' },
+        { permissionKey: 'aiadc:activity:create', permissionName: '创建活动报名' },
       ],
     },
   ],
 ]);
 
-const resolveCanonicalPageName = (node: PermissionTreeRecord, routePath: string) => {
+const resolveCanonicalPageName = (node: PermissionTreeRecord, routePath: string, nodeType: PermissionTreeRecord['nodeType']) => {
+  const catalogMessageKey = nodeType === 'CATALOG' ? resolveCatalogMessageKey(node) : undefined;
+  if (catalogMessageKey) {
+    return resolveBuiltinMessage(catalogMessageKey, node.pageName);
+  }
+
   const routeMeta = routePath ? realPageRouteMetaMap.get(routePath) ?? backendRouteMetaMap.get(routePath) : undefined;
   if (routeMeta?.name) {
     return resolveBuiltinMessage(routeMeta.name, node.pageName);
   }
 
-  const catalogMessageKey = node.permissionKey ? CATALOG_LABEL_BY_PERMISSION_KEY.get(node.permissionKey) : undefined;
-  if (catalogMessageKey) {
-    return resolveBuiltinMessage(catalogMessageKey, node.pageName);
+  const permissionCatalogMessageKey = resolveCatalogMessageKey(node);
+  if (permissionCatalogMessageKey) {
+    return resolveBuiltinMessage(permissionCatalogMessageKey, node.pageName);
   }
 
   return node.pageName;
@@ -135,7 +201,7 @@ export const normalizePermissionTree = (
     result.push({
       ...node,
       nodeType,
-      pageName: resolveCanonicalPageName(node, routePath),
+      pageName: resolveCanonicalPageName(node, routePath, nodeType),
       selectable: selectablePage,
       routePath: nodeType === 'PAGE' ? routePath : undefined,
       routeMatched,
@@ -181,7 +247,7 @@ export const normalizePermissionTree = (
         selectable: true,
         routeMatched: true,
         actionPermissions: [
-          { permissionKey: 'aiadc:activity:create', permissionName: '鍒涘缓娲诲姩鎶ュ悕' },
+          { permissionKey: 'aiadc:activity:create', permissionName: '创建活动报名' },
         ],
       });
     }

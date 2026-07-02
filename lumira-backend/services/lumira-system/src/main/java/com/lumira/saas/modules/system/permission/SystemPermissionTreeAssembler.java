@@ -110,7 +110,7 @@ public final class SystemPermissionTreeAssembler {
         node.setPageKey(menu.getId() != null ? String.valueOf(menu.getId()) : StringUtils.hasText(menu.getPath()) ? menu.getPath() : menu.getMenuCode());
         node.setPageName(menu.getMenuName());
         node.setNodeType(nodeType);
-        node.setRoutePath(NODE_TYPE_PAGE.equals(nodeType) ? menu.getPath() : null);
+        node.setRoutePath((NODE_TYPE_PAGE.equals(nodeType) || NODE_TYPE_CATALOG.equals(nodeType)) ? menu.getPath() : null);
         node.setIcon(menu.getIcon());
         node.setPermissionKey(menu.getPermissionKey());
         node.setSelectable(selectable);

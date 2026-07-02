@@ -2469,7 +2469,7 @@ VALUES
     (-1088, -1082, 'certificate.records.download', 'Download certificate', 'BUTTON', NULL, NULL, NULL, 1, 'aiadc:certificate:download', 'ENABLED', 0, 0, 0),
     (-1089, -1082, 'certificate.records.regenerate', 'Regenerate certificate', 'BUTTON', NULL, NULL, NULL, 2, 'aiadc:certificate:regenerate', 'ENABLED', 0, 0, 0),
     (-1090, -1082, 'certificate.records.revoke', 'Revoke certificate', 'BUTTON', NULL, NULL, NULL, 3, 'aiadc:certificate:revoke', 'ENABLED', 0, 0, 0),
-    (-1060, 0, 'expert.root', 'Expert library', 'CATALOG', '/experts', 'redirect:/experts/management', 'SolutionOutlined', 7, NULL, 'ENABLED', 0, 0, 0),
+    (-1060, 0, 'expert.root', '专家库', 'CATALOG', '/experts', 'redirect:/experts/management', 'SolutionOutlined', 7, NULL, 'ENABLED', 0, 0, 0),
     (-1061, -1060, 'expert.management', '专家管理', 'MENU', '/experts/management', '@/pages/expert', 'SolutionOutlined', 1, 'expert:view', 'ENABLED', 0, 0, 0),
     (-1065, -1060, 'expert.query', '专家查询', 'MENU', '/experts/query', '@/pages/expert', 'SearchOutlined', 2, 'expert:view', 'ENABLED', 0, 0, 0),
     (-1062, -1061, 'expert.management.create', '创建专家', 'BUTTON', NULL, NULL, NULL, 1, 'expert:create', 'ENABLED', 0, 0, 0),

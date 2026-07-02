@@ -84,6 +84,21 @@ class SystemPermissionTreeAssemblerTest {
     }
 
     @Test
+    void shouldKeepCatalogRoutePathForFrontendLocalization() {
+        SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
+        SystemVO.MenuVO root = menu("Expert library", "/experts", null);
+        root.setMenuType("CATALOG");
+        root.setChildren(List.of(menu("专家管理", "/experts/management", "expert:view")));
+
+        List<SystemVO.PermissionTreeVO> tree = assembler.build(
+                List.of(root),
+                List.of(permission("expert:view", "查看专家"))
+        );
+
+        assertTrue(tree.stream().anyMatch(node -> "CATALOG".equals(node.getNodeType()) && "/experts".equals(node.getRoutePath())));
+    }
+
+    @Test
     void shouldAttachDatabaseButtonMenusAsPageActions() {
         SystemPermissionTreeAssembler assembler = new SystemPermissionTreeAssembler();
         SystemVO.MenuVO page = menu("AI 助手", "/ai/assistant", "ai:assistant:view");
