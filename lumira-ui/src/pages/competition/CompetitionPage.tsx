@@ -53,6 +53,7 @@ import type {
   CompetitionUpsertPayload,
 } from '@/services/competition/types';
 import { request } from '@/services/common/request';
+import type { FileObjectRecord, FileStorageSpaceRecord, PagedResult } from '@/types/api';
 import ActivityRegistrationPage from '@/pages/competition/ActivityRegistrationPage';
 import ExpertApplicationPage from '@/pages/competition/ExpertApplicationPage';
 import { isBasicSettingsPageReadyToSave, isTimelineSettingsPageReadyToSave } from '@/pages/competition/competitionSettingsSave';
@@ -92,6 +93,17 @@ type RegistrationFormValues = {
   newProjectTitle?: string;
   newProjectDescription?: string;
   materials?: Record<string, unknown>;
+};
+
+type CompetitionStageFormField = {
+  key: string;
+  label?: string;
+  type?: string;
+  required?: boolean;
+  maxLength?: number;
+  fileFormat?: string;
+  maxSizeMb?: number;
+  storageKey?: string;
 };
 
 type RegistrationTeamMemberDraft = RegistrationSnapshotMemberPayload;
@@ -1493,14 +1505,155 @@ const CreateCompetitionPage = () => {
 
 const parseFormFields = (form?: CompetitionStageFormRecord) => {
   if (!form?.formSchemaJson) {
-    return [];
+    return [] as CompetitionStageFormField[];
   }
   try {
     const parsed = JSON.parse(form.formSchemaJson);
-    return Array.isArray(parsed.fields) ? parsed.fields : [];
+    return Array.isArray(parsed.fields) ? (parsed.fields as CompetitionStageFormField[]) : [];
   } catch {
-    return [];
+    return [] as CompetitionStageFormField[];
   }
+};
+
+const competitionMaterialFileFormatConfig: Record<string, { extensions: string[]; label: string }> = {
+  DOCUMENT: {
+    extensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'md', 'txt'],
+    label: '文档类文件',
+  },
+  IMAGE: {
+    extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'],
+    label: '图片类文件',
+  },
+  ARCHIVE: {
+    extensions: ['zip', 'rar', '7z', 'tar', 'gz', 'tar.gz', 'tgz'],
+    label: '压缩包类文件',
+  },
+};
+
+const getCompetitionMaterialFileExtension = (fileName?: string) => {
+  const normalized = (fileName || '').trim().toLowerCase();
+  if (normalized.endsWith('.tar.gz')) {
+    return 'tar.gz';
+  }
+  const match = normalized.match(/\.([^.]+)$/);
+  return match ? match[1] : '';
+};
+
+const validateCompetitionMaterialFile = (file: File, field: CompetitionStageFormField) => {
+  const maxSizeMb = Number(field.maxSizeMb) || 20;
+  const maxSizeBytes = maxSizeMb * 1024 * 1024;
+  if (file.size > maxSizeBytes) {
+    return `文件过大，单个文件不能超过 ${maxSizeMb}MB`;
+  }
+  const format = (field.fileFormat || 'ANY').toUpperCase();
+  if (format === 'ANY') {
+    return undefined;
+  }
+  const config = competitionMaterialFileFormatConfig[format];
+  if (!config) {
+    return undefined;
+  }
+  const extension = getCompetitionMaterialFileExtension(file.name);
+  if (!extension || !config.extensions.includes(extension)) {
+    return `文件类型不支持，请上传${config.label}`;
+  }
+  return undefined;
+};
+
+const enrichCompetitionStageFormFields = (
+  fields: CompetitionStageFormField[],
+  configItems: CompetitionConfigItem[],
+) => {
+  if (!fields.length || !configItems.length) {
+    return fields;
+  }
+  const configByKey = new Map(
+    configItems.map((item) => [item.itemKey, { item, metadata: parseConfigItemMetadata(item.contentJson) }]),
+  );
+  return fields.map((field) => {
+    const config = configByKey.get(field.key);
+    if (!config || field.type !== 'file') {
+      return field;
+    }
+    return {
+      ...field,
+      label: field.label || config.item.title,
+      fileFormat: field.fileFormat || normalizeFileFormat(config.metadata.fileFormat),
+      maxSizeMb: field.maxSizeMb || config.metadata.maxSizeMb,
+      storageKey: field.storageKey || config.metadata.storageKey,
+    };
+  });
+};
+
+const MaterialFileUploadInput = ({
+  field,
+  value,
+  onChange,
+}: {
+  field: CompetitionStageFormField;
+  value?: number;
+  onChange?: (value?: number) => void;
+}) => {
+  const [uploading, setUploading] = useState(false);
+
+  return (
+    <Space direction="vertical" size={8}>
+      <Upload
+        maxCount={1}
+        showUploadList={false}
+        disabled={uploading}
+        beforeUpload={async (file) => {
+          const validationMessage = validateCompetitionMaterialFile(file as File, field);
+          if (validationMessage) {
+            message.error(validationMessage);
+            return Upload.LIST_IGNORE;
+          }
+          const formData = new FormData();
+          formData.append('file', file as File);
+          formData.append('category', '赛事材料');
+          formData.append('tags', `competition-material,${field.key}`);
+          if (field.label) {
+            formData.append('remark', field.label);
+          }
+          if (field.storageKey) {
+            formData.append('bucket', field.storageKey);
+          }
+          setUploading(true);
+          try {
+            const uploaded = await request<FileObjectRecord>('/v1/files/upload', {
+              method: 'POST',
+              headers: {},
+              data: formData,
+              silent: true,
+            });
+            onChange?.(uploaded.id);
+            message.success('文件上传成功');
+          } catch (error) {
+            showErrorMessage(error, '文件上传失败');
+          } finally {
+            setUploading(false);
+          }
+          return Upload.LIST_IGNORE;
+        }}
+      >
+        <Button icon={<UploadOutlined />} loading={uploading}>
+          {value ? '重新上传' : '上传文件'}
+        </Button>
+      </Upload>
+      {value ? (
+        <Space size={8}>
+          <Tag color="blue">文件 ID：{value}</Tag>
+          <Button size="small" type="link" onClick={() => onChange?.(undefined)}>
+            移除
+          </Button>
+        </Space>
+      ) : (
+        <Typography.Text type="secondary">
+          {field.storageKey ? `将上传到存储空间：${field.storageKey}` : '未指定存储空间，将使用默认存储空间'}
+        </Typography.Text>
+      )}
+    </Space>
+  );
 };
 
 type RegistrationCollectedField = {
@@ -1719,6 +1872,7 @@ const CompetitionRegistrationPage = () => {
   const [competitions, setCompetitions] = useState<CompetitionRecord[]>([]);
   const [registrationDocuments, setRegistrationDocuments] = useState<CompetitionConfigItem[]>([]);
   const [registrationFields, setRegistrationFields] = useState<CompetitionConfigItem[]>([]);
+  const [stageMaterialConfigs, setStageMaterialConfigs] = useState<CompetitionConfigItem[]>([]);
   const [registrationDocumentsLoading, setRegistrationDocumentsLoading] = useState(false);
   const [documentReadingCountdowns, setDocumentReadingCountdowns] = useState<Record<string, number>>({});
   const [acceptedDocumentKeys, setAcceptedDocumentKeys] = useState<string[]>([]);
@@ -1738,7 +1892,10 @@ const CompetitionRegistrationPage = () => {
   const selectedCompetitionId = Form.useWatch('competitionId', form);
   const newTeamAvatarUrl = Form.useWatch(['newTeam', 'avatarUrl'], form);
   const registrationMembers = (Form.useWatch(['newTeam', 'initialMembers'], form) || []) as RegistrationTeamMemberDraft[];
-  const fields = parseFormFields(stageForm);
+  const fields = useMemo(
+    () => enrichCompetitionStageFormFields(parseFormFields(stageForm), stageMaterialConfigs),
+    [stageForm, stageMaterialConfigs],
+  );
   const selectedCompetition = competitions.find((item) => item.id === toPositiveId(selectedCompetitionId));
   const memberRegistrationFields = useMemo(() => {
     const configuredFields = registrationFields
@@ -1842,6 +1999,7 @@ const CompetitionRegistrationPage = () => {
     const competitionUuid = selectedCompetition?.uuid;
     setRegistrationDocuments([]);
     setRegistrationFields([]);
+    setStageMaterialConfigs([]);
     resetRegistrationDocumentProgress([]);
     if (!competitionUuid || viewMode !== 'wizard') {
       setRegistrationDocumentsLoading(false);
@@ -1862,6 +2020,11 @@ const CompetitionRegistrationPage = () => {
         resetRegistrationDocumentProgress(nextDocuments);
         setRegistrationFields(
           (settings.fields || [])
+            .filter((item) => item.enabled !== false)
+            .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)),
+        );
+        setStageMaterialConfigs(
+          ([...(settings.files || []), ...(settings.stageMaterials || [])])
             .filter((item) => item.enabled !== false)
             .sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0)),
         );
@@ -2076,10 +2239,10 @@ const CompetitionRegistrationPage = () => {
           const materialValues = form.getFieldValue('materials') || {};
           await submitRegistrationMaterials(registrationId, {
             stageId: stageForm.stageId,
-            values: fields.map((field: any) => ({
+            values: fields.map((field) => ({
               fieldKey: field.key,
               fieldType: field.type || 'text',
-              textValue: materialValues[field.key] != null ? String(materialValues[field.key]) : undefined,
+              textValue: field.type === 'file' ? undefined : (materialValues[field.key] != null ? String(materialValues[field.key]) : undefined),
               fileId: field.type === 'file' && materialValues[field.key] ? Number(materialValues[field.key]) : undefined,
             })),
           });
@@ -2579,7 +2742,7 @@ const CompetitionRegistrationPage = () => {
             ) : null}
             {step === 3 ? (
               fields.length ? (
-                fields.map((field: any) => (
+                fields.map((field) => (
                   <Form.Item
                     key={field.key}
                     name={["materials", field.key]}
@@ -2589,7 +2752,7 @@ const CompetitionRegistrationPage = () => {
                     {field.type === 'textarea' ? (
                       <Input.TextArea rows={4} maxLength={field.maxLength} />
                     ) : field.type === 'file' ? (
-                      <InputNumber min={1} style={{ width: '100%' }} placeholder="请输入已上传文件ID" />
+                      <MaterialFileUploadInput field={field} />
                     ) : (
                       <Input maxLength={field.maxLength} />
                     )}
@@ -2650,6 +2813,7 @@ type ConfigItemMetadata = {
   weight?: number;
   fileFormat?: string;
   maxSizeMb?: number;
+  storageKey?: string;
   stageCode?: 'GENERAL' | 'PRELIMINARY' | 'FINAL';
   stageName?: string;
   materialType?: string;
@@ -2660,6 +2824,11 @@ type ConfigItemMetadata = {
 
 type EditableCompetitionConfigItem = CompetitionConfigItem & {
   metadata?: ConfigItemMetadata;
+};
+
+type StorageSpaceOption = {
+  label: string;
+  value: string;
 };
 
 const competitionSettingsModules: CompetitionSettingsModuleConfig[] = [
@@ -2854,6 +3023,26 @@ const fileStageOptions = [
   { label: '决赛', value: 'FINAL' },
 ];
 
+const buildStorageSpaceOptions = (records: FileStorageSpaceRecord[]): StorageSpaceOption[] =>
+  records
+    .filter((item) => item.status !== 'DISABLED')
+    .map((item) => ({
+      value: item.storageKey,
+      label: [item.title || item.storageKey, item.storageKey, item.bucketName].filter(Boolean).join(' / '),
+    }));
+
+const loadStorageSpaceOptions = async () => {
+  const result = await request<PagedResult<FileStorageSpaceRecord>>('/v1/files/storage-spaces', {
+    method: 'GET',
+    params: {
+      pageNo: 1,
+      pageSize: 1000,
+    },
+    ...API_OPTS.SILENT,
+  });
+  return buildStorageSpaceOptions(result.records || []);
+};
+
 const fieldScopeOptions = [
   { label: '报名信息', value: 'REGISTRATION_FIELD' },
   { label: '团队信息', value: 'TEAM_FIELD' },
@@ -2993,7 +3182,11 @@ const useDebouncedAutoSave = (save: () => Promise<void>) => {
   return { scheduleSave, flushPendingSave };
 };
 
-const renderConfigItemFields = (module: CompetitionSettingsModuleConfig, fieldName: number) => {
+const renderConfigItemFields = (
+  module: CompetitionSettingsModuleConfig,
+  fieldName: number,
+  storageSpaceOptions: StorageSpaceOption[],
+) => {
   if (module.key === 'documents') {
     return (
       <>
@@ -3071,6 +3264,15 @@ const renderConfigItemFields = (module: CompetitionSettingsModuleConfig, fieldNa
         </Form.Item>
         <Form.Item name={[fieldName, 'metadata', 'fileFormat']} label="文件格式">
           <Select options={fileFormatOptions} />
+        </Form.Item>
+        <Form.Item name={[fieldName, 'metadata', 'storageKey']} label="关联存储空间">
+          <Select
+            allowClear
+            showSearch
+            optionFilterProp="label"
+            placeholder="默认存储空间"
+            options={storageSpaceOptions}
+          />
         </Form.Item>
         <Form.Item name={[fieldName, 'metadata', 'maxSizeMb']} label="大小上限 MB">
           <InputNumber min={1} max={1024} style={{ width: '100%' }} />
@@ -3187,6 +3389,7 @@ type ConfigModulePanelProps = {
   competitionUuid: string;
   module: CompetitionSettingsModuleConfig;
   items: CompetitionConfigItem[];
+  storageSpaceOptions: StorageSpaceOption[];
   onSaved: (settings: CompetitionSettingsRecord) => void;
 };
 
@@ -3194,6 +3397,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
   competitionUuid,
   module,
   items,
+  storageSpaceOptions,
   onSaved,
 }, ref) => {
   const [form] = Form.useForm<{ items: EditableCompetitionConfigItem[] }>();
@@ -3279,7 +3483,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                 >
                   <Space direction="vertical" style={{ width: '100%' }}>
                     <div className="competition-config-item__fields">
-                      {renderConfigItemFields(module, field.name)}
+                      {renderConfigItemFields(module, field.name, storageSpaceOptions)}
                     </div>
                     <div className="competition-config-switches">
                       {module.key !== 'documents' ? (
@@ -3742,6 +3946,7 @@ const CompetitionSettingsPage = () => {
   const [activeKey, setActiveKey] = useState<CompetitionSettingsModuleKey>('basic');
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [storageSpaceOptions, setStorageSpaceOptions] = useState<StorageSpaceOption[]>([]);
   const activePanelRef = useRef<CompetitionSettingsPanelHandle | null>(null);
   const fallbackDictOptions = useCompetitionDictFallbackOptions();
   const { options: categoryOptions } = useDictOptions(COMPETITION_CATEGORY_DICT, fallbackDictOptions.categoryOptions);
@@ -3750,10 +3955,14 @@ const CompetitionSettingsPage = () => {
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    getCompetitionSettings(competitionUuid)
-      .then((result) => {
+    Promise.all([
+      getCompetitionSettings(competitionUuid),
+      loadStorageSpaceOptions().catch(() => [] as StorageSpaceOption[]),
+    ])
+      .then(([result, nextStorageSpaceOptions]) => {
         if (mounted) {
           setSettings(result);
+          setStorageSpaceOptions(nextStorageSpaceOptions);
         }
       })
       .catch((error) => showErrorMessage(error, formatMessage({ id: 'page.competition.settings.loadFailed', defaultMessage: 'Competition settings load failed' })))
@@ -3861,6 +4070,7 @@ const CompetitionSettingsPage = () => {
                   competitionUuid={settings.competition.uuid || competitionUuid}
                   module={activeModule}
                   items={getModuleItems(settings, activeModule.key)}
+                  storageSpaceOptions={storageSpaceOptions}
                   onSaved={setSettings}
                 />
               ) : null}
