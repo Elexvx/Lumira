@@ -2753,6 +2753,9 @@ const toEditableConfigItems = (items: CompetitionConfigItem[]): EditableCompetit
           : item.itemType === 'REQUIRED_FILE'
             ? normalizeFileStageCode(metadata.stageCode)
             : undefined,
+        fileFormat: item.itemType === 'REQUIRED_FILE' || item.itemType === 'STAGE_MATERIAL'
+          ? normalizeFileFormat(metadata.fileFormat)
+          : undefined,
         fieldScope: ['REGISTRATION_FIELD', 'TEAM_FIELD', 'MEMBER_FIELD', 'PROJECT_FIELD'].includes(item.itemType)
           ? item.itemType
           : undefined,
@@ -2779,6 +2782,13 @@ const normalizeFileStageCode = (value?: string): NonNullable<ConfigItemMetadata[
 const resolveFileStageName = (stageCode: NonNullable<ConfigItemMetadata['stageCode']>) =>
   fileStageOptions.find((option) => option.value === stageCode)?.label || '通用';
 
+const normalizeFileFormat = (value?: string) => {
+  if (value === 'PDF' || value === 'WORD') {
+    return 'DOCUMENT';
+  }
+  return ['ANY', 'DOCUMENT', 'IMAGE', 'ARCHIVE'].includes(value || '') ? value : 'ANY';
+};
+
 const toConfigItems = (items: EditableCompetitionConfigItem[]): CompetitionConfigItem[] =>
   items.map(({ metadata, ...item }, index) => {
     const fileStageCode = item.itemType === 'REQUIRED_FILE' || item.itemType === 'STAGE_MATERIAL'
@@ -2797,6 +2807,7 @@ const toConfigItems = (items: EditableCompetitionConfigItem[]): CompetitionConfi
           ...documentMetadata,
           stageCode: fileStageCode,
           stageName: resolveFileStageName(fileStageCode),
+          fileFormat: normalizeFileFormat(documentMetadata?.fileFormat),
           materialType: fileStageCode === 'GENERAL' ? undefined : 'FILE',
         }
       : documentMetadata;
@@ -2816,26 +2827,25 @@ const normalizeConfigKey = (value: string) => value.trim().replace(/[^A-Za-z0-9_
 const fieldTypeOptions = [
   { label: '单行文本', value: 'TEXT' },
   { label: '多行文本', value: 'TEXTAREA' },
-  { label: '鏁板瓧', value: 'NUMBER' },
+  { label: '数字', value: 'NUMBER' },
   { label: '日期', value: 'DATE' },
   { label: '下拉选择', value: 'SELECT' },
-  { label: 'Mobile', value: 'MOBILE' },
+  { label: '手机号', value: 'MOBILE' },
   { label: '邮箱', value: 'EMAIL' },
 ];
 
 const validationRuleOptions = [
-  { label: 'No Limit', value: 'NONE' },
-  { label: 'China Mobile', value: 'CHINA_MOBILE' },
+  { label: '不限制', value: 'NONE' },
+  { label: '中国手机号', value: 'CHINA_MOBILE' },
   { label: '邮箱地址', value: 'EMAIL' },
   { label: '身份证号', value: 'ID_CARD' },
 ];
 
 const fileFormatOptions = [
   { label: '不限格式', value: 'ANY' },
-  { label: 'PDF', value: 'PDF' },
-  { label: '图片', value: 'IMAGE' },
-  { label: 'Word 文档', value: 'WORD' },
-  { label: 'Archive', value: 'ARCHIVE' },
+  { label: '文档类', value: 'DOCUMENT' },
+  { label: '图片类', value: 'IMAGE' },
+  { label: '压缩包类', value: 'ARCHIVE' },
 ];
 
 const fileStageOptions = [
