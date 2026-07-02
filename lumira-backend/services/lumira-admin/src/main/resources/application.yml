@@ -176,6 +176,14 @@ saas:
     max-document-size-bytes: ${UPLOAD_MAX_DOCUMENT_SIZE_BYTES:52428800}
   job:
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
+  internal:
+    system-token: ${SAAS_INTERNAL_SYSTEM_TOKEN:}
+    auth-token: ${SAAS_INTERNAL_AUTH_TOKEN:}
+    file-token: ${SAAS_INTERNAL_FILE_TOKEN:}
+    message-token: ${SAAS_INTERNAL_MESSAGE_TOKEN:}
+    payment-token: ${SAAS_INTERNAL_PAYMENT_TOKEN:}
+    plugin-token: ${SAAS_INTERNAL_PLUGIN_TOKEN:}
+    job-token: ${SAAS_INTERNAL_JOB_TOKEN:}
   event:
     outbox:
       relay-enabled: ${SAAS_EVENT_OUTBOX_RELAY_ENABLED:false}

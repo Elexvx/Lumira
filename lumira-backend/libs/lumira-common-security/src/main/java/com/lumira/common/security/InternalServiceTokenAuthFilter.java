@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -25,9 +26,37 @@ public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
     private static final String INTERNAL_PRINCIPAL_NAME = "internal-service";
 
     private final String internalToken;
+    private final String systemToken;
+    private final String authToken;
+    private final String fileToken;
+    private final String messageToken;
+    private final String paymentToken;
+    private final String pluginToken;
+    private final String jobToken;
 
     public InternalServiceTokenAuthFilter(@Value("${saas.job.internal-token:${SAAS_JOB_INTERNAL_TOKEN:}}") String internalToken) {
+        this(internalToken, null, null, null, null, null, null, null);
+    }
+
+    @Autowired
+    public InternalServiceTokenAuthFilter(
+            @Value("${saas.job.internal-token:${SAAS_JOB_INTERNAL_TOKEN:}}") String internalToken,
+            @Value("${saas.internal.system-token:${SAAS_INTERNAL_SYSTEM_TOKEN:}}") String systemToken,
+            @Value("${saas.internal.auth-token:${SAAS_INTERNAL_AUTH_TOKEN:}}") String authToken,
+            @Value("${saas.internal.file-token:${SAAS_INTERNAL_FILE_TOKEN:}}") String fileToken,
+            @Value("${saas.internal.message-token:${SAAS_INTERNAL_MESSAGE_TOKEN:}}") String messageToken,
+            @Value("${saas.internal.payment-token:${SAAS_INTERNAL_PAYMENT_TOKEN:}}") String paymentToken,
+            @Value("${saas.internal.plugin-token:${SAAS_INTERNAL_PLUGIN_TOKEN:}}") String pluginToken,
+            @Value("${saas.internal.job-token:${SAAS_INTERNAL_JOB_TOKEN:}}") String jobToken
+    ) {
         this.internalToken = internalToken;
+        this.systemToken = systemToken;
+        this.authToken = authToken;
+        this.fileToken = fileToken;
+        this.messageToken = messageToken;
+        this.paymentToken = paymentToken;
+        this.pluginToken = pluginToken;
+        this.jobToken = jobToken;
     }
 
     @Override
@@ -38,13 +67,24 @@ public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (!StringUtils.hasText(internalToken)) {
+        String requiredToken = InternalServiceTokenPolicy.tokenForPath(
+                request.getRequestURI(),
+                internalToken,
+                systemToken,
+                authToken,
+                fileToken,
+                messageToken,
+                paymentToken,
+                pluginToken,
+                jobToken
+        );
+        if (!StringUtils.hasText(requiredToken)) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Internal service token is not configured");
             return;
         }
 
         String requestToken = request.getHeader(INTERNAL_TOKEN_HEADER);
-        if (!isAuthorized(requestToken, internalToken)) {
+        if (!isAuthorized(requestToken, requiredToken)) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid internal service token");
             return;
         }

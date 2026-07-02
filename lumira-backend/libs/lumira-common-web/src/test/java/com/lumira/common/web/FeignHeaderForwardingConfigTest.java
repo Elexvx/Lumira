@@ -25,6 +25,28 @@ class FeignHeaderForwardingConfigTest {
     }
 
     @Test
+    void shouldInjectScopedTokenForMatchingInternalRequests() {
+        RequestInterceptor interceptor = new FeignHeaderForwardingConfig(
+                "global-token-1234567890",
+                null,
+                null,
+                null,
+                null,
+                "payment-token-1234567890",
+                null,
+                null
+        ).requestInterceptor();
+        RequestTemplate template = new RequestTemplate();
+        template.method("GET");
+        template.uri("/internal/payment/orders/order-1");
+
+        interceptor.apply(template);
+
+        Collection<String> values = template.headers().get("X-Job-Token");
+        assertThat(values).containsExactly("payment-token-1234567890");
+    }
+
+    @Test
     void shouldNotInjectJobTokenForPublicRequests() {
         RequestInterceptor interceptor = new FeignHeaderForwardingConfig("release-job-token-1234567890").requestInterceptor();
         RequestTemplate template = new RequestTemplate();

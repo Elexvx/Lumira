@@ -24,6 +24,7 @@ class PaymentAuthClientConfigurationTest {
         AuthInternalApi api = new PaymentAuthClientConfiguration().authInternalApi(
                 "http://auth-service:8080",
                 "strong-internal-token-2026",
+                "",
                 provider(builder)
         );
         server.expect(requestTo("http://auth-service:8080/internal/auth/sessions/session-1/current-user"))
@@ -34,6 +35,26 @@ class PaymentAuthClientConfigurationTest {
 
         assertThat(currentUser.userId()).isEqualTo(42L);
         assertThat(currentUser.username()).isEqualTo("alice");
+        server.verify();
+    }
+
+    @Test
+    void authInternalApiPrefersScopedAuthTokenHeader() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AuthInternalApi api = new PaymentAuthClientConfiguration().authInternalApi(
+                "http://auth-service:8080",
+                "global-internal-token-2026",
+                "auth-internal-token-2026",
+                provider(builder)
+        );
+        server.expect(requestTo("http://auth-service:8080/internal/auth/sessions/session-1/current-user"))
+                .andExpect(header("X-Job-Token", "auth-internal-token-2026"))
+                .andRespond(withSuccess("{\"userId\":42,\"username\":\"alice\"}", MediaType.APPLICATION_JSON));
+
+        var currentUser = api.currentUser("session-1");
+
+        assertThat(currentUser.userId()).isEqualTo(42L);
         server.verify();
     }
 

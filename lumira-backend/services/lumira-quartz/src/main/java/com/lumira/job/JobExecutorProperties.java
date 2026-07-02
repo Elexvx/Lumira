@@ -11,6 +11,7 @@ public class JobExecutorProperties {
     private String paymentServiceBaseUrl;
     private String pluginServiceBaseUrl;
     private String internalToken;
+    private Internal internal = new Internal();
     private AdaptiveRelay adaptiveRelay = new AdaptiveRelay();
 
     public String getBackendBaseUrl() {
@@ -59,6 +60,14 @@ public class JobExecutorProperties {
 
     public void setInternalToken(String internalToken) {
         this.internalToken = internalToken;
+    }
+
+    public Internal getInternal() {
+        return internal;
+    }
+
+    public void setInternal(Internal internal) {
+        this.internal = internal == null ? new Internal() : internal;
     }
 
     public AdaptiveRelay getAdaptiveRelay() {
@@ -160,6 +169,72 @@ public class JobExecutorProperties {
 
         public void setPluginEnabled(boolean pluginEnabled) {
             this.pluginEnabled = pluginEnabled;
+        }
+    }
+
+    public static class Internal {
+        private String systemToken;
+        private String authToken;
+        private String fileToken;
+        private String messageToken;
+        private String paymentToken;
+        private String pluginToken;
+        private String jobToken;
+
+        public String getSystemToken() {
+            return systemToken;
+        }
+
+        public void setSystemToken(String systemToken) {
+            this.systemToken = systemToken;
+        }
+
+        public String getAuthToken() {
+            return authToken;
+        }
+
+        public void setAuthToken(String authToken) {
+            this.authToken = authToken;
+        }
+
+        public String getFileToken() {
+            return fileToken;
+        }
+
+        public void setFileToken(String fileToken) {
+            this.fileToken = fileToken;
+        }
+
+        public String getMessageToken() {
+            return messageToken;
+        }
+
+        public void setMessageToken(String messageToken) {
+            this.messageToken = messageToken;
+        }
+
+        public String getPaymentToken() {
+            return paymentToken;
+        }
+
+        public void setPaymentToken(String paymentToken) {
+            this.paymentToken = paymentToken;
+        }
+
+        public String getPluginToken() {
+            return pluginToken;
+        }
+
+        public void setPluginToken(String pluginToken) {
+            this.pluginToken = pluginToken;
+        }
+
+        public String getJobToken() {
+            return jobToken;
+        }
+
+        public void setJobToken(String jobToken) {
+            this.jobToken = jobToken;
         }
     }
 }

@@ -2,6 +2,7 @@ package com.lumira.job;
 
 import com.lumira.common.api.ApiResponse;
 import com.lumira.common.runtime.ConditionalOnLumiraAsyncEnabled;
+import com.lumira.common.security.InternalServiceTokenPolicy;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -96,7 +97,7 @@ public class BackendJobClient {
     private int postForInt(RestClient client, String path) {
         ApiResponse<Integer> response = client.post()
                 .uri(path)
-                .header("X-Job-Token", properties.getInternalToken())
+                .header("X-Job-Token", internalTokenFor(path))
                 .retrieve()
                 .body(INTEGER_RESPONSE);
         return response == null || response.getData() == null ? 0 : response.getData();
@@ -105,8 +106,23 @@ public class BackendJobClient {
     private void post(RestClient client, String path) {
         client.post()
                 .uri(path)
-                .header("X-Job-Token", properties.getInternalToken())
+                .header("X-Job-Token", internalTokenFor(path))
                 .retrieve()
                 .toBodilessEntity();
+    }
+
+    private String internalTokenFor(String path) {
+        JobExecutorProperties.Internal internal = properties.getInternal();
+        return InternalServiceTokenPolicy.tokenForPath(
+                path,
+                properties.getInternalToken(),
+                internal.getSystemToken(),
+                internal.getAuthToken(),
+                internal.getFileToken(),
+                internal.getMessageToken(),
+                internal.getPaymentToken(),
+                internal.getPluginToken(),
+                internal.getJobToken()
+        );
     }
 }

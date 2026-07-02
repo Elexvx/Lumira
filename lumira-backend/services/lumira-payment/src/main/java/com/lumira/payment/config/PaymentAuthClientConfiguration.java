@@ -21,12 +21,14 @@ public class PaymentAuthClientConfiguration {
     public AuthInternalApi authInternalApi(
             @Value("${saas.payment.auth-service-base-url:${AUTH_SERVICE_BASE_URL:http://localhost:8082}}") String authServiceBaseUrl,
             @Value("${saas.job.internal-token:${SAAS_JOB_INTERNAL_TOKEN:}}") String internalToken,
+            @Value("${saas.internal.auth-token:${SAAS_INTERNAL_AUTH_TOKEN:}}") String authInternalToken,
             ObjectProvider<RestClient.Builder> restClientBuilderProvider
     ) {
         RestClient.Builder builder = restClientBuilderProvider.getIfAvailable(RestClient::builder)
                 .baseUrl(authServiceBaseUrl);
-        if (StringUtils.hasText(internalToken)) {
-            builder.defaultHeader(INTERNAL_TOKEN_HEADER, internalToken);
+        String token = StringUtils.hasText(authInternalToken) ? authInternalToken : internalToken;
+        if (StringUtils.hasText(token)) {
+            builder.defaultHeader(INTERNAL_TOKEN_HEADER, token);
         }
         RestClient restClient = builder.build();
         return sessionId -> restClient.get()

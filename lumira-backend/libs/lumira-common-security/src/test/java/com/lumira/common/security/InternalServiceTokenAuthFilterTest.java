@@ -86,6 +86,52 @@ class InternalServiceTokenAuthFilterTest {
     }
 
     @Test
+    void scopedTokenOverridesGlobalTokenForMatchingInternalPath() throws Exception {
+        InternalServiceTokenAuthFilter filter = new InternalServiceTokenAuthFilter(
+                "global-internal-token-2026",
+                "system-internal-token-2026",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/internal/system/permissions/snapshot");
+        request.addHeader("X-Job-Token", "global-internal-token-2026");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(chain.getRequest()).isNull();
+    }
+
+    @Test
+    void scopedTokenAllowsMatchingInternalPath() throws Exception {
+        InternalServiceTokenAuthFilter filter = new InternalServiceTokenAuthFilter(
+                "global-internal-token-2026",
+                "system-internal-token-2026",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/internal/system/permissions/snapshot");
+        request.addHeader("X-Job-Token", "system-internal-token-2026");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(chain.getRequest()).isSameAs(request);
+    }
+
+    @Test
     void nonInternalPathKeepsExistingAuthenticationWithoutToken() throws Exception {
         var previousAuthentication = new UsernamePasswordAuthenticationToken("user", "jwt", List.of());
         SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
