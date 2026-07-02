@@ -331,14 +331,15 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
 
     if (!loginEncryptionLoadPromiseRef.current) {
       setLoginEncryptionLoading(true);
+      const cacheBuster = Date.now();
       loginEncryptionLoadPromiseRef.current = request<LoginEncryptionKey>('/v2/auth/login-encryption-key', {
         autoRedirectOnUnauthorized: false,
         allowUnauthorizedWithoutRedirect: true,
         silent: true,
         skipAuth: true,
         method: 'GET',
-        params: forceRefresh ? { _t: Date.now() } : undefined,
-        headers: forceRefresh ? { 'Cache-Control': 'no-cache' } : undefined,
+        params: { _t: cacheBuster },
+        headers: { 'Cache-Control': 'no-cache' },
         timeoutMs: LOGIN_ENCRYPTION_KEY_TIMEOUT_MS,
       })
         .catch(() =>
@@ -348,8 +349,8 @@ const useLoginBootstrapFlow = (): LoginBootstrapFlow => {
             silent: true,
             skipAuth: true,
             method: 'GET',
-            params: forceRefresh ? { _t: Date.now() } : undefined,
-            headers: forceRefresh ? { 'Cache-Control': 'no-cache' } : undefined,
+            params: { _t: Date.now() },
+            headers: { 'Cache-Control': 'no-cache' },
             timeoutMs: LOGIN_ENCRYPTION_KEY_TIMEOUT_MS,
           }),
         )
