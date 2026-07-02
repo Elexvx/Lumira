@@ -3,6 +3,24 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 const distRoot = fileURLToPath(new URL('../dist/', import.meta.url));
+const packageJsonPath = fileURLToPath(new URL('../package.json', import.meta.url));
+
+const readPackageVersion = () => {
+  try {
+    return JSON.parse(readFileSync(packageJsonPath, 'utf8')).version || '0.1.0';
+  } catch (_error) {
+    return '0.1.0';
+  }
+};
+
+const resolveBuildInfo = () => ({
+  app: 'lumira-ui',
+  version: process.env.UMI_APP_FRONTEND_VERSION || process.env.FRONTEND_VERSION || process.env.BUILD_VERSION || readPackageVersion(),
+  buildTime: process.env.UMI_APP_BUILD_TIME || process.env.BUILD_TIME || new Date().toISOString(),
+  gitCommit: process.env.UMI_APP_GIT_COMMIT || process.env.GIT_COMMIT || 'unknown',
+  gitBranch: process.env.UMI_APP_GIT_BRANCH || process.env.GIT_BRANCH || 'unknown',
+});
+
 const safeAssetName = (name) => {
   const extensionIndex = name.lastIndexOf('.');
   if (extensionIndex <= 0) {
@@ -96,6 +114,11 @@ const patchUmiRuntime = () => {
   writeFileSync(runtimePath, runtime);
 };
 
+const writeVersionManifest = () => {
+  const manifestPath = join(distRoot, 'version.json');
+  writeFileSync(manifestPath, `${JSON.stringify(resolveBuildInfo(), null, 2)}\n`);
+};
+
 if (!existsSync(distRoot)) {
   throw new Error('Build dist directory does not exist. Run pnpm build first.');
 }
@@ -107,3 +130,4 @@ copyStaticImages();
 rewriteCssAssetUrls();
 rewriteIndex();
 patchUmiRuntime();
+writeVersionManifest();
