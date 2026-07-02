@@ -1568,17 +1568,6 @@ select {
   background: transparent !important;
 }
 
-.ant-picker-dropdown {
-  width: max-content !important;
-  min-width: max-content !important;
-  max-width: calc(100vw - 32px);
-}
-
-.ant-picker-dropdown .ant-picker-panel-container {
-  max-width: calc(100vw - 32px);
-  overflow-x: auto;
-}
-
 .saas-page-shell,
 .saas-page-frame {
   position: relative;
@@ -1610,15 +1599,6 @@ html[data-theme='dark'] .ant-layout-header {
 }
 
 @media (max-width: 767px) {
-  .ant-picker-dropdown {
-    min-width: 0 !important;
-    max-width: calc(100vw - 16px);
-  }
-
-  .ant-picker-dropdown .ant-picker-panel-container {
-    max-width: calc(100vw - 16px);
-  }
-
   .ant-pro-layout .ant-layout-sider-children {
     margin: 8px;
   }

@@ -3,11 +3,12 @@ import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
+import { StandardDateTimeRangePicker } from '@/components/date/StandardDateTimeRangePicker';
 import { history } from '@umijs/max';
 import { getLocale } from '@umijs/max';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { ProDescriptions, type ActionType, type ProColumns, type ProTableProps } from '@ant-design/pro-components';
-import { Button, DatePicker, Select, Space, Tag, Typography } from 'antd';
+import { Button, Select, Space, Tag, Typography } from 'antd';
 import { useActionPermission } from '@/features/permissions/useActionPermission';
 import { TableActionBar } from '@/features/table/TableActionBar';
 import { buildTableRequest } from '@/features/table/proTableRequest';
@@ -31,7 +32,7 @@ const timeRangeColumn: any = {
   title: t('时间范围', 'Time range'),
   dataIndex: 'range',
   hideInTable: true,
-  renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />,
+  renderFormItem: () => <StandardDateTimeRangePicker style={{ width: '100%' }} />,
   search: {
     transform: (value: unknown) => {
       if (!Array.isArray(value) || value.length !== 2) {

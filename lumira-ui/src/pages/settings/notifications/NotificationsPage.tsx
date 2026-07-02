@@ -3,8 +3,9 @@ import { ManagementDrawer } from '@/features/management/ManagementDrawer';
 import { ManagementPage } from '@/features/management/ManagementPage';
 import { ManagementPageBody } from '@/features/management/ManagementPageBody';
 import { ManagementTable } from '@/features/management/ManagementTable';
+import { StandardDateTimeRangePicker } from '@/components/date/StandardDateTimeRangePicker';
 import type { ProColumns } from '@ant-design/pro-components';
-import { DatePicker, Form, Input, InputNumber, Select, Switch, Typography, theme, Button, Dropdown, Popconfirm, Descriptions, Space, Tag } from 'antd';
+import { Form, Input, InputNumber, Select, Switch, Typography, theme, Button, Dropdown, Popconfirm, Descriptions, Space, Tag } from 'antd';
 import { CheckOutlined, DeleteOutlined, DownOutlined, PlusOutlined } from '@ant-design/icons';
 import { useMemo, useRef } from 'react';
 import { useDetailDescriptionsProps } from '@/features/detail/config';
@@ -260,7 +261,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
       title: t('关键字', 'Keyword'),
       dataIndex: 'keyword',
       hideInTable: true,
-      renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />,
+      renderFormItem: () => <StandardDateTimeRangePicker style={{ width: '100%' }} />,
     },
     {
       title: t('标题', 'Title'),
@@ -330,7 +331,7 @@ const buildLogColumns = (): ProColumns<MessageDeliveryLogRecord>[] => {
       title: t('发送时间范围', 'Sent at range'),
       dataIndex: 'publishedAtRange',
       hideInTable: true,
-      renderFormItem: () => <DatePicker.RangePicker showTime style={{ width: '100%' }} />,
+      renderFormItem: () => <StandardDateTimeRangePicker style={{ width: '100%' }} />,
       search: buildRangeSearch(),
     },
   ] as unknown as ProColumns<MessageDeliveryLogRecord>[];

@@ -371,7 +371,7 @@ const formatRangeValue = (value?: Dayjs | string) => {
   if (typeof value === 'string') {
     return value;
   }
-  return value.format('YYYY.MM.DD HH:mm');
+  return value.format('YYYY-MM-DD HH:mm');
 };
 
 const splitTags = (tags?: string | null) =>
@@ -599,14 +599,11 @@ const CompetitionDateTimeRangePicker = ({
     <div ref={pickerRef} className="competition-date-time-range-picker">
       <DatePicker.RangePicker
         value={draftRange}
-        needConfirm={false}
         showTime={{
           format: 'HH:mm',
-          defaultValue: [dayjs().hour(0).minute(0).second(0), dayjs().hour(23).minute(59).second(0)],
         }}
-        format="YYYY.MM.DD HH:mm"
-        minuteStep={15}
-        placeholder={['Start date', 'End date']}
+        format="YYYY-MM-DD HH:mm"
+        placeholder={['开始日期', '结束日期']}
         placement="topRight"
         getPopupContainer={() => document.body}
         disabledDate={disabledDate}

@@ -223,13 +223,10 @@ const ActivityDateTimeRangePicker = ({
     <div ref={pickerRef}>
       <DatePicker.RangePicker
         value={draftRange}
-        needConfirm={false}
         showTime={{
           format: 'HH:mm',
-          defaultValue: [dayjs().hour(0).minute(0).second(0), dayjs().hour(23).minute(59).second(0)],
         }}
-        format="YYYY.MM.DD HH:mm"
-        minuteStep={15}
+        format="YYYY-MM-DD HH:mm"
         placeholder={['开始日期', '结束日期']}
         placement="topRight"
         getPopupContainer={() => document.body}
