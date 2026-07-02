@@ -55,6 +55,26 @@ const copyStaticImages = () => {
   }
 };
 
+const copyLegacyAssetAliases = () => {
+  const aliases = [
+    {
+      targetType: 'css',
+      sourcePattern: /^src_9813bdc8__dot__.+\.css$/,
+      aliasName: 'src_9813bdc8__dot__668d6288.css',
+    },
+  ];
+  for (const { targetType, sourcePattern, aliasName } of aliases) {
+    const targetDir = join(distRoot, 'cdn-assets', targetType);
+    if (!existsSync(targetDir) || existsSync(join(targetDir, aliasName))) {
+      continue;
+    }
+    const sourceName = readdirSync(targetDir).find((name) => sourcePattern.test(name));
+    if (sourceName) {
+      copyFileSync(join(targetDir, sourceName), join(targetDir, aliasName));
+    }
+  }
+};
+
 const rewriteCssAssetUrls = () => {
   const cssDirs = [distRoot, join(distRoot, 'cdn-assets', 'css')];
   for (const dir of cssDirs) {
@@ -127,6 +147,7 @@ rmSync(join(distRoot, 'cdn-assets'), { recursive: true, force: true });
 copyMatchingAssets('js', (name) => name.endsWith('.js'));
 copyMatchingAssets('css', (name) => name.endsWith('.css'));
 copyStaticImages();
+copyLegacyAssetAliases();
 rewriteCssAssetUrls();
 rewriteIndex();
 patchUmiRuntime();
