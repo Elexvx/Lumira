@@ -383,17 +383,6 @@ const expertRouteMeta: BackendRouteMeta[] = [
 
 const expertRoutes: BackendRouteRecord[] = [
   {
-    path: '/expert-review',
-    component: '@/layouts/SettingsLayout/SettingsLayout',
-    name: 'nav.expertReview.root',
-    icon: 'SolutionOutlined',
-    access: 'canVisitExperts',
-    routes: [
-      { path: '/expert-review', redirect: '/competitions/expert-apply', hideInMenu: true },
-      { path: '/competitions/expert-apply', component: '@/pages/competition', name: 'nav.competitions.expertApply', icon: 'SolutionOutlined', access: 'canVisitExperts' },
-    ],
-  },
-  {
     path: '/experts',
     component: '@/layouts/SettingsLayout/SettingsLayout',
     name: 'nav.experts.root',
