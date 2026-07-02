@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Watermark } from 'antd';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 import { ThemePreferenceProvider } from '@/theme/ThemePreferenceProvider';
 import { getAppInitialState } from '@/app.bootstrap';
 import { createLayoutConfig } from '@/app.layout';
@@ -60,10 +60,59 @@ const AppWatermarkLayer = ({ children }: { children: ReactNode }) => {
   );
 };
 
+const FRONTEND_VERSION_STORAGE_KEY = 'lumira:frontend-version';
+
+const FrontendVersionGuard = () => {
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const abortController = new AbortController();
+
+    const checkVersion = async () => {
+      try {
+        const response = await fetch(`/__version.json?_t=${Date.now()}`, {
+          cache: 'no-store',
+          signal: abortController.signal,
+        });
+        if (!response.ok) {
+          return;
+        }
+        const payload = await response.json();
+        const nextVersion = typeof payload?.commit === 'string' ? payload.commit : payload?.short;
+        if (!nextVersion) {
+          return;
+        }
+        const currentVersion = window.localStorage.getItem(FRONTEND_VERSION_STORAGE_KEY);
+        window.localStorage.setItem(FRONTEND_VERSION_STORAGE_KEY, nextVersion);
+        if (currentVersion && currentVersion !== nextVersion) {
+          const nextUrl = new URL(window.location.href);
+          nextUrl.searchParams.set('_v', String(payload.short || nextVersion).slice(0, 12));
+          window.location.replace(nextUrl.toString());
+        }
+      } catch (error) {
+        if ((error as { name?: string }).name !== 'AbortError') {
+          window.setTimeout(() => void checkVersion(), 30000);
+        }
+      }
+    };
+
+    void checkVersion();
+
+    return () => {
+      abortController.abort();
+    };
+  }, []);
+
+  return null;
+};
+
 export const layout = createLayoutConfig;
 
 export const rootContainer = (container: ReactNode) => (
   <QueryClientProvider client={queryClient}>
+    <FrontendVersionGuard />
     <ThemePreferenceProvider>
       <AppWatermarkLayer>
         {container}
