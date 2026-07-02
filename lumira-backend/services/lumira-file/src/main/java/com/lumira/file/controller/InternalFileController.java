@@ -22,6 +22,12 @@ import java.util.Set;
 @RequestMapping("/internal/files")
 public class InternalFileController implements com.lumira.api.client.FileInternalApi {
 
+    private static final Set<String> INTERNAL_USER_FILE_PERMISSIONS = Set.of(
+            "system:file:upload",
+            "system:file:view",
+            "download:center:view"
+    );
+
     private final FileManagementAppService fileManagementAppService;
     private final SecurityContextFacade securityContextFacade;
 
@@ -66,7 +72,7 @@ public class InternalFileController implements com.lumira.api.client.FileInterna
             @RequestParam("userId") Long userId,
             @RequestParam("username") String username
     ) {
-        CurrentUser currentUser = new CurrentUser(userId, username, null, null, 0, true, Set.of("*"));
+        CurrentUser currentUser = internalUser(userId, username);
         return fileManagementAppService.uploadDocument(currentUser, file, category, tags, remark, bucket);
     }
 
@@ -76,7 +82,7 @@ public class InternalFileController implements com.lumira.api.client.FileInterna
             @RequestParam("userId") Long userId,
             @RequestParam("username") String username
     ) {
-        CurrentUser currentUser = new CurrentUser(userId, username, null, null, 0, true, Set.of("*"));
+        CurrentUser currentUser = internalUser(userId, username);
         return fileManagementAppService.readFileContent(currentUser, fileId, true, false);
     }
 
@@ -87,7 +93,7 @@ public class InternalFileController implements com.lumira.api.client.FileInterna
             @RequestParam("username") String username,
             @RequestParam("artifactType") String artifactType
     ) {
-        CurrentUser currentUser = new CurrentUser(userId, username, null, null, 0, true, Set.of("*"));
+        CurrentUser currentUser = internalUser(userId, username);
         return fileManagementAppService.readProcessingArtifact(currentUser, fileId, artifactType, true, false);
     }
 
@@ -99,7 +105,7 @@ public class InternalFileController implements com.lumira.api.client.FileInterna
             @RequestParam(name = "sharedScope", defaultValue = "true") boolean sharedScope,
             @RequestParam(name = "downloadCenterScope", defaultValue = "false") boolean downloadCenterScope
     ) {
-        CurrentUser currentUser = new CurrentUser(userId, username, null, null, 0, true, Set.of("*"));
+        CurrentUser currentUser = internalUser(userId, username);
         return fileManagementAppService.getFile(currentUser, fileId, sharedScope, downloadCenterScope);
     }
 
@@ -113,7 +119,11 @@ public class InternalFileController implements com.lumira.api.client.FileInterna
             @RequestParam(name = "sharedScope", defaultValue = "false") boolean sharedScope,
             @RequestParam(name = "limit", defaultValue = "50") int limit
     ) {
-        CurrentUser currentUser = new CurrentUser(userId, username, null, null, 0, true, Set.of("*"));
+        CurrentUser currentUser = internalUser(userId, username);
         return fileManagementAppService.searchFilesForInternalTool(currentUser, keyword, contentType, status, sharedScope, limit);
+    }
+
+    private CurrentUser internalUser(Long userId, String username) {
+        return new CurrentUser(userId, username, null, null, 0, true, INTERNAL_USER_FILE_PERMISSIONS);
     }
 }

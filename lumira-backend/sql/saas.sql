@@ -1660,6 +1660,30 @@ CREATE TABLE `competition_registration` (
   KEY `idx_competition_registration_payment` (`payment_order_no`,`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE `competition_payment_order_task` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `registration_id` bigint NOT NULL,
+  `provider_code` varchar(64) NOT NULL DEFAULT 'alipay',
+  `client_ip` varchar(64) DEFAULT NULL,
+  `notify_url` varchar(1024) DEFAULT NULL,
+  `return_url` varchar(1024) DEFAULT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'PENDING',
+  `retry_count` int NOT NULL DEFAULT '0',
+  `next_retry_at` datetime DEFAULT NULL,
+  `claim_token` varchar(64) DEFAULT NULL,
+  `claim_expires_at` datetime DEFAULT NULL,
+  `process_message` varchar(1024) DEFAULT NULL,
+  `created_by` bigint DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` bigint DEFAULT NULL,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted` tinyint NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_competition_payment_order_task_registration` (`registration_id`,`deleted`),
+  KEY `idx_competition_payment_order_task_queue` (`deleted`,`status`,`next_retry_at`,`created_at`,`id`),
+  KEY `idx_competition_payment_order_task_claim` (`claim_token`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE `certificate_template` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `template_code` varchar(64) NOT NULL,
@@ -2892,8 +2916,9 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `sys_user` (`id`, `uuid`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
-VALUES (1001, UUID(), 'admin', 'Administrator', 'Administrator', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
+VALUES (1001, CAST(FLOOR(100000000000000000 + RAND() * 900000000000000000) AS CHAR), 'admin', 'Administrator', 'Administrator', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
+    `uuid` = IF(`uuid` REGEXP '^[0-9]+$', `uuid`, VALUES(`uuid`)),
     `nickname` = VALUES(`nickname`),
     `real_name` = VALUES(`real_name`),
     `password_hash` = VALUES(`password_hash`),
@@ -3088,8 +3113,9 @@ ON DUPLICATE KEY UPDATE
     `deleted` = 0;
 
 INSERT INTO `sys_user` (`id`, `uuid`, `username`, `nickname`, `real_name`, `password_hash`, `status`, `created_by`, `updated_by`, `deleted`)
-VALUES (1002, UUID(), 'user', 'Common User', 'Common User', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
+VALUES (1002, CAST(FLOOR(100000000000000000 + RAND() * 900000000000000000) AS CHAR), 'user', 'Common User', 'Common User', '$2a$10$VBwFJkc.aR1ML.qIKi1Lb.st90B.SS4RrIuwQ3LY/y.VG9/oUU8te', 'ENABLED', 0, 0, 0)
 ON DUPLICATE KEY UPDATE
+    `uuid` = IF(`uuid` REGEXP '^[0-9]+$', `uuid`, VALUES(`uuid`)),
     `nickname` = VALUES(`nickname`),
     `real_name` = VALUES(`real_name`),
     `password_hash` = VALUES(`password_hash`),

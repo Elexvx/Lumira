@@ -2,6 +2,9 @@ package com.lumira.saas.modules.competition.app;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lumira.api.client.PaymentInternalApi;
+import com.lumira.api.payment.PaymentCreateOrderRequestDTO;
+import com.lumira.api.payment.PaymentOrderDTO;
 import com.lumira.common.enums.ErrorCode;
 import com.lumira.common.exception.BizException;
 import com.lumira.common.security.CurrentUser;
@@ -30,6 +33,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -45,19 +49,23 @@ public class CompetitionRegistrationAppService {
     private static final Set<String> FIELD_TYPES = Set.of("input", "textarea", "file");
     private static final long MAX_PAGE_SIZE = 100L;
     private static final DateTimeFormatter NO_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+    private static final int PAYMENT_ORDER_TASK_MAX_RETRY = 8;
 
     private final MyBatisQueryOperations jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final ObjectProvider<TeamInternalApi> teamInternalApiProvider;
+    private final ObjectProvider<PaymentInternalApi> paymentInternalApiProvider;
 
     public CompetitionRegistrationAppService(
             MyBatisQueryOperations jdbcTemplate,
             ObjectMapper objectMapper,
-            ObjectProvider<TeamInternalApi> teamInternalApiProvider
+            ObjectProvider<TeamInternalApi> teamInternalApiProvider,
+            ObjectProvider<PaymentInternalApi> paymentInternalApiProvider
     ) {
         this.jdbcTemplate = jdbcTemplate;
         this.objectMapper = objectMapper;
         this.teamInternalApiProvider = teamInternalApiProvider;
+        this.paymentInternalApiProvider = paymentInternalApiProvider;
     }
 
     public PageResponse<CompetitionRegistrationVO.Registration> listRegistrations(CurrentUser currentUser, long pageNo, long pageSize) {
@@ -425,6 +433,7 @@ public class CompetitionRegistrationAppService {
                     trimToNull(value.getJsonValue())
             );
         }
+        enqueuePaymentOrderIfReady(registration, requireUserId(currentUser), "alipay", null, null, null);
         return getRegistration(currentUser, registrationId);
     }
 
@@ -444,66 +453,25 @@ public class CompetitionRegistrationAppService {
             freeOrder.setStatus("CONFIRMED");
             return freeOrder;
         }
-        String existingOrderNo = registration.getPaymentOrderNo();
-        if (StringUtils.hasText(existingOrderNo)) {
-            CompetitionRegistrationVO.PaymentOrder existing = findPaymentOrder(existingOrderNo);
-            if (existing != null) {
-                return existing;
+        String providerCode = StringUtils.hasText(request.getProviderCode()) ? request.getProviderCode().trim() : "alipay";
+        enqueuePaymentOrderIfReady(registration, requireUserId(currentUser), providerCode, request.getClientIp(), request.getNotifyUrl(), request.getReturnUrl());
+        drainPaymentOrderQueue(5);
+        CompetitionRegistrationVO.Registration refreshed = getRegistration(currentUser, registrationId);
+        if (StringUtils.hasText(refreshed.getPaymentOrderNo())) {
+            CompetitionRegistrationVO.PaymentOrder order = findPaymentOrder(refreshed.getPaymentOrderNo());
+            if (order != null) {
+                return order;
             }
         }
-        String orderNo = "REG-" + registration.getId() + "-" + Long.toString(ThreadLocalRandom.current().nextLong(36L * 36L * 36L * 36L), 36).toUpperCase(Locale.ROOT);
-        String providerCode = StringUtils.hasText(request.getProviderCode()) ? request.getProviderCode().trim() : "manual";
-        String idempotencyKey = "competition-registration-" + registration.getId();
-        Map<String, Object> metadata = Map.of(
-                "bizType", "competition_registration",
-                "registrationId", registration.getId(),
-                "competitionId", registration.getCompetitionId(),
-                "teamId", registration.getTeamId(),
-                "projectId", registration.getProjectId()
-        );
-        jdbcTemplate.update(
-                """
-                        insert into payment_order (
-                            order_no, provider_code, provider_order_no, subject, amount_minor, currency,
-                            status, payment_url, client_ip, notify_url, return_url, request_json, response_json,
-                            idempotency_key, expires_at, created_by, updated_by, deleted
-                        ) values (?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                        """,
-                orderNo,
-                providerCode,
-                providerCode + "-" + orderNo,
-                "Competition registration " + registration.getRegistrationNo(),
-                registration.getPayableAmountMinor(),
-                registration.getCurrency(),
-                "/payment/orders/" + orderNo,
-                trimToNull(request.getClientIp()),
-                trimToNull(request.getNotifyUrl()),
-                trimToNull(request.getReturnUrl()),
-                serialize(Map.of(
-                        "providerCode", providerCode,
-                        "orderNo", orderNo,
-                        "subject", "Competition registration " + registration.getRegistrationNo(),
-                        "amountMinor", registration.getPayableAmountMinor(),
-                        "currency", registration.getCurrency(),
-                        "metadata", metadata
-                )),
-                serialize(Map.of("providerCode", providerCode, "providerOrderNo", providerCode + "-" + orderNo, "paymentUrl", "/payment/orders/" + orderNo)),
-                idempotencyKey,
-                LocalDateTime.now().plusHours(2),
-                requireUserId(currentUser),
-                requireUserId(currentUser)
-        );
-        jdbcTemplate.update(
-                "update competition_registration set payment_order_no = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
-                orderNo,
-                requireUserId(currentUser),
-                LocalDateTime.now(),
-                registration.getId()
-        );
-        return findPaymentOrder(orderNo);
+        CompetitionRegistrationVO.PaymentOrder queuedOrder = new CompetitionRegistrationVO.PaymentOrder();
+        queuedOrder.setAmountMinor(refreshed.getPayableAmountMinor());
+        queuedOrder.setCurrency(refreshed.getCurrency());
+        queuedOrder.setStatus("QUEUED");
+        return queuedOrder;
     }
 
     public CompetitionRegistrationVO.PaymentOrder getPaymentStatus(CurrentUser currentUser, Long registrationId) {
+        drainPaymentOrderQueue(5);
         CompetitionRegistrationVO.Registration registration = getRegistration(currentUser, registrationId);
         if (!StringUtils.hasText(registration.getPaymentOrderNo())) {
             CompetitionRegistrationVO.PaymentOrder order = new CompetitionRegistrationVO.PaymentOrder();
@@ -530,62 +498,200 @@ public class CompetitionRegistrationAppService {
         }
     }
 
-    @Transactional
-    public CompetitionRegistrationVO.PaymentOrder simulatePayment(CurrentUser currentUser, Long registrationId) {
-        CompetitionRegistrationVO.Registration registration = getRegistration(currentUser, registrationId);
-        if (!Set.of("PENDING_PAYMENT", "PAID", "CONFIRMED").contains(registration.getStatus())) {
-            throw biz(ErrorCode.BIZ_ERROR, "Only pending-payment registrations can be paid");
+    public int drainPaymentOrderQueue(int limit) {
+        PaymentInternalApi paymentInternalApi = paymentInternalApiProvider.getIfAvailable();
+        if (paymentInternalApi == null) {
+            return 0;
         }
-
-        String orderNo = registration.getPaymentOrderNo();
-        if (!StringUtils.hasText(orderNo)) {
-            orderNo = "MOCK-REG-" + registration.getId() + "-" + Long.toString(ThreadLocalRandom.current().nextLong(36L * 36L * 36L * 36L), 36).toUpperCase(Locale.ROOT);
-            String providerOrderNo = "mock-" + orderNo;
-            jdbcTemplate.update(
-                    """
-                            insert into payment_order (
-                                order_no, provider_code, provider_order_no, subject, amount_minor, currency,
-                                status, payment_url, request_json, response_json, idempotency_key,
-                                expires_at, paid_at, created_by, updated_by, deleted
-                            ) values (?, 'mock', ?, ?, ?, ?, 'PAID', ?, ?, ?, ?, ?, ?, ?, ?, 0)
-                            """,
-                    orderNo,
-                    providerOrderNo,
-                    "Mock competition registration " + registration.getRegistrationNo(),
-                    registration.getPayableAmountMinor() == null ? 0L : registration.getPayableAmountMinor(),
-                    registration.getCurrency(),
-                    "/payment/mock/orders/" + orderNo,
-                    serialize(Map.of("providerCode", "mock", "orderNo", orderNo, "registrationId", registration.getId())),
-                    serialize(Map.of("providerCode", "mock", "providerOrderNo", providerOrderNo, "status", "PAID")),
-                    "mock-competition-registration-" + registration.getId(),
-                    LocalDateTime.now().plusHours(2),
-                    LocalDateTime.now(),
-                    requireUserId(currentUser),
-                    requireUserId(currentUser)
-            );
-            jdbcTemplate.update(
-                    "update competition_registration set payment_order_no = ?, updated_by = ?, updated_at = ? where id = ? and deleted = 0",
-                    orderNo,
-                    requireUserId(currentUser),
-                    LocalDateTime.now(),
-                    registration.getId()
-            );
-        } else {
-            jdbcTemplate.update(
-                    """
-                            update payment_order
-                            set status = 'PAID', paid_at = coalesce(paid_at, ?), updated_by = ?, updated_at = ?
-                            where order_no = ? and deleted = 0
-                            """,
-                    LocalDateTime.now(),
-                    requireUserId(currentUser),
-                    LocalDateTime.now(),
-                    orderNo
-            );
+        int processed = 0;
+        for (Map<String, Object> task : claimPaymentOrderTasks(Math.max(1, Math.min(limit, 20)))) {
+            Long taskId = toLong(task.get("id"));
+            Long registrationId = toLong(task.get("registrationId"));
+            String claimToken = String.valueOf(task.get("claimToken"));
+            try {
+                CompetitionRegistrationVO.Registration registration = findRegistration(registrationId);
+                if (registration == null || !"PENDING_PAYMENT".equals(registration.getStatus())) {
+                    markPaymentOrderTaskSucceeded(taskId, claimToken, "Registration no longer needs payment");
+                    processed += 1;
+                    continue;
+                }
+                if (StringUtils.hasText(registration.getPaymentOrderNo())) {
+                    PaymentOrderDTO existingOrder = paymentInternalApi.getOrder(registration.getPaymentOrderNo());
+                    assertOrderMatchesRegistration(existingOrder, registration);
+                    markPaymentOrderTaskSucceeded(taskId, claimToken, "Payment order already exists");
+                    processed += 1;
+                    continue;
+                }
+                PaymentOrderDTO order = paymentInternalApi.createOrder(
+                        registration.getOwnerUserId(),
+                        new PaymentCreateOrderRequestDTO(
+                                trimTaskText(task.get("providerCode"), "alipay"),
+                                "REG-" + registration.getId(),
+                                "Competition registration " + registration.getRegistrationNo(),
+                                registration.getPayableAmountMinor(),
+                                registration.getCurrency(),
+                                trimTaskText(task.get("clientIp"), null),
+                                trimTaskText(task.get("notifyUrl"), null),
+                                trimTaskText(task.get("returnUrl"), null),
+                                Map.of(
+                                        "bizType", "competition_registration",
+                                        "registrationId", registration.getId(),
+                                        "competitionId", registration.getCompetitionId(),
+                                        "teamId", registration.getTeamId(),
+                                        "projectId", registration.getProjectId()
+                                ),
+                                "competition-registration-" + registration.getId()
+                        )
+                );
+                assertOrderMatchesRegistration(order, registration);
+                jdbcTemplate.update(
+                        """
+                                update competition_registration
+                                set payment_order_no = ?, updated_by = ?, updated_at = ?
+                                where id = ? and deleted = 0
+                                  and status = 'PENDING_PAYMENT'
+                                  and (payment_order_no is null or payment_order_no = '')
+                                """,
+                        order.orderNo(),
+                        registration.getOwnerUserId(),
+                        LocalDateTime.now(),
+                        registration.getId()
+                );
+                markPaymentOrderTaskSucceeded(taskId, claimToken, "Payment order created");
+                processed += 1;
+            } catch (Exception exception) {
+                markPaymentOrderTaskFailed(taskId, claimToken, exception.getMessage());
+            }
         }
+        return processed;
+    }
 
-        confirmPaidRegistration(registration.getId(), orderNo);
-        return findPaymentOrder(orderNo);
+    private void enqueuePaymentOrderIfReady(
+            CompetitionRegistrationVO.Registration registration,
+            Long operatorId,
+            String providerCode,
+            String clientIp,
+            String notifyUrl,
+            String returnUrl
+    ) {
+        if (registration == null || !"PENDING_PAYMENT".equals(registration.getStatus())) {
+            return;
+        }
+        requireSubmittedPreliminaryMaterials(registration);
+        if (registration.getPayableAmountMinor() == null || registration.getPayableAmountMinor() <= 0L) {
+            confirmPaidRegistration(registration.getId(), null);
+            return;
+        }
+        if (StringUtils.hasText(registration.getPaymentOrderNo())) {
+            return;
+        }
+        jdbcTemplate.update(
+                """
+                        insert into competition_payment_order_task (
+                            registration_id, provider_code, client_ip, notify_url, return_url,
+                            status, retry_count, next_retry_at, created_by, updated_by, deleted
+                        ) values (?, ?, ?, ?, ?, 'PENDING', 0, ?, ?, ?, 0)
+                        on duplicate key update
+                            provider_code = values(provider_code),
+                            client_ip = coalesce(values(client_ip), client_ip),
+                            notify_url = coalesce(values(notify_url), notify_url),
+                            return_url = coalesce(values(return_url), return_url),
+                            status = case when status in ('FAILED', 'DEAD') then 'PENDING' else status end,
+                            next_retry_at = case when status in ('FAILED', 'DEAD') then values(next_retry_at) else next_retry_at end,
+                            updated_by = values(updated_by),
+                            updated_at = current_timestamp
+                        """,
+                registration.getId(),
+                StringUtils.hasText(providerCode) ? providerCode.trim() : "alipay",
+                trimToNull(clientIp),
+                trimToNull(notifyUrl),
+                trimToNull(returnUrl),
+                LocalDateTime.now(),
+                operatorId,
+                operatorId
+        );
+    }
+
+    private List<Map<String, Object>> claimPaymentOrderTasks(int limit) {
+        String claimToken = UUID.randomUUID().toString();
+        LocalDateTime now = LocalDateTime.now();
+        jdbcTemplate.update(
+                """
+                        update competition_payment_order_task
+                        set status = 'RUNNING', claim_token = ?, claim_expires_at = ?, updated_at = ?
+                        where deleted = 0
+                          and status in ('PENDING', 'FAILED')
+                          and (next_retry_at is null or next_retry_at <= ?)
+                        order by created_at asc, id asc
+                        limit ?
+                        """,
+                claimToken,
+                now.plusMinutes(5),
+                now,
+                now,
+                limit
+        );
+        return jdbcTemplate.queryForList(
+                """
+                        select id, registration_id as registrationId, provider_code as providerCode,
+                               client_ip as clientIp, notify_url as notifyUrl, return_url as returnUrl,
+                               claim_token as claimToken
+                        from competition_payment_order_task
+                        where deleted = 0 and status = 'RUNNING' and claim_token = ?
+                        order by created_at asc, id asc
+                        """,
+                claimToken
+        );
+    }
+
+    private void markPaymentOrderTaskSucceeded(Long taskId, String claimToken, String message) {
+        jdbcTemplate.update(
+                """
+                        update competition_payment_order_task
+                        set status = 'SUCCEEDED', process_message = ?, claim_token = null,
+                            claim_expires_at = null, updated_at = ?
+                        where id = ? and deleted = 0 and claim_token = ?
+                        """,
+                message,
+                LocalDateTime.now(),
+                taskId,
+                claimToken
+        );
+    }
+
+    private void markPaymentOrderTaskFailed(Long taskId, String claimToken, String message) {
+        Integer retryCount = jdbcTemplate.queryForObject(
+                "select retry_count from competition_payment_order_task where id = ? and deleted = 0 limit 1",
+                Integer.class,
+                taskId
+        );
+        int nextRetryCount = retryCount == null ? 1 : retryCount + 1;
+        String nextStatus = nextRetryCount >= PAYMENT_ORDER_TASK_MAX_RETRY ? "DEAD" : "FAILED";
+        jdbcTemplate.update(
+                """
+                        update competition_payment_order_task
+                        set status = ?, retry_count = ?, next_retry_at = ?, process_message = ?,
+                            claim_token = null, claim_expires_at = null, updated_at = ?
+                        where id = ? and deleted = 0 and claim_token = ?
+                        """,
+                nextStatus,
+                nextRetryCount,
+                LocalDateTime.now().plusSeconds(Math.min(300L, 5L * (1L << Math.min(nextRetryCount, 6)))),
+                StringUtils.hasText(message) && message.length() > 512 ? message.substring(0, 512) : message,
+                LocalDateTime.now(),
+                taskId,
+                claimToken
+        );
+    }
+
+    private void assertOrderMatchesRegistration(PaymentOrderDTO order, CompetitionRegistrationVO.Registration registration) {
+        if (order == null || !StringUtils.hasText(order.orderNo())) {
+            throw biz(ErrorCode.BIZ_ERROR, "Payment provider did not return an order");
+        }
+        if (!registration.getPayableAmountMinor().equals(order.amountMinor())
+                || !registration.getCurrency().equalsIgnoreCase(order.currency())) {
+            throw biz(ErrorCode.BIZ_ERROR, "Payment order amount does not match registration");
+        }
     }
 
     private void confirmPaidRegistration(Long registrationId, String orderNo) {
@@ -965,6 +1071,21 @@ public class CompetitionRegistrationAppService {
             throw biz(ErrorCode.VALIDATION_ERROR, message);
         }
         return trimmed;
+    }
+
+    private Long toLong(Object value) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value == null || !StringUtils.hasText(String.valueOf(value))) {
+            return null;
+        }
+        return Long.parseLong(String.valueOf(value));
+    }
+
+    private String trimTaskText(Object value, String fallback) {
+        String text = value == null ? null : String.valueOf(value);
+        return StringUtils.hasText(text) ? text.trim() : fallback;
     }
 
     private String trimToNull(String value) {

@@ -4,12 +4,18 @@ import com.lumira.common.security.FieldCryptoService;
 import com.lumira.saas.infrastructure.persistence.mybatis.MyBatisQueryOperations;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
+@ConditionalOnProperty(
+        name = "saas.security.field-encryption-migration-check-enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 public class FieldEncryptionMigrationRunner implements ApplicationRunner {
 
     private final MyBatisQueryOperations jdbcTemplate;

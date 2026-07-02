@@ -178,7 +178,7 @@ export const createRegistrationPaymentOrder = (registrationId: number, data: { p
     data,
   });
 
-export const simulateRegistrationPayment = (registrationId: number) =>
-  request<CompetitionPaymentOrderRecord>(`/v2/aiadc/registrations/${registrationId}/mock-payment`, {
-    method: 'POST',
+export const getRegistrationPaymentStatus = (registrationId: number) =>
+  request<CompetitionPaymentOrderRecord>(`/v2/aiadc/registrations/${registrationId}/payment-status`, {
+    method: 'GET',
   });

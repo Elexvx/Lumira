@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
@@ -137,20 +138,15 @@ public class PaymentV2Controller {
     }
 
     @PostMapping("/webhooks/{providerCode}")
-    public ApiResponse<PaymentWebhookEventDTO> webhook(
+    @ResponseBody
+    public String webhook(
             @PathVariable String providerCode,
             @RequestBody(required = false) String payload,
             HttpServletRequest request
     ) {
         Map<String, String> headers = extractHeaders(request);
-        return ApiResponse.success(
-                paymentWebhookService.handleWebhook(
-                        providerCode,
-                        payload,
-                        headers
-                ),
-                TraceContext.getRequestId()
-        );
+        paymentWebhookService.handleWebhook(providerCode, payload, headers);
+        return "success";
     }
 
     private CurrentUser requireSettingsAdmin() {

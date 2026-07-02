@@ -23,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
@@ -31,8 +33,10 @@ import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeMap;
 
 @Service
 public class PaymentWebhookService {
@@ -83,6 +87,7 @@ public class PaymentWebhookService {
     public PaymentWebhookEventDTO handleWebhook(String providerCode, String payload, Map<String, String> headers) {
         PaymentProviderCatalog.PaymentProviderDefinition definition = providerCatalog.requireDefinition(providerCode);
         String normalizedPayload = StringUtils.hasText(payload) ? payload.trim() : "{}";
+        Map<String, String> payloadFields = parsePayloadFields(normalizedPayload);
         if (normalizedPayload.getBytes(StandardCharsets.UTF_8).length > MAX_WEBHOOK_PAYLOAD_BYTES) {
             recordRejectedWebhook(providerCode, "PAYLOAD_TOO_LARGE", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook payload too large", "Webhook request is invalid");
@@ -93,6 +98,12 @@ public class PaymentWebhookService {
         String signature = resolveSignature(headers, normalizedPayload);
         String timestamp = resolveHeader(headers, "timestamp", "X-Timestamp");
         String nonce = resolveHeader(headers, "nonce", "X-Nonce");
+        if ("alipay".equals(providerCatalog.normalize(providerCode))) {
+            eventId = firstText(payloadFields, "notify_id", "trade_no", "out_trade_no");
+            eventType = firstText(payloadFields, "notify_type", "trade_status");
+            signature = firstText(payloadFields, "sign");
+            timestamp = firstText(payloadFields, "notify_time", "gmt_payment");
+        }
 
         PaymentWebhookEventRow existing = findWebhookEvent(providerCode, eventId);
         if (existing != null) {
@@ -104,7 +115,7 @@ public class PaymentWebhookService {
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook replay rejected", "Webhook request is invalid");
         }
 
-        if (!verifySignature(definition, settings, normalizedPayload, signature, timestamp, nonce)) {
+        if (!verifySignature(definition, settings, normalizedPayload, payloadFields, signature, timestamp, nonce)) {
             recordRejectedWebhook(providerCode, "SIGNATURE_INVALID", normalizedPayload, headers);
             throw new BizException(ErrorCode.BAD_REQUEST, "Webhook signature invalid", "Webhook request is invalid");
         }
@@ -217,6 +228,8 @@ public class PaymentWebhookService {
     }
 
     private String applyEvent(String providerCode, String payload, String eventType) {
+        String normalizedProvider = providerCatalog.normalize(providerCode);
+        Map<String, String> payloadFields = parsePayloadFields(payload);
         String normalizedEvent = normalizeText(eventType).toLowerCase(Locale.ROOT);
         if (normalizedEvent.contains("refund")) {
             String refundNo = extractField(payload, "refundNo", "refund_no", "id");
@@ -237,9 +250,17 @@ public class PaymentWebhookService {
             return "Refund webhook processed";
         }
 
+        if ("alipay".equals(normalizedProvider)) {
+            String tradeStatus = firstText(payloadFields, "trade_status");
+            if (!"TRADE_SUCCESS".equals(tradeStatus) && !"TRADE_FINISHED".equals(tradeStatus)) {
+                return "Alipay trade status ignored: " + normalizeText(tradeStatus);
+            }
+        }
+
         String orderNo = extractField(payload, "orderNo", "order_no", "merchantOrderNo", "out_trade_no", "id");
         if (StringUtils.hasText(orderNo)) {
             PaymentOrderRow order = findOrderForWebhook(orderNo.trim());
+            assertWebhookAmountMatchesOrder(normalizedProvider, payloadFields, order);
             PaymentOrderAggregate orderAggregate = new PaymentOrderAggregate(
                     orderNo.trim(),
                     BigDecimal.valueOf(order == null || order.getAmountMinor() == null ? 1L : order.getAmountMinor(), 2),
@@ -375,6 +396,7 @@ public class PaymentWebhookService {
             PaymentProviderCatalog.PaymentProviderDefinition definition,
             PaymentProviderSettingsDTO settings,
             String payload,
+            Map<String, String> payloadFields,
             String signature,
             String timestamp,
             String nonce
@@ -384,7 +406,7 @@ public class PaymentWebhookService {
         }
         String normalized = providerCatalog.normalize(definition.providerCode());
         return switch (normalized) {
-            case "alipay" -> verifyRsaSignature(settings.getPublicKey(), payload, signature);
+            case "alipay" -> verifyRsaSignature(settings.getPublicKey(), buildAlipaySignContent(payloadFields), signature);
             case "wechat_pay" -> verifyHmacSignature(settings.getApiV3Key(), buildWechatSignedString(timestamp, nonce, payload), signature);
             case "stripe" -> verifyHmacSignature(settings.getWebhookSecret(), buildStripeSignedString(timestamp, payload), signature);
             case "paypal" -> verifyHmacSignature(settings.getWebhookSecret(), payload, signature);
@@ -440,6 +462,11 @@ public class PaymentWebhookService {
             return true;
         }
         try {
+            if (timestamp.trim().contains("-")) {
+                LocalDateTime parsedDateTime = LocalDateTime.parse(timestamp.trim().replace(" ", "T"));
+                long delta = Math.abs(java.time.Duration.between(parsedDateTime, LocalDateTime.now()).toSeconds());
+                return delta <= WEBHOOK_REPLAY_WINDOW_SECONDS;
+            }
             long parsed = Long.parseLong(timestamp.trim());
             long current = Instant.now().getEpochSecond();
             long candidate = parsed > 1_000_000_000_000L ? parsed / 1000L : parsed;
@@ -447,6 +474,94 @@ public class PaymentWebhookService {
             return delta <= WEBHOOK_REPLAY_WINDOW_SECONDS;
         } catch (Exception ex) {
             return false;
+        }
+    }
+
+    private String buildAlipaySignContent(Map<String, String> fields) {
+        TreeMap<String, String> sorted = new TreeMap<>();
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+            if (!StringUtils.hasText(key)
+                    || "sign".equals(key)
+                    || "sign_type".equals(key)
+                    || !StringUtils.hasText(value)) {
+                continue;
+            }
+            sorted.put(key, value);
+        }
+        return sorted.entrySet().stream()
+                .map(entry -> entry.getKey() + "=" + entry.getValue())
+                .reduce((left, right) -> left + "&" + right)
+                .orElse("");
+    }
+
+    private void assertWebhookAmountMatchesOrder(String providerCode, Map<String, String> fields, PaymentOrderRow order) {
+        if (order == null) {
+            throw new BizException(ErrorCode.NOT_FOUND, "Payment order does not exist");
+        }
+        if (!"alipay".equals(providerCode)) {
+            return;
+        }
+        String totalAmount = firstText(fields, "total_amount", "receipt_amount", "buyer_pay_amount");
+        if (!StringUtils.hasText(totalAmount)) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Alipay amount is missing", "Webhook request is invalid");
+        }
+        long amountMinor;
+        try {
+            amountMinor = new BigDecimal(totalAmount.trim()).movePointRight(2).setScale(0, RoundingMode.UNNECESSARY).longValueExact();
+        } catch (Exception exception) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Alipay amount is invalid", "Webhook request is invalid");
+        }
+        if (order.getAmountMinor() == null || order.getAmountMinor() != amountMinor) {
+            throw new BizException(ErrorCode.BAD_REQUEST, "Alipay amount does not match local order", "Webhook request is invalid");
+        }
+    }
+
+    private Map<String, String> parsePayloadFields(String payload) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        if (!StringUtils.hasText(payload)) {
+            return fields;
+        }
+        if (payload.contains("=") && !payload.trim().startsWith("{")) {
+            for (String pair : payload.split("&")) {
+                int index = pair.indexOf('=');
+                if (index <= 0) {
+                    continue;
+                }
+                fields.put(urlDecode(pair.substring(0, index)), urlDecode(pair.substring(index + 1)));
+            }
+            return fields;
+        }
+        try {
+            JsonNode root = objectMapper.readTree(payload);
+            root.fields().forEachRemaining(entry -> {
+                JsonNode value = entry.getValue();
+                if (value != null && !value.isNull() && value.isValueNode()) {
+                    fields.put(entry.getKey(), value.asText());
+                }
+            });
+        } catch (Exception ignored) {
+            // Leave fields empty for malformed payloads; signature verification will reject them.
+        }
+        return fields;
+    }
+
+    private String firstText(Map<String, String> fields, String... names) {
+        for (String name : names) {
+            String value = fields.get(name);
+            if (StringUtils.hasText(value)) {
+                return value.trim();
+            }
+        }
+        return "";
+    }
+
+    private String urlDecode(String value) {
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8);
+        } catch (Exception exception) {
+            return value;
         }
     }
 
@@ -527,6 +642,13 @@ public class PaymentWebhookService {
     private String extractField(String payload, String... fieldNames) {
         if (!StringUtils.hasText(payload)) {
             return "";
+        }
+        Map<String, String> fields = parsePayloadFields(payload);
+        for (String fieldName : fieldNames) {
+            String value = fields.get(fieldName);
+            if (StringUtils.hasText(value)) {
+                return value.trim();
+            }
         }
         try {
             JsonNode root = objectMapper.readTree(payload);

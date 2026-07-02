@@ -203,6 +203,11 @@ saas:
     auth-service-base-url: ${AUTH_SERVICE_BASE_URL:http://localhost:${server.port}}
   verification:
     issuer: ${VERIFICATION_ISSUER:lumira}
+
+lumira:
+  ai:
+    owner-integrations:
+      internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
     totp-digits: ${VERIFICATION_TOTP_DIGITS:6}
     totp-step-seconds: ${VERIFICATION_TOTP_STEP_SECONDS:30}
     bind-challenge-expire-minutes: ${VERIFICATION_BIND_CHALLENGE_EXPIRE_MINUTES:10}
@@ -289,6 +294,30 @@ saas:
     trusted-proxy-cidrs:
       - 127.0.0.1/32
       - ::1/128
+
+springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: fast-start
+  main:
+    lazy-initialization: ${SPRING_MAIN_LAZY_INITIALIZATION:true}
+    banner-mode: ${SPRING_MAIN_BANNER_MODE:off}
+
+lumira:
+  online-session:
+    redis:
+      enabled: ${LUMIRA_ONLINE_SESSION_REDIS_ENABLED:false}
+
+saas:
+  security:
+    field-encryption-migration-check-enabled: ${SAAS_FIELD_ENCRYPTION_MIGRATION_CHECK_ENABLED:false}
 
 springdoc:
   api-docs:

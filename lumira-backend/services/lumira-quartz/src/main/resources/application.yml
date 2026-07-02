@@ -50,7 +50,7 @@ saas:
     plugin-service-base-url: ${SAAS_JOB_PLUGIN_SERVICE_BASE_URL:${SAAS_JOB_BACKEND_BASE_URL:http://localhost:${server.port}}}
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
     adaptive-relay:
-      enabled: ${SAAS_JOB_ADAPTIVE_RELAY_ENABLED:false}
+      enabled: ${SAAS_JOB_ADAPTIVE_RELAY_ENABLED:true}
       initial-delay-ms: ${SAAS_JOB_ADAPTIVE_RELAY_INITIAL_DELAY_MS:5000}
       min-delay-ms: ${SAAS_JOB_ADAPTIVE_RELAY_MIN_DELAY_MS:1000}
       max-delay-ms: ${SAAS_JOB_ADAPTIVE_RELAY_MAX_DELAY_MS:30000}

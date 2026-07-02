@@ -36,6 +36,7 @@ Lumira/
 - `lumira-backend/services/lumira-localization`：国际化语言、词条和发布。
 - `lumira-backend/services/lumira-payment`：支付配置、订单、退款和支付事件。
 - `lumira-backend/services/lumira-ai`：AI 助手、知识库、会话和工具调用。
+- `lumira-backend/services/lumira-async`：可靠异步 worker，负责 Outbox relay、文件处理、消息/支付/插件等后台投递。
 - `lumira-backend/services/lumira-quartz`：后台任务、XXL-JOB handler 和 relay 调度。
 - `lumira-backend/libs/lumira-team-api`：Team 跨模块 Internal API 契约。
 - `lumira-backend/libs/*`：后端公共能力和跨模块契约。
@@ -107,5 +108,5 @@ node bin/check-deployment.mjs
 
 - 后端：Java 21、Spring Boot 4、MyBatis-Plus、Flyway、Redis、MySQL。
 - 前端：React、TypeScript、Umi Max、Ant Design、ProComponents。
-- 异步与实时：Outbox、XXL-JOB、WebSocket、SSE。
+- 异步与实时：MySQL Outbox、独立 `lumira-async` worker、XXL-JOB/自适应 relay、WebSocket、SSE。Redis Stream 仅作为可选分发通道。
 - 部署：Docker Compose、Nginx、Prometheus、Grafana、Loki、Tempo、Alloy。

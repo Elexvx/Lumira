@@ -31,6 +31,7 @@ import com.lumira.saas.modules.plugin.vo.PluginVO;
 import com.lumira.saas.modules.system.plugin.SystemPluginViewService;
 import com.lumira.saas.modules.system.role.app.SystemRoleManagementAppService;
 import com.lumira.saas.modules.system.user.app.SystemUserManagementAppService;
+import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.user.vo.UserDetailVO;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.system.vo.SystemVO;
@@ -2491,7 +2492,7 @@ public class SystemManagementAppService {
                                 created_by, updated_by, deleted
                             ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                             """,
-                    UUID.randomUUID().toString(),
+                    UserUidGenerator.nextNumericUid(),
                     request.getUsername(),
                     passwordEncoder.encode(password),
                     normalizeNullableText(request.getMobile()),

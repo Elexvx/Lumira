@@ -16,6 +16,7 @@ import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.app.OnlineSessionManagementAppService;
 import com.lumira.saas.modules.system.dto.SystemDTO;
+import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.user.vo.UserDetailVO;
 import com.lumira.saas.modules.system.vo.SystemVO;
 import com.lumira.saas.modules.user.domain.UserDomainService;
@@ -38,7 +39,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
@@ -113,13 +113,8 @@ public class SystemUserManagementAppService {
         List<Object> params = new ArrayList<>();
         if (StringUtils.hasText(uid)) {
             String normalizedUid = uid.trim();
-            if (normalizedUid.matches("\\d+")) {
-                baseSql += " and u.id = ?";
-                params.add(Long.parseLong(normalizedUid));
-            } else {
-                baseSql += " and u.uuid = ?";
-                params.add(normalizedUid);
-            }
+            baseSql += " and u.uuid = ?";
+            params.add(normalizedUid);
         } else if (userId != null) {
             baseSql += " and u.id = ?";
             params.add(userId);
@@ -467,7 +462,7 @@ public class SystemUserManagementAppService {
                                     created_by, updated_by, deleted
                                 ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                                 """,
-                        UUID.randomUUID().toString(),
+                        UserUidGenerator.nextNumericUid(),
                         request.getUsername(),
                         passwordEncoder.encode(password),
                         normalizeNullableText(request.getMobile()),

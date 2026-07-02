@@ -35,6 +35,7 @@ import com.lumira.saas.modules.audit.app.OperationAuditService;
 import com.lumira.saas.modules.iam.service.IamUserService;
 import com.lumira.saas.modules.iam.service.PermissionSnapshotService;
 import com.lumira.saas.modules.system.passkey.PasskeyCredentialAppService;
+import com.lumira.saas.modules.system.user.support.UserUidGenerator;
 import com.lumira.saas.modules.system.verification.SystemVerificationAppService;
 import com.lumira.saas.modules.user.domain.UserDomainService;
 import com.lumira.saas.modules.user.entity.SysUserEntity;
@@ -854,7 +855,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                             created_by, updated_by, deleted
                         ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         """,
-                UUID.randomUUID().toString(),
+                UserUidGenerator.nextNumericUid(),
                 username,
                 passwordEncoder.encode(UUID.randomUUID().toString()),
                 null,
@@ -900,7 +901,7 @@ public class InternalSystemController implements com.lumira.api.client.SystemInt
                             created_by, updated_by, deleted
                         ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ENABLED', 0, 0, 0)
                         """,
-                UUID.randomUUID().toString(),
+                UserUidGenerator.nextNumericUid(),
                 username,
                 randomPassword,
                 FACTOR_SMS.equals(normalizedLoginType) ? normalizedAccount : null,

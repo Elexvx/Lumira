@@ -27,11 +27,15 @@ class PluginRuntimeSecurityPolicyTest {
         Map<String, String> filtered = policy.filterHeaders(Map.of(
                 "Authorization", "Bearer token",
                 "Cookie", "sid=1",
+                "X-Job-Token", "internal-token",
+                "X-Internal-Token", "internal-token",
+                "X-Forwarded-Internal-Token", "internal-token",
                 "X-Request-Id", "req-1"
         ));
 
         assertThat(filtered).containsEntry("X-Request-Id", "req-1");
-        assertThat(filtered).doesNotContainKeys("Authorization", "Cookie");
+        assertThat(filtered)
+                .doesNotContainKeys("Authorization", "Cookie", "X-Job-Token", "X-Internal-Token", "X-Forwarded-Internal-Token");
     }
 
     @Test

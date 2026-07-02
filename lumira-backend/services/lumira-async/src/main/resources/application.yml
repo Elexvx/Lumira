@@ -178,7 +178,7 @@ saas:
     internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
   event:
     outbox:
-      relay-enabled: ${SAAS_EVENT_OUTBOX_RELAY_ENABLED:false}
+      relay-enabled: ${SAAS_EVENT_OUTBOX_RELAY_ENABLED:true}
       batch-size: ${SAAS_EVENT_OUTBOX_BATCH_SIZE:100}
       max-drain-rounds: ${SAAS_EVENT_OUTBOX_MAX_DRAIN_ROUNDS:4}
       max-burst-rounds: ${SAAS_EVENT_OUTBOX_MAX_BURST_ROUNDS:12}
@@ -203,6 +203,11 @@ saas:
     auth-service-base-url: ${AUTH_SERVICE_BASE_URL:http://localhost:${server.port}}
   verification:
     issuer: ${VERIFICATION_ISSUER:lumira}
+
+lumira:
+  ai:
+    owner-integrations:
+      internal-token: ${SAAS_JOB_INTERNAL_TOKEN:}
     totp-digits: ${VERIFICATION_TOTP_DIGITS:6}
     totp-step-seconds: ${VERIFICATION_TOTP_STEP_SECONDS:30}
     bind-challenge-expire-minutes: ${VERIFICATION_BIND_CHALLENGE_EXPIRE_MINUTES:10}

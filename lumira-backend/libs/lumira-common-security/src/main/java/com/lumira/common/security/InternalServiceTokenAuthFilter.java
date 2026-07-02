@@ -33,12 +33,6 @@ public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
-        if (SecurityContextHolder.getContext().getAuthentication() != null
-                && SecurityContextHolder.getContext().getAuthentication().isAuthenticated()) {
-            filterChain.doFilter(request, response);
-            return;
-        }
-
         if (!isInternalServicePath(request.getRequestURI())) {
             filterChain.doFilter(request, response);
             return;
@@ -66,12 +60,17 @@ public class InternalServiceTokenAuthFilter extends OncePerRequestFilter {
         );
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(internalUser, requestToken, Collections.emptyList());
+        var previousAuthentication = SecurityContextHolder.getContext().getAuthentication();
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         try {
             filterChain.doFilter(request, response);
         } finally {
-            SecurityContextHolder.clearContext();
+            if (previousAuthentication == null) {
+                SecurityContextHolder.clearContext();
+            } else {
+                SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
+            }
         }
     }
 

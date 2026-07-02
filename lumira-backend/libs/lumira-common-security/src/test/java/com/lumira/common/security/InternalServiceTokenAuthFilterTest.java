@@ -1,6 +1,15 @@
 package com.lumira.common.security;
 
+import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockFilterChain;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,5 +41,64 @@ class InternalServiceTokenAuthFilterTest {
         assertThat(InternalServiceTokenAuthFilter.isAuthorized("   ", internalToken)).isFalse();
         assertThat(InternalServiceTokenAuthFilter.isAuthorized("strong-internal-service-token-202X", internalToken)).isFalse();
         assertThat(InternalServiceTokenAuthFilter.isAuthorized(internalToken + " ", internalToken)).isFalse();
+    }
+
+    @Test
+    void internalPathRequiresTokenEvenWhenAuthenticationAlreadyExists() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken("user", "jwt", List.of())
+        );
+        InternalServiceTokenAuthFilter filter = new InternalServiceTokenAuthFilter("strong-internal-service-token-2026");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/internal/system/users/1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(chain.getRequest()).isNull();
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getPrincipal()).isEqualTo("user");
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void internalPathUsesInternalPrincipalOnlyForCurrentInvocation() throws Exception {
+        var previousAuthentication = new UsernamePasswordAuthenticationToken("user", "jwt", List.of());
+        SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
+        InternalServiceTokenAuthFilter filter = new InternalServiceTokenAuthFilter("strong-internal-service-token-2026");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/message/internal/jobs/outbox/relay");
+        request.addHeader("X-Job-Token", "strong-internal-service-token-2026");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean chainInvoked = new AtomicBoolean(false);
+        FilterChain chain = (servletRequest, servletResponse) -> {
+            chainInvoked.set(true);
+            var authentication = SecurityContextHolder.getContext().getAuthentication();
+            assertThat(authentication.getPrincipal()).isInstanceOf(CurrentUser.class);
+            assertThat(((CurrentUser) authentication.getPrincipal()).getUsername()).isEqualTo("internal-service");
+        };
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(chainInvoked).isTrue();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isSameAs(previousAuthentication);
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void nonInternalPathKeepsExistingAuthenticationWithoutToken() throws Exception {
+        var previousAuthentication = new UsernamePasswordAuthenticationToken("user", "jwt", List.of());
+        SecurityContextHolder.getContext().setAuthentication(previousAuthentication);
+        InternalServiceTokenAuthFilter filter = new InternalServiceTokenAuthFilter("strong-internal-service-token-2026");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v2/notices");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilterInternal(request, response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(chain.getRequest()).isSameAs(request);
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isSameAs(previousAuthentication);
+        SecurityContextHolder.clearContext();
     }
 }

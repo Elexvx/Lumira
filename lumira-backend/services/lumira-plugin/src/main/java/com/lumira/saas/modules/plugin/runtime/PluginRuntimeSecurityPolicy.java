@@ -17,7 +17,9 @@ public class PluginRuntimeSecurityPolicy {
             "authorization",
             "cookie",
             "set-cookie",
+            "x-job-token",
             "x-internal-token",
+            "x-forwarded-internal-token",
             "x-forwarded-authorization"
     );
     private static final Set<String> ALLOWED_METHODS = Set.of("GET", "POST", "PUT", "PATCH", "DELETE");

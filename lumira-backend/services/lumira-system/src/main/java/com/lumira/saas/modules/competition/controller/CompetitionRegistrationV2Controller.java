@@ -147,13 +147,6 @@ public class CompetitionRegistrationV2Controller {
         return ApiResponse.success(registrationAppService.getPaymentStatus(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
     }
 
-    @PostMapping("/registrations/{id}/mock-payment")
-    @RepeatSubmit
-    public ApiResponse<CompetitionRegistrationVO.PaymentOrder> simulatePayment(@PathVariable("id") Long id) {
-        require(REGISTRATION_PAY);
-        return ApiResponse.success(registrationAppService.simulatePayment(securityContextFacade.getCurrentUser(), id), TraceContext.getRequestId());
-    }
-
     @GetMapping("/competitions/{competitionId}/stages")
     public ApiResponse<List<CompetitionRegistrationVO.Stage>> stages(@PathVariable("competitionId") Long competitionId) {
         require(STAGE_VIEW);

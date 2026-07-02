@@ -1,4 +1,4 @@
-import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
+﻿import { CheckCircleOutlined, DeleteOutlined, EyeOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined, SettingOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Alert, Avatar, Button, Card, Checkbox, DatePicker, Form, Image, Input, InputNumber, Menu, Modal, Radio, Result, Select, Space, Steps, Switch, Tag, Typography, Upload } from 'antd';
 import type { FormInstance } from 'antd';
@@ -22,6 +22,7 @@ import {
   createCompetitionDraft,
   createProject,
   createRegistration,
+  createRegistrationPaymentOrder,
   deleteCompetition,
   getRegistration,
   getCompetitionSettings,
@@ -31,7 +32,6 @@ import {
   listRegistrations,
   publishCompetitionSettings,
   saveCompetitionSettingsModule,
-  simulateRegistrationPayment,
   submitRegistrationMaterials,
   updateCompetition,
   updateCompetitionDraft,
@@ -2264,12 +2264,16 @@ const CompetitionRegistrationPage = () => {
     }
     setLoading(true);
     try {
-      const order = await simulateRegistrationPayment(registrationId);
-      setPaymentStatus(order.status || 'CONFIRMED');
+      const order = await createRegistrationPaymentOrder(registrationId, { providerCode: 'alipay' });
+      setPaymentStatus(order.status || 'QUEUED');
       registrationActionRef.current?.reload();
-      message.success('模拟支付成功');
+      if (order.paymentUrl) {
+        window.location.assign(order.paymentUrl);
+        return;
+      }
+      message.info('支付订单正在生成，请稍后刷新状态');
     } catch (error) {
-      showErrorMessage(error, '模拟支付失败');
+      showErrorMessage(error, '支付订单生成失败');
     } finally {
       setLoading(false);
     }
