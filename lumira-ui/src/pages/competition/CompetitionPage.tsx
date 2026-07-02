@@ -1515,9 +1515,9 @@ type RegistrationCollectedField = {
 
 const fallbackRegistrationMemberFields: RegistrationCollectedField[] = [
   { itemKey: 'memberName', title: '成员姓名', fieldType: 'TEXT', required: true, standardMemberKey: 'memberName' },
-  { itemKey: 'employeeNo', title: '宸ュ彿', fieldType: 'TEXT', standardMemberKey: 'employeeNo' },
-  { itemKey: 'departmentName', title: '閮ㄩ棬', fieldType: 'TEXT', standardMemberKey: 'departmentName' },
-  { itemKey: 'role', title: '瑙掕壊', fieldType: 'ROLE', standardMemberKey: 'role' },
+  { itemKey: 'employeeNo', title: '工号', fieldType: 'TEXT', standardMemberKey: 'employeeNo' },
+  { itemKey: 'departmentName', title: '部门', fieldType: 'TEXT', standardMemberKey: 'departmentName' },
+  { itemKey: 'role', title: '角色', fieldType: 'ROLE', standardMemberKey: 'role' },
   { itemKey: 'remark', title: '备注', fieldType: 'TEXTAREA', standardMemberKey: 'remark' },
 ];
 
@@ -2401,13 +2401,13 @@ const CompetitionRegistrationPage = () => {
                   <Form.Item name={[memberField.name, "memberName"]} label="成员姓名" rules={[{ required: true, message: '请输入成员姓名' }]}>
                     <Input maxLength={128} />
                   </Form.Item>
-                  <Form.Item name={[memberField.name, "employeeNo"]} label="宸ュ彿">
+                  <Form.Item name={[memberField.name, "employeeNo"]} label="工号">
                     <Input maxLength={64} />
                   </Form.Item>
-                  <Form.Item name={[memberField.name, "departmentName"]} label="閮ㄩ棬">
+                  <Form.Item name={[memberField.name, "departmentName"]} label="部门">
                     <Input maxLength={128} />
                   </Form.Item>
-                  <Form.Item name={[memberField.name, "role"]} label="瑙掕壊">
+                  <Form.Item name={[memberField.name, "role"]} label="角色">
                     <Select options={registrationTeamRoleOptions.map((role) => ({ value: role, label: registrationTeamRoleLabel[role] }))} />
                   </Form.Item>
                   <Form.Item name={[memberField.name, "remark"]} label="备注">
@@ -2461,13 +2461,13 @@ const CompetitionRegistrationPage = () => {
               <Form.Item name="memberName" label="成员姓名" rules={[{ required: true, message: '请输入成员姓名' }]}>
                 <Input maxLength={128} />
               </Form.Item>
-              <Form.Item name="employeeNo" label="宸ュ彿">
+              <Form.Item name="employeeNo" label="工号">
                 <Input maxLength={64} />
               </Form.Item>
-              <Form.Item name="departmentName" label="閮ㄩ棬">
+              <Form.Item name="departmentName" label="部门">
                 <Input maxLength={128} />
               </Form.Item>
-              <Form.Item name="role" label="瑙掕壊">
+              <Form.Item name="role" label="角色">
                 <Select options={registrationTeamRoleOptions.map((role) => ({ value: role, label: registrationTeamRoleLabel[role] }))} />
               </Form.Item>
               <Form.Item name="remark" label="备注">
@@ -3113,7 +3113,7 @@ const renderFieldSettingsTable = (
           <span>字段</span>
           <span>类型</span>
           <span>占位提示</span>
-          <span>蹇呭～</span>
+          <span>必填</span>
           <span>排序</span>
           <span>启用</span>
           <span>操作</span>
@@ -3247,7 +3247,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                           return (
                             <>
                               {isDocumentModule && enabled !== false ? <Tag color="blue">需确认</Tag> : null}
-                              {!isDocumentModule && required ? <Tag color="red">蹇呭～</Tag> : null}
+                              {!isDocumentModule && required ? <Tag color="red">必填</Tag> : null}
                               {enabled === false ? <Tag>停用</Tag> : <Tag color="green">启用</Tag>}
                             </>
                           );
@@ -3274,7 +3274,7 @@ const ConfigModulePanel = forwardRef<CompetitionSettingsPanelHandle, ConfigModul
                     <div className="competition-config-switches">
                       {module.key !== 'documents' ? (
                         <Form.Item name={[field.name, 'requiredFlag']} label={formatMessage({ id: 'page.competition.settings.item.required', defaultMessage: 'Required' })} valuePropName="checked">
-                          <Switch checkedChildren="蹇呭～" unCheckedChildren="选填" />
+                          <Switch checkedChildren="必填" unCheckedChildren="选填" />
                         </Form.Item>
                       ) : null}
                       <Form.Item name={[field.name, 'enabled']} label={module.key === 'documents' ? '报名前展示' : formatMessage({ id: 'page.competition.settings.item.enabled', defaultMessage: 'Enabled' })} valuePropName="checked">
