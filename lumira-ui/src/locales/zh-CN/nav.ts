@@ -29,6 +29,7 @@ export default {
   'nav.certificates.generate': '证书生成',
   'nav.certificates.records': '证书记录',
   'nav.certificates.verify': '证书查验',
+  'nav.expertReview.root': '专家与评审',
   'nav.experts.root': '专家库',
   'nav.experts.management': '专家管理',
   'nav.experts.query': '专家查询',

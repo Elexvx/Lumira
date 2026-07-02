@@ -97,10 +97,24 @@ const REGISTRATION_MENU_ROOT: MenuNode = {
   children: [],
 };
 
+const EXPERT_REVIEW_MENU_ROOT: MenuNode = {
+  id: -1068,
+  menuCode: 'expert.review.root',
+  name: '\u4e13\u5bb6\u4e0e\u8bc4\u5ba1',
+  path: '/expert-review',
+  component: 'redirect:/competitions/expert-apply',
+  icon: 'SolutionOutlined',
+  sortNo: 6,
+  children: [],
+};
+
 const COMPETITION_APPLICATION_MENUS: BootstrapMenuNode[] = [
+];
+
+const EXPERT_REVIEW_APPLICATION_MENUS: BootstrapMenuNode[] = [
   {
     id: -1077,
-    parentId: -1070,
+    parentId: -1068,
     menuCode: 'expert.application',
     name: '\u4e13\u5bb6\u7533\u8bf7',
     path: '/competitions/expert-apply',
@@ -221,6 +235,71 @@ const ensureCompetitionApplicationMenus = (menus: MenuNode[], currentUser: AppIn
         {
           ...COMPETITION_MENU_ROOT,
           children: mergeCompetitionApplicationChildren(COMPETITION_MENU_ROOT.children, currentUser),
+        },
+      ];
+};
+
+const isExpertReviewApplicationMenu = (menu: MenuNode) =>
+  menu.menuCode === 'expert.application'
+  || menu.menuCode === 'expert.review.application'
+  || menu.path === '/competitions/expert-apply';
+
+const removeExpertReviewApplicationMenus = (menus: MenuNode[]): MenuNode[] =>
+  menus
+    .filter((menu) => !isExpertReviewApplicationMenu(menu))
+    .map((menu) => ({
+      ...menu,
+      ...(menu.children ? { children: removeExpertReviewApplicationMenus(menu.children) } : {}),
+    }));
+
+const mergeExpertReviewApplicationChildren = (children: MenuNode[] | undefined, currentUser: AppInitialState['currentUser']) => {
+  const nextChildren = (children || []).filter(
+    (menu) => !isExpertReviewApplicationMenu(menu),
+  );
+  const access = buildAccess({ currentUser }) as Record<string, unknown>;
+  EXPERT_REVIEW_APPLICATION_MENUS.forEach((requiredMenu) => {
+    if (requiredMenu.access && !access[requiredMenu.access]) {
+      return;
+    }
+    if (!hasMenuPath(nextChildren, requiredMenu.path)) {
+      nextChildren.push({ ...requiredMenu });
+    }
+  });
+  nextChildren.sort((left, right) => (left.sortNo ?? 0) - (right.sortNo ?? 0));
+  return nextChildren;
+};
+
+const ensureExpertReviewApplicationMenus = (menus: MenuNode[], currentUser: AppInitialState['currentUser']): MenuNode[] => {
+  const access = buildAccess({ currentUser }) as Record<string, unknown>;
+  const visibleExpertReviewMenus = EXPERT_REVIEW_APPLICATION_MENUS.filter((menu) => !menu.access || Boolean(access[menu.access]));
+  const normalizedMenus = removeExpertReviewApplicationMenus(menus);
+  if (!visibleExpertReviewMenus.length) {
+    return normalizedMenus;
+  }
+
+  let attached = false;
+  const nextMenus = normalizedMenus.map((menu) => {
+    const isExpertReviewRoot = menu.menuCode === EXPERT_REVIEW_MENU_ROOT.menuCode || menu.path === EXPERT_REVIEW_MENU_ROOT.path;
+    if (!isExpertReviewRoot) {
+      return menu;
+    }
+
+    attached = true;
+    return {
+      ...menu,
+      path: EXPERT_REVIEW_MENU_ROOT.path,
+      component: EXPERT_REVIEW_MENU_ROOT.component,
+      children: mergeExpertReviewApplicationChildren(menu.children, currentUser),
+    };
+  });
+
+  return attached
+    ? nextMenus
+    : [
+        ...nextMenus,
+        {
+          ...EXPERT_REVIEW_MENU_ROOT,
+          children: mergeExpertReviewApplicationChildren(EXPERT_REVIEW_MENU_ROOT.children, currentUser),
         },
       ];
 };
@@ -625,7 +704,10 @@ const buildAuthenticatedInitialState = async (
   return {
     currentUser,
     menuTree: ensureRegistrationApplicationMenus(
-      ensureCompetitionApplicationMenus(filterMenusByAccess(menuTree, currentUser), currentUser),
+      ensureExpertReviewApplicationMenus(
+        ensureCompetitionApplicationMenus(filterMenusByAccess(menuTree, currentUser), currentUser),
+        currentUser,
+      ),
       currentUser,
     ),
     menuVersion: 0,

@@ -295,6 +295,45 @@ describe('getAppInitialState', () => {
     expect(Boolean(initialState.menuTree?.find((menu) => menu.menuCode === 'competition.root')?.children?.some((menu) => menu.menuCode === 'competition.registration'))).toBe(false);
   });
 
+  it('places expert application under the expert review group', async () => {
+    mocks.restoreSession.mockResolvedValue({
+      currentUser: {
+        userId: 10,
+        username: 'expert',
+        nickname: 'Expert',
+        permissions: ['expert:view'],
+        sessionId: 'session-expert',
+      },
+      securitySettings: {},
+      menuTree: [
+        {
+          menuCode: 'competition.root',
+          name: '赛事',
+          path: '/competitions',
+          children: [
+            {
+              menuCode: 'expert.application',
+              name: '专家申请',
+              path: '/competitions/expert-apply',
+            },
+          ],
+        },
+      ],
+    });
+
+    const { getAppInitialState } = await import('@/app.bootstrap');
+    const initialState = await getAppInitialState();
+
+    const expertReviewRoot = initialState.menuTree?.find((menu) => menu.menuCode === 'expert.review.root');
+    expect(expertReviewRoot).toMatchObject({
+      name: '专家与评审',
+      path: '/expert-review',
+      component: 'redirect:/competitions/expert-apply',
+    });
+    expect(expertReviewRoot?.children?.map((menu) => menu.menuCode)).toEqual(['expert.application']);
+    expect(Boolean(initialState.menuTree?.find((menu) => menu.menuCode === 'competition.root')?.children?.some((menu) => menu.menuCode === 'expert.application'))).toBe(false);
+  });
+
   it('falls back to authenticated v1 platform settings when v2 runtime appearance endpoint is unavailable', async () => {
     mocks.request.mockImplementation(async (url: string) => {
       if (url === '/v2/platform/runtime-appearance-settings') {
