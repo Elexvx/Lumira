@@ -343,7 +343,33 @@ const LegacyWechatLoginPanel = ({
 );
 void LegacyWechatLoginPanel;
 
-export const WechatLoginPanel = ({
+const CompactWechatLoginPanel = ({
+  available,
+  onWechatLogin,
+}: {
+  available?: boolean;
+  onWechatLogin: () => void;
+}) => (
+  <div className="saas-login-page__wechat-panel">
+    <button
+      type="button"
+      className="saas-login-page__wechat-qr-button"
+      disabled={!available}
+      onClick={available ? onWechatLogin : undefined}
+      aria-label={formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' })}
+    >
+      <QRCode
+        value={typeof window === 'undefined' ? 'https://lumira.local' : window.location.origin || 'https://lumira.local'}
+        size={156}
+        bordered={false}
+        color="#111827"
+        bgColor="#ffffff"
+      />
+    </button>
+  </div>
+);
+
+const OfficialWechatLoginPanel = ({
   available,
   onWechatLogin,
   showCopy = true,
@@ -465,6 +491,22 @@ export const WechatLoginPanel = ({
       ) : null}
     </div>
   );
+};
+
+export const WechatLoginPanel = ({
+  available,
+  onWechatLogin,
+  showCopy = true,
+}: {
+  available?: boolean;
+  onWechatLogin: () => void;
+  showCopy?: boolean;
+}) => {
+  if (!showCopy) {
+    return <CompactWechatLoginPanel available={available} onWechatLogin={onWechatLogin} />;
+  }
+
+  return <OfficialWechatLoginPanel available={available} onWechatLogin={onWechatLogin} showCopy={showCopy} />;
 };
 
 const PasswordLoginImageCaptcha = ({
