@@ -370,6 +370,19 @@
   background: #fff;
 }
 
+.saas-login-page__qr-panel .saas-login-page__wechat-official {
+  width: 214px;
+  height: 214px;
+}
+
+.saas-login-page__qr-panel .saas-login-page__wechat-official iframe {
+  width: 300px !important;
+  min-width: 300px !important;
+  height: 400px !important;
+  transform: scale(0.72);
+  transform-origin: top center;
+}
+
 .saas-login-page__wechat-skeleton,
 .saas-login-page__wechat-skeleton .ant-skeleton-image {
   width: 168px !important;
