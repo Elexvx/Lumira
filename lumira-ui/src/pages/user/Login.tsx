@@ -1,12 +1,12 @@
 import { formatMessage } from '@umijs/max';
-import { Alert, Button, Form, Input, Modal, QRCode } from 'antd';
+import { Alert, Button, Form, Input, Modal } from 'antd';
 import { type CSSProperties } from 'react';
 import type { FormInstance, FormProps } from 'antd';
 import { useLoginFlow } from '@/pages/user/login/hooks/useLoginFlow';
 import { useResponsive } from '@/hooks/useResponsive';
 import { APP_SPACING, resolveResponsiveValue } from '@/theme/spacing';
 import type { AgreementSettings, CaptchaChallenge, LoginCapabilities, LoginCodeChallenge, LoginResponse } from '@/types/api';
-import { LoginFormFields, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
+import { LoginFormFields, WechatLoginPanel, type LoginFormValues, type LoginMode } from '@/pages/user/login/components/LoginFormFields';
 import { AUTH_AGREEMENT_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
 import './Login.css';
 
@@ -51,6 +51,7 @@ type LoginPageMainSectionProps = {
   handleFinishFailed: NonNullable<FormProps<LoginFormValues>['onFinishFailed']>;
   setCaptchaProof: (value: string) => void;
   resetCaptchaProof: () => void;
+  isMobile: boolean;
 };
 
 const LoginPageMainSection = ({
@@ -88,6 +89,7 @@ const LoginPageMainSection = ({
   handleFinishFailed,
   setCaptchaProof,
   resetCaptchaProof,
+  isMobile,
 }: LoginPageMainSectionProps) => (
   <div className="saas-login-page" style={loginPageStyle}>
     <main className="saas-login-page__stage">
@@ -101,21 +103,14 @@ const LoginPageMainSection = ({
         <aside className="saas-login-page__qr-panel">
           <div className="saas-login-page__qr-title">{formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' })}</div>
           <div className="saas-login-page__qr-copy">{formatMessage({ id: 'page.login.qr.wechatHint', defaultMessage: '使用微信扫描二维码登录' })}</div>
-          <button
-            type="button"
-            className="saas-login-page__qr-box"
-            disabled={!loginCapabilities.wechatLoginAvailable}
-            onClick={() => {
-              if (loginCapabilities.wechatLoginAvailable) {
-                void handleWechatLogin();
-              }
-            }}
-          >
-            <QRCode value={typeof window === 'undefined' ? 'https://lumira.local' : window.location.origin || 'https://lumira.local'} size={132} bordered={false} />
-          </button>
+          <WechatLoginPanel
+            available={Boolean(loginCapabilities.wechatLoginAvailable)}
+            onWechatLogin={() => void handleWechatLogin()}
+            showCopy={false}
+          />
           <div className="saas-login-page__qr-method">
             {loginCapabilities.wechatLoginAvailable
-              ? formatMessage({ id: 'page.login.qr.wechatActionHint', defaultMessage: '点击二维码前往微信授权登录' })
+              ? formatMessage({ id: 'page.login.qr.wechatHint', defaultMessage: '使用微信扫描二维码登录' })
               : formatMessage({ id: 'page.login.qr.wechatUnavailable', defaultMessage: '微信登录暂未启用' })}
           </div>
         </aside>
@@ -127,8 +122,8 @@ const LoginPageMainSection = ({
           onFinishFailed={handleFinishFailed}
         >
           <LoginFormFields
-            activeLoginMode={activeLoginMode}
-            availableLoginModes={availableLoginModes}
+            activeLoginMode={isMobile ? activeLoginMode : 'password'}
+            availableLoginModes={isMobile ? availableLoginModes : ['password']}
             pendingSecondFactorLogin={pendingSecondFactorLogin}
             pendingSecondFactorPrompt={pendingSecondFactorPrompt}
             agreementSettings={agreementSettings}
@@ -142,7 +137,7 @@ const LoginPageMainSection = ({
             loginCodeCooldownSeconds={loginCodeCooldownSeconds}
             wechatLoginAvailable={Boolean(loginCapabilities.wechatLoginAvailable)}
             passkeyLoading={passkeySubmitting}
-            onModeChange={setActiveLoginMode}
+            onModeChange={isMobile ? setActiveLoginMode : () => undefined}
             onSendLoginCode={(mode) => void handleSendLoginCode(mode)}
             onWechatLogin={() => void handleWechatLogin()}
             onPasskeyLogin={() => void handlePasskeyLogin()}
@@ -153,7 +148,7 @@ const LoginPageMainSection = ({
             onSliderCaptchaReset={resetCaptchaProof}
             onOpenAgreementPreview={openAgreementPreview}
           />
-          {activeLoginMode === 'passkey' && !pendingSecondFactorLogin ? null : (
+          {((isMobile ? activeLoginMode : 'password') === 'passkey' || (isMobile ? activeLoginMode : 'password') === 'wechat') && !pendingSecondFactorLogin ? null : (
             <Button
               block
               size="large"
@@ -198,13 +193,17 @@ const Login = () => {
       ? formatMessage({ id: 'page.login.passwordSubtitle', defaultMessage: 'Password login' })
       : loginFlow.activeLoginMode === 'passkey'
         ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
-        : loginFlow.activeLoginMode === 'sms'
-          ? formatMessage({ id: 'page.login.smsSubtitle', defaultMessage: 'SMS code login' })
-          : formatMessage({ id: 'page.login.emailSubtitle', defaultMessage: 'Email code login' });
+        : loginFlow.activeLoginMode === 'wechat'
+          ? formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' })
+          : loginFlow.activeLoginMode === 'sms'
+            ? formatMessage({ id: 'page.login.smsSubtitle', defaultMessage: 'SMS code login' })
+            : formatMessage({ id: 'page.login.emailSubtitle', defaultMessage: 'Email code login' });
   const submitButtonText = loginFlow.viewState.pendingSecondFactorLogin
     ? formatMessage({ id: 'page.login.submit.verify', defaultMessage: 'Verify and log in' })
     : loginFlow.activeLoginMode === 'passkey'
       ? formatMessage({ id: 'page.login.passkey', defaultMessage: '使用通行密钥登录' })
+      : loginFlow.activeLoginMode === 'wechat'
+        ? formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })
       : formatMessage({ id: 'page.login.submit.login', defaultMessage: 'Log in' });
 
   return (
@@ -239,6 +238,7 @@ const Login = () => {
         handleFinishFailed={loginFlow.actions.handleFinishFailed}
         setCaptchaProof={loginFlow.actions.setCaptchaProof}
         resetCaptchaProof={loginFlow.actions.resetCaptchaProof}
+        isMobile={responsive.isMobile}
         loginPageStyle={loginFlow.loginPageStyle}
         brandingWebsiteName={loginFlow.brandingWebsiteName}
         brandingFooterItems={loginFlow.brandingFooterItems}

@@ -1,7 +1,7 @@
 import type { CaptchaChallenge, LoginCodeChallenge, LoginResponse } from '@/types/api';
 import { CheckOutlined, KeyOutlined, QqOutlined, SafetyCertificateOutlined, UserOutlined, WechatOutlined, WeiboOutlined } from '@ant-design/icons';
 import { formatMessage } from '@umijs/max';
-import { Alert, Button, Checkbox, Form, Input, Modal, Skeleton, Typography } from 'antd';
+import { Alert, Button, Checkbox, Form, Input, Modal, QRCode, Skeleton, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { LockOutlined } from '@ant-design/icons';
 import { useResponsive } from '@/hooks/useResponsive';
@@ -16,7 +16,25 @@ import {
 import { SliderCaptchaBox } from '@/components/captcha/SliderCaptchaBox';
 import { MailOutlined, MobileOutlined } from '@ant-design/icons';
 import { LOGIN_SLIDER_CAPTCHA_MODAL_WIDTH_BY_BREAKPOINT } from '@/constants/ui';
-import type { AgreementSettings } from '@/types/api';
+import type { AgreementSettings, WechatAuthorizeUrl } from '@/types/api';
+import { request } from '@/services/common/request';
+
+declare global {
+  interface Window {
+    WxLogin?: new (options: {
+      self_redirect?: boolean;
+      id: string;
+      appid: string;
+      scope: string;
+      redirect_uri: string;
+      state?: string;
+      style?: 'black' | 'white' | string;
+      href?: string;
+      stylelite?: number;
+      fast_login?: number;
+    }) => unknown;
+  }
+}
 
 const CAPTCHA_ALLOWED_CHAR_PATTERN = /^[A-Za-z0-9]$/;
 const CAPTCHA_SANITIZE_PATTERN = /[^A-Za-z0-9]/g;
@@ -64,6 +82,7 @@ const MODE_META: Record<LoginMode, { label: string }> = {
   password: { label: formatMessage({ id: 'page.login.passwordAccount', defaultMessage: '密码登录' }) },
   sms: { label: formatMessage({ id: 'page.login.smsCode', defaultMessage: 'SMS code' }) },
   email: { label: formatMessage({ id: 'page.login.emailCode', defaultMessage: 'Email code' }) },
+  wechat: { label: formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' }) },
 };
 
 const LoginModeSwitcher = ({
@@ -106,9 +125,6 @@ const LoginModeSwitcher = ({
               </button>
             ))}
           </div>
-          <Button type="link" className="saas-login-page__org-link">
-            {formatMessage({ id: 'page.login.orgSignup', defaultMessage: '开通机构号' })}
-          </Button>
         </div>
       ) : null}
       <div className="saas-login-page__mode-content">
@@ -279,6 +295,178 @@ const CodeLoginPanel = ({
   );
 };
 
+const LegacyWechatLoginPanel = ({
+  available,
+  onWechatLogin,
+}: {
+  available?: boolean;
+  onWechatLogin: () => void;
+}) => (
+  <div className="saas-login-page__wechat-panel">
+    <button
+      type="button"
+      className="saas-login-page__wechat-qr-button"
+      disabled={!available}
+      onClick={available ? onWechatLogin : undefined}
+      aria-label={formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' })}
+    >
+      <QRCode
+        value={typeof window === 'undefined' ? 'https://lumira.local' : window.location.origin || 'https://lumira.local'}
+        size={156}
+        bordered={false}
+        color="#111827"
+        bgColor="#ffffff"
+      />
+    </button>
+    <div className="saas-login-page__wechat-copy">
+      <div className="saas-login-page__wechat-title">
+        {formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '微信扫码登录' })}
+      </div>
+      <div className="saas-login-page__wechat-hint">
+        {available
+          ? formatMessage({ id: 'page.login.qr.wechatActionHint', defaultMessage: '点击二维码前往微信授权登录' })
+          : formatMessage({ id: 'page.login.qr.wechatUnavailable', defaultMessage: '微信登录暂未启用' })}
+      </div>
+    </div>
+    <Button
+      block
+      size="large"
+      type="primary"
+      icon={<WechatOutlined />}
+      disabled={!available}
+      onClick={onWechatLogin}
+      className="saas-login-page__wechat-login-button"
+    >
+      {formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })}
+    </Button>
+  </div>
+);
+void LegacyWechatLoginPanel;
+
+export const WechatLoginPanel = ({
+  available,
+  onWechatLogin,
+  showCopy = true,
+}: {
+  available?: boolean;
+  onWechatLogin: () => void;
+  showCopy?: boolean;
+}) => {
+  const containerIdRef = useRef(`wechat-login-${Math.random().toString(36).slice(2)}`);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    if (!available) {
+      return;
+    }
+
+    let disposed = false;
+    const containerId = containerIdRef.current;
+    const loadWechatScript = () =>
+      new Promise<void>((resolve, reject) => {
+        if (window.WxLogin) {
+          resolve();
+          return;
+        }
+        const existing = document.querySelector<HTMLScriptElement>('script[data-lumira-wechat-login="true"]');
+        if (existing) {
+          existing.addEventListener('load', () => resolve(), { once: true });
+          existing.addEventListener('error', () => reject(new Error('Wechat login script failed to load')), { once: true });
+          return;
+        }
+        const script = document.createElement('script');
+        script.src = 'https://res.wx.qq.com/connect/zh_CN/htmledition/js/wxLogin.js';
+        script.async = true;
+        script.dataset.lumiraWechatLogin = 'true';
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error('Wechat login script failed to load'));
+        document.head.appendChild(script);
+      });
+
+    const renderWechatLogin = async () => {
+      setLoadFailed(false);
+      const container = document.getElementById(containerId);
+      if (container) {
+        container.innerHTML = '';
+      }
+      const config = await request<WechatAuthorizeUrl>('/v1/auth/wechat/authorize-url', {
+        method: 'GET',
+        autoRedirectOnUnauthorized: false,
+        silent: true,
+        skipAuth: true,
+      });
+      await loadWechatScript();
+      if (disposed || !window.WxLogin || !config.appId || !config.encodedRedirectUri) {
+        return;
+      }
+      new window.WxLogin({
+        self_redirect: false,
+        id: containerId,
+        appid: config.appId,
+        scope: config.scope || 'snsapi_login',
+        redirect_uri: config.encodedRedirectUri,
+        state: config.state,
+        style: 'black',
+        stylelite: 1,
+        fast_login: 0,
+      });
+    };
+
+    void renderWechatLogin().catch(() => {
+      if (!disposed) {
+        setLoadFailed(true);
+      }
+    });
+
+    return () => {
+      disposed = true;
+    };
+  }, [available]);
+
+  return (
+    <div className="saas-login-page__wechat-panel">
+      <div
+        id={containerIdRef.current}
+        className="saas-login-page__wechat-official"
+        aria-label={formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: '寰俊鎵爜鐧诲綍' })}
+      >
+        {available ? (
+          <Skeleton.Image active className="saas-login-page__wechat-skeleton" />
+        ) : (
+          <Typography.Text type="secondary">
+            {formatMessage({ id: 'page.login.qr.wechatUnavailable', defaultMessage: 'WeChat login is not enabled' })}
+          </Typography.Text>
+        )}
+      </div>
+      {showCopy ? (
+        <div className="saas-login-page__wechat-copy">
+          <div className="saas-login-page__wechat-title">
+            {formatMessage({ id: 'page.login.qr.wechatTitle', defaultMessage: 'WeChat QR login' })}
+          </div>
+          <div className="saas-login-page__wechat-hint">
+            {loadFailed
+              ? formatMessage({ id: 'page.login.qr.wechatLoadFailed', defaultMessage: 'Failed to load the official WeChat QR code. Use redirect login instead.' })
+              : formatMessage({ id: 'page.login.qr.wechatHint', defaultMessage: 'Scan with WeChat to log in' })}
+          </div>
+        </div>
+      ) : null}
+      {loadFailed ? (
+        <Button
+          block
+          size="large"
+          type="primary"
+          icon={<WechatOutlined />}
+          disabled={!available}
+          onClick={onWechatLogin}
+          className="saas-login-page__wechat-login-button"
+        >
+          {formatMessage({ id: 'page.login.wechat', defaultMessage: 'WeChat login' })}
+        </Button>
+      ) : null}
+    </div>
+  );
+};
+
 const PasswordLoginImageCaptcha = ({
   captchaChallenge,
   captchaLoading,
@@ -413,7 +601,7 @@ const PasswordLoginSliderCaptcha = ({
   );
 };
 
-export type LoginMode = 'passkey' | 'sms' | 'email' | 'password';
+export type LoginMode = 'passkey' | 'sms' | 'email' | 'wechat' | 'password';
 type SliderVerificationStatus = 'idle' | 'verified';
 type CodeLoginMode = Extract<LoginMode, 'sms' | 'email'>;
 
@@ -659,6 +847,8 @@ export const LoginFormFields = ({
         onSliderCaptchaVerified={onSliderCaptchaVerified}
         onSliderCaptchaReset={onSliderCaptchaReset}
       />
+    ) : activeLoginMode === 'wechat' ? (
+      <WechatLoginPanel available={wechatLoginAvailable} onWechatLogin={onWechatLogin} />
     ) : (
       <CodeLoginPanel
         mode={codeLoginMode}
@@ -679,7 +869,7 @@ export const LoginFormFields = ({
         passkeyLoading={passkeyLoading}
         modeContent={modeContent}
       />
-      {activeLoginMode !== 'passkey' && !pendingSecondFactorLogin ? (
+      {activeLoginMode !== 'passkey' && activeLoginMode !== 'wechat' && !pendingSecondFactorLogin ? (
         <>
           <div className="saas-login-page__other-login">
             <div className="saas-login-page__other-title">
