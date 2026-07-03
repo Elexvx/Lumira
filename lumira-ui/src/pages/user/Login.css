@@ -373,13 +373,18 @@
 .saas-login-page__qr-panel .saas-login-page__wechat-official {
   width: 214px;
   height: 214px;
+  position: relative;
+  display: block;
 }
 
 .saas-login-page__qr-panel .saas-login-page__wechat-official iframe {
+  position: absolute;
+  top: 36px;
+  left: calc(50% - 150px);
   width: 300px !important;
   min-width: 300px !important;
   height: 400px !important;
-  transform: scale(0.72);
+  transform: scale(0.92);
   transform-origin: top center;
 }
 
